@@ -1,16 +1,4 @@
-/**
- * Listing photos — the marketplace gallery composition layer.
- *
- * A listing gallery is an ORDERED, curated set of photos with a single cover,
- * keyed by its target (a catalog SKU or a serialized unit). The rows live in
- * `listing_photos` (see 2026-06-26c). This module owns the gallery invariants —
- * contiguous sort order, exactly one cover, a photo appears once — so the route
- * and UI stay thin.
- *
- * Deps-injected for DB-free unit tests, like `labels.ts` / `image-types.ts`.
- * Every read/write goes through tenantQuery / withTenantTransaction AND keeps an
- * explicit `organization_id = $1` clause.
- */
+/** Listing photos — the marketplace gallery composition layer. */
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -42,15 +30,7 @@ const defaultDeps: ListingPhotoDeps = { tenantQuery, withTenantTransaction };
 
 export class ListingTargetError extends Error {}
 
-/**
- * `productImageUrl`'s last tier as SQL, for readers that resolve the product
- * photo in the query: the thumb URL (`photoContentUrl(id, 'thumb')`) of the
- * SKU gallery's cover. Guarded so it is the LOWEST tier whatever the caller's
- * COALESCE order: it yields nothing when the catalog row has its own photo or
- * an active Zoho item owns the SKU (the SKU identity law's photo rule).
- *
- * @param catalogAlias alias of the resolved `sku_catalog` row in the caller.
- */
+/** `productImageUrl`'s last tier as SQL, for readers that resolve the product photo in the query: */
 export function listingCoverThumbUrlSql(catalogAlias: string): string {
   return `(SELECT '/api/photos/' || lp.photo_id || '/content?variant=thumb'
              FROM listing_photos lp
@@ -149,10 +129,7 @@ export async function addPhotosToListingInTx(
   const startOrder = Number(startRes.rows[0]?.next ?? 0);
   const wasEmpty = Number(startRes.rows[0]?.count ?? 0) === 0;
 
-  // Insert in array order; ordinality drives the contiguous sort_order. The
-  // first row of a previously-empty gallery is stamped as cover. The unique
-  // photo index is PARTIAL (`WHERE <column> IS NOT NULL`), so the conflict
-  // target must restate that predicate or Postgres cannot infer it (42P10).
+  // Insert in array order; ordinality drives the contiguous sort_order.
   await client.query(
     `INSERT INTO listing_photos
        (organization_id, photo_id, ${column}, platform_listing_id, serial_unit_listing_id,

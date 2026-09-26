@@ -18,13 +18,7 @@ import {
 
 const QUERY_KEY = ['org-station-nas-folders'];
 
-/**
- * Controller for the NAS folders settings tab. Loads the org settings once and
- * exposes three independent edit slices (station picker folders, NAS server
- * addresses, workflow storage targets) — each with its own draft/dirty/save —
- * plus the shared folder-picker `picking` state that bridges the targets +
- * station slices.
- */
+/** Controller for the NAS folders settings tab. */
 export function useStationNasFolders() {
   const queryClient = useQueryClient();
   // Seed the module base URL from the active saved server so Browse targets the

@@ -1,14 +1,4 @@
-/**
- * Canonical post-write cache invalidation for the tech/repair read models (Phase 1 / B7).
- *
- * Mirrors `src/lib/orders/invalidation.ts`. `tech/scan` already busts
- * `[orders, orders-next, tech-logs, order-detail]` org-scoped inline; this helper
- * bundles that set (plus the legacy `tech-logs` snapshot `api:tech-logs-v3`) so the
- * other tech/repair writers (scan-sku, serial, delete, repair-service routes),
- * which today bust legacy-only, can adopt one org-scoped call in Phase 2. That is
- * what closes the order-detail / ops-dashboard staleness the audit flagged for the
- * tech-side writers.
- */
+/** Canonical post-write cache invalidation for the tech/repair read models (Phase 1 / B7). */
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { invalidateDomainViews, type ViewInvalidationDeps } from '@/lib/cache/view-invalidation';
 

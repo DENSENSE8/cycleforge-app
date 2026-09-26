@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Return on the receiving-order sheet → `POST /api/receiving/inbound/import-purchase`
- * (kind=return), which also files the linked support ticket. Owns the draft,
- * the picked inventory item and the submit; the frame is `ReceivingOrderSheet`
- * and completeness is the intake domain's `canSubmitAddInbound`.
- */
+/** Return on the receiving-order sheet → `POST /api/receiving/inbound/import-purchase` (kind=return), which also files the linked support… */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

@@ -3,19 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { readTimeline } from '@/lib/inventory/events';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/inventory-events
- * Generic audit feed. Filterable by any subject: sku, serial_unit_id, bin_id,
- * receiving_id, receiving_line_id, actor_staff_id, since, limit.
- *
- * Used by the bin page, the SKU detail timeline, and the future /audit page.
- *
- * `?q=` is the ledger's find text, answered in SQL by {@link readTimeline}.
- * The Pulse feeds are WINDOWS (the org ledger's last 50, one unit's last 200),
- * so a browser-side filter could only ever search what had already arrived —
- * and it re-narrowed even that to the facts the mounted tracks paint, so an
- * event found by its note or its bin name vanished when that column was off.
- */
+/** GET /api/inventory-events Generic audit feed. */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

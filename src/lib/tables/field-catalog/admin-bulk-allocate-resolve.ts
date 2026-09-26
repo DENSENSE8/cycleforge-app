@@ -1,24 +1,4 @@
-/**
- * Bulk-allocate slot resolvers — pure.
- *
- * Two of the eight facts have no row column behind them, and this is where
- * they come from:
- *
- * - `qty` — `candidateQty`, the floor-clamped parse of the TEXT column
- *   `orders.quantity` the retired page did inline. Resolving `quantity_str`
- *   raw would sort `10` before `2` and search `"1"` into every row.
- * - `eligible` — `candidateStateWord`, the closed vocabulary the STATE pill
- *   prints. The resolver returns the same WORD the pill shows, because this
- *   function is the ONE source for both the sort comparator and the search
- *   index: a header that ordered rows by a boolean while the pill said
- *   "No stock" would order the desk by a fact nobody can see.
- *
- * `ordered` resolves to the ABSOLUTE INSTANT, never a formatted or relative
- * face: the engine turns a `date` display type into the cell face and keeps
- * the instant behind it, and a resolver whose text depends on `now` would sort
- * and search differently on every render. It prefers `order_date` and falls
- * back to `created_at`, the same preference the adapter's tooltip names.
- */
+/** Bulk-allocate slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

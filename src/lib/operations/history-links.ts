@@ -3,16 +3,7 @@ import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOpera
 import type { SurfaceEntityType } from '@/lib/surfaces/registry';
 import { buildOperationsSignalsHref } from '@/features/signals/signals-url';
 
-/**
- * Cross-link href SoT between Operations → History (Trace) and → Signals
- * (Browse) — plan §7.3. One place builds these URLs so assistant tools, the
- * CommandBar, and UI chips all deep-link identically. Pure (no React/DOM), so
- * it's usable server-side and unit-tested. All type imports are erased at build,
- * and the only runtime import (`buildOperationsSignalsHref`) is itself pure.
- *
- * A `JourneyDimension` value ('order' | 'serial' | 'tracking' | 'unit') is also its URL
- * param name, so the dim doubles as the record-param key.
- */
+/** Cross-link href SoT between Operations → History (Trace) and → Signals (Browse) — plan §7.3. */
 
 /** Deep-link into History Trace for one record (`/operations?mode=history&dim=…&<dim>=…`). */
 export function operationsHistoryTraceHref(args: {

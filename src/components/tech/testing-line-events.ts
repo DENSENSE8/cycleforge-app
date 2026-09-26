@@ -1,20 +1,7 @@
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-/**
- * Workspace / accordion convenience for Testing — NOT rail safety.
- *
- * `TestingRecentRail` does **not** subscribe to `receiving-line-updated`
- * (mode bus isolation). Prefer narrow patches here (`{ id, serials }`,
- * workflow/qa fields from verdict responses). Never broadcast a full by-id
- * `GET ?id=` row — that response cannot reproduce the Testing dock's
- * `tested_at` age axis and used to blank/jump rail times when the dock
- * still listened. QC Recent now ages `testing_opened_at` only.
- *
- * Strips `last_activity_at` / null `tested_at` so any residual bus listener
- * (workspace selection merge, sibling rails) cannot clobber a verdict stamp
- * with scan/import time from a by-id normalize.
- */
+/** Workspace / accordion convenience for Testing — NOT rail safety. */
 export function dispatchTestingLineUpdated(
   row: Partial<ReceivingLineRow> & { id: number },
 ) {

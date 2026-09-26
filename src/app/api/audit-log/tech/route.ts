@@ -6,13 +6,7 @@ import {
   listTechSessions,
 } from '@/lib/audit-log/tech-aggregator';
 
-/**
- * GET /api/audit-log/tech
- *   ?session=<tracking>  → full timeline for one tech session
- *   no `session`         → most-recent tech sessions grouped by tracking
- *
- * Gate: admin.view_logs.
- */
+/** GET /api/audit-log/tech ?session=<tracking> → full timeline for one tech session no `session` → most-recent tech sessions grouped by… */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Phase 5 binding editor for one catalog `types` row: pin an optional storefront
- * account (platform_account_id) and an optional workflow-graph node
- * (workflow_node_id, the "own repair-service flow"). Rendered inline under a
- * type row in {@link CatalogManagerList} when `enableTypeBindings` is set (the
- * /settings catalog section), not in the compact label-editor popover.
- *
- * Both selects persist immediately via PATCH /api/catalog/types/[id]; an empty
- * choice clears the binding (sends `null`, which updateType distinguishes from
- * "unchanged"). Read state comes from the passed TypeRow so it reflects the last
- * server value without its own fetch.
- */
+/** Phase 5 binding editor for one catalog `types` row: */
 
 import { useState } from 'react';
 import { Loader2 } from '@/components/Icons';

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Input (new-york), restyled to house tokens.
- *
- * Sibling of `ui/button.tsx`: shadcn STRUCTURE (`data-slot`, prop
- * pass-through — `data-testid` and `inputMode` land on the element), house
- * COLOUR. The floating-label `design-system/primitives/TextField` remains the
- * flush industrial bar cell; this is the plain labeled field for shadcn-lane
- * surfaces (the order-intake overlay), paired with `ui/label.tsx`.
- */
+/** shadcn/ui Input (new-york), restyled to house tokens. */
 
 import * as React from 'react';
 import { cn } from '@/utils/_cn';

@@ -16,20 +16,7 @@ import { cn } from '@/utils/_cn';
 import { HEADER_ICON_BTN_CLASS, TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 
-/**
- * The scan overlay on its own, controlled — encodes the mobile sign-in URL
- * (`<origin>/m/signin`) so staff can point a phone camera at it and open the
- * site without typing anything.
- *
- * This is a **deep link**, not a pairing / device-code session. It does not
- * mint a token and does not sign the phone in. Real desk↔phone pairing lives
- * on `/signin` ({@link SignInQrPanel} → `/m/qr-auth?token=…`).
- *
- * Split out from {@link PhoneSignInQrButton} 2026-08-01 so every surface that
- * offers this action shares ONE dialog: Settings → Workstation and the desk
- * spine account ⋯. Re-typing the QR markup at a second call site would have
- * been the page-local fork the house rules ban.
- */
+/** The scan overlay on its own, controlled — encodes the mobile sign-in URL (`<origin>/m/signin`) so staff can point a phone camera at it… */
 export function PhoneSignInQrDialog({
   open,
   onOpenChange,
@@ -76,14 +63,7 @@ export function PhoneSignInQrDialog({
   );
 }
 
-/**
- * Header phone icon + the scan overlay above.
- *
- * **Mobile chrome only** since the 2026-08-01 altitude pass — the desktop
- * top-right cluster is down to find · add · goal · inbox · assistant, and this
- * action lives on Settings → Workstation (this device). Mobile keeps the icon
- * because it has no Settings workstation surface in the scan-first shell.
- */
+/** Header phone icon + the scan overlay above. */
 export function PhoneSignInQrButton({
   className,
   iconClassName = TOP_CHROME_ICON_GLYPH,

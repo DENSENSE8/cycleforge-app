@@ -1,15 +1,4 @@
-/**
- * DB-free unit tests for the receiving-lines query parser
- * (roi-execution/03 #8 decomposition).
- *
- * Pins the exact coercion/default/fallback semantics the old inline route
- * logic had: invalid values degrade silently (never throw / never a new 400),
- * NaN survives raw-Number params, limit clamps at 500, PO date strings
- * validate to ISO-or-empty, etc. (Wave-2: ?week_start/?week_end and
- * view=recent were removed as dead arms — pinned below.)
- *
- * Run: `npx tsx --test src/lib/receiving/lines/query.test.ts`
- */
+/** DB-free unit tests for the receiving-lines query parser (roi-execution/03 #8 decomposition). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

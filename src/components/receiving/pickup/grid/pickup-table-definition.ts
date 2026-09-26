@@ -1,12 +1,4 @@
-/**
- * `pickup.browse` — Local-pickup table definition (plan Phase 1, wave 2).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry. Canonical columns are the PRODUCT-DEFAULT slot
- * materialization (Wave-2 hand-model kill) — the live mount overrides them
- * with the effective layout's materialization (staff ?? org ?? product).
- */
+/** `pickup.browse` — Local-pickup table definition (plan Phase 1, wave 2). */
 
 import type { PickupLine } from '../pickup-lines';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

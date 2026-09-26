@@ -24,17 +24,7 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { Panel } from '@/design-system/primitives';
 
 
-/**
- * Contextual sidebar for /studio (Operations Studio) — the route's whole
- * left chrome lives here so the page body is a full-width canvas.
- *
- *   View dropdown (lens · zoom)  →  node Library  →  Issues rail
- *
- * State comes from StudioWorkspaceContext (shared with the canvas in
- * StudioShell), so the Library and Issues reflect the exact same graph/draft
- * the canvas is painting. The View dropdown drives the shell purely through
- * the URL params it already reads (`?lens=`, `?z=`).
- */
+/** Contextual sidebar for /studio (Operations Studio) — the route's whole left chrome lives here so the page body is a full-width canvas. */
 
 type IconCmp = (props: { className?: string }) => JSX.Element;
 

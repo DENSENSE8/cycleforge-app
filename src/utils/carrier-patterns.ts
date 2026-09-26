@@ -1,16 +1,4 @@
-/**
- * carrier-patterns.ts
- * ─────────────────────────────────────────────────────────────────
- * Single source of truth for carrier detection patterns.
- *
- * Both `tracking-format.ts` (server-side) and `scan-resolver.ts`
- * (station controller) import from here so patterns stay in sync.
- *
- * Patterns are ordered from most-specific to broadest to prevent
- * false positives. All matching is done against normalised input
- * (upper-cased, non-alphanumeric chars stripped).
- * ─────────────────────────────────────────────────────────────────
- */
+/** carrier-patterns.ts ───────────────────────────────────────────────────────────────── Single source of truth for carrier detection patterns. */
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -67,13 +55,7 @@ function normalize(input: string): string {
   return String(input || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-/**
- * Strip USPS IMpb routing prefix (420 + ZIP/ZIP+4) from barcode scans.
- *
- * Formats:
- *   420XXXXX + 20-22 digit tracking  (28-30 chars — 5-digit ZIP)
- *   420XXXXXXXXX + 20-22 digit tracking (32-34 chars — ZIP+4)
- */
+/** Strip USPS IMpb routing prefix (420 + ZIP/ZIP+4) from barcode scans. */
 function stripUspsRouting(clean: string): string {
   if (!clean.startsWith('420') || clean.length < 28) return clean;
 
@@ -105,10 +87,7 @@ export const TRACKING_PATTERNS: ReadonlyArray<{ carrier: CarrierCode; regex: Reg
   { carrier: 'UPS_MI',        regex: /^MI\d{20,30}$/ },
   { carrier: 'UPS_MI',        regex: /^9274\d{22,28}$/ },
 
-  // FedEx Express — 12-digit human STN (any leading digit). Older folklore
-  // limited to [39]; FedEx 2024 FDX1D expanded Express product indexes to 0–8,
-  // and real Express STNs also start with 4/7/8/etc. Pure 12-digit is unique
-  // among our carrier set (DHL is 10–11; USPS is 16–22).
+  // FedEx Express — 12-digit human STN (any leading digit).
   { carrier: 'FEDEX',         regex: /^\d{12}$/ },
 
   // FedEx Ground — 15 digits, frequently prefixed with 96 or 7

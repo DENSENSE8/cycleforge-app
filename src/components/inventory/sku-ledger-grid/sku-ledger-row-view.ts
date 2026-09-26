@@ -1,39 +1,4 @@
-/**
- * `SkuLedgerTableRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * The family's ONLY contribution to how a stock movement paints. Every fact it
- * does not name here is a bound SLOT resolved through `sku-ledger-resolve.ts`.
- *
- * ## What the compound row says about one movement
- *
- * - TITLE — the REASON, through `takeReasonLedgerLabel` (a phone take reads
- *   `Taken · FBA`, not `TAKE_FBA`). A ledger row is an event, and what an
- *   operator scans a stock history for is why the number changed.
- * - the note line — the `notes` somebody wrote about the movement (a custom
- *   take's own words: `Taken` over `Returned to vendor`). A row with no note
- *   falls back to the signed CHANGE in words: `delta` is bound to `status:1`,
- *   so that fallback only matters to an org that unbinds the track, and it is
- *   the one fact a ledger row cannot be read without.
- * - IDS — the ORDER behind the movement. No tracking line: a ledger entry has
- *   no carrier, and inventing one would paint a chip over a fact this feed does
- *   not have.
- * - STATE — the DIMENSION (`WAREHOUSE` | `BOXED`), verbatim. A closed
- *   vocabulary is a pill, and it is a BUCKET rather than a lifecycle, so both
- *   words read `neutral`: tone is never the fact, and neither bucket is more
- *   urgent than the other. The direction of the movement is in the sign of
- *   `delta`, not in the pill's colour.
- * - DATES — the stamp, on BOTH lines: the civil day on the Hash line and the
- *   clock face (with seconds) on the Calendar line. The retired cell printed
- *   `toLocaleString()` — day and time to the second — and on an authoritative
- *   ledger the second is the point: two movements a heartbeat apart are a
- *   different story from two an hour apart, and `SUM(delta)` is only auditable
- *   if the order of the entries is readable. Putting the clock in the Hash tip
- *   and leaving the Calendar line `--` would lose it (the kiosk dwell rule).
- *
- * There is no money, no photo and no deadline on a ledger row; all three stay
- * null and the shared cells paint the honest empty face. A signed QUANTITY is
- * not an amount — see the catalog docblock on `amountFieldId`.
- */
+/** `SkuLedgerTableRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -67,13 +32,7 @@ function parseInstant(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * The Calendar (secondary) line of the DATES cell — time of day to the second.
- *
- * Exported because it IS the precision the retired `toLocaleString()` cell
- * carried and the test pins it: a face that quietly dropped the seconds would
- * read as a formatting choice rather than as the regression it is.
- */
+/** The Calendar (secondary) line of the DATES cell — time of day to the second. */
 export function skuLedgerClockFace(iso: string | null | undefined): string | null {
   const d = parseInstant(iso);
   return d ? format(d, 'h:mm:ss a') : null;

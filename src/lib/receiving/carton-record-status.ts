@@ -1,14 +1,4 @@
-/**
- * The carton record's AT-A-GLANCE status — the pipeline a carton walks from
- * the carrier to the shelf, with who / when per step, and the loud alerts —
- * read only from real carton (`GET /api/receiving/:id`) and line
- * (`GET /api/receiving-lines?receiving_id=`) fields. A step paints only when
- * the carton's flow includes it; a missing stamp is `todo` (not yet) or
- * `unrecorded` (the flow moved past it without a stamp) — never invented.
- *
- * The overall STATE is the ledger row's own vocabulary
- * ({@link dockedReceivingState}) so the row and its record never disagree.
- */
+/** The carton record's AT-A-GLANCE status — the pipeline a carton walks from the carrier to the shelf, with who / when per step, and the… */
 
 import type { ReceivingLineRow } from './receiving-line-row';
 import { isHistoryUnfoundRow } from './history-triage-row';

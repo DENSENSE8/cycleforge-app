@@ -4,13 +4,7 @@ import { Image as ImageIcon } from '@/components/Icons';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/**
- * Loading skeleton — a grid of placeholder tiles at the small-grid rhythm.
- *
- * Static, not a shimmer (2026-08-09). Reserving the real geometry is the part
- * an operator reads; 24 tiles breathing in unison is the part that reads as the
- * page failing to settle. Same call as `PhotoThumb`'s per-tile placeholder.
- */
+/** Loading skeleton — a grid of placeholder tiles at the small-grid rhythm. */
 export function PhotoGridSkeleton() {
   return (
     <div
@@ -28,13 +22,7 @@ export function PhotoGridSkeleton() {
   );
 }
 
-/**
- * Teaching empty state — explains the filter, doesn't just say "nothing here".
- *
- * Under an active find it says so instead: the find-bar narrows the photos
- * already loaded (see `filterPhotosByQuery`), so "nothing matches" and "nothing
- * captured" are different facts and must not share one sentence.
- */
+/** Teaching empty state — explains the filter, doesn't just say "nothing here". */
 export function PhotoEmptyState({ searchQuery = '' }: { searchQuery?: string }) {
   const query = searchQuery.trim();
   return (

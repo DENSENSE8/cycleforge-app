@@ -4,19 +4,7 @@ import type { TicketCandidate } from '@/components/support/link/useTicketSearch'
 /** 'create' files a fresh Zendesk ticket; 'link' attaches an existing one. */
 export type ClaimModalMode = 'create' | 'link';
 
-/**
- * Claim scroll sections. Create starts at `compose` (skips `find`);
- * link starts at `find`. Ticket (`compose`) is editable details only.
- * Success is always `filed`.
- *
- * There was a `photos` section here until 2026-08-30 — a full attach picker
- * that pulled the carton's photo list and painted a grid. Attaching moved to
- * the composer, and the claim now renders in two places at once (rail +
- * centre), so keeping it meant the same grid mounted and the same
- * `/api/receiving-photos` request fired on EVERY claim surface. The NAS backup
- * is unaffected: it archives the whole carton server-side and never read the
- * picker's selection.
- */
+/** Claim scroll sections. */
 export type ClaimWizardStep = 'find' | 'compose' | 'filed' | 'seller';
 
 /** Full top-to-bottom order (create filters out `find`). */
@@ -70,15 +58,7 @@ export interface ArchiveState {
   warning: string | null;
 }
 
-/**
- * Slim ticket shape returned by GET /api/receiving/zendesk-claim/link.
- *
- * Now an alias of the shared {@link TicketCandidate}: both endpoints return the
- * same server shape (`TicketLinkCandidate` in src/lib/zendesk-link-candidates.ts),
- * and keeping two structurally-identical interfaces meant the shared TicketPicker
- * could only be reused across a cast. The local name stays so the claim-flow call
- * sites read unchanged.
- */
+/** Slim ticket shape returned by GET /api/receiving/zendesk-claim/link. */
 export type LinkCandidate = TicketCandidate;
 
 /** A carton photo eligible to attach to the Zendesk ticket. */

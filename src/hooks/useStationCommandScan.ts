@@ -23,26 +23,7 @@ import {
   getScanSubject,
 } from '@/lib/stations/scan-subject-store';
 
-/**
- * The one client waist for `CMD-*` scans — navigation and action alike.
- *
- * Returns a claim predicate: `true` means the scan was a command and has been
- * fully handled (navigated, submitted, or deliberately refused) — the caller
- * must stop. `false` means it was not a command and the caller's own resolution
- * continues exactly as before.
- *
- * The predicate is SYNCHRONOUS even though an action command performs a network
- * write. Claiming has to be immediate: the caller is deciding, in the same tick,
- * whether to hand the string to its own resolver, and a promise there would let
- * a verdict sticker be looked up as a serial while the write was still in
- * flight. So the claim returns at once and the write settles behind it — the
- * scan band and a toast report the outcome, and navigation happens only if the
- * server said the write landed.
- *
- * Nav resolution stays entirely client-side (the session already carries the
- * permission set, which is what filters the sidebar), so a jump costs zero
- * round-trips. Only a write crosses the network.
- */
+/** The one client waist for `CMD-*` scans — navigation and action alike. */
 export function useStationCommandScan(): (raw: string) => boolean {
   const router = useRouter();
   const { has } = useAuth();
@@ -71,20 +52,13 @@ export function useStationCommandScan(): (raw: string) => boolean {
 
   return useCallback(
     (raw: string): boolean => {
-      // A tenant alias resolves to its TARGET first, and everything below then
-      // behaves exactly as if the built-in sticker had been scanned. That is
-      // what keeps `CMD-GO-BENCH-3` from becoming a second code path with its
-      // own permission check and its own bugs: an alias renames a command, it
-      // never widens one.
+      // A tenant alias resolves to its TARGET first, and everything below then behaves exactly as if the built-in sticker had been scanned.
       const canonical = resolveCommandAlias(raw) ?? raw;
 
       // ── Navigation ────────────────────────────────────────────────────────
       const nav = parseNavCommand(canonical);
       if (nav) {
-        // Permission BEFORE navigation. The nav graph's own `requires` is what
-        // hides an unreachable page from the sidebar; a scan that pushed past
-        // it would strand the operator on `/not-authorized` with no way back to
-        // their work but the mouse they were trying not to touch.
+        // Permission BEFORE navigation.
         const perm = navCommandPermission(nav);
         if (perm && !has(perm)) {
           flashScanBand('reject');
@@ -172,10 +146,7 @@ export function useStationCommandScan(): (raw: string) => boolean {
         return true;
       }
 
-      // ── Unregistered command ──────────────────────────────────────────────
-      // Still CLAIMED. Letting it fall through is how a sticker becomes a
-      // serial: `classifyInput` types it `serial_partial` and the tech bench
-      // persists it as a unit identity.
+      // ── Unregistered command ────────────────────────────────────────────── Still CLAIMED.
       if (isCommandNamespace(canonical)) {
         flashScanBand('reject');
         toast.error(`Unknown command ${String(raw).trim().toUpperCase()}`);

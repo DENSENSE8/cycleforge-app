@@ -6,18 +6,7 @@ import { isFulfillmentSubstitution } from '@/lib/feature-flags';
 import { decideAmendment } from '@/lib/fulfillment/substitution';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * POST /api/order-amendments/[id]/decision
- *
- * Approve or reject a PENDING substitution amendment (the block_until_approved
- * enforcement path). APPROVE clears the /api/pack/ship hold — the re-allocation
- * already stands. REJECT reverts it: the substitute unit is released back to
- * stock and the original unit is best-effort re-allocated to the order.
- *
- * Body: { decision: 'approve' | 'reject', client_event_id?: string }
- *
- * Permission: packing.approve_amendment.
- */
+/** POST /api/order-amendments/[id]/decision */
 export const POST = withAuth(async (request, ctx) => {
   if (!isFulfillmentSubstitution()) {
     return NextResponse.json({ ok: false, error: 'substitution is not enabled' }, { status: 403 });

@@ -1,21 +1,4 @@
-/**
- * My-Day field catalog — the bindable Today-triage facts, as DATA. Wave 1.4's
- * eighth family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `my-day` row: "today's
- * work orders. Derived fields; layout is which facts show, not a Home-only
- * spreadsheet. `fieldsMenu: true` here is leftover column-display lip copy.").
- *
- * That last sentence is what this port fixes: the flag was true over nothing,
- * and now it is true over this catalog.
- *
- * Every entry names a fact `MyDayTask` already carries — a read model that
- * normalizes four heterogeneous feed shapes, which is exactly why the strip
- * must be slots rather than a Home-only column file.
- *
- * My-Day is a SHEET morph. `my-day.task` is the IDENTITY fact — the row's
- * stable id, which is also the `?task=` value — and the structural Task track
- * paints the title over its subtitle.
- */
+/** My-Day field catalog — the bindable Today-triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -77,13 +60,7 @@ export const MY_DAY_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default My-Day layout — visual parity with the retired hand
- * model's CORE view (`select · task · lane · record · due`): the four questions
- * a personal task row has to answer without a click — what it is, which band of
- * the day it belongs to, which record it points at, and when it is due.
- * Guard: `my-day.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default My-Day layout — visual parity with the retired hand model's CORE view (`select · task · lane · record · due`): */
 export const MY_DAY_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'my-day.task',

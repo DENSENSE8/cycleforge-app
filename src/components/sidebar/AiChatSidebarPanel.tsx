@@ -24,12 +24,7 @@ const EXAMPLES = [
   'How do I disassemble a Bose 251 speaker?',
 ];
 
-/**
- * Contextual sidebar for /ai-chat: the capabilities overview and example
- * prompts. The live streaming assistant is docked in the main pane (right),
- * rendered by AiChatWorkspace. Selecting an example or "New chat" reaches the
- * chat through window events — see `ai-chat-events`.
- */
+/** Contextual sidebar for /ai-chat: */
 export function AiChatSidebarPanel() {
   const { has, isLoaded } = useAuth();
 

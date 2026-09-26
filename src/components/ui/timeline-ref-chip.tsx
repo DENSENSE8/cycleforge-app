@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Identifier chip for a {@link TimelineItem} — the shared CopyChip family
- * (last-8 preview + copy-on-click), dispatched by `TimelineRef.kind`.
- *
- * Extracted from {@link EventTimeline} on 2026-08-02 when a second timeline
- * renderer (the support `MergedRecordStream`) needed the same dispatch. Two
- * renderers is a decision with a rationale; two copies of *this* would just be a
- * fork, and the second copy is exactly where a `kind` would go missing.
- */
+/** Identifier chip for a {@link TimelineItem} — the shared CopyChip family (last-8 preview + copy-on-click), dispatched by `TimelineRef.kind`. */
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';

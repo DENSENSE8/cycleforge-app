@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Landscape repair details — the VISIT's paperwork, and the key that submits it.
- *
- * ## One submit path (2026-09-16)
- *
- * This pane used to POST a device-authed repair endpoint of its own (deleted
- * 2026-09-16): one bare `repair_service` row, no counter header, no visit, no
- * payment. The cart POSTed
- * `/api/kiosk/intake`. So a drop-off checked in from here never became a
- * transaction the desk could see or charge, and a customer with a repair AND a
- * case on the counter could be checked in twice — whichever key the staffer
- * happened to press decided which, which is not a decision a key should make.
- *
- * "Submit repair" and the cart's Save/Pay are now the same verb at different
- * altitudes ({@link submitKioskVisit}), and there is exactly ONE success
- * document ({@link KioskCartDoneFace}). The pane's own paperwork-in-a-hero
- * success face is gone with the second endpoint.
- *
- * ## Per device, not per visit (2026-09-16)
- *
- * `repair_service` has always been one row per physical unit and the cart has
- * always held one REPAIR line per device; the UI was the only layer that
- * flattened. Step 1 is a REPEATER over {@link repairDevicesFromLines} — the
- * devices are derived from the cart (the session root), so they survive this
- * pane unmounting and cannot disagree with what the submit writes. Serial,
- * price, notes and REASONS are DEVICE facts (reasons since 2026-09-25: one
- * set for all units, or per unit — `KioskReasonStep`); visit notes, contact,
- * signature and the ticket choice are VISIT facts, captured once and written
- * onto every line.
- */
+/** Landscape repair details — the VISIT's paperwork, and the key that submits it. */
 
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -84,22 +55,6 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 /**
  * The four step headers, in order — each the step's own question in plain
  * words. Operator 2026-09-14: no "Issue" eyebrow, no duplicate label inside
- * the step body; ONE bold display header, top-left.
- *
- * Device split from Contact 2026-09-15 (operator): *"there should be contact
- * information just as phone number name email address and address with serial
- * number and price under a different stepper."* Two subjects, two steps — the
- * staffer reads the serial and quotes the price, the customer gives their own
- * details.
- *
- * There is deliberately NO fifth "Support ticket" step. The create-or-link
- * question was one for an hour on 2026-09-15 and the operator collapsed it:
- * *"because the stepper is full at that review and sign step, would it be best
- * to include a slider … below the signature so it would be mounted under one
- * step?"* The ticket is ABOUT the paperwork on the review screen, so paging
- * away from that sheet to ask about it — and spending a whole progress segment
- * on one tap — was the wrong altitude. It is revealed by the signature inside
- * this step instead; `repairStepGates[3]` still demands the answer.
  */
 const STEP_HEADERS = [
   'Reason for repair',
@@ -108,17 +63,7 @@ const STEP_HEADERS = [
   'Review & sign',
 ] as const;
 
-/**
- * The VISIT facts a fresh mount inherits from the cart.
- *
- * This pane unmounts every time the staffer goes back to the catalog — the
- * stage renders only in `checkout` — so notes typed or a signature taken
- * before that exit have to come back from the SESSION ROOT, not from a local
- * draft that died with the component. They are visit-level, so the first
- * repair line answers for all of them: the mirror effect writes the same facts
- * onto every line. REASONS are not here: they are a LINE fact read straight
- * off each device (`KioskReasonStep`).
- */
+/** The VISIT facts a fresh mount inherits from the cart. */
 function visitFactsFromLines(lines: readonly KioskCartLine[]): Partial<RepairFormData> {
   return { repairNotes: repairVisitFactsFromLines(lines).notes };
 }
@@ -131,29 +76,8 @@ function signatureFromLines(lines: readonly KioskCartLine[]): SignatureData | nu
 }
 
 /**
- * ONE product on the visit and every unit of it: its title, its SKU, the
- * cart's `−  N  +`, one serial LIST per unit, and the product's quote and
- * notes.
- *
- * Each unit is still its own cart line and its own `repair_service` row, so
- * `+` adds a line and `−` removes one ({@link repairUnitToDrop}). A unit's
- * serials are its own — a Wave and its CD changer are one unit with two
- * (`KioskSerialListField`'s `+ Add serial`, 2026-09-25) — and are never shared
- * across units. Price and notes are the PRODUCT's: typing one writes every
- * unit (three identical radios, one quote each).
- *
+ * ONE product on the visit and every unit of it:
  * `−` at 1 swaps in the cart's `Remove this item?` row (operator 2026-09-24:
- * "it should be like a inline edit display same as the cart for adding
- * multiple … minusing … removing"); it replaced a bare "Remove this device"
- * button that existed only on a multi-device visit.
- *
- * ## Why the ids are shaped this way
- *
- * A DOM element carries exactly one `data-testid`. The FIRST unit on the visit
- * keeps the unsuffixed `kiosk-repair-serial`, the first card keeps
- * `kiosk-repair-price` / `kiosk-repair-notes`, and every later one is
- * addressed by its index. `idScope` keeps each `<label for>` pointing at THIS
- * unit's input; without it every copy would share the first's DOM id.
  */
 function KioskRepairDeviceCard({
   group,
@@ -296,42 +220,12 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
    */
   const submissionKey = useRef<string | null>(null);
 
-  /**
-   * THE DEVICES on this visit, derived from the cart and nothing else.
-   *
-   * This replaced a local `existingRepair` hydration that opened ONE line —
-   * matched by product model, falling back to `repairs[0]` before 2026-08-21 —
-   * and mirrored its serial, price and notes into `formData`. Two problems the
-   * derivation retires outright: a second device's facts were unreachable
-   * (there was one serial field for the lot), and the mirror was a second copy
-   * of a fact the cart already owned, so the paperwork and the ticket could
-   * disagree about what was being repaired.
-   *
-   * `formData.serialNumber` / `formData.price` are consequently NOT the
-   * kiosk's source of truth any more. They stay on `RepairFormData` because
-   * the staff single-intake form still writes them, and the gates take the
-   * device list instead (`repair-intake-logic.ts`).
-   */
+  /** THE DEVICES on this visit, derived from the cart and nothing else. */
   const devices = useMemo(() => repairDevicesFromLines(session.lines), [session.lines]);
   const deviceGroups = useMemo(() => repairDeviceGroups(devices), [devices]);
   const hasDevices = devices.length > 0;
 
-  /*
-   * Contact fields are VISIT facts: they live on the session root, which is
-   * what the cart, the triage panel and the submit all read. `formData.customer`
-   * mirrors the three the repair gate checks.
-   *
-   * ADDRESS is deliberately not mirrored — `RepairFormData` has no address
-   * field and must not grow one. Widening a LINE form with a visit-level fact
-   * is how two sources of one truth start, and the cart already writes this
-   * exact key. So it is read from and written to the session directly.
-   *
-   * An EXACT mirror: every contact write lands on the session first, so the
-   * session is never behind this form. A `session || prev` fallback made a
-   * cleared field un-clearable — this effect, closing over the pre-write
-   * render, put the old name straight back (a phone lookup taking back the
-   * name it filled, 2026-09-24).
-   */
+  /* Contact fields are VISIT facts: */
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
@@ -401,23 +295,11 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
   );
 
   /*
-   * `+ Add another device` has no handler of its own: it is `onBack`. The
-   * devices already on screen are cart lines (every edit here writes its
-   * line), so leaving for the catalog loses nothing, and the next device is
+   * `+ Add another device` has no handler of its own:
    * picked from the catalog exactly like the first (operator 2026-09-24: "add
-   * another device should save the devices to cart and then pick out another
-   * product"). Another unit of a product ALREADY on the visit is the card's
-   * `+` ({@link addUnit}).
    */
 
-  /**
-   * One more unit of a product on the visit — a new line with the product's
-   * identity and quote, and an empty serial (a serial belongs to exactly one
-   * chassis). Notes and signature reach it through the mirror effect. Its
-   * REASONS are the visit's shared set when every unit carries one (the
-   * All-devices answer covers it too); after per-device answers it starts
-   * blank and the Reason step asks for it.
-   */
+  /** One more unit of a product on the visit — a new line with the product's identity and quote, and an empty serial (a serial belongs to… */
   const addUnit = useCallback(
     (group: KioskRepairDeviceGroup) => {
       const template = session.lines.find((l) => l.id === group.units[0]!.lineId);
@@ -453,49 +335,22 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
   );
 
   /*
-   * `ticketChoice` is a VISIT fact on the session root, not a line fact — one
-   * `ticketWork` per submit however many devices this customer dropped off.
-   * See `src/lib/kiosk/repair-ticket-choice.ts`.
-   *
-   * SETTLED, not "complete": the slider opens on Create and an untouched
+   * `ticketChoice` is a VISIT fact on the session root, not a line fact — one `ticketWork` per submit however many devices this customer…
    * control is a real answer (operator 2026-09-15: *"automatically select
-   * create new ticket"*), which is also what `kioskTicketWork` posts for an
-   * untouched choice. The one state that blocks is HALF-FINISHED — slid to
-   * Link with no ticket picked.
    */
   const ticketSettled = isKioskTicketChoiceSettled(session.ticketChoice);
-  /*
-   * ONE refusal sentence for this pane: the form's own gaps first
-   * (`getRepairSubmitBlockReason` is the only copy deck for those, and with a
-   * device list it names WHICH device is short), then the open ticket question
-   * once the paperwork is signable — which is exactly when the control that
-   * answers it appears under the signature.
-   */
+  /* ONE refusal sentence for this pane: */
   const blockReason =
     getRepairSubmitBlockReason(formData, !!signatureData, devices) ??
     (ticketSettled ? undefined : 'Pick the existing ticket to attach this repair to');
   const canSave = canSubmitRepairIntake(formData, !!signatureData, devices) && ticketSettled;
 
-  // to a step-by-step mobile path native — continue after the issue, continue
-  // after the information, continue after the authorization signature." Each
-  // step ends in the same floating-free key the catalog uses; nothing scrolls
-  // except the step's own content. STEP_HEADERS is the operator-facing copy
-  // (module scope, above) — "Issue" never appears on screen; the step asks
-  // its question in plain words instead.
+  // to a step-by-step mobile path native — continue after the issue, continue after the information, continue after the authorization…
   const steps = STEP_HEADERS;
   const lastStep = steps.length - 1;
-  // ONE gate table for both consumers: the per-step Continue key and the
-  // header's completed count (PG6 — a count of satisfied units, never the
-  // index in view). Back-editing an earlier step un-fills its segment. The
-  // DEVICE unit reads the cart's devices, so a four-device visit cannot
-  // advance on device one's serial.
+  // ONE gate table for both consumers:
   const stepGates = repairStepGates(formData, !!signatureData, ticketSettled, devices);
-  /*
-   * RESUME at the first unsatisfied step. This pane remounts every time the
-   * staffer comes back from the catalog — the X, or `+ Add another device` —
-   * and replaying Reason for repair (already answered, stored on the lines)
-   * to reach the new device's serial is a wasted tap per device.
-   */
+  /* RESUME at the first unsatisfied step. */
   const [step, setStep] = useState(() => {
     const open = stepGates.findIndex((satisfied) => !satisfied);
     return open === -1 ? lastStep : open;
@@ -513,12 +368,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
   /** The number the paperwork states — see {@link paperworkTicketNumber}. */
   const paperworkTicketId = paperworkTicketNumber(session.ticketChoice, nextTicketId);
 
-  /**
-   * ONE paperwork sheet PER DEVICE, all carrying the one signature — built by
-   * `repairPaperworkSheets`, the same builder the top-chrome Paperwork panel
-   * uses, so the two can never state different agreements. A single-device
-   * visit is byte-identical to the one sheet this step showed before.
-   */
+  /** ONE paperwork sheet PER DEVICE, all carrying the one signature — built by `repairPaperworkSheets`, the same builder the top-chrome… */
   const paperworkSheets = useMemo(
     () =>
       repairPaperworkSheets({
@@ -530,16 +380,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
     [devices, formData.customer, formData.repairNotes, paperworkTicketId],
   );
 
-  /**
-   * The VISIT's facts, as they stand right now.
-   *
-   * ONE derivation, two appliers: the mirror effect below keeps every repair
-   * line carrying them while the customer is still filling the form, and
-   * {@link submitVisit} stamps them once more onto the array it posts so the
-   * write cannot depend on effect timing. Reasons are deliberately absent:
-   * they are per LINE, written only by {@link setUnitReasons}, so no mirror
-   * can overwrite a per-device answer.
-   */
+  /** The VISIT's facts, as they stand right now. */
   const visitFacts = useMemo(
     () => ({
       repairNotes: formData.repairNotes || null,
@@ -549,21 +390,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
     [formData.repairNotes, signatureData],
   );
 
-  /**
-   * Mirror the visit facts onto EVERY repair line as they are captured.
-   *
-   * Not only at submit, for two reasons. `/api/kiosk/intake` demands "Repair
-   * Reason or Notes" per device (`missingRepairIntakeFields`), and a drop-off
-   * that ALSO has a case on the counter is committed from the CART rather than
-   * from this pane — so a pane that stamped the reasons on its own submit only
-   * left the cart holding lines the counter would refuse. And a signature
-   * captured here and then left behind by the step band's X was simply gone;
-   * the cart is the session root precisely so it does not have to be.
-   *
-   * Writes only what actually changed: `updateLine` produces a new
-   * `session.lines`, so an unconditional write would re-enter this effect
-   * forever.
-   */
+  /** Mirror the visit facts onto EVERY repair line as they are captured. */
   useEffect(() => {
     for (const line of session.lines) {
       if (line.type !== 'REPAIR' || !isRepairPayload(line.payload)) continue;
@@ -576,22 +403,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
     }
   }, [session.lines, visitFacts, actions]);
 
-  /**
-   * Submit the VISIT.
-   *
-   * The visit facts — notes, signature — are stamped onto EVERY
-   * repair line here as well as by the mirror effect above, because
-   * `cart-to-counter.ts` reads them off each payload to build that device's
-   * `repair_service` row. A signature captured once but stamped on only the
-   * line the pane happened to be editing is how a second device reached the
-   * counter unauthorised.
-   *
-   * The lines handed to the submit are that PATCHED array, not a re-read of
-   * the store: `actions.updateLine` does not mutate this render's
-   * `session.lines`, so reading it back here would post the pre-patch
-   * payloads — which is exactly the bug the belt-and-braces stamp closes when
-   * the last keystroke and the commit press land in one commit.
-   */
+  /** Submit the VISIT. */
   const submitVisit = async () => {
     if (!canSave || submitting || transaction) return;
     setSubmitting(true);
@@ -638,15 +450,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
     }
   };
 
-  /*
-   * THE one success page. The pane's own hero — an `rsNumber`, the signed
-   * agreement and a Next customer key — is gone: it was a SECOND terminal
-   * document for a visit that already had one, and it could only state the
-   * facts of the single row the retired endpoint wrote. `KioskCartDoneFace`
-   * states the whole transaction (every service checked in, the receipts) and
-   * is what the cart's own submit lands on, so both keys now end in the same
-   * place. The wrapper keeps `kiosk-repair-success` as the anchor.
-   */
+  /* THE one success page. */
   if (transaction) {
     return (
       <div
@@ -711,27 +515,10 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
               </Button>
             ) : (
               /*
-                ONE key on the review floor. The trailing `Add` (pencil +
-                "Add") is GONE — operator 2026-09-15: *"remove the add bottom
-                right of the review and save."* A second device is added from
-                step 1's `+ Add another device`, which returns to the catalog.
-
-                ORANGE, and named for the job: operator 2026-09-15 — *"save to
-                cart CTA button at the most bottom should be an orange submit
-                repair button."* `variant="warning"` is the amber intent from
-                the Button fill map, which is also the ink the repair command
-                wears in the mode selector (`KioskServiceTile.iconTone`), so
-                the commit key reads as the same lane as the command that
-                opened it. Never a `className` hue override — AGENTS.md: grow
-                the map, do not paint over the primitive. `KIOSK_POS_CTA`
-                still states `shadow-none`, so the variant's own `shadow-sm`
-                is neutralised and the key keeps casting nothing.
-
-                MECHANICALLY it submits the whole VISIT through
-                `submitKioskVisit` — the counter header, one `repair_service`
-                row per device, the ticket outbox work. The label is the
-                operator's word for the counter's job.
-              */
+               * ONE key on the review floor.
+               * "Add") is GONE — operator 2026-09-15: *"remove the add bottom
+               * ORANGE, and named for the job: operator 2026-09-15 — *"save to
+               */
               <Button
                 variant="warning"
                 size="lg"
@@ -761,17 +548,9 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
               />
             ) : (
               /*
-                Steps 1-3 wear the cart's header row exactly — title left,
-                `N · $total` right (operator 2026-09-24: "Device & quote …
-                must be displayed at the top exactly like the cart display").
-                N counts devices: each repair line is one unit. Step 0 owns its
-                own header because the Add CTA rides that row.
-
-                Body content, NOT a band. `KioskPaneForm` has no title face and
-                the pane owns ONE header — the step band. Reaching back for the
-                retired pane-header-band tokens here re-opens the double-band
-                bug (`kiosk-pane-frame.test.ts` guards it, by name).
-              */
+               * Steps 1-3 wear the cart's header row exactly — title left,
+               * `N · $total` right (operator 2026-09-24: "Device & quote …
+               */
               <KioskStepTitleRow
                 title={STEP_HEADERS[step]}
                 count={devices.length}
@@ -781,22 +560,9 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
             )}
 
             {/*
-              DEVICE — what is on the counter and what each unit costs. The
-              staffer's half of the form: the serial comes off the chassis, the
-              price is the quote. The price field wears the house money mark
-              (`Receipt` — the documented price glyph) in success green, so the
-              field states its kind before anyone reads the placeholder
-              (operator 2026-09-15: "a green price icon").
-
-              ONE CARD PER DEVICE (2026-09-16). It was one serial field, one
-              price field and one notes box for the whole visit, with the
-              picker's `', '`-joined product list standing in for the device —
-              so a customer who put two radios on the counter was recorded as
-              one device with a 180-character title, one serial and a summed
-              quote, and the serial that was written belonged to neither unit.
-              Every edit here goes straight to that device's CART LINE, which
-              is the row that will be written.
-            */}
+ * DEVICE — what is on the counter and what each unit costs.
+ * (operator 2026-09-15: "a green price icon").
+ */}
             {step === 1 && (
               <div className="flex flex-col gap-3 bg-surface-card px-4 pb-4">
                 <KioskCompanionPanel
@@ -872,31 +638,9 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
             {step === lastStep && (
               <div className="flex flex-col gap-4 bg-surface-card px-4 pb-6 pt-2">
                 {/*
-                  THE PAPERWORK, not a summary of it.
-
-                  Operator 2026-09-15: *"it should just display the paperwork
-                  instead of the hand-rolled review component. The paperwork is
-                  better because it displays exactly what's going to be printed
-                  out."* Right, and for a reason the hand-rolled card could
-                  never fix: a summary is a SECOND rendering of the agreement,
-                  so it can disagree with the sheet the customer signs.
-
-                  `density="compact"` is the SCALE (this is a 512px form
-                  column, not an A4 page); `sections="full"` is the
-                  COMPLETENESS — internal-use table and the PICK UP signature
-                  line at the bottom, per *"it should display the pickup
-                  signature as well at the bottom of the paperwork"*. Those two
-                  were one prop until this ruling.
-
-                  The drop-off band carries the LIVE pad output, so the customer
-                  watches their signature land on the document they are signing
-                  (per stroke — `SignaturePad` emits on `endStroke`). Pickup
-                  stays an empty rule: nobody has collected the unit yet.
-
-                  ONE SHEET PER DEVICE, stacked, all authorised by the single
-                  signature below — because the counter writes one
-                  `repair_service` row, and prints one agreement, per unit.
-                */}
+ * THE PAPERWORK, not a summary of it.
+ * Operator 2026-09-15: *"it should just display the paperwork
+ */}
                 {paperworkSheets.map((sheet) => (
                   <RepairPaperworkCanvas key={sheet.lineId} align="full" frame="bordered">
                     <RepairServiceForm
@@ -908,28 +652,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
                     />
                   </RepairPaperworkCanvas>
                 ))}
-                {/*
-                  Outside the sheet on purpose: the canvas must stay
-                  print-faithful, and this is the one thing about the preview
-                  that is NOT true of the paper.
-
-                  Two sentences, because there are two different facts.
-
-                  A LINKED ticket is certain: `ATTACH_TICKET` stamps
-                  `repair_service.ticket_number` with the ticket the counter
-                  picked, so the sheet above already carries the number that
-                  will print.
-
-                  A projection is not. "EXPECTED", never "reserved" — Zendesk
-                  assigns ids at create time from a sequence shared with every
-                  other source in the account, so a parallel intake can take
-                  this number between the signature and the submit. Claiming a
-                  reservation next to a signature would be the one sentence on
-                  this screen the system cannot honour. The real id is stamped
-                  by the CREATE_TICKET outbox drain and the print route reads
-                  it from there — so the paper is always right, whatever this
-                  line said.
-                */}
+                {/* Outside the sheet on purpose: */}
                 {session.ticketChoice?.mode === 'attach' &&
                 session.ticketChoice.ticketId > 0 ? (
                   <p className={cn('text-center', KIOSK_META)}>
@@ -957,29 +680,9 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
                 ) : null}
 
                 {/*
-                  THE TICKET QUESTION — under the signature, inside this step.
-
-                  It was briefly a FIFTH step. Operator 2026-09-15: *"because
-                  the stepper is full at that review and sign step, would it be
-                  best to include a slider like link existing ticket or create
-                  a new ticket below the signature so it would be mounted under
-                  one step?"* Yes — and it is the honest shape, because the
-                  ticket is about the document on this screen. A separate step
-                  paged the customer away from the paperwork to ask a question
-                  about it, and it spent a whole progress segment on one tap.
-
-                  REVEALED BY THE SIGNATURE, which is the original ruling kept
-                  intact (*"after the customer has submitted their signature it
-                  should display with a link existing ticket or create new
-                  ticket"*): before there is ink there is nothing to file, so
-                  the control is not there to be answered.
-
-                  The decision is a VISIT fact on the session root, read and
-                  written straight through rather than mirrored into
-                  `formData`: `ticketWork` is transaction-level, one per submit
-                  however many devices this customer dropped off. Same ruling
-                  the address already follows.
-                */}
+ * THE TICKET QUESTION — under the signature, inside this step.
+ * It was briefly a FIFTH step. Operator 2026-09-15: *"because
+ */}
                 {signatureData ? (
                   <KioskTicketStep
                     choice={session.ticketChoice}
@@ -987,10 +690,7 @@ export function KioskRepairPane({ onBack }: { onBack: () => void }) {
                   />
                 ) : null}
 
-                {/* ONE refusal sentence on this floor: the form's own gaps
-                    first, then the undecided ticket once the paperwork is
-                    signable. The commit key's `title` is the same string, and
-                    a tooltip is unreachable with a finger. */}
+                {/* ONE refusal sentence on this floor: */}
                 {blockReason && (
                   <p className="text-center text-sm font-semibold text-text-soft">
                     {blockReason}

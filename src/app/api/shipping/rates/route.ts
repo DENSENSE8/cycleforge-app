@@ -13,22 +13,7 @@ import { buildShipmentSpec, RatesBodySchema } from '@/lib/shipping/shipstation/r
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/rates — operator rate-shop from an explicit shipment spec.
- *
- * Unlike /api/shipping/order-rates (order-anchored), this takes the full shipment
- * (ship-to address, parcels/dims/weight) in the body — the generic engine
- * entry the station builder's rate-shop action drives. `shipFrom` omitted →
- * the org's warehouse origin. Read-only: no DB mutation, no label purchased,
- * so no audit row.
- *
- * Missing per-org ShipStation credentials → 409 { error: 'NOT_CONNECTED' }
- * (keys are owner-gated; the UI teaches "connect ShipStation" instead of
- * failing opaquely).
- *
- * Body: RatesBodySchema (src/lib/shipping/shipstation/rate-request.ts).
- * Returns the normalized RateQuoteResult.
- */
+/** POST /api/shipping/rates — operator rate-shop from an explicit shipment spec. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;

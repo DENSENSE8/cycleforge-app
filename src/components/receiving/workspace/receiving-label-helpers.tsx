@@ -15,9 +15,6 @@ import {
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 // Lazy: the label-render modules carry the bwip-js barcode engine (~250 KB gz).
-// This helper file rides in the unbox/triage station bundles via its light
-// markers (markReceivingLabelPrinted / markReceivingSerialAbsent); only an
-// actual print should pull the print shell + raw-command builders.
 const loadLabelRenderers = () =>
   Promise.all([import('@/lib/print/printLabel'), import('@/lib/print/labelCommands')]);
 
@@ -28,12 +25,7 @@ const RECEIVING_LABEL_SIZE = resolvePaperSize('2x1');
 // path. The canonical definition lives in `@/lib/print/printReceivingLabel`.
 export type { ReceivingLabelPayload };
 
-/**
- * Print the unbox/receiving carton label. Renders the SAME face as the
- * on-screen preview (via {@link receivingPayloadToFace} → {@link buildLabelHtml})
- * and drives the browser-only print pipeline: WebUSB/Web Serial raw
- * TSPL/ZPL to the paired thermal printer, then browser iframe dialog fallback.
- */
+/** Print the unbox/receiving carton label. */
 export function printReceivingLabel(payload: ReceivingLabelPayload) {
   if (typeof window === 'undefined') return;
   const face = receivingPayloadToFace(payload);
@@ -83,40 +75,16 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
         if (res.success) {
           legacyPopup?.close();
           return;
-        } // silent print to the paired thermal printer
-        // Raw send failed — fall through to the iframe/window.print() path below.
-        // We do NOT toast "failed": window.print() is fire-and-forget, so the
-        // label may well print on the fallback and a failure toast would be a
-        // false alarm. Diagnostics live in Settings → Hardware "Test".
+        } // silent print to the paired thermal printer Raw send failed — fall through to the iframe/window.print() path below.
         console.warn('printReceivingLabel: browser raw print failed, falling back:', res.reason);
       }
     }
-    // Dialog path — hidden iframe + the page's own window.print(). Silent
-    //    only under `--kiosk-printing` (default printer); otherwise the normal
-    //    print dialog. An iframe (vs a popup) never flashes and dodges the
-    //    popup blocker.
+    // Dialog path — hidden iframe + the page's own window.print().
     printHtmlInIframe(html, { name: 'Receiving label', legacyPopup });
   })();
 }
 
-/**
- * Record that a receiving label was printed for a line — the single choke point
- * shared by the default unbox print and the custom label-editor print, so the
- * two can never diverge.
- *
- * Three effects, in order of latency:
- *   1. localStorage marker + `receiving-label-printed` DOM event → the Print
- *      step / row chips flip *instantly* on this device (optimistic).
- *   2. POST /api/receiving/lines/[id]/label-printed → the DURABLE stamp
- *      (`receiving_line_testing.label_printed_at`) that survives refresh / other
- *      devices and is auditable. The server COALESCE keeps the first print, so a
- *      reprint is a no-op on the recorded value — but a write that never lands
- *      is not a no-op, so the result is inspected and reverted on failure.
- *
- * `previousPrintedAt` is required (see {@link PreviousLineCondition}) so the
- * commit `stage` pointer cannot stay armed on a print the server never recorded.
- * A reprint passes the existing stamp and correctly reverts to it.
- */
+/** Record that a receiving label was printed for a line — the single choke point shared by the default unbox print and the custom… */
 export function markReceivingLabelPrinted(
   lineId: number,
   previousPrintedAt: string | null,
@@ -135,19 +103,7 @@ export function markReceivingLabelPrinted(
   });
 }
 
-/**
- * Publish one label-printed state — local marker, DOM event, row patch.
- *
- * Apply and revert are the SAME broadcast with a different stamp, so they share
- * one body: a second copy would be a second place for the three effects to fall
- * out of step, and it would add a raw `receiving-` CustomEvent to a bus the
- * `receiving-events.guard` ratchet is actively shrinking.
- *
- * `printedAt === null` clears. Only the marker's PRESENCE is read anywhere
- * (the durable column superseded its value — see
- * `2026-07-12_receiving_line_label_printed_at.sql`), so the stamp is stored
- * as-is rather than re-derived.
- */
+/** Publish one label-printed state — local marker, DOM event, row patch. */
 function announceLabelPrinted(lineId: number, printedAt: string | null): void {
   try {
     const localKey = `receiving-label-printed:${lineId}`;
@@ -162,24 +118,7 @@ function announceLabelPrinted(lineId: number, printedAt: string | null): void {
   dispatchLineUpdated({ id: lineId, label_printed_at: printedAt });
 }
 
-/**
- * Record the no-serial waiver for a receiving line — the single choke point for
- * the green-check "no serial" toggle (NoSerialControl), so every caller persists
- * the SAME durable fact and the stepper can never disagree with the control.
- *
- * Two effects, in order of latency (mirrors {@link markReceivingLabelPrinted}):
- *   1. `dispatchLineUpdated` → the shared `receiving-line-updated` bus patches
- *      `selectedLine.serial_absent`, so the Unbox stepper's Serial step (which
- *      derives from `row.serial_absent`) flips the instant the operator toggles —
- *      the SAME optimistic path a scanned serial already rides.
- *   2. POST /api/receiving/lines/[id]/serial-absent → the DURABLE stamp
- *      (`receiving_line_testing.serial_absent`) that survives refresh / another
- *      device. A toggle writes the exact value (set or clear), and the result is
- *      inspected so a rejected waiver cannot leave the Serial step settled.
- *
- * A stub/unfound line (id ≤ 0) is skipped — there's no persisted line to stamp
- * yet; the local controller state still reflects the waiver until the line lands.
- */
+/** Record the no-serial waiver for a receiving line — the single choke point for the green-check "no serial" toggle (NoSerialControl), so… */
 export function markReceivingSerialAbsent(
   lineId: number,
   { absent, reason }: { absent: boolean; reason: string | null },
@@ -219,22 +158,7 @@ type LineUnitWire = {
   condition_grade: string | null;
 };
 
-/**
- * Record a per-unit no-serial waiver — the choke point for the multi-qty row
- * green-check (UnitSlotList), so every caller persists the SAME durable fact
- * and the stepper can never disagree with the control.
- *
- * Two effects, same contract as {@link markReceivingSerialAbsent}:
- *   1. `dispatchLineUpdated` patches `units[]` on the shared bus so the Unbox
- *      stepper (which derives from `row.units`) flips on the same frame.
- *   2. POST /api/receiving/lines/[id]/units/[unitId]/serial-absent → the
- *      DURABLE stamp on `receiving_line_unit`. Exact-value toggle (set or
- *      clear); the result is inspected and the slot reverted on failure. Never
- *      touches the line-level waiver.
- *
- * `currentUnits` is both the optimistic base and the rollback snapshot — no
- * extra argument is needed to revert.
- */
+/** Record a per-unit no-serial waiver — the choke point for the multi-qty row green-check (UnitSlotList), so every caller persists the SAME… */
 export function markReceivingUnitSerialAbsent(
   lineId: number,
   unitId: number,
@@ -272,13 +196,7 @@ export function markReceivingUnitSerialAbsent(
   });
 }
 
-/**
- * Persist a per-unit condition grade on `receiving_line_unit` — Phase 4
- * replacement for the ephemeral `pendingGrade` map. Same two-effect contract
- * as {@link markReceivingUnitSerialAbsent}: optimistic `units[]` bus patch,
- * then durable PATCH. Does NOT write `serial_units` — callers dual-call
- * `setUnitGrade` when a serial is already linked.
- */
+/** Persist a per-unit condition grade on `receiving_line_unit` — Phase 4 replacement for the ephemeral `pendingGrade` map. */
 export function markReceivingUnitCondition(
   lineId: number,
   unitId: number,
@@ -313,14 +231,7 @@ export function markReceivingUnitCondition(
   });
 }
 
-/**
- * Stamp every materialised unit on a line to one grade — the "All units"
- * master picker. One bus patch (so intermediate frames aren't half-updated),
- * then one durable PATCH per unit.
- *
- * Partial failure reverts **only** the units whose PATCH did not land; the ones
- * that succeeded keep the new grade, because they are durable.
- */
+/** Stamp every materialised unit on a line to one grade — the "All units" master picker. */
 export function markAllReceivingUnitsCondition(
   lineId: number,
   conditionGrade: string,

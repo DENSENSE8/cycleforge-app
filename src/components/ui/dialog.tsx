@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Dialog (new-york / Radix), restyled to house tokens.
- *
- * Sibling of `ui/button.tsx` / `ui/popover.tsx` / `ui/command.tsx`: shadcn
- * STRUCTURE (Radix parts, `data-slot` naming), house COLOUR (`surface-*` /
- * `text-*` / `border-*`, `z-modal`, `bg-scrim`) — never the upstream
- * `bg-background` palette, which does not exist here.
- *
- * **No open/close animation on purpose** — the house motion law is "show it or
- * do not" (AGENTS.md): nothing here tweens a layout property, and the upstream
- * `animate-in` zoom/fade utilities are simply omitted rather than reduced.
- */
+/** shadcn/ui Dialog (new-york / Radix), restyled to house tokens. */
 
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';

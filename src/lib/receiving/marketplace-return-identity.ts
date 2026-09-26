@@ -1,13 +1,4 @@
-/**
- * Marketplace-return identity face for receiving rails / search.
- *
- * Purchases keep `platform · Order {full id}`. Returns never paint "Order" or
- * the full marketplace id — they paint `{SHORT} – return – {last8}` so the
- * left rail cannot read as an Amazon (or eBay) *order*.
- *
- * Last-8 is {@link getLast8} (CopyChip SoT). Short comes from
- * {@link classificationShort} (`AMZ`, `eBay`, `WMT`).
- */
+/** Marketplace-return identity face for receiving rails / search. */
 
 import { getLast8 } from '@/lib/copy-chip-format';
 import {

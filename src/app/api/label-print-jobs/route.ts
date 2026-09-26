@@ -6,18 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/label-print-jobs
- *
- * Bridge that records client-side (browser-ZPL) label prints into the
- * `label_print_jobs` ledger — the prints that DON'T flow through post-multi-sn
- * (bulk history reprints, LPN labels, reprint mode). Until the print spooler
- * moves server-side (plan Phase 4), the browser prints and then POSTs the job
- * record here so the ledger stays complete.
- *
- * Idempotent per `(org, clientEventId)` — a retry returns the original row.
- * `actorStaffId` is taken from the session, never the body. Auth: `print.label`.
- */
+/** POST /api/label-print-jobs */
 const JobSchema = z.object({
   jobType: z.enum(['UNIT', 'MANIFEST', 'HANDLING_UNIT', 'REPRINT', 'LOCATION']),
   serialUnitId: z.number().int().positive().nullable().optional(),

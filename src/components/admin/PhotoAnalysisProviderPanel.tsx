@@ -9,13 +9,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * Admin → Photo platform → AI analysis engine. Lets the org owner pick WHICH
- * inference path runs when a photo is enriched into photo_analysis — the local
- * RTX 5070 Ti box (photos stay on-prem), cloud GCP Vision, the Hermes text
- * gateway, or none. Reads/writes the per-org setting via
- * /api/admin/organization/settings (photoAnalysis). Local-first is the default.
- */
+/** Admin → Photo platform → AI analysis engine. */
 
 type Provider = 'local-vision' | 'hermes' | 'gcp-vision' | 'catalog';
 

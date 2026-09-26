@@ -1,17 +1,4 @@
-/**
- * Intake classification — the single source of truth for "what kind of package
- * is this" picked at the receiving door (mobile `/m/receive` + desktop Triage).
- *
- * The underlying `receiving` columns are fragmented (`source_platform`,
- * `is_return`, `return_platform`, plus per-line `receiving_type`), and the enum
- * spellings drift across surfaces. This module collapses the door choice into
- * one `IntakeClassification` and owns the *only* mapping to those columns, so
- * the door tag, the carton metadata, and the unboxer's `platformLabel()` can
- * never disagree.
- *
- * Pure data + functions — no JSX, no React, no DB. The API route + UI import
- * from here.
- */
+/** Intake classification — the single source of truth for "what kind of package is this" picked at the receiving door (mobile `/m/receive`… */
 
 export type IntakeClassification =
   | 'PO'
@@ -119,14 +106,7 @@ export function classificationShort(c: IntakeClassification): string {
   return INTAKE_CLASSIFICATION_OPTS.find((o) => o.value === c)?.short ?? '—';
 }
 
-/**
- * Platform-only identity for a return classification — same platform, without
- * the trailing "Return" word. Used by `zendesk-claim-subject-identity.ts` when
- * the claim TYPE segment already says "Return", so the ticket subject reads
- * "Amazon // Return // TRK#…" instead of duplicating it as
- * "Amazon return // Return // TRK#…". Non-return codes (PO/TRADE_IN/LOCAL_PICKUP/
- * UNKNOWN) never reach that dedup path, so they fall back to the full label.
- */
+/** Platform-only identity for a return classification — same platform, without the trailing "Return" word. */
 const RETURN_CLASSIFICATION_PLATFORM_LABEL: Partial<Record<IntakeClassification, string>> = {
   FBA_RETURN: 'Amazon',
   AMAZON_RETURN: 'Amazon',

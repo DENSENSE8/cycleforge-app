@@ -1,16 +1,4 @@
-/**
- * Amazon SP-API client — thin, zero-dependency `fetch` wrapper.
- *
- * House no-SDK pattern (cf. eBay's hand-rolled client + Stripe's deliberate SDK
- * avoidance). SP-API is LWA-only, so this is small: resolve a cached 1-hour
- * access token, call the regional host with `x-amz-access-token`, honor the
- * rate-limit header, back off on 429/503, and audit every call.
- *
- * Credentials come in two parts:
- *   - app-level LWA client_id/secret + redirect URI from env (shared SP-API app)
- *   - per-seller refresh token + region + marketplaces from the org vault
- *     (AmazonCredentials, provider='amazon', scope='seller-{id}')
- */
+/** Amazon SP-API client — thin, zero-dependency `fetch` wrapper. */
 import { normalizeEnvValue } from '@/lib/env-utils';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { AmazonCredentials } from '@/lib/integrations/credentials';

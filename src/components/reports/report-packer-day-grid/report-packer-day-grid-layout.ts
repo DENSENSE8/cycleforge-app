@@ -1,11 +1,4 @@
-/**
- * Packer-day column model — MATERIALIZED from a {@link SlotLayout} onto the
- * shared compound skeleton, exactly as its three report siblings are.
- *
- * No column literal is written here: `materializeTracks` resolves the layout
- * against the skeleton's chrome tracks, so a Fields-menu change re-materializes
- * through the same path and can never fork from the guard.
- */
+/** Packer-day column model — MATERIALIZED from a {@link SlotLayout} onto the shared compound skeleton, exactly as its three report siblings… */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
@@ -64,13 +57,7 @@ export function reportPackerDayCompoundColumnsFor(
     // fact a lead reads down the column.
     if (t.key === 'dates') return { ...t, label: 'Packed at', gridLabel: 'Packed at' };
     if (t.key === 'state') {
-      /*
-       * `slotDisplayType: 'text'` with NO `fieldId`, the same trick the
-       * staff-day pill pulls with `date`: the engine types the sort comparator
-       * from it while the cell paints `view.stateLabel` — the WORD — never a
-       * resolved slot. Sorting this column groups every pack that carries a
-       * guessed standard, which is the pairing work queue.
-       */
+      /* `slotDisplayType: */
       return {
         ...t,
         label: 'Basis',

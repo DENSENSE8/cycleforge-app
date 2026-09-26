@@ -1,10 +1,4 @@
-/**
- * Zod schemas for the station-builder API (/api/stations).
- *
- * Structural validation only — REGISTRY validation (does this block/source/
- * action id exist, is the block allowed in that slot) happens in the route
- * against src/lib/stations, so the schema doesn't have to chase the registry.
- */
+/** Zod schemas for the station-builder API (/api/stations). */
 
 import { z } from 'zod';
 import { SLOT_IDS } from '@/lib/stations/contract';
@@ -58,10 +52,7 @@ export const StationPublishBody = z.object({
   id: z.number().int().positive(),
 });
 
-// ─── Node-bound stations (Operations Studio Phase D / ST5) ───────────────────
-// The node id is taken from the request PATH (never the body, like orgId). The
-// body only carries the editable composition: a label + the slots config. The
-// reserved page_key/mode_key are derived server-side from the node id.
+// ─── Node-bound stations (Operations Studio Phase D / ST5) ─────────────────── The node id is taken from the request PATH (never the…
 
 export const NodeStationSaveBody = z.object({
   label: z.string().min(1).max(120),

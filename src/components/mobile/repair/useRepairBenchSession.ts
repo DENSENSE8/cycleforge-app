@@ -11,13 +11,7 @@ import {
 import { qk } from '@/queries/keys';
 import { fetchRepairJson, useRepairActions, validRepairId } from './useRepairWorkbench';
 
-/**
- * The repair's bench timer, read from the server on mount (so a reload or a
- * second phone picks up the running session) and written only through
- * `POST /api/repair/bench-sessions` — Start/Stop carry no time; the database
- * stamps both. `serverNowMs()` is the server clock (client clock + the offset
- * measured at the last read/write), which is what a running timer ticks on.
- */
+/** The repair's bench timer, read from the server on mount (so a reload or a second phone picks up the running session) and written only… */
 export function useRepairBenchSession(repairId: number) {
   const [busy, setBusy] = useState(false);
   const [writeError, setWriteError] = useState<string | null>(null);

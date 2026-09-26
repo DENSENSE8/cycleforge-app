@@ -1,14 +1,4 @@
-/**
- * DB-free unit tests for the carton street writers (receiving_triage /
- * receiving_unbox upserts). A fake client captures the SQL + params so we can
- * prove the writer-inversion semantics without a database:
- *   - COALESCE-once fields (door/opened/unboxed stamps) never re-stamp
- *   - overwrite fields (staging/lane/pairing/triage_*) take the patch value
- *   - omitted fields are absent from the statement (non-clobber)
- *   - deriveIntakePath encodes all three branches in one statement
- *   - updated_at is always bumped; organization_id is passed explicitly
- *   - 'now' renders as SQL NOW(), never a bound parameter
- */
+/** DB-free unit tests for the carton street writers (receiving_triage / receiving_unbox upserts). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

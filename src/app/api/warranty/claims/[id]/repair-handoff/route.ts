@@ -59,13 +59,7 @@ export const POST = withAuth(async (request, ctx) => {
   });
 }, { permission: 'warranty.manage', feature: 'repair' });
 
-/**
- * DELETE /api/warranty/claims/[id]/repair-handoff — detach the repair ticket
- * (reverse of POST). Clears repair_service_id and reverts IN_REPAIR → APPROVED;
- * the repair_service ticket is left intact (cancel it via DELETE
- * /api/repair-service/[id]). Refuses (409) when no ticket is linked or the
- * claim has moved past IN_REPAIR. Gated by WARRANTY_LOGGER. warranty.manage.
- */
+/** DELETE /api/warranty/claims/[id]/repair-handoff — detach the repair ticket (reverse of POST). */
 export const DELETE = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);

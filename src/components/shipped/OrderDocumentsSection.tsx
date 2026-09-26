@@ -319,27 +319,14 @@ export interface OrderDocumentsSectionProps {
   /** Dashboard/fulfillment/staged contexts show a read-only tray — no drop
    * zone, fetch button, or delete (docs/outbound-documents-plan.md §9.2). */
   readOnly?: boolean;
-  /**
-   * Mount the preview affordance — a Preview control that opens the shared
-   * `DocumentSlideOver` (label ⇄ slip switcher + PDF/image frame).
-   *
-   * This is the read-only surfaces' answer to "is the paperwork actually
-   * there": the tray lists filenames, the slide-over shows the document. The
-   * Labels station manages documents instead, and reaches the same previewer
-   * from its own Print tab.
-   */
+  /** Mount the preview affordance — a Preview control that opens the shared `DocumentSlideOver` (label ⇄ slip switcher + PDF/image frame). */
   showPreview?: boolean;
   /**
    * Station flush host — zero outer gutter (`mx-8` retired), square faces.
    * Labels centre Documents tab. Desk inspectors keep the default inset.
    */
   flush?: boolean;
-  /**
-   * Mount the embedded {@link BuyLabelSection}. Default true (the historical
-   * manage-mode tray). `OrderShippingPanel` passes false because it mounts
-   * the SAME buy engine itself, fed the live parcel fields — two mounted buy
-   * sections on one surface would be two mouths for one purchase.
-   */
+  /** Mount the embedded {@link BuyLabelSection}. */
   showBuySection?: boolean;
   /**
    * Fired alongside the internal cache invalidation after any tray write
@@ -349,13 +336,7 @@ export interface OrderDocumentsSectionProps {
   onChanged?: () => void;
 }
 
-/**
- * Outbound documents (shipping label + packing slip) for the order details
- * panel (docs/outbound-documents-plan.md §9.1). Supersedes `OrderLabelsSection`
- * — same NAS drop-zone UX, extended to slips and to server-side marketplace
- * fetch (Phase 4 stub today; the button + retry-on-error affordance is wired
- * ahead of the real adapters).
- */
+/** Outbound documents (shipping label + packing slip) for the order details panel (docs/outbound-documents-plan.md §9.1). */
 export function OrderDocumentsSection({
   orderId,
   orderRef,

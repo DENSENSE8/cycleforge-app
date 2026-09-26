@@ -2,27 +2,7 @@
 
 /**
  * The History face's wire — every call the tablet makes for a past visit.
- *
- * Callers: `KioskHistoryPane`, `KioskHistoryRail`, `KioskHistoryDetail`.
- * Affected API: GET `/api/kiosk/visit`, GET/PATCH `/api/kiosk/visit/[id]`,
- *   POST `/api/kiosk/visit/[id]/label-printed`, GET `/api/kiosk/repair/[id]`.
- * Data schemas: none of its own — the response types are the server readers'.
- * User: "history … and all the actions for printing".
- *
- * A rail row is addressed by its `key` (`visit:19` / `repair:4799`), never by a
- * bare number: the history unions two books whose ids collide, and
- * {@link fetchKioskHistoryDetail} is the one place that decides which of the
- * two detail routes a key means.
- *
- * Every request goes through {@link kioskFetchHealed}, so a tablet whose
- * `cf_kiosk` cookie was evicted mid-shift re-binds and retries once instead of
- * dead-ending on a 401 — the same contract the catalog and session polls use.
- *
- * Writes carry a `staffId` and NOTHING ELSE: History signs in pinlessly, the
  * same way the desk's staff switcher does (operator 2026-09-22 — *"remove the
- * pin, use the same pinless sign in for the switching staff, this is
- * dogfood"*). The id names the actor on the audit row; it is not a credential,
- * which is why no secret is held anywhere in this module.
  */
 
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';
@@ -157,16 +137,7 @@ export async function patchKioskVisit(args: {
   return { ...body, repair: null };
 }
 
-/**
- * Record that a repair label was reprinted. Called AFTER `printRepairLabel`
- * has opened the print dialog: the paper is the operator's act, this is the
- * record of it, and a failed stamp must never look like a failed print.
- *
- * `visitId` is null for a ticket that never became a transaction. The two
- * routes exist because their SCOPE differs — the visit route additionally
- * proves the repair belongs to the visit on screen — so the caller must say
- * which record it is holding rather than have this guess.
- */
+/** Record that a repair label was reprinted. */
 export async function stampKioskLabelPrinted(args: {
   visitId: number | null;
   repairId: number;

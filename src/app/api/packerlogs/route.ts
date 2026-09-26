@@ -37,10 +37,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Universal staff filter (P1-WORK-02): packed OR tested by this staff.
     const staffParam = searchParams.get('staff');
     const staffNum = staffParam ? parseInt(staffParam) : null;
-    // The bench find box. Forwarded to the loader, which answers it in SQL —
-    // see `FetchPackerLogRowsOptions.searchTerm`. Present ⇒ the loader also
-    // drops the `limit`/`offset` page bound, so a match outside the newest
-    // thousand scans of the week is still found.
+    // The bench find box.
     const searchTerm = (searchParams.get('q') || '').trim();
     // Spine-first: `phase=spine` returns the immediate-paint columns only; the
     // deferred fields are filled via POST /api/packerlogs/hydrate.
@@ -154,10 +151,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // so creating a new packer log must clear the orders cache too.
         await invalidateCacheTags(ctx.organizationId, ['packing-logs', 'orders']);
 
-        // Precompute the shipped-table read model for this new PACK scan so the
-        // dashboard reads it from packer_log_enrichment instead of re-running the
-        // heavy title/order laterals. Deferred + best-effort: never blocks or
-        // fails the response (the read path degrades gracefully if it's absent).
+        // Precompute the shipped-table read model for this new PACK scan so the dashboard reads it from packer_log_enrichment instead of…
         if (salId != null) {
             after(() =>
                 computePackerLogEnrichment(pool, [salId]).catch((e) =>

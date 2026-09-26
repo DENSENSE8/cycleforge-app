@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * StudioStationPreview — the L2 "station detail" pane (read-only).
- *
- * When a node is focused at zoom L2, this replaces the canvas with a read-only
- * view of the station bound to that node (station_definitions.workflow_node_id):
- * its slots → block instances → source bindings + actions, all resolved on the
- * server from the stations registries. Editing the composition is a later phase
- * (Studio law #6 — drafts only, publish atomically); this is observation, so it
- * ships under the gate ahead of any write path.
- */
+/** StudioStationPreview — the L2 "station detail" pane (read-only). */
 
 import { icons } from 'lucide-react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

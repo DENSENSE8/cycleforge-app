@@ -26,12 +26,7 @@ export const SourcingAlertPatchBody = z
 
 // ─── POST /api/sourcing/alerts ───────────────────────────────────────────────
 
-/**
- * Manually open a demand row in the unified sourcing queue ("Source this").
- * Provide a `skuId` (catalog part) and/or a `searchQuery` (free-text target for
- * a product not yet in the catalog) — at least one is required. Always lands as
- * a `manual` demand_source. Idempotent for SKU-backed rows in the query layer.
- */
+/** Manually open a demand row in the unified sourcing queue ("Source this"). */
 export const SourcingAlertCreateBody = z
   .object({
     skuId: optPositiveId,
@@ -89,12 +84,7 @@ export const SavedSearchUpdateBody = z
 
 // ─── POST /api/sourcing/search ───────────────────────────────────────────────
 
-/**
- * Run a secondary-market (eBay Browse) search. At least one of `query` /
- * `modelNumber` must be present to build a meaningful search. Results are
- * normalized and returned; they are only persisted as candidates when
- * `save: true`. Rate-limited + logged to ebay_api_calls in the search lib.
- */
+/** Run a secondary-market (eBay Browse) search. */
 export const SourcingSearchBody = z
   .object({
     query: optNullableText,
@@ -165,12 +155,7 @@ export const SourcingCandidateUpdateBody = z
 
 // ─── POST /api/sourcing/candidates/[id]/import ───────────────────────────────
 
-/**
- * Import a candidate into inventory: upsert supplier → create a receiving row
- * (source_platform='ebay') → part_acquisitions(status='ordered'). Idempotent on
- * Idempotency-Key. `skuId` is required — the receiving/acquisition must land
- * against a real catalog part (the candidate may not have one resolved yet).
- */
+/** Import a candidate into inventory: */
 export const SourcingImportBody = z
   .object({
     skuId: z.number().int().positive(),

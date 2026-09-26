@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Settings → Organization ▸ Branding — kiosk attract / screensaver media.
- *
- * Upload writes immediately via POST /api/admin/organization/attract-media
- * (public Vercel Blob → brand.attractMediaUrl). Optional URL paste stays for
- * CDN-hosted assets and saves with the rest of the Organization form.
- */
+/** Settings → Organization ▸ Branding — kiosk attract / screensaver media. */
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -19,13 +13,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * The preview mounts the REAL kiosk surface, not a settings-local mock of it —
- * an approximation would drift from the thing it claims to preview, which is
- * the whole failure the preview exists to prevent. `dynamic` keeps AttractLoop
- * (and the motion engine it pulls) out of the settings chunk until asked for,
- * the same reason the kiosk runtime loads it that way.
- */
+/** The preview mounts the REAL kiosk surface, not a settings-local mock of it — an approximation would drift from the thing it claims to… */
 const AttractLoop = dynamic(
   () => import('@/app/kiosk/AttractLoop').then((m) => m.AttractLoop),
   { ssr: false },
@@ -189,18 +177,7 @@ export function KioskAttractMediaCard({
 
       {previewing && typeof document !== 'undefined'
         ? createPortal(
-            /*
-              Portaled to <body>: the preview is the full kiosk viewport, and a
-              `fixed` child inside a transformed settings ancestor would size to
-              that ancestor instead of the screen.
-
-              `z-takeover` on the wrapper, not on AttractLoop: the kiosk's own
-              `z-panel` is correct ON the kiosk, where nothing else is mounted.
-              Here it has the whole app behind it, and app chrome (the assistant
-              bubble at `z-fab`, toasts) would otherwise float over the surface
-              being previewed. The wrapper opens one stacking context that the
-              kiosk layer sits inside, so the preview stays honest.
-            */
+            /* Portaled to <body>: */
             <div className="fixed inset-0 z-takeover">
               <AttractLoop
                 mediaUrl={attractMediaUrl.trim() || null}

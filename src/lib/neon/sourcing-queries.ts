@@ -4,17 +4,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { upsertEbaySupplier, type SupplierRow } from './suppliers-queries';
 
-// ─── Tenancy note ────────────────────────────────────────────────────────────
-// None of sourcing_alerts / sourcing_candidates / part_acquisitions carry an
-// `organization_id` column yet (all child-scoped in
-// docs/tenancy/org-id-coverage.generated.md). They are scoped via their
-// `sku_catalog` parent (sku_id → sku_catalog.organization_id) where a SKU is
-// present, and otherwise rely on the per-request `app.current_org` GUC set by
-// tenantQuery/withTenantTransaction (the RLS backstop). Free-text demand rows
-// (sku_id NULL) have no SKU anchor, so the GUC is their only isolation today.
-// Functions reachable from out-of-fileset callers (jobs, the [id] candidate
-// route) take an OPTIONAL orgId and keep byte-identical raw-pool behavior when
-// it is omitted, so those callers do not break.
+// ─── Tenancy note ──────────────────────────────────────────────────────────── None of sourcing_alerts / sourcing_candidates /…
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -73,13 +63,7 @@ export interface SourcingCandidateRow {
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
-/**
- * List sourcing alerts, optionally filtered by status (defaults to the live
- * statuses open + sourcing). LEFT-joined to the SKU + model so the queue pane
- * can render context without N+1 lookups — and so SKU-less (free-text) demand
- * rows still appear. Ordered critical → warn → info, newest first within a
- * severity.
- */
+/** List sourcing alerts, optionally filtered by status (defaults to the live statuses open + sourcing). */
 export async function getSourcingAlerts(params: {
   status?: string | null;
   skuId?: number | null;
@@ -174,17 +158,7 @@ export interface CreateDemandAlertInput {
   targetQty?: number | null;
 }
 
-/**
- * Open a demand alert in the unified sourcing queue — THE single demand writer
- * (manual "Source this" + every nightly demand collector). Idempotent via the
- * two live partial unique indexes: uniq_sourcing_alert_live (sku_id, alert_type)
- * for SKU-backed rows, and uniq_sourcing_alert_live_demand (demand_ref_type,
- * demand_ref_id, alert_type) for ref-backed rows (2026-06-13d). The bare
- * ON CONFLICT DO NOTHING arbitrates BOTH indexes, so a repeat open returns the
- * existing live row instead of duplicating or throwing. Free-text rows with
- * neither a SKU nor a demand ref have no natural key, so they always insert.
- * Returns { row, created }.
- */
+/** Open a demand alert in the unified sourcing queue — THE single demand writer (manual "Source this" + every nightly demand collector). */
 export async function createDemandAlert(
   input: CreateDemandAlertInput,
   orgId: OrgId,
@@ -502,17 +476,7 @@ export async function getAcquisitionByCandidateId(
   return result.rows[0] ?? null;
 }
 
-/**
- * Import a candidate into inventory inside one transaction:
- *   1. Resolve/auto-create the supplier (eBay seller → suppliers, deduped).
- *   2. Create a receiving header row (source='sourcing_import', source_platform='ebay').
- *   3. Insert a part_acquisitions(status='ordered') ledger row.
- *   4. Stamp sku_catalog.last_known_cost_cents from the acquisition cost.
- *   5. Mark the candidate ordered.
- * Returns the receiving id (the caller routes it into the normal unbox flow).
- * Idempotency at the HTTP layer (Idempotency-Key) prevents duplicate receiving
- * rows on retry.
- */
+/** Import a candidate into inventory inside one transaction: */
 export async function importCandidate(params: {
   candidate: SourcingCandidateRow;
   skuId: number;
@@ -659,15 +623,7 @@ export interface SourcingAnalytics {
   skuCosts: SourcingSkuCostRow[];
 }
 
-/**
- * Org-scoped sourcing analytics over part_acquisitions + sourcing_alerts +
- * sku_catalog.last_known_cost_cents / replenish_target_cents:
- *   - spend + acquisition volume per week,
- *   - fill-rate inputs (ordered vs received; demand opened vs resolved),
- *   - time-to-source (alert opened → ordered, ordered → received),
- *   - per-SKU acquisition cost vs the catalog target/baseline (margin proxy).
- * Pure read — four aggregate round-trips, no N+1.
- */
+/** Org-scoped sourcing analytics over part_acquisitions + sourcing_alerts + sku_catalog.last_known_cost_cents / replenish_target_cents: */
 export async function getSourcingAnalytics(
   range: SourcingAnalyticsRange,
   orgId: OrgId,

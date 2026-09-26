@@ -2,21 +2,7 @@ import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * `/admin/inventory/**` — DISSOLVED. The inventory operations desks moved to
- * the desk that owns their data (`/inventory/*`); this optional catch-all is
- * the permanent redirect table for old bookmarks and cross-references.
- *
- *   (bare)            → /inventory/health        (rollout / drift dashboard)
- *   sku/<sku>         → /inventory/health/sku/<sku>
- *   units/<ref>       → /inventory?unit=<ref>    (the shell's unit timeline)
- *   cycle-counts[/id] → /inventory/cycle-counts[/id]
- *   holds | returns | bulk-allocate | throughput | events → /inventory/<same>
- *
- * Query strings are preserved by `redirect()`'s caller only for the segments
- * it can carry, so the desks' own filters (`?status=`, `?page=`, `?range=`)
- * ride along on the sub-path forms below.
- */
+/** `/admin/inventory/**` — DISSOLVED. */
 const MOVED_SEGMENTS: Record<string, true> = {
   'cycle-counts': true,
   holds: true,

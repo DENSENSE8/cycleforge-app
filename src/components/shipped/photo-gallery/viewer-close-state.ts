@@ -1,10 +1,4 @@
-/**
- * Pure close-machine for the fullscreen photo viewer.
- *
- * Intent (`requestClose`) may defer teardown while the details panel plays its
- * width-collapse exit; `panelExitComplete` finishes that path; `forceDismiss`
- * always tears down immediately (upload overlay, move-photos, etc.).
- */
+/** Pure close-machine for the fullscreen photo viewer. */
 
 export interface ViewerCloseState {
   viewerOpen: boolean;

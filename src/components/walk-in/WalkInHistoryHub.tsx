@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Sales hub — front-desk history surface: Local Pickup · Sales · Repairs
- * (dashboard L2 modes `?mode=pickup|sales|repairs`). Mounted by
- * {@link DashboardSalesView} on `/dashboard`; `/walk-in` redirects there.
- *
- * Region contracts (contextual-display.md): Pickup/Sales are **Monitor** (read
- * feeds). Repairs composes the shared {@link RepairTable} workbench as the
- * **history door** — Scan Stations `/repair` remains the intake/task door.
- *
- * Layout for Sales/Pickup is the Sheets flush stack: pinned flush
- * `WalkInDeskHeader` (Band 1 tabs) above the mode feed. Repairs skips that
- * header — `RepairTable` owns `RepairWorkspaceHeader` / triage.
- */
+/** Sales hub — front-desk history surface: */
 
 import { useCallback } from 'react';
 import dynamic from 'next/dynamic';

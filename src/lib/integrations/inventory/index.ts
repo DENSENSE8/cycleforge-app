@@ -1,17 +1,4 @@
-/**
- * Inventory capability facade — resolution entry point (Wave B1).
- *
- * SERVER-ONLY (resolution reads the vault via capability-connections).
- *
- *   const inventory = await getInventoryProvider(orgId);   // null when none
- *   const inventory = await requireInventoryProvider(orgId); // throws typed
- *
- * Resolution goes through `connectedProviderKey(orgId, 'inventory')`, which
- * includes the USAV env-fallback probe — the dogfood tenant never
- * soft-disables while its Zoho credentials still live in env. Zoho is the
- * first (and currently only) inventory adapter; new connectors register a
- * branch here, never a new per-surface client import.
- */
+/** Inventory capability facade — resolution entry point (Wave B1). */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { connectedProviderKey } from '@/lib/integrations/capability-connections';
 import { ZohoInventoryProviderAdapter } from './zoho-adapter';

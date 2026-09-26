@@ -1,12 +1,4 @@
-/**
- * Task **media links** — the pure half: which refusal a create / edit earns,
- * what a stored row is, and how a SQL row maps to the wire.
- *
- * The stored `kind` / `provider` / `url` / `embedUrl` / `thumbnailUrl` are
- * always {@link parseMediaLink}'s answer, never the request's; a body only
- * ever contributes the pasted URL and a caption. `task-media-links-db.ts`
- * binds the {@link TaskMediaLinksDeps} seam to one org.
- */
+/** Task **media links** — the pure half: */
 
 import {
   MEDIA_LINK_KINDS,
@@ -142,12 +134,7 @@ export async function createTaskMediaLink(
   return { ok: true, created: landed.created, link };
 }
 
-/**
- * Re-point and/or re-title one link. A new URL is re-parsed, so kind,
- * provider, embed and thumbnail move with it; a URL that is already another
- * link on this task refuses `duplicate_link`. An edit equal to what is stored
- * writes nothing (`changed: false`).
- */
+/** Re-point and/or re-title one link. */
 export async function updateTaskMediaLink(
   taskId: number,
   linkId: number,

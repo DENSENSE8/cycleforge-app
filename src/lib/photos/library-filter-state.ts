@@ -34,13 +34,7 @@ export interface PhotoLibraryFilterState {
   imageType?: string;
   /** Selected photo label (photo_labels.key → photo_label_assignments). */
   label?: string;
-  /**
-   * Unboxing evidence-stage sub-filter (arrival_package | unbox_carton |
-   * unbox_item) — a navigator scope under the built-in `unboxing` folder, not a
-   * structured refinement. Serialized only while the unboxing scope is active
-   * so a stale stage never leaks into another scope's URL. Stage vocabulary SoT:
-   * `src/lib/receiving/photo-intent.ts` / `src/lib/photos/stages.ts`.
-   */
+  /** Unboxing evidence-stage sub-filter (arrival_package | unbox_carton | unbox_item) — a navigator scope under the built-in `unboxing`… */
   stage?: ReceivingPhotoStage;
   /**
    * Business-ID filters — each resolves through `photo_entity_links` to a domain
@@ -56,12 +50,7 @@ export interface PhotoLibraryFilterState {
   pickupId?: string;
   /** Returns RMA number (rma_authorizations.rma_number). */
   rma?: string;
-  /**
-   * Unified PO-photo finder value — one identifier (order#, tracking#, serial#,
-   * or PO#) resolved to its receiving carton, surfacing the whole PO's photos.
-   * Paired with `poFinderKind` (defaults to 'po'). Fed by the sidebar search's
-   * field-scope toggle. See `src/lib/photos/queries/library.ts` → poFinderExists.
-   */
+  /** Unified PO-photo finder value — one identifier (order#, tracking#, serial#, or PO#) resolved to its receiving carton, surfacing the… */
   poFinder?: string;
   poFinderKind?: PhotoFinderKind;
   /** Outbound scope only — filter to shipping_label, packing_slip, or all (omit). */
@@ -74,12 +63,7 @@ export type OutboundMediaFilter = 'documents' | 'pack_photos';
 
 export type OutboundDocumentTypeFilter = 'shipping_label' | 'packing_slip' | 'all';
 
-/**
- * Identifier kinds the unified PO-photo finder accepts. 'any' is the smart
- * scope: resolve the value as serial OR tracking OR order OR PO OR SKU OR
- * Zendesk ticket → matching photos, with a text/OCR fallback. The specific
- * kinds force one path.
- */
+/** Identifier kinds the unified PO-photo finder accepts. */
 export type PhotoFinderKind = 'order' | 'tracking' | 'serial' | 'po' | 'sku' | 'ticket' | 'repair' | 'customer' | 'any';
 
 /** Sidebar search field-scope. 'all' maps to the 'any' finder kind (smart
@@ -123,12 +107,7 @@ export const PHOTO_SEARCH_FIELD_LABELS: Record<PhotoSearchField, string> = {
 /** First built-in media type — used when an operator explicitly picks Unboxing. */
 export const DEFAULT_PHOTO_LIBRARY_MEDIA_SCOPE = BUILTIN_IMAGE_TYPES[0].key;
 
-// The chrome recency tabs (Recent · Today · Last 7) were REMOVED when the tab
-// strip became lifecycle facets (`PHOTO_LIBRARY_SCOPE_TABS`). Date is a filter,
-// not a lifecycle stage — it now lives as date presets in the Media Library
-// sidebar and the breadcrumb, both of which express ranges the 3-value tab
-// projection never could (yesterday, any custom drill). The tab→filter mapping
-// helpers (`recencyTabFromFilters` / `applyRecencyTab`) went with them.
+// The chrome recency tabs (Recent · Today · Last 7) were REMOVED when the tab strip became lifecycle facets (`PHOTO_LIBRARY_SCOPE_TABS`).
 
 /** True when no explicit media type is pinned in the URL (bare or `sourceScope=all`). */
 export function isPhotoLibraryMediaTypeUnset(filters: PhotoLibraryFilterState): boolean {
@@ -159,21 +138,7 @@ export function defaultPhotoLibraryMediaTypePatch(): Partial<PhotoLibraryFilterS
   return defaultPhotoLibraryLandingPatch();
 }
 
-/**
- * Lifecycle facet tabs — the chrome's primary axis.
- *
- * These replaced the date recency tabs (Recent · Today · Last 7). Date is a
- * *filter*, not a lifecycle stage: every photo has a capture date, so a date tab
- * partitions nothing an operator reasons about, while "is this an unboxing shot
- * or a claim shot?" is the actual question asked of an evidence library. Date
- * still filters via the breadcrumb and the filter popover.
- *
- * Order is the physical flow of goods — inbound → handling → outbound → dispute:
- * All · Unboxing · Local pickups · Packing · Repair · Claims · Outbound.
- * `local_pickup` is included (the research ruling's 6-tab list omitted it)
- * because it is a first-class scope; leaving it out would have stranded it
- * behind the media-type menu while every sibling scope got a tab.
- */
+/** Lifecycle facet tabs — the chrome's primary axis. */
 export const PHOTO_LIBRARY_SCOPE_TABS: readonly PhotoLibrarySourceScope[] = [
   'all',
   'unboxing',
@@ -195,21 +160,7 @@ export const PHOTO_LIBRARY_SCOPE_TAB_LABEL: Record<PhotoLibrarySourceScope, stri
   outbound: 'Outbound',
 };
 
-/**
- * Apply a lifecycle facet tab.
- *
- * Clears every scope-DEPENDENT filter, because those refinements are meaningless
- * (and actively misleading) under a different scope: `stage` only exists under
- * unboxing, `documentType` / `outboundMedia` only under outbound, and `label`
- * vocabularies are scoped per media type. Carrying one across would show an
- * empty result the operator cannot explain. Mirrors what the media-type menu
- * already does on scope switch.
- *
- * Scope-INDEPENDENT state deliberately survives: the date range, sort, and the
- * search box (`poFinder`) all mean the same thing under any scope — an operator
- * hunting one serial across lifecycle stages must be able to flip tabs without
- * retyping it. That is the core "search-first" job of the surface.
- */
+/** Apply a lifecycle facet tab. */
 export function applySourceScopeTab(
   scope: PhotoLibrarySourceScope,
 ): Partial<PhotoLibraryFilterState> {
@@ -263,28 +214,10 @@ export type PhotoLibraryDatePreset = 'all' | 'today' | 'yesterday' | 'last7' | '
 
 export type PhotoLibrarySortMode = 'recent' | 'oldest';
 
-/**
- * Library view modes.
- *
- * `folders` is GONE — the Year › Month › Week › Day › PO drill was a filesystem
- * metaphor over a relational table, and it is replaced by the flat stream plus
- * date/lifecycle facets. A stale `?view=folders` deep link or saved view now
- * falls back to {@link DEFAULT_PHOTO_LIBRARY_VIEW} via
- * {@link parsePhotoLibraryViewMode}, which is the honest degradation: the photos
- * are all still reachable, just not as a descent.
- *
- * The server-side folder AGGREGATION is deliberately still alive — it backs the
- * Media Library picker modal (`MediaLibraryPickerFolders`), a different surface
- * with a different job. See `folder-level.ts` / `usePhotoLibraryFolders`.
- */
+/** Library view modes. */
 export type PhotoLibraryViewMode = 'grid-sm' | 'grid-lg' | 'grid-ticket' | 'list';
 
-/**
- * Canonical left→right view order. Single source for the `1` keyboard shortcut
- * for List (useMediaLibraryShortcuts) so the digit matches the on-screen order.
- * The header display toggle itself is the two-mode Icons/List segmented slider
- * in PhotoDisplayControls.
- */
+/** Canonical left→right view order. */
 export const PHOTO_LIBRARY_VIEW_ORDER: readonly PhotoLibraryViewMode[] = [
   'grid-sm',
   'grid-lg',
@@ -292,28 +225,13 @@ export const PHOTO_LIBRARY_VIEW_ORDER: readonly PhotoLibraryViewMode[] = [
   'list',
 ];
 
-/**
- * Display modes in the second-header toggle, and the keyboard-shortcut target
- * (`1` → List). Grid size lives on row 3.
- *
- * The `photoLibraryViewToggleModes(view, folderIsLeaf)` wrapper that used to
- * front this constant is gone: it ignored BOTH arguments and returned this list
- * verbatim. It was a folder-era seam that never grew a second case, so callers
- * read the constant directly.
- */
+/** Display modes in the second-header toggle, and the keyboard-shortcut target (`1` → List). */
 export const PHOTO_LIBRARY_HEADER_DISPLAY_MODES: readonly PhotoLibraryViewMode[] = ['list'];
 
 /** Server page size for the library query (usePhotoLibrary requests this many per page). */
 export const PHOTO_LIBRARY_PAGE_SIZE = 48;
 
-/**
- * Folder-leaf contact sheet — newest N photos, then an explicit Load more.
- *
- * **Picker-only now.** The library page dropped its folder drill and always
- * pages at {@link PHOTO_LIBRARY_PAGE_SIZE}; this small page size survives for
- * the Media Library picker modal (`useMediaLibraryPickerPhotos`), where a folder
- * tile expands into a peek rather than a full stream.
- */
+/** Folder-leaf contact sheet — newest N photos, then an explicit Load more. */
 export const PHOTO_LIBRARY_FOLDER_LEAF_PAGE_SIZE = 5;
 
 export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> = {
@@ -326,12 +244,7 @@ export const PHOTO_SOURCE_SCOPE_LABELS: Record<PhotoLibrarySourceScope, string> 
   outbound: 'Outbound',
 };
 
-/**
- * Outbound's document sub-filter vocabulary. Consumed by the Band-2 refine
- * popover (`PhotoLibraryWorkspaceHeader`) — the chip strip that used to hold it
- * was deleted with the facet rail 2026-08-09, but the LABELS are the SoT and
- * stay here; a facet that narrows rows rides in the find field now.
- */
+/** Outbound's document sub-filter vocabulary. */
 export const OUTBOUND_DOCUMENT_TYPE_LABELS: Record<OutboundDocumentTypeFilter | 'pack_photos', string> = {
   all: 'All documents',
   shipping_label: 'Shipping labels',
@@ -392,20 +305,7 @@ export function receivingSourceExcludeForScope(scope: PhotoLibrarySourceScope): 
   return scope === 'unboxing' ? 'local_pickup' : undefined;
 }
 
-/**
- * Bare-load view — the flat reverse-chronological stream.
- *
- * Was `folders`, a Year › Month › Week › Day › PO drill that cost six clicks to
- * reach one photo, five of them pure calendar arithmetic. The hierarchy was a
- * filesystem metaphor over a relational table: photos have no disk directory, so
- * the folders were derived from `created_at` on every read. Worse, the default
- * made the landing state fetch **no photos at all** — `PhotoLibraryPage` gates
- * the photo query on `view !== 'folders' || foldersIsLeaf`, so a bare load
- * painted year tiles and the Recent tab could never show a photo.
- *
- * Calendar is now a *filter facet*, not a location. Reaching a given day is a
- * date filter, not a descent.
- */
+/** Bare-load view — the flat reverse-chronological stream. */
 export const DEFAULT_PHOTO_LIBRARY_VIEW: PhotoLibraryViewMode = 'grid-sm';
 
 export function parsePhotoLibraryViewMode(raw: string | null): PhotoLibraryViewMode {
@@ -545,26 +445,7 @@ interface PhotoLibraryDisplayState {
   photoId?: string;
 }
 
-/**
- * `?photoId=` is a DISPLAY param, never a filter — it must never reach
- * `buildLibraryWhere`, or opening a photo would narrow the stream it was picked
- * from.
- *
- * **The eviction rule** (the question the retired inspector never answered, and
- * the reason `?photoId=` was banned here until 2026-08-09): the param is
- * *written from selection and cleared with it*. A filter change that drops the
- * photo from the loaded set clears the selection — which clears the param and
- * closes the rail. One rule, no second concept: there is no "open photo" state
- * that can outlive the selection that opened it.
- *
- * The tile click is unaffected and still opens the fullscreen viewer, whose own
- * selection stays EPHEMERAL by design (see `usePhotoGridLightbox`). The
- * inspector is the n = 1 face of the selection plane, not a second click target.
- *
- * Deliberately **not** part of `MediaViewPayload` (`useMediaLibrarySavedViews`):
- * a saved view that reopened one photo would be a bug, and `applyView` builds a
- * display bag without `photoId`, so applying one drops it.
- */
+/** `?photoId=` is a DISPLAY param, never a filter — it must never reach `buildLibraryWhere`, or opening a photo would narrow the stream it… */
 export function parsePhotoLibraryDisplayParams(
   params: URLSearchParams,
 ): PhotoLibraryDisplayState {
@@ -633,10 +514,7 @@ export function photoLibraryUrlParams(
   base?: URLSearchParams,
 ): URLSearchParams {
   const params = photoLibraryFiltersToParams(filters, base);
-  // Omit the DEFAULT view, not a hardcoded mode — these two must stay in lockstep
-  // with `parsePhotoLibraryViewMode` or the round-trip breaks in both directions:
-  // a bare load would serialize a redundant `?view=`, and the old default would
-  // parse back to something the URL never said.
+  // Omit the DEFAULT view, not a hardcoded mode — these two must stay in lockstep with `parsePhotoLibraryViewMode` or the round-trip breaks…
   if (display.view !== DEFAULT_PHOTO_LIBRARY_VIEW) params.set('view', display.view);
   else params.delete('view');
   if (display.page > 1) params.set('page', String(display.page));
@@ -683,18 +561,7 @@ export function clearStructuredPhotoFilters(
   };
 }
 
-/**
- * Deep link to the pack photos captured for ONE outbound shipment.
- *
- * The media library resolves PACKER_LOG photos by tracking number via
- * `packer_logs.shipment_id → shipping_tracking_numbers` (see
- * `src/lib/photos/queries/library.ts` → trackingExists), so the tracking
- * number is the whole scope — no packerLogId lookup, no per-order endpoint.
- *
- * Callers (search rows, order rails) hold a tracking number and nothing about
- * how many photos exist; the library itself paints the empty state when the
- * packer never captured any.
- */
+/** Deep link to the pack photos captured for ONE outbound shipment. */
 export function packPhotosLibraryHref(tracking: string): string {
   const params = new URLSearchParams({
     sourceScope: 'outbound',

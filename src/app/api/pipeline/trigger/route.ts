@@ -1,12 +1,4 @@
-/**
- * POST /api/pipeline/trigger
- *
- * Manually trigger a single pipeline discovery cycle.
- * Useful for testing or after deploying new code.
- *
- * This is a lightweight endpoint — it runs discovery only (no implementation)
- * and returns the discovered tasks. The orchestrator handles implementation.
- */
+/** POST /api/pipeline/trigger */
 
 import { NextResponse } from 'next/server';
 import { discoverTasks } from '@/lib/pipeline/discover';

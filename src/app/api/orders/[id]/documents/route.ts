@@ -15,12 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 import { getEcwidPackingSlipIngestState } from '@/lib/documents/ecwid-packing-slip-lifecycle';
 
-/**
- * Outbound documents (packing slips + shipping labels) for one order.
- * docs/outbound-documents-plan.md §8.2. Supersedes /api/order-labels, which
- * stays a thin wrapper over this domain module (dual-read, no new writes to
- * the legacy entity_type='SHIPPING_LABEL' shape).
- */
+/** Outbound documents (packing slips + shipping labels) for one order. */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

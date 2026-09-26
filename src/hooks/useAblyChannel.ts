@@ -5,12 +5,7 @@ import { useAblyClient } from '@/contexts/AblyContext';
 import { createFrameCoalescer } from '@/lib/perf/coalesce-frame';
 
 export interface UseAblyChannelOptions {
-  /**
-   * `frame` collapses a burst of messages into one handler call per
-   * animation frame (last-wins). Use for invalidate-only handlers so a
-   * reconnect flood cannot lock the main thread. Default `none` keeps
-   * payload-sensitive subscribers (insert/patch) one-for-one.
-   */
+  /** `frame` collapses a burst of messages into one handler call per animation frame (last-wins). */
   coalesce?: 'none' | 'frame';
 }
 

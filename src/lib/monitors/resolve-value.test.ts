@@ -9,12 +9,7 @@ import {
   type ResolveValueDeps,
 } from './resolve-value';
 
-/**
- * A fixture bundle where the COARSE split and the LANE-accurate counts diverge,
- * so the parity assertion (mapped facet == the aggregate's own field) is real:
- *   combos → PENDING 6 · TESTED 4 · BLOCKED 5 (3+2, exception-first)
- *   total 15 · tested(has_tech_scan) 6 · byStage.pending = 15-6 = 9  (≠ lane 6)
- */
+/** A fixture bundle where the COARSE split and the LANE-accurate counts diverge, so the parity assertion (mapped facet == the aggregate's… */
 const BUNDLE: OutboundQueueCounts = {
   total: 15,
   byStage: { pending: 9, tested: 6 },

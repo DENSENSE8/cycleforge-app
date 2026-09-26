@@ -1,15 +1,7 @@
 import { LIFECYCLE } from '@cycleforge/design-tokens';
 import type { TimelineItem, TimelineTone } from './types';
 
-/**
- * One tech-aggregator event, as produced by `getTechSessionDetail`
- * (src/lib/audit-log/tech-aggregator.ts). Decoupled structural type (a subset)
- * so this client-safe adapter doesn't import the server-only aggregator.
- *
- * `kind` is the source-specific event key: the `inventory_events.event_type`
- * (TEST_PASS…), the `station_activity_logs.activity_type` (FNSKU_SCANNED…), the
- * `audit_logs.action` (tech.qc.pass…), or the synthetic 'SERIAL_TESTED'.
- */
+/** One tech-aggregator event, as produced by `getTechSessionDetail` (src/lib/audit-log/tech-aggregator.ts). */
 export interface TechTimelineRow {
   id: string;
   occurred_at: string | null;

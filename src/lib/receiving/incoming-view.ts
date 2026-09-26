@@ -1,13 +1,4 @@
-/**
- * `?incview=` — leftover Incoming right-pane tokens.
- *
- * Email Triage (`email`) and Recently removed (`removed`) were deleted.
- * Unknown / retired tokens coerce to `pos` so bookmarked URLs land on the
- * POS table. Hygiene strips anything that is not a live value.
- *
- * Dependency-free so `useReceivingModeContext` can compose it without pulling
- * Incoming chrome into its graph.
- */
+/** `?incview=` — leftover Incoming right-pane tokens. */
 
 export const INCOMING_VIEWS = ['pos'] as const;
 

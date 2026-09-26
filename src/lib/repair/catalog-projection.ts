@@ -1,37 +1,4 @@
-/**
- * catalog-projection — the local, priced, category-navigable mirror of a
- * provider storefront.
- *
- * ## Why this exists
- *
- * There is no sell price anywhere else in Postgres for these SKUs: `sku_catalog`
- * carries `last_known_cost_cents` (acquisition) and `replenish_target_cents`
- * (reorder trigger), neither of which is a sell price. So the counter could not
- * total a mixed cart without a live vendor round trip — and a cold repair-catalog
- * read walks ~2.5k products across the storefront. A consumer-facing form cannot
- * own that latency.
- *
- * ## The staleness contract — read this before "fixing" it into a live read
- *
- * **The projection is authoritative for DISPLAY. The provider is authoritative
- * for MONEY.** Catalog lines are charged by `catalog_object_id` and the provider
- * re-prices them at charge time, so a drifted local price can never overcharge a
- * customer — it can only show a stale number, and a charge rejected on drift
- * triggers a refresh. Turning this back into a live read would reintroduce the
- * ~16s cold walk on the one surface that cannot afford it.
- *
- * ## Shape fidelity
- *
- * The read functions return the SAME `EcwidProduct` / `EcwidCategory` shapes the
- * live vendor fetchers return, so `resolveRepairCategoryLevelFrom` and
- * `filterRepairRootProducts` — the pure halves in `ecwid-repair-catalog.ts` —
- * run unchanged over either source. `ProductSelector` and both
- * `ecwid-products` routes never learn where the rows came from.
- *
- * Price is stored in MINOR units (`listing_price_cents`, the column's contract)
- * and handed back in MAJOR units, because that is what the vendor API returns and
- * therefore what the response shape has always carried.
- */
+/** catalog-projection — the local, priced, category-navigable mirror of a provider storefront. */
 
 import 'server-only';
 
@@ -120,14 +87,7 @@ export function fromProjectedListing(row: {
   };
 }
 
-/**
- * Compute `depth` + `full_path` for every category, from the parent chain.
- *
- * Cycle-guarded per node: a provider that reports A→B→A would otherwise spin
- * forever here. A node whose chain loops keeps the partial path walked so far
- * rather than being dropped — a mis-parented category should still be
- * navigable, not invisible.
- */
+/** Compute `depth` + `full_path` for every category, from the parent chain. */
 export function buildProjectedCategories(categories: EcwidCategory[]): ProjectedCategoryInput[] {
   const byId = new Map<string, EcwidCategory>();
   for (const category of categories) {
@@ -171,14 +131,7 @@ function asId(value: unknown): string | null {
 
 // ── Reads ───────────────────────────────────────────────────────────────────
 
-/**
- * Every projected category for this org, in the vendor's own shape so the
- * existing pure tree helpers consume it unchanged.
- *
- * An empty array means "nothing projected yet" — the caller falls back to the
- * live walk. It is deliberately indistinguishable from a genuinely empty
- * storefront: both should fall back, and neither should serve an empty picker.
- */
+/** Every projected category for this org, in the vendor's own shape so the existing pure tree helpers consume it unchanged. */
 export async function loadProjectedCategories(orgId: OrgId): Promise<EcwidCategory[]> {
   const res = await tenantQuery<{
     external_id: string;
@@ -225,10 +178,7 @@ export async function loadProjectedListings(orgId: OrgId): Promise<EcwidProduct[
   return res.rows.map(fromProjectedListing);
 }
 
-// NOTE: there is deliberately no `hasProjectedCatalog()` helper. The readers
-// already distinguish "nothing projected" from "empty storefront" by the length
-// of the rows they just fetched, so a separate existence probe would be a second
-// round trip that answers a question the first one already answered.
+// NOTE: there is deliberately no `hasProjectedCatalog()` helper.
 
 // ── Writes ──────────────────────────────────────────────────────────────────
 
@@ -239,19 +189,7 @@ export interface ProjectionWriteResult {
   categoriesDeactivated: number;
 }
 
-/**
- * Replace this org's projection for one platform.
- *
- * UNNEST-batched: one statement per entity per run rather than N single-row
- * transactions, each of which would open its own BEGIN/set_config/COMMIT — the
- * exact per-row round-trip pattern that runs up Neon CU-hours.
- *
- * Rows the provider no longer reports are DEACTIVATED, not deleted. A listing id
- * can be referenced by a staged cart or an in-flight transaction, and a hard
- * delete would turn a stale reference into a dangling one mid-checkout. Marking
- * inactive also lets a provider blip that hides half the store be diagnosed
- * afterwards instead of silently erasing rows.
- */
+/** Replace this org's projection for one platform. */
 export async function writeProjection(
   orgId: OrgId,
   listings: ProjectedListingInput[],

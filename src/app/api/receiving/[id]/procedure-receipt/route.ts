@@ -1,14 +1,4 @@
-/**
- * GET /api/receiving/[id]/procedure-receipt
- *
- * The closed-carton receipt: every step of the Unbox procedure, its state, when
- * it landed and who did it.
- *
- * A pure READ over facts the carton already carries — there is no receipt table
- * and no stored step state (`@/lib/receiving/procedure-receipt`). Gated on
- * `receiving.view` because that is exactly what it is; the surface that renders
- * it is the same bench a floor operator already works.
- */
+/** GET /api/receiving/[id]/procedure-receipt */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';

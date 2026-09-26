@@ -58,17 +58,7 @@ type SerialScanFieldProps = {
   onEditingSerialChange?: (serial: SavedSerial | null) => void;
   /** When set, parent owns the dupe notice (SerialCard renders under the bar). */
   onInlineNoticeChange?: (notice: string | null) => void;
-  /**
-   * The HOST's own trailing controls, joined into this field's action column
-   * (Unbox capture: Photos, after the exact / no-serial check).
-   *
-   * A slot rather than a second row child, because the whole point of the
-   * composer's anatomy is that verification actions are ONE right-hand cluster:
-   * text left, actions right. Rendered by a host as a sibling instead, the
-   * commit cell and the host's own action are two independent flex children the
-   * row is free to separate — which is how a camera ends up mid-bar the moment
-   * the waiver cell disappears.
-   */
+  /** The HOST's own trailing controls, joined into this field's action column (Unbox capture: */
   actionsSlot?: ReactNode;
   /**
    * Width of each trailing action cell. `w-14` (default) beside a standalone
@@ -379,10 +369,7 @@ export const SerialScanField = forwardRef<
         )}
       </div>
 
-      {/* Trailing actions — ALWAYS after the field in document order, always a
-          group. A waived line drops the commit cell but keeps the host's own
-          actions here, so the cluster stays pinned to the bar's right edge
-          instead of the camera sliding into the middle. */}
+      {/* Trailing actions — ALWAYS after the field in document order, always a group. */}
       {actionCell || actionsSlot ? (
         <div
           data-serial-actions

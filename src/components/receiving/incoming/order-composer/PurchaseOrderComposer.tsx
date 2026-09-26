@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Purchase order on the receiving-order sheet: one PO with N lines →
- * `POST /api/receiving/inbound/confirm-po`. Owns the draft and the submit;
- * the frame is `ReceivingOrderSheet`, the sections are their own components,
- * and completeness is the intake domain's `missingPoIntakeFields`.
- */
+/** Purchase order on the receiving-order sheet: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

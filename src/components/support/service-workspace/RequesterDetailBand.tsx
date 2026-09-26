@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * Support · who is asking — the head of the ticket thread.
- *
- * The agent's first question on a ticket is not "what does this message say",
- * it is "who is this and what has already happened to them". That answer used
- * to be spread across three places: a name in the chat header, the linkage in a
- * rail display the operator had to open, and the order count nowhere at all.
- * This band is its one home, and it sits at the top of the conversation's own
- * scroll port — it is CONTEXT FOR the thread, so it scrolls away with the
- * thread. It is not chrome and must never be pinned.
- *
- * ## Five facts, and not a sixth
- *
- * name/email · linked order · tracking + serials + carton · order count ·
- * prior ticket count. **LTV and return rate are deliberately absent.** Neither
- * exists in this schema, and a placeholder number on a customer record is worse
- * than a missing one — an agent quotes it. `—` is the house honest-absence mark
- * and it is used here for a fact we could not resolve; a fact that has no
- * source at all gets no row.
- *
- * ## Where each fact comes from
- *
- * The linkage half is read off the `SupportContextBundle` the thread ALREADY
- * fetches (same query key, one more reader — never a second fetch). Only the
- * two counts and our `customers` row need a call of their own, and that call is
- * separate on purpose: it reaches the helpdesk search API, and the conversation
- * must not wait on a customer's ticket count.
- *
- * ## Absence is the common case
- *
- * Most tickets have no linked customer and no linked order. The band renders
- * its identity row and an honest "Not linked yet" line rather than collapsing —
- * a band that disappears when unlinked would teach the agent that linkage is
- * not a thing this surface has.
- */
+/** Support · who is asking — the head of the ticket thread. */
 
 import Link from 'next/link';
 import { IdentityMark } from '@/components/identity';

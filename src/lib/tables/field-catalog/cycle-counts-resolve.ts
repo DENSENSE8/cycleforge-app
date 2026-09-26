@@ -1,12 +1,4 @@
-/**
- * Cycle-counts slot resolvers — pure. One function is the WHOLE vocabulary the
- * engine reads: the slot cells, the header sort comparator and the search index
- * all go through it, so a fact can never be searchable as one string and
- * sortable as another.
- *
- * Dates resolve to the absolute instant (the compact civil face is the row
- * adapter's job, and `compareGridValues` needs the instant to order by).
- */
+/** Cycle-counts slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

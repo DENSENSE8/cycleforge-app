@@ -26,16 +26,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Read-time view of a receiving claim's Zendesk thread, gated on the receiving
- * permission (the generic /api/zendesk/* routes need integrations.zendesk,
- * which a receiving operator may not hold). Powers the ticket-chip history
- * popover.
- *
- *   GET ?ticketId=N → { ticket, comments } for a ticket linked to one of THIS
- *       org's receiving cartons/lines. Tickets not linked to a receiving entity
- *       are refused so this can't be used to read arbitrary Zendesk tickets.
- */
+/** Read-time view of a receiving claim's Zendesk thread, gated on the receiving permission (the generic /api/zendesk/* routes need… */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
@@ -145,19 +136,7 @@ const PostBody = z.object({
   attachPhotoIds: z.array(z.number().int().positive()).max(50).optional(),
 });
 
-/**
- * POST → add a reply to a receiving claim's Zendesk ticket, optionally
- * attaching selected carton photos and/or updating the ticket subject in the
- * same request (the link-flow's Photos → Ticket → Review steps land here,
- * mirroring the create-flow claim route's upload + file shape). When
- * `receivingId` is present (Link & send), ALL carton photos are archived to
- * the NAS ticket folder after the comment lands — same best-effort copy as
- * Create. Seller-step replies omit `receivingId` and skip the archive.
- * The comment defaults to an internal note (`public: false`); a public reply
- * (`public: true`) emails the customer. Same entity-link guard as the GET so
- * this can only post to tickets linked to one of THIS org's receiving
- * cartons/lines.
- */
+/** POST → add a reply to a receiving claim's Zendesk ticket, optionally attaching selected carton photos and/or updating the ticket subject… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const context = 'POST /api/receiving/zendesk-claim/thread';
   try {

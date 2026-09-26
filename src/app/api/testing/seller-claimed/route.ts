@@ -3,14 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { loadSellerClaimedFacts } from '@/lib/receiving/seller-claimed-facts';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/testing/seller-claimed
- *
- * Thin read for Testing QC — sold-as order condition + platform listing
- * condition. Never returns warehouse `condition_grade`.
- *
- * Query: serialUnitId · serial · skuCatalogId · orderId (optional hints).
- */
+/** GET /api/testing/seller-claimed */
 export const GET = withAuth(async (request, ctx) => {
   const sp = request.nextUrl.searchParams;
   const serialUnitIdRaw = Number(sp.get('serialUnitId'));

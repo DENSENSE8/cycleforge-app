@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Cross-tree bridge for /ai-chat. The live chat now lives in the main page
- * (right), while the capabilities + example prompts live in the contextual
- * sidebar (left). They render in separate React trees, so the sidebar talks to
- * the chat through these window events instead of shared hook state — same
- * pattern the older AiChatPanel used with its `ai-new-chat` event.
- */
+/** Cross-tree bridge for /ai-chat. */
 export {
   AI_CHAT_PROMPT_EVENT,
   AI_CHAT_NEW_EVENT,

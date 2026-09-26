@@ -1,15 +1,4 @@
-/**
- * Consult stances for the staff-guided iPad — Work · Show · Verify.
- *
- * Lives in its own module so the kiosk store and the counter event reducer
- * can share the union without importing each other (`session-events` already
- * imports `kiosk-session-store` for command ids).
- *
- * `face` stays `staff | customer` for projection. Stance is the extra bit
- * that tells Show from Verify on the customer face.
- *
- * Plan: `docs/todo/kiosk-counter-consult-PLAN.md` (Phase 2 · C2).
- */
+/** Consult stances for the staff-guided iPad — Work · Show · Verify. */
 
 export const CONSULT_STANCES = ['work', 'show', 'verify'] as const;
 

@@ -1,11 +1,4 @@
-/**
- * Pure helpers, types, and event dispatchers shared by the receiving-lines
- * table and its sub-hooks/components. Extracted from the 1,400-line
- * `ReceivingLinesTable.tsx` so the data/selection/grouping hooks can import the
- * shape + utilities without pulling in the heavy component (avoiding cycles).
- *
- * No JSX — render surfaces live next to their consumers.
- */
+/** Pure helpers, types, and event dispatchers shared by the receiving-lines table and its sub-hooks/components. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
@@ -152,20 +145,7 @@ export function dispatchReceivingCartonUnlinkPatch(receivingId: number, lineId?:
  *  SelectionActionBar (see useTableSelection / SelectionActionBar). */
 export const RECEIVING_SELECTION_SCOPE = 'receiving' as const;
 
-/**
- * Lifecycle timestamp the receiving table day-bands + within-day order by.
- * These are the same event times the Overview card and row tooltips show —
- * NOT `last_activity_at` (which folds in MAX(receiving_scans), line writes via
- * updated_at, and other later touches). A re-scan or qty edit must not bump a
- * row into today's band when the carton was actually scanned/unboxed days ago.
- *
- * Default ('scanned') axis = first tracking scan (`scanned_at`), then door-scan
- * (`received_at`), then line `created_at`. The 'unboxed' axis bands by
- * `unboxed_at`; 'received' by `received_done_at` (terminal DONE). Each falls
- * back to `created_at` so rows not yet at that stage still land in a real day
- * band. History keys day-bands on the active sort axis (unboxed or scanned);
- * Receive uses 'scanned'. History is client-sorted (serverSorted=false).
- */
+/** Lifecycle timestamp the receiving table day-bands + within-day order by. */
 export type ReceivingActivityAxis = 'scanned' | 'unboxed' | 'received' | 'tested';
 
 export function receivingRowActivityTs(
@@ -205,14 +185,7 @@ export function receivingRowActivityMs(
   return Number.isFinite(t) ? t : 0;
 }
 
-/**
- * A purchase-order group: every receiving line that shares a PO, collapsed into
- * a single expandable row. `anchorTs` is the timestamp the group is placed by in
- * the day-banded feed — the PO's most-recent activity (or its Zoho PO date for
- * Incoming) — so a PO whose lines were scanned across several days lands in the
- * band of its latest scan instead of fragmenting. Singleton groups (a one-line
- * PO, or an unmatched carton with no PO) render as a plain row.
- */
+/** A purchase-order group: */
 export interface ReceivingPoGroup {
   key: string;
   rows: ReceivingLineRow[];
@@ -243,15 +216,7 @@ type ReceivingStageStampRow = {
   unboxed_by_name?: string | null;
 };
 
-/**
- * Which lifecycle instant owns the dense row clock for the active history axis.
- * Does **not** fall back to `created_at` — that is for day-banding only.
- * On the unboxed axis, prefer first Unbox-open (`unbox_opened_at` — same stamp
- * the Unboxed sidebar ages/sorts on), then unbox-complete (`unboxed_at`). When
- * both are missing (e.g. Unfound PO that was door-scanned but never opened),
- * fall back to the scan clock so the meta column stays populated and vertically
- * aligned with sibling rows.
- */
+/** Which lifecycle instant owns the dense row clock for the active history axis. */
 export function resolveReceivingRowStageStamp(
   row: ReceivingStageStampRow,
   axis: ReceivingActivityAxis,

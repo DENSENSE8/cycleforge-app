@@ -169,10 +169,7 @@ test('a PO already terminal in Zoho is a noop that still clears the backlog', as
   assert.equal(posted.length, 0, 'nothing may be posted to a terminal PO');
   assert.equal(report.noop, 1);
   assert.equal(report.posted, 0);
-  // The bug this pins: a terminal PO mints no receive id, so keying the
-  // pending predicate on `zoho_purchase_receive_id` alone left the line in the
-  // queue forever — re-read every tick until it retired at the attempt ceiling
-  // as if it had failed. `zoho_receive_settled_at` is what ends the claim.
+  // The bug this pins:
   const stamps = stampSql(calls);
   assert.equal(stamps.length, 1);
   assert.match(stamps[0]!.sql, /zoho_receive_settled_at\s*=\s*now\(\)/);
@@ -326,10 +323,7 @@ test('POs the mirror already calls terminal settle with ZERO provider calls', as
 
   const report = await runZohoReceiveBackfill(ORG, {}, deps);
 
-  // The live backlog was 1830 lines / 1566 POs, of which 1561 POs were already
-  // `received` in zoho_po_mirror. Confirming those over the wire would be ~20
-  // minutes of rate-limited round-trips for a fact zoho.po_sync already wrote
-  // locally every 15 minutes.
+  // The live backlog was 1830 lines / 1566 POs, of which 1561 POs were already `received` in zoho_po_mirror.
   assert.equal(report.settledFromMirror, 1561);
   assert.equal(posted.length, 0);
   assert.equal(report.groups, 0);
@@ -378,11 +372,7 @@ test('a dead credential stamps NOTHING and stops the run', async () => {
 
   const report = await runZohoReceiveBackfill(ORG, {}, deps);
 
-  // getInventoryProvider hands back an adapter WITHOUT reading credentials, so
-  // a revoked connection surfaces past the null-provider guard. Counting it as
-  // a PO failure would bump attempts on every pending line and retire them all
-  // at the ceiling inside one backoff ladder, leaving them parked even after
-  // the operator reconnects.
+  // getInventoryProvider hands back an adapter WITHOUT reading credentials, so a revoked connection surfaces past the null-provider guard.
   assert.equal(report.notConnected, true);
   assert.equal(report.failed, 0, 'a dead credential is not a failed PO');
   assert.equal(stampSql(calls).length, 0, 'no line may be stamped');

@@ -1,10 +1,4 @@
-/**
- * URL helpers for Signals as an Operations mode (`/operations?mode=signals`).
- *
- * Timeline is the default sub-view (omit `signalsView`). Browse sets
- * `signalsView=browse`. Legacy `/signals?mode=browse` redirects through the
- * retired route page.
- */
+/** URL helpers for Signals as an Operations mode (`/operations?mode=signals`). */
 
 import type { AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';

@@ -1,13 +1,4 @@
-/**
- *   PATCH  /api/admin/staff/[id]   — change name, status, employee_code,
- *                                    default_home_path[_mobile], session_policy
- *   DELETE /api/admin/staff/[id]   — soft-disable (sets status='disabled', revokes sessions)
- *
- * NOTE: this endpoint NO LONGER writes `staff.role`. The legacy single-role
- * column is now a derived mirror of `staff_roles[0].key` and is kept in sync
- * by PUT /api/admin/staff/[id]/roles. Every UI flow that changes roles must
- * go through that endpoint — there is no "primary role select" anymore.
- */
+/** PATCH /api/admin/staff/[id] — change name, status, employee_code, default_home_path[_mobile], session_policy DELETE… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -44,10 +35,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     params.push((body.employeeCode as string | null) ?? null);
     updates.push(`employee_code = $${params.length}`);
   }
-  // Per-staff landing-page overrides. Both desktop and mobile are nullable;
-  // null means "fall back to ROLE_HOME / MOBILE_ROLE_HOME for the role". Any
-  // non-null value must be a path starting with "/" — the DB CHECK constraint
-  // enforces the same shape, we just give a friendlier error here.
+  // Per-staff landing-page overrides.
   for (const [bodyKey, column] of [
     ['defaultHomePath', 'default_home_path'],
     ['defaultHomePathMobile', 'default_home_path_mobile'],

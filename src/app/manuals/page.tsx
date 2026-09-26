@@ -1,11 +1,6 @@
 import { redirect } from 'next/navigation';
 
-/**
- * `/manuals` was folded into `/products` as the default Manuals view.
- * Anyone hitting the old URL — including deep links with `?id=`, `?mode=`,
- * `?ecwid=`, `?q=` — is bounced over to `/products`, which preserves the
- * search params through Next's redirect.
- */
+/** `/manuals` was folded into `/products` as the default Manuals view. */
 export default async function ManualsRedirectPage({
   searchParams,
 }: {

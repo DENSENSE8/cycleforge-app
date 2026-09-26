@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * The two-row compound cell — one stacked body shared by every compound column
- * on every table.
- *
- * **Alignment is the whole job.** A compound row only reads as a table if the
- * top line of column 2 sits on the same baseline as columns 3 and 4, and
- * likewise for the bottom line. If each cell stacked its own two children with
- * its own gap, the columns would drift the moment one cell's primary wrapped or
- * its secondary went empty — the failure mode that makes a two-row grid look
- * like a list of cards.
- *
- * So the two lines are FIXED TRACKS, not content-sized:
- *
- * - the cell is a 2-row grid of equal tracks, identical in every column;
- * - each line clips to one line (`truncate`), so a long title can never push
- *   the secondary line down;
- * - an absent secondary still occupies its track, so a row with no tracking
- *   number keeps its neighbours' baselines.
- *
- * The row shell is `items-stretch`, so one compound cell claiming
- * {@link COMPOUND_ROW_PX} sets the whole row's height — no per-row wrapper.
- */
+/** The two-row compound cell — one stacked body shared by every compound column on every table. */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
@@ -56,12 +35,7 @@ export function CompoundCell({
         : 'justify-start text-left';
   return (
     <div
-      // `h-full`, NOT a min-height. The wrapper cell owns the row box
-      // (`COMPOUND_ROW_PX`, border-box, see `CompoundGridCell`); a min-height
-      // here would re-declare that number from inside and, because the cell's
-      // bottom rule eats a pixel of it, would overflow the box it is supposed to
-      // fit — which is the shape of the bug that made every compound row paint
-      // 61px against a 48px constant.
+      // `h-full`, NOT a min-height.
       className={cn(COMPOUND_TWO_LINE_CLASS, 'items-center min-w-0', className)}
     >
       <div

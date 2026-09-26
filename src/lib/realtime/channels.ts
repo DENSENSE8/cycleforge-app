@@ -1,19 +1,4 @@
-/**
- * Ably channel names — ORG-NAMESPACED.
- *
- * Every channel is `org:{orgId}:{suffix}`. The org boundary is enforced two ways:
- *   1. The token endpoint (src/app/api/realtime/token/route.ts) grants a client
- *      capability ONLY for its own `org:{ctx.organizationId}:*` — so even if a
- *      client builds another org's channel name, Ably denies the subscribe.
- *   2. `orgChannelPrefix()` THROWS on a missing/malformed org id, so a publisher
- *      can never accidentally build an un-namespaced (cross-tenant) channel.
- *
- * Server publishers pass `ctx.organizationId` (or `transitionalDogfoodOrgId()` for
- * the transitional jobs). Client subscribers pass `user.organizationId` from the
- * auth context and must wrap construction in `safeChannelName()` (which returns
- * '' instead of throwing) so a not-yet-hydrated user gates `enabled=false`
- * rather than crashing the render.
- */
+/** Ably channel names — ORG-NAMESPACED. */
 
 const DEFAULT_ORDERS_CHANNEL = 'orders:changes';
 const DEFAULT_REPAIRS_CHANNEL = 'repair:changes';
@@ -37,13 +22,7 @@ function normalizeChannelName(value: string | undefined | null, fallback: string
   return sanitized || fallback;
 }
 
-/**
- * Org channel prefix. THROWS on a missing/malformed org id — a realtime channel
- * must never be built without a tenant, or two tenants would share it. Callers
- * are server-side publishers (orgId from ctx.organizationId) and the token
- * endpoint. Client code that may not have a hydrated org yet must use
- * `safeChannelName()` to gate on a valid name instead of catching this throw.
- */
+/** Org channel prefix. */
 export function orgChannelPrefix(orgId: string): string {
   const id = String(orgId || '').trim().toLowerCase();
   if (!UUID_RE.test(id)) {
@@ -52,13 +31,7 @@ export function orgChannelPrefix(orgId: string): string {
   return `org:${id}`;
 }
 
-/**
- * Client-safe wrapper: returns the built name, or '' if the org id is missing /
- * malformed (so the caller can pass `enabled = !!name` to useAblyChannel rather
- * than crash). Example:
- *   const ch = safeChannelName(() => getOrdersChannelName(orgId));
- *   useAblyChannel(ch, 'order.changed', handler, !!ch && enabled);
- */
+/** Client-safe wrapper: */
 export function safeChannelName(build: () => string): string {
   try {
     return build();
@@ -67,11 +40,7 @@ export function safeChannelName(build: () => string): string {
   }
 }
 
-// ─── Shared (per-org broadcast) channels ──────────────────────────────────
-// Channel suffixes are fixed in-code — the DEFAULT_* constants above are the
-// single source of truth. Tenant isolation is the `org:{orgId}` prefix
-// (enforced by the token endpoint + orgChannelPrefix()); there is no
-// per-deployment env override of channel names.
+// ─── Shared (per-org broadcast) channels ────────────────────────────────── Channel suffixes are fixed in-code — the DEFAULT_* constants…
 
 export const getOrdersChannelName = (orgId: string) =>
   `${orgChannelPrefix(orgId)}:${DEFAULT_ORDERS_CHANNEL}`;
@@ -128,10 +97,6 @@ export const getDbRowChannelName = (orgId: string, schema: string, table: string
   `${getDbTableChannelName(orgId, schema, table)}:${rowId}`;
 
 // ─── Per-staff channels ─────────────────────────────────────────────────────
-//
-// Each is locked to a single staffId AND namespaced by org. The token endpoint
-// grants only the caller's own staffId channels (no cross-staff wildcard), so a
-// staffer can neither read nor forge another staffer's inbox/bridge events.
 
 /** Per-staff inbox: priority alerts, staff messages, warranty/tech nudges. */
 export const getInboxChannelName = (orgId: string, staffId: number | string) =>
@@ -157,13 +122,8 @@ export const getStaffPrintBridgeChannelName = (orgId: string, staffId: number | 
 const DEV_PRINT_BRIDGE_STAFF_ID = 1;
 
 /**
- * Whose print channel a session joins. Production: the signed-in staffer —
- * a phone only ever prints on computers signed in as the same staff ID.
- * Every other build (localhost, dev tunnel, Tailscale IP — all `next dev`):
- * ONE shared channel, staff 1 by default or `NEXT_PUBLIC_PRINT_BRIDGE_STAFF_ID`,
- * so a phone and a desk signed in as different staffers can test the same
+ * Whose print channel a session joins.
  * printer (operator 2026-09-25). Read by the token grant AND both bridge
- * hooks, so the grant and the channel can never disagree.
  */
 export function printBridgeStaffId(staffId: number): number {
   if (process.env.NODE_ENV === 'production') return staffId;
@@ -179,18 +139,7 @@ export function printBridgeStaffId(staffId: number): number {
 export const getStaffStationBridgeChannelName = (orgId: string, staffId: number | string) =>
   `${orgChannelPrefix(orgId)}:staffstation:${normalizeChannelName(String(staffId), 'none')}`;
 
-/**
- * Desk↔tablet counter-session bridge, keyed by the KIOSK DEVICE — the one
- * channel family in this file that is not per-staff.
- *
- * It cannot be per-staff: the two peers are a staff desktop and a device
- * principal that has no staffId at all, and the lease holder changes during a
- * shift while the tablet stays put. The device is the stable end of the pair,
- * so it names the channel; the desk is granted this channel only for devices it
- * has actually claimed (see the token routes), never a `kiosk:*` wildcard.
- *
- * Both peers subscribe AND publish here, like the per-staff bridges above.
- */
+/** Desk↔tablet counter-session bridge, keyed by the KIOSK DEVICE — the one channel family in this file that is not per-staff. */
 export const getKioskBridgeChannelName = (orgId: string, deviceId: number | string) =>
   `${orgChannelPrefix(orgId)}:kiosk:${normalizeChannelName(String(deviceId), 'none')}`;
 

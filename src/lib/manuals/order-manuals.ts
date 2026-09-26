@@ -25,21 +25,7 @@ import {
   type PaperworkSource,
 } from '@/lib/manuals/paperwork-pairing';
 
-/**
- * Paperwork for one order — manuals, packing lists and any other
- * `product_manuals` row — behind `/api/orders/[id]/manuals` (the To-ship
- * paperwork walk, the item-number view) and pack print.
- *
- * A row resolves for the order when, within the order's org, it is active,
- * `status = 'assigned'`, and matches ANY pairing key (the SQL twin of
- * {@link paperworkSources}):
- *   order        order_id = the order
- *   item_number  normalized item_number = the order's normalized item_number
- *   sku          sku_catalog_id = the order's catalog id, OR alnum SKU match
- * Precedence order > item number > SKU (see paperwork-pairing.ts). Every write
- * is org-predicated and busts the manual caches `/api/manuals/resolve` and
- * the library read through.
- */
+/** Paperwork for one order — manuals, packing lists and any other `product_manuals` row — behind `/api/orders/[id]/manuals` (the To-ship… */
 
 export interface OrderManual {
   id: number;

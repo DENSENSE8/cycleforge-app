@@ -1,10 +1,4 @@
-/**
- * DB-free tests for recommendTemplates (Phase 5). Pure scoring + an injected
- * rerank hook. Asserts: relevant templates rank above irrelevant ones, a
- * category match wins, and a rerank can only reorder/subset known slugs (a
- * hallucinated slug is dropped).
- *   npx tsx --test src/lib/studio/recommend-template.test.ts
- */
+/** DB-free tests for recommendTemplates (Phase 5). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

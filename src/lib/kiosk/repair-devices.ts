@@ -1,25 +1,4 @@
-/**
- * The DEVICES on a kiosk repair visit — one row per physical unit the customer
- * put on the counter.
- *
- * ## Why this exists
- * `repair_service` has always been one row per device (its own `serial_number`,
- * `price`, `product_title`), `/api/kiosk/intake` has always taken
- * `serviceLines[]`, and the cart has always held one REPAIR line per device.
- * The UI was the only layer that flattened: the picker joined every selected
- * product name with `', '`, summed the prices, and the repair pane offered ONE
- * serial field and ONE price field for the lot. A two-device drop-off was
- * therefore recorded as one device with a 180-character title, one serial and a
- * summed quote — and the serial that mattered belonged to neither unit.
- *
- * This module is the device list as the pane reads it, derived from the cart
- * (the session root, so it survives the pane unmounting) and nothing else. No
- * second store, no local array that can disagree with the ticket.
- *
- * Pure: no React, no fetch. Callers: `KioskRepairPane`, `KioskShell`,
- * `repair-intake-logic` (the step-1 gate). Affected API: none — the shapes it
- * reads and writes are `cart-line.ts`'s.
- */
+/** The DEVICES on a kiosk repair visit — one row per physical unit the customer put on the counter. */
 
 import {
   isLinkedRepairLine,
@@ -51,14 +30,7 @@ export interface KioskRepairDevice {
   custom: boolean;
 }
 
-/**
- * The visit's devices, in cart order.
- *
- * A LINKED repair is not a device on this counter: it was taken in, serialised
- * and signed for when its ticket was written. Listing it here would put it on
- * Device & quote, the paperwork and the signature pad — re-running an intake
- * that already happened — so it is skipped at the one source all three read.
- */
+/** The visit's devices, in cart order. */
 export function repairDevicesFromLines(
   lines: readonly KioskCartLine[],
 ): KioskRepairDevice[] {
@@ -82,13 +54,7 @@ export function repairDevicesFromLines(
   return devices;
 }
 
-/**
- * The ONE reasons set every unit shares, or null when the units disagree.
- *
- * "Share" is exact: same labels, same order — the All-devices writer stamps
- * one array onto every line, so anything else was written per device. An
- * empty visit (or one where no unit has answered yet) shares `[]`.
- */
+/** The ONE reasons set every unit shares, or null when the units disagree. */
 export function sharedRepairReasons(
   devices: readonly Pick<KioskRepairDevice, 'repairReasons'>[],
 ): string[] | null {
@@ -101,14 +67,7 @@ export function sharedRepairReasons(
   return same ? first : null;
 }
 
-/**
- * What each device is still missing.
- *
- * The same two facts `missingRepairIntakeFields` demands server-side (`Serial #`
- * and `Price`), asked PER DEVICE — because that is the row that will be
- * written. A visit that passed the old single-field gate could still reach the
- * counter with device two unserialised.
- */
+/** What each device is still missing. */
 export function repairDeviceGaps(
   devices: readonly KioskRepairDevice[],
 ): Array<{ lineId: string; title: string; missing: string[] }> {
@@ -170,16 +129,7 @@ export interface KioskRepairDeviceGroup {
 
 /**
  * The devices grouped by product, in order of first appearance.
- *
- * The ROW stays one per unit — each has its own serial and is its own
- * `repair_service` row — but the staffer counts units of one SKU on one card
  * with the cart's `−  N  +` (operator 2026-09-24: "add multiple serial numbers
- * per one SKU within the device and quote section").
- *
- * A keypad-typed device has no SKU — every one is titled `Custom Amount` — so
- * its identity is its price: two $49 hand-priced units are one card, a $49
- * and a $120 are two, and the card's one Price field can never rewrite a
- * different device's quote.
  */
 export function repairDeviceGroups(
   devices: readonly KioskRepairDevice[],
@@ -207,14 +157,7 @@ export function repairUnitToDrop(units: readonly KioskRepairDevice[]): KioskRepa
   return units[units.length - 1] ?? null;
 }
 
-/**
- * A VISIT summarized for chrome that has one line to say it in.
- *
- * `A, B, C, D` is not a title — it is four titles in a trench coat, and at
- * `text-3xl` on the customer display it leaves the viewport. One product plus a
- * count answers "what is this visit about" at any width, and the devices
- * themselves are listed where there is room for them.
- */
+/** A VISIT summarized for chrome that has one line to say it in. */
 export function summarizeProductTitles(titles: readonly string[]): string {
   const named = titles.map((t) => String(t ?? '').trim()).filter(Boolean);
   if (named.length === 0) return '';

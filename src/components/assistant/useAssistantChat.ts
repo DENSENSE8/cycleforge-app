@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * useAssistantChat — client engine for the global assistant dock: POSTs to
- * /api/assistant/chat, reads the SSE stream (meta/delta/tool/ui_tool/error/
- * done), and executes CLIENT UI TOOLS as they arrive (plan §-2.4):
- *   navigate(path, params) → router.push (URL-as-state is the payoff)
- *   highlight(ref)         → window CustomEvent any surface can listen for
- * Canvas-control tools (focus_node/set_lens/set_zoom) are acknowledged but
- * inert until Phase 3 wires the Studio URL state.
- */
+/** useAssistantChat — client engine for the global assistant dock: */
 
 import { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';

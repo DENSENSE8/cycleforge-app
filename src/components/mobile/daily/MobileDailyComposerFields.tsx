@@ -1,17 +1,8 @@
 'use client';
 
 /**
- * The composer's FIELD leaves — the presentational parts of the phone's
- * add-a-task form, extracted so the sheet file stays a shell (ds_critique
- * flags size; these are the leaves it means).
- *
- * Every field builds from `lib/daily-checks/composer` — the shared vocabulary
- * — so this file paints, never decides.
- *
+ * The composer's FIELD leaves — the presentational parts of the phone's add-a-task form, extracted so the sheet file stays a shell…
  * NO GLYPH PICKER here (operator ruling 2026-09-15 — "it wouldn't even have
- * icons"). The desk keeps its own palette in `features/home/DailyComposerRow`;
- * the phone writes a plain title, and every corner comes from the mobile
- * radius family, never `cornerClass` (which is `rounded-none` by ops law).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -23,15 +14,7 @@ import { cn } from '@/utils/_cn';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
 import { type DailyComposerDraft } from '@/lib/daily-checks/composer';
 
-/**
- * Both input faces wear `text-role-field` — 16px, density-proof.
- *
- * NOT `role-data`/`role-caption` (13px/12px): iOS Safari zooms the viewport
- * whenever a focused input computes under 16px, so a sub-16px field makes the
- * page lurch on every tap at a bench. The meta-tag escapes are ignored on iOS
- * and would fail this repo's axe `meta-viewport` gate, so the SIZE is the fix.
- * Pinned by `touch-field.test.ts`.
- */
+/** Both input faces wear `text-role-field` — 16px, density-proof. */
 const LINK_INPUT_CLASS = cn(
   'min-h-12 w-full border border-border-hairline bg-surface-card px-3',
   'text-role-field text-text-default placeholder:text-text-faint',
@@ -113,14 +96,7 @@ export function OwnerStep({
   );
 }
 
-/**
- * The FALLBACK link row: ticket, work order, tracking.
- *
- * The ticket field stays even though `MobileDailyTicketSlider` is the fast
- * path, because a chip can only offer a ticket the helpdesk returned — a
- * number read off paper for a ticket the search misses still has to be
- * typeable.
- */
+/** The FALLBACK link row: */
 export function LinkFields({
   draft,
   onChange,

@@ -1,15 +1,4 @@
-/**
- * LLM Agent
- *
- * Takes a discovered task, reads the relevant source files, constructs a
- * prompt, sends it to the local MLX model, parses the structured JSON
- * response, and applies file changes to disk.
- *
- * The agent is deliberately constrained:
- *   - It only edits files listed in the task's filePaths
- *   - It returns full file contents (no partial patches)
- *   - It operates on a dedicated git branch (managed by orchestrator)
- */
+/** LLM Agent */
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { exec } from 'node:child_process';
@@ -122,15 +111,7 @@ function parseAgentResponse(raw: string): AgentResponse | null {
 
 // ─── Main Entry Point ────────────────────────────────────────
 
-/**
- * Implement a single task:
- *   1. Read the relevant source files
- *   2. Build a prompt with task description + file contents
- *   3. Call the local MLX model
- *   4. Parse the JSON response
- *   5. Write changed files to disk
- *   6. Return the git diff
- */
+/** Implement a single task: */
 export async function implementTask(
   task: DiscoveredTask,
   repoPath: string,

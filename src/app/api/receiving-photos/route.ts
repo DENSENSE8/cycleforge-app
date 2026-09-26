@@ -32,42 +32,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Receiving photo endpoint.
- *
- * Photos are stored polymorphically on the `photos` table — same pattern used
- * for PACKER_LOG, SKU, BIN_ADJUSTMENT, etc.:
- *   PO-level photo   → entity_type='RECEIVING',      entity_id=receiving.id
- *   Item-level photo → entity_type='RECEIVING_LINE', entity_id=receiving_lines.id
- *
- * Photos live on the office NAS, not Vercel Blob. The browser writes the file
- * straight to the NAS over WebDAV (the Vercel server can't reach the LAN) and
- * then POSTs the resulting `photoUrl` here to link it — so this route only ever
- * stores a URL, never bytes.
- *
- * The POST body still talks in `receivingId` / `receivingLineId` because that's
- * how the mobile client thinks of scope; we translate to (entity_type,
- * entity_id) on insert and back to (receivingId, receivingLineId) on read.
- *
- * GET parameters:
- *   ?receivingId=N&receivingLineId=M → only that item's photos
- *   ?receivingId=N&scope=po          → only PO-level photos
- *   ?receivingId=N                   → every photo for the PO (PO-level
- *                                       UNION item-level on every line under N)
- */
+/** Receiving photo endpoint. */
 
 interface PhotoRow {
   id: number;
   receivingId: number | null;
   receivingLineId: number | null;
   photoUrl: string;
-  /**
-   * Downscaled variant for tiles (the photo peek's corner/fan), when storage
-   * has one. Absent → callers fall back to {@link PhotoRow.photoUrl}.
-   *
-   * Kept as a SECOND field rather than lowering `photoUrl`: the fullscreen
-   * viewer zooms and pans off the same payload and must stay full-resolution.
-   */
+  /** Downscaled variant for tiles (the photo peek's corner/fan), when storage has one. */
   thumbUrl?: string;
   /**
    * Legacy alias of {@link PhotoRow.photoType} — kept because five readers parse
@@ -144,14 +116,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         ? photoIntentRaw
         : 'all';
 
-    // Aspect NARROWS an intent, it never replaces one: the guided procedure asks
-    // "which of this carton's unbox_carton shots is the shipping label", which is
-    // a question about both axes at once.
-    //
-    // A well-formed but incoherent pair (an item aspect under the package intent)
-    // returns `[]`, not a 400 — a read that asks a coherent question with no
-    // answer is empty, not malformed. An UNKNOWN aspect token is a different
-    // thing and is dropped by the SoT parser rather than widening the result.
+    // Aspect NARROWS an intent, it never replaces one:
     const aspectParam = params.get('photoAspects') ?? params.get('photoAspect');
     const photoAspects = parsePhotoAspectList(aspectParam);
     // A supplied filter that resolves to nothing must narrow to nothing. Falling
@@ -182,13 +147,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           photoAspects,
         });
 
-    // Surface when this carton was physically scanned/received so the NAS picker
-    // can anchor the "PO scan time" sort on the moment the photos were actually
-    // taken. We deliberately prefer received_at / the first tracking-scan over
-    // created_at: a receiving row can be pre-created (e.g. from a Zoho PO import)
-    // long before the package is scanned, so created_at would anchor on a stale
-    // time and surface the oldest photos in the folder. ISO/UTC so the client
-    // can Date.parse it unambiguously against the NAS file mtimes.
+    // Surface when this carton was physically scanned/received so the NAS picker can anchor the "PO scan time" sort on the moment the photos…
     const cartonRes = await tenantQuery<{ created_at: string | null }>(
       ctx.organizationId as OrgId,
       `SELECT to_char(
@@ -205,11 +164,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       [receivingId, ctx.organizationId],
     );
 
-    // Resolve the folder the picker should auto-open for THIS operator (their
-    // primary station → the org's admin-configured `stationNasPhotoFolders`),
-    // plus the active NAS base URL. Shared with GET /api/nas-config. '' folder =
-    // open at the NAS root. Best-effort — never let a settings/station hiccup
-    // break the photo strip.
+    // Resolve the folder the picker should auto-open for THIS operator (their primary station → the org's admin-configured…
     let initialNasFolder = '';
     let nasBaseUrl = '';
     try {
@@ -272,12 +227,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       throw ApiError.badRequest('photoUrl is required');
     }
 
-    // Origin allowlist: once a NAS base is known for this org, a receiving photo
-    // URL must point at it (test or prod) — or the same-origin dev proxy. This is
+    // Origin allowlist:
     // the security boundary now that the route trusts a client-supplied URL
-    // instead of uploading bytes itself: it stops arbitrary external URLs from
-    // being pinned onto a PO. When NOTHING is configured (no settings slot, no
-    // env), we stay permissive so un-migrated orgs keep working.
     const org = await getOrganization(ctx.organizationId as OrgId);
     const allowedBases = org ? getAllNasBaseUrls(org.settings) : [];
     const envBase = (process.env.NEXT_PUBLIC_NAS_PHOTOS_BASE_URL || '').replace(/\/+$/, '');
@@ -301,10 +252,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const entityId = receivingLineId ?? receivingId;
     const poRef = await resolvePoRef(entityType, entityId);
 
-    // Stage stamp: explicit `photoType` (validated against the stage SoT) or
-    // the scope default. `caption` is display text and never becomes
-    // photo_type — the old caption fallback let free text stain the stage
-    // vocabulary (docs/todo/photo-evidence-stage-sot-plan.md).
+    // Stage stamp: explicit `photoType` (validated against the stage SoT) or the scope default.
     const requestedType = String(body?.photoType || '').trim().toLowerCase() || null;
     if (requestedType) {
       const violation = validateReceivingPhotoWrite({ entityType, photoType: requestedType });
@@ -314,18 +262,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       requestedType ??
       (receivingLineId != null ? RECEIVING_PHOTO_ITEM : RECEIVING_PHOTO_PACKAGE);
 
-    // Aspect — the second axis (`@/lib/photos/photo-aspects`). Three of the
-    // guided procedure's steps are all `unbox_carton` evidence and are told
-    // apart by this alone.
-    //
-    // Validated against the stage the (entity × photo_type) pair RESOLVES to,
-    // never the stage the caller claimed: otherwise a caller that mis-claims
-    // the stage also gets to mis-claim the aspect, and the pairing that the
-    // `require_one` receive gate depends on stops meaning anything.
-    //
-    // Absent → null → legal (unclassified evidence). Present-but-unknown →
-    // 400, never silently dropped: an aspect is a claim about what the photo
-    // shows, and a dropped claim reads to the operator as a recorded one.
+    // Aspect — the second axis (`@/lib/photos/photo-aspects`).
     const rawAspect = body?.photoAspect;
     const hasAspect = rawAspect != null && String(rawAspect).trim() !== '';
     let photoAspect: PhotoAspect | null = null;
@@ -432,12 +369,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       },
       {
         headers: {
-          // ASCII only: an HTTP header value is a ByteString (≤ U+00FF). The em
-          // dash that used to sit here threw
-          // "Cannot convert argument to a ByteString … value of 8212" while
-          // BUILDING this response — so every successful attach 500'd *after*
-          // the photo, audit and count had already been written, and the client
-          // saw a failure for a photo that was really there.
+          // ASCII only: an HTTP header value is a ByteString (≤ U+00FF).
           Deprecation: 'photoUrl attach - prefer POST /api/photos/upload with multipart bytes',
         },
       },

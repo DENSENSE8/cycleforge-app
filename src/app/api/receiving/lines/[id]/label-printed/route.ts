@@ -1,15 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/label-printed
- *
- * Durable stamp for the Unbox stepper's Print step. Records label_printed_at on
- * receiving_line_testing (first-print wins), replacing the per-browser
- * localStorage marker so the step survives refresh / another device and is
- * auditable. Mirrors the sibling condition route's narrow-column upsert
- * (src/app/api/receiving/lines/[id]/condition/route.ts).
- *
- * Idempotent: re-printing keeps the first stamp (COALESCE), so a retry / reprint
- * is a no-op on the recorded value.
- */
+/** POST /api/receiving/lines/[id]/label-printed */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
@@ -26,11 +15,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: 'invalid line id' }, { status: 400 });
   }
 
-  // Narrow upsert: label_printed_at is a receiving_line_testing fact. The row
-  // may not exist yet (the other testing columns all carry DB defaults), so we
-  // INSERT ... ON CONFLICT and COALESCE-keep the first print. The FOR UPDATE
-  // spine read preserves the 404 and locks the line, mirroring the condition
-  // route.
+  // Narrow upsert:
   const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
     const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
       `SELECT id, receiving_id FROM receiving_line

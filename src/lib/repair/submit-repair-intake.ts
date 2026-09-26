@@ -1,19 +1,4 @@
-/**
- * submitRepairIntake — the repair-intake create path as a principal-agnostic
- * domain helper.
- *
- * Everything here is scoped by `orgId` + the submitted body; NOTHING depends on
- * a staff actor. That is deliberate: it was extracted so the staff route
- * (`/api/repair/submit`, `withAuth` + `repair.intake`) and the device-authed
- * kiosk twin could never drift. The kiosk twin is gone as of 2026-09-16 — the
- * counter writes repairs through `submitCounterTransaction` now, one
- * `repair_service` row per device on the visit — so the staff route is this
- * helper's only caller, and the principal-agnostic shape is what keeps it
- * reusable rather than what keeps two surfaces in step.
- *
- * Validation failures throw `RepairIntakeValidationError` (callers map → 400);
- * any other throw is an internal error (callers map → 500).
- */
+/** submitRepairIntake — the repair-intake create path as a principal-agnostic domain helper. */
 
 import { createRepair } from '@/lib/neon/repair-service-queries';
 import { createAssignment } from '@/lib/neon/assignments-queries';
@@ -51,22 +36,7 @@ interface SubmitRepairIntakeInput {
   ticketWork?: RepairIntakeTicketWork;
 }
 
-/**
- * What a repair intake is still missing — the ONE definition of the rule.
- *
- * Extracted 2026-08-21 (SQ6) so the counter can pre-flight EVERY device before
- * it writes anything. It used to exist only inline here, which meant a
- * multi-device visit discovered device 2 was invalid *after* device 1 (and the
- * header) had been committed — and the header permanently owned the visit's
- * idempotency key, so the retry short-circuited and the valid device was never
- * recorded at all.
- *
- * Pure, and takes already-normalized values: the caller trims, this decides.
- * Copying these six rules into the counter instead would be the fork this
- * repo's compose-don't-fork law exists to prevent — the two would drift on the
- * first rule change, and the drift would be invisible until a customer's device
- * went missing.
- */
+/** What a repair intake is still missing — the ONE definition of the rule. */
 export function missingRepairIntakeFields(input: {
   name?: string | null;
   phone?: string | null;

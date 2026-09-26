@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Walk-in sales spreadsheet — family glue that resolves a DataTable feed bag.
- *
- * Callers: SalesHistoryTable.
- * Affected API: none (rows already fetched).
- * Data schemas: SaleRow.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** Walk-in sales spreadsheet — family glue that resolves a DataTable feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -33,18 +26,7 @@ export interface UseWalkInSalesSpreadsheetOptions {
   loading?: boolean;
   emptyMessage?: string;
   searchPlaceholder?: string;
-  /**
-   * The find text, OWNED BY THE MOUNT because it rides that mount's fetch key.
-   *
-   * It is not local state here on purpose. `/api/walk-in/sales` answers `?q=`
-   * across the whole merged feed — Square mirror and counter visits, by
-   * customer, phone, email, handle, status and line items — while this table
-   * paints five of those facts. A second in-memory substring pass over the
-   * painted facts would therefore DELETE rows the server had already found: a
-   * sale matched by its phone number would arrive and then vanish. So the value
-   * lives with the fetch and the engine is told the answer is already correct
-   * (`answeredBy: 'server'`).
-   */
+  /** The find text, OWNED BY THE MOUNT because it rides that mount's fetch key. */
   searchValue: string;
   onSearchChange: (next: string) => void;
   /** A request for the CURRENT text is in flight — holds the loading face. */

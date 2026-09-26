@@ -12,12 +12,7 @@ export interface UsePhotoItems {
   errorCount: number;
 }
 
-/**
- * Parses the mixed photo input into `PhotoItem`s and preloads each image,
- * flipping its status to loaded/error. Skips a re-init when the URL list is
- * unchanged (avoids reload flicker when a parent re-renders with a new array
- * reference).
- */
+/** Parses the mixed photo input into `PhotoItem`s and preloads each image, flipping its status to loaded/error. */
 export function usePhotoItems(photos: PhotoGalleryInput[]): UsePhotoItems {
   const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
   const photosFingerprintRef = useRef<string | null>(null);

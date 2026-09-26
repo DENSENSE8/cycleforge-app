@@ -4,12 +4,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Org-ownership gate for a product_manuals row. The table has no
- * organization_id column (child-scoped) so isolation is derived from its
- * parent sku_catalog. Returns true only when the manual's parent SKU belongs
- * to this org — a cross-org (or missing) manualId returns false → caller 404s.
- */
+/** Org-ownership gate for a product_manuals row. */
 async function manualBelongsToOrg(manualId: number, orgId: OrgId): Promise<boolean> {
   const r = await tenantQuery(
     orgId,

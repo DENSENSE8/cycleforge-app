@@ -58,13 +58,7 @@ export function ConfigSheet({ open, onClose, config, onSave }: ConfigSheetProps)
         <NumField label="Positions" value={draft.maxPositions} onChange={set('maxPositions')} />
       </div>
 
-      {/*
-        Read-only on purpose. A GLN is a LICENSED identifier belonging to the
-        company, so it is workspace-wide (Settings → Organization → Product
-        identity) rather than a per-browser preference. Editing it here used to
-        let two operators print the same rack with different GLNs, neither of
-        them the value the rest of the app reads.
-      */}
+      {/* Read-only on purpose. */}
       <div className="mt-4">
         <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">
           GLN (Global Location Number)

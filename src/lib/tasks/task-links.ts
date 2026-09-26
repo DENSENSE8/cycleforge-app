@@ -1,19 +1,4 @@
-/**
- * Task **links** — the pure half: which record a link names, the label it is
- * keyed by, and the refusals. The SQL and the helpdesk live behind
- * {@link TaskLinksDeps}, bound in `task-links-db.ts` (house split, see
- * `list-tasks.ts` / `list-tasks-db.ts`), so the branch table is DB-free.
- *
- * The wire vocabulary (kinds, faces, refusal copy) is `task-links-shared.ts`;
- * the table is `work_assignment_links` (2026-09-25b).
- *
- * ## The label is derived here, never taken from the request
- * `(organization_id, assignment_id, entity_type, label)` is the natural key.
- * Two operators linking the same order, one by pasting `112-…` and one by
- * scanning a line, must land on ONE row — so the label is always the resolved
- * record's own face: the order number (or `ID <orders.id>` when the line has
- * none), the provider ticket digits, the canonical tracking number.
- */
+/** Task **links** — the pure half: */
 
 import { extractCanonicalTracking } from '@/lib/tracking-format';
 import type { ResolveTicketTargetResult } from './resolve-ticket-target';

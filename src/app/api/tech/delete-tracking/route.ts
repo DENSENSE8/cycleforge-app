@@ -18,13 +18,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   let salId: number | null = null;
 
-  // If sourceKind is a SAL-based row (fba_scan or tech_scan), the sourceRowId IS
-  // the SAL id — BUT it comes straight from the request body, so it must be
-  // org-verified before use. The downstream POST /api/tech/delete (unifiedDelete)
-  // deletes by raw SAL id with NO organization_id predicate, and this wrapper is
-  // the only org gate in front of it. Verify sourceRowId is a TECH-station SAL
-  // owned by this org (mirrors the rowId-as-SAL fallback below) so a tech in
-  // org A cannot delete another tenant's SAL/TSN/fba_fnsku_logs rows.
+  // If sourceKind is a SAL-based row (fba_scan or tech_scan), the sourceRowId IS the SAL id — BUT it comes straight from the request body,…
   if (sourceRowId && (sourceKind === 'fba_scan' || sourceKind === 'tech_scan')) {
     const r = await tenantQuery(
       orgId,

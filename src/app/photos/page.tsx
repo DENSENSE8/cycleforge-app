@@ -6,17 +6,7 @@ import { listNasDir, nasConfigured, type NasEntry } from '@/lib/nas-photos';
 import { NasBreadcrumb, NasFolderCard, NasSectionLabel } from '@/components/nas/NasBrowserChrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-/**
- * /photos — standalone PREVIEW of the NAS photo source.
- *
- * Read-only: it browses the NAS file server (Caddy on the Ugreen) and renders
- * the images directly, so you can confirm the app ↔ NAS path works end to end
- * without going through a receiving package. This is a testing surface — it
- * does NOT attach anything to the database. The real picker
- * (NasPhotoPicker / "NAS" button) is what attaches photos to a PO/item.
- *
- * Requires NEXT_PUBLIC_NAS_PHOTOS_BASE_URL to be set (e.g. in .env.local).
- */
+/** /photos — standalone PREVIEW of the NAS photo source. */
 export default function NasPhotosPreviewPage() {
   const [dir, setDir] = useState('');
   const [entries, setEntries] = useState<NasEntry[]>([]);

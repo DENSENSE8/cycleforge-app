@@ -6,13 +6,7 @@ import { getClaim } from '@/lib/warranty/claims';
 import { buildEbayRefurbDraft } from '@/lib/warranty/ebay-draft';
 import { claimIdFromPath, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 
-/**
- * POST /api/warranty/claims/[id]/ebay-draft
- *
- * Assemble a DRAFT eBay "refurbished unit" listing payload from a repaired
- * claim, for a human to review/publish. Never auto-publishes. Gated by
- * WARRANTY_LOGGER. Permission: warranty.manage.
- */
+/** POST /api/warranty/claims/[id]/ebay-draft */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);

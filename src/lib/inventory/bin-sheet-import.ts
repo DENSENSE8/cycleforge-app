@@ -1,21 +1,4 @@
-/**
- * Bin-sheet import planner — turns an owner's paper bin sheet (ITEM / SKU /
- * QTY / NOTE per location) plus the owner's decisions into a list of temp
- * products to mint and (bin, SKU, qty) counts to write.
- *
- * Pure: no I/O. `scripts/import-bin-sheet.ts` resolves the plan against an org
- * (bins, catalog, current qty) and writes it through the domain functions.
- *
- * The decisions live in an overrides file next to the sheet, per row:
- * `sku` (a real catalog SKU), `temp` (a temp-product key), `variants`
- * (variant name → temp key), `partsTemp` (where the `p` / bare `+ n` count
- * goes), `hint` (text for the temp's description). Nothing is inferred from
- * the sheet's SKU text — a guess on real stock is worse than a temp SKU the
- * owner pairs later (pairing moves bins, ledger and photos).
- *
- * Temp SKUs are keyed by `<importKey>:<product key>` through
- * `provisionalSkuForSourceRef`, so a re-run resolves to the same SKUs.
- */
+/** Bin-sheet import planner — turns an owner's paper bin sheet (ITEM / SKU / QTY / NOTE per location) plus the owner's decisions into a… */
 
 export interface BinSheetRow {
   location: string;

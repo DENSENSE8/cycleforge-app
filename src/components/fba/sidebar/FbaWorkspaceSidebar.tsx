@@ -77,10 +77,7 @@ export function FbaWorkspaceSidebar() {
   // always-on master nav. The sidebar keeps ambient scan I/O + rails only.
   return (
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
-      {/* Scan bar — pinned at the top of the working area so it never scrolls
-          away. The mode is locked per page: Plan on the plan page (FNSKU adds to
-          today's plan, Plan button only) and Select on combine (FNSKU selects
-          packed items, Select button only). */}
+      {/* Scan bar — pinned at the top of the working area so it never scrolls away. */}
       {isBoard && !editorActive && (
         // Same 40px scan band geometry as testing / packing sidebars — Framer
         // glow host (focus/click + submit pulse) matches Unbox / Shipping.

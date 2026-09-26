@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Returns-banner state for the receiving sidebar's Unbox mode, plus the shared
- * serial-input ref the scan-apply layer refocuses.
- *
- * This hook used to own a `submitSerialScan` flow (serial input + submit +
- * multi-candidate picker). That tail had **zero call sites** — the sidebar
- * renders no serial input; the real serial capture lives in the Unbox line
- * workspace (`useLineSerials`). It was removed in capture-stack Phase 0 as
- * hygiene, not as a behavior change.
- *
- * Consequence, stated honestly: with the submit path gone there is currently
- * no producer for `returns`, so `ReceivingReturnBanner` renders empty — which
- * is exactly what it already did, since the producer was unreachable. Phase 3
- * re-wires return detection through the capture stack's single input.
- */
+/** Returns-banner state for the receiving sidebar's Unbox mode, plus the shared serial-input ref the scan-apply layer refocuses. */
 
 import { useCallback, useRef, useState } from 'react';
 import type { ReturnEvent } from '@/components/sidebar/ReceivingReturnBanner';

@@ -1,22 +1,4 @@
-/**
- * GET /api/cron/zoho/receive-backfill?limit=25
- *
- * The scheduled half of the Zoho purchase-receive push. Since 2026-09-23 the
- * push no longer rides the `mark-received-po` request tail — the floor commits
- * locally and this drain reconciles the provider in bulk, one receive per PO.
- *
- * Why a drain and not a queue: the worklist is DERIVED (locally DONE + Zoho
- * linked + no purchase-receive id), so there is nothing to check out and a run
- * that dies mid-flight self-heals on the next tick. Retry state lives on
- * `receiving_line_zoho` (2026-09-23c) so one permanently-refused PO cannot
- * starve the POs behind it.
- *
- * Fans out per Zoho-connected org; a failing tenant never blocks another. The
- * summary this returns lands verbatim in `cron_runs.summary`, which is what
- * paints the counters in the Automations view and drives the health dot.
- *
- * Auth: Authorization: Bearer ${CRON_SECRET}.
- */
+/** GET /api/cron/zoho/receive-backfill?limit=25 */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
@@ -27,12 +9,7 @@ import { runZohoReceiveBackfill } from '@/lib/zoho/receive-backfill';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * PO groups per org per tick. Each group is one `GET /purchaseorders` plus one
- * `POST /purchasereceives`, and the Zoho limiter spaces dispatches 750 ms
- * apart, so 25 groups is ~40 s of transport — comfortably inside maxDuration
- * even with several orgs.
- */
+/** PO groups per org per tick. */
 const DEFAULT_MAX_GROUPS = 25;
 
 export async function GET(req: NextRequest) {

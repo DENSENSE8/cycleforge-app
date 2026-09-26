@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Client hook for the Operations TV wall board (HOME-OPS Phase C).
- *
- * Fetches `GET /api/operations/tv-board` and stays fresh the same way the Plans
- * sidebar does: **realtime** invalidation on `ops_plan.updated` over the org's
- * `ops_plans:changes` channel (a plan/task mutation or the master-plan bridge
- * refreshes every wall instantly — no per-row socket, no busy poll). The slow
- * `refetchInterval` is only a civil-day-rollover safety net so "Due today" /
- * "Overdue" recompute after midnight even with zero mutations; React Query
- * pauses it while the tab is hidden. Keeps the last board on a failed refetch so
- * a network blip degrades to "stale", never a blank wall (plan §27).
- */
+/** Client hook for the Operations TV wall board (HOME-OPS Phase C). */
 
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

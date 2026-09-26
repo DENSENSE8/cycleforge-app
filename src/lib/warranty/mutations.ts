@@ -1,16 +1,4 @@
-/**
- * Warranty claims — write domain module (Phase 2).
- *
- * Create + lifecycle verbs + repair-attempt logging. Each write also appends a
- * row to `warranty_claim_events` (the per-claim timeline). The GLOBAL audit log
- * is written at the route layer via recordAudit (it needs ctx + request
- * headers), keeping attribution server-trusted.
- *
- * Status machine (guarded, never a free-form UPDATE):
- *   LOGGED → SUBMITTED → APPROVED → IN_REPAIR → REPAIRED → CLOSED
- *                      ↘ DENIED → CLOSED
- *   (EXPIRED is set by the Phase 3 cron; CLOSED is terminal.)
- */
+/** Warranty claims — write domain module (Phase 2). */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
@@ -52,10 +40,7 @@ async function insertEvent(
   },
 ): Promise<void> {
   await client.query(
-    // organization_id is derived from the parent claim so the row is org-stamped
-    // even on the raw (non-GUC) pool — warranty_claim_events.organization_id is
-    // NOT NULL with a loud-fail GUC default, so omitting it here previously
-    // inserted NULL and violated the constraint on every write.
+    // organization_id is derived from the parent claim so the row is org-stamped even on the raw (non-GUC) pool —…
     `INSERT INTO warranty_claim_events
        (claim_id, event_type, from_status, to_status, payload, actor_staff_id, organization_id)
      VALUES ($1, $2, $3, $4, $5::jsonb, $6,
@@ -84,12 +69,7 @@ interface ResolvedClaimContext {
   packedScannedAt: string | null;
 }
 
-/**
- * Best-effort: pull the customer, SKU, carrier delivered date, and packed scan
- * date for an order so a claim can stamp its clock at log time. Defensive — any
- * failure (e.g. STN managed outside this schema) just yields nulls and the
- * clock falls back to "unknown" until the tracking cron backfills it.
- */
+/** Best-effort: pull the customer, SKU, carrier delivered date, and packed scan date for an order so a claim can stamp its clock at log time. */
 export async function resolveClaimContext(orderId: number): Promise<ResolvedClaimContext | null> {
   try {
     const { rows } = await pool.query<{
@@ -203,13 +183,7 @@ export async function createClaim(input: CreateClaimInput): Promise<CreateClaimR
 
   const orgId: OrgId = input.organizationId;
 
-  // Resolve a free-text serial to its serial_units row so the claim carries a
-  // real FK (warranty_claims.serial_unit_id is a real column that historically
-  // no writer ever populated — see the returns-unification plan §6/§7.2). This
-  // is what lets a later "Issue RMA" step check whether the physical unit has
-  // already come back through receiving instead of operating as pure paperwork.
-  // Best-effort: an unresolved serial (not yet in our system, or a typo) still
-  // logs the claim on the string alone, same as before this fix.
+  // Resolve a free-text serial to its serial_units row so the claim carries a real FK (warranty_claims.serial_unit_id is a real column that…
   let resolvedSerialUnitId = input.serialUnitId ?? null;
   if (resolvedSerialUnitId == null && input.serialNumber) {
     const unit = await findByNormalizedSerial(input.serialNumber, orgId);
@@ -366,12 +340,7 @@ export interface SoftDeleteClaimsResult {
   notFound: number[];
 }
 
-/**
- * Soft-delete claims (deleted_at tombstone). Claims carry an event/audit trail
- * and FK out to RMA / repair, so rows are never hard-dropped — every read
- * filters `deleted_at IS NULL` instead. Set-based so the bulk endpoint is one
- * UPDATE regardless of batch size; the single DELETE route passes one id.
- */
+/** Soft-delete claims (deleted_at tombstone). */
 export async function softDeleteClaims(
   ids: number[],
   actorStaffId: number | null,
@@ -414,12 +383,7 @@ export interface RestoreClaimsResult {
   notFound: number[];
 }
 
-/**
- * Reverse of {@link softDeleteClaims}: un-tombstone claims (deleted_at → NULL)
- * so they return to the live list with their full event/RMA/repair trail. Set-
- * based to mirror the bulk delete. Only flips rows that are actually deleted, so
- * a double-restore (or a live id) is a clean no-op reported in `notFound`.
- */
+/** Reverse of {@link softDeleteClaims}: */
 export async function restoreClaims(
   ids: number[],
   actorStaffId: number | null,
@@ -476,10 +440,7 @@ async function transition(claimId: number, orgId: OrgId, opts: TransitionOptions
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Scope by org: a cross-org id returns 0 rows → 404 (never reveal the
-    // claim's existence to another tenant). warranty_claims runs through the raw
-    // (owner, BYPASSRLS) pool here, so the explicit predicate is the ONLY guard
-    // against an IDOR-by-global-id — RLS does not catch this class.
+    // Scope by org:
     const current = await client.query<{ status: WarrantyClaimStatus }>(
       `SELECT status FROM warranty_claims WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
       [claimId, orgId],
@@ -581,19 +542,7 @@ export function closeClaim(claimId: number, actorStaffId: number | null, orgId: 
   });
 }
 
-/**
- * Reverse a forward lifecycle step — the single context-aware "undo" for the
- * verb routes (submit/approve/deny/close). Steps the claim back ONE stage based
- * on its current status:
- *   SUBMITTED → LOGGED     (un-submit, pull back to edit)
- *   APPROVED  → SUBMITTED  (un-approve)
- *   DENIED    → SUBMITTED  (un-deny; clears denial_reason_code/denial_notes)
- *   CLOSED    → <pre-close status>  (reopen, restored EXACTLY from the close
- *                                    STATUS_CHANGE event's from_status)
- * IN_REPAIR is intentionally NOT handled here — its reverse is detaching the
- * repair (DELETE …/repair-handoff). REPAIRED/LOGGED/EXPIRED have no reverse verb
- * and are refused (409).
- */
+/** Reverse a forward lifecycle step — the single context-aware "undo" for the verb routes (submit/approve/deny/close). */
 export async function revertClaimStatus(
   claimId: number,
   actorStaffId: number | null,
@@ -635,10 +584,7 @@ export async function revertClaimStatus(
     );
     const prior = ev.rows[0]?.from_status;
     if (!prior) return { ok: false, status: 409, error: 'cannot determine the pre-close status to reopen to' };
-    // Never reopen back into EXPIRED — it's a terminal, cron-only state with no
-    // adjudication path (the only verb that accepts EXPIRED is close again), so
-    // a literal restore would strand a "reopened" claim. An expired-then-closed
-    // claim reopens to SUBMITTED for re-review instead.
+    // Never reopen back into EXPIRED — it's a terminal, cron-only state with no adjudication path (the only verb that accepts EXPIRED is close…
     const reopenTo: WarrantyClaimStatus = prior === 'EXPIRED' ? 'SUBMITTED' : prior;
     return transition(claimId, orgId, {
       allowedFrom: ['CLOSED'],

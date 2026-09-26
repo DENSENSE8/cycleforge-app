@@ -16,11 +16,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // Check if any orders match via shipment_id → shipping_tracking_numbers join.
-    // shipping_tracking_numbers has no organization_id column (NEEDS-COL); it is
-    // tenant-scoped here via the parent `orders` org filter + the surrogate-PK
-    // join (stn.id = o.shipment_id). work_assignments carries org, so align it
-    // to the order's org (entity_id/entity_type is a polymorphic key that can
-    // collide across tenants).
     const matchResult = await tenantQuery(ctx.organizationId, `
       SELECT
         o.id,

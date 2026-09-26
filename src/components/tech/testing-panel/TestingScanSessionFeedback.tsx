@@ -6,20 +6,7 @@ import { SerialPreviewStrip } from '@/components/receiving/SerialPreviewStrip';
 import type { TestingScanSession } from '@/lib/testing/testing-scan-session';
 import { sessionSerials } from '@/lib/testing/testing-scan-session';
 
-/**
- * Composite feedback after STN → unit-label scans in Testing mode.
- * Shows tracking ↔ SKU pairing plus all serials linked to the unit/line
- * during testing (prepack handoff picture for the packer).
- *
- * **Lives in the workspace, not the scan column** (moved 2026-08-02). It used
- * to render under the sidebar scan bar, where it drew the carton a second time
- * beside `TestingCartonHeader` in the middle. A Station renders its active
- * entity in exactly ONE region; Unbox is the control, and
- * `ReceivingSidebarPanel` carries no identity at all. The session reaches this
- * tree through `testing-scan-session-bridge`, gated on
- * {@link sessionMatchesLine} so a leftover session never describes the carton
- * the operator is not holding.
- */
+/** Composite feedback after STN → unit-label scans in Testing mode. */
 export function TestingScanSessionFeedback({
   session,
 }: {

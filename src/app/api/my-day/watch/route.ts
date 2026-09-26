@@ -1,15 +1,4 @@
-/**
- * /api/my-day/watch — Today Watch rail (ticket + tracking).
- *
- * GET  → current staffer's watched tickets + inbound carton subscriptions
- * POST → start watching
- *         { kind: 'ticket', value: '8192' | '#8192' }
- *         { kind: 'tracking', value: '<carrier tracking>' }
- *
- * Thin route: validate → domain helpers → audit. Permissions are kind-scoped
- * (auth-only outer gate — ticket needs integrations.zendesk; tracking needs
- * home.subscriptions.manage + Home Inbox flag).
- */
+/** /api/my-day/watch — Today Watch rail (ticket + tracking). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -176,14 +165,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const resolved = await resolveShipmentForScan(canonical, ctx.organizationId);
 
     if (desired === 'muted') {
-      /*
-       * STOP — both arms, one call. The operator's sentence is "stop watching
-       * this number", and which arm holds it is our bookkeeping: a number
-       * watched before arrival lives in a `rule` row, the same number watched
-       * after arrival lives in an `entity` row, and a number watched before
-       * AND after has both. Asking the caller to know which would make the
-       * Stop button wrong exactly at the moment the carton lands.
-       */
+      /* STOP — both arms, one call. */
       const { stopped } = await stopTrackingPreArrivalWatch({
         orgId: ctx.organizationId,
         staffId: ctx.staffId,
@@ -220,18 +202,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
     }
     if (!resolved.receivingId) {
-      /*
-       * PRE-ARRIVAL (2026-09-22). This used to be the refusal
-       * `'This tracking has no inbound carton yet — receive it first, then
-       * watch.'` (plus a 404 when the number was unknown entirely) — which
-       * rejected precisely the case the operator asks for: *"if you are
-       * looking forward to receiving a package … input a tracking number …
-       * as soon as the tracking number is scanned on arrival"*.
-       *
-       * There is no carton to point an `entity` subscription at yet, so this
-       * writes a `rule` row instead: a predicate over the arrival event,
-       * narrowed to this tracking number. See `watchTrackingPreArrival`.
-       */
+      /* PRE-ARRIVAL (2026-09-22). */
       const { created } = await watchTrackingPreArrival({
         orgId: ctx.organizationId,
         staffId: ctx.staffId,

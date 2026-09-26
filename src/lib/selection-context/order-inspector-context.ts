@@ -1,21 +1,4 @@
-/**
- * Order-inspector contextual SoT — what the right-rail record inspector opens
- * on, which planes it exposes, and which bulk actions its lane supports; and
- * which sections the desk ORDER RECORD (`OrderRecordView` in `DeskRecordPlane`)
- * paints per outbound desk ({@link ORDER_RECORD_SECTIONS}).
- *
- * One resolver so the panel, the bulk bar, and the E2E expectations can never
- * disagree about "what does Pending offer". The lifecycle scoping already lived
- * in `useDashboardBulkSelection` as inline `isPrePack` / `isPostPack`
- * predicates; this module is where that decision now lives, and the hook reads
- * from it.
- *
- * **To-ship row body does not open the inspector** (checkbox + column-foot
- * own the desk). When the rail does open, seed Shipping — not Documents —
- * so a Documents right-rail / slide-over is not the first paint. Buying /
- * fetching / deleting documents stays on the Labels station
- * (`documentsMode: 'manage'`); the dashboard only previews (`'preview'`).
- */
+/** Order-inspector contextual SoT — what the right-rail record inspector opens on, which planes it exposes, and which bulk actions its lane… */
 
 import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
@@ -32,12 +15,7 @@ export type OrderInspectorPanelContext =
   | 'packer'
   | 'packed';
 
-/**
- * How the Documents plane behaves:
- * - `manage` — full tray (buy / fetch / upload / delete). Labels station only.
- * - `preview` — read-only list + the slide-over previewer.
- * - `hidden` — no Documents tab on this surface.
- */
+/** How the Documents plane behaves: */
 export type OrderInspectorDocumentsMode = 'preview' | 'manage' | 'hidden';
 
 /** Record-plane hand-offs the inspector may offer (deep-links, never mutations). */
@@ -80,13 +58,7 @@ export interface ResolveOrderInspectorContextInput {
   journeyFirst?: boolean;
 }
 
-/**
- * Pending / To Ship + the queue slide-over. Shipping-first (not Documents) —
- * row click no longer opens the inspector on To-ship; when the rail does open
- * (deep link, Labels walk), Documents is available but not the seed leaf.
- * Buying / fetching / deleting those documents stays on the Labels station
- * (`documentsMode: 'manage'`); the dashboard only previews (`'preview'`).
- */
+/** Pending / To Ship + the queue slide-over. */
 const FULFILLMENT_CONTEXT: OrderInspectorContext = {
   defaultTab: 'shipping',
   showDocumentsTab: true,
@@ -191,9 +163,7 @@ export function resolveOrderInspectorContext({
 // ── Desk order record (DeskRecordPlane) ─────────────────────────────────────
 
 /**
- * The outbound desk an order record opens on. To Ship, Pending, Exceptions,
- * Shipped and the Search lookup share ONE record view (`OrderRecordView`,
- * shown in place or split by `DeskRecordPlane`); the mode decides which of its
+ * The outbound desk an order record opens on.
  * sections paint, in both views (owner 2026-09-25, desk-surface handoff Step 2).
  */
 export type OrderRecordMode = 'to-ship' | 'pending' | 'exceptions' | 'shipped' | 'search';
@@ -230,11 +200,8 @@ export type OrderRecordSectionId =
   | 'conversation';
 
 /**
- * What a mode may never paint — listing it in {@link ORDER_RECORD_SECTIONS} is
- * a type error. Return / replacement labels never show on Pending or To Ship
+ * What a mode may never paint — listing it in {@link ORDER_RECORD_SECTIONS} is a type error.
  * (owner 2026-09-25); the pairing form is the Exceptions desk's job alone; a
- * shipped order takes no pick / pack assign. Verbs are not sections — they
- * live in the list's action strip (`useOrderActionVerbs`, mode-aware).
  */
 interface OrderRecordForbiddenSections {
   'to-ship': 'label-entries' | 'resolve';

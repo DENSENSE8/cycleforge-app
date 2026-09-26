@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Scan-band block component — a focus-locked scan input (trigger slot). On Enter
- * it classifies the raw value with the surface-aware `classifyUnboxScan` and
- * dispatches a typed `station:scan` CustomEvent `{ raw, type, intent }` the host
- * surface handles. Auto-clears + re-focuses after each submit (the station
- * focus-lock loop). Receives BlockProps but ignores rows (accepts: 'none').
- */
+/** Scan-band block component — a focus-locked scan input (trigger slot). */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScanBarcode } from '@/components/Icons';

@@ -1,25 +1,4 @@
-/**
- * Payload shape for `receiving_photo.reassign`.
- *
- * The canonical shape is a LIST OF MOVES, each naming its own destination:
- *
- *     { moves: [{ photoId, targetEntityType, targetEntityId }, …] }
- *
- * That looks over-general for the common case — "move these five photos to
- * line 800" — and it is, deliberately. **The inverse of a batch cannot be a
- * single reverse move.** Five photos moved onto one line may have come from
- * five different places (three from another line, two from the carton), so the
- * undo has to name a destination per photo. Making the forward and inverse
- * payloads the SAME shape is what lets revert re-dispatch the same kind instead
- * of needing a second, batch-aware revert path.
- *
- * The one-target form is accepted as sugar because that is what a model will
- * naturally produce, and normalising at the boundary is cheaper than teaching
- * every caller the general shape:
- *
- *     { photoIds: [1,2,3], targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 }
- *     { photoId: 1, targetEntityType: 'RECEIVING', targetEntityId: 42 }
- */
+/** Payload shape for `receiving_photo.reassign`. */
 
 export type ReassignTargetType = 'RECEIVING' | 'RECEIVING_LINE';
 
@@ -33,14 +12,7 @@ export type NormalizeResult =
   | { ok: true; moves: ReassignMove[] }
   | { ok: false; error: string };
 
-/**
- * Upper bound on one mutation.
- *
- * A cap exists so a single tool call cannot restructure a whole warehouse's
- * evidence in one transaction — the blast radius of a misunderstood instruction
- * should be a carton, not an org. 50 comfortably covers the largest real carton
- * while staying reviewable in one sitting.
- */
+/** Upper bound on one mutation. */
 export const MAX_REASSIGN_MOVES = 50;
 
 function isTargetType(v: unknown): v is ReassignTargetType {

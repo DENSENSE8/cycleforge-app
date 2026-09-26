@@ -19,12 +19,7 @@ interface SkuGraphToolbarProps {
   canAdd: boolean;
 }
 
-/**
- * Canvas action bar. SKU search lives in the sidebar (`InventoryGraphSidebar`)
- * per the sidebar-mode contract; this bar only carries the focused-SKU label,
- * the view toggle, and the Add-Connection action (its modal lives in the
- * workspace).
- */
+/** Canvas action bar. */
 export function SkuGraphToolbar({
   mode,
   onModeChange,

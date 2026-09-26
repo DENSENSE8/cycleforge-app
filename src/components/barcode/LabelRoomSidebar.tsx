@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Shared sidebar surface for the Labels and Bays printers. Renders the
- * room list driven by the shared RoomFinderContext — the actual search
- * input lives in the sidebar header band (WarehouseSidebarPanel) so each
- * surface only has one search affordance.
- */
+/** Shared sidebar surface for the Labels and Bays printers. */
 
 import { useMemo } from 'react';
 import { SkeletonCardGrid } from '@/components/ui/SkeletonCard';

@@ -8,12 +8,7 @@ import {
   type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
 
-/**
- * Server-backed saved views for the Media Library (/ops/photos). Persistence only —
- * the active view is the URL (applying a view writes its filters/mode to the params
- * via usePhotoLibraryUrlState), so the "filters live in the URL" invariant holds.
- * Mirrors useOperationsSavedViews.
- */
+/** Server-backed saved views for the Media Library (/ops/photos). */
 
 /** The snapshot persisted in the `filters` JSONB bag. Versioned for forward compat. */
 export interface MediaViewPayload {

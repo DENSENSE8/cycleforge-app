@@ -1,61 +1,13 @@
 'use client';
 
-/**
- * "Where my work is" — the per-staff queue doors, at the top of the Inbox
- * popover.
- *
- * These are `MyDayFeed.queueCards`: for each operational queue (Orders ·
- * Arrival · Packing · Testing · FBA prep · Support), how many **actionable
- * rows are waiting for THIS operator**, as a door to that queue's page.
- * Permission-filtered server-side, and a queue with no work is already dropped
- * by `buildQueueCards` — so this strip lists only places that actually want
- * the operator.
- *
- * **Why here and not the MasterNav spine** (ruled 2026-08-02, reversing the
- * chrome-altitude brief's D8). The counts came off Today's workbench band
- * because a door that leaves the surface is navigation, not a control over the
- * rows below it. The spine is the obvious next home and it is the wrong one:
- *  · **The spine root shows SECTIONS, not pages.** Page rows only exist inside
- *    a drill, so a badge on "Orders" is invisible until you drill into
- *    Fulfillment. Rolling up to sections instead merges Arrival + Packing +
- *    Testing into one "Scan Stations" number — strictly less actionable than
- *    the six doors it replaced.
- *  · **The spine's trailing count slot already means something else** —
- *    structural cardinality (how many modes/pages are inside), rendered only
- *    when `> 1` and deliberately `aria-hidden`. A workload count is different
- *    information, must be announced, and must render at 1.
- *  · **Nav is static by construction.** `nav-search.ts` is safe on every
- *    keystroke precisely because the registry is ~40 rows with no I/O; giving
- *    the spine a live per-staff feed would put that property at risk on every
- *    route in the app.
- *
- * The Inbox is already the "be told" channel: always visible, app-wide, and
- * about actionable personal work. This is the same question one layer up —
- * not "what happened" but "where is it".
- *
- * **The badge count is deliberately unchanged.** The header badge counts
- * `ActivityInboxItem`s — discrete things that happened and can be dismissed.
- * A queue depth is neither, and folding it in would inflate a number the
- * operator clears by reading. The strip is what they see once inside.
- *
- * **Cost: none at rest.** The popover mounts only when opened, so this fetches
- * on open rather than on every page load — which also keeps `/api/my-day` off
- * the app-wide path. It shares `useMyDayFeed`'s `['my-day']` query key, so on
- * Today (the feed's other client) it is a cache hit and issues no request.
- */
+/** "Where my work is" — the per-staff queue doors, at the top of the Inbox popover. */
 
 import Link from 'next/link';
 import { useMyDayFeed } from '@/features/my-day/useMyDayFeed';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/**
- * Track count is CONTAINER-relative (`auto-fill`), never a viewport breakpoint.
- * The strip has two hosts at very different widths — the ~320px bell popover and
- * the full-width Inbox page — and a `lg:grid-cols-6` would widen the popover on
- * a large screen while doing nothing for a narrow one. A fixed two-track grid was
- * right for the popover and left two 600px-wide doors on the page.
- */
+/** Track count is CONTAINER-relative (`auto-fill`), never a viewport breakpoint. */
 const QUEUE_LINK_GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1';
 
 /** Reserve the strip's box while the feed settles, so the list below cannot jump. */

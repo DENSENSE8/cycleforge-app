@@ -1,11 +1,4 @@
-/**
- * ⌘K palette page buckets — Pin → SPINE_SECTIONS. A leftover `kind: 'bottom'`
- * row (none on the default map) still lands in an Account band.
- *
- * Composes {@link getSidebarNavItems} — the ONE gated funnel, never the raw
- * `APP_SIDEBAR_NAV` — with {@link spineSectionIdForPage} + {@link spineAccentFor}.
- * Never invents a second nav map or section labels.
- */
+/** ⌘K palette page buckets — Pin → SPINE_SECTIONS. */
 
 import { searchNav } from '@/lib/nav/nav-search';
 import {
@@ -70,17 +63,8 @@ function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
 export function buildCommandBarNavGroups(
   permissions?: ReadonlySet<string>,
 ): CommandBarNavGroup[] {
-  // THE ONE FUNNEL. The mobile-first gate lives inside `getSidebarNavItems`
-  // (`LANE_MOBILE_FIRST`), so the palette has to read it on BOTH paths. The
-  // old `permissions ? getSidebarNavItems(…) : APP_SIDEBAR_NAV` ternary
-  // bypassed the gate whenever a caller passed no permissions, and a no-arg
-  // `buildCommandBarNavGroups()` still emitted Sales / Support / Operations
-  // rows under their own band headings — a live breach of *"there should not
+  // THE ONE FUNNEL.
   // even be any front end routing or links to it"* (operator 2026-09-14).
-  // `getSidebarNavItems` already no-ops permission filtering when the set is
-  // undefined, so the legacy unauthenticated semantics survive the fix; the
-  // `SPINE_SECTIONS` loop below already skips an empty band, so a hidden lane
-  // cannot paint a heading over nothing.
   const base = getSidebarNavItems({ permissions });
   // Same reachability rule the spine applies: a page whose every mode was
   // permission-filtered is absent from the palette, not a row that opens onto a
@@ -132,17 +116,7 @@ export function buildCommandBarNavGroups(
   return groups;
 }
 
-/**
- * Filter page rows through the shared nav matcher. Subgroup chrome (none on
- * the default map) is dropped while filtering.
- *
- * Ranking is applied WITHIN each band, not across them: the palette's bands are
- * the spine's sections, and re-sorting bands by best-hit would make the group
- * order jump around under the cursor while typing. Cross-band ranking is the
- * flat-list job, which is what the spine does.
- *
- * `href` rides as a keyword, so it is searchable but can never outrank a label.
- */
+/** Filter page rows through the shared nav matcher. */
 export function filterCommandBarNavGroups(
   groups: readonly CommandBarNavGroup[],
   query: string,

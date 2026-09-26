@@ -23,50 +23,9 @@ import { cn } from '@/utils/_cn';
 import { StepStateBadge } from './StepStateBadge';
 import type { ProcedureStepRow } from './types';
 
-/**
- * Procedure checklist — the station's steps, all of them, at a glance.
- *
- * The house display for "what this station asks of the operator, and where they
- * are in it". Dumb by construction: it takes resolved steps and renders them.
- * Every domain (Unbox, Testing, Triage, Pack) supplies its own vocabulary from
- * its step SoT; this component learns no domain.
- *
- * ## Checklist vs cards — two surfaces, one vocabulary
- *
- * This is the **right-edge reference** display: the whole procedure, in
- * vocabulary order, nothing hidden, so the operator can see the shape of the
- * work and where they are in it *without leaving the step they are on*. Its
- * sibling {@link ProcedureDeck} is the **work surface** — one expanded section
- * at a time, showing that step's evidence. Neither surface carries the step's
- * action button; on Unbox that lives in the bottom dock, which is pinned while
- * both of these scroll.
- *
- * They are not a duplication, and the earlier "exactly ONE procedure surface"
- * rule that deleted this component was reading them as one. They answer
- * different questions from opposite edges: *where am I in the whole job* versus
- * *what do I do right now*. Both render from the SAME resolved
- * `ProcedureStepRow[]`, so they cannot disagree — that, not deletion, is what
- * keeps two views of one procedure honest.
- *
- * ## Order
- *
- * Rows render in the resolved vocabulary order the caller passed. Reorder is
- * allowed **only** when `onReorderSteps` is provided (authoring / dogfood SOP
- * mode); the default remains read-only vocabulary order with click-to-focus.
- *
- * ## Anatomy
- *
- * One row per step: marker → label → summary. House one-row anatomy
- * (`ui-design-system.md`): left-aligned, `truncate`, constant row height,
- * selection is background + ring only — never a size shift.
- */
+/** Procedure checklist — the station's steps, all of them, at a glance. */
 
-/**
- * Cozy-row height for preview viewport math: `inset-cozy` (py-1.5) + 16px
- * marker ≈ 40px. Module-private — the only consumer is this file's own
- * `maxVisibleRows` math, and an exported geometry constant is a second place
- * for row height to be declared. Keep in sync with the row anatomy below.
- */
+/** Cozy-row height for preview viewport math: */
 const PROCEDURE_CHECKLIST_ROW_PX = 40;
 
 function StepRowContent({ step }: { step: ProcedureStepRow }) {

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * @domain-job Staff-identity themed PIN numpad key cell (digit or icon).
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse Button — ds-raw-button keypad cell painted from
- *   THEME_NUMPAD identity hues (not chrome variants). Shared by StaffPinPad
- *   and SetPinPad; those jobs stay separate (sign-in vs first-time set).
- */
+/** @domain-job Staff-identity themed PIN numpad key cell (digit or icon). */
 
 import type { ReactNode } from 'react';
 import { numpadTheme } from '@/components/auth/theme-numpad';

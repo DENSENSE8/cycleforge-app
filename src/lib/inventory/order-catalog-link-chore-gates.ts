@@ -37,26 +37,7 @@ export function detectListingPlatform(
   return src || 'unknown';
 }
 
-/**
- * The raw identifier a source uses to name the listing on an order line.
- *
- * The Google-Sheets path carries a real marketplace Item Number. **Every other
- * lane hardcodes `itemNumber: ''`** — CSV import (`orders/import-csv/route.ts`)
- * and the API connectors (ShipStation · Shopify · Square) — and names the
- * product only by SKU. Those orders wrote a blank `orders.item_number`, which
- * made them invisible to BOTH doors of the catalog-link queue:
- * `shouldEnqueueCatalogLinkChore` requires a non-blank raw item number, and
- * `batchPair`'s backfill cascade matches on `orders.item_number`. A CSV order
- * with an unknown SKU was therefore unlinked forever, in no queue and in no
- * count.
- *
- * Falls back to the SKU **only on a catalog miss**: a matched row keeps the
- * platform item id `resolveCatalogLink` fills from `sku_platform_ids`, which is
- * a truer listing identity than the source's own SKU. A source carrying
- * neither (Shopify · Square) still resolves blank, so it still enqueues
- * nothing — an order that names no product has nothing for the queue to ask
- * the operator about.
- */
+/** The raw identifier a source uses to name the listing on an order line. */
 export function resolveListingIdentity(params: {
   itemNumber: string;
   sku: string;

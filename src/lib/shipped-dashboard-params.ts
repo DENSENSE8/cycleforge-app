@@ -29,13 +29,7 @@ function parseStaffParam(raw: string | null): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
-/**
- * Single source of truth for how the Shipped dashboard turns URL state into the
- * `dashboardShippedQuery` arguments + the client-side filter values. Both the
- * Shipped ledger's feed (`useShippedTableFilters`) and the sidebar scan-out panel resolve
- * params through here so they build an IDENTICAL React Query key and share one
- * fetch (per the dedupe rule in lib/queries/dashboard-queries.ts).
- */
+/** Single source of truth for how the Shipped dashboard turns URL state into the `dashboardShippedQuery` arguments + the client-side filter… */
 export function resolveShippedQueryArgs(searchParams: ParamsLike): ResolvedShippedParams {
   const shippedFilterParam = searchParams.get('shippedFilter');
   const shippedFilter =

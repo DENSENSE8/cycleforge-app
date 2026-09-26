@@ -10,26 +10,13 @@ function isBlank(value: unknown): boolean {
   return value === null || value === undefined || String(value).trim() === '';
 }
 
-/**
- * POST /api/orders/backfill/ebay
- *
- * Strategy (update-only, no inserts):
- *  1. Find unshipped orders in our DB that have at least one blank critical field
- *     AND have a non-empty order_id we can look up on eBay.
- *  2. For each order, find the right eBay account (via account_source match) and
- *     call getOrderDetails(order_id) to retrieve the live eBay data.
- *  3. Fill in ONLY columns that are currently blank — never overwrite existing data.
- */
+/** POST /api/orders/backfill/ebay */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json().catch(() => ({}));
     const limit = Math.max(1, Math.min(1000, Number(body.limit || 500)));
 
-    // ── 1. Orders needing backfill ────────────────────────────────────────────
-    // orders is tenant-owned (org-filtered explicitly). The stn join is on the
-    // integer surrogate PK (stn.id = o.shipment_id) so it's safe bare;
-    // shipping_tracking_numbers has no organization_id column (NEEDS-COL) — it's
-    // reached only through the org-scoped orders row, so no stn org predicate.
+    // ── 1. Orders needing backfill ──────────────────────────────────────────── orders is tenant-owned (org-filtered explicitly).
     const { rows: rawCandidates } = await tenantQuery<{
       id: number;
       order_id: string;

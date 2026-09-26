@@ -1,19 +1,4 @@
-/**
- * Surface resolver — given a surface key + an org, decide whether to render the
- * surface from a published `station_definitions` composition or fall back to the
- * hard-coded legacy tree (the `'legacy'` escape hatch every migrated surface
- * keeps until data parity).
- *
- * The DECISION is pure and DB-free (`decideSurfaceRender`) so it is unit-tested
- * without a database. The LOAD is a thin injectable wrapper (`resolveSurface`)
- * that defaults to the real `tenantQuery` but takes fakes in tests — the same
- * `Deps`-injection contract as applyTransition / studio/definitions.
- *
- * Phase 0 ships the resolver as the foundation; the production render host that
- * consumes a `'composed'` result is Phase 3a. Until an org publishes a real
- * composition for a surface, every resolve returns `'legacy'`, so wiring this in
- * is a no-op for behavior — exactly the safe-by-default cutover the plan wants.
- */
+/** Surface resolver — given a surface key + an org, decide whether to render the surface from a published `station_definitions` composition… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { StationConfig, StationDefinitionRow } from './contract';

@@ -1,18 +1,6 @@
 "use client";
 
-/**
- * PO-items section of the LineEditPanel — Unbox and Triage's adapter onto
- * {@link PoItemsSection}, the one PO-items surface every station renders.
- *
- * What stays here is the UNBOX CONTROLLER: the `ActiveLineConditionSerial`
- * capture leaf mounted under each editable line, the dual-loci dock handoffs,
- * the serial CRUD bound to `useUnboxLineController`, and the pairing `onLinked`
- * patch. What LEFT is the lane decision (matched accordion vs unfound surface,
- * including the lineless-real-PO probe) — Unbox, Testing and `/search` each
- * carried a copy of it, and Testing's had already drifted. {@link
- * classifyLineSource} still selects the controller layer, NOT the surface;
- * there is no standing carton scanner beside the rows, and no feature flag.
- */
+/** PO-items section of the LineEditPanel — Unbox and Triage's adapter onto {@link PoItemsSection}, the one PO-items surface every station… */
 
 import { useRouter } from "next/navigation";
 import { openInUnboxHref } from "@/lib/receiving/surface-path";
@@ -47,12 +35,7 @@ interface LinePoItemsSectionProps {
   c: UnboxLineController;
   /** Serial-number entry on the active line (unbox captures serials; triage doesn't). */
   serialScan: boolean;
-  /**
-   * Unbox dual loci: dock owns scanner/procedure; meta chips forward via
-   * {@link onFocusCaptureStep}. Every editable line mounts Tags + open serial
-   * (`ActiveLineConditionSerial`); controller-active line autofocuses centre
-   * serial. When false, under-row editors mount (Testing / unmatched).
-   */
+  /** Unbox dual loci: */
   dockOwnsCapture?: boolean;
   onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
   /**
@@ -209,11 +192,7 @@ export function LinePoItemsSection({
       onEditConditionInDock={
         dockOwnsCapture && onFocusCaptureStep
           ? (line) => {
-              // Sibling line: the dock's `activeKey` is bound to the OTHER
-              // (controller) line, so `onFocusCaptureStep` would arm the wrong
-              // line's condition. Promote this line to the controller — its own
-              // in-row Tags / dock condition step then follow. Do NOT force a
-              // serial focus (condition ≠ serial).
+              // Sibling line:
               if (line.id !== row.id) {
                 setActiveSinkId(`po-line:${line.id}`);
                 dispatchSelectLine(line);
@@ -268,10 +247,7 @@ export function LinePoItemsSection({
           : undefined
       }
       activeRowSlot={
-        // Dual loci (Unbox `dockOwnsCapture`): every editable line mounts the
-        // capture face; chips still forward to the dock. Testing / unmatched
-        // (`!dockOwnsCapture`) keep under-row editors. RETURN match evidence
-        // rides inside ActiveLineConditionSerial via serialLookup.
+        // Dual loci (Unbox `dockOwnsCapture`):
         unitsChrome && serialScan
           ? ({ serials, units, line }) => {
               const isControllerLine = line.id === row.id;
@@ -367,10 +343,7 @@ export function LinePoItemsSection({
                     null
                   }
                   onArmCapture={() => {
-                    // Sibling faces paint like the controller but only one line
-                    // owns data-active-step + the po-line: scan sink. Promote
-                    // before Tags / serial / condition arm so outline + sink
-                    // catch up; local focus does not wait on this.
+                    // Sibling faces paint like the controller but only one line owns data-active-step + the po-line:
                     setActiveSinkId(`po-line:${line.id}`);
                     if (!isControllerLine) dispatchSelectLine(line);
                   }}

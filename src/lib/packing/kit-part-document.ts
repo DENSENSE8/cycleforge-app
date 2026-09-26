@@ -1,22 +1,4 @@
-/**
- * Kit-part reference document — the one place a raw `sku_kit_parts` row becomes
- * something the bench can render.
- *
- * A part MAY carry the paper that physically goes in the box (a warranty card,
- * a quick-start guide, a compliance insert) —
- * `2026-08-01d_kit_part_reference_document.sql`. Three nullable columns is a
- * shape every call site would otherwise re-interpret slightly differently, and
- * the two failure modes are silent:
- *
- *   - a whitespace-only `document_url` renders an EMPTY viewer, not an error —
- *     the operator sees a named insert that will not open, and reasonably
- *     concludes the app is broken rather than that the data is;
- *   - an unrecognized `document_mime` reaching `DocumentPreviewFrame` picks
- *     neither the pdf iframe nor the img, which fails the same way.
- *
- * So absence is decided ONCE, here: no url ⇒ no document ⇒ the row renders
- * exactly as it did before this feature existed. Pure + DB-free.
- */
+/** Kit-part reference document — the one place a raw `sku_kit_parts` row becomes something the bench can render. */
 
 import type { DocumentPreviewMimeHint } from '@/design-system/components/document-preview-mime';
 

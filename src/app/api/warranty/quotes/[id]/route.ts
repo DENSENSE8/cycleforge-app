@@ -6,13 +6,7 @@ import { setQuoteStatus } from '@/lib/warranty/quotes';
 import { claimIdFromPath, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyQuoteStatusBody } from '@/lib/schemas/warranty';
 
-/**
- * PATCH /api/warranty/quotes/[id]
- *
- * Move a paid-repair quote DRAFT→SENT→ACCEPTED|DECLINED (or EXPIRED). On ACCEPTED
- * a repair_service ticket is created + linked. Gated by WARRANTY_LOGGER.
- * Permission: warranty.manage.
- */
+/** PATCH /api/warranty/quotes/[id] */
 export const PATCH = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const quoteId = claimIdFromPath(request, 1);
@@ -28,10 +22,7 @@ export const PATCH = withAuth(async (request, ctx) => {
   }
 
   try {
-    // Tenant isolation: thread the caller's org so setQuoteStatus locates the
-    // row with `WHERE id = $1 AND organization_id = $2 FOR UPDATE` (org-ownership
-    // 404 gate — a cross-tenant quoteId is treated as not-found, never 403) and
-    // org-pins every downstream UPDATE / repair_service handoff to that tenant.
+    // Tenant isolation:
     const result = await setQuoteStatus(quoteId, parsed.data.status, ctx.staffId ?? null, ctx.organizationId);
     if (!result.ok) return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
     await recordAudit(pool, ctx, request, {

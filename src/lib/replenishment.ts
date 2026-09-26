@@ -182,10 +182,7 @@ async function getIncomingQuantityForItem(zohoItemId: string, orgId: OrgId): Pro
   return { incomingQty, openPoIds: Array.from(openPoIds) };
 }
 
-// Tenant-aware body for refreshStockCacheForItem. `exec` is the active executor
-// (a GUC-scoped client or the caller's transaction client). String-key match on
-// item_stock_cache.zoho_item_id / items.zoho_item_id is gated with
-// AND organization_id = $n.
+// Tenant-aware body for refreshStockCacheForItem.
 async function refreshStockCacheForItemBody(zohoItemId: string, exec: DbClient, orgId: OrgId) {
   const itemLookup = await exec.query(
     `SELECT id, quantity_available, quantity_on_hand FROM items WHERE zoho_item_id = $1 AND organization_id = $2 LIMIT 1`,
@@ -854,10 +851,6 @@ async function reconcilePOStatus(request: ReplenishmentRequestRow, orgId: OrgId)
   }, 0);
 
   // Also check local receiving lines for units received against this PO.
-  // Line-level zoho identity lives on receiving_line_zoho (W2 reader cutover):
-  // key the lookup on rz (string-key match on zoho_purchaseorder_id +
-  // zoho_item_id, gated by rz.organization_id) and reach the spine via
-  // rz.receiving_line_id for the quantity/status columns.
   let localReceived = 0;
   if (request.zoho_po_id) {
     const localResult = await withTenantConnection(orgId, (c) => c.query(

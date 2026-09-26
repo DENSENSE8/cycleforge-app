@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * URL-backed `?sort=` (+ optional `?dir=`) for queue display order
- * (Pending / Testing). Default `priority` omits the param; column sorts may
- * carry `dir` (omitted when that column’s default).
- *
- * Header clicks paint pending before App Router's soft-replace lands, so the
- * list reorders in the same tick as the click.
- */
+/** URL-backed `?sort=` (+ optional `?dir=`) for queue display order (Pending / Testing). */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

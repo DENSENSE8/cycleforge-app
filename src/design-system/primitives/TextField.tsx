@@ -31,12 +31,7 @@ const flushFieldClass = {
 
 export interface TextFieldProps
   extends Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'size'> {
-  /**
-   * Floating label. Sits centered inside the field as the placeholder while the
-   * input is empty and unfocused, then animates up into the top border on focus
-   * — or stays up whenever the field holds a value. So the label doubles as the
-   * placeholder and the header, with no separate placeholder text.
-   */
+  /** Floating label. */
   label: string;
   /** Controlled value. */
   value: string;
@@ -61,15 +56,7 @@ export interface TextFieldProps
   rows?: number;
 }
 
-/**
- * Floating-label text field — the house "Floating-label field".
- * Replaces the static label-above-input
- * forms: the label animates into the border on focus/fill.
- *
- * The float state is derived from `value` (so it stays up when filled), while
- * the `peer-focus:` variants raise the label on focus even when empty. No
- * leading icon — the motion is the affordance.
- */
+/** Floating-label text field — the house "Floating-label field". */
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
   function TextField(
     {

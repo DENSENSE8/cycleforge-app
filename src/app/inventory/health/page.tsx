@@ -18,22 +18,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/health — Operations dashboard for the inventory v2 rollout.
- *
- * Read-only server component. Surfaces:
- *   - Flag snapshot (which phases are ON)
- *   - Schema artifact check (Phase 0/1 tables + enum values present)
- *   - Backfill progress (TSN linked vs unlinked, serial_units count)
- *   - sku_stock drift report (v_sku_stock_drift — should be empty)
- *   - Open allocation summary (count + oldest)
- *   - Recent inventory_events (last 50, with status diff + actor)
- *
- * Gated by admin.view at the route level. Each query is independent;
- * one slow query doesn't block the rest of the page. Data loading + the
- * preflight derivation live in {@link loadInventoryAdminData}; every section
- * is a presentational component under `./_inventory-admin/`.
- */
+/** /inventory/health — Operations dashboard for the inventory v2 rollout. */
 export default async function InventoryAdminPage() {
   const user = await requirePermission('admin.view', { enforce: true });
   const data = await loadInventoryAdminData(user.organizationId);

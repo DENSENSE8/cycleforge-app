@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Store order-scope filter — All orders vs Repair (-RS).
- *
- * Lives in the SearchField trailing cluster (`trailingSuffix`, after paste)
- * via {@link FilterMenu}, beside the field rather than inside it. Paste leads the icon
- * cluster (hover-reveal). Replaces the old HorizontalButtonSlider tab row
- * under the search field.
- *
- * When scope ≠ `all`, callers also render {@link FilterHotChip}
- * beside the SearchField (floor glanceability — D1/D10).
- */
+/** Store order-scope filter — All orders vs Repair (-RS). */
 
 import { useState } from 'react';
 import { ShoppingCart, Wrench } from '@/components/Icons';

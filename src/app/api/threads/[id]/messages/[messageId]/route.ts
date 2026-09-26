@@ -6,12 +6,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { editThreadMessage, deleteThreadMessage } from '@/lib/threads/threads';
 import pool from '@/lib/db';
 
-/**
- * PATCH  /api/threads/[id]/messages/[messageId] — edit a message body.
- * DELETE /api/threads/[id]/messages/[messageId] — soft-delete a message.
- * Gated by support.thread.manage; the manage grant authorizes moderating any
- * message (canManageAll), and we record the acting staff for the audit trail.
- */
+/** PATCH /api/threads/[id]/messages/[messageId] — edit a message body. */
 function toId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;

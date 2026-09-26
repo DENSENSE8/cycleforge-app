@@ -1,39 +1,6 @@
 'use client';
 
-/* ──────────────────────────────────────────────────────────────────────────
- * ReceiveFeedbackRegion
- *
- * The single inline home for receive feedback. On Unbox it co-mounts in the
- * absolute dock float stack above the notes + Print · Receive shell (not the
- * in-flow StationWorkbench footer — an absolute dock would cover that slot).
- * Replaces the old bottom-right toast entirely — feedback lives where the
- * operator's eyes already are.
- *
- * It is WELDED to the composer below it (2026-08-21): one silhouette, square
- * bottom, the dock's top radius flattened via `weldTop`. See
- * {@link WeldedFeedbackPanel} for why the seam matters.
- *
- * FOUR STATES, one panel, from the shared machine in
- * {@link INLINE_ACTION_FEEDBACK_TONE}:
- *
- *   loading  → the request is in flight. The status line cycles steps from
- *              {@link receivePhaseSteps} — every one derived from state the
- *              client actually holds, never a scripted ticker.
- *   success  → the receive is settled and clean.
- *   warning  → it committed, but carrying something: a photo-policy waiver, a
- *              skipped inventory push, a cooldown.
- *   error    → the request did not go through.
- *
- * The panel SETTLES ON THE RESPONSE. The inventory purchase receive is no
- * longer part of this request — the scheduled receive backfill drains it, and
- * its backlog (Settings → Integrations) is the only place that signal lives.
- * So there is nothing here that waits, and nothing to reconcile against.
- *
- * WHAT THE ROW HOLDS is one truncated line plus the actions. Everything else —
- * the staggered checklist, the per-PO outcomes, the raw response — lives behind
- * More. That is the trade the weld buys: the panel sits on top of the field the
- * operator is about to type in, so it must cost one line at rest.
- * ────────────────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────────────── ReceiveFeedbackRegion */
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
@@ -70,10 +37,7 @@ type ChecklistView = {
 };
 
 export function buildView(summary: ReceiveSummary): ChecklistView {
-  // A waived receive outranks every success headline below: the lines really
-  // did commit, but they committed carrying an open exception, and the bench is
-  // where the operator who took that call can still read it back. Warning, and
-  // the reason is named — never the plain green "Receive complete".
+  // A waived receive outranks every success headline below:
   if (summary.photoPolicyWaiver) {
     const { blockers } = summary.photoPolicyWaiver;
     return {
@@ -287,10 +251,7 @@ function ReceiveDiagnosticPanel({
   const photoBlock = readPhotoPolicyBlock(result.response.httpStatus, result.response.body);
   const canOverride = classification.verdict === 'photo_policy' && Boolean(onPhotoPolicyOverride);
 
-  // The waiver is the CTA only because the operator is already blocked. It
-  // stays the panel's ONE verb rather than a button buried under More — but it
-  // is never the easy button: confirming costs a named reason that lands on the
-  // carton's exception list. Shooting the missing photos is still the way out.
+  // The waiver is the CTA only because the operator is already blocked.
   const cta: WeldedFeedbackCta | undefined = canOverride
     ? {
         label: 'Receive without photos…',
@@ -381,11 +342,7 @@ export function ReceiveFeedbackRegion({
         ? 'diagnostic'
         : 'none';
 
-  // Key the SUCCESS child by its timestamp so a fresh receive replays the
-  // stagger; progress / diagnostic are stable. The panel peels once per key,
-  // and its status line crossfades within a key — so a receive that moves
-  // in-flight → settled hinges up once and then narrates, rather than slamming
-  // the composer's top radius open and shut twice.
+  // Key the SUCCESS child by its timestamp so a fresh receive replays the stagger; progress / diagnostic are stable.
   const childKey =
     phase === 'success' && receiveResult?.kind === 'success'
       ? `success-${receiveResult.at}${replay ? '-replay' : ''}`

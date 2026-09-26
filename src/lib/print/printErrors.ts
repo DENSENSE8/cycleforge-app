@@ -1,11 +1,4 @@
-/**
- * Turn a raw WebUSB / Web Serial failure reason into an actionable message.
- * Shared by the Settings → Hardware test buttons and the live print paths so
- * an operator sees WHY a silent print fell back to the dialog.
- *
- * The most common cause is a printer the OS driver already owns
- * (USB "Access denied" / can't claim the interface, or the serial port in use).
- */
+/** Turn a raw WebUSB / Web Serial failure reason into an actionable message. */
 export function friendlyPrintError(reason: string | null | undefined): string {
   const r = (reason || '').toLowerCase();
   if (

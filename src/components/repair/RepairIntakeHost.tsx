@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Repair intake overlay host — the `?new=true` host for the **rail-less**
- * repair desk.
- *
- * The desk lost its left column when Favorites stopped being their own rail and
- * became a SCOPE of the shared catalog picker (`ProductSelector`
- * `favoritesWorkspace` / `?mode=favorites`, star pip per tile). That column had
- * exactly one tenant — the favorites rail — plus this overlay, so the overlay
- * moved to the right pane (`ReceivingRightPane`, repair branch) and the rail is
- * gone. `railless: true` on the `repair` nav entry is the other half of the same
- * fact.
- *
- * Who dispatches `?new=true`: the global Add menu action `repair-new`
- * ("New repair order" → `/repair?new=true`, see `src/lib/global-add/catalog.ts`)
- * and `RepairWorkspaceHeader`'s Add, both through `useRepairNewParam`. The URL
- * is a trigger, not sticky overlay state — the pulse paints intake open and is
- * then stripped.
- *
- * This component mounts **zero in-flow DOM**: it is a portal host and nothing
- * else. It has no chrome of its own, so there is nothing here to style.
- */
+/** Repair intake overlay host — the `?new=true` host for the **rail-less** repair desk. */
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';

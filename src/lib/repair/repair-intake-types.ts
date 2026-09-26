@@ -1,12 +1,4 @@
-/**
- * Repair-intake shapes shared by the domain (receipt rendering, intake logic)
- * and the intake form components.
- *
- * Extracted from the form components so `src/lib` never imports a React
- * component for a type. The components re-export these names, so every
- * existing `from './CustomerInfoForm'` / `'./RepairIntakeStepper'` /
- * `'./RepairIntakeForm'` import keeps resolving identically.
- */
+/** Repair-intake shapes shared by the domain (receipt rendering, intake logic) and the intake form components. */
 
 export type ContactFieldKey = 'name' | 'phone' | 'email' | 'extras';
 

@@ -11,13 +11,7 @@ interface ProgressBarProps {
   showPercentage?: boolean;
   showRemaining?: boolean;
   variant?: 'default' | 'success';
-  /**
-   * Segmented face (PG12): N discrete increments instead of one continuous
-   * fill — the touch/mobile-first reading, where "how far along" must be
-   * legible at arm's length without text. Suppresses the percentage/remaining
-   * stats row (the segments ARE the count; compose an external `n/N` for the
-   * numeric form). Each segment fills with the same M1-legal scaleX transform.
-   */
+  /** Segmented face (PG12): */
   segments?: number;
   className?: string;
 }
@@ -88,13 +82,7 @@ export function ProgressBar({
         </div>
       )}
       <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
-        {/*
-          Law M1: nothing animates layout. The fill is a `scaleX` transform, not
-          a `width` tween — it composites off the main thread and reflows
-          nothing, where animating width relaid out the document every frame.
-          `transform-origin: left` makes the scale read as a fill from the start
-          edge. `useReducedMotion` snaps to the value instead of easing to it.
-        */}
+        {/* Law M1: nothing animates layout. */}
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: percentage / 100 }}

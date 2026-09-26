@@ -2,18 +2,7 @@
 export const CUSTOM_FIELD_ENTITY_TYPES = ['ORDER', 'RECEIVING'] as const;
 export type CustomFieldEntityType = (typeof CUSTOM_FIELD_ENTITY_TYPES)[number];
 
-/**
- * Entity types allowed to paint / create / hydrate custom columns **in product**.
- *
- * Unbox History (RECEIVING) is the spreadsheet golden — a new table-engine
- * capability dogfoods there before any other `entityFamily` fan-out. Adding a
- * type here is a reviewed decision and must land with that family's host + list
- * API wired in the same change (guard:
- * `custom-fields-history-first.guard.test.ts`).
- *
- * Storage may still know `ORDER` in {@link CUSTOM_FIELD_ENTITY_TYPES}; live
- * product mounts may not use it until it appears in this list.
- */
+/** Entity types allowed to paint / create / hydrate custom columns **in product**. */
 export const CUSTOM_FIELD_LIVE_ENTITY_TYPES = ['RECEIVING'] as const satisfies readonly CustomFieldEntityType[];
 
 type CustomFieldLiveEntityType = (typeof CUSTOM_FIELD_LIVE_ENTITY_TYPES)[number];

@@ -28,36 +28,7 @@ import {
 } from '@/components/ui/deferred-hover-mount';
 import { cn } from '@/utils/_cn';
 
-/**
- * Lightweight hover/focus tooltip for plain meaning/help text.
- *
- * Renders the bubble in a body portal positioned from the trigger's rect, so it
- * is never clipped by an `overflow` container (e.g. a scrolling sidebar) and
- * appears instantly by default — unlike the native `title` attribute (slow,
- * unstyled) and unlike SiteTooltipProvider (which always shows a copy affordance).
- * Pass {@link openDelayMs} when the trigger sits on a transit path (e.g. a
- * resize-edge handle) so a cross-hover does not flash the label.
- *
- * The bubble is measured once mounted, then clamped to the viewport (8px margin)
- * and flipped above/below as needed, so it NEVER renders off the page. Untrusted
- * / near-origin anchors are rejected so the bubble cannot flash at the
- * viewport's top-left corner.
- *
- * ## Deferred machinery
- *
- * Everything above is the BUBBLE's job, and a bubble cannot exist before a
- * pointer or a focus ring arrives. So this component is only the trigger shell —
- * two hooks, no effects — and {@link HoverTooltipBubble} (timers, portal, rect
- * clamp, scroll teardown: 12 more hooks) mounts on the first activating
- * interaction and stays mounted, via {@link useDeferredHoverMount}. That first
- * interaction is carried in, so the hover that pays for the mount is the hover
- * that shows the label.
- *
- * This is invisible to the 350+ call sites: the trigger DOM, the props, and the
- * bubble's behavior are unchanged. The tooltip is never in the DOM before it
- * opens — it was not before this split either — so no accessible name or
- * description moves.
- */
+/** Lightweight hover/focus tooltip for plain meaning/help text. */
 export function HoverTooltip({
   label,
   children,
@@ -74,20 +45,9 @@ export function HoverTooltip({
   className?: string;
   /** Set false when the trigger sits inside another focusable control (e.g. a row button). */
   focusable?: boolean;
-  /**
-   * Attach the hover/focus handlers directly to the single child element instead
-   * of wrapping it in a `<span>`. Use this when a wrapper span would disturb
-   * flex/grid layout (e.g. a button that relies on parent `items-stretch`).
-   * The child must be a single DOM element. Worst case if misused: the tooltip
-   * doesn't show — never a layout or functional break.
-   */
+  /** Attach the hover/focus handlers directly to the single child element instead of wrapping it in a `<span>`. */
   asChild?: boolean;
-  /**
-   * Bubble placement relative to the trigger. `auto` prefers above and flips
-   * below when there isn't room; `below` / `above` / `right` / `left` pin to
-   * that side (still viewport-clamped; side tips flip when the pinned side
-   * cannot seat the bubble).
-   */
+  /** Bubble placement relative to the trigger. */
   placement?: PortalTooltipPlacement;
   /**
    * Dwell before showing on mouse enter. `0` (default) = instant. Focus still
@@ -317,10 +277,7 @@ function HoverTooltipBubble({
     }, openDelayMs);
   }, [clearOpenTimer, disabled, openDelayMs, show]);
 
-  // Publish the handle, then act on the interaction that mounted us — the whole
-  // point of the split is that the FIRST hover still shows a label. `readIntent`
-  // is non-destructive, so a StrictMode remount re-applies it instead of
-  // swallowing it; the trigger's `release` is what clears it.
+  // Publish the handle, then act on the interaction that mounted us — the whole point of the split is that the FIRST hover still shows a label.
   useDeferredHoverEngine(bridge, { show, hide, scheduleShow }, (intent, h) => {
     if (intent === 'focus') h.show();
     else h.scheduleShow();
@@ -356,10 +313,7 @@ function HoverTooltipBubble({
     });
   }, [anchor]);
 
-  // Dismiss when the trigger unmounts, the pane scrolls, or the host panel
-  // tears down — otherwise the body portal stays at a fixed viewport rect and
-  // "leaks" over unrelated regions (e.g. condition pills over the notes tabs
-  // after a mode switch or scroll in ReceivingLineWorkspace).
+  // Dismiss when the trigger unmounts, the pane scrolls, or the host panel tears down — otherwise the body portal stays at a fixed viewport…
   useEffect(
     () => () => {
       clearOpenTimer();

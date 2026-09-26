@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Task evidence — **Photos** and **Videos**: what the job looks like, so the
- * person handed it does not have to walk to the shelf to find out.
- *
- * Adding is one gesture for both kinds (the picker, a drop anywhere on the
- * column, or a pasted screenshot — see `TaskEvidence`); the upload hook routes
- * images to the photo platform and videos straight to GCS. Photos open Unbox's
- * viewer; videos play in place, because a clip is watched, not zoomed.
- */
+/** Task evidence — **Photos** and **Videos**: */
 
 import Image from 'next/image';
 import { Trash2 } from '@/components/Icons';

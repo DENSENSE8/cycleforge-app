@@ -1,18 +1,4 @@
-/**
- * Keyboard region owner — which frame column owns horizontal / focus feedback
- * keys after a pointer claim (or nav-keys arm).
- *
- * Complements {@link list-key-scope} (↑↓ yield while Displays is *open*) and
- * {@link nav-keys} (⌘; letter teleport). This waist answers: after the operator
- * clicks Displays, do ← → edit Displays history — or still page Middle
- * procedure?
- *
- *   pointer into Right  → owner = right  (paint focus face; ← → = Displays)
- *   pointer into Middle → owner = middle (procedure ← → resume)
- *
- * DOM: stamp {@link KEYBOARD_REGION_ATTR} on each region root; when that region
- * is the owner, also stamp {@link KEYBOARD_REGION_ACTIVE_ATTR} for CSS / guards.
- */
+/** Keyboard region owner — which frame column owns horizontal / focus feedback keys after a pointer claim (or nav-keys arm). */
 
 import type { NavRegionId } from '@/lib/keyboard/nav-keys/nav-regions';
 

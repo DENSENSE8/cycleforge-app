@@ -9,14 +9,7 @@ const paramsSchema = z.object({
   taskId: z.coerce.number().int().positive(),
 });
 
-/**
- * POST /api/replenishment/tasks/[id]/release
- *
- * Reversibility 5.7 — undo a claim: an IN_PROGRESS task returns to REQUESTED
- * and its assigned_staff_id is cleared, so another operator can pick it up.
- * 404 when the task doesn't exist (or belongs to another org); 409 when the
- * task is not IN_PROGRESS.
- */
+/** POST /api/replenishment/tasks/[id]/release */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;

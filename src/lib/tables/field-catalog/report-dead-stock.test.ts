@@ -1,19 +1,4 @@
-/**
- * Dead-stock catalog guards, materialization and adapter behaviour — the
- * family that replaced `/reports`' `DEAD_COLUMNS`.
- *
- * Two assertions here are load-bearing beyond the usual shape checks:
- *
- * - the NEVER-MOVED ROW. `days_dormant` is `NULL::int` for a SKU with stock
- *   and no ledger write, which the route selects on purpose
- *   (`includeNeverMoved`). The retired cell rendered `Number(null)` into that
- *   column and printed `NaN` — the pill must name the case, and the FACT must
- *   resolve to blank so the engine's blank rule sinks those rows under both
- *   sort directions (matching the route's `NULLS LAST`).
- * - the DORMANCY SORT. The pill's word carries a `d` suffix and the fact does
- *   not, because the `state` header compares `Number(text)`: a `'184d'` fact
- *   would sort the column lexically while looking right on screen.
- */
+/** Dead-stock catalog guards, materialization and adapter behaviour — the family that replaced `/reports`' `DEAD_COLUMNS`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

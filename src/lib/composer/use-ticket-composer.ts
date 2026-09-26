@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Everything a ticket composer IS, minus the chrome.
- *
- * Draft · channel · Cc · staged photos · the `+` tree · the send. One place,
- * because the two hosts that need it are shaped differently and cannot share a
- * dock: the `/support` console mounts a composer of its own, while the station
- * shares ONE textarea between Unbox notes and Ticket replies and switches its
- * `value` by mode.
- *
- * Sharing only the CHROME was not enough — that is exactly how the console and
- * the station drifted the first time. Each kept its own `isPublic`, its own CC
- * list and its own hand-assembled `SupportReplyVars`, so signing, `emailCcs`
- * and `photoIds` diverged three separate ways and only one surface ever knew
- * about CCs. The behaviour is the SoT; the chrome follows it.
- */
+/** Everything a ticket composer IS, minus the chrome. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

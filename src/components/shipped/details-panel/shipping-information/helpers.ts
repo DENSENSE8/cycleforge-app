@@ -112,12 +112,7 @@ export interface ShippingDisplayMeta {
   returnsCopyText: string;
 }
 
-/**
- * Derive the Return / Shipping block display values for an order — the packed /
- * tested / scanned-out names + timestamps, days-late count, and the combined
- * copy-all payload. Pure: name resolution falls back through the SAL/packer-log
- * name columns to {@link getStaffName}; timestamps format in PST.
- */
+/** Derive the Return / Shipping block display values for an order — the packed / tested / scanned-out names + timestamps, days-late count,… */
 export function deriveShippingDisplayMeta(
   shipped: ShippedOrder,
   serialNumberRows: string[],
@@ -128,10 +123,7 @@ export function deriveShippingDisplayMeta(
     (shipped.pack_activity_at && shipped.pack_activity_at !== '1' ? shipped.pack_activity_at : null)
     ?? (shipped.packed_at && shipped.packed_at !== '1' ? shipped.packed_at : null);
   const shippedAtDisplay = packedAtSource ? formatDateTimePST(packedAtSource) : '—';
-  // An order can be tested via serial scans (test_date_time = MIN scan time) OR
-  // via a test station-activity/event with no serial rows. Fall through all
-  // three so a tested order always resolves a stamp (fixes the missing "Tested"
-  // milestone for serial-less test scans). Ignore the legacy '1' sentinel.
+  // An order can be tested via serial scans (test_date_time = MIN scan time) OR via a test station-activity/event with no serial rows.
   const s = (v: string | null | undefined) => (v && String(v).trim() !== '' && v !== '1' ? String(v) : null);
   const testedAtSource =
     s(shipped.test_date_time)

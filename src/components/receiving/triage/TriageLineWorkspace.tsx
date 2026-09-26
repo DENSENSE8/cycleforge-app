@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Triage right-pane shell — browse workbench always mounted; focused carton
- * workspace crossfades over it (UnboxLineWorkspace pattern).
- *
- * Motion is the STATION cadence preset (`motionRole.swap.scan`), not the pointer
- * `workbenchPaneSettle`. Exit is instant.
- *
- * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
- * - Carton→carton (next scan): `mode="sync"` + hard-cut enter so the new opaque
- *   pane covers the old one — `mode="wait"` would punch a hole through the host.
- */
+/** Triage right-pane shell — browse workbench always mounted; focused carton workspace crossfades over it (UnboxLineWorkspace pattern). */
 
 import dynamic from 'next/dynamic';
 import {
@@ -22,14 +12,7 @@ import {
 } from '@/design-system/motion';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 
-// Phase 2 (lazy carton graph): `TriageLineWorkspace` is a co-mounted sibling of
-// `UnboxLineWorkspace` under `ReceivingRightPane`, so its static import of the
-// carton graph would drag the ~1.1k-LOC `LineEditPanel` back into the `/unbox`
-// (and arrival) browse bundle even after the Unbox path went dynamic. Split it
-// here too. Both siblings target the SAME `ReceivingLineWorkspace` specifier, so
-// Next dedupes to ONE lazy chunk fetched on the first carton open on either
-// surface. Mount stays gated on `showOverlay && workspace`; the loading fallback
-// is the triage skeleton (restore/deep-link), never a pulse-bar on browse.
+// Phase 2 (lazy carton graph):
 const ReceivingLineWorkspace = dynamic(
   () =>
     import('@/components/receiving/workspace/ReceivingLineWorkspace').then(

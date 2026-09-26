@@ -1,14 +1,4 @@
-/**
- * rAF coalescer — collapse a burst of Ably messages into one apply per frame.
- *
- * Invalidation-only handlers (`order.changed` → `invalidateQueries`) are
- * last-wins: ten messages in one frame become one refetch. Payload-sensitive
- * handlers use `mode: 'all'` so every message is delivered, still once per
- * frame.
- *
- * No CSS animation. The visual liveness signal on these surfaces is a
- * decaying timestamp, not a glow.
- */
+/** rAF coalescer — collapse a burst of Ably messages into one apply per frame. */
 
 export type FrameCoalesceMode = 'last' | 'all';
 

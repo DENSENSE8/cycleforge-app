@@ -192,11 +192,7 @@ test('an exact-arm failure still lets the fuzzy arm answer', async () => {
 // ── identifier-branch coverage ──────────────────────────────────────────────
 
 test('an identifier query asks EVERY entity source, not just the order-shaped ones', async () => {
-  // Regression: the identifier branch queried orders / units / holds /
-  // receiving and nothing else, so a bare SKU ("00624"), an FBA shipment ref
-  // ("FBA-08/28/26") and a repair ticket ("#9735") were unreachable by their
-  // own identifiers — the rows existed, nothing asked for them. Found by
-  // checking 30 real identifiers out of the dev database against live search.
+  // Regression: the identifier branch queried orders / units / holds / receiving and nothing else, so a bare SKU ("00624"), an FBA shipment…
   const asked: string[] = [];
   const deps: FindRecordsDeps = {
     exact: async (_org, query) => {

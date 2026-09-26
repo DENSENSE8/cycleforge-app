@@ -53,16 +53,7 @@ interface DateRangePickerPillProps {
   className?: string;
 }
 
-/**
- * Compact period control for workbench chrome. Interactive surfaces render as a
- * calendar {@link ToolbarButton} (icon rail peer of search / fields) that opens
- * a popover with the period summary, optional week steppers, and calendar.
- * Static (no picker / weekNav) still renders a read-only fact pill.
- *
- * It owns no application state: every choice flows out through
- * `onSelectCustomRange` / `weekNav` so each surface maps a selection onto its
- * own URL params (the shipped table writes `?shippedWeekOffset` / `?dateFrom`).
- */
+/** Compact period control for workbench chrome. */
 export function DateRangePickerPill({
   label,
   count,
@@ -144,12 +135,7 @@ export function DateRangePickerPill({
             focusRing('field', 'accent'),
           )}
         >
-          {/* Period title + week steppers. Suppressed whenever the calendar is
-              shown: it restates the period the calendar already displays and
-              stacks a second chevron pair directly above the month nav. On the
-              week-stepping surfaces (Unbox / Testing / Station history) there
-              is no calendar, so this row IS the popover — never make it
-              unconditional again, or those three open empty. */}
+          {/* Period title + week steppers. */}
           {!hasPicker ? (
             <div className="flex items-center justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
@@ -264,14 +250,7 @@ interface DateRangeHeaderProps {
   onClear?: () => void;
 }
 
-/**
- * Slim 40px table header: compact calendar period icon on the left and the
- * columns icon pinned top-right. Surfaces with week stepping pass `weekRange`
- * + `onPrevWeek`/`onNextWeek` (chevron steppers live in the popover). The
- * shipped surface additionally passes `onSelectCustomRange` + `activeRange`
- * for the custom-range calendar picker. A surface with no
- * `weekRange` (e.g. Repair) renders a plain count with no control.
- */
+/** Slim 40px table header: */
 export default function DateRangeHeader({
   count,
   label,

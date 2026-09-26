@@ -7,21 +7,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CounterWorkspace } from '@/components/counter/CounterWorkspace';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
-/**
- * `/counter` — the desk side of the shared counter session.
- *
- * Lives in the **Sales** domain section, not Scan Stations: this surface has no
- * scanner and mounts no Station chrome, and Scan Stations groups a
- * scanner-driven input model (`StationGroupId` docblock). A counter visit is a
- * sale — Sales already owns the boards that REVIEW sales; this is where one is
- * MADE.
- *
- * `?session={id}` selects the visit. Which tablet it drives is a property of
- * the session (its bound `kiosk_device_id`), so the URL stays a link a staffer
- * can hand to whoever takes over.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5).
- */
+/** `/counter` — the desk side of the shared counter session. */
 function CounterPageContent() {
   const params = useSearchParams();
   const raw = params.get('session');
@@ -33,13 +19,7 @@ function CounterPageContent() {
       <RouteShell
         actions={null}
         history={(
-          /*
-            Counter is a SALES child, not a Scan Station — `getSidebarNavPageId`
-            answers `sales` for this path — so the frame here draws Sales' title
-            and its four tabs with Counter lit. Switching tabs lands on
-            `/dashboard?mode=…`, which wears the same frame: the strip does not
-            blink out from under the operator on the one tab that changes route.
-          */
+          /* Counter is a SALES child, not a Scan Station — `getSidebarNavPageId` answers `sales` for this path — so the frame here draws Sales'… */
           <DeskPageLayout className="h-full">
             <CounterWorkspace sessionId={sessionId} />
           </DeskPageLayout>

@@ -12,13 +12,7 @@ import {
   unlinkManualDocumentFromSku,
 } from '@/lib/documents/manual-documents';
 
-/**
- * Pair / unpair a library manual to the SKU catalog row resolved from a
- * receiving line. Tech-facing (`tech.qc_pass`) so testers can attach the right
- * manual from the testing screen. Pairing creates the catalog row on demand.
- *
- * Phase 3: pair also promotes into documents + SKU link; unpair removes the link.
- */
+/** Pair / unpair a library manual to the SKU catalog row resolved from a receiving line. */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   // .../api/receiving-lines/[id]/manuals → id is segments[-2]
@@ -35,13 +29,7 @@ async function manualIdFromBody(request: Request): Promise<number> {
   return Number(body.manualId);
 }
 
-/**
- * Ownership gate for unpair. product_manuals has NO organization_id column, so
- * isolation comes from its parent sku_catalog row. A manual is "this org's" only
- * when it's currently paired to a catalog row owned by ctx.organizationId.
- * Returns false for a foreign-org or already-unpaired manual id → the caller
- * 404s instead of mutating another tenant's (or a parent-less) row.
- */
+/** Ownership gate for unpair. */
 async function manualOwnedByOrg(manualId: number, orgId: OrgId): Promise<boolean> {
   const res = await tenantQuery<{ id: number }>(
     orgId,

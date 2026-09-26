@@ -1,22 +1,4 @@
-/**
- * Picking sessions — domain module for the mobile picker workflow.
- *
- * Pairs with `picking_sessions` table (migration 2026-05-20_inventory_v2_active_states.sql)
- * and the state machine in `src/lib/inventory/state-machine.ts`.
- *
- * Workflow:
- *   1. `startSession({ orderId, pickerStaffId, deviceId })`   — opens a session
- *   2. `confirmPick({ sessionId, allocationId, ...    })`     — ALLOCATED → PICKING → PICKED
- *      (with `toteScan`: also binds the unit into that handling unit and
- *      stamps the tote↔order pairing — one tote carries one order)
- *   3. `recordShortPick({ sessionId, allocationId, ... })`    — releases short remainder back to STOCKED
- *   4. `completeSession({ sessionId })`                       — closes the session
- *      (and stages every tote paired to the order: OPEN → STAGED, the state
- *      the pack-side scan dispatch maps to `stagedForPack`)
- *
- * Each step is atomic — one DB transaction, all writes succeed or none do.
- * `clientEventId` accepts a UUID so mobile retries are idempotent.
- */
+/** Picking sessions — domain module for the mobile picker workflow. */
 
 import pool from '@/lib/db';
 import { transition } from '@/lib/inventory/state-machine';
@@ -371,11 +353,7 @@ export async function releaseOrderSessions(
 }
 
 export async function startSession(input: StartSessionInput, orgId?: OrgId): Promise<StartSessionResult> {
-  // ── Org-scoped path: GUC-wrapped transaction. picking_sessions has NO
-  // organization_id column (child of orders) → scope via the parent order
-  // (org-validated existence check + JOIN orders on the reuse read). The
-  // INSERT carries no org column to stamp; the GUC wrap + org-validated
-  // parent order are the isolation boundary.
+  // ── Org-scoped path:
   if (orgId) {
     return withTenantTransaction<StartSessionResult>(orgId, (client) => openPickingSessionOn(client, input, orgId));
   }
@@ -438,14 +416,7 @@ type ToteRead =
   | { ok: true; tote: ToteRow }
   | { ok: false; status: 404 | 409; error: string };
 
-/**
- * Resolve the tote a picker scanned — `H-{id}`, the `/m/h/{id}` QR, a numeric
- * id, or an external barcode (`handling_units.code`) — lock it (FOR UPDATE),
- * and guard it for THIS order with the shared bind rule (`toteBindRefusal`:
- * OPEN/STAGED only, one tote carries one order). A tote already paired to a
- * different order 409s instead of silently merging two orders' units into
- * one box, which would break the pack-side "scan opens THE order" contract.
- */
+/** Resolve the tote a picker scanned — `H-{id}`, the `/m/h/{id}` QR, a numeric id, or an external barcode (`handling_units.code`) — lock it… */
 async function readToteForOrder(
   client: Queryable,
   orgId: OrgId,
@@ -530,13 +501,7 @@ export async function pairPickingTote(
   });
 }
 
-/**
- * Stamp the tote↔order pairing and move the unit into the tote. The
- * predicate re-checks everything {@link readToteForOrder} verified while
- * holding the row lock, so a miss here is unreachable by construction —
- * throw (rollback) rather than return, so a half-picked unit can never
- * commit without its tote binding.
- */
+/** Stamp the tote↔order pairing and move the unit into the tote. */
 async function bindToteForPick(
   client: Queryable,
   orgId: OrgId,
@@ -726,10 +691,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
       tote = toteRead.tote;
     }
 
-    // ALLOCATED → PICKED (skip the transient PICKING; the picker is at the
-    // bin and the scan confirms the pick in a single tap. Active-state PICKING
-    // is for multi-line carts that bookmark progress mid-scan; the API caller
-    // can emit it separately when needed.)
+    // ALLOCATED → PICKED (skip the transient PICKING; the picker is at the bin and the scan confirms the pick in a single tap.
     const unitResult = await transition(
       {
         unitId: alloc.serial_unit_id,
@@ -816,14 +778,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
         return { ok: false, status: 404, error: `allocation ${input.allocationId} not found` };
       }
 
-      // Short means the worker picked fewer than planned. Release this allocation
-      // back to STOCKED so re-allocation can hand it to another order.
-      //
-      // The allocator reserves a unit WITHOUT moving it off STOCKED
-      // (`auto-allocate.ts`), so for most shorts the unit is already STOCKED and
-      // a transition would be refused as an identity move — which failed every
-      // short on a live allocation. Then the release is the allocation update
-      // alone, and the reason still lands on the unit's timeline as a NOTE.
+      // Short means the worker picked fewer than planned.
       const statusQ = await client.query<{ current_status: string }>(
         `SELECT current_status::text AS current_status
            FROM serial_units
@@ -955,12 +910,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
   }
 }
 
-/**
- * A picker's free-text note on a line (the directed screen's Notes verb).
- * Written as a NOTE inventory event per unit, so it lands on each unit's
- * timeline beside its PICKED / short-pick events. Every allocation must
- * belong to the session's order.
- */
+/** A picker's free-text note on a line (the directed screen's Notes verb). */
 export async function recordPickNote(
   input: { sessionId: number; allocationIds: number[]; text: string; actorStaffId: number },
   orgId: OrgId,
@@ -1008,10 +958,7 @@ export async function completeSession(
 ): Promise<
   { ok: true; stagedTotes: string[] } | { ok: false; status: 404; error: string }
 > {
-  // ── Org-scoped path: GUC-wrapped transaction. picking_sessions has NO
-  // organization_id column (child of orders) → scope the UPDATE via the parent
-  // order (UPDATE … FROM orders + parent org predicate, 404 cross-org). The
-  // close note is written on the same client with orgId threaded through.
+  // ── Org-scoped path:
   if (orgId) {
     return withTenantTransaction<
       { ok: true; stagedTotes: string[] } | { ok: false; status: 404; error: string }
@@ -1058,11 +1005,7 @@ export async function completeSession(
       }
       const orderId = result.rows[0].order_id;
 
-      // Close the pick → pack loop: every tote paired to this order becomes
-      // STAGED, the state `objectStateForHandlingUnitStatus` maps to
-      // `stagedForPack` — the pack Card's existing trigger. Only OPEN moves:
-      // an IN_TEST tote belongs to the testing side, and STAGED needs no
-      // re-stamp. Membership itself was written pick-by-pick (bindToteForPick).
+      // Close the pick → pack loop:
       const stagedQ = await client.query<{ code: string }>(
         `UPDATE handling_units
             SET status = 'STAGED'

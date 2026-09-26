@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Make a find field decode a scan — the mount adapter.
- *
- * Attaches a NATIVE capture-phase `keydown` to the input element (never a React
- * synthetic handler — same law `createWedgeKeyListener` obeys, for the same
- * reason: a wedge burst must not enter a fiber per character).
- *
- * Contract, and every clause of it is load-bearing:
- *
- *  - **Characters are never prevented.** The field keeps its value, live
- *    filtering keeps working, and human typing is untouched.
- *  - **Enter is prevented only when the burst decoded to a handle.** A human
- *    can never reach that branch (see `find-field-scan.ts`), so the field's own
- *    submit is unaffected for typed input.
- *  - **Side effects run off the keydown stack** (`yieldToInput`), so the next
- *    wedge character is not delayed by navigation.
- *  - **Focus is never read or written here.** The caller decides.
- *
- * Opt-in per field: a surface with nowhere to send a handle should not pretend
- * it can accept one.
- */
+/** Make a find field decode a scan — the mount adapter. */
 
 import { useEffect, useRef, type RefObject } from 'react';
 import type { ScanRoute } from '@/lib/barcode-routing';

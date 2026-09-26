@@ -1,17 +1,4 @@
-/**
- * IDOR-by-global-id regression tests (Bucket 1).
- *
- * The leak class RLS CANNOT catch: a helper that takes an id and acts on it
- * must verify the row belongs to the caller's org. These prove the 2026-06-27
- * fixes reject cross-org access at the data layer — and fail loudly if anyone
- * removes an `organization_id` predicate later.
- *
- * `staff` is the important case: it has NO RLS, so the explicit predicate is the
- * ONLY guard — RLS would not save us. (suppliers / work_assignments are FORCEd,
- * so they're double-protected; the test still pins the predicate.)
- *
- * DB-gated like db.test.ts (skips without DATABASE_URL); self-cleaning.
- */
+/** IDOR-by-global-id regression tests (Bucket 1). */
 
 import 'dotenv/config'; // load .env before the HAS_DB check (db.ts loads it too, but later)
 import { test } from 'node:test';
@@ -371,13 +358,8 @@ test('IDOR: suppliers queries reject cross-org read/update/delete', { skip: !HAS
 });
 
 /**
+ * Compile-level pins — NEVER executed.
  * Compile-level pins — NEVER executed. Each `@ts-expect-error` asserts that a
- * call WITHOUT the org argument no longer typechecks (the Wave-2a fixes made
- * orgId a REQUIRED parameter on these fns). If anyone relaxes a signature back
- * to optional-org, the directive turns "unused" and `npx tsc --noEmit` fails —
- * that is the regression trip-wire. Runtime cross-org coverage for warranty
- * lives in the test above; the po-gmail fns hit the live Gmail API, so the
- * type-level pin is the whole guard here.
  */
 async function orgIdRequiredCompilePins(): Promise<void> {
   const warranty = await import('@/lib/warranty/mutations');

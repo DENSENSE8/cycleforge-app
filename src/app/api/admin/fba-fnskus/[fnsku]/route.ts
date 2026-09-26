@@ -105,10 +105,7 @@ export async function PATCH(
   }
 }
 
-// ── DELETE /api/admin/fba-fnskus/[fnsku] ─────────────────────────────────────
-// Soft-deactivate an FNSKU (sets is_active = false).
-// Hard delete is intentionally blocked because fba_shipment_items and
-// fba_fnsku_logs reference this table via FK.
+// ── DELETE /api/admin/fba-fnskus/[fnsku] ───────────────────────────────────── Soft-deactivate an FNSKU (sets is_active = false).
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Params }

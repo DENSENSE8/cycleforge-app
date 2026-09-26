@@ -19,16 +19,7 @@ const DEFAULT_PUBLIC_HINT =
   'Public reply — emails CC. Photos attach.';
 const DEFAULT_INTERNAL_HINT = 'Internal · not emailed';
 
-/**
- * Recipients control — choose whether the Zendesk comment is a private internal
- * note (default) or a public reply, and CC collaborator emails when public.
- *
- * Shared by claim compose and Send-photos. Reuses {@link VisibilityToggle} with
- * `appearance="flush"` (square, no pad) so every ticket surface paints the same
- * Internal note · Public + CC instrument.
- *
- * Sheet-band: flat hairline section — no nested rounded card.
- */
+/** Recipients control — choose whether the Zendesk comment is a private internal note (default) or a public reply, and CC collaborator… */
 export function ClaimRecipientsField({
   notePublic,
   onNotePublicChange,

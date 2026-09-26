@@ -1,34 +1,4 @@
-/**
- * GET /api/ecwid/recent-repair-orders
- *
- * Lists distinct repair-service items (SKU ending in `-RS`) that have been
- * sold on Ecwid recently. Used by the receiving workspace's "Link repair
- * service" affordance — operator picks a recently-ordered repair item to
- * attach to an unmatched receiving carton so the repair queue can find it.
- *
- * Response shape mirrors `/api/sku-catalog/search` so the existing popover
- * `ResultRow` renders without changes:
- *   {
- *     success: true,
- *     items: [{
- *       id,                // sku_platform_ids.id
- *       sku,               // platform_sku
- *       zoho_sku,          // joined sku_catalog.sku
- *       product_title,
- *       image_url,
- *       platform_ids: [{ platform, platform_sku, platform_item_id, account_name }],
- *       order_id,          // most recent Ecwid order number
- *       order_date,        // ISO ts of that order
- *       is_repair_service, // true when SKU ends in `-RS`
- *     }]
- *   }
- *
- * Notes:
- * - Dedupes by sku_platform_ids.id, keeping the most-recent order.
- * - Sorts most-recent-first.
- * - 60s cache window — Ecwid orders endpoint is slow and operators don't
- *   need realtime accuracy on a "recent" list.
- */
+/** GET /api/ecwid/recent-repair-orders */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -172,10 +142,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     1,
     Math.min(100, Number(url.searchParams.get('limit')) || DEFAULT_LIMIT),
   );
-  // When set, RELAX the -RS-only filter to also include normal orders, so a
-  // carton can be linked to any recent Ecwid order — not just repair-service
-  // (-RS) SKUs. Used by the triage Smart-Matching "Link repair service" list.
-  // Default (false) keeps the existing unbox popover scoped to -RS only.
+  // When set, RELAX the -RS-only filter to also include normal orders, so a carton can be linked to any recent Ecwid order — not just…
   const includeNormal = ['1', 'true', 'yes'].includes(
     (url.searchParams.get('include_normal') ?? '').toLowerCase(),
   );
@@ -299,13 +266,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: true, items: [] });
   }
 
-  // Join into the platform/catalog tables so the response carries the same
-  // identifiers the add-unmatched-line endpoint needs (sku_platform_id_row,
-  // sku_catalog_id, etc.).
-  // Tenant scope: GUC-wrapped via tenantQuery + explicit org filter on the
-  // base table. The catalog join's string-key branch (sc.sku = sp.platform_sku)
-  // collides across tenants, so it's aligned on organization_id too; the
-  // surrogate-PK branch (sc.id = sp.sku_catalog_id) is safe bare.
+  // Join into the platform/catalog tables so the response carries the same identifiers the add-unmatched-line endpoint needs…
   const catalogRes = await tenantQuery(
     ctx.organizationId,
     `SELECT
@@ -359,10 +320,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         is_repair_service: isRepairServiceSku(bucket.sku),
       });
     } else {
-      // SKU exists in Ecwid orders but has no sku_platform_ids row — surface
-      // it anyway with a synthetic negative id so the operator can still
-      // see what was ordered. add-unmatched-line will reject the synthetic
-      // id; the row is visible for triage only (image + title + order ref).
+      // SKU exists in Ecwid orders but has no sku_platform_ids row — surface it anyway with a synthetic negative id so the operator can still…
       items.push({
         id: -Math.abs(
           [...bucket.sku_upper].reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 7),

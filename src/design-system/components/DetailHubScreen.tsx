@@ -39,12 +39,7 @@ export interface DetailRecordState {
   missing?: string;
 }
 
-/**
- * The frame of ONE entity's phone screens — hub, `/info`, and each job screen:
- * a triage-mode panel ground, the mobile detail bar with the identifier as the
- * title, and loading / error / notice / missing faces. `children` renders only
- * with a live record, so a screen never guards for it.
- */
+/** The frame of ONE entity's phone screens — hub, `/info`, and each job screen: */
 export function DetailRecordFrame<T>({
   record,
   state,
@@ -99,24 +94,7 @@ export function DetailRecordFrame<T>({
 /**
  * **The mobile entity hub** — the exoskeleton every scanned thing wears
  * (operator 2026-09-24; reference: the repair hub `/m/rs/[id]`):
- *
- * ```
- * MobileDetailTopBar  ‹ Back · IDENT (mono) · meta ··········· Scan
- * card                read-only DetailSummaryCard; whole card → /info
- * ack                 server-stamped, dismissable
- * content             optional: the record's live working set (a location's
- *                     SKUs with their ± strips) — never facts or edits
- * rows                DetailNav doors, one per exact job (detailDoor)
- * dock                DetailDock — ≤3 verbs, one primary
- * ```
- *
- * The slots are the law, so a hub cannot put a heading above the card, an Edit
- * button on it, or a second dock under it. `/info` owns every fact and the only
- * edit; each door opens one job screen. `children` is for the dock's sheets.
- *
  * Edge to edge (operator 2026-09-25): no page padding and no gaps. Card, ack,
- * content and door rows run the full width, separated by one mode rule; only
- * text keeps its inset. `content` owns its own inset (or none).
  */
 export function DetailHubScreen<T>({
   record,

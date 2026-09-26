@@ -1,34 +1,4 @@
-/**
- * Resolve canonical BUYER identities (channel id / email / phone) to real
- * `customers` rows — match-then-stamp-then-create, batched.
- *
- * This is the strong-identity tier above `resolveCustomersByName` (the
- * name-only tier): a source that carries a channel customer id, an email, or a
- * phone must NEVER route through name matching, because "John Smith" is the
- * weakest identity signal there is (two people collapse; one person with a
- * typo splits). Precedence, strongest first:
- *
- *   1. channel customer id  → `customers.<identityColumn>` (exact)
- *   2. email                → lower(email) (exact)
- *   3. phone                → last 10 digits (NANP-normalized, matches the
- *                             voice matcher's rule so "(415) 555-0100" meets
- *                             "+14155550100")
- *
- * A tier-2/3 match may find a row owned by another surface (a repair walk-in
- * matched by phone, a Zoho contact by email) — that is the point: one human,
- * one row. The channel id is then STAMPED onto the adopted row (guarded
- * COALESCE so a row that already carries a DIFFERENT channel id is never
- * overwritten), which is what makes the NEXT sync hit tier 1 and what the
- * per-org unique index `ux_customers_org_shipstation_id` keeps honest.
- *
- * Field refresh on match mirrors the Amazon connector's convention: names /
- * phone / email fill blanks only (an operator correction survives), the
- * ship-to address is overwritten when the source carries one (it is the
- * address THIS order ships to — the current-address cache should track it).
- *
- * Deps-injected (`runQuery`) so the resolution is unit-testable DB-free; the
- * default dep is the tenant query wrapper.
- */
+/** Resolve canonical BUYER identities (channel id / email / phone) to real `customers` rows — match-then-stamp-then-create, batched. */
 
 import type { CanonicalOrderLine } from './canonical-order';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -37,10 +7,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 /** Channels that carry a stable customer id → the customers column holding it. */
 const CHANNEL_IDENTITY_COLUMNS: Record<string, string> = {
   shipstation: 'shipstation_customer_id',
-  // Ecwid's `order.customerId` — the storefront account, stable across a buyer
-  // changing their email or phone, which is exactly why it outranks both.
-  // Column + per-org partial unique index:
-  // src/lib/migrations/2026-09-23_customers_ecwid_identity.sql
+  // Ecwid's `order.customerId` — the storefront account, stable across a buyer changing their email or phone, which is exactly why it…
   ecwid: 'ecwid_customer_id',
 };
 
@@ -194,10 +161,7 @@ export async function resolveBuyerCustomers(
     }
   }
 
-  // Each entry is a distinct identity key, so the writes are independent; run
-  // them a few at a time instead of one round trip after another (a 500-order
-  // ShipStation page is 500 buyers).
-  // ── Refresh matched rows (adopted ones get the channel id stamped) ───
+  // Each entry is a distinct identity key, so the writes are independent; run them a few at a time instead of one round trip after another…
   await forEachLimited(Array.from(resolved), UPSERT_CONCURRENCY, async ([key, customerId]) => {
     const entry = wanted.get(key);
     if (entry) await upsertResolvedCustomer(args.orgId, customerId, entry, deps);

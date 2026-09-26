@@ -5,25 +5,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { lookupAmazonReturnByTracking } from '@/lib/amazon/returns-lookup';
 import { classificationToColumns } from '@/lib/receiving/intake-classification';
 
-/**
- * POST /api/receiving/[id]/amazon-return-lookup — operator-initiated Amazon
- * Returns lookup for an UNFOUND carton (the UnfoundMatchStrip "Amazon return"
- * button). Nothing here runs on the scan path — this fires only on tap.
- *
- * Matches the carton's reverse (carrier) tracking against Amazon's External
- * Fulfillment Returns API (see src/lib/amazon/returns-lookup.ts). On a hit it
- * stamps the carton as an AMAZON_RETURN (source_platform/is_return/return_platform
- * via the intake-classification SoT) so the unboxer sees the right context, and
- * returns the return facts (rma / customer order / skus) for the UI.
- *
- * Availability: the Returns API needs External Fulfillment (Seller Flex)
- * enrollment; a connection without it comes back `unsupported: true` (200) so the
- * card can say "not enabled" rather than surfacing a hard error.
- *
- * Gate: `receiving.scan_po` (same as the sibling unfound-queue/retry-pair — an
- * operator action, not the settings-level `integrations.amazon`). Amazon
- * availability is enforced by the presence of a connected + enrolled account.
- */
+/** POST /api/receiving/[id]/amazon-return-lookup — operator-initiated Amazon Returns lookup for an UNFOUND carton (the UnfoundMatchStrip… */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

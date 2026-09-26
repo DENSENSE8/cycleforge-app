@@ -1,24 +1,4 @@
-/**
- * Build-request persistence: submit → triage → record.
- *
- * ─── WHY THE TRIAGE IS NOT INSIDE ONE TRANSACTION ──────────────────────────
- * The dedupe step makes a network call to the embedding provider (8s default
- * budget). Holding a tenant pool connection open across that would put a
- * remote provider's latency directly in front of the connection pool every
- * other tenant shares. So the write is deliberately three steps:
- *
- *   1. INSERT the request as 'pending_triage'   (own transaction, fast)
- *   2. dedupe                                    (network, NO connection held)
- *   3. UPDATE the request + INSERT the review    (one transaction, atomic)
- *
- * Step 1 is also what makes a real pending state possible: the row exists and
- * is pollable from the moment of submit, so a client's optimistic "Pending
- * Triage" is backed by something on the server rather than by local state that
- * evaporates when a panel unmounts.
- *
- * If the process dies between 2 and 3, the row stays 'pending_triage' — visibly
- * stuck, which is the honest failure. It is never left looking approved.
- */
+/** Build-request persistence: */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -73,10 +53,7 @@ export async function submitBuildRequest(
   const { dedupe, tx } = { ...defaultDeps, ...deps };
   const idempotencyKey = input.idempotencyKey?.trim() || null;
 
-  // ── 1. Land the pending row ──────────────────────────────────────────────
-  // ON CONFLICT on the org-led partial unique makes a double-submit a replay
-  // rather than a second request. DO UPDATE (not DO NOTHING) so RETURNING
-  // always yields the row.
+  // ── 1. Land the pending row ────────────────────────────────────────────── ON CONFLICT on the org-led partial unique makes a…
   const inserted = await tx(orgId, async (client) => {
     const { rows } = await client.query(
       `INSERT INTO build_requests
@@ -192,16 +169,7 @@ export interface RecordReviewInput {
   decidedByStaffId: number | null;
 }
 
-/**
- * Append one decision to the ledger.
- *
- * The DB's CHECK constraints are the real validator here — a review claiming
- * reason_code 'duplicate_tool' with decision 'approved', or 'manual_override'
- * without a human, is rejected by Postgres, not by a branch above it. This
- * function deliberately does not pre-validate those combinations: a second
- * TypeScript copy of the rule would drift, and the copy that drifts is always
- * the one people trust.
- */
+/** Append one decision to the ledger. */
 export async function insertReview(
   client: PoolClient,
   orgId: OrgId,
@@ -228,14 +196,7 @@ export async function insertReview(
   return Number(rows[0].id);
 }
 
-/**
- * Record a decision made by a model or an operator, outside the automatic gate.
- *
- * Guarded so an agent cannot resurrect a request the deterministic gate already
- * denied as a duplicate: that row carries duplicate_tool_id, and the DB's
- * build_requests_duplicate_is_denied CHECK would reject the status change
- * anyway — this check just turns a 500 into a clear refusal.
- */
+/** Record a decision made by a model or an operator, outside the automatic gate. */
 export async function recordApprovalDecision(
   orgId: OrgId,
   input: RecordReviewInput,

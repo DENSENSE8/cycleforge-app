@@ -1,19 +1,8 @@
 'use client';
 
-// No motion import: BootSplash sits on `/signin`'s critical JS graph (the one
-// public route), and the motion barrel statically carries the whole engine.
-// The indeterminate sweep is a CSS keyframe in globals.css — transform-only,
-// compositor-safe.
+// No motion import:
 
-/**
- * Full-screen sign-in splash. Shown by {@link BootGate} from first paint after
- * a fresh sign-in until the dashboard's above-the-fold data has been warmed
- * into the React Query cache — so the page reveals fully painted instead of
- * filling in box-by-box.
- *
- * Paints settled (no entrance fade) so it's seamless across the sign-in → dest
- * hard navigation.
- */
+/** Full-screen sign-in splash. */
 export function BootSplash({ label = 'Loading your workspace' }: { label?: string }) {
   return (
     <div className="fixed inset-0 z-splash flex items-center justify-center bg-surface-card">

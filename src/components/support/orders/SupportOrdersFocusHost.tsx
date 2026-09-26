@@ -44,12 +44,7 @@ import {
 } from './useSupportOrderDetail';
 import type { ShippedOrder } from '@/types/orders';
 
-/**
- * Reference-tool leaves live on the right-edge Displays push, never a centre
- * `SectionTabsSlider` — `.claude/rules/display/station-workbench.md` Hard
- * Nevers. Centre stays Order only (ops-flow: the order's own editable
- * fields); Ticket / Support are Unbox-style leaves.
- */
+/** Reference-tool leaves live on the right-edge Displays push, never a centre `SectionTabsSlider` —… */
 type SupportOrdersDisplayTab = 'ticket' | 'support';
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type SupportOrdersDisplayNav = typeof STATION_DISPLAY_INDEX | SupportOrdersDisplayTab;

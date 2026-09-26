@@ -1,11 +1,4 @@
-/**
- * AI Chat health probe — resolves THIS org's chat provider (vault BYOK →
- * platform default) and reports its live model list.
- *
- * Org-aware since the provider consolidation: two tenants on different
- * providers get different answers, and a probe that reported a platform env
- * endpoint would be telling most of them about a box they do not use.
- */
+/** AI Chat health probe — resolves THIS org's chat provider (vault BYOK → platform default) and reports its live model list. */
 import { NextResponse } from 'next/server';
 import { formatPSTTimestamp } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';

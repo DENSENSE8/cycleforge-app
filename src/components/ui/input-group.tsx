@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Input Group (new-york), restyled to house tokens.
- *
- * shadcn STRUCTURE (`data-slot`, addon align variants, group-owned focus),
- * house COLOUR. The `$` prefix is {@link InputGroupText} — plain text, no
- * keypad square and no ring of its own. Focus lives on the group halo.
- */
+/** shadcn/ui Input Group (new-york), restyled to house tokens. */
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';

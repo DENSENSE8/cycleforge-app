@@ -1,25 +1,6 @@
 import 'server-only';
 
-/**
- * The plan-file catalog — which markdown files in THIS codebase a task may
- * link as a `repo` document, and the only code that reads them from disk.
- *
- * Allowed, and nothing else:
- *   - `docs/**` `.md` / `.mdx`, except `docs/archive/`, `docs/agent-log/`,
- *     `docs/openapi/` (history, machine logs, generated specs — not plans);
- *   - `master-plan.mdx`;
- *   - a repo-root `*.md`.
- *
- * A path arrives from a request body, so it is hostile until proven otherwise:
- * {@link normalizePlanPath} is the pure gate (no absolute paths, backslashes,
- * dot segments, NUL, or anything outside the allowlist), and every disk read
- * re-checks the RESOLVED path — `path.resolve` against the cwd, then
- * `fs.realpath` — against the same allowlist, so a symlink inside `docs/`
- * cannot walk a read out of the tree.
- *
- * On Vercel the docs are NOT shipped with the functions (bundling them broke
- * deploys — see `next.config.ts`), so reads there answer `file_not_found`.
- */
+/** The plan-file catalog — which markdown files in THIS codebase a task may link as a `repo` document, and the only code that reads them… */
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -42,13 +23,7 @@ const DOCS_ROOT = 'docs';
 const DOCS_EXCLUDED: Readonly<Record<string, true>> = { archive: true, 'agent-log': true, openapi: true };
 const MASTER_PLAN = 'master-plan.mdx';
 
-/**
- * Pure gate: a repo-relative, forward-slash plan path, or null when the input
- * is not one. Rejects absolute paths (POSIX or drive-letter), backslashes,
- * NUL, empty / `.` / `..` / hidden (dot-led) segments, and anything outside
- * the allowlist. Returns the path unchanged when it passes — there is exactly
- * one spelling of each plan file, so the repo-path UNIQUE dedupes.
- */
+/** Pure gate: a repo-relative, forward-slash plan path, or null when the input is not one. */
 export function normalizePlanPath(raw: string): string | null {
   if (typeof raw !== 'string') return null;
   if (raw.length === 0 || raw.length > PLAN_PATH_MAX) return null;
@@ -75,12 +50,7 @@ function relativeInside(root: string, absolute: string): string | null {
   return rel.split(path.sep).join('/');
 }
 
-/**
- * Resolve a gated path to its real absolute file, re-checking the allowlist
- * after `path.resolve` and after `fs.realpath`. `missing` when there is no
- * such regular file; `invalid` when resolution leaves the tree or the
- * allowlist (a symlink pointing elsewhere).
- */
+/** Resolve a gated path to its real absolute file, re-checking the allowlist after `path.resolve` and after `fs.realpath`. */
 async function resolvePlanFile(
   normalized: string,
 ): Promise<{ kind: 'ok'; absolute: string; sizeBytes: number } | { kind: 'missing' } | { kind: 'invalid' }> {

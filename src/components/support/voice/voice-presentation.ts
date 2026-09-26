@@ -1,12 +1,4 @@
-/**
- * Voice (Nextiva) presentation SoT — shared types, tone/label registries, and
- * pure formatters for the Voicemail (Workbench) and Call Log (Monitor) support
- * modes. Mirrors the house rule "format in lib, render dumb": views pick a
- * status/direction and the registry maps it to a label + tone; no view inlines
- * a colour or a label map.
- *
- * Pure data only — no JSX, no hooks.
- */
+/** Voice (Nextiva) presentation SoT — shared types, tone/label registries, and pure formatters for the Voicemail (Workbench) and Call Log… */
 
 import { formatPhoneNumber } from '@/utils/phone';
 

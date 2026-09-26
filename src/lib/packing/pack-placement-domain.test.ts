@@ -1,12 +1,4 @@
-/**
- * DB-free branch coverage for the pack-placement domain SoT.
- *
- * `placeOrderAtLocation` / `clearOrderPackPlacement` accept an optional
- * `client`, so we drive them with a fake `PoolClient` whose `.query` dispatches
- * on the SQL text and returns canned rows. This exercises the real branching
- * (prepack gate → location resolve → same-location reject → upsert + event)
- * without a database — the constants test only covers the DB-free surface.
- */
+/** DB-free branch coverage for the pack-placement domain SoT. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

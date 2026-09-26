@@ -112,11 +112,7 @@ export function useStudioPublish({
     }
   }, [definitionId, dirty, saveDraft, requestStepUp, setParams]);
 
-  // Discard the draft: DELETE the never-published version, then drop ?v so the
-  // graph reloads to the org's active definition. No step-up (it's destructive
-  // but only ever touches an un-activated draft; the route refuses the active
-  // version + any draft still referenced by in-flight items). Mirrors
-  // createDraft/saveDraft/publish busy + error handling.
+  // Discard the draft:
   const discardDraft = useCallback(async () => {
     if (!definitionId) return;
     setBusy('discarding');
@@ -134,11 +130,7 @@ export function useStudioPublish({
     }
   }, [definitionId, setParams]);
 
-  // Import a system template: clone it into the org as a new draft, then switch
-  // the canvas to it (`?v=<newId>`) — editing engages because the new draft is
-  // is_active=false and the user has studio.manage. Mirrors createDraft's
-  // error/param handling, but keyed by a per-template in-flight id so the card
-  // can show its own spinner.
+  // Import a system template:
   const importTemplate = useCallback(
     async (templateId: number) => {
       setImportingTemplateId(templateId);
@@ -162,10 +154,6 @@ export function useStudioPublish({
   );
 
   // Submit the current definition to the community catalog for curator review.
-  // Mirrors importTemplate's resolve/error handling, but keyed by the shared
-  // `submitting` busy flag; a plain fetch (no step-up) — studio.manage is
-  // enforced server-side. Success/failure surface as toasts, not the header
-  // actionError line, since this is a fire-and-forget submission.
   const submitToCatalog = useCallback(async () => {
     if (!definitionId) return;
     setBusy('submitting');

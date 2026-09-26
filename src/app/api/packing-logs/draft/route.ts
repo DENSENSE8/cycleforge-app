@@ -20,14 +20,7 @@ type PackingDraftResponse =
   | ReturnType<typeof buyerNoteHoldBody>
   | { error: string };
 
-/**
- * Start (or resume) phone packing evidence for one order.
- *
- * This deliberately does not emit a station activity, mark the order packed,
- * write a stock ledger row, or mirror allocation state. A packer log is the
- * existing photo entity, but while `completion_state=CAPTURING` it is evidence
- * storage only. `/api/packing-logs/update` is the sole completion writer.
- */
+/** Start (or resume) phone packing evidence for one order. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object') {

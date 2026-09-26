@@ -1,15 +1,4 @@
-/**
- * GET /api/admin/staff/[id]/stations  — list a staff's station assignments
- * PUT /api/admin/staff/[id]/stations  — REPLACE the staff's station set
- *
- * Body for PUT: { primary: Station | null, secondary: Station[] }
- *   Station ∈ TECH | PACK | UNBOX | SALES | FBA
- *
- * The primary is the single locked station shown in the header goal chip;
- * secondaries are the switchable extras. Passing primary:null clears all
- * assignments (the staffer falls back to the employee_id-derived station, no
- * switch). Idempotent replace, gated by admin.manage_staff.
- */
+/** GET /api/admin/staff/[id]/stations — list a staff's station assignments PUT /api/admin/staff/[id]/stations — REPLACE the staff's station set */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

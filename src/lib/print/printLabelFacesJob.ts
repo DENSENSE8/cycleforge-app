@@ -1,37 +1,4 @@
-/**
- * Batched 2×1" print for a RUN OF PLATES — the channel every bulk label run
- * shares.
- *
- * This is the engine that used to live inside `printLocationLabelsJob`, lifted
- * out the day a second family (handling-unit totes) needed the same batching.
- * It is deliberately face-generic: it takes {@link LabelFaceModel}s, not
- * `LocationSegments`, so a tote run and a bin run cannot drift into two
- * different print pipelines.
- *
- * Two channels, in preference order:
- *
- *   1. **USB sequential** — when silent print is on and a raw (TSPL/ZPL/ESC-POS)
- *      label profile is paired. One `printLabelJob` per PLATE, awaited, so the
- *      caller can tick `Printing 12/47`. Bails to the iframe on the first
- *      non-USB result rather than half-printing down two channels.
- *   2. **One multi-page iframe** — a single document with one page per plate.
- *
- * Why one job and not a loop of `printLabel` calls: each popup print reserves a
- * window synchronously (`reserveLegacyPrintPopup`). Looping that over 40 totes
- * asks the browser for 40 popups and gets one, then a block. The batch reserves
- * exactly one.
- *
- * **`copies` is the same axis as a longer face list, not a printer command.**
- * It used to ride TSPL `PRINT N,1` / ZPL `^PQN` on ONE raster job, which the
- * paired CX418 answers with a single label — so a 40-bin location run printed
- * 40 stickers while `Copies 4` on one tote printed 1. Copies are now expanded
- * into plates by {@link expandPlateRun} before a channel is chosen, so every
- * family prints multiplicity the one way this hardware honors: one job per
- * sticker (see `labelCopies.expandPlateRun`).
- *
- * Callers: printLocationLabel (bin / rack), printLabelRun (tote runs),
- * printSpecialBinLabel (flat-barcode bin tags).
- */
+/** Batched 2×1" print for a RUN OF PLATES — the channel every bulk label run shares. */
 
 import { expandPlateRun } from '@/lib/print/labelCopies';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
@@ -82,10 +49,7 @@ export async function printLabelFacesJob(input: {
   // Copies become paper here, once, for every family and both channels.
   const plates = expandPlateRun(faces, input.copies);
 
-  // Deliberately dynamic, not static: `printLabel` pulls in the bwip-js
-  // barcode engine and `browserPrint` touches WebUSB / Web Serial. Both are
-  // browser-only and heavy, and every page that merely *builds* a face would
-  // otherwise pay for them at import time. Loaded on the actual print.
+  // Deliberately dynamic, not static:
   const { printLabelJob, buildMultiPageLabelHtml } = await import('@/lib/print/printLabel');
   const { reserveLegacyPrintPopup, printHtmlInIframe } = await import('@/lib/print/iframePrint');
   const { isSilentPrintEnabled } = await import('@/lib/print/printMode');

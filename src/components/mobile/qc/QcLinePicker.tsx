@@ -13,12 +13,7 @@ interface QcLine extends SkuIdentityTitleRow {
   serials: LineSerial[];
 }
 
-/**
- * The line's CURRENT units through the testing twin of the receiving-lines
- * read — the endpoint already gated on `tech.qc_pass`, so a QC tech needs no
- * receiving permission. `view=testing` is that twin's required surface marker;
- * with `id` it answers the one line.
- */
+/** The line's CURRENT units through the testing twin of the receiving-lines read — the endpoint already gated on `tech.qc_pass`, so a QC… */
 function useQcLine(lineId: number) {
   return useQuery<QcLine>({
     queryKey: ['qc.line-units', lineId],
@@ -36,11 +31,8 @@ function useQcLine(lineId: number) {
 }
 
 /**
- * The unit pick for an `L-` label scanned on the kernel armed for QC: the
- * line names a PO line that can hold several units, and QC is per unit, so
+ * The unit pick for an `L-` label scanned on the kernel armed for QC:
  * the tech picks one (operator 2026-09-24). Picking hands back the numeric
- * `serial_units.id` — the ref the checklist route keys on, and never
- * ambiguous with a numeric serial.
  */
 export function QcLinePicker({
   lineId,

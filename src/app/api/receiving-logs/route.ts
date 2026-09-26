@@ -111,11 +111,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
             hasColumn('needs_test') ? 'r.needs_test' : 'FALSE AS needs_test',
             hasColumn('assigned_tech_id') ? 'r.assigned_tech_id' : 'NULL::int AS assigned_tech_id',
             hasColumn('target_channel') ? 'r.target_channel' : "NULL::text AS target_channel",
-            // Carton door/unbox stamps live on the street tables now
-            // (receiving_triage rt / receiving_unbox ru, 1:1 with the carton).
-            // The hasColumn() gates key off the spine schema, which still
-            // carries these columns this wave — only the VALUE source moves;
-            // output aliases stay frozen.
+            // Carton door/unbox stamps live on the street tables now (receiving_triage rt / receiving_unbox ru, 1:1 with the carton).
             hasColumn('received_at') ? "to_char(rt.door_received_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS received_at" : 'NULL::text AS received_at',
             hasColumn('received_by') ? 'rt.door_received_by AS received_by' : 'NULL::int AS received_by',
             hasColumn('unboxed_at') ? "to_char(ru.unboxed_at::timestamp, 'YYYY-MM-DD HH24:MI:SS') AS unboxed_at" : 'NULL::text AS unboxed_at',
@@ -222,10 +218,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         const orgId = ctx.organizationId;
         const { searchParams } = new URL(request.url);
 
-        // Bulk: `?ids=1,2,3` deletes the batch in ONE statement. The sidebar
-        // edit-mode bulk delete uses this — N parallel single-id requests
-        // proved flaky (pool contention dropped a couple of rows per batch).
-        // Idempotent: ids already gone are simply absent from `deleted`.
+        // Bulk: `?ids=1,2,3` deletes the batch in ONE statement.
         const idsParam = (searchParams.get('ids') || '').trim();
         if (idsParam) {
             const ids = Array.from(new Set(
@@ -417,10 +410,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
                 if (currentRow.rows.length === 0) {
                     return NextResponse.json({ error: 'Receiving log not found' }, { status: 404 });
                 }
-                // Only enforce the tech-assignment guard when needs_test is actually
-                // being cleared (true -> false). Re-saving a row that is already
-                // needs_test=false (e.g. local-pickup POs auto-saved on close) is a
-                // no-op for this field and must not be blocked.
+                // Only enforce the tech-assignment guard when needs_test is actually being cleared (true -> false).
                 const wasNeedsTest = currentRow.rows[0]?.needs_test !== false;
                 if (wasNeedsTest) {
                     const nextAssignedTechId = Number(assignedTechIdRaw);
@@ -446,12 +436,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
             updates.push(`is_priority = $${idx++}`);
             values.push(!!isPriorityRaw);
         }
-        // Manual priority-tier override (receiving.priority_tier): null = Auto
-        // (platform-derived), 0..3 = Priority/High/Medium/Low. Kept in lockstep
-        // with is_priority (tier 0 ⇔ the shared "urgent" boolean) so queues that
-        // read only the boolean still surface a top-tier carton. Synced here only
-        // when the caller didn't also send is_priority (a column can't be assigned
-        // twice in one UPDATE).
+        // Manual priority-tier override (receiving.priority_tier):
         if (availableColumns.has('priority_tier') && hasPriorityTier) {
             const tier = priorityTierRaw == null ? null : Number(priorityTierRaw);
             if (!isValidPriorityTier(tier)) {
@@ -480,14 +465,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
                 values.push(targetChannelRaw);
             }
         }
-        // Unbox milestone actor moved to the unbox street table
-        // (receiving_unbox.unboxed_by) — Wave-3 writer inversion. Only the actor
-        // is written here (no timestamps: unboxed_at ownership stays with the
-        // unbox writers, e.g. mark-received). Gated on the body keys, not the
-        // spine schema probe — the spine columns are write-dead and drop next
-        // migration. Applied via upsertReceivingUnbox in the same transaction as
-        // the spine UPDATE below; the helper is COALESCE-once, so an already-
-        // stamped actor is never re-stamped.
+        // Unbox milestone actor moved to the unbox street table (receiving_unbox.unboxed_by) — Wave-3 writer inversion.
         let unboxPatch: { unboxedBy: number | null } | null = null;
         if (unboxedByRaw !== undefined) {
             const parsed = Number(unboxedByRaw);
@@ -567,10 +545,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
             organizationId: ctx.organizationId,
             action: 'update',
             rowId: String(id),
-            // Priority facts ride the broadcast (cross-viewer urgency pill
-            // sync — useReceivingCartonRealtimeBridge). Only when this request
-            // touched them; other PATCH shapes keep the fieldless event.
-            // undefined values drop out of the JSON payload.
+            // Priority facts ride the broadcast (cross-viewer urgency pill sync — useReceivingCartonRealtimeBridge).
             ...(hasPriorityTier || isPriorityRaw !== undefined
                 ? {
                     row: {

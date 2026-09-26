@@ -1,20 +1,4 @@
-/**
- * Render contract — the phone checklist row (`/m/home`).
- *
- *   npx tsx --test src/components/mobile/daily/mobile-daily-row.test.tsx
- *
- * What the row promises:
- *   - the title strikes on check, through the SAME `StruckLabel` the desk's
- *     compound cell paints (one animation, two surfaces);
- *   - the whole title is the tick target (label/for → the Radix checkbox), so
- *     a thumb does not have to find a 20px box;
- *   - the row prints NO id — the pencil on the hard right is the door to the
- *     detail sheet, which is where the id now lives;
- *   - a ticket-linked row paints the ticket glyph as a real DOOR (a named
- *     control that opens the thread), never a decorative mark;
- *   - a `once` row carries the exception caption ("Today only") and the
- *     owner's avatar; a recurring row paints no caption at all.
- */
+/** Render contract — the phone checklist row (`/m/home`). */
 
 import React from 'react';
 import assert from 'node:assert/strict';

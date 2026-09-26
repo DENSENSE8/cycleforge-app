@@ -157,11 +157,7 @@ export function LocationDetailView({ barcode }: LocationDetailViewProps) {
     },
   });
 
-  // Realtime: refetch when any STOCK_DELTA fires for a SKU currently in this
-  // bin (another tab, another staff, etc.). Publishers carry the SKU on
-  // scanRef — see publishStockLedgerEvent in src/lib/realtime/publish.ts.
-  // useAblyChannel's handler is wrapped in a stable ref internally so passing
-  // a fresh callback on every data change is cheap and avoids re-subscribe.
+  // Realtime: refetch when any STOCK_DELTA fires for a SKU currently in this bin (another tab, another staff, etc.).
   useAblyChannel(
     stationChannel,
     'activity.logged',

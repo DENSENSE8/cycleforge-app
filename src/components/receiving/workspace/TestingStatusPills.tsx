@@ -6,17 +6,7 @@ import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 
-/**
- * Verdict the tech assigns to a receiving line during the testing step.
- *
- *   pass         → workflow_status='PASSED',     qa_status='PASSED'
- *   test_again   → workflow_status='IN_TEST',    qa_status='PENDING'   (stays in queue)
- *   testing_failed → workflow_status='FAILED',   qa_status='FAILED_FUNCTIONAL'
- *
- * The DB enums and persistence layer are unchanged from receiving (see
- * `lib/receiving/receive-line.ts` and `mark-received-po`); we just narrow
- * the visible choices and add a third 'TEST_AGAIN' affordance for re-queue.
- */
+/** Verdict the tech assigns to a receiving line during the testing step. */
 export type TestingVerdict = 'PASS' | 'TEST_AGAIN' | 'TESTING_FAILED';
 
 interface Props {
@@ -264,17 +254,7 @@ export function workflowToVerdict(
   return null;
 }
 
-/**
- * Derive the per-unit verdict from a `serial_units.current_status` value.
- *
- * The /api/serial-units/[id]/test endpoint writes these transitions:
- *   PASS         → 'TESTED'
- *   TEST_AGAIN   → 'IN_TEST'
- *   TESTING_FAIL → 'ON_HOLD'
- *
- * Everything else (RECEIVED, GRADED, UNKNOWN, etc.) reads as "no verdict
- * picked yet" so the pills render unselected.
- */
+/** Derive the per-unit verdict from a `serial_units.current_status` value. */
 export function unitStatusToVerdict(
   status: string | null | undefined,
 ): TestingVerdict | null {
@@ -285,12 +265,7 @@ export function unitStatusToVerdict(
   return null;
 }
 
-/**
- * Inverse of {@link unitStatusToVerdict}: the `serial_units.current_status` the
- * /api/serial-units/[id]/test endpoint writes for a verdict. Used to reflect a
- * verdict optimistically before the server round-trip resolves.
- *   PASS → 'TESTED' · TEST_AGAIN → 'IN_TEST' · TESTING_FAILED → 'ON_HOLD'
- */
+/** Inverse of {@link unitStatusToVerdict}: */
 export function verdictToUnitStatus(verdict: TestingVerdict): string {
   switch (verdict) {
     case 'PASS':

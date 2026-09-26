@@ -1,15 +1,4 @@
-/**
- * PIN hashing + verification + lockout.
- *
- * scrypt over argon2id because we don't want a native module: this code runs
- * in Next.js API routes (Node runtime) and node:crypto.scrypt is always there.
- * scrypt with the params below takes ~80–120ms on a modern laptop — fast
- * enough for an interactive sign-in, slow enough to slow down a leaked-DB
- * offline attack to "many lifetimes" for any 6-digit PIN.
- *
- * Storage format (single text column `staff.pin_hash`):
- *   scrypt$N$r$p$saltHex$keyHex
- */
+/** PIN hashing + verification + lockout. */
 
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -87,17 +76,7 @@ async function verifyHash(pin: string, stored: string): Promise<boolean> {
   return timingSafeEqual(got, expected);
 }
 
-/**
- * Set or change a staff member's PIN. Caller is responsible for authz
- * (admin reset vs self-change). Clears lockout state on success.
- *
- * Tenant scope: when `orgId` is supplied (admin CRUD under
- * `admin.manage_staff`), the UPDATE is scoped to that org via `tenantQuery`,
- * so an admin can only set the PIN of a staff member in their OWN org — a
- * cross-org id is a no-op. When omitted (sign-in / enrollment / self-change
- * flows that have already resolved the staff id), the path is byte-identical
- * to before. `staff` is tenant-owned and carries `organization_id`.
- */
+/** Set or change a staff member's PIN. */
 export async function setStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<void> {
   const pinHash = await hashPin(pin);
   if (orgId) {
@@ -135,21 +114,7 @@ interface StaffPinRow {
   default_home_path_mobile: string | null;
 }
 
-/**
- * Look up by ID and verify PIN. Returns the staff row on success.
- * Throws PinError on every failure path; callers map to HTTP codes.
- *
- * Tenant scope: when `orgId` is supplied (an admin-context caller verifying a
- * staff member known to be in their own org), the row lookup and the
- * last_login bump are scoped to that org via `withTenantTransaction`, so a
- * cross-org id reads as NOT_FOUND and is never mutated. When omitted — the
- * normal /api/auth/* sign-in, step-up and switch flows that resolve a staff
- * by id without org context — the path is byte-identical to before.
- *
- * Credential-matching (assertPinShape / verifyHash / timingSafeEqual) is
- * IDENTICAL in both branches; only the row read + last_login UPDATE gain the
- * org predicate. `staff` is tenant-owned and carries `organization_id`.
- */
+/** Look up by ID and verify PIN. */
 export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<StaffPinRow> {
   assertPinShape(pin);
 

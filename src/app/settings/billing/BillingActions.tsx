@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Client islands for the billing page. The page itself is a server
- * component (loads org/sub from the DB); the upgrade and portal buttons
- * need to redirect to Stripe-hosted URLs which means making a POST and
- * following the response. That's a tiny client surface — kept separate
- * so the page stays SSR-friendly.
- */
+/** Client islands for the billing page. */
 
 import { useCallback, useState } from 'react';
 import type { PlatformPlan } from '@/lib/tenancy/constants';

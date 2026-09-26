@@ -113,15 +113,7 @@ export function OrderPackChecklist({
     onBlockedChange?.(readiness.blocked);
   }, [readiness.blocked, onBlockedChange]);
 
-  /**
-   * Every insert on this ORDER, not just the one clicked — `DocumentSlideOver`
-   * lists all types for a context in its switcher, so a packer comparing two
-   * papers flips between them without going back to the list.
-   *
-   * `src` is the same-origin kit-part document proxy (session + org), not
-   * `/api/documents/:id/content` (`orders.view` 403s packers) and not the raw
-   * Blob URL (Blob CSP blanks PDFs in iframes).
-   */
+  /** Every insert on this ORDER, not just the one clicked — `DocumentSlideOver` lists all types for a context in its switcher, so a packer… */
   const documentItems: DocumentSlideItem[] = useMemo(
     () =>
       lines.flatMap((line) =>
@@ -202,9 +194,6 @@ export function OrderPackChecklist({
                 tickedKitParts={tickedKitParts}
                 onToggleKitPart={(partId) => {
                   // Optimistic apply → quiet revert on persist failure (Phase 2).
-                  // Tap on a document-bearing part is the advisory acknowledgement
-                  // override (step-document-reveal-RULING §3); Print on the strip
-                  // is the durable path and uses origin='print' below.
                   const nowChecked = !tickedKitParts.has(partId);
                   setInSet(setTickedKitParts, partId, nowChecked);
                   void persistTick(

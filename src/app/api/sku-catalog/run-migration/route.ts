@@ -6,9 +6,6 @@ import { tenantQuery } from '@/lib/tenancy/db';
 export const POST = withAuth(async (_req, ctx) => {
   try {
     // Remove all platform='zoho' entries from sku_platform_ids.
-    // Zoho SKUs already live in sku_catalog.sku (source of truth).
-    // sku_platform_ids should only contain marketplace entries: ecwid, amazon, ebay, walmart, etc.
-    // Tenant-scoped: only clear THIS org's zoho rows.
     const removed = await tenantQuery(
       ctx.organizationId,
       `DELETE FROM sku_platform_ids WHERE platform = 'zoho' AND organization_id = $1`,

@@ -3,13 +3,7 @@
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
 import { receivingPayloadToFace, type ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 
-/**
- * On-screen render of the printed PO / carton label. A thin adapter over the
- * shared {@link LabelFacePreview}: maps the carton payload onto the common
- * {@link LabelFaceModel} via `receivingPayloadToFace` — the exact same model the
- * print paths use — so the preview and the printed sticker can't drift.
- * `embedded` strips the outer card chrome for use inside the print menu.
- */
+/** On-screen render of the printed PO / carton label. */
 export function ReceivingPoLabelPreview({
   embedded,
   ...payload

@@ -4,19 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/inventory/counts
- *
- * Read endpoint for the Counts sidebar tab. Lists cycle_count_campaigns
- * with aggregated line progress, filterable by:
- *   q       — substring on campaign name
- *   bucket  — repeatable / comma-separated:
- *             open | in_progress | reconciling | closed
- *   limit   — default 50, max 200
- *
- * Returns:
- *   { success, items: CountRow[], counts: { open, in_progress, reconciling, closed, total } }
- */
+/** GET /api/inventory/counts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     try {
         const orgId = ctx.organizationId;

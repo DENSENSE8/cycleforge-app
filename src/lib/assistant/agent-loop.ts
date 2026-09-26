@@ -1,26 +1,4 @@
-/**
- * Server agent loop (plan §3.2) — the Claude tool-use loop behind
- * POST /api/assistant/chat.
- *
- * Read/explain only in Phase 2: the model composes the org-scoped read-tool
- * registry (src/lib/assistant/tools) plus a CLIENT UI tool namespace
- * (navigate/highlight + Phase 3 canvas stubs). Server tools execute here; UI
- * tool calls are forwarded to the browser through the `emit` sink and
- * acknowledged to the model immediately (standard client-tool pattern).
- *
- * Invariants:
- *   • org/staff/permissions come from the authenticated ctx — NEVER from the
- *     model or the request body;
- *   • hard iteration cap (MAX_TURNS) — a runaway loop degrades to a polite
- *     "ran out of steps", never an unbounded bill;
- *   • tool failures surface to the model as is_error tool_results it can
- *     route around — they never throw out of the loop;
- *   • prompt-cache discipline: stable system core first (cache_control), the
- *     volatile page-context fragment after the breakpoint.
- *
- * Deps-injected (default = real Anthropic SDK + real tool registry) so unit
- * tests run with zero network and zero DB.
- */
+/** Server agent loop (plan §3.2) — the Claude tool-use loop behind POST /api/assistant/chat. */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
@@ -175,19 +153,7 @@ export interface AgentLoopDeps {
   runTool: typeof runAssistantTool;
 }
 
-/**
- * Build the real deps for ONE org.
- *
- * Resolves the org's own Anthropic key from the vault before the platform's
- * (`resolveOrgAnthropicBrain`). This used to read `process.env.ANTHROPIC_API_KEY`
- * directly, which meant every tenant's assistant ran on a single platform key
- * and a single hardcoded model — the same single-tenant leak `hermes-client`
- * had, in the one surface the Phase 1 sweep did not reach.
- *
- * The model follows the key: an org that brought its own key may also name its
- * own model, and billing someone else's key for a model they did not choose is
- * the kind of surprise that shows up on an invoice.
- */
+/** Build the real deps for ONE org. */
 async function makeDefaultDeps(orgId: OrgId): Promise<AgentLoopDeps> {
   const brain = await resolveOrgAnthropicBrain(orgId);
   if (!brain) {
@@ -251,10 +217,7 @@ export async function runAssistantTurn(
     if (!parsed.success) return { ok: false, code: 'invalid_input', error: parsed.error.message };
     try {
       const data = await tool.run(parsed.data, args.ctx, {} as never);
-      // A write tool that resolves with { ok: false, error } is a domain
-      // failure (validation / 404 / 409), not a thrown error — surface it as
-      // is_error so the model and any tool_end consumer see it as failed,
-      // matching how read-tool failures are reported.
+      // A write tool that resolves with { ok:
       if (data && typeof data === 'object' && (data as { ok?: unknown }).ok === false) {
         return { ok: false, code: 'tool_error', error: String((data as { error?: unknown }).error ?? 'write failed') };
       }

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The carton record's data — ONE read shared by the record view and its
- * action-strip verbs (same query keys, so the two never fetch twice): the
- * carton (`GET /api/receiving/:id`), its lines (`GET /api/receiving-lines`),
- * and everything derived from them — the overall state in the ledger row's
- * vocabulary, readiness, pipeline steps and alerts.
- */
+/** The carton record's data — ONE read shared by the record view and its action-strip verbs (same query keys, so the two never fetch twice): */
 
 import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

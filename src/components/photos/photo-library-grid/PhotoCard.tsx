@@ -50,21 +50,7 @@ export function PhotoCard({
   selectionActive: boolean;
   selected: boolean;
   onSelect: (mods: TileSelectMods) => void;
-  /**
-   * Open the shared fullscreen viewer at this photo — the tile's PRIMARY click
-   * action on every surface that mounts one.
-   *
-   * There is deliberately no second, quieter "inspect" path competing for the
-   * same click. The viewer already carries the photo's full identity behind its
-   * details toggle ({@link PhotoContextPanel}) *and* left/right paging through
-   * the photo's group, so a side panel showing the same facts one photo at a
-   * time was strictly the weaker half of one surface.
-   *
-   * **The desk inspector (2026-08-09) does not reopen that question.** It is the
-   * n = 1 face of the SELECTION plane — tick one photo and the rail pushes in;
-   * tick a second and the bulk toolbar takes over. It never binds this click,
-   * which is exactly the axis the retired `PhotoInspectorPanel` failed on.
-   */
+  /** Open the shared fullscreen viewer at this photo — the tile's PRIMARY click action on every surface that mounts one. */
   onOpen?: () => void;
   /** Right-click handler — surfaces the per-photo action menu. */
   onContextMenu?: (photo: LibraryPhoto, e: ReactMouseEvent) => void;

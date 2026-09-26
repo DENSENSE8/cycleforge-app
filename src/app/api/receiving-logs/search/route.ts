@@ -16,13 +16,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         const { dateColumn, hasQuantity } = await resolveReceivingSchema();
         const countExpr = hasQuantity ? "COALESCE(quantity, '1')" : "'1'";
 
-        // Search across both the canonical shipment tracking (stn.tracking_number_raw)
-        // and the legacy receiving_tracking_number text column. The JOIN is a LEFT JOIN
-        // so rows without a shipment_id still match via the legacy column.
-        // Tenant-scoped: filter on the org-owned `receiving` row (r.organization_id);
-        // shipping_tracking_numbers has no org column yet (NEEDS-COL) and is joined on
-        // its integer surrogate PK (stn.id = r.shipment_id), so it inherits scope from
-        // its receiving parent under the GUC-wrapped tenantQuery.
+        // Search across both the canonical shipment tracking (stn.tracking_number_raw) and the legacy receiving_tracking_number text column.
         const logs = await tenantQuery(
             ctx.organizationId,
             `SELECT r.id,

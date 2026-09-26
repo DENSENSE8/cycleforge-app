@@ -1,24 +1,4 @@
-/**
- * Task **links** — the records a task names beyond its anchor, as the wire
- * and the desk both read them. Client-safe: no pool, no schema import.
- *
- * `work_assignments.entity_type` / `entity_id` is the ONE record a task is
- * about (NOT NULL — see `task-desk-row.ts`). An operator working a return at
- * 400 orders a day holds more than one handle for it: the replacement order,
- * the original order, two tracking numbers and the Zendesk thread the customer
- * is shouting in. `work_assignment_links` carries those, one row per handle,
- * each keyed by the face the operator quotes.
- *
- * | kind | `entityId` | `label` |
- * |---|---|---|
- * | `order` | `orders.id` (one line of the order) | the marketplace order number, or `ID <orders.id>` when the row has none |
- * | `ticket` | LOCAL `support_tickets.id` — never the Zendesk number | the PROVIDER ticket number, digits only |
- * | `tracking` | null | the canonical tracking number (`extractCanonicalTracking`) |
- *
- * The label is always derived on the SERVER from the resolved record, never
- * taken from the request, so two operators linking the same thing produce the
- * same label and the natural key `(task, kind, label)` dedupes them.
- */
+/** Task **links** — the records a task names beyond its anchor, as the wire and the desk both read them. */
 
 import type { TaskMediaLink } from './media-links';
 
@@ -75,16 +55,7 @@ export interface TaskLinksPayload {
   links: TaskLink[];
 }
 
-/**
- * `POST /api/tasks/[id]/links` body.
- *
- * - `order` names a row the client already resolved through
- *   `POST /api/scan/resolve` (a pasted order number can match several orders,
- *   and the operator must choose) — the server re-reads it in-org and derives
- *   the label.
- * - `ticket` and `tracking` carry the raw text; the server resolves them
- *   (`resolveTicketTarget`, `extractCanonicalTracking` + `findOrderByTrackingKey`).
- */
+/** `POST /api/tasks/[id]/links` body. */
 export type TaskLinkCreateBody =
   | { kind: 'order'; entityId: number }
   | { kind: 'ticket'; value: string }

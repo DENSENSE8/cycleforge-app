@@ -62,34 +62,7 @@ const defaultWatchedArrivalDeps: WatchedArrivalDeps = {
   },
 };
 
-/**
- * "Somebody is waiting for this box" — resolved at the door, acted on at once.
- *
- * A pre-arrival watch already produces a NOTIFICATION through the fan-out
- * worker (`staff_subscriptions` rule arm → `staff_inbox_items` → Ably). That
- * tells the WATCHER. It does not tell the warehouse, and it does not move the
- * carton: the box still lands in the queue in scan order behind fifty others,
- * so the person who said "I need this one" waits for it to surface anyway.
- *
- * So the watch is also a PRIORITY signal. A watched carton is flagged urgent
- * the moment it is scanned in, which floats it into the unbox queue's pinned
- * urgent band and the tester's queue through the same
- * `RECEIVING_PRIORITY_RANK_SQL` the pending-order match already uses — one
- * meaning of "urgent", one writer (`markReceivingPriority`), two signals.
- *
- * BOTH arms count, because both mean the same sentence:
- *  - a `rule` watch on the tracking number (written before the box existed);
- *  - an `entity` watch on the carton (written after it did).
- * `state <> 'muted'` on both: an explicit mute is an explicit "stop telling me".
- *
- * Read BEFORE the drain retires the rule (`retireFulfilledTrackingWatches`
- * mutes it only once the notification has been delivered), so the door always
- * sees the watch that is about to be honoured.
- *
- * The actor is NOT excluded. A staffer who scans a box they were watching is
- * still told — by the toast on their own screen, since the fan-out
- * deliberately never notifies you about your own action.
- */
+/** "Somebody is waiting for this box" — resolved at the door, acted on at once. */
 export async function promoteWatchedArrival(
   args: {
     orgId: OrgId;

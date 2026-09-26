@@ -1,9 +1,4 @@
-/**
- * Pending flag for global find — `/search` browse (identifier resolve /
- * retrieve) publishes here so {@link GlobalHeaderSearch} can paint
- * {@link SearchPendingBar} on the header field. Module waist (not React
- * context): one writer (browse shell), one reader (header).
- */
+/** Pending flag for global find — `/search` browse (identifier resolve / retrieve) publishes here so {@link GlobalHeaderSearch} can paint… */
 
 type Listener = (pending: boolean) => void;
 

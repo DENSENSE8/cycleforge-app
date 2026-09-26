@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * URL ⇄ state for the Master Operations Journey (Operations ▸ History).
- *
- * Every filter lives in `searchParams` so a view is deep-linkable + reload-safe
- * and the right pane reacts to the same params (Monitor archetype: filters are
- * URL state, no durable selection). The sidebar search bar drives the FOCUSED
- * ENTITY for the active dimension — typing a serial with `dim=serial` sets
- * `?serial=`, which the right pane renders as that entity's full journey;
- * clearing it returns to browse mode. Mirrors `usePhotoLibraryUrlState`.
- */
+/** URL ⇄ state for the Master Operations Journey (Operations ▸ History). */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

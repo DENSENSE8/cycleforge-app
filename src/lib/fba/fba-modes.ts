@@ -1,21 +1,4 @@
-/**
- * FBA inbound workbench stages (ready / plan / combine / shipped / catalog).
- *
- * These live as `?fbaMode=` on the canonical path `/shipping/fba`. Legacy
- * `/shipping?mode=fba` redirects there (next.config). Legacy `?mode=` on `/fba`
- * is still accepted by resolvers during the redirect window. Standalone
- * `/shipping/ready` permanently redirects here with `fbaMode=ready`.
- *
- *   ready   — post-test channel allocation (FBA vs pre-box vs hold)
- *   plan    — staff add FNSKUs to today's planned board (PLANNED items)
- *   combine — combiner pulls PACKED items and combines under one FBA shipment ID
- *   shipped — shipped / history
- *   catalog — FNSKU catalog rows + CSV imports (ex-Admin › Amazon Prep,
- *             admin dissolution)
- *
- * Pure data — no JSX. The facet tab UI is the shared `TableTabs` strip that
- * `FbaOutboundWorkspace` foots its body with.
- */
+/** FBA inbound workbench stages (ready / plan / combine / shipped / catalog). */
 
 export type FbaMode = 'ready' | 'plan' | 'combine' | 'shipped' | 'catalog';
 
@@ -39,22 +22,7 @@ export function parseFbaModeWire(raw: string): string | null {
   return (FBA_MODES as string[]).includes(v) ? v : null;
 }
 
-/**
- * Params the legacy `/fba` redirect forwards to {@link FBA_OUTBOUND_PATH}.
- *
- * `/fba` is a server-side `redirect()`, not a surface, so it deliberately has no
- * entry in the routing registry (`@/lib/routing/registry`) — the same treatment
- * `/tech` and `/packer` get as aliases. But that makes the redirect a HAND-OFF,
- * and a hand-off only works if the DESTINATION declares what it carries: an
- * undeclared key is dropped by the boundary parse the moment `/shipping/fba`
- * parses, so an old bookmark would land on the board with its focus and filters
- * silently gone.
- *
- * Kept as a named list rather than inline in `app/fba/page.tsx` so
- * `fba-modes.test.ts` can assert every key is owned by the FBA spec. Adding a key
- * to the redirect without declaring it downstream is now a failing test instead of
- * a quiet data loss.
- */
+/** Params the legacy `/fba` redirect forwards to {@link FBA_OUTBOUND_PATH}. */
 export const FBA_LEGACY_REDIRECT_FORWARDED_PARAMS = [
   'q',
   'r',

@@ -1,10 +1,4 @@
-/**
- * Zoho webhook payloads we know how to handle. Zoho posts a thin envelope
- * with the changed object and an event_type discriminator. Field names vary
- * by product (Inventory vs Books) and by configuration mode (native webhook
- * vs Workflow Rule). We treat unknown fields as best-effort and only require
- * the bits we actually consume.
- */
+/** Zoho webhook payloads we know how to handle. */
 
 export type ZohoWebhookEventType =
   | 'purchaseorder.created'

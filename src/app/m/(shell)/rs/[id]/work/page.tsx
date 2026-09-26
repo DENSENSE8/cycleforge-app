@@ -28,13 +28,7 @@ import {
 import { formatMonthDayTimePST } from '@/utils/date';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
-/**
- * `/m/rs/[id]/work` — the bench log. Its own screen so the physical work
- * (what came out, what went in, which serial, what was soldered) has room,
- * and the hub stays a glance. The bench timer lives here too: Start / Stop are
- * server-stamped, and entries logged while it runs attach to that session. `?log=1` (the hub dock's Log work) opens the
- * Log work sheet on arrival.
- */
+/** `/m/rs/[id]/work` — the bench log. */
 function RepairWorkInner() {
   const params = useParams<{ id: string }>();
   const repairId = Number(params?.id);

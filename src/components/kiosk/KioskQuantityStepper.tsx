@@ -1,19 +1,8 @@
 'use client';
 
 /**
- * The kiosk's ONE quantity control: Square's `−  N  +`, and the in-place
- * `Remove this item?  Keep · Remove` row that `−` at 1 swaps in (never a modal
- * over the work).
- *
- * Extracted from `KioskCartLineCard` so the repair flow's Device & quote cards
- * count units with the cart's control rather than a "Remove this device"
+ * The kiosk's ONE quantity control:
  * button of their own (operator 2026-09-24: "it should be like a inline edit
- * display same as the cart for adding multiple … minusing … removing").
- *
- * Presses stay here: a click must not open a card's editor, Enter must not
- * reach a card's key handler, and a press must not start a swipe row's drag.
- *
- * Callers: `KioskCartLineCard`, `KioskRepairPane`. Affected API: none.
  */
 
 import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';

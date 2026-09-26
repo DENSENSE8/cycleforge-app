@@ -1,20 +1,8 @@
 import { z } from 'zod';
 
-/**
- * Bodies for the provisional (on-hold placeholder) product endpoints.
- *
- * The title is capped rather than free — this string becomes a product name on
- * every warehouse surface, and an operator pasting a whole listing description
- * into a phone field should be told, not silently truncated later by a `line-clamp`.
- */
+/** Bodies for the provisional (on-hold placeholder) product endpoints. */
 
-/**
- * POST /api/sku-catalog/provisional
- *
- * `barcode` is optional: without one the SKU is keyed by `sourceRef` (a form
- * sends one per open sheet, so a double tap joins its own placeholder), and a
- * real barcode can be attached later through PATCH.
- */
+/** POST /api/sku-catalog/provisional */
 export const ProvisionalCreateBody = z.object({
   barcode: z.string().trim().max(64).nullish(),
   sourceRef: z.string().trim().min(1).max(200).nullish(),

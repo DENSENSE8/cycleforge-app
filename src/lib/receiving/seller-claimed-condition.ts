@@ -1,13 +1,4 @@
-/**
- * Seller-claimed listing condition — the QC reference fact for Testing.
- *
- * Warehouse `condition_grade` is what WE graded at Unbox. Seller-claimed is what
- * the marketplace listing / sold-as order said. They must never be conflated:
- * QC asks "does it work as listed?" against the seller claim first.
- *
- * Pure: no fetch. Callers pass whatever facts their surface already holds
- * (matched-order sold-as, platform listing condition). Honest absence when none.
- */
+/** Seller-claimed listing condition — the QC reference fact for Testing. */
 
 export type SellerClaimedConditionSource = 'order' | 'listing';
 

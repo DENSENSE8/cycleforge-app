@@ -1,16 +1,4 @@
-/**
- * GET /api/repair/ecwid-products — staff repair catalog.
- *
- * Walks the live Ecwid storefront (`fetchRepairRootProductsCached`), unlike the
- * kiosk twin, which reads the local projection. The query grammar is therefore
- * the smaller one: `?mode=all` · `?mode=favorites` · `?categoryId=`.
- *
- * `mode=favorites` narrows the cached root list to the repair workspace's
- * curated SKUs, in `sort_order`, so the staff picker lands on the SAME list as
- * the kiosk rail. The filter is in JS because this source has no SQL to filter;
- * `selectFavoriteCatalogProducts` is shared with the kiosk path so the two can
- * never disagree about order.
- */
+/** GET /api/repair/ecwid-products — staff repair catalog. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

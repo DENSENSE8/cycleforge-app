@@ -1,14 +1,4 @@
-/**
- * Desk order inspector (`detail:order`) topic → action map.
- *
- * Locked Displays plate: Order · Documents · Timeline · Conversation (max four).
- * Order nests Shipping · Product; order updates (Assign · urgent · notes · …)
- * live on the Order tab bottom action bar — never a fifth topic cell.
- * Overflow (station handoffs) stays in the plate ⋮. Sheet View chrome lives on
- * `detail:orders-view` only.
- *
- * Recipe: `.claude/rules/display/right-rail-inspector.md` + Unbox Displays plate.
- */
+/** Desk order inspector (`detail:order`) topic → action map. */
 
 import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
 import type { OrderInspectorRecordCta } from '@/lib/selection-context/order-inspector-context';

@@ -1,36 +1,4 @@
-/**
- * The overwrite rule for `ThreadComposerBridge.setDraft`.
- *
- * ## The decision, and why it is EXPLICIT CONFIRM
- *
- * A support agent who has typed three sentences and then asks for a draft must
- * not lose them — there is no undo on a composer. Three rules were on the table:
- *
- * | Rule | Loses text | Gives what was asked for | Cost |
- * |---|---|---|---|
- * | refuse-and-tell | no | **no** — agent must clear the box and ask again | a dead-end |
- * | append below a rule | no | partly — leaves a spliced draft to edit | silent surprise |
- * | **explicit confirm** | **no** | **yes** | one click, and only when text exists |
- *
- * Explicit confirm is the only one that satisfies both columns, and it costs
- * nothing on the common path: an EMPTY composer applies straight through with
- * no dialog. The prompt is the house `requestConfirm` (`ConfirmDialogHost`) —
- * never a hand-rolled scrim.
- *
- * ## It never sends
- *
- * This seeds the editor and, optionally, the visibility toggle. It has no
- * access to submit and must never gain one. Setting the mode is not a
- * convenience: a draft addressed to the customer arriving with `Internal`
- * selected would be silently withheld from them, and the same draft the other
- * way round would email a note that was meant to be private.
- *
- * ## Whitespace-only is EMPTY
- *
- * `hasDraft` on the bridge is already `body.trim().length > 0`; using the same
- * test here keeps a composer holding a stray newline from raising a dialog
- * about text that is not there.
- */
+/** The overwrite rule for `ThreadComposerBridge.setDraft`. */
 
 export type ComposerDraftMode = 'public' | 'internal';
 

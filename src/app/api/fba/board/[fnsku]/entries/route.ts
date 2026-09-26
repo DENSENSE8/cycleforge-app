@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 
-/**
- * GET /api/fba/board/:fnsku/entries
- *
- * Returns every non-shipped plan entry for a given FNSKU across all shipments.
- * Powers the detail-panel "plan entries" list so the user can see every day
- * this FNSKU was planned, its qty, and when it was added.
- */
+/** GET /api/fba/board/:fnsku/entries */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ fnsku: string }> },

@@ -5,13 +5,7 @@
  */
 import { resolveCarrierBrand, type CarrierBrandMeta } from '@/lib/carrier-brand';
 
-/**
- * The minimum a row must carry to contribute boxes to a fold.
- *
- * Structural, not `ShippedOrder`, because Unbox (`ReceivingLineRow`), Pickup and
- * every other peer fold the same way and must not each grow their own copy of
- * this — the group parent is engine-owned, so its facts are too.
- */
+/** The minimum a row must carry to contribute boxes to a fold. */
 export interface TrackingBearingRow {
   tracking_numbers?: readonly (string | null)[] | null;
   shipping_tracking_number?: string | null;
@@ -38,31 +32,8 @@ export function uniqueOrderTrackings(rows: readonly TrackingBearingRow[]): strin
 }
 
 /**
- * Carrier marks for a multi-line order's parent row — one dot per DISTINCT
- * carrier, plus the box count.
- *
- * ## Why dots and a count, not a chip per tracking
- *
- * The parent used to print `N tracking` over one `TrackingNumberMenuChip` per
+ * Carrier marks for a multi-line order's parent row — one dot per DISTINCT carrier, plus the box count.
  * number. Two problems, both operator-reported 2026-09-05:
- *
- *  1. **Height.** A row of chips is taller than the plain two-line cell every
- *     other row paints, so the parent bulged out of the sheet's rhythm. A band
- *     that is supposed to be thinner than its children read as heavier.
- *  2. **It answered the wrong question.** Staff scanning a queue do not read
- *     tracking digits; they read WHO is carrying it and HOW MANY boxes there
- *     are. Both are peripheral-vision facts, and a dot carries a carrier
- *     faster than nine characters of a chip.
- *
- * So: the distinct carriers paint as brand dots (`BrandIdentityDot`
- * `variant="ring"` + {@link carrierBrandDotPaint}) and the count says how many
- * boxes. USPS blue + UPS brown side by side is the whole story at a glance.
- *
- * ## Boxes, not lines
- *
- * A tracking number IS a box. The parent's count is therefore boxes — the word
- * staff use — never "lines", which is schema vocabulary leaking onto the floor.
- * The ITEM count is a separate fact and is not this function's job.
  */
 export interface OrderCarrierBoxes {
   /** Distinct carriers, first-seen order — one dot each. */

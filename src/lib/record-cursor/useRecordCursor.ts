@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * The React seam of the record cursor — the only place a collection surface and
- * a right-rail panel touch each other.
- *
- * Three hooks, one direction of flow:
- *
- * ```
- *   collection grid ──usePublishRecordCursor──▶ record-cursor/store ──useRecordCursor──▶ panel
- *          ▲                                                                              │
- *          └────────────────── open(id, { intent, revealFoldKey }) ─────────────────────┘
- * ```
- *
- * WHY THE OPEN CALLBACK TRAVELS *WITH* THE CURSOR
- * Expanding a collapsed fold is the GRID's job — the panel has no fold state and
- * no group renderer. If the step target were just an id, stepping into a
- * collapsed order would open the record in the panel while the grid still showed
- * the fold shut and highlighted nothing: plan §2.2's defect wearing a new
- * mechanism. So the publisher hands the store a callback that reveals first and
- * opens second, and the consumer never learns that folds exist.
- *
- * WHY THE PUBLISHED CALLBACKS ARE IDENTITY-STABLE
- * `updateRecordCursor` compares `open` / `close` by identity as part of deciding
- * whether to emit. A callback re-allocated per render would make every keystroke
- * in the grid's filter box a real store emit, re-rendering every panel that
- * consumes it. Both are therefore `useCallback([])` over latest-refs — the same
- * discipline `SidebarRailShell` uses to keep its listener effect from tearing
- * down on each parent render.
- *
- * WHAT IS NOT HERE
- * The ambient keyboard (`useRecordCursorKeyboard`) reads the store directly
- * rather than subscribing through {@link useRecordCursor}, so a re-publishing
- * grid never re-runs its listener effect. Keep it that way.
- *
- * Plan: `docs/todo/record-cursor-unification-PLAN.md` §3.3, §3.5.
- */
+/** The React seam of the record cursor — the only place a collection surface and a right-rail panel touch each other. */
 
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { FoldState, GroupedRenderOrder } from '@/lib/group-rows';
@@ -57,16 +23,7 @@ interface PublishRecordCursorArgs<T> {
    *  MUST differ here, or they overwrite each other's claim. */
   surfaceId: string;
   scope: CursorScope;
-  /**
-   * The visibility / ownership claim. **Required — never inferred.**
-   *
-   * Not from mount order: StrictMode double-invokes effects and a route swap
-   * mounts the incoming surface before the outgoing one unmounts. And not from
-   * `display` either: `ReceivingRightPane` keeps `ReceivingLinesTable` mounted
-   * at `display:none` under the focused workspace, and that hidden table must
-   * REMAIN the publisher — stepping carton→carton with the workspace open is
-   * exactly what today's `receiving-navigate-table` does.
-   */
+  /** The visibility / ownership claim. */
   enabled: boolean;
   /** Defaults to the grid tier; a rail passes `RECORD_CURSOR_PRIORITY.rail`. */
   priority?: number;
@@ -76,28 +33,14 @@ interface PublishRecordCursorArgs<T> {
   getId: (row: T) => RecordId;
   getGroupKey?: (row: T) => string | number | null;
   openGroupKey?: string | number | null;
-  /**
-   * Open a record on this surface. **Must honour `ctx.revealFoldKey`** (expand
-   * that fold) and **must branch on `ctx.intent`** wherever the surface has a
-   * row-click side effect a step should not fire — that difference is the whole
-   * reason `receiving-highlight-line` exists as a second event name today.
-   */
+  /** Open a record on this surface. */
   onOpen: (row: T, ctx: { intent: CursorIntent; revealFoldKey: string | null }) => void;
   /** Dismiss the open record. Omit when dismissal is owned elsewhere; the panel
    *  then falls back to its own close path rather than rendering a dead ✕. */
   onClose?: () => void;
 }
 
-/**
- * Publish this surface's on-screen order as the cursor for its scope, and return
- * the resolved cursor for local use (reveal-on-deep-link, a position readout in
- * the grid's own chrome).
- *
- * Two effects, deliberately: the first CLAIMS the scope and only re-runs when
- * the claim itself changes, the second REFRESHES the content. Folding them into
- * one would withdraw-and-republish on every cursor change, minting a new `seq`
- * and churning the snapshot for what is really an in-place update.
- */
+/** Publish this surface's on-screen order as the cursor for its scope, and return the resolved cursor for local use (reveal-on-deep-link, a… */
 export function usePublishRecordCursor<T>(args: PublishRecordCursorArgs<T>): RecordCursor {
   const {
     surfaceId,
@@ -192,13 +135,7 @@ export function usePublishRecordCursor<T>(args: PublishRecordCursorArgs<T>): Rec
 // ─── Consume ─────────────────────────────────────────────────────────────────
 
 interface RecordCursorControls {
-  /**
-   * Is any surface publishing this scope? **`false` means render no chevrons and
-   * no `n / m` at all** — honest absence. A panel opened from search has no
-   * queue behind it, and enabled-looking buttons that step a list nobody owns is
-   * precisely how the dead `receiving-navigate-detail-overlay` chevrons survived
-   * for months (plan §2.1).
-   */
+  /** Is any surface publishing this scope? */
   available: boolean;
   /** 1-based, in the fold-blind order; null when nothing resolvable is open. */
   position: number | null;
@@ -222,21 +159,7 @@ const NO_CURSOR: RecordCursorControls = {
   onClose: null,
 };
 
-/**
- * Read the cursor for a scope. Panels wire nothing else: no `orderedRecords`, no
- * `selectedId`, no context string.
- *
- * When `position === null` (nothing open) **both** directions target the FIRST
- * record — that is what `useOutboundQueueKeyboard:88` and `useSidebarRail:427`
- * already did, and dropping it would leave ↓ dead on a freshly loaded queue.
- *
- * `scope` is REQUIRED and undefaulted, matching the publisher. It decides WHICH
- * list these controls step, and receiving publishes two at once — a `'sibling'`
- * panel that inherited a `'record'` default would read "3 of 47 cartons" where it
- * must read "2 of 5 lines", silently, on the surface nobody re-checked. Same law
- * as `intent` below (a classification takes
- * no default).
- */
+/** Read the cursor for a scope. */
 export function useRecordCursor(scope: CursorScope): RecordCursorControls {
   const getSnapshot = useCallback(() => getRecordCursorTop(scope), [scope]);
   const top = useSyncExternalStore(subscribeRecordCursor, getSnapshot, getServerRecordCursorTop);

@@ -1,24 +1,4 @@
-/**
- * Per-SKU repair reasons — the domain layer both principals reach.
- *
- * `repair_issue_templates` holds the reason vocabulary: rows with
- * `favorite_sku_id IS NULL` are the org's global reasons, rows with an id are
- * scoped to one SKU. Staff already read/write them through `/api/repair/issues`
- * (`withAuth`); the kiosk reads/writes the same table through
- * `/api/kiosk/repair/issues` (`withKioskAuth`, device principal) — operator
- * 2026-09-14: "there should be an add button top right as a CTA so you would be
- * able to add a reason for repair for that SKU specifically."
- *
- * The kiosk names a SKU by STRING (`ProductSelection.sourceSku`, derived from
- * the Ecwid catalog), never by `favorite_skus.id` — the customer picks from the
- * whole repair tree, not the staff favorites list. Resolving that string to the
- * FK anchor is this module's job (see `ensureFavoriteSkuAnchor`).
- *
- * Every function takes its DB work as injected `deps` so the rules here are
- * testable with zero database (house Deps-injection pattern), and takes `orgId`
- * explicitly so tenant scoping is a thing a test can assert, not a thing the
- * call site remembers.
- */
+/** Per-SKU repair reasons — the domain layer both principals reach. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { REPAIR_FAILURE_LABELS } from './repair-failure-reasons';
@@ -87,16 +67,7 @@ export async function listSkuReasons(
   };
 }
 
-/**
- * Add a reason for ONE SKU.
- *
- * A missing SKU is refused rather than silently written as a global reason:
- * one tablet must not be able to add a row to every repair on the floor.
- *
- * Already there (a global reason, or one this SKU has, compared without case)
- * → return that row and write nothing. Two people at the counter typing "No
- * sound" must not leave the SKU with the pill twice.
- */
+/** Add a reason for ONE SKU. */
 export async function addSkuReason(
   orgId: OrgId,
   input: { sku: string | null | undefined; label: string; productLabel?: string | null },
@@ -132,14 +103,7 @@ export async function addSkuReason(
   };
 }
 
-/**
- * What the reason pills render from.
- *
- * `ReasonSelector` shows the built-in registry when the DB list is empty, so
- * an added reason must EXTEND that fallback rather than replace it — otherwise
- * adding the first reason for a SKU on an unseeded DB would make the other
- * reasons disappear, which reads as data loss to the operator.
- */
+/** What the reason pills render from. */
 export function visibleReasonBase(dbLabels: readonly string[]): readonly string[] {
   return dbLabels.length > 0 ? dbLabels : REPAIR_FAILURE_LABELS;
 }

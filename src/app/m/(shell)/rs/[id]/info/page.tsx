@@ -16,12 +16,7 @@ import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 
-/**
- * `/m/rs/[id]/info` — the depth behind the hub's summary card: every repair
- * fact in full (the stored listing title, full contact, price, notes) and the
- * one full edit, opened from the pencil in the bar. Status stays a dock verb
- * on the hub.
- */
+/** `/m/rs/[id]/info` — the depth behind the hub's summary card: */
 function RepairInfoInner() {
   const params = useParams<{ id: string }>();
   const repairId = Number(params?.id);

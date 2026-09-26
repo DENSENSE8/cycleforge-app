@@ -1,16 +1,4 @@
-/**
- * Photo-label color registry — the single source of truth for a label's tone.
- *
- * A label's `color` column stores a SEMANTIC TOKEN NAME ('blue', 'rose', …),
- * never a hex (house rule: color only from semantic tokens). The chip classes
- * below are written as FULL LITERAL strings so Tailwind's content scanner
- * generates them — `src/lib/**` is in the `content` globs (see tailwind.config.mjs),
- * so a class referenced only here is still emitted. Building the class names
- * dynamically (`bg-${token}-50`) would NOT be scanned and would render invisible
- * (the build-gotchas.md "un-scanned class" trap). Keep every variant spelled out.
- *
- * 3-layer chip per ui-design-system.md: `bg-x-50 text-x-700 ring-1 ring-inset ring-x-200`.
- */
+/** Photo-label color registry — the single source of truth for a label's tone. */
 
 export const LABEL_COLOR_TOKENS = [
   'slate',

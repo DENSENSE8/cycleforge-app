@@ -56,16 +56,7 @@ test('the block carries no outer padding — it is a structural wrapper', () => 
   assert.doesNotMatch(root, /\sp-\d|\spx-\d|\spy-\d|\sm-\d/, root);
 });
 
-/**
- * `StationBlockLabel` — the header alone.
- *
- * These exist because the retirement of `CartonInspectionPage`'s `SectionLabel`
- * was PROSE-ONLY for months (pattern-evolution law 6): this component's docblock
- * said it had been promoted out of that file while a byte-identical fork stayed
- * behind, because nothing anywhere could notice. Each test below pins one of the
- * three things that fork could do and this one could not — which is what the
- * fork's continued existence was actually buying.
- */
+/** `StationBlockLabel` — the header alone. */
 function renderLabel(props: Partial<React.ComponentProps<typeof StationBlockLabel>> = {}) {
   return renderToStaticMarkup(<StationBlockLabel label="Activity" {...props} />);
 }

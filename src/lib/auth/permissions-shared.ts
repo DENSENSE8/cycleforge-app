@@ -1,35 +1,4 @@
-/**
- * Client- AND server-safe permission types and pure helpers.
- *
- * As of Phase 2b, the runtime shape derives from `permission-registry.ts` —
- * one declarative array is the single source of truth. The old parallel
- * static role-permission matrix (`ROLE_PERMISSION_SETS`) is gone; runtime
- * permission resolution always reads `roles.permissions` from the DB.
- *
- * What lives here:
- *   - The `PermissionString` and `StaffRole` union types
- *   - `ALL_PERMISSIONS`, `STEP_UP_PERMISSIONS`, `PERMISSION_CATEGORIES`
- *     (all re-exports from the registry — DO NOT add a parallel list here)
- *   - Admin-key helpers (`isAdminRoleKey`, `rolesIncludeAdmin`)
- *   - Role alias normalization (`canonicalRole`)
- *   - Step-up classifier (`requiresStepUp`)
- *   - Legacy error helpers (`PermissionDeniedError`, `permissionDeniedResponse`)
- *
- * What was deleted (Phase 2b):
- *   - `ROLE_PERMISSION_SETS` / `ROLE_PERMISSIONS_FULL` — the seed matrix that
- *     drifted from the DB and caused the work_orders.view bug
- *   - `permissionsForRole`, `permissionsSetForRole`, `effectivePermissions`,
- *     `permissionSource`, `hasPermissionString`, `hasPermission` — all read
- *     from the static matrix and would have continued to produce stale answers
- *   - `ROLE_PERMISSIONS` (the action-only subset by role)
- *
- * Replacement paths for the deleted helpers:
- *   - server: `effectivePermissionsForStaff(staffId)` from `role-store.ts`
- *   - client: `useAuth().has(perm)` (AuthContext, hydrated from /api/auth/session
- *     which now reads from the DB)
- *   - admin UI: receive the role rows from the relevant API endpoint and
- *     compute against `role.permissions` directly
- */
+/** Client- AND server-safe permission types and pure helpers. */
 
 import {
   PERMISSIONS,
@@ -139,21 +108,7 @@ export function unionRolePermissions(
   return out;
 }
 
-/**
- * The full effective-permission computation. Single pure source of truth used
- * by both server-side resolvers (current-user.ts, role-store.ts) and any UI
- * that wants to simulate "what would this staff have access to?"
- *
- * Merge order:
- *   1. If any role has key 'admin' → ALL_PERMISSIONS (admin short-circuit)
- *   2. Otherwise: union of all role permission arrays
- *   3. ∪ permissions_added (per-staff override grants), filtered to known
- *   4. \ permissions_removed (per-staff override revokes)
- *
- * Unknown permission strings are silently dropped — they're not in the
- * runtime registry and can't be evaluated. (Writes are rejected loudly at
- * the admin endpoints, so unknowns shouldn't accumulate.)
- */
+/** The full effective-permission computation. */
 export function computeEffectivePermissions(
   roles: ReadonlyArray<{ key: string; permissions: ReadonlyArray<string> }>,
   added: ReadonlyArray<string> = [],

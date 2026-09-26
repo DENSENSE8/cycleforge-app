@@ -1,16 +1,6 @@
 /**
  * The REPAIR cart-line payload builder.
- *
- * What this defends is the one thing the cart cannot get wrong: the quote. The
- * form's own field wins over the catalog price, an empty one falls back, and a
- * junk string is zero rather than NaN cents.
- *
- * The review-summary tests that used to live here went with
  * `KioskRepairReviewCard` — operator 2026-09-15 replaced that surface with the
- * paperwork itself (`RepairServiceForm`), so there is no second rendering of
- * the agreement left to test.
- *
- *   npx tsx --test src/lib/kiosk/repair-line-payload.test.ts
  */
 
 import test from 'node:test';

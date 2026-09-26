@@ -38,13 +38,7 @@ async function findPickupSignature(squareOrderId: string): Promise<string | null
   }
 }
 
-/**
- * GET /api/walk-in/receipt/[id] — Printable sales receipt (Repair Service HTML style).
- *
- * withAuth's wrapped handler only receives (req, ctx) — it discards Next's
- * typed `{ params }` route arg — so the `[id]` segment is parsed from the
- * pathname instead (mirrors /api/repair-service/print/[id]).
- */
+/** GET /api/walk-in/receipt/[id] — Printable sales receipt (Repair Service HTML style). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const segments = req.nextUrl.pathname.split('/').filter(Boolean);

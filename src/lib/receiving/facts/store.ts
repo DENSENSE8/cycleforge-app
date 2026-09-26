@@ -1,16 +1,4 @@
-/**
- * Receiving typed-facts store — the read/write chokepoint for
- * `receiving_line_facts`. Validates every write against the per-fact_kind schema
- * in ./registry (so the polymorphic payload is a tagged union, not a junk
- * drawer), org-scopes every statement, and upserts on (org, line, fact_kind).
- *
- * Deps-injected (default real impls) so unit tests run DB-free — same convention
- * as src/lib/receiving/exceptions.ts.
- *
- * The narrow 1:1 facts tables (receiving_line_zoho / _testing / _return /
- * _putaway) have their own typed helpers; this module owns only the open-ended
- * receiving_line_facts registry table.
- */
+/** Receiving typed-facts store — the read/write chokepoint for `receiving_line_facts`. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

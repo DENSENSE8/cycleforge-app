@@ -1,17 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/stage
- *
- * Unbox commit step `stage` — stamp the intended putaway location
- * (`receiving_line_putaway.staged_location_id` / `staged_at`) after Print and
- * before Receive. Body:
- *   { barcode?: string, location_id?: number, confirmed?: false }
- *
- * `{ confirmed: false }` clears the stamp (reopen). Distinct from Arrival
- * `receiving_triage.staging_location_id` (door carton shelf).
- *
- * PERMISSION. `receiving.mark_received` — same floor operators who finish a
- * carton. Putaway apply after receive still uses `receiving.bin_assign`.
- */
+/** POST /api/receiving/lines/[id]/stage */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

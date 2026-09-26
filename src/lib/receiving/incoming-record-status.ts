@@ -1,13 +1,4 @@
-/**
- * The incoming delivery record's AT-A-GLANCE status — the pipeline a purchase
- * walks from the order to the warehouse (ordered → tracking → carrier →
- * delivered → door scan → unboxed → received) with who / when per step, and
- * the loud alerts (pairing, wrong destination, carrier trouble, claims) — read
- * only from the delivery's own `receiving_lines` rows (the PO's loaded lines)
- * and the details read's shipment. A step paints only when it applies; a
- * missing stamp is `todo` (not yet) or `unrecorded` (the flow moved past it
- * without a stamp) — never invented. Painted by `ReceivingStatusStrip`.
- */
+/** The incoming delivery record's AT-A-GLANCE status — the pipeline a purchase walks from the order to the warehouse (ordered → tracking →… */
 
 import type { ReceivingLineRow } from './receiving-line-row';
 import type { ReceivingStatusAlert, ReceivingStatusStep } from './receiving-status-strip';

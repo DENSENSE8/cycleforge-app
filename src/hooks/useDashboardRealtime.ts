@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Wires up the dashboard's realtime side effects in one place: order/dashboard
- * query invalidation (with reconnect), FBA-shipment invalidation, and the admin
- * realtime toast stream. Extracted from the dashboard page; behaviour is
- * unchanged.
- */
+/** Wires up the dashboard's realtime side effects in one place: */
 
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useFbaRealtimeInvalidation } from '@/hooks/useFbaRealtimeInvalidation';

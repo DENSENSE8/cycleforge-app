@@ -1,11 +1,4 @@
-/**
- * Pure staff WebAuthn RP / origin allowlist helpers (no DB).
- *
- * Callers: `webauthn.ts` getRpFromRequest; `qr/authorize` unsigned-claim guard;
- * unit tests in webauthn-rp.test.ts / qr-authorize-passkey.test.ts.
- * Affected API: parent rpID + expectedOrigins for apex and `{slug}.app…`.
- * User instruction: Parent rpID + tenant origin allowlist; unit tests.
- */
+/** Pure staff WebAuthn RP / origin allowlist helpers (no DB). */
 
 const DEFAULT_STAFF_APP_HOSTNAME = 'app.cycleforge.ai';
 

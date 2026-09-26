@@ -4,12 +4,7 @@ import {
   type WmsExecutionCommandReceipt,
 } from '@/lib/realtime/wms-execution-command';
 
-/**
- * HTTP transport for the WMS execution kernel. The socket gateway
- * (`scripts/wms-domain-adapter.ts`) only exists behind the local switchboard;
- * every other host (Vercel) reaches the same kernel through
- * `POST /api/wms/commands`. Identity comes from the session, never the body.
- */
+/** HTTP transport for the WMS execution kernel. */
 export type WmsCommandHttpIdentity = {
   organizationId: string;
   staffId: number;

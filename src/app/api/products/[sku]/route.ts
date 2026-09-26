@@ -5,12 +5,7 @@ import { getSkuPackProfileLink } from '@/lib/neon/pack-profile-links';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
 import { snapMinutes, tierForMinutes } from '@/lib/packing/pack-standard-stops';
 
-// GET /api/products/[sku]
-// Single product detail for the /products/[sku] page.
-//
-// Returns the catalog row plus the platform_ids list. Live stock summary
-// (WAREHOUSE qty, BOXED qty, serial-units by status) is folded in so the
-// detail page can render the cross-link card without a second roundtrip.
+// GET /api/products/[sku] Single product detail for the /products/[sku] page.
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ sku: string }> },
@@ -108,15 +103,7 @@ export async function GET(
             console.warn('[api/products/[sku]] serial_units count failed:', err);
         }
 
-        /*
-         * Time to pack — the standard this SKU's packs are weighted by.
-         *
-         * `source` is load-bearing, not decoration: 'profile' means a human set
-         * it, 'rules' means `classifyPackTier` guessed from the title. The desk
-         * card says which, because a KPI built on a title regex should not read
-         * like a measured standard. Never blank: the slider always opens on the
-         * number the KPI is actually using today.
-         */
+        /* Time to pack — the standard this SKU's packs are weighted by. */
         const packOverride = await getSkuPackProfileLink(Number(product.id), orgId);
         const packRules = classifyPackTier({
             productTitle: product.product_title,

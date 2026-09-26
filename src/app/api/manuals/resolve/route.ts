@@ -37,10 +37,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // Cached on the request identifiers (org-scoped). Manuals change only on a
-    // product_manuals upsert; the crosswalk changes on catalog/pairing writes —
-    // so tag with both and let those writers bust it. Skips even the crosswalk
-    // resolve on a cache hit.
+    // Cached on the request identifiers (org-scoped).
     const cacheKey = `${normalizedItemNumber || 'nis'}:${sku.trim().toUpperCase() || 'nsku'}`;
     const resolved = await getOrSet<ResolvedManuals>(
       CACHE_NS.manual,
@@ -49,10 +46,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       1800, // 30 min; writes invalidate the tags
       [CACHE_TAGS.productManuals, CACHE_TAGS.skuCatalog],
       async () => {
-    // ── Hub-first: resolve through sku_catalog ──────────────────────────────
-    // Thread orgId so the crosswalk (sku_catalog / sku_platform_ids) only
-    // matches THIS tenant's catalog — otherwise org A could resolve to org B's
-    // catalog id and read its hub-linked manual.
+    // ── Hub-first:
     const skuCatalogId = await resolveSkuCatalogId(sku || null, itemNumber || null, null, orgId);
 
     let rows: any[] = [];
@@ -92,19 +86,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // ── Fallback: legacy item_number match for un-migrated records ──────────
     if (rows.length === 0 && normalizedItemNumber) {
-      // Legacy path matches by item_number on un-migrated rows that have no
-      // sku_catalog_id, so there is no parent to scope through and
-      // product_manuals carries no organization_id column. The GUC is INERT for
-      // this table (no RLS, no org column), so tenantQuery alone provides ZERO
-      // isolation here. To close the cross-tenant read leak we (a) restrict to
-      // genuinely-legacy rows (sku_catalog_id IS NULL — hub-linked rows are
-      // already org-scoped above and must not leak via the org-blind
-      // item_number) and (b) refuse to return a shared item_number whenever that
-      // item_number resolves, through THIS org's crosswalk, to a catalog row
-      // owned by a DIFFERENT org — i.e. only surface the legacy row when it is
-      // either unattributed everywhere or attributable to the caller's org.
-      // (NEEDS-COL: full isolation still requires product_manuals to grow an
-      // organization_id column + RLS; tracked separately.)
+      // Legacy path matches by item_number on un-migrated rows that have no sku_catalog_id, so there is no parent to scope through and…
       const fallbackResult = await tenantQuery(
         orgId,
         `SELECT

@@ -1,13 +1,6 @@
 import { useState, useCallback } from 'react';
 
-/**
- * Syncs React state to localStorage.
- * Restores from storage on mount; persists on every set call.
- *
- * @param key   localStorage key
- * @param init  Default value if key is absent or parse fails
- * @returns     [value, setValue, removeValue]
- */
+/** Syncs React state to localStorage. */
 export function useLocalStorage<T>(
   key: string,
   init: T,

@@ -1,16 +1,4 @@
-/**
- * /api/nav — the per-org navigation override (operator-surfaces refactor
- * Phase 4, "navigation as data").
- *
- * GET  → the org's active nav override (or null). Gated `dashboard.view`: every
- *        signed-in user needs it to render their sidebar. The override only
- *        hides/renames/reorders existing nav items (mergeOrgNav enforces), so it
- *        can't leak a surface the user isn't permitted — permission filtering
- *        still applies client-side after the merge.
- * PUT  → publish a new active override (owner action). Gated `studio.manage`
- *        with step-up, matching the Studio edit model. Deactivate + activate in
- *        one transaction (the station-publish CTE pattern), then recordAudit.
- */
+/** /api/nav — the per-org navigation override (operator-surfaces refactor Phase 4, "navigation as data"). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

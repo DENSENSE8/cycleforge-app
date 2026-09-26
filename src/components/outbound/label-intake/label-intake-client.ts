@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Client half of the label intake (`src/lib/shipping/label-intake.ts`).
- *
- * One lookup per typed order number, then rates and purchases routed by the
- * anchor: a PAIRED order uses the order-bound routes (tracking, documents,
- * notes, buyer-note interlock), a REFERENCE-only number uses
- * `/api/shipping/label-intake/*` with the address typed on the intake.
- */
+/** Client half of the label intake (`src/lib/shipping/label-intake.ts`). */
 
 import { useQuery } from '@tanstack/react-query';
 import { sendWithBuyerNoteAck } from '@/lib/orders/buyer-note-ack-client';

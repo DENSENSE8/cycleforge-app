@@ -1,11 +1,4 @@
-/**
- * Pipeline Configuration
- *
- * Central config for the self-improving pipeline. All tunables live here
- * so the orchestrator, agent, and validator share a single source of truth.
- *
- * Env vars override defaults for deployment flexibility (Mac vs CI vs Jetson).
- */
+/** Pipeline Configuration */
 
 function envInt(key: string, fallback: number): number {
   const v = process.env[key];

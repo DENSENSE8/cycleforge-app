@@ -4,14 +4,7 @@ import { recordPickNote } from '@/lib/picking/sessions';
 
 const NOTE_MAX = 1000;
 
-/**
- * POST /api/picking/session/[id]/note
- *
- * The directed picker's Notes verb: a free-text note on the line's units,
- * written to each unit's inventory timeline (NOTE, source `picking.note`).
- *
- * Body: { allocation_ids: number[], text: string }
- */
+/** POST /api/picking/session/[id]/note */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null = typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
   if (actorStaffId == null) {

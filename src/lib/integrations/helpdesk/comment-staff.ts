@@ -1,11 +1,4 @@
-/**
- * Cycle Forge staff identity on helpdesk comments.
- *
- * App-posted replies go out through a shared Zendesk API user. We stamp the
- * real `staff.id` here so the thread can render {@link StaffAvatar} instead of
- * the Zendesk agent photo. Comments written in Zendesk have no row and keep
- * the helpdesk identity (unless `staff.email` matches the agent).
- */
+/** Cycle Forge staff identity on helpdesk comments. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -123,20 +116,7 @@ export async function staffAuthorsByEmail(
   return out;
 }
 
-/**
- * Staff by NAME — the sign-off fallback.
- *
- * An app-written internal note ends `— {staffName}` ({@link signComposerInternalNote}),
- * so a comment carries its author even when no `helpdesk_comment_staff` row was
- * recorded: the ticket predates the mapping table, or the post-time stamp
- * failed (it is best-effort and swallowed). Without this the thread falls back
- * to the Zendesk API user and every app note reads "Manager".
- *
- * A name is weaker evidence than a comment id or an email, so it is only ever
- * consulted last, and an ambiguous name (two staffers called Kai) is DROPPED
- * rather than guessed — attributing a claim note to the wrong person is worse
- * than leaving it unattributed.
- */
+/** Staff by NAME — the sign-off fallback. */
 export async function staffAuthorsByName(
   orgId: OrgId,
   names: string[],

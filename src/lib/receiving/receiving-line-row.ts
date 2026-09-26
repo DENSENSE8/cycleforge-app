@@ -1,29 +1,6 @@
-/**
- * `ReceivingLineRow` — the canonical receiving-line row shape returned by
- * /api/receiving-lines and consumed across the receiving/station/sidebar UI.
- *
- * Extracted out of `ReceivingLinesTable.tsx` into this leaf module so that
- * low-level utilities (e.g. `utils/events.ts`) and lib helpers can reference
- * the type WITHOUT importing the heavy table component — which previously
- * created import cycles (utils → component → … → utils). `ReceivingLinesTable`
- * re-exports this type for backwards compatibility, so existing importers are
- * unaffected.
- */
+/** `ReceivingLineRow` — the canonical receiving-line row shape returned by /api/receiving-lines and consumed across the… */
 
-/**
- * One materialised `receiving_line_unit` — an *expected physical unit* on the
- * line, with its scanned serial resolved. The wire shape both
- * /api/receiving-lines and /api/receiving/:id emit, built by the single reader
- * `fetchLineUnits` (src/lib/receiving/ensure-line-units.ts) so the two
- * endpoints cannot drift.
- *
- * Note the two `serial_absent` scopes, which are NOT interchangeable:
- * `ReceivingLineRow.serial_absent` waives the WHOLE line
- * (`receiving_line_testing`); this one waives THIS unit only. Both are live —
- * see the precedence rule in derive-receiving-step-states.ts.
- *
- * Plan: docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §3.
- */
+/** One materialised `receiving_line_unit` — an *expected physical unit* on the line, with its scanned serial resolved. */
 export interface ReceivingLineUnitView {
   /** Durable unit identity — survives serial deletes and ordinal renumbering. */
   id: number;
@@ -44,20 +21,9 @@ export interface ReceivingLineUnitView {
 export interface ReceivingLineRow {
   id: number;
   receiving_id: number | null;
-  /**
-   * Real `shipping_tracking_numbers.id` for a shipment-anchored delivered-unscanned
-   * row (no receiving_line). The row's `id` is a negative, collision-free React key
-   * only — recover the true shipment id from THIS field, never by decoding `id`
-   * (see `shipmentIdFromDeliveredUnscannedRow`). Null on every line-anchored row.
-   */
+  /** Real `shipping_tracking_numbers.id` for a shipment-anchored delivered-unscanned row (no receiving_line). */
   shipment_ref?: number | null;
-  /**
-   * Client-minted identity for an OPTIMISTIC scan row (the triage "importing"
-   * stub). Carries across the stub → resolved-row reconcile so the sidebar rail
-   * keys both renders by the same value (see SidebarRailShell `getReconcileId`)
-   * and updates the row IN PLACE instead of unmount+remount. Absent on every
-   * server-fetched row — those fall back to keying by `id`.
-   */
+  /** Client-minted identity for an OPTIMISTIC scan row (the triage "importing" stub). */
   client_event_id?: string;
   tracking_number: string | null;
   /** Legacy Zoho PO reference#/tracking text on the line (pickup placeholder detection). */
@@ -121,12 +87,7 @@ export interface ReceivingLineRow {
   receiving_listing_url?: string | null;
   /** Line-level listing URL from `receiving_line.listing_url`. */
   listing_url?: string | null;
-  /**
-   * Derived faceted bucket for `view=incoming` — computed on read from the
-   * carrier status on shipping_tracking_numbers (DELIVERED_UNOPENED,
-   * ARRIVING_TODAY, STALLED, IN_TRANSIT, PENDING_CARRIER, AWAITING_TRACKING).
-   * Null on other views.
-   */
+  /** Derived faceted bucket for `view=incoming` — computed on read from the carrier status on shipping_tracking_numbers (DELIVERED_UNOPENED,… */
   delivery_state?:
     | 'DELIVERED_UNOPENED'
     | 'DELIVERED_NOT_UNBOXED'
@@ -168,48 +129,18 @@ export interface ReceivingLineRow {
    * (`lt_24h` | `h24_48` | `gt_48h`). Set on synthetic shipment rows only.
    */
   delivered_age_band?: 'lt_24h' | 'h24_48' | 'gt_48h' | null;
-  /**
-   * eBay claim deadline (civil date, `YYYY-MM-DD`) — the date after which an
-   * item-not-received can no longer be filed. A SECOND, external clock, distinct
-   * from `delivered_age_band`: it expires whether or not the warehouse acts. Set
-   * on delivered-not-unboxed rows sourced from eBay; null everywhere else.
-   */
+  /** eBay claim deadline (civil date, `YYYY-MM-DD`) — the date after which an item-not-received can no longer be filed. */
   claim_by_date?: string | null;
-  /**
-   * Universal Incoming purchase identity (receiving_lines spine cache; Incoming
-   * view only). `inbound_source_type` badges the row's source ('zoho' | 'ebay' | …);
-   * `source_order_id` is the external order id (the eBay order#) shown when the
-   * line has no Zoho PO; `platform_account_*` name the buyer/storefront account
-   * the purchase was made on. Null on plain Zoho lines / other views.
-   */
+  /** Universal Incoming purchase identity (receiving_lines spine cache; Incoming view only). */
   inbound_source_type?: string | null;
   source_order_id?: string | null;
   platform_account_id?: number | null;
   platform_account_label?: string | null;
-  /**
-   * Zoho PO mirror status (`zoho_po_mirror.status`) — incoming + scanned views.
-   * Phase 2: when terminal (received/closed/billed/cancelled) the row is badged
-   * "Zoho: received" instead of being hidden, so a physically-present box stays
-   * actionable while the financial-state mismatch is visible.
-   */
+  /** Zoho PO mirror status (`zoho_po_mirror.status`) — incoming + scanned views. */
   zoho_status?: string | null;
-  /**
-   * When the PO mirror last synced (`zoho_po_mirror.last_synced_at`) — the age
-   * of {@link zoho_status}, disclosed by the `zoho` chip's tooltip. A mirror
-   * answer is a cached claim; an operator deciding whether to chase a vendor
-   * needs to know it might be a day old.
-   *
-   * ⚠ It is when WE POLLED, never when the vendor flipped the status. Do not
-   * render it as a transition time ("received 2h ago") — closing that gap needs
-   * `zoho_po_mirror.status_changed_at`, which does not exist yet.
-   */
+  /** When the PO mirror last synced (`zoho_po_mirror.last_synced_at`) — the age of {@link zoho_status}, disclosed by the `zoho` chip's tooltip. */
   zoho_status_synced_at?: string | null;
-  /**
-   * view=incoming_removed only — signals for {@link resolveIncomingRemovalReason}.
-   * `removed_at` is the best-evidence departure time; the other four signals the
-   * ladder needs (delivered · scanned · unboxed · vendor status) are read off
-   * fields this row already carries, so only these two are computed server-side.
-   */
+  /** view=incoming_removed only — signals for {@link resolveIncomingRemovalReason}. */
   removed_written_off?: boolean;
   removed_aged_out?: boolean;
   removed_at?: string | null;
@@ -230,11 +161,7 @@ export interface ReceivingLineRow {
   /** Terminal "Received" (DONE) transition time — receiving_lines.received_done_at;
    *  null until the line is fully received. Distinct from received_at (door scan). */
   received_done_at?: string | null;
-  /** Moment the carton was first opened on the Unbox surface
-   *  (receiving.unbox_opened_at, or the UNBOX_SCAN_OPENED ops_event). This is the
-   *  unbox rail's time-label + sort axis — the SAME value the right-pane Overview
-   *  shows as "Opened for unbox". Distinct from received_at (door scan) and
-   *  scanned_at (first physical scan). Null until the carton is opened in Unbox. */
+  /** Moment the carton was first opened on the Unbox surface (receiving.unbox_opened_at, or the UNBOX_SCAN_OPENED ops_event). */
   unbox_opened_at?: string | null;
   /**
    * When this staffer last opened the line on Quality Control
@@ -248,12 +175,7 @@ export interface ReceivingLineRow {
   scanned_at?: string | null;
   /** Staff who first scanned the tracking (receiving_scans.scanned_by → staff.name). */
   scanned_by_name?: string | null;
-  /**
-   * Count of recorded testing verdicts for this line (view=testing and
-   * view=testing_opened; null on other views). Scoped to the tester when the
-   * feed is. Drives the Testing rail's "tested k/N" without re-deriving from
-   * workflow_status.
-   */
+  /** Count of recorded testing verdicts for this line (view=testing and view=testing_opened; null on other views). */
   tested_count?: number | null;
   image_url: string | null;
   source_platform: string | null;
@@ -282,15 +204,7 @@ export interface ReceivingLineRow {
     /** Minted unit identity; presence = the unit has been labeled at least once. */
     unit_uid?: string | null;
   }> | null;
-  /**
-   * Materialised per-unit rows for this line (`receiving_line_unit`), ordinal
-   * order. Present only on the `?include=serials` reads that resolve them;
-   * **optional through Phase 3** so every existing consumer keeps compiling and
-   * the `serials[]` path above stays the live one until Phase 4 retires it.
-   *
-   * Empty array = the line has been read but has nothing to materialise (qty 0
-   * / unfound placeholder). `undefined` = this response didn't resolve units.
-   */
+  /** Materialised per-unit rows for this line (`receiving_line_unit`), ordinal order. */
   units?: ReceivingLineUnitView[] | null;
   /** Count of photos attached to this line's carton (from photos table, entity_type='RECEIVING'). */
   photo_count?: number;
@@ -312,13 +226,7 @@ export interface ReceivingLineRow {
   unbox_only_intake?: boolean;
   /** Server stamp when operator explicitly picked condition_grade. */
   condition_set_at?: string | null;
-  /**
-   * The grading ACT — gate for the Condition procedure step
-   * (`receiving_line_testing.condition_graded_at`, 2026-08-01c). Distinct from
-   * `condition_set_at`, which is the COALESCE-once first-set stamp and survives
-   * a reopen; this one is cleared by one. `condition_grade` is NOT NULL with a
-   * default, so it exists on an untouched line and can never be the gate.
-   */
+  /** The grading ACT — gate for the Condition procedure step (`receiving_line_testing.condition_graded_at`, 2026-08-01c). */
   condition_graded_at?: string | null;
   /**
    * Carton-level: an operator confirmed the contents against this line list
@@ -327,12 +235,7 @@ export interface ReceivingLineRow {
   contents_confirmed_at?: string | null;
   /** Server stamp when a receiving label was first printed for this line (Print step). */
   label_printed_at?: string | null;
-  /**
-   * An operator confirmed they read this line's printed label face
-   * (`receiving_line_testing.label_previewed_at`, 2026-08-02). Gate for the
-   * Label capture step — distinct from `label_printed_at`, which is the commit
-   * act the terminal dock owns.
-   */
+  /** An operator confirmed they read this line's printed label face (`receiving_line_testing.label_previewed_at`, 2026-08-02). */
   label_previewed_at?: string | null;
   /**
    * Unbox commit `stage` — intended putaway bin stamped on

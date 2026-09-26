@@ -18,35 +18,7 @@ import { publishScanLog } from '@/lib/realtime/publish';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * GET|POST /api/scan/resolve
- *
- * Universal scanner resolver for both desktop and the mobile cockpit
- * (`/m/scan`).
- *
- * Resolution cascade (first match wins):
- *   0. Anything this app PRINTS — via `routeScan`, the one decoder. Carton /
- *      line / unit / handling-unit handles AND location labels, in every form
- *      (bare handle, flat code, GS1 AI, absolute URL).
- *   0.5 Tenant identification grammar (compiled Zod). After print-handles.
- *   1. Multi-AI GS1 Data Matrix (FNC1 or parenthesized form)
- *   2. GS1 Digital Link URL or internal /l|/p|/o|/s|/q prefix
- *   3. Pattern classify — tracking | FNSKU | serial_full | serial_partial
- *   4. Fallback: 'unknown'
- *
- * Step 0 must stay FIRST. `classifyInput` has no location vocabulary, so a
- * bare flat location code reaching step 3 is classified `serial_partial` and
- * looked up against `tech_serial_numbers` — a printed bin label answering as a
- * serial fragment.
- *
- * For every scan we additionally look up matching orders (single | multi |
- * none) and return a `mobileRoute` field that /m/scan uses to navigate
- * directly to the order detail page when there is exactly one match.
- *
- * IMPORTANT: This route NEVER writes to receiving_*. It writes only to
- * `mobile_scan_events` for telemetry. The mobile center scan button is
- * intent-routing, not a receiving event.
- */
+/** GET|POST /api/scan/resolve */
 
 export const dynamic = 'force-dynamic';
 
@@ -236,11 +208,6 @@ async function lookupOrderById(orderId: string, organizationId: string): Promise
 }
 
 // ─── Receiving lookups ───────────────────────────────────────────────────────
-//
-// Receiving labels print a Data Matrix carrying `R-{id}` (the bare handle).
-// Workers also frequently scan or type the plain PO number. Both should
-// land on the carton detail page `/m/r/{receiving_id}` so tech can mark the
-// tested-pass / tested-fail outcome.
 
 async function lookupReceivingByPoNumber(po: string, organizationId: string): Promise<{ id: number; zoho_purchaseorder_number: string | null } | null> {
   const trimmed = po.trim();
@@ -333,11 +300,7 @@ interface LogParams {
 
 async function logScanEvent(p: LogParams): Promise<void> {
   try {
-    // mobile_scan_events grew an organization_id column (2026-06-14 phase-B
-    // needs-col-2) with a GUC-based default. This telemetry insert runs on the
-    // bare neon-client `query` connection, which never sets app.current_org, so
-    // the default resolves to NULL → a NULL-org row. Stamp organizationId
-    // explicitly so the row is tenant-attributed.
+    // mobile_scan_events grew an organization_id column (2026-06-14 phase-B needs-col-2) with a GUC-based default.
     await query`
       INSERT INTO mobile_scan_events (
         staff_id, raw_value, normalized, kind, carrier,
@@ -364,10 +327,6 @@ async function logScanEvent(p: LogParams): Promise<void> {
 }
 
 // ─── Mobile route picker ─────────────────────────────────────────────────────
-//
-// NEVER returns a `/receiving` route. The mobile center button is not a
-// receiving entry point. When we can't resolve to a single order we return
-// null and let the client show fallback affordances.
 
 function pickMobileRoute(matches: OrderMatch[]): string | null {
   if (matches.length === 1) {
@@ -426,19 +385,7 @@ async function resolve(input: string, organizationId: string, staffId: number, d
 
   if (!trimmed) return { ...base, kind: 'unknown', source: 'none' };
 
-  // 0. Anything THIS APP PRINTS — `R-{id}`, `L-{id}`, `U-{id}`, `REP-{id}`,
-  //    `H-{id}`, a location label, and the URL forms of all of them. These
-  //    route DIRECTLY to their existing pages without touching
-  //    `mobile_scan_events`-style classification.
-  //
-  //    `routeScan` is the ONE decoder, so this arm must run before the pattern
-  //    cascade below — `classifyInput` has no location vocabulary and buckets a
-  //    bare flat code (`A0101101`) as `serial_partial`, which is how a printed
-  //    bin label came back as a serial fragment.
-  //
-  //    The `redirect` check is what keeps this arm honest: routeScan's
-  //    leading-letter fallback also types `bin`, but returns no redirect
-  //    because it is a guess. A guess must fall through to the cascade.
+  // 0. Anything THIS APP PRINTS — `R-{id}`, `L-{id}`, `U-{id}`, `REP-{id}`, `H-{id}`, a location label, and the URL forms of all of them.
   const handleRoute = routeScan(trimmed);
   if (handleRoute && handleRoute.redirect && (
     handleRoute.type === 'receiving' ||

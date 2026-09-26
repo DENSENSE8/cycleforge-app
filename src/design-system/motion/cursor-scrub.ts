@@ -1,20 +1,4 @@
-/**
- * Cursor scrub channel — a control publishes its LIVE value here while the
- * pointer is dragging it, and {@link MorphCursorLayer} paints that value on the
- * cursor itself.
- *
- * A module store rather than a DOM attribute, because a scrub outlives the
- * element's box: `setPointerCapture` keeps events flowing to a slider even when
- * the hand overshoots far outside it, so a value the layer read off the
- * *hovered* element would go stale the instant the drag left the track.
- *
- * THE CURSOR IS NEVER THE ONLY COPY. Whatever a control publishes here it must
- * also render in the DOM. A number that exists only on the cursor is invisible
- * to touch, to the keyboard, and to a screen reader — the cursor is the
- * accelerant for a value the page already states, never the statement itself.
- *
- * Law: Pick a ROLE, not a literal (physics live on `motionRole.cursor`).
- */
+/** Cursor scrub channel — a control publishes its LIVE value here while the pointer is dragging it, and {@link MorphCursorLayer} paints… */
 
 /** What the cursor paints mid-drag. `null` = nothing is being scrubbed. */
 export type CursorScrub = {
@@ -52,15 +36,7 @@ export function readCursorScrubServer(): CursorScrub {
   return null;
 }
 
-/**
- * Chrome-style cursor KIND — a small glyph that stays on the pointer.
- * Not a box-wear. Spread from primitives; do not hand-write `data-cursor`.
- *
- * `click` — button / tab / chip (Chrome `pointer`)
- * `resize-x` / `resize-y` — pane sash / column (Chrome `col-resize` / `row-resize`)
- * `grab` / `grabbing` — reorder / redrag (Chrome `grab` / `grabbing`)
- * `morph` — rare: cursor *wears the control's box* (scrub track, travelling pill)
- */
+/** Chrome-style cursor KIND — a small glyph that stays on the pointer. */
 export type CursorKind = 'click' | 'resize-x' | 'resize-y' | 'grab' | 'grabbing' | 'morph';
 
 /**

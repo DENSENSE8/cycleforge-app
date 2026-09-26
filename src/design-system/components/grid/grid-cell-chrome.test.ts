@@ -10,13 +10,7 @@ import {
   ledgerGridWidthVarValue,
 } from './grid-cell-chrome';
 
-/**
- * Shared spreadsheet cell chrome — composed identically by sticky headers,
- * leaf rows, and group summaries. Locks the helper so the three can never drift.
- *
- * 1B: vertical `border-r` is retired — BOTTOM row rules live on the airtable
- * CSS skin / row shell. The `rule` arg stays API-compatible but is a no-op.
- */
+/** Shared spreadsheet cell chrome — composed identically by sticky headers, leaf rows, and group summaries. */
 describe('ledgerGridCell — shared spreadsheet cell chrome', () => {
   it('default cell: horizontal inset, vertically centered, no vertical rule (1B)', () => {
     const cls = ledgerGridCell();

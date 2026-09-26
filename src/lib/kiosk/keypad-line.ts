@@ -1,19 +1,7 @@
 /**
- * What one Keypad `+` puts on the cart — Square's "Keypad": the typed amount
- * lands at once as a `Custom Amount` line, no modal, no description step, no
- * PIN (a keypad amount has no catalog price to deviate from; `verifyLinePrices`
+ * What one Keypad `+` puts on the cart — Square's "Keypad":
  * accepts it unapproved — operator decision 2026-09-24).
- *
  * There is no note field above the pad (operator 2026-09-24: "remove the title
- * above the custom keyboard entry"), so every keypad line is titled
- * `Custom Amount`; a note is added afterwards from the line's editor.
- *
- *   Sales  → a RETAIL line.
- *   Repair → a REPAIR device priced by hand; the repair stepper collects its
- *            serial, reasons and signature from Charge.
- *
- * Pure; the face hands the result to the session store.
- * Callers: `KioskKeypadFace`.
  */
 
 import type { RepairPayload, RetailPayload } from './cart-line';

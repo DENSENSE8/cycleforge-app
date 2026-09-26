@@ -70,14 +70,7 @@ import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-rou
 import { TestingDisplaysActionFloor } from './testing-panel/TestingDisplaysActionFloor';
 import { useSellerClaimedCondition } from './testing-panel/useSellerClaimedCondition';
 
-/**
- * Right-pane TESTING display — Unbox SoT anatomy.
- *
- * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview}. The dock
- * is the Unbox floor — one raised {@link WorkspaceNotesCard} with Pass · Print
- * on its trailing edge. Ticket mode mounts the thread / claim above the dock
- * (not a Displays-only editor).
- */
+/** Right-pane TESTING display — Unbox SoT anatomy. */
 
 export function TestingPanel({
   row,
@@ -111,20 +104,7 @@ export function TestingPanel({
   const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
   const ticketMode = composerMode === 'ticket';
 
-  /*
-   * The composer no longer collapses the context blocks — operator ruling,
-   * 2026-08-30.
-   *
-   * Auto-collapse had three composer triggers: entering Ticket mode, the mode
-   * change callback, and FOCUS. Focus is the one that made it unusable: a click
-   * into the note field on Unbox — the station's whole job — folded Items and
-   * Label away and left the centre empty above the dock. Ticket mode is no
-   * better now that the dock holds the claim draft itself: the operator is
-   * writing ABOUT the items, so hiding them is backwards.
-   *
-   * Collapse-all and the band toggles still drive it. Scroll does NOT — it
-   * remounted the serial field and yanked the workbench back to the caret.
-   */
+  /* The composer no longer collapses the context blocks — operator ruling, 2026-08-30. */
   useEffect(() => {
     bands.close('label');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the line flips
@@ -139,12 +119,7 @@ export function TestingPanel({
    */
   const openTimelineDisplay = useCallback(() => openDisplays('timeline'), [openDisplays]);
 
-  /**
-   * PO line serials-cell / edit click → open the right-edge Units Display
-   * (per-unit verdict — the Action plane), selecting the line first so the
-   * display drills by `receiving_line_id`. Unbox parity (`LineEditPanel`
-   * `onViewAllUnits`). A contextual leaf open — skips the Root Index.
-   */
+  /** PO line serials-cell / edit click → open the right-edge Units Display (per-unit verdict — the Action plane), selecting the line first so… */
   const openUnits = useCallback(
     (line: ReceivingLineRow) => {
       if (line.id !== row.id) dispatchSelectLine(line);
@@ -153,19 +128,7 @@ export function TestingPanel({
     },
     [row.id, openDisplays],
   );
-  /**
-   * Filing a claim opens it in BOTH surfaces — Unbox grain, same switch
-   * ({@link CLAIM_RENDERS_IN_BOTH}), so a tech who learned the claim on one
-   * station finds it in the same two places on the other.
-   *
-   * `claimMode` is one piece of state feeding the centre pane AND the rail's
-   * Ticket leaf, so the pair cannot open disagreeing about Create vs Link.
-   * CLOSING stays centre-only (`openClaimView` / the pane's `onCloseClaim`) —
-   * the rail is the surface the floor already trusts.
-   *
-   * The line-open effect below re-parks Displays on `listing`, but it is
-   * `row.id`-gated, so it cannot yank a claim opened on the current line.
-   */
+  /** Filing a claim opens it in BOTH surfaces — Unbox grain, same switch ({@link CLAIM_RENDERS_IN_BOTH}), so a tech who learned the claim on… */
   const onOpenClaim = useCallback((mode: ClaimModalMode = 'create') => {
     // Centre — where the claim is going.
     setClaimMode(mode);
@@ -201,14 +164,7 @@ export function TestingPanel({
     row.receiving_id != null ||
     timelineSerials.length > 0;
 
-  /**
-   * `←|` Open displays → the Root Index, not `ticket`.
-   *
-   * Testing declares six displays; landing one of them from the edge toggle
-   * made the other five a Back-press away from an operator who had no reason to
-   * think there was anything behind Ticket. Contextual `openDisplays(<leaf>)`
-   * (claim · reply · SKU pairing) still skips the index — that IS the ask.
-   */
+  /** `←|` Open displays → the Root Index, not `ticket`. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   const openPoPairing = useCallback(() => {
     setActiveSideTab('linkage');
@@ -260,10 +216,7 @@ export function TestingPanel({
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveTestingTicketContextOpen(row, hasTicket);
-    // Arrival lands on the station's own tab — Unbox grain. The claim MODE
-    // seed still rides along for the rail's Ticket leaf; only the composer
-    // flip is gone, because Ticket now opens a claim draft rather than a
-    // passive thread.
+    // Arrival lands on the station's own tab — Unbox grain.
     setClaimMode(ctx.claimMode);
     setComposerMode(stationComposerArrivalMode());
     setActiveSideTab('listing');

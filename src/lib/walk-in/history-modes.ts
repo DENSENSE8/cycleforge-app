@@ -1,23 +1,4 @@
-/**
- * Sales history domain mode axis — Local Pickup · Sales · Repairs, each with
- * its own top-header tabs that swap between genuinely separate tables. Mounted
- * on `/dashboard?mode=sales|pickup|repairs` (former `/walk-in` L1). This is the
- * analogue of the inbound/outbound split in `src/lib/dashboard/dashboard-domains.ts`.
- *
- * **Dual-door RepairTable:** Sales `?mode=repairs` is the overall-history desk;
- * Scan Stations `/repair` is the intake/task door. Both compose the same
- * `RepairTable`. Legacy `/walk-in?mode=repair|repairs` browse bookmarks redirect
- * to the Sales desk; task deep-links (`?new=` / `?openRepair=`) stay on `/repair`.
- * `parseRepairTab` is the shared `?tab=` SoT for both doors.
- *
- * Modes ≠ tabs: the **mode** lives in the dashboard L2 rail (`?mode=`), the
- * **tab** lives in the main-pane header (`?tab=`, validated per mode). On the
- * dashboard, `mode=sales` stays in the URL (it is also the domain wire value).
- *
- * Pure data + functions (no React) so the sidebar slider, the master-nav rail
- * (`sidebar-navigation.ts`), the page header, and the body all read one SoT.
- * Legacy `?category=` coercion still lives in `history-categories.ts`.
- */
+/** Sales history domain mode axis — Local Pickup · Sales · Repairs, each with its own top-header tabs that swap between genuinely separate… */
 
 import { ReceivingModeRepair, SalesPrice, ShoppingCart } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
@@ -113,12 +94,7 @@ export function parseSalesTab(raw: string | null | undefined): SalesTab {
 // ── Repair `?tab=` SoT (station `/repair` + Sales `?mode=repairs`) ────────────
 /** Station / task door default — open work queue. */
 export const DEFAULT_REPAIR_TAB: RepairTab = 'active';
-/**
- * Sales history desk default — EVERY repair, any status (operator 2026-09-25:
- * the Sales repair desk "must be the same information" as the kiosk History
- * face). It opened on `done`, so a repair checked in at the counter minutes
- * earlier (`Pending Repair`) was on the tablet's History and missing here.
- */
+/** Sales history desk default — EVERY repair, any status (operator 2026-09-25: */
 export const DEFAULT_SALES_REPAIR_TAB: RepairTab = 'all';
 
 export function parseRepairTab(

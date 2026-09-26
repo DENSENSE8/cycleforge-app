@@ -1,17 +1,4 @@
-/**
- * GET /api/tasks/[id]/media — the photos, ready videos and media links
- * (photos / videos attached by URL) on one task, each oldest first. The read
- * twin of `GET /api/repair-service/[id]/photos`.
- *
- * Uploads and deletes reuse the photo platform unchanged:
- * `POST /api/photos/upload` / `POST /api/photos/upload/video` (+ finalize) with
- * `entityType=WORK_ASSIGNMENT`, `DELETE /api/photos/[id]`,
- * `DELETE /api/photos/videos/[id]`. Media links are written through
- * `/api/tasks/[id]/media/links`.
- *
- * PERMISSION — `work_orders.claim`, the gate every task verb (and task media
- * upload, `UPLOAD_PERM_BY_ENTITY.WORK_ASSIGNMENT`) uses.
- */
+/** GET /api/tasks/[id]/media — the photos, ready videos and media links (photos / videos attached by URL) on one task, each oldest first. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

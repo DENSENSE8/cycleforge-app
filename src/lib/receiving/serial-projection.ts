@@ -1,30 +1,4 @@
-/**
- * Serial projection — the read-model denorm behind instant serial display.
- *
- * Plan: docs/todo/receiving-serial-immediate-display-plan.md (Tier B2).
- *
- * Two responsibilities live here:
- *
- *  1. {@link fetchSerialsForLines} — the authoritative "current serials per
- *     receiving line" query (moved verbatim out of the receiving-lines route so
- *     the route, the batch endpoint, the reconcile path, and the projection
- *     writer all share ONE implementation). Candidate set = anything ever touched
- *     by one of the lines (frozen origin OR a later inventory_events attach), then
- *     each candidate's CURRENT line is resolved (most recent inventory_events
- *     touch, falling back to the frozen origin) so a returned-then-re-received
- *     serial lands on the line it's actually on now.
- *
- *  2. {@link refreshLineSerialProjection} — recompute + persist the compact jsonb
- *     projection (`{ id, serial_number, condition_grade }[]`) onto
- *     receiving_line_testing.serial_projection whenever a serial attaches /
- *     detaches / re-grades / auto-sorts. The projection is only the FAST DEFAULT
- *     for first-frame display; `?include=serials` remains the authoritative
- *     reconcile that self-heals any drift on open, so this writer is best-effort
- *     (a failure must never fail the scan — see {@link refreshLineSerialProjectionSafe}).
- *
- * Deps-injected (default real impls) so the writer unit-tests DB-free — same
- * convention as the narrow-facts helpers.
- */
+/** Serial projection — the read-model denorm behind instant serial display. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -78,10 +52,7 @@ export async function fetchSerialsForLines(
   const grouped = new Map<number, LineSerial[]>();
   if (lineIds.length === 0) return grouped;
 
-  // Candidate serials: anything EVER touched by one of these lines — either its
-  // frozen origin, or a later inventory_events attach (a return re-received under
-  // a different PO moves a serial onto a NEW line without ever updating
-  // origin_receiving_line_id).
+  // Candidate serials:
   const result = await deps.query<
     SerialUnitRow & { origin_receiving_line_id: number | null; handling_unit_id: number | null }
   >(
@@ -156,12 +127,7 @@ export interface RefreshProjectionDeps {
   ) => Promise<void>;
 }
 
-/**
- * Upsert one line's projection onto receiving_line_testing. Every receiving_line
- * is born with its rlt row (birth invariant), so this is an UPDATE in practice;
- * the INSERT arm is a defensive backstop for a legacy line whose rlt row is
- * somehow missing (keeps the projection from silently no-op'ing).
- */
+/** Upsert one line's projection onto receiving_line_testing. */
 export async function writeLineSerialProjection(
   orgId: OrgId,
   lineId: number,
@@ -182,12 +148,7 @@ const defaultRefreshDeps: RefreshProjectionDeps = {
   writeProjection: writeLineSerialProjection,
 };
 
-/**
- * Recompute + persist the serial projection for one or more receiving lines from
- * the authoritative current-serials query. Call after any serial mutation
- * (attach / detach / re-grade / parts auto-sort). When a serial's CURRENT line
- * moves, pass BOTH the old and new line so neither is left stale.
- */
+/** Recompute + persist the serial projection for one or more receiving lines from the authoritative current-serials query. */
 export async function refreshLineSerialProjection(
   orgId: OrgId,
   lineIds: number | number[],

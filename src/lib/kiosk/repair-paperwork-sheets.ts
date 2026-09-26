@@ -1,22 +1,6 @@
 /**
  * The walk-in's repair PAPERWORK — one agreement sheet per unit on the counter.
- *
- * ONE derivation for both places the sheets are shown: the repair pane's
- * Review & sign step and the top-chrome Paperwork panel. They used to be two
- * renderings of one agreement — the panel read only the FIRST repair line and
- * printed its own Customer / Items recap above it — so the panel could state a
- * different device, serial or issue than the sheet the customer signed
  * (operator 2026-09-25: "paperwork should just be paperwork").
- *
- * The VISIT facts (customer, ticket) are shared, so a two-unit drop-off is two
- * agreements for one customer. The ISSUE is each unit's own reasons, falling
- * back to the visit notes — what the counter writes as that unit's
- * `repair_service.issue`. The SN field carries every serial on the unit.
- * Linked repairs never reach here: `repairDevicesFromLines` skips them (their
- * agreement was signed when their ticket was written).
- *
- * Pure: no React, no fetch. Callers: `KioskRepairPane`, `KioskPaperworkPanel`.
- * Affected API: none. Schemas: none.
  */
 
 import {

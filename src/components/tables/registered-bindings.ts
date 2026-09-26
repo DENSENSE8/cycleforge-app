@@ -1,43 +1,4 @@
-/**
- * Every table SURFACE BINDING in the product, in migration order — the one list.
- *
- * Re-register a surface here as it is rebuilt. Routes that still render
- * `TableRebuildPlaceholder` keep their permissions, nav position and data;
- * a rewritten display drops back into a seam that still exists. This list
- * and the registry are the product's table catalog — a binding that is not
- * here is not in the product.
- *
- * ## Why this is its own module
- *
- * There were two lists: `REGISTERED_DEFINITIONS` inside the registry (which
- * mapped bindings to their `.definition`) and a hand-typed `BINDINGS` array
- * inside `table-definition-registry.guard.test.ts`. They were maintained by
- * hand, independently, and nothing compared them — so when `inventory.units`
- * and `outbound.csv-import-staging` were registered, the guard's copy was not
- * updated and those two surfaces silently escaped the definition↔columns drift
- * check for the whole of their life. The drift check is the guard's stated
- * reason for existing, so two tables had the protection its docblock promised
- * and none of the enforcement.
- *
- * One list, derived both ways, plus a coverage assertion in
- * `table-record-plane.guard.test.ts` that the registry and this array name the
- * same set. A hand-maintained "all of them" is only as good as the assertion
- * that it is all of them.
- *
- * Both of those guards — the drift check
- * (`table-definition-registry.guard.test.ts`) and that coverage assertion —
- * were named here for a long time and did not exist. They were written
- * 2026-08-31 (seller-table-program wave 1.5), which is the point at which this
- * docblock's account of what protects the list became true.
- *
- * ## Why `as const` and not an erased element type
- *
- * `TableSurfaceBinding<Row, C>` cannot be widened to hold heterogeneous row
- * shapes without erasing `makeDescriptor`'s parameter — which is contravariant,
- * so the widened form would be a cast pretending to be a guarantee (the same
- * reasoning that keeps the registry's *lookup* id-keyed rather than typed; see
- * `table-surface-binding.ts`). The tuple keeps every element exactly typed.
- */
+/** Every table SURFACE BINDING in the product, in migration order — the one list. */
 
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
@@ -92,32 +53,17 @@ import { SEARCH_HITS_TABLE_BINDING } from '@/components/search/hits-grid/search-
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
   RECEIVING_TABLE_BINDING,
-  // To-Ship / Packed / station queues share this parametric Orders grid —
-  // ONE binding since the Wave-1 hand-model kill (`fulfillment.tested` was
-  // layout as a second definition; `?ustatus=TESTED` narrows rows instead).
-  // `UnshippedTable` → `useOrdersSpreadsheet` → `NonlinearTableHost`. There
-  // is no desk-local `to-ship` family — that fork only isolated prefs while
-  // painting the same cells, and it clipped ORDER identity.
+  // To-Ship / Packed / station queues share this parametric Orders grid — ONE binding since the Wave-1 hand-model kill (`fulfillment.tested`…
   ORDERS_DEFAULT_TABLE_BINDING,
   // Home → Daily: the shift checklist as a real collection, not a prose list.
   DAILY_TABLE_BINDING,
-  // Home → Tasks: one staffer's own `staff_todos`, ported off the hand-rolled
-  // header-popover list. Sibling of `home.daily`, never a merge with it — two
-  // stores answering two questions (personal list vs the org's rostered shift
-  // checklist), sharing this engine and nothing else.
+  // Home → Tasks:
   TASKS_TABLE_BINDING,
   // Review · Listing match + Missing item number — two queues on one page,
   // two prefs buckets, two record planes.
   CATALOG_LINK_TABLE_BINDING,
   IMPORT_EXCEPTION_TABLE_BINDING,
-  // ── Rebuilt 2026-08-29 (one-sheet-table-sot-PLAN Phase 4) ────────────────
-  // Twenty-six surfaces were stubbed on `TableRebuildPlaceholder` while their
-  // displays were rewritten. Each is back on the binding waist rather than as a
-  // second view component with its own toolbar — the route, its permissions and
-  // its data were never removed, so what returned is the display and nothing
-  // else.
-  //
-  // Inventory › Units browse.
+  // ── Rebuilt 2026-08-29 (one-sheet-table-sot-PLAN Phase 4) ──────────────── Twenty-six surfaces were stubbed on `TableRebuildPlaceholder`…
   UNITS_TABLE_BINDING,
   // To-Ship CSV import staging — its OWN prefs bucket, never `orders`: hiding a
   // column while triaging a file must not change the live queue's density.
@@ -194,44 +140,23 @@ export const REGISTERED_BINDINGS = [
   // read-time comparison with no id and no stamp; the retired clean-drift
   // paragraph is now the table's empty STATE, not an empty branch.
   ADMIN_SKU_DRIFT_TABLE_BINDING,
-  // Settings › Team directory — off AdminTable (wave D). Sign-in policy and
-  // Deactivate are row verbs behind stage-overlay planes; picking a row
-  // NAVIGATES to Settings → Access, the destination the retired Role cell
-  // linked to per row.
+  // Settings › Team directory — off AdminTable (wave D).
   STAFF_DIRECTORY_TABLE_BINDING,
-  // Reports › Bin utilization / Velocity / Dead stock — off AdminTable (wave
-  // D). THREE families, not one `reports` table: three row shapes cannot share
-  // a layout document, and the Fields menu keys off tableId, so the tab switch
-  // switches the picker with it. All read-only; recordPlane 'none' because the
-  // rows are projections and the SKU / bin already have their own desks.
+  // Reports › Bin utilization / Velocity / Dead stock — off AdminTable (wave D).
   REPORT_BIN_UTILIZATION_TABLE_BINDING,
   REPORT_VELOCITY_TABLE_BINDING,
    REPORT_DEAD_STOCK_TABLE_BINDING,
-  // Reports › Staff day — the per-staff-per-day shift report (Track R4). Same
-  // law as its three siblings: own tableId, read-only, recordPlane 'none' —
-  // the row is a projection of the daily-check report, and the interactive
-  // per-person view is /m/reports over the same buildStaffDay projection.
+  // Reports › Staff day — the per-staff-per-day shift report (Track R4).
   REPORT_STAFF_DAY_TABLE_BINDING,
   REPORT_PACKER_DAY_TABLE_BINDING,
-  // Reports › Completed tasks — the record of finished `work_assignments`
-  // follow-ups. Sibling of `tasks`, never a merge with it: the desk is the
-  // queue a staffer works and this is what it leaves behind, so the verbs, the
-  // capabilities and the layout document all differ.
+  // Reports › Completed tasks — the record of finished `work_assignments` follow-ups.
   REPORT_TASKS_TABLE_BINDING,
   // Admin › per-SKU bin distribution and stock ledger — the last two
   // AdminTable sections of /inventory/health/sku/[sku] (wave D). Read-only.
   SKU_BINS_TABLE_BINDING,
   SKU_LEDGER_TABLE_BINDING,
-  // Admin › per-SKU open allocations — the SIBLING document over the
-  // `unit-allocations` entity: same family, same catalog by reference, its own
-  // stored layout and its own record plane (the unit desk declares 'none', a
-  // per-SKU row opens `/inventory?unit=<id>`). The guard that forbids
-  // two bindings sharing a tableId is why an honest per-desk plane needs it.
+  // Admin › per-SKU open allocations — the SIBLING document over the `unit-allocations` entity:
   SKU_ALLOCATIONS_TABLE_BINDING,
-  // `/search` find plane — off a hand-rolled <ul> of result links
-  // (`READ_PLANE_IS_A_MOUNT`). ONE family over six entity types: the row shape
-  // is the search wire, and the adapter is where the six collapse. Read-only,
-  // no verbs, and the record plane is the `?sel=` handoff a FIND surface
-  // exists for.
+  // `/search` find plane — off a hand-rolled <ul> of result links (`READ_PLANE_IS_A_MOUNT`).
   SEARCH_HITS_TABLE_BINDING,
 ] as const;

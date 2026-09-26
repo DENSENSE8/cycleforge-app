@@ -1,13 +1,4 @@
-/**
- * seedKioskCatalog — a seed must never be able to break the glass.
- *
- * The whole value of this module is a head start on LCP; the whole RISK is that
- * a server read failure takes a counter tablet down with it. So what this pins
- * is the failure posture: unpaired, empty and throwing all resolve to `null`,
- * which is the signal the client uses to fetch exactly as it always did.
- *
- *   npx tsx --test src/lib/kiosk/seed-catalog.test.ts
- */
+/** seedKioskCatalog — a seed must never be able to break the glass. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -89,16 +80,7 @@ test('a throwing cookie/device resolve degrades the same way', async () => {
   assert.equal(errors.length, 1);
 });
 
-/**
- * The bug this pins SHIPPED, briefly, and every local check passed.
- *
- * Next attempts a static prerender at build time. `cookies()` throws
- * `DYNAMIC_SERVER_USAGE` during that attempt as CONTROL FLOW, and the seed's
- * "never throw" catch swallowed it — so the build concluded `/kiosk/v2` was
- * static and `next start` served a prerendered document with `seed: null`
- * forever. The performance fix was dead in production while the dev server
- * looked perfect (verified from the build log, 2026-09-15).
- */
+/** The bug this pins SHIPPED, briefly, and every local check passed. */
 test('Next\u2019s dynamic-usage signal escapes the catch — it is control flow, not a failure', async () => {
   const dynamicUsage = Object.assign(new Error('Dynamic server usage: cookies'), {
     digest: 'DYNAMIC_SERVER_USAGE',

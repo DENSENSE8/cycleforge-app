@@ -1,29 +1,4 @@
-/**
- * SkuIdentity — shared dual-SKU display block.
- * ────────────────────────────────────────────────────────────────────
- * Renders the internal Zoho/catalog SKU as the primary identifier with
- * each connected marketplace SKU (Ecwid, Amazon, eBay, etc.) shown as
- * a labeled secondary chip below.
- *
- * Why: warehouse units carry the internal canonical SKU on the shelf,
- * but customers reference the marketplace SKU on their orders. Showing
- * both makes the link explicit so pickers and CS share one mental model.
- *
- * Usage:
- *   <SkuIdentity
- *     canonicalSku="00001-BK"
- *     productTitle="Bose VCS-10 Center Channel Speaker Black"
- *     platforms={[
- *       { platform: 'ecwid',  platformSku: '01279-B' },
- *       { platform: 'amazon', platformSku: 'ZB-AFHB-Y58D' },
- *     ]}
- *   />
- *
- * Variants:
- *   default — full block with product title, large canonical SKU, chip row.
- *   compact — single line, smaller canonical SKU, tight chip row.
- *             For dense lists (pick queue rows, table cells, etc.).
- */
+/** SkuIdentity — shared dual-SKU display block. */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PlatformMark } from '@/components/ui/PlatformMark';

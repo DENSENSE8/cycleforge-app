@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Incoming desk Pairing topic — composes the same Package Pairing hub Arrival
- * Displays use (`CartonMatchHub` · `tabSet="arrival"` · `chrome="bare"`).
- * Stations keep Displays push; Incoming has no Displays column, so Pairing
- * lives here as an inspector topic.
- */
+/** Incoming desk Pairing topic — composes the same Package Pairing hub Arrival Displays use (`CartonMatchHub` · `tabSet="arrival"` ·… */
 
 import { useAuth } from '@/contexts/AuthContext';
 import { CartonMatchHub } from '@/components/receiving/workspace/line-edit/CartonMatchHub';

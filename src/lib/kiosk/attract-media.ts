@@ -1,10 +1,4 @@
-/**
- * Org kiosk attract / screensaver media — MIME allowlist + Blob key helpers.
- *
- * Bytes live on public Vercel Blob; the durable pointer is
- * `organizations.settings.brand.attractMediaUrl` (AttractLoop on `/kiosk/v2`).
- * Auth-gated photo content URLs are not usable on the kiosk host.
- */
+/** Org kiosk attract / screensaver media — MIME allowlist + Blob key helpers. */
 
 const ATTRACT_IMAGE_MIME = new Set<string>([
   'image/jpeg',

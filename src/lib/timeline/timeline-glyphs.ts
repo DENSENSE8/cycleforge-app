@@ -1,23 +1,10 @@
-/**
- * Timeline rail glyph SoT — maps `TimelineItem.sourceEventType` → a stable
- * glyph id + HoverTooltip label (mode family), never a color.
- *
- * {@link EventTimeline} resolves id → house Icons (mode strokes where the
- * event maps to a floor mode). Adapters stay ReactNode-free: set
- * `sourceEventType` and this module owns the rail language.
- *
- * Unmapped / missing types fall back to `signal` so the rail never reverts
- * to colored dots.
- */
+/** Timeline rail glyph SoT — maps `TimelineItem.sourceEventType` → a stable glyph id + HoverTooltip label (mode family), never a color. */
 
 export type TimelineGlyphId =
   | 'unbox'
   | 'tracking-scan'
   | 'support'
-  // A NOTE and a MESSAGE are different acts, so they are different glyphs
-  // (split 2026-08-02). `team-note` is something a staffer WROTE DOWN about a
-  // record — paper. `thread-message` is something someone SAID to someone —
-  // a bubble. One glyph for both put a chat bubble on every carton note.
+  // A NOTE and a MESSAGE are different acts, so they are different glyphs (split 2026-08-02).
   | 'team-note'
   | 'thread-message'
   | 'packing'
@@ -128,20 +115,7 @@ const EXACT: Record<string, TimelineGlyphSpec> = {
 
 const DEFAULT: TimelineGlyphSpec = { id: 'signal', tooltip: 'Signal' };
 
-/**
- * `inventory_events.station` → the same glyph vocabulary.
- *
- * A station is a PLACE, not an event type, so it resolves separately — but it
- * must land on the icon operators already learned for that bench, which is the
- * whole reason this lives beside the event map instead of in a page. RECEIVING
- * maps to `unbox` on purpose: `StationReceiving` in `icons/stations.tsx` is
- * `PackageOpen`, so the rail glyph and the nav glyph are the same shape (the
- * rail just skips the nav stroke wrapper, which muddies 14px — see
- * `timeline-glyph-icons.tsx`).
- *
- * Returns null for an unknown / absent station: an honest absence beats
- * painting `signal` on every row that happens to name a bench we don't map.
- */
+/** `inventory_events.station` → the same glyph vocabulary. */
 const STATION: Record<string, TimelineGlyphSpec> = {
   RECEIVING: { id: 'unbox', tooltip: 'Receiving' },
   TRIAGE: { id: 'receiving', tooltip: 'Arrival' },

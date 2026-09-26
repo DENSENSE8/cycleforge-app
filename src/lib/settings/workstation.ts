@@ -11,17 +11,7 @@ export interface WorkstationSettings {
   stationName: string;
   defaultWarehouse: string;
   defaultRole: WorkstationRole;
-  /**
-   * Packing bench this device sits at — a REFERENCE to a `locations` row
-   * (`location_kind` DESK/STAGING), never a bench record of its own and never a
-   * placement COUNT source (that stays `order_pack_placements` /
-   * `unit_pack_placements`; guard: `no-pack-station-twin.guard.test.ts`).
-   *
-   * Ready-to-Pack seeds the armed place target from it when nothing is armed,
-   * so an operator does not re-arm the same bench every session. Device-local
-   * on purpose: the binding describes where the TERMINAL is, so a staffer who
-   * walks to another bench's terminal inherits that bench, not their own.
-   */
+  /** Packing bench this device sits at — a REFERENCE to a `locations` row (`location_kind` DESK/STAGING), never a bench record of its own and… */
   packBenchLocationId: number | null;
 }
 

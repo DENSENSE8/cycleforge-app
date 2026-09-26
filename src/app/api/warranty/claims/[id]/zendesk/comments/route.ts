@@ -28,14 +28,7 @@ function toSlimComment(c: ZendeskComment): WarrantyZendeskComment {
   };
 }
 
-/**
- * GET /api/warranty/claims/[id]/zendesk/comments
- *
- * The linked ticket's comment thread (replies + internal notes), fetched live
- * from Zendesk — read-time sync, nothing cached locally. Returns an empty list
- * (not an error) when the claim has no linked ticket so the popover can render
- * the internal-events-only timeline. Gated by WARRANTY_LOGGER.
- */
+/** GET /api/warranty/claims/[id]/zendesk/comments */
 export const GET = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 3);
@@ -70,15 +63,7 @@ export const GET = withAuth(async (request, ctx) => {
   }
 }, { permission: 'warranty.view', feature: 'repair' });
 
-/**
- * POST /api/warranty/claims/[id]/zendesk/comments
- *
- * Adds a reply to the linked ticket (`public: true` = customer-visible,
- * default = internal note) and appends a ZENDESK_REPLY row to the claim
- * timeline. 409 when the claim has no linked ticket yet. Idempotent via
- * `Idempotency-Key` header or `idempotencyKey` body field. Gated by
- * WARRANTY_LOGGER.
- */
+/** POST /api/warranty/claims/[id]/zendesk/comments */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 3);

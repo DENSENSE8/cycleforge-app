@@ -1,12 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: src/app/api/kiosk/slot-events/route.ts (GET list);
- * future kiosk runtime via insertKioskSlotEvent.
- * Affected API: listKioskSlotEvents, insertKioskSlotEvent — org-scoped tenant TX.
- * Data schemas: KioskSlotEventTableRow; table kiosk_slot_events
- * (2026-09-11_kiosk_slot_events.sql).
- * User instruction (verbatim): Continue to the next phase
- */
+/** Gate preamble (Fact-Forcing): */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

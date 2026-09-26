@@ -1,37 +1,4 @@
-/**
- * Mode registry — the single source of truth for the four TASK modes, on
- * every platform (web, bundled desktop via generated/tokens.css, iOS via
- * generated/DesignTokens.swift).
- *
- * A mode is what the operator is DOING in a region, not what they prefer to
- * look at (that is the theme axis, `themes/registry.ts`). It is stamped by a
- * region root as `data-mode="<name>"` — through `ModeRegion`
- * (`design-system/providers/ModeRegion.tsx`), never by hand — and nests by
- * REGION, one level deep: a page region plus at most one nested region (the
- * right rail). The scan bar and every state/functional colour
- * (success/warning/danger/info/fulfillment, `state.ts`) are mode-independent.
- *
- * This module owns the values and the CSS generator; the web re-exports it
- * from `src/design-system/modes/registry.ts`, whose `modeRegistryStyleText`
- * app/layout.tsx injects as `<style id="app-mode-registry">`, directly after
- * the theme palettes.
- *
- * What the stylesheet does, per mode:
- *   1. `[data-mode='<name>']` declares every `--mode-*` variable. Colour vars
- *      resolve THROUGH the neutral theme vars, so under a dark theme a mode's
- *      surfaces are that theme's surfaces (the mode palettes are light-only).
- *   2. `html:not([data-color-scheme='dark']) [data-mode='<name>']` remaps the
- *      NEUTRAL `--ds-color-*` vars (see {@link MODE_NEUTRAL_REMAP}) to the
- *      mode palette, so existing `bg-surface-*` / `text-text-*` /
- *      `border-border-*` utilities adopt the mode inside the region with no
- *      per-component change.
- *   3. `@media (pointer: coarse)` raises hit floors, padding and body text.
- *   4. `prefers-reduced-motion` collapses every mode duration to 0.
- *
- * Tailwind reads the vars as `rounded-mode`, `rounded-mode-pill`,
- * `p-mode-page`, `min-h-mode-hit`, `bg-mode-well`, `text-mode-warn`,
- * `duration-mode-feedback`, `text-mode-body` … (tailwind.config.mjs).
- */
+/** Mode registry — the single source of truth for the four TASK modes, on every platform (web, bundled desktop via generated/tokens.css,… */
 
 // ── Contract ────────────────────────────────────────────────────────────────
 
@@ -95,12 +62,7 @@ export interface ModeSpec {
   warnText?: string;
   /** Tenant brand colour; overridden per org at the region root. */
   brand?: string;
-  /**
-   * Matte grain, as a DEPTH ladder: rougher = deeper. Each layer is a noise
-   * opacity plus a speck frequency (lower = coarser). Omit for none. The white
-   * row panel and anything raised over it (popovers, dialogs) carry none: the
-   * working surface is clean paper.
-   */
+  /** Matte grain, as a DEPTH ladder: */
   grain?: ModeGrain;
 }
 
@@ -157,31 +119,15 @@ export const WARM_SURFACES: ModeSurfaces = {
   control: '#10110f',
 };
 
-/**
- * ── One language, two densities (owner ruling 2026-09-24) ──────────────────
- *
- * The OPERATIONAL family — `industrial` and `triage` — shares ONE identity:
- * warm greys, square corners, the same warning ink. A mode in this family may
- * change SPACE only ({@link DENSITY_KEYS}: padding, hit, body size, motion),
- * never identity. Triage used to carry slate greys and 4px corners, which put a
- * consumer-SaaS panel inside the industrial terminal on the same screen (the
- * Labels walk: warm ledger rail beside a slate, rounded record).
- *
- * Guard: `modes.guard.test.ts` fails CI if an operational mode overrides a key
- * outside {@link DENSITY_KEYS}, or if a new mode is added without either
- * joining this family or being exempted by name ({@link IDENTITY_EXEMPT_MODES}).
- */
+/** ── One language, two densities (owner ruling 2026-09-24) ────────────────── */
 export const OPERATIONAL_BASE = {
   surfaces: WARM_SURFACES,
   radius: '0',
   radiusPill: '0',
   // #d39200 fails contrast as text; this is its readable ink.
   warnText: '#8a5f00',
+  // Owner 2026-09-25:
   // Owner 2026-09-25: a hardware finish that reads as DEPTH — rougher is
-  // deeper. Opacity is capped by text contrast (7% is the ceiling on the warm
-  // planes; a well has almost no headroom for amber), so depth is carried by
-  // speck SIZE as much as strength: fine chrome, medium ground, coarse wells.
-  // Worst-case contrast per layer: modes.guard.test.ts.
   grain: {
     well: { opacity: 0.03, frequency: 0.45 },
     canvas: { opacity: 0.07, frequency: 0.65 },
@@ -308,12 +254,7 @@ function modeSelector(name: ModeName): string {
 /** The grain layers, deepest first — the order the stylesheet and guard walk. */
 export const GRAIN_DEPTHS = ['well', 'canvas', 'bar', 'inverse'] as const satisfies readonly (keyof ModeGrain)[];
 
-/**
- * Surface utilities each grain depth rides on. `bg-mode-*` are the industrial
- * roles; the neutral `bg-surface-*` utilities are remapped to those same roles
- * inside a light region, so every component there gets the depth ladder with
- * no per-component class. Outside a region the vars are unset → no grain.
- */
+/** Surface utilities each grain depth rides on. */
 const GRAIN_SURFACES: Readonly<Record<keyof ModeGrain, readonly string[]>> = {
   well: ['bg-mode-well', 'bg-surface-sunken'],
   canvas: ['bg-mode-canvas', 'bg-surface-canvas'],
@@ -321,16 +262,7 @@ const GRAIN_SURFACES: Readonly<Record<keyof ModeGrain, readonly string[]>> = {
   inverse: ['bg-mode-ink'],
 };
 
-/**
- * One 160px tile of greyscale fractal noise, as a base64 SVG data URI. A
- * single repeating tile on the surface — no PNG, no overlay element, nothing
- * per row — so a long ledger scrolls exactly as before.
- *
- * The noise is flattened to opaque grey and contrast-stretched to the full
- * black↔white swing before `opacity` applies: raw turbulence clusters around
- * mid-grey with a translucent alpha, which at 4% renders as a flat tint.
- * Full swing is also the worst case the contrast guard measures.
- */
+/** One 160px tile of greyscale fractal noise, as a base64 SVG data URI. */
 export function grainImage({ opacity, frequency }: GrainLayer): string {
   const stretch = `type='linear' slope='3' intercept='-1'`;
   const svg =
@@ -390,12 +322,7 @@ function coarseDeclarations(spec: ModeSpec): string[] {
   ];
 }
 
-/**
- * The generated mode stylesheet — injected once by the web's app/layout.tsx
- * as `<style id="app-mode-registry">` and written into generated/tokens.css
- * for the desktop bundle. A nested region re-declares every var on its own
- * root, so the innermost region always wins by inheritance.
- */
+/** The generated mode stylesheet — injected once by the web's app/layout.tsx as `<style id="app-mode-registry">` and written into… */
 export function modeRegistryCssText(): string {
   const blocks: string[] = [];
   for (const name of MODE_NAMES) {

@@ -1,14 +1,4 @@
-/**
- *   npx tsx --test src/lib/counter/session-events.test.ts
- *
- * P0 of `docs/todo/kiosk-desk-session-channel-PLAN.md`. Two invariants carry the
- * whole design and are tested hardest here:
- *
- *   1. the reducer is order-insensitive (it converges or refuses — never both);
- *   2. the device projection leaks nothing, asserted field-by-field rather than
- *      against a snapshot blob, because a blob assertion passes happily when a
- *      new leaky field is added to the source type.
- */
+/** npx tsx --test src/lib/counter/session-events.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {

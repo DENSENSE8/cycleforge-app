@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Triage "Prioritize" feed — cartons door-scanned and physically in but NOT yet
- * unboxed, priority-sorted (unfound/untagged first, then amazon → ebay →
- * goodwill). The to-do step BETWEEN the door scan and the unbox workspace.
- *
- * Thin binding over {@link ReceivingFeedRail} (feed `scanned`, `scope="triage"`).
- * Kept as a named seam so the triage Prioritize surface can diverge from the
- * unbox Queue later (e.g. a triage-specific intake status dot) without touching
- * the shared feed. The `scope` keeps it on its own cache entry, distinct from the
- * unbox Queue toggle.
- */
+/** Triage "Prioritize" feed — cartons door-scanned and physically in but NOT yet unboxed, priority-sorted (unfound/untagged first, then… */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';

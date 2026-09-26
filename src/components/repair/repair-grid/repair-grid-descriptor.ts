@@ -1,9 +1,4 @@
-/**
- * Repair queue grid surface descriptor — lifts the house `REPAIR_GRID_COLUMNS`
- * SoT into the TanStack defs `LedgerGridSurface` mounts. Sorting stays inside
- * the repair sort vocabulary (`isRepairGridSortable`); row ORDER stays with the
- * house comparator (`compareRepairGridRows`) — the defs are state math only.
- */
+/** Repair queue grid surface descriptor — lifts the house `REPAIR_GRID_COLUMNS` SoT into the TanStack defs `LedgerGridSurface` mounts. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -47,8 +42,4 @@ export function makeRepairGridDescriptor(
   );
 }
 
-// No pre-built canonical descriptor: the column set is now resolved per staffer
-// by `useGridColumnVisibility`, so the repair grid mount always builds from the
-// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
-// honest when a track is hidden). A module-level constant built from the full
-// column list would have been wrong for every staffer with a delta.
+// No pre-built canonical descriptor:

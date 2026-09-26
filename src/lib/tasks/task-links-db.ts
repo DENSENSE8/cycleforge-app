@@ -1,15 +1,6 @@
 import 'server-only';
 
-/**
- * Real tenant bindings for task links (`work_assignment_links`), plus the
- * task-existence gate the media upload routes use.
- *
- * `task-links.ts` owns the branch table and the row mapper; this file owns the
- * SQL and joins it to the registry/helpdesk ({@link ticketTargetDbDeps}) and
- * the order-by-tracking resolver. Every statement runs through the GUC
- * wrappers in `@/lib/tenancy/db` AND names `organization_id` explicitly —
- * `orgId` / `staffId` come from the route's auth context, never a body.
- */
+/** Real tenant bindings for task links (`work_assignment_links`), plus the task-existence gate the media upload routes use. */
 
 import pool from '@/lib/db';
 import { ApiError } from '@/lib/api';
@@ -30,15 +21,7 @@ import type { TaskLink, TaskLinkCreateBody, TaskLinkFace } from './task-links-sh
 import { TASK_WORK_TYPE, taskEntityFromEnum } from './task-vocabulary';
 import { ticketTargetDbDeps } from './ticket-target-deps';
 
-/**
- * One statement per task: the link rows with every fact the evidence column
- * paints. The order a link names is an ORDER link's own row or a TRACKING
- * link's `resolved_order_id` (`lo`); `grp` counts the lines sharing that
- * order number and finds the first (lowest `orders.id`), and `fo` is that
- * first line — so a 3-line order reads as one order, "3 lines". A line with
- * no order number is its own order of one. Every join is org-led on the
- * link's own org, and `grp` is a plain equality so `idx_orders_order_id` serves it.
- */
+/** One statement per task: */
 const TASK_LINKS_SQL = `
   SELECT l.id,
          l.assignment_id,

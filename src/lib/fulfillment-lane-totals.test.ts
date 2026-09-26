@@ -1,12 +1,4 @@
-/**
- * A To-ship tab number must equal the rows that tab shows.
- *
- * Regression: the Pending tab read **2** over a grid holding **1 row**
- * (2026-08-20). Three call sites hand-rolled `pending` as
- * `(fromCombos.PENDING || byStage.pending || 0) + fromCombos.BLOCKED`, mixing
- * the RAW `hasTechScan` split with the lane mapping — and `resolveFulfillmentLane`
- * puts `isOutOfStock` first, so an untested blocked order lives in both terms.
- */
+/** A To-ship tab number must equal the rows that tab shows. */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {

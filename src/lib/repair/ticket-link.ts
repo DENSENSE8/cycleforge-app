@@ -1,13 +1,4 @@
-/**
- * Which helpdesk ticket may a repair's customer update be sent to?
- *
- * `repair_service.ticket_number` is NOT a reliable Zendesk id — walk-ins get
- * `RS-0042` fallbacks and staff can hand-type it. The canonical linkage is
- * `ticket_links` (entity_type 'REPAIR', entity_id = repair id). This module
- * turns those rows plus the typed number into one verdict, and only the
- * `linked` verdict may send: every other state is an honest reason sending
- * is off, because a guess here emails the wrong customer.
- */
+/** Which helpdesk ticket may a repair's customer update be sent to? */
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export type RepairTicketLink =

@@ -1,11 +1,4 @@
-/**
- * Order-line search for "link this package to an order" — the unmatched pack
- * scan resolver on the Shipped desk record and the phone hub.
- *
- * Reads the existing orders feed (`GET /api/orders?q=&includeShipped=true`),
- * which already answers an order #, a tracking # or a title; this module only
- * narrows its wide row to the few facts a picker paints. No new endpoint.
- */
+/** Order-line search for "link this package to an order" — the unmatched pack scan resolver on the Shipped desk record and the phone hub. */
 
 export interface LinkableOrderLine {
   /** `orders.id` — the `orderRowId` a link-order resolve sends. */

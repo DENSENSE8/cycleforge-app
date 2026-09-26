@@ -15,15 +15,7 @@ import { useRealtimeLink } from '@/hooks/useConnectionHealth';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { selectKpiValue } from './operations-dashboard-logic';
 
-/**
- * Operations Live — a **Monitor** (observe-only): goal → KPIs → exceptions →
- * pipeline → feed, and every click leaves to a workbench. The demoted sections
- * (Agents, StaffGoals, Inventory, Velocity, Matrix/PerformanceGoals, Support)
- * and the Pending grid order ledger were unmounted from Live — a ledger
- * is a Workbench (durable selection + edit), the wrong archetype on a Monitor.
- * Those components still exist for the Analytics mode; Live stops consuming them.
- * The out-of-stock KPI tile is the deep-link into the Orders workbench.
- */
+/** Operations Live — a **Monitor** (observe-only): */
 export function OperationsDashboard() {
   const [openKpi, setOpenKpi] = useState<KpiKind | null>(null);
   const { data, isLoading, isError, refetch } = useOperationsDashboardData();
@@ -38,10 +30,7 @@ export function OperationsDashboard() {
     <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto bg-surface-canvas text-text-default">
       <main className="flex-1 w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-16 space-y-6">
 
-        {/* Degraded band (fourth settled state) — the snapshot fetch failed. A
-            localized, non-blocking Retry so the Monitor never shows empty KPI
-            tiles that read as a quiet warehouse; nav + self-fetching sections
-            (Exceptions / Pipeline) stay live (H1 Phase B). */}
+        {/* Degraded band (fourth settled state) — the snapshot fetch failed. */}
         {isError ? (
           <div className="py-2">
             <GridDegradedBox

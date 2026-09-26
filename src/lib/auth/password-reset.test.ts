@@ -1,10 +1,4 @@
-/**
- * Password-reset token tests.
- *
- * DB-free: hashResetToken is a deterministic sha256 and the raw token must never
- * equal its stored hash. DB-gated: mint → claim is single-use (a replay yields
- * null) and an expired token never claims.
- */
+/** Password-reset token tests. */
 
 import 'dotenv/config';
 import { test } from 'node:test';

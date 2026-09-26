@@ -1,11 +1,4 @@
-/**
- * DB-free branch coverage for the unit-pack-placement domain SoT (Phase 2).
- *
- * Mirrors the order-placement domain test: `placeUnitAtLocation` takes an
- * optional `client`, so we drive it with a fake `PoolClient` that dispatches on
- * SQL text (unit-exists gate → location resolve → same-location reject → upsert
- * + event) without a database.
- */
+/** DB-free branch coverage for the unit-pack-placement domain SoT (Phase 2). */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

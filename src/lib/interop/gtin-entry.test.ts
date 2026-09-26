@@ -1,32 +1,11 @@
-/**
- * classifyGtinEntry — the gate for a GTIN a person typed.
- *
- * The predicates underneath are covered by gs1-restricted-circulation.test.ts
- * and the interop suite; what is pinned here is the ENTRY contract — which rung
- * catches which mistake, and that a real licensed GTIN survives all four.
- *
- * Pure, like its siblings: the minted internal form is reproduced from
- * `generateInternalGtin`'s format rather than imported, because that module
- * reaches the DB. The format itself is pinned by
- * gs1-restricted-circulation.test.ts → "the format assumed here still matches
- * the minter".
- *
- * Run: npx tsx --test src/lib/interop/gtin-entry.test.ts
- */
+/** classifyGtinEntry — the gate for a GTIN a person typed. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { classifyGtinEntry, gs1CheckDigit } from './gs1-keys';
 
-/**
- * A licensed GTIN-14 on prefix `0812345`, check digit and all.
- *
- * Deliberately NOT the sibling suite's `00812345000019`: that fixture's check
- * digit is wrong (the correct one is 6), which never mattered there because
- * those tests only read the PREFIX. This gate checks the digit, so it needs a
- * number that is actually well-formed.
- */
+/** A licensed GTIN-14 on prefix `0812345`, check digit and all. */
 const LICENSED_14 = '00812345000016';
 /** The same licensed prefix at packaging INDICATOR 2 — starts "20", still real. */
 const LICENSED_14_INDICATOR_2 = '20812345000010';

@@ -8,12 +8,7 @@ import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels'
 import { useAuth } from '@/contexts/AuthContext';
 import type { DetailsResponse, IncomingDetailsQuery } from './incoming-details-shared';
 
-/**
- * Owns the incoming record's data + actions: the consolidated details query
- * (PO- or shipment-keyed, with 60s carrier polling), Ably `shipment.changed`
- * live refresh, per-order Sync (Zoho re-pull + carrier re-poll), the delete
- * (PO lines or PO-less shipment row), and the derived header/mode flags.
- */
+/** Owns the incoming record's data + actions: */
 export function useIncomingDetails({
   zohoPurchaseOrderId,
   poNumberHint,
@@ -87,10 +82,7 @@ export function useIncomingDetails({
     },
     enabled: Boolean(detailsKey),
     staleTime: 15_000,
-    // Polling fallback so the carrier status stays live (like the carrier's
-    // own site) even when realtime/Ably is unavailable. Only this open panel
-    // polls — one PO row per minute — and pauses when the tab is hidden, so the
-    // DB cost stays negligible.
+    // Polling fallback so the carrier status stays live (like the carrier's own site) even when realtime/Ably is unavailable.
     refetchInterval: 60_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
@@ -162,11 +154,7 @@ export function useIncomingDetails({
     invalidateIncoming,
   ]);
 
-  // Delete — clears the Incoming row. For a PO it removes EVERY receiving_line
-  // for that PO (Zoho untouched; a future sync may re-add it). For a PO-less
-  // delivered box it hard-deletes the shipment row (there's no receiving_line to
-  // delete). For an inbound-only (eBay) row it deletes the spine line by id.
-  // Throws on failure so InspectorFlushDelete skips its onDeleted (close).
+  // Delete — clears the Incoming row.
   const handleDelete = useCallback(async () => {
     const inboundLineId = isInboundOnly ? data?.inbound?.receiving_line_id ?? null : null;
     const cartonLineId =

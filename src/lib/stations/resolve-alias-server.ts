@@ -1,16 +1,4 @@
-/**
- * Server-side alias resolution — the built-in command a tenant's custom code
- * means, read from the DB.
- *
- * The client resolves aliases from a hydrated snapshot so a bench scan costs no
- * round-trip. This exists because that resolution is NOT trustworthy at the
- * write boundary: a `code` arriving at `/api/stations/handoff` is a wire value
- * like any other, and accepting the client's idea of what it meant would let a
- * caller name any command it liked simply by claiming an alias for it.
- *
- * So the client's resolution is a latency optimisation and this one is the
- * gate. Both must agree; only this one decides.
- */
+/** Server-side alias resolution — the built-in command a tenant's custom code means, read from the DB. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

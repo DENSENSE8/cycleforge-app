@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * BoxWorkbenchPanel — desktop parity with the mobile box page (`/m/h/[id]`).
- *
- * Opens in the shared right-rail drawer (`RightRailHost` via
- * `DetailStackRailRegistrar`) when an operator scans an H-#### license plate at
- * the testing bench. Lets them re-sort units across lines into/out of the box
- * WITHOUT reaching for a phone — the Phase 1 gap the plan closes.
- *
- * Pure UI over the existing handling-unit APIs — never writes
- * `serial_units.handling_unit_id` directly:
- *   - reads via `useHandlingUnitDetail` (GET /api/handling-units/[id])
- *   - adds a scanned unit via POST /api/handling-units/[id]/assign
- *   - removes a unit via POST /api/handling-units/[id]/unassign
- * Both mutations already emit HANDLING_UNIT_ASSIGN / _UNASSIGN audit server-side.
- *
- * **ONE band, ONE close (2026-08-21).** The header was hand-rolled — box code,
- * status chip, Print, and an `X` of its own — so the panel painted a second
- * dismiss under the host's singleton `✕` and the two meant different things
- * (this one only flipped the parent's `boxPanel` state; the host's also ran the
- * lifecycle half). It now composes the house {@link DeskInspectorIndexShell}
- * band in `stance='standalone'`: this workbench opens from a SCAN of an H-####
- * plate, never off an index, so it owes no Back. The status chip is the band's
- * read-only metric; Print moved down beside the rollup's own box chip, since
- * the band's trailing cell is reserved for the host's `⤢ ✕` and a metric, not
- * for verbs.
- */
+/** BoxWorkbenchPanel — desktop parity with the mobile box page (`/m/h/[id]`). */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
@@ -53,12 +28,7 @@ export function BoxWorkbenchPanel({
   lines,
 }: {
   handlingUnitId: number;
-  /**
-   * Ignored since 2026-08-21 — dismissal is the host's singleton `✕`
-   * (`closeRightPanel`), and the registrar around this body in
-   * `TestingSidebarPanel` already passes the same teardown as its `onClose`.
-   * Kept in the signature so that mount compiles unchanged.
-   */
+  /** Ignored since 2026-08-21 — dismissal is the host's singleton `✕` (`closeRightPanel`), and the registrar around this body in… */
   onClose?: () => void;
   /** The scan's receiving lines — used to label each unit's origin line. */
   lines?: ReceivingLineRow[];

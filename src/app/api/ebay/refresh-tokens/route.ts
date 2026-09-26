@@ -17,12 +17,7 @@ export const maxDuration = 60;
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const startedAt = Date.now();
   let ok = false;
-  // This is a CROSS-ORG worker (refreshes every tenant's eBay tokens), so it must
-  // not be triggerable by an arbitrary per-org caller that merely holds the
-  // integrations.ebay permission. Gate it to a cron/service identity: either an
-  // authorized cron request (CRON_SECRET / x-vercel-cron) or the dogfood service
-  // org (USAV). Single-tenant USAV behavior is unchanged — its session IS the
-  // service org, so the manual trigger keeps working.
+  // This is a CROSS-ORG worker (refreshes every tenant's eBay tokens), so it must not be triggerable by an arbitrary per-org caller that…
   if (!isAuthorizedCronRequest(req.headers) && ctx.organizationId !== DOGFOOD_ORG_ID) {
     return NextResponse.json(
       { success: false, error: 'Forbidden: cross-org worker is restricted to the service identity.' },

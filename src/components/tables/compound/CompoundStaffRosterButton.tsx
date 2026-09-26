@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Far-right actions-column trigger: opens AssigneeCombobox in roster
- * mode (every member, Picker and Packer switches). The switches write floor
- * functional roles, never RBAC. Each cell's pencil is the in-flow editor for
- * that column's face.
- */
+/** Far-right actions-column trigger: */
 
 import { useRef, useState } from 'react';
 import { User } from '@/components/Icons';

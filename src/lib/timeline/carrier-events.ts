@@ -35,12 +35,7 @@ function prettyStatus(value: string | null | undefined): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
-/**
- * Map carrier tracking events → timeline items. Title prefers the carrier's
- * human description, falls back to a readable label (>2 chars — single-letter
- * carrier codes like UPS "D"/"I"/"X" are never shown), then the prettified
- * normalized category.
- */
+/** Map carrier tracking events → timeline items. */
 export function carrierEventsToTimeline(events: CarrierEvent[]): TimelineItem[] {
   return events.map((e) => {
     const location = e.event_city

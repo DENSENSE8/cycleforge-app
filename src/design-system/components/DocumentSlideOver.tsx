@@ -56,14 +56,7 @@ type DocumentSlideOverProps = {
   'aria-label'?: string;
 };
 
-/**
- * Resizable right-side document slide-over — Kinetic Ledger SoT for viewing
- * PDFs / images by document type (shipping labels, packing slips, manuals).
- *
- * Composes {@link RightPaneOverlay} (left-edge resize) + type switcher +
- * {@link DocumentPreviewFrame}. Call sites pass every type for the context;
- * empty types still appear in the switcher.
- */
+/** Resizable right-side document slide-over — Kinetic Ledger SoT for viewing PDFs / images by document type (shipping labels, packing… */
 export function DocumentSlideOver({
   open,
   onClose,

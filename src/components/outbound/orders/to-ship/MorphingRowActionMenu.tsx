@@ -1,42 +1,6 @@
 'use client';
 
-/**
- * The ORDER verbs — consumer #1 of {@link RecordActionStrip} (owner
- * 2026-09-25: every record verb lives in ONE strip under the list's search
- * bar; the record header and the record's columns carry none).
- *
- * ## Two armings, one verb list
- *
- * - **The open record** ({@link OrderRecordActionStrip}): whenever a record is
- *   open on an outbound desk (To Ship, Pending, Exceptions — the ledger's
- *   strip row; Shipped — `DataTable` `actionStrip`), in both views. In place
- *   the record opens BELOW the search row + this strip, so both stay live.
- * - **The check-set** ({@link MorphingRowActionMenu}): the CYC-82 manifold
- *   that opens off the leading checkbox on the slot-table lanes — the same
- *   verbs over the checked rows. It paints in the table's action row
- *   (`SLOT_TABLE_ACTION_ROW_ATTR` under the search toolbar, inside
- *   `SLOT_TABLE_OVERLAY_HOST_ATTR`); a checked row outranks the open record.
- *
- * Both build their verbs with {@link useOrderActionVerbs}; the strip chrome
- * (primary left, ⋮ overflow, isolated Delete far right on a second press,
- * hotkeys + `?`, morph into a display and back) is the primitive's.
- *
- * ## No confirm step
- *
- * Picking a staffer COMMITS. Delete is the one exception, and it is still not
- * a confirm BUTTON: the same strip button re-labels and takes a second press.
- *
- * ## Displays
- *
- * Out of stock → the OOS product picker (shortage identity: SKU or kit part;
- * kit parts come from the catalog composition, never Zoho `-P` parsing).
- * Scan out → staff (StageStaffAssignPopover, StaffAvatar faces) + time.
- * Label → packing slip / shipping label upload and the Labels walk. Notes →
- * the one-row composer (`OrderNotesTrail variant="strip"`); a
- * {@link BottomSheet} (`forceVariant="sheet"`) opens instead only on a mobile
- * URL (`/m/`, {@link isMorphingMobileUrl}). Add task / Send to staff as task →
- * the task composer ({@link buildRecordTaskVerbs}).
- */
+/** The ORDER verbs — consumer #1 of {@link RecordActionStrip} (owner 2026-09-25: */
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';

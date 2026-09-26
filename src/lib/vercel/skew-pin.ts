@@ -1,17 +1,4 @@
-/**
- * Vercel Skew Protection pin for long-lived floor / kiosk sessions.
- *
- * Framework-managed RSC/asset requests already carry `?dpl=` when the
- * project has Skew Protection on. Custom `fetch('/api/…')` does not.
- * The `__vdpl` cookie is the platform pin for those — Vercel routes every
- * request that carries it (including document navigations) to that
- * deployment until max-age.
- *
- * Do not pin anonymous QR / marketing hits: a customer's phone should get
- * the latest interstitial, not a day-old deploy.
- *
- * Edge-safe: env + cookie flags only. No `pg` / `node:crypto`.
- */
+/** Vercel Skew Protection pin for long-lived floor / kiosk sessions. */
 
 export const VDPL_COOKIE = '__vdpl';
 

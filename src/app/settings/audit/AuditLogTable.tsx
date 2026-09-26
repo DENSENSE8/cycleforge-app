@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Settings › Audit — the CLIENT ISLAND for `/settings/audit`.
- *
- * The page is an RSC: it guards on `admin.view_logs`, runs the tenant-scoped
- * `audit_logs` query and walks its keyset pages. None of that moves. This file
- * is the boundary the slot engine needs (hooks, layout cascade, header sort),
- * and it takes its rows as props — the SQL stays on the server.
- *
- * ## The find box is the page's `?q=`, not a pass over fifty rows
- *
- * Same shape as `@/app/inventory/events/EventsExplorerTable`, an RSC page
- * whose search is server-answered: the box writes
- * `?q=` through {@link useOptimisticUrlParam} — so the field paints on the
- * keystroke and the table is NOT remounted mid-word — the page reads that
- * param into its SQL, and the feed handed back here IS the answer. Declaring
- * `answeredBy: 'server'` is what stops the engine running its own substring
- * pass over the fifty rows in hand: that pass could only ever narrow the
- * server's answer, and the server is matching 25k rows this page never holds.
- *
- * ## Why the write deletes `?cursor=`
- *
- * The page is keyset-paged: `?cursor=` means "ids below this one". It is an
- * address inside ONE ordered list, and changing the query text produces a
- * different list. Carrying the old cursor across would start the search in the
- * middle of a result set the operator has never seen the top of — matches
- * above the cursor would be silently unreachable. Every query write therefore
- * drops the cursor and the search starts at the newest match.
- *
- * No record plane — the binding says why (`AUDITLOG_TABLE_BINDING.recordPlane`).
- */
+/** Settings › Audit — the CLIENT ISLAND for `/settings/audit`. */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -55,13 +26,7 @@ export function AuditLogTable({
   /** The COMMITTED query — what the rows in hand are the answer for. */
   const urlQuery = searchParams.get(QUERY_PARAM) ?? '';
 
-  /**
-   * Within-route param mutation: clone the current query string, rewrite this
-   * one key, replace. `/settings/audit` has no route-param spec and mounts no
-   * `SurfaceParamHygiene`, so there is no canonical key order to emit in and
-   * nothing strips `?source=` / `?action=` on the way through — cloning is what
-   * keeps them.
-   */
+  /** Within-route param mutation: */
   const replace = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -85,17 +50,7 @@ export function AuditLogTable({
     write,
   });
 
-  /**
-   * Is the server still answering the text in the box?
-   *
-   * `query` is the OPTIMISTIC value (painted the instant the operator types);
-   * `urlQuery` only catches up when the soft-replace lands, which on this
-   * dynamic page means the new rows have arrived. The gap between them is the
-   * one honest "a request for this value is in flight" the RSC path offers —
-   * there is no client fetch to ask. Compared TRIMMED because {@link write}
-   * drops a whitespace-only query rather than writing it; comparing raw, a box
-   * holding a single space would hang the body in its loading face forever.
-   */
+  /** Is the server still answering the text in the box? */
   const searchPending = query.trim() !== urlQuery.trim();
 
   const search = useMemo<DataTableSearch>(

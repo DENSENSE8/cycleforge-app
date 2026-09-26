@@ -1,17 +1,4 @@
-/**
- * Parcel dims remembered per SKU / item number (`product_parcel_dims`,
- * migration 2026-09-24g).
- *
- * The order's own parcel (`orders.parcel_*`) stays the source of truth for
- * that order. When it is EMPTY, the reader falls back to what the product
- * remembers — SKU first (the internal catalog key), then item number (the
- * marketplace listing id) — and says which answered, so the form can show
- * "Remembered from SKU 03796" instead of passing a guess off as a measurement.
- *
- * One normalization, two languages: {@link normalizeSkuKey} /
- * {@link normalizeItemKey} for the writer, {@link skuKeySql} /
- * {@link itemKeySql} for the SQL readers. They must agree — the test pins it.
- */
+/** Parcel dims remembered per SKU / item number (`product_parcel_dims`, migration 2026-09-24g). */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -146,12 +133,7 @@ export function parcelDimsKeysFor(order: {
   return keys;
 }
 
-/**
- * Remember an order's parcel on its SKU and item number, inside the caller's
- * tenant transaction. Only entered values overwrite — a field the operator
- * left empty keeps what the product already remembers. No-op when nothing was
- * entered or the order has no key.
- */
+/** Remember an order's parcel on its SKU and item number, inside the caller's tenant transaction. */
 export async function rememberParcelDims(
   client: Pick<PoolClient, 'query'>,
   input: {

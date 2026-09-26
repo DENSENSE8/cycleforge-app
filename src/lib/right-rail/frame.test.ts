@@ -1,12 +1,4 @@
-/**
- * The always-inline push budget, pinned.
- *
- * `resolveRightRailFrame` is pure and DOM-free, so every number the design rests
- * on is provable here before a browser is opened. The worked cases below are the
- * ones actually measured against the running app at 1440 and 1920.
- *
- * Run: `npx tsx --test src/lib/right-rail/frame.test.ts`
- */
+/** The always-inline push budget, pinned. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

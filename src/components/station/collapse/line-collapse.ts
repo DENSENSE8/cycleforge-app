@@ -1,39 +1,4 @@
-/**
- * Per-LINE collapse rules for a station line list — pure, no React.
- *
- * The sibling of {@link autoCollapseReducer}, one altitude down. That one
- * decides whether a BAND (Items · Label · Placement) yields the column; this
- * one decides whether a single line inside the Items band shows its capture
- * body or only its identity face. They live in the same module for the reason
- * the band rules do: the failure modes are about ORDER and INTENT, and neither
- * is observable in JSX.
- *
- * ## The default rule
- *
- * A line is expanded when it is the one the operator is working — the
- * controller-active line — and collapsed otherwise. Nothing is stored for that;
- * it falls out of `activeLineId`. State exists only for the two things that
- * OUTRANK the rule:
- *
- * - **A pin.** An explicit toggle on one line's face. It survives until the
- *   operator moves to another line.
- * - **Collapse all.** The Items band's gesture. It collapses the active line
- *   too — "give me the list" means the list, not the list plus the one row
- *   that happens to be selected.
- *
- * ## Why pins are anchored
- *
- * Selecting a different line is an unambiguous "I am working this one now", so
- * the pins taken under the previous line are dropped rather than carried
- * forward. Without the anchor, a line the operator collapsed by hand three
- * cartons ago stays collapsed when a scan lands on it — the capture bar the
- * scan needs is simply absent, and nothing on screen says why.
- *
- * **No animation anywhere.** A collapsed line UNMOUNTS its body (operator rule,
- * 2026-08-22; AGENTS.md → "No layout animations"). A collapse that tweens its
- * height still occupies the space for the length of the tween, which is
- * backwards for a gesture whose only purpose is to hand space back.
- */
+/** Per-LINE collapse rules for a station line list — pure, no React. */
 
 export interface LineCollapseState {
   /**

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * AI-edits tray (universal-feed plan §-2.1) — the live list of the draft's
- * agent_mutations (applied / proposed / reverted), each with a revert
- * affordance. Realtime via the org assist channel ('assistant.mutation');
- * scoped to the active Studio draft when one is loaded.
- *
- * Read/degrade-not-fail: a failed fetch shows nothing (the dock's primary job
- * is chat). House style throughout.
- */
+/** AI-edits tray (universal-feed plan §-2.1) — the live list of the draft's agent_mutations (applied / proposed / reverted), each with a… */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';

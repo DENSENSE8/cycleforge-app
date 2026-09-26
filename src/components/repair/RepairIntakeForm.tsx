@@ -38,19 +38,7 @@ interface RepairIntakeFormProps {
     /** Resolve with the created repair on success; resolve null/throw on failure. */
     onSubmit: (data: RepairFormData) => Promise<RepairSubmitResult | null | void>;
     initialData?: Partial<RepairFormData>;
-    /**
-     * Headless kiosk variant (device principal, no staff session): a team member
-     * fills this WITH the customer at the front desk. Hides staff-only
-     * affordances whose endpoints a device token cannot reach — technician
-     * assignment, existing-customer PII search, the Zendesk link and print.
-     * The Ecwid category browser is the SAME `ProductSelector` staff use, just
-     * pointed at the device-authed `/api/kiosk/repair/*` twins and with manual
-     * entry suppressed — a kiosk repair always resolves to a real `-RS` SKU.
-     * The picker lands on the repair FAVORITES scope on both surfaces; there is
-     * no separate favorites rail any more (2026-09-16). Submit still goes
-     * through the injected `onSubmit` (the kiosk host points it at the
-     * device-authed route).
-     */
+    /** Headless kiosk variant (device principal, no staff session): */
     kioskMode?: boolean;
 }
 
@@ -80,11 +68,7 @@ const REPAIR_INTAKE_MAX_WIDTH = 'max-w-[720px]';
 const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
 
 export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = false }: RepairIntakeFormProps) {
-    // The kiosk runs full-screen on a front-desk tablet, so the 720px staff-modal
-    // column left ~40% of the glass empty while the catalog stacked one item per
-    // row. 960px is still a sane form measure for the contact/review steps (no
-    // per-step width change, so nothing reflows as you advance) but gives the
-    // category/product grids room for a second and third column.
+    // The kiosk runs full-screen on a front-desk tablet, so the 720px staff-modal column left ~40% of the glass empty while the catalog…
     const columnMaxWidth = kioskMode ? 'max-w-[960px]' : REPAIR_INTAKE_MAX_WIDTH;
     const columnClass = `mx-auto w-full ${columnMaxWidth}`;
 
@@ -395,12 +379,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
 
     return (
         <div className="relative flex h-full w-full flex-col bg-surface-card text-text-default">
-            {/*
-              Full-bleed chrome: wrench / doc+close pin to screen edges.
-              Stepper stays locked to the same waist as the body column
-              (`columnMaxWidth` + px-6) and is centered on the viewport so its
-              first/last labels sit flush with the step title below.
-            */}
+            {/* Full-bleed chrome: */}
             <header className="shrink-0 border-b border-border-hairline">
                 <div className="relative flex w-full items-center px-3 py-2.5 sm:px-4 sm:py-3">
                     <div className="relative z-10 flex shrink-0 items-center justify-start gap-1">
@@ -461,11 +440,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
             {/* Step body — single centered column, no sidebar split */}
             <main
                 aria-labelledby="repair-intake-step-title"
-                // scrollbar-gutter reserves the scroll track on BOTH edges, so this
-                // column stays centered on the same axis as the header stepper (which
-                // has no scrollbar) — otherwise the body sits ~2px left. It also stops
-                // the whole step from shifting sideways as content crosses the scroll
-                // threshold between steps.
+                // scrollbar-gutter reserves the scroll track on BOTH edges, so this column stays centered on the same axis as the header stepper (which…
                 className={`min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges] ${showPaperwork ? 'bg-surface-sunken' : ''}`}
             >
                 {showPaperwork ? (
@@ -526,12 +501,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                     )}
 
                     {currentStep === 'product' && (
-                        // ONE picker, both principals. The favorites that used to
-                        // sit above it in their own quick-pick rail are now the
-                        // scope this picker LANDS on (`favoritesWorkspace`), with
-                        // All products and the categories behind its dropdown —
-                        // so a common repair is one tap and every other product
-                        // is reached the same way it always was.
+                        // ONE picker, both principals.
                         <div className="relative space-y-8">
                             <ProductSelector
                                 onSelect={(product) => setFormData(prev => ({ ...prev, product }))}
@@ -556,10 +526,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, kioskMode = f
                             {productSelected && (
                                 <div className="space-y-1">
                                     <p className={SECTION_LABEL}>Selected product</p>
-                                    {/* A customer can drop off several devices, so this is either ONE
-                                        product or a summary of many — clamp so the issue step keeps its
-                                        rhythm. No `truncate`: its `whitespace-nowrap` cancels the clamp
-                                        (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+                                    {/* A customer can drop off several devices, so this is either ONE product or a summary of many — clamp so the issue step keeps its rhythm. */}
                                     <p className="text-sm font-semibold text-text-default line-clamp-2 break-words text-pretty">{formData.product.model}</p>
                                 </div>
                             )}

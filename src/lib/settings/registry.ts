@@ -1,30 +1,11 @@
-/**
- * Settings Registry — the single source of truth for configurable behavior.
- *
- * Modeled on src/lib/auth/permission-registry.ts: one flat array; storage,
- * validation, UI, plan gating, and audit are all derived from it. Add a setting
- * by adding a row here (+ a typed accessor in ./accessors.ts if server code
- * reads it). No migration is needed — values live as flat namespaced keys in the
- * existing organizations.settings / staff_preferences.prefs JSONB bags.
- *
- * See docs/settings-registry.md. Guard test: ./registry.test.ts.
- */
+/** Settings Registry — the single source of truth for configurable behavior. */
 
 import { z } from 'zod';
 import { parsePhotoAspectList } from '@/lib/photos/photo-aspects';
 import { ALL_ROLES } from '@/lib/auth/permissions-shared';
 import type { SettingDef, SettingPage } from './types';
 
-/**
- * Per-role override of the Unbox Inbound pin default (Gemini D9). One `select`
- * per canonical role — three states: `inherit` (default → fall through to the
- * org toggle), `on`, `off`. A boolean can't express "inherit", so this is a
- * three-value select, not a switch. Generated (not hand-typed 8×) but still a
- * flat set of first-class registry rows, so storage/UI/write/audit/permission
- * all come from the framework — no ad-hoc control or route (registry law). The
- * server folds these role→org via `getReceivingUnboxRoleDefaultPins`. Marked
- * `advanced` so the main panel shows just the org toggle.
- */
+/** Per-role override of the Unbox Inbound pin default (Gemini D9). */
 const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) => ({
   key: `receiving.unboxDefaultPinnedByRole.${role}`,
   page: 'receiving' as const,
@@ -43,12 +24,8 @@ const UNBOX_ROLE_DEFAULT_SETTINGS: readonly SettingDef[] = ALL_ROLES.map((role) 
 }));
 
 /**
- * Desks whose fullscreen choice is remembered, by `SIDEBAR_PAGE_NAV` page id
- * (what `useActiveSidebarChild().pageId` resolves on a `DeskPageLayout`
- * route). Fullscreen is how the staffer chose to see a desk's records —
- * list-left / record-right split instead of the record in place of the list
+ * Desks whose fullscreen choice is remembered, by `SIDEBAR_PAGE_NAV` page id (what `useActiveSidebarChild().pageId` resolves on a…
  * (`DeskRecordPlane`, operator 2026-09-25) — so it sticks per staffer, per
- * desk. A desk missing here still toggles; it just forgets on reload.
  */
 export const DESK_FULLSCREEN_DESKS = [
   { id: 'home', label: 'Daily' },
@@ -131,16 +108,7 @@ export const SETTINGS: readonly SettingDef[] = [
     description:
       'Which item shots must exist before the Item photos step is complete. Comma-separated: included, serial, front, back, side, bottom. Empty means any item photo counts.',
     control: 'text',
-    // A comma list rather than six toggles or a multi-select: `SettingValue` is
-    // `string | number | boolean`, and widening it (plus a new control kind) to
-    // serve one row would be a public API change to a primitive every settings
-    // surface reads. Vocabulary + parsing stay in the aspect SoT.
-    //
-    // Refined BEFORE `.default()` on purpose: zod 4 returns a `.default()`
-    // verbatim without re-parsing, so the shipped default never has to satisfy
-    // the refinement — but an admin who types nonsense is told, instead of
-    // silently getting a weaker requirement when `parsePhotoAspectList` drops
-    // the unknown tokens at read time.
+    // A comma list rather than six toggles or a multi-select:
     schema: z
       .string()
       .trim()
@@ -281,11 +249,7 @@ export const SETTINGS: readonly SettingDef[] = [
     label: 'Pin Inbound on the Unbox strip by default',
     description:
       'New staff see the Inbound (incoming POs) list pinned on the Unbox strip until they change it. Anyone can still pin or unpin their own strip.',
-    // v1 the pin catalog is Inbound-only, so the org default is a single toggle
-    // (SettingValue is a primitive). A per-role override lives in the optional
-    // `receiving.unboxDefaultPinnedByRole` org-settings map (resolver-ready; the
-    // per-role admin control is a fast-follow). Resolve order + storage:
-    // src/lib/receiving/unbox-default-pins.ts (Gemini D9).
+    // v1 the pin catalog is Inbound-only, so the org default is a single toggle (SettingValue is a primitive).
     control: 'toggle',
     schema: z.boolean().default(false),
     permission: 'admin.manage_features',

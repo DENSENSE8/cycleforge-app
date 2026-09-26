@@ -1,10 +1,4 @@
-/**
- * PATCH /api/inbox/[id] — triage one inbox row (read / unread / done / snooze).
- *
- * Scoped to `ctx.staffId` inside the UPDATE's WHERE clause, so a guessed id
- * belonging to another staffer simply matches zero rows → 404. "Not found" and
- * "not yours" are deliberately indistinguishable.
- */
+/** PATCH /api/inbox/[id] — triage one inbox row (read / unread / done / snooze). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

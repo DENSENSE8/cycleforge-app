@@ -1,17 +1,4 @@
-/**
- * Dock scan-out — "this packed carton physically left the building".
- *
- * ONE domain function for every caller that records a departure: the dock gun
- * and desk selection (`POST /api/shipped/scan-out`) and operator-authorized
- * bulk clears (`scripts/scan-out-packed-orders.ts`). It writes the
- * SHIP_CONFIRM event on `station_activity_logs`, the SHIP_CONFIRM_SCAN audit
- * row, and the best-effort allocation mirror → SHIPPED. It does NOT touch
- * `orders.status` and it is NOT the carrier custody signal (that arrives later
- * on `shipping_tracking_numbers` via webhook/poll).
- *
- * Append-only + idempotent: a package leaves once, so a second scan of the same
- * label returns the existing event rather than duplicating it.
- */
+/** Dock scan-out — "this packed carton physically left the building". */
 
 import type { NextRequest } from 'next/server';
 import pool from '@/lib/db';
@@ -28,13 +15,7 @@ import { productImageUrl } from '@/lib/photos/product-image-url';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Order states that must never leave the building.
- *
- * `canceled` is the spelling `orders.status` actually carries (`mapAmazonStatus`
- * maps Amazon's `Canceled` and `Unfulfillable` onto it) — a table, so adding a
- * hold state later is one entry rather than a new branch.
- */
+/** Order states that must never leave the building. */
 const BLOCKED_ORDER_STATUSES: Record<string, true> = { canceled: true, cancelled: true };
 
 /** The normalized blocking status, or null when the order may ship. */
@@ -140,12 +121,7 @@ export interface ScanOutDeps {
   publishOrderChanged: (organizationId: string, orderRowId: number) => Promise<unknown>;
 }
 
-/**
- * Carrier already reports this package delivered — scanning it out is
- * anomalous (wrong/returned package, or a data conflict). Mirrors
- * deriveOutboundState's delivered test (DELIVERED, or a terminal status that
- * isn't RETURNED).
- */
+/** Carrier already reports this package delivered — scanning it out is anomalous (wrong/returned package, or a data conflict). */
 function isAlreadyDelivered(ctx: ScanOutContext): boolean {
   const statusCat = String(ctx.latestStatusCategory ?? '').toUpperCase();
   return statusCat === 'DELIVERED' || (ctx.isTerminal && statusCat !== 'RETURNED');
@@ -163,12 +139,7 @@ export async function scanOutLabel(
   const context = await deps.loadContext(organizationId, shipmentId, scan);
   const { carton } = context;
 
-  /*
-   * Precondition: the order must still be one we are allowed to ship. A
-   * cancelled order whose box is still on the dock is the single most
-   * expensive mistake this station can make — the package leaves and the
-   * money has already gone back to the customer. A refusal, not a warning.
-   */
+  /* Precondition: */
   const blockReason = blockedOrderStatus(carton.orderStatus);
   if (blockReason) return { kind: 'blocked', blockReason, carton };
 
@@ -265,22 +236,7 @@ async function findByTracking(
   );
 }
 
-/**
- * Fallback resolution when the carrier shipment registry has no row for the
- * scanned label. Many labels (legacy / imported eBay, or non-standard carrier
- * numbers `detectCarrier` can't classify) carry their tracking only on
- * `orders.shipping_tracking_number` — or land in the `orders_exceptions`
- * hold-bucket for unmatched scans — with no `shipping_tracking_numbers` row, so
- * {@link resolveShipmentId} returns null even though the record plainly exists.
- *
- * Resolution order (both org-scoped):
- *   1. orders — use its shipment_id; if absent, self-heal by registering+linking
- *      a shipment through the SAME canonical path Add-Tracking uses.
- *   2. orders_exceptions — use its shipment_id (the hold-bucket row is normally
- *      backfilled with one). Exceptions aren't order-keyed, so we don't register
- *      a new shipment for a carrier-less one — its label simply has nothing to
- *      key against until tracking is reconciled.
- */
+/** Fallback resolution when the carrier shipment registry has no row for the scanned label. */
 async function resolveShipmentViaOrderOrException(
   raw: string,
   organizationId: string,

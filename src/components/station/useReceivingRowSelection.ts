@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * Row selection for the receiving-lines table — the RECORD plane (open the row
- * via `receiving-select-line`) and the MULTI-SELECT plane (bulk checkboxes).
- *
- * **The two planes have separate gestures and always coexist**
- * (`display/workbench.md` → Action planes, and the golden outbound grid:
- * `useDashboardBulkSelection` keeps the gutter always-on while a row click
- * still opens the order). A plain row click opens the record; the select-gutter
- * checkbox — a real button that stops propagation — toggles bulk membership.
- *
- * That split is load-bearing, not cosmetic. `handleSelectRow` used to early-
- * return into the bulk toggle whenever `selectMode` was on, and `selectMode` is
- * pinned ON for every table-only surface (`isTableOnlyMode`) — so on `/incoming`
- * no click ever reached `dispatchSelectLine`, `useReceivingDetailOverlays` never
- * set `incomingDetails`, and `IncomingDetailsPanel` was unreachable by any
- * gesture. History had the mirror symptom: its `receiving-select-line` handler
- * deep-links into Unbox (`useReceivingSelection`) and could never fire.
- *
- * Owns `selectedId` / `selectedIds`, both handlers, the inbound selection event
- * bridges (clear-line, highlight-line, workspace-open), the "selected row left
- * the dataset" auto-clear, and the bulk-selection broadcast wiring
- * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the handlers and
- * listeners read current values without stale closures.
- *
- * **Every receiving-family table (Unbox / History / Testing — the
- * `ReceivingSpreadsheet` → `DataTable` mounts) selects through THIS hook.**
- * Testing History kept a private re-implementation until 2026-08-01, differing
- * only in the selection-bus scope (now the `selectionScope` arg) — and that copy
- * still carried the pre-split `selectMode swallows the click` early return, so
- * the Testing browse could not open a line by click at all. A second copy of a
- * contract this file has now changed twice is the thing to avoid, not the
- * parameter.
- */
+/** Row selection for the receiving-lines table — the RECORD plane (open the row via `receiving-select-line`) and the MULTI-SELECT plane… */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
@@ -45,58 +13,13 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 interface UseReceivingRowSelectionArgs {
   selectMode: boolean;
-  /**
-   * Split the two planes: the ROW body opens the record and the select GUTTER
-   * owns bulk membership.
-   *
-   * Needed because `useReceivingLineBulkSelection` pins `selectMode` ON for the
-   * table-only surfaces ("selection is always on while `active`"), and the
-   * original `handleSelectRow` read `selectMode` as "bulk mode — never open the
-   * workspace". Always-on select therefore meant NEVER-open: on `/incoming` a
-   * row click emitted no `receiving-select-line`, so `IncomingDetailsPanel`
-   * could not mount at all, and the whole row acted as one big checkbox while
-   * the gutter cell was inert.
-   *
-   * With this on, both planes coexist the way the dashboard Pending grid already
-   * does them (gutter checkbox = multi-select, row body = open the record) —
-   * `display/workbench.md` → Action planes, "a surface gets real selection OR a
-   * collapsed gutter — never an inert one".
-   */
+  /** Split the two planes: */
   rowClickOpens?: boolean;
-  /**
-   * What "open this record" MEANS on this surface. Default: dispatch
-   * `receiving-select-line`, which the receiving pane turns into the Incoming
-   * inspector / the Unbox workspace.
-   *
-   * History overrides it. Its `receiving-select-line` branch does
-   * `router.replace('/unbox?openReceivingId=…')` — so reusing the default there
-   * would make a plain click on a week-of-cartons BROWSE table teleport the
-   * operator into the scan bench, mixing a Workbench map with a Station
-   * (`contextual-display.md` → one contract per region). The durable read record
-   * is `/carton/[id]` (`cartonReadHref`), which is what History opens instead.
-   */
+  /** What "open this record" MEANS on this surface. */
   openRow?: (row: ReceivingLineRow) => void;
-  /**
-   * Whether opening from THIS table stamps the operator's recents (the Recent
-   * tab's feed). Default true — the historical dispatchers all mean "I am
-   * working this carton".
-   *
-   * Unbox passes false: its feed is a 117-row browse map, and a click there is
-   * navigation. If every click counted, Recent would converge on a copy of the
-   * feed and stop answering which cartons the operator actually opened.
-   */
+  /** Whether opening from THIS table stamps the operator's recents (the Recent tab's feed). */
   recordViewOnOpen?: boolean;
-  /**
-   * Which selection bus this table broadcasts on
-   * (`src/lib/selection/table-selection.ts`). Defaults to receiving.
-   *
-   * Testing History passes `TESTING_SELECTION_SCOPE`: it mounts the same
-   * `ReceivingSpreadsheet` over the same `ReceivingLineRow`, but its bulk bar is
-   * the tech dashboard's, not the receiving pane's. The scope was the ONLY
-   * thing its private copy of this hook varied — every handler and every bus
-   * effect below was a byte-level duplicate that then missed the two-plane
-   * split when it landed here.
-   */
+  /** Which selection bus this table broadcasts on (`src/lib/selection/table-selection.ts`). */
   selectionScope?: string;
   localRows: ReceivingLineRow[];
   orderedVisibleRows: ReceivingLineRow[];
@@ -130,10 +53,7 @@ export function useReceivingRowSelection({
   // resolved rows are broadcast on RECEIVING_SELECTION_SCOPE for the bar.
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
 
-  // The selected row left the table's dataset — deleted, filtered out, or
-  // REPLACED by its real line after an unfound carton graduated to a PO match.
-  // Clear only the table's own highlight (true deletions broadcast
-  // receiving-line-deleted / -entry-deleted, handled elsewhere).
+  // The selected row left the table's dataset — deleted, filtered out, or REPLACED by its real line after an unfound carton graduated to a…
   useEffect(() => {
     if (!selectedId) return;
     if (!localRows.some((row) => row.id === selectedId)) {

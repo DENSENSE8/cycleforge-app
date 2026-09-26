@@ -7,13 +7,7 @@ import { LightboxPortal } from './LightboxPortal';
 import { toGalleryInputs } from './photo-grid-format';
 import { photoGroupKey, UNLINKED_PHOTO_GROUP_KEY } from '@/lib/photos/display-names';
 
-/**
- * The folders view owns its own per-folder viewer; the flat views (list, grid,
- * grid-ticket) share one page-level lightbox. Opening a photo scopes the viewer
- * to that photo's PO# group ONLY — the same single-PO display you get by opening
- * a folder — rather than the entire filtered set (which would just mirror the
- * page behind it). Group photos read oldest→newest.
- */
+/** The folders view owns its own per-folder viewer; the flat views (list, grid, grid-ticket) share one page-level lightbox. */
 export function usePhotoGridLightbox({
   photos,
   sourceScope,

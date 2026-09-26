@@ -5,21 +5,7 @@ import { getQcChecks } from '@/lib/neon/sku-catalog-queries';
 import { resolveLineCatalog } from '@/lib/receiving/line-catalog';
 import { listManualDocumentsForSku } from '@/lib/documents/manual-documents';
 
-/**
- * GET /api/receiving-lines/[id]/testing-bundle
- *
- * Everything the tech testing panel needs for one receiving line, keyed by the
- * sku_catalog row resolved from the line (scanned unit → SKU string → Zoho item
- * crosswalk). Returns the checklist *template* steps and the SKU's paired
- * manuals (Vercel Blob `source_url`). Per-unit checklist results are loaded
- * separately via /api/serial-units/[id]/checklist once a serial is scanned.
- *
- * Phase 3 dual-read: prefer documents linked to SKU; merge product_manuals for
- * pairs not yet promoted. Response includes optional `document_id`.
- *
- * `skuCatalogId: null` means the SKU has no catalog row yet — the panel shows a
- * "create catalog entry" action that hits the qc-checks POST (create-on-demand).
- */
+/** GET /api/receiving-lines/[id]/testing-bundle */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   // .../api/receiving-lines/[id]/testing-bundle → id is segments[-2]

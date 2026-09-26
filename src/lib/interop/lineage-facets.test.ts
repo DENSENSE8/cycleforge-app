@@ -1,15 +1,4 @@
-/**
- * Guard + unit test for the OpenLineage facet projection.
- *
- * The `_schemaURL` assertions are the load-bearing ones. OpenLineage requires
- * an IMMUTABLE schema pointer, and the way that requirement gets violated is
- * always the same: someone writes `…/main/facet.json` because it is the URL
- * they can see in a browser. That produces events whose declared schema
- * changes retroactively, which is worse than no pointer at all.
- *
- * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *        --test src/lib/interop/lineage-facets.test.ts`
- */
+/** Guard + unit test for the OpenLineage facet projection. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

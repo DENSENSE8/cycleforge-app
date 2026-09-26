@@ -1,16 +1,4 @@
-/**
- * Trial-expiry gate — decision logic (Tier-0 #1, roi-execution/01).
- *
- * The gate is wired into both Node-runtime choke points (withAuth → 402,
- * requirePermission → redirect); these tests pin the decision itself DB-free
- * via injected deps, so the owner can flip TRIAL_ENFORCEMENT with confidence:
- *   - enforcement OFF                          → never blocked, no DB read
- *   - exempt paths (billing/auth/signin)       → never blocked, no DB read
- *   - trial plan + trial_ends_at in the past   → BLOCKED
- *   - trial plan + trial_ends_at in the future → allowed
- *   - paid/enterprise plan                     → structurally immune
- *   - unknown org (null)                       → allowed (fail-open)
- */
+/** Trial-expiry gate — decision logic (Tier-0 #1, roi-execution/01). */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

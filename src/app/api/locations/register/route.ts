@@ -5,25 +5,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 import type { LocationSegments } from '@/lib/barcode-routing';
 
-/**
- * POST /api/locations/register
- *
- * Upsert backing `locations` rows for a batch of printer-format
- * addresses. Called by the Location Label Printer BEFORE window.print()
- * so every printed sticker has a row — required for putaway scans and
- * audit trails to resolve.
- *
- * Body: {
- *   room: string,
- *   segments: Array<{ zone, aisle, bay, level, position }>,
- *   binType?: string | null,
- *   capacity?: number | null,
- * }
- * Returns: { success: true, registered: number, bins: Location[] }
- *
- * Idempotent: re-printing the same label is a no-op; soft-deleted rows
- * are reactivated.
- */
+/** POST /api/locations/register */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json().catch(() => ({}));

@@ -1,19 +1,4 @@
-/**
- * Server-side master-plan doc session (Phase 3 — the plan-agent's write path).
- *
- * The CRDT truth lives across live peers (web clients, the sync daemon); the
- * server holds no durable doc. To mutate, a server route joins the org channel
- * with a SHORT-LIVED Ably Realtime connection (server key), syncs, applies the
- * mutation through the same provider protocol, flushes, and disconnects —
- * every peer (and the daemon → the local file) converges on the edit.
- *
- * If no peer answers within the sync window and the doc is empty, the session
- * seeds from the canonical seed source first (idempotent fixed-clientID seed —
- * see README.md), so a mutation against an empty room still lands on the
- * canonical starter rather than a blank string.
- *
- * Deps-injected for DB-free/network-free unit tests (house pattern).
- */
+/** Server-side master-plan doc session (Phase 3 — the plan-agent's write path). */
 
 import type * as Y from 'yjs';
 import { getMasterPlanChannel } from '@/lib/realtime/channels';
@@ -83,36 +68,16 @@ export const defaultMasterPlanServerDeps: MasterPlanServerDeps = {
 
 export interface WithMasterPlanDocResult<T> {
   result: T;
-  /**
-   * True when the room was empty and a read-only display seed was applied
-   * LOCALLY (never broadcast) so reads show the canonical starter. Mutations
-   * pass `seedForRead: false` and never seed — a mutation on a truly empty
-   * room is a no-op, not a fabricated-then-broadcast doc (which would create a
-   * fixed-clientID collision / split-brain with the daemon's authoritative
-   * seed). The daemon is the SOLE broadcaster of the master-plan seed.
-   */
+  /** True when the room was empty and a read-only display seed was applied LOCALLY (never broadcast) so reads show the canonical starter. */
   seeded: boolean;
 }
 
 export interface WithMasterPlanDocOptions {
-  /**
-   * Read paths (true, default) apply the canonical starter LOCALLY to an empty
-   * forge-org room purely so the response isn't blank — the seed is never put
-   * on the wire (origin = provider), so it can't collide with the daemon.
-   * Mutation paths pass false.
-   */
+  /** Read paths (true, default) apply the canonical starter LOCALLY to an empty forge-org room purely so the response isn't blank — the seed… */
   seedForRead?: boolean;
 }
 
-/**
- * Join → sync → (optionally local-seed for display) → run `fn(doc)` → flush →
- * leave. `fn` edits the doc synchronously; genuine edits broadcast to all peers
- * before the connection closes. The empty-room display seed is:
- *   1. TENANCY-gated to the configured forge org (non-forge tenants never see
- *      the dogfood plan — closes the cross-tenant leak), and
- *   2. applied with the provider as origin, so it is NOT broadcast and cannot
- *      split-brain with the daemon's seed.
- */
+/** Join → sync → (optionally local-seed for display) → run `fn(doc)` → flush → leave. */
 export async function withMasterPlanDoc<T>(
   orgId: string,
   fn: (doc: Y.Doc) => T,

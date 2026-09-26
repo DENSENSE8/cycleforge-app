@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * The dashboard's main orders region — the To-ship desk.
- *
- * There is no chrome here any more. The three-band stack, then the Sheets
- * toolbar that replaced it, were both deleted on 2026-08-29
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md`): a page does not draw a
- * table's search box, its filters, its tabs or its counts — {@link DataTable}
- * does, from data the surface hands it. This component is now what a page host
- * should be: it picks the BODY (the queue, or the CSV import staging host) and
- * mounts the overlays that live beside it.
- *
- * The drill and compare hosts went with the teardown — they were second and
- * third table displays reachable from this one desk, which is the fork the
- * rebuild exists to end.
- */
+/** The dashboard's main orders region — the To-ship desk. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -97,12 +83,8 @@ export function DashboardOrdersView({
   }, [searchParams, rows.length, setViewShellOpen]);
 
   /**
+   * A sync TAKES THE STAGE (operator 2026-09-15).
    * A sync TAKES THE STAGE (operator 2026-09-15). Same seam the CSV staging
-   * host has always used — the desk has one body, and a run is a body, not a
-   * floating overlay that leaves a half-stale table visible underneath.
-   *
-   * Null outside the desk (station embeds, modal-hosted tables), which is why
-   * the context read is the optional one.
    */
   const syncRun = useOrdersSyncRunOptional();
   const showSyncRun = Boolean(syncRun?.run);
@@ -144,13 +126,9 @@ export function DashboardOrdersView({
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {/*
-        No status strip above the queue (operator ruling 2026-08-31). Open /
-        Must ship / Shipped today rode here as a band between the desk chrome
-        and the table; it was one more thing stacked above the first data row
-        on a desk whose job is reading rows. Must-ship survives as a filter
-        option in the table's own control, and Shipped today is the Shipped
-        tab — neither capability was in this band alone.
-      */}
+ * No status strip above the queue (operator ruling 2026-08-31).
+ * No status strip above the queue (operator ruling 2026-08-31). Open /
+ */}
       {body}
       {overlays}
       {stageOverlay}

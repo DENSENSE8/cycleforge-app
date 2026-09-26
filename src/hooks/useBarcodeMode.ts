@@ -11,12 +11,7 @@ function parseMode(raw: string | null): BarcodeMode {
   return 'print';
 }
 
-/**
- * URL-backed barcode mode (`?mode=`). The sidebar picker writes it; the
- * right-pane workspace reads it. Lifting state to the URL keeps the two
- * surfaces in sync without prop-drilling or a context provider, and
- * survives reloads.
- */
+/** URL-backed barcode mode (`?mode=`). */
 export function useBarcodeMode(): {
   mode: BarcodeMode;
   setMode: (next: BarcodeMode) => void;

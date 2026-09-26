@@ -18,13 +18,7 @@ export interface ReceivingPhotoChangedPayload {
   totalPhotoCount?: number | null;
 }
 
-/**
- * Browser-side photo refresh signal.
- *
- * The `receiving-photo.changed` name matches the realtime event used by the
- * receiving surfaces, while `app-refresh-data` keeps the existing tables in
- * sync immediately after a library delete.
- */
+/** Browser-side photo refresh signal. */
 export function dispatchReceivingPhotoChanged(payload: ReceivingPhotoChangedPayload): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('receiving-photo.changed', { detail: payload }));
@@ -134,12 +128,7 @@ export function dispatchUpNextPreview(payload: UpNextPreviewPayload): void {
   window.dispatchEvent(new CustomEvent('tech-upnext-preview', { detail: payload }));
 }
 
-/**
- * Right-pane "Start" action — fired from `UpNextActionDock` when the tech
- * commits to working the previewed order. `UpNextOrder` listens and routes
- * to its existing `handleStart` so the API call + parent side-effects
- * (clear active order, kick off scan resolver) match a sidebar Start.
- */
+/** Right-pane "Start" action — fired from `UpNextActionDock` when the tech commits to working the previewed order. */
 export interface UpNextActionStartPayload {
   orderId: number;
   shipping_tracking_number: string;
@@ -167,26 +156,12 @@ export function dispatchUpNextActionOos(payload: UpNextActionOosPayload): void {
 
 // ── Receiving right-pane workspace ──────────────────────────────────────────
 
-/**
- * Payload for `receiving-workspace-open`. The sidebar dispatches this whenever
- * a line is selected (via row click, scan resolution, or sidebar prev/next nav)
- * so the right pane can swap from history table → focused workspace.
- *
- * - `accordionBootstrap: 'all'` opens every FlowSection on mount (used after a
- *   table row click where the operator is inspecting the full record).
- * - `scanDriven: true` puts LineEditPanel in its compact density mode (matches
- *   today's sidebar behavior for scan-resolved lines).
- */
+/** Payload for `receiving-workspace-open`. */
 export interface ReceivingWorkspaceOpenPayload {
   row: ReceivingLineRow;
   accordionBootstrap: 'default' | 'all';
   scanDriven: boolean;
-  /**
-   * Whether this open stamps the operator's recents (the Recent tab's feed,
-   * `receiving_line_views`). Omitted = true, which is every path that predates
-   * the Unbox feed's click-to-open: scan resolve, recent rail, sibling PO line,
-   * deep-link restore. See `readSelectLineDetail`.
-   */
+  /** Whether this open stamps the operator's recents (the Recent tab's feed, `receiving_line_views`). */
   recordView?: boolean;
   /**
    * Preview stance — open the pane for reading only. It paints as a scan's open
@@ -221,13 +196,7 @@ export function dispatchReceivingOpenPairingPo(): void {
   window.dispatchEvent(new CustomEvent(RECEIVING_OPEN_PAIRING_PO_EVENT));
 }
 
-/**
- * Nav state mirror — sidebar dispatches this whenever `scanMatchedRows` or the
- * current line index changes so the workspace header can render Prev/Next
- * chevrons + Line N of M without lifting the scanMatchedRows array up. The
- * actual prev/next handlers still live in the sidebar (they trigger
- * `receiving-select-line` via `dispatchSelectLine`).
- */
+/** Nav state mirror — sidebar dispatches this whenever `scanMatchedRows` or the current line index changes so the workspace header can… */
 export interface ReceivingWorkspaceNavStatePayload {
   currentIndex: number;
   total: number;
@@ -264,22 +233,7 @@ export function dispatchAssistantDockOpen(): void {
   window.dispatchEvent(new CustomEvent(ASSISTANT_DOCK_OPEN_EVENT));
 }
 
-/**
- * Close whatever DESK occupant is holding `RightRailHost` on a station page —
- * Add inbound (Incoming add walk), Check receipts
- * (`IncomingBulkTrackingPanel`), and any future Band-1 tool that mounts there.
- *
- * Dispatched when Station Displays open, so a desk occupant and the station's
- * Displays column never both push the right edge (source-of-truth →
- * Right-rail modality · one wrapper). The twin direction is
- * `yieldStationRightEdgeForDeskOccupant`, which the occupant calls as it opens.
- *
- * **Named for the ROLE, not for one panel** (renamed from
- * `INCOMING_ADD_INBOUND_CLOSE_EVENT` 2026-08-10): while it named a single
- * overlay, the second occupant to arrive — Check — silently did not join the
- * wrapper, and shipped as a second full right column beside Displays.
- * The wire value is unchanged so nothing in flight breaks.
- */
+/** Close whatever DESK occupant is holding `RightRailHost` on a station page — Add inbound (Incoming add walk), Check receipts… */
 export const STATION_DESK_OCCUPANT_CLOSE_EVENT = 'incoming-add-inbound-close';
 
 export function dispatchStationDeskOccupantClose(): void {

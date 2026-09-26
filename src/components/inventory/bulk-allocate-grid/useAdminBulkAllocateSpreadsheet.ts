@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * **Bulk-allocate spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useAdminBulkAllocateSpreadsheet({ rows, rowActions });
- * return <DataTable {...sheet} totalCount={total} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter, a verb catalog and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * `?page=` is this desk's ONE search param and it belongs to the SERVER query:
- * it selects a hundred-row OFFSET window out of `loadCandidates`. Writing
- * `?sort=` beside it would make a header click round-trip the server — and
- * re-run the offset page — to reorder rows the client already holds, and
- * writing `?search=` per keystroke would re-page on every letter. The page
- * link stays the durable narrowing; the header sorts the page in hand.
- */
+/** **Bulk-allocate spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

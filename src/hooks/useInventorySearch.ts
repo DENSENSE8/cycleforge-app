@@ -264,15 +264,7 @@ async function fetchCounts(args: {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
-/**
- * Per-tab inventory search. Routes to the appropriate read endpoint and
- * normalizes the response into the shared `InventoryResultRow` shape so the
- * sidebar's row card can render any kind through the same component.
- *
- * Alerts and Counts tabs return empty results in Phase 1 — their endpoints
- * land in Phase 3. The hook is structured so wiring them later is a one-line
- * swap at the dispatch switch.
- */
+/** Per-tab inventory search. */
 export function useInventorySearch(params: UseInventorySearchParams): UseInventorySearchResult {
     const { tab, query, field, buckets } = params;
     const trimmed = query.trim();

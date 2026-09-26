@@ -1,36 +1,4 @@
-/**
- * Carton photo triage model — the read surface's buckets, lanes, and claim
- * readiness, derived from the photo SoTs.
- *
- * Pure and client-safe: no DB, no React, no JSX. `/carton/[id]` assembles what
- * this returns; it never re-decides a bucket in a conditional.
- *
- * ## Why the lanes are these lanes
- *
- * Ruled 2026-08-01 (`docs/todo/carton-photo-triage-RESEARCH-RULING.md`) against
- * measured data, because the two rules originally proposed both collapse:
- *
- * - **aspect-completeness** — 0 of 3405 photos carry a `photo_aspect`, so an
- *   "Exact = the carrier minimum is present" lane is empty on every carton.
- * - **`link_role='claim_evidence'` as the lane split** — `linkReceivingPhotoToClaim`
- *   dual-links every photo uploaded after a claim is filed, so on 136 of 152
- *   claimed cartons *every* photo is claim evidence. Measured: the split is real
- *   on **16 of 538** cartons. A tab pair that is degenerate on 97% of the data is
- *   chrome that lies about having sorted something.
- *
- * So the lanes split on **scope**, which the stage SoT answers for 100% of rows:
- *
- * - **Exact** — this carton's own staged evidence. Always populated, always the
- *   default. Drills `All | Box | Item`.
- * - **Investigative** — what else this evidence is tied to: a filed claim, a
- *   share pack, or a row whose stage does not resolve. Deliberately **not** a
- *   partition of Exact — a claim photo is still this carton's photo. The lane
- *   answers "what is this attached to", and each row says why it is there.
- *   Empty is a true statement about an unclaimed carton, not a broken bucket.
- *
- * Cross-station journey media (testing / packing on serials born from this
- * carton) is the named next increment for the Investigative lane.
- */
+/** Carton photo triage model — the read surface's buckets, lanes, and claim readiness, derived from the photo SoTs. */
 
 import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { parsePhotoAspect, photoAspectLabel } from '@/lib/photos/photo-aspects';
@@ -68,15 +36,7 @@ export interface CartonPhotoTriageRow {
   /** Stable list key. Falls back to the URL for rows read without a numeric id. */
   key: string;
   url: string;
-  /**
-   * `photos.id`, for resolving the immutable thumbnail route on a contact-sheet
-   * tile (`resolvePhotoThumbUrl`).
-   *
-   * Deliberately NOT forwarded into the gallery's photo input on a read surface:
-   * `usePhotoGallery` arms its delete affordance off exactly that field
-   * (`canDeleteCurrent`). Reading bytes by id and being allowed to destroy them
-   * are different powers, and this one is only the first.
-   */
+  /** `photos.id`, for resolving the immutable thumbnail route on a contact-sheet tile (`resolvePhotoThumbUrl`). */
   photoId: number | null;
   stage: PhotoEvidenceStage | null;
   bucket: CartonPhotoBucket | null;
@@ -90,15 +50,7 @@ export interface CartonPhotoTriageRow {
   trailReasons: CartonPhotoTrailReason[];
 }
 
-/**
- * One line of the claim-readiness checklist.
- *
- * `unclassified` is a THIRD state and the whole reason this is not a boolean.
- * `photo_aspect` is NULL on every row written before 2026-08-01b, and
- * `photo-aspects.ts` rule 2 is explicit that NULL means *unclassified evidence*,
- * never *missing evidence*. Rendering three red crosses on a carton with twelve
- * good photos is the worst outcome available on this surface.
- */
+/** One line of the claim-readiness checklist. */
 export type CartonClaimReadinessState = 'present' | 'unclassified' | 'missing';
 
 export interface CartonClaimReadinessLine {
@@ -197,16 +149,7 @@ function toRow(input: CartonPhotoInput): CartonPhotoTriageRow {
   };
 }
 
-/**
- * Claim readiness against the carrier three-shot minimum
- * (exterior · item + internal packaging · shipping-label close-up).
- *
- * The item line is answerable today because it is an ENTITY question. The two
- * aspect lines are not, and say so rather than guessing: with no classified box
- * shot anywhere on the carton the honest answer is `unclassified`, and it only
- * becomes `missing` once the carton demonstrably classifies *something* and
- * still lacks this shot.
- */
+/** Claim readiness against the carrier three-shot minimum (exterior · item + internal packaging · shipping-label close-up). */
 function deriveReadiness(
   box: CartonPhotoTriageRow[],
   item: CartonPhotoTriageRow[],

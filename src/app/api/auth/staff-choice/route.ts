@@ -1,13 +1,4 @@
-/**
- * GET /api/auth/staff-choice  (session-gated)
- *
- * Roster for the shared-account staff picker after the umbrella session is
- * already set (email+password JSON returns this inline; Google/Apple redirect
- * here). The caller's own staff row is the front door and is excluded.
- *
- * Individual orgs get `{ needsStaffChoice: false }` — not an error — so the
- * sign-in page can finish the redirect.
- */
+/** GET /api/auth/staff-choice (session-gated) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { loadSession, readSessionSid } from '@/lib/auth/session';

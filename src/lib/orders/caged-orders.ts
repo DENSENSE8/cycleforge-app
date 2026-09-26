@@ -1,21 +1,4 @@
-/**
- * The **cage** — reads and writes for caged → released on `orders`.
- *
- * Plan: `docs/todo/non-scan-desk-chrome-caged-release-PLAN.md` §4.
- * Columns: `src/lib/migrations/2026-08-30c_order_release_gates.sql`.
- * The rule itself is `evaluateReleaseGates` — this module only FETCHES the
- * facts it decides on, so the gate logic stays testable without a database and
- * cannot fork between the route that enforces it and the form that previews it.
- *
- * Org scoping: every statement is `withTenantTransaction` / `tenantQuery` under
- * the caller's `ctx.organizationId` and also carries an explicit
- * `organization_id` predicate (defence in depth alongside the GUC). A
- * cross-tenant order id reads back zero rows — the same shape as a missing one.
- *
- * `shipping_tracking_numbers` is joined bare on `stn.id = o.shipment_id`, with
- * no org predicate, matching every other reader of that globally-shared table
- * (`/api/orders`).
- */
+/** The **cage** — reads and writes for caged → released on `orders`. */
 
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -38,19 +21,7 @@ import {
 
 type Client = Pick<PoolClient, 'query'>;
 
-/**
- * Documents that satisfy **G2**.
- *
- * Two link paths, because "the item number" is an operator phrase, not a
- * schema one: `orders.item_number` is a marketplace listing id with no entity
- * type of its own, so a document reaches an item either by being linked to the
- * ORDER that carries the item number, or to the SKU that order resolved to
- * (manuals live on the SKU — that is the JIT-pack documents bridge).
- *
- * `shipping_label` is excluded on purpose. A label is G3's evidence; letting it
- * also answer G2 would mean buying a label silently satisfied the documents
- * gate, and an order could reach the floor with no manual and no decision.
- */
+/** Documents that satisfy **G2**. */
 const G2_DOCUMENT_COUNT_SQL = `(
   SELECT COUNT(*)::int
     FROM documents d
@@ -70,14 +41,7 @@ const G2_DOCUMENT_COUNT_SQL = `(
      )
 )`;
 
-/**
- * A shipping label exists for this order — **G3**.
- *
- * Both shapes count: a `document_entity_links` row (the current hub) and the
- * legacy `documents.entity_type = 'SHIPPING_LABEL'` denormalization that
- * `listDocumentsForOrder` still dual-reads. Missing the legacy shape here would
- * cage orders whose label predates the link table.
- */
+/** A shipping label exists for this order — **G3**. */
 export const G3_LABEL_EXISTS_SQL = `EXISTS (
   SELECT 1
     FROM documents d
@@ -146,12 +110,7 @@ export interface CagedOrderRecord {
   id: number;
   orderNumber: string | null;
   itemNumber: string | null;
-  /**
-   * `orders.sku` — the internal catalog key, distinct from `item_number` (the
-   * marketplace listing id). Carried so the intake surface can show the PAIR:
-   * a channel like Ecwid writes one identifier into both, so a row where they
-   * disagree is a pairing the operator needs to look at.
-   */
+  /** `orders.sku` — the internal catalog key, distinct from `item_number` (the marketplace listing id). */
   sku: string | null;
   /** `orders.sku_catalog_id` — the G4 pairing fact; null = unpaired. */
   skuCatalogId: number | null;
@@ -394,19 +353,7 @@ export async function setDocsNotRequired(
   });
 }
 
-/**
- * Persist the physical parcel on the order (weight oz + optional L×W×H inch).
- *
- * This is the ONE write path for the triage form's Shipping section — the
- * rate-shop reads these columns back as its stored fallback, so what the
- * operator weighed here is what the carrier quotes. `null` clears a value
- * (the operator can un-measure a box); non-positive input is stored as NULL
- * rather than letting a 0 oz parcel masquerade as a fact.
- *
- * The entered values are also REMEMBERED on the order's SKU and item number
- * (`product_parcel_dims`, same transaction) so the next order of the product
- * arrives measured. Clearing a field here never erases the remembered value.
- */
+/** Persist the physical parcel on the order (weight oz + optional L×W×H inch). */
 export async function setOrderParcel(
   orgId: OrgId,
   orderId: number,
@@ -466,18 +413,7 @@ export class ReleaseGatesNotMetError extends Error {
   }
 }
 
-/**
- * Release one order out of the cage.
- *
- * **The gates are re-evaluated here, inside the transaction, from the row's
- * own facts.** The form's preview is a courtesy for the operator; this is the
- * enforcement. A client that posts Release against a stale green preview gets
- * a 409 with the live failures, not a released order — otherwise the whole
- * gate is a disabled button, and a disabled button is not a rule.
- *
- * Idempotent: an already-released order returns its record unchanged rather
- * than re-stamping `released_at` (a double-click must not rewrite the audit).
- */
+/** Release one order out of the cage. */
 export async function releaseOrder(
   orgId: OrgId,
   orderId: number,

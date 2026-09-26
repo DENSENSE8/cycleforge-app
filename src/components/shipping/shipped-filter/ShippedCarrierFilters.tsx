@@ -64,14 +64,7 @@ export function ShippedCarrierFilters({
     return out;
   }, [typeFilter, exceptionsOnly, carrier, statusCategory, testedBy, packedBy, dateFrom, dateTo, techName, packerName, a]);
 
-  /**
-   * Inline layout — the RAIL-LESS well.
-   *
-   * It was written for the retired shipped toolbar and marked legacy when every
-   * shipped filter moved into the left rail. The Shipped desk brought it back
-   * on purpose: a Pattern-E desk has no left column for the sidebar form to
-   * live in, so its refinements ride a compact row above the rows they scope.
-   */
+  /** Inline layout — the RAIL-LESS well. */
   if (layout === 'inline') {
     return (
       <div className={`flex flex-wrap items-center gap-2 ${className ?? ''}`}>

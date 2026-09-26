@@ -1,24 +1,4 @@
-/**
- * GET /api/kiosk/repair/{id} — one standalone repair, whole, for History.
- *
- * Callers: `KioskHistoryPane`'s detail pane, for a rail row whose `source` is
- * `repair` (a ticket with no `counter_transaction_id`).
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `loadKioskRepairHeader` (ticket, quote, customer, provenance of
- *   arrival) and `loadVisitProvenance({ repairIds })` — the SAME device section
- *   a visit-backed repair gets.
- * User 2026-09-23: *"if I were to create a repair service it will then show up
- *   in the history tab so I would be able to view it."*
- *
- * The device twin of `/api/kiosk/visit/[id]`, and it is a READ only: a ticket
- * that never became a transaction has no receipt to reprint and no visit to
- * edit, so this route offers neither. Label reprint stays on the visit route,
- * which is where the repair→visit ownership check lives.
- *
- * Device-authed with no sign-in, for the same reason the visit detail is: the
- * FACE asks who you are (History refuses to mount on the customer posture),
- * and this read grants nothing the tablet could not already print.
- */
+/** GET /api/kiosk/repair/{id} — one standalone repair, whole, for History. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

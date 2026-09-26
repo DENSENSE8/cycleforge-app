@@ -7,14 +7,7 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * GET  /api/operations/saved-views — the caller's own + org-shared journey views.
- * POST /api/operations/saved-views — create a named view (personal by default).
- *
- * A saved view is a personal, read-only filter preset over data the caller can
- * already see; the ownership boundary is `staff_id`, so create is gated on the
- * same `operations.view` read permission (no new RBAC permission).
- */
+/** GET /api/operations/saved-views — the caller's own + org-shared journey views. */
 
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {

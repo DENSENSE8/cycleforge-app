@@ -9,10 +9,7 @@ export interface SyncCursorRepository {
 
 export class DrizzleSyncCursorRepository implements SyncCursorRepository {
   async get(_orgId: string, resource: string) {
-    // NB: filtering on resource alone is correct because (organization_id,
-    // resource) becomes the natural key once RLS is enforced — the resource
-    // string is already globally unique within the tenant. _orgId remains
-    // here so the call sites carry tenant context through.
+    // NB: filtering on resource alone is correct because (organization_id, resource) becomes the natural key once RLS is enforced — the…
     const rows = await db.select().from(syncCursors).where(eq(syncCursors.resource, resource)).limit(1);
     return rows[0] ?? null;
   }

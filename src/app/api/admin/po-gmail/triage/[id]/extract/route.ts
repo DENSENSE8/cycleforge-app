@@ -1,17 +1,4 @@
-/**
- * POST /api/admin/po-gmail/triage/[id]/extract
- *
- * Run the LLM extractor (Claude Haiku 4.5) on this email's body and
- * merge the results into triage_state.fields. Per field we store
- * { value, source: 'llm', confidence, extracted_at } — *unconfirmed*.
- * The checklist UI requires explicit human confirmation before any
- * AI-extracted value is considered actionable.
- *
- * This endpoint is intentionally idempotent at the schema level: re-
- * running clobbers prior LLM extractions but preserves any field that
- * the user has already confirmed (source='user'). Triggered manually by
- * the "Extract with AI" button.
- */
+/** POST /api/admin/po-gmail/triage/[id]/extract */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
@@ -115,10 +102,7 @@ export async function POST(
       };
     }
 
-    // Pile suggestion is advisory routing, not a PO field — store it under a
-    // sibling `suggested_pile` key (never the `pile` column). The UI surfaces
-    // it as a one-click confirm; the agent never moves the email itself.
-    // Re-running refreshes it freely (no sticky human state to protect).
+    // Pile suggestion is advisory routing, not a PO field — store it under a sibling `suggested_pile` key (never the `pile` column).
     const pileResult = llm.fields.triage_pile;
     const suggestedPile =
       pileResult && SUGGESTABLE_PILES.has(pileResult.value)

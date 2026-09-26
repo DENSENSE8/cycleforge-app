@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * `useRowGestures` — the row model's keyboard half, bound to the TABLE, not the
- * window.
- *
- * Phase 2 of `docs/todo/seller-table-program-PLAN.md`. It resolves keys through
- * {@link ROW_GESTURES} (the declared gesture table) and moves the cursor and
- * the selection through {@link selection-anchor} — the same functions the
- * pointer path uses, so shift-click and Shift+↓ cannot mean different things.
- *
- * ## It is not listener 54
- *
- * The plan's §11 finding is that 53 files register their own window keydown
- * listener, each with its own copy of the guards, so precedence is decided by
- * mount order. This hook returns an `onKeyDown` for the table's region root and
- * registers nothing globally. Two consequences worth stating out loud:
- *
- *   * **It cannot fight another surface.** React's synthetic bubbling gives the
- *     innermost handler the key first, and an open dialog is not inside the
- *     table, so the ordering is structural rather than a race.
- *   * **WCAG 2.1 SC 2.1.4 is satisfied by construction.** Single-character
- *     shortcuts must be remappable, switchable off, *or active only on focus*;
- *     a handler that only fires for events inside the region is the third
- *     option. Do not "simplify" this onto `window` — that regresses
- *     conformance, not taste. {@link suppressTableKey} still runs, because
- *     focus being inside the table does not mean it is not inside a cell
- *     editor, and does not mean a scanner is not armed.
- *
- * ## The row window is ONE tab stop
- *
- * A 900-row queue with `tabIndex={0}` per row is 900 tab stops between the
- * search field and the footer. {@link rowTabIndex} implements the roving index
- * the plan requires: the cursor row is `0`, every other row is `-1`.
- */
+/** `useRowGestures` — the row model's keyboard half, bound to the TABLE, not the window. */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
@@ -54,13 +22,7 @@ export interface RowGestureHandlers {
   onSelectionChange: (ids: ReadonlySet<number>) => void;
   /** Open the record under the cursor (double-click / Enter / `o`). */
   onOpen?: (id: number) => void;
-  /**
-   * Escape with a record open. Return `true` if something was closed; the hook
-   * then leaves the selection alone.
-   *
-   * Escape has exactly one meaning at a time — the innermost layer's — so the
-   * hook never closes a form AND clears a selection from one press.
-   */
+  /** Escape with a record open. */
   onDismiss?: () => boolean;
 }
 
@@ -237,13 +199,7 @@ export function useRowGestures<T>({
   };
 }
 
-/**
- * The pointer twin of {@link useRowGestures}' selection keys.
- *
- * Exported so a row's `onClick` runs the SAME resolution as `x` — the plan's
- * gesture table pairs them (Click ⇄ x, Shift+click ⇄ Shift+↑↓) and two
- * implementations is how they drift.
- */
+/** The pointer twin of {@link useRowGestures}' selection keys. */
 export function resolveRowPointerSelect(
   state: SelectionAnchorState,
   id: number,

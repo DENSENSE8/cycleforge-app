@@ -12,13 +12,7 @@ interface Props {
   className?: string;
 }
 
-/**
- * One-line horizontal fill bar. Color tracks the band:
- *   <  5% → slate (empty)
- *   <=95% → emerald
- *   <=100% → amber
- *   > 100% → red (over)
- */
+/** One-line horizontal fill bar. */
 export function FillBar({ pct, current, max, className }: Props) {
   if (pct == null) {
     return (

@@ -1,15 +1,4 @@
-/**
- * Organization repository — load/update tenant records.
- *
- * Cached in-process for 30s per orgId. The cache is per-instance which is
- * fine because (a) the cardinality is small (one entry per active tenant),
- * (b) settings changes flow through `updateOrgSettings` which invalidates
- * locally, and (c) cross-instance staleness is bounded to 30s for the
- * fields the request path actually reads (plan, status, settings).
- *
- * For Stripe-driven plan changes that MUST propagate immediately, call
- * `invalidateOrgCache(orgId)` from the webhook handler.
- */
+/** Organization repository — load/update tenant records. */
 
 import pool from '@/lib/db';
 import { parseOrgSettings, type OrgSettings } from './settings';
@@ -172,13 +161,7 @@ export async function updateOrgSettings(orgId: OrgId, patch: Partial<OrgSettings
   invalidateOrgCache(orgId);
 }
 
-/**
- * Settings-Registry raw merge — write arbitrary top-level namespaced keys (e.g.
- * 'receiving.photoPolicy') into the org settings bag. Same shallow `||` merge +
- * cache invalidation as updateOrgSettings, but typed for the framework's flat
- * key space rather than the curated OrgSettings shape. OrgSettingsSchema is
- * `.passthrough()`, so these keys round-trip safely. See docs/settings-registry.md.
- */
+/** Settings-Registry raw merge — write arbitrary top-level namespaced keys (e.g. */
 export async function mergeOrgSettingsRaw(orgId: OrgId, patch: Record<string, unknown>): Promise<void> {
   await pool.query(
     `UPDATE organizations

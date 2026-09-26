@@ -4,17 +4,7 @@ import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 
-/**
- * MetricRing — a small **180° open-bottom gauge** for a KPI tile. It draws the
- * exact same half-gauge shape (track + single sweeping arc, rounded caps,
- * `surface-strong` track) as the distribution {@link GaugeDonut} in
- * `features/operations/workspace/charts`, so a KPI tile and the distribution donut
- * read as ONE gauge family — not "a half-gauge next to a row of full rings".
- *
- * The arc, track, and value text all use `currentColor` (arc via the passed
- * `toneClass`, e.g. `text-text-success`), so light/dark and every theme restyle it
- * with no hex. The center is arbitrary content (percent / duration / raw count).
- */
+/** MetricRing — a small **180° open-bottom gauge** for a KPI tile. */
 
 // Semicircle geometry — mirrors GaugeDonut so the two gauges are pixel-siblings.
 function polar(cx: number, cy: number, r: number, deg: number) {

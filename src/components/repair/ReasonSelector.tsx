@@ -80,16 +80,7 @@ export function ReasonSelector({
             );
           })}
         </div>
-        {/*
-          The SAME notes control the contact step uses — `KioskEntryField`
-          multiline on `KIOSK_POS_ENTRY_AREA`: rounded-xl, placeholder-in-box,
-          no floating label, no flush hairline. This was a `TextField
-          appearance="flush"`, i.e. a square-cornered field with a bottom
-          divider, on a surface where every other control is rounded. Operator
-          2026-09-15: *"reuse the exact same notes component in the contact
-          information … it doesn't have to be a squared corner radius."*
-          Padding matches the contact block's own field rhythm (px-4 / py-4).
-        */}
+        {/* The SAME notes control the contact step uses — `KioskEntryField` multiline on `KIOSK_POS_ENTRY_AREA`: */}
         <div className="px-4 pb-4">
           <KioskEntryField
             name="Repair notes (optional)"

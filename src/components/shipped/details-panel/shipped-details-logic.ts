@@ -5,13 +5,7 @@ import { getStaffName } from '@/utils/staff';
 import { toPSTDateKey } from '@/utils/date';
 import { resolveFulfillmentLane, hasLeftWarehouse } from '@/lib/order-lifecycle';
 
-/**
- * Has this order shipped (left the warehouse)? The canonical "post-dock" test —
- * scanned out at the dock, or the carrier already has custody
- * (accepted/in-transit/out-for-delivery/delivered/returned), or a derived
- * shipped/delivered flag. Gates edits that must freeze once an order is gone
- * (e.g. the condition grade — you can't re-grade what already shipped).
- */
+/** Has this order shipped (left the warehouse)? */
 export function isOrderShipped(shipped: ShippedOrder): boolean {
   if (shipped.is_shipped === true || shipped.is_delivered === true) return true;
   return hasLeftWarehouse({
@@ -113,10 +107,7 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   const testedById = shipped.tested_by ?? null;
   const canEditAssignment = Number(shipped.id) > 0 && !isExceptionShippedRow(shipped);
   const hasTechScan = Boolean((shipped as any).has_tech_scan);
-  // State decision flows through the canonical fulfillment projection so this
-  // header pill can never disagree with the order's board lane (the projection
-  // is exception‑first: out‑of‑stock → BLOCKED wins over a tech scan). Tone +
-  // label below are presentation only.
+  // State decision flows through the canonical fulfillment projection so this header pill can never disagree with the order's board lane…
   const lane = resolveFulfillmentLane({ hasTechScan, isOutOfStock: hasOutOfStock });
   const statusTone: StatusTone = lane === 'TESTED' ? 'emerald' : lane === 'BLOCKED' ? 'red' : 'yellow';
   const statusLabel =
@@ -143,12 +134,7 @@ export function deriveShippedHeaderMeta(shipped: ShippedOrder): ShippedHeaderMet
   };
 }
 
-/**
- * Resolve which delete request a shipped row maps to, or null when the row id
- * is invalid. Negative ids and `row_source === 'exception'` delete the
- * exception; FBA/FNSKU/SKU/SCAN tracking types (or activity-log-keyed rows)
- * delete the packing log; everything else deletes the order.
- */
+/** Resolve which delete request a shipped row maps to, or null when the row id is invalid. */
 export function resolveDeleteRequest(shipped: ShippedOrder): DeleteOrderRowPayload | null {
   const rowId = Number(shipped.id);
   const isExceptionRow = (shipped as any).row_source === 'exception' || rowId < 0;

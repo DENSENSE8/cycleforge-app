@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Industrial ledger inline editors — ship-by, pick / pack assign, condition
- * and quantity. Each is a 32px desk control that commits instantly
- * through the queue feed's one waist (`OrdersQueueCommits`) and stops its
- * click from reaching the row's open target. Shared by the ledger rows and
- * the evidence column so one fact has one editor.
- */
+/** Industrial ledger inline editors — ship-by, pick / pack assign, condition and quantity. */
 
 import {
   useCallback,
@@ -82,10 +76,7 @@ export function stageFacts(value: CompoundSlotValue | null): CompoundStageStepFa
 
 /**
  * The listing — a first-class fact, not a hover menu item (owner 2026-09-24).
- * Opens the marketplace listing in a new tab. Faces: `row` — `LISTING ↗` on
  * the record's first band, right end, beside the ship-by (owner 2026-09-25); `value` — `<item #> ↗`
- * where a fact row already says "Listing" (evidence column). No listing → a
- * quiet dash, never a dead link. Never opens the row.
  */
 export { RecordListingLink as LedgerListingLink } from '@/design-system/components/record-ledger/RecordIdentity';
 
@@ -196,10 +187,7 @@ export function LedgerStageAssign({
           <span className="flex min-w-0 items-center gap-1.5">{who}</span>
           <span
             data-testid={`ledger-stage-stamp-${role}`}
-            // The execution band is one 32px ledger line: its completed face
-            // is status + operator over a compact, unbreakable date/time.
-            // A wrapped clock made this three visual rows and bled into the
-            // next record band at the default desk density.
+            // The execution band is one 32px ledger line:
             className={cn(
               'whitespace-nowrap font-mono text-[9px] leading-none tracking-[-0.02em] tabular-nums',
               done ? 'text-mode-ink' : 'text-mode-muted',
@@ -264,11 +252,8 @@ export function LedgerStageAssign({
 }
 
 /**
- * Condition, click to set. The trigger is the condition chip — tag icon +
- * short grade on a SOLID fill in the grade's colour, like the state badge
+ * Condition, click to set.
  * (owner 2026-09-25) — inside a full-height 32px hit area. No grade → the same
- * chip on the well in muted ink with `—`, still clickable. The popover and
- * commit path are the only editor.
  */
 export function LedgerCondition({
   value,
@@ -415,14 +400,7 @@ const INLINE_PICKER_CLASS = cn(
   RECORD_TRAILING_GLYPH_INSET_CLASS,
 );
 
-/**
- * Platform correction in the evidence column: an order the import filed under
- * the wrong channel. One flat list ({@link orderPlatformChoices}): every
- * platform once, and a storefront account only where a ShipStation store is
- * linked to it (eBay · DRAGON) — no group heading repeating the platform, no
- * raw slug. `orders.account_source` is hybrid-grain, so the current value
- * pre-selects whichever grain it names.
- */
+/** Platform correction in the evidence column: */
 export function LedgerPlatformPicker({
   value,
   onCommit,
@@ -610,21 +588,7 @@ const NOTE_STATUS_FACE: Readonly<Record<NoteSaveStatus, string>> = {
   error: 'Not saved',
 };
 
-/**
- * The order note, edited in place — one field for the row's NOTE overlay and
- * the evidence column, so both write the same way.
- *
- * Autosaves when editing ends: Enter or Escape (both also close an overlay
- * host via `onDone`; Shift+Enter breaks the line), blur, or the field
- * unmounting (overlay toggled shut, record switched). Each save appends a
- * stamped entry to the append-only `order_notes` trail, so it never saves per
- * keystroke — every pause would become a trail entry. The status microcopy
- * (Autosaves → Saving… → Saved) sits in the header row beside `label`, or
- * under the field when there is no header.
- *
- * The drag grip is our own element, not the native `resize` corner: the native
- * one lives in the scrollbar corner and disappears once the note overflows.
- */
+/** The order note, edited in place — one field for the row's NOTE overlay and the evidence column, so both write the same way. */
 export function LedgerNoteField({
   orderId,
   note,

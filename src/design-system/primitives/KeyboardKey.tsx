@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * KeyboardKey — ONE physical keycap face for teaching chords.
- *
- * Gray sunken face + black letter. Overlay it on a Button (absolute right) or
- * place it inline in a cheat sheet — same paint either way. Do not fork a
- * second `<kbd>` recipe for hotkey teaching.
- */
+/** KeyboardKey — ONE physical keycap face for teaching chords. */
 
 import type { HTMLAttributes, ReactNode } from 'react';
 import { SEGMENTED_CONTROL_FACE_CORNER } from '@/design-system/tokens/radius';

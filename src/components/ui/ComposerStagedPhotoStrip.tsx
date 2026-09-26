@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Thumbnails for photos staged against the next ticket comment — one strip for
- * the Support console composer, the Unbox station Ticket composer and the
- * phone thread's reply dock (`/m/t/[ticketId]`). Lives in `components/ui` so
- * `/m` can mount it without importing the desk's composer feature dir.
- *
- * A staged photo is already uploaded and linked to the ticket; the strip is the
- * only place an operator can see that and take it back off before sending.
- */
+/** Thumbnails for photos staged against the next ticket comment — one strip for the Support console composer, the Unbox station Ticket… */
 
 import { IconButton } from '@/design-system/primitives';
 import { X } from '@/components/Icons';

@@ -1,20 +1,4 @@
-/**
- * Shared filter envelope for /api/audit-log/* endpoints.
- *
- * URL params:
- *   day=YYYY-MM-DD     — single-day shortcut (resolved to start/end client-side
- *                        in the user's TZ, then sent as ISO via start/end)
- *   start=ISO end=ISO  — explicit range; overrides day if both present
- *   staffId=<int>      — actor filter (audit_logs.actor_staff_id ∪ SAL.staff_id)
- *   sku=<code>         — SKU filter (exact match against the resolved SKU)
- *   q=<text>           — section-specific typeahead (handled per endpoint)
- *   limit/offset       — pagination
- *
- * The helper is intentionally section-agnostic. Each endpoint picks the
- * column names that mean "when did this happen" / "who did it" / "what SKU"
- * via the FilterColumnMap, and the SQL fragments come out parameterised and
- * safe to splice into a larger WHERE.
- */
+/** Shared filter envelope for /api/audit-log/* endpoints. */
 
 import 'server-only';
 
@@ -95,10 +79,7 @@ export function assertReportRange(range: DateRange): void {
   if (!range.start || !range.end) return;
   const span = new Date(range.end).getTime() - new Date(range.start).getTime();
   const days = span / (24 * 60 * 60 * 1000);
-  // Reject inverted (end < start) and malformed (unparseable date → NaN) ranges
-  // too. A bare `days > MAX` check passed both: negative spans and NaN are not
-  // `> MAX`, so they slipped through and produced an empty/garbage report
-  // instead of a clean 400.
+  // Reject inverted (end < start) and malformed (unparseable date → NaN) ranges too.
   if (!Number.isFinite(days) || days < 0) {
     throw new RangeError('Invalid report range: end must be on or after start.');
   }
@@ -109,15 +90,7 @@ export function assertReportRange(range: DateRange): void {
   }
 }
 
-/**
- * Map a filter dimension to the SQL column expression that represents it for a
- * particular query. Each endpoint supplies its own map so the helper stays
- * section-agnostic.
- *
- *   occurredAt — column / expression with the event timestamp
- *   staffId    — column / expression with the acting staff id
- *   sku        — optional column / expression with the SKU code
- */
+/** Map a filter dimension to the SQL column expression that represents it for a particular query. */
 export interface FilterColumnMap {
   occurredAt: string;
   staffId?: string;
@@ -131,13 +104,7 @@ export interface BuiltFilter {
   params: unknown[];
 }
 
-/**
- * Translate parsed filters into SQL fragments scoped to a single table/alias.
- * Caller is responsible for appending the clauses to its own WHERE and
- * passing `params` (or an extended array) to `pool.query`.
- *
- * Pass `paramOffset` if the caller already has parameters earlier in the query.
- */
+/** Translate parsed filters into SQL fragments scoped to a single table/alias. */
 export function buildFilterSql(
   filters: AuditLogFilters,
   columns: FilterColumnMap,

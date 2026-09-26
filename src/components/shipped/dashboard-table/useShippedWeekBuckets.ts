@@ -31,28 +31,11 @@ interface ShippedWeekBucketsResult {
   rows: PackerRecord[];
   isLoading: boolean;
   isFetching: boolean;
-  /**
-   * True when any fetched week filled its ceiling (more rows exist → Load more).
-   *
-   * Always false under a search: `/api/packerlogs?q=` drops its page bound, so
-   * the answer is already the whole week's matches. Reading `length >= limit`
-   * there would light "Load more" on a COMPLETE set and hand the operator a
-   * button that re-asks for a page of rows the search already superseded.
-   */
+  /** True when any fetched week filled its ceiling (more rows exist → Load more). */
   truncated: boolean;
 }
 
-/**
- * Fetches the shipped window as canonical Mon–Sun week buckets and merges them.
- *
- * Each bucket is its own React Query entry keyed by the week (not the user's
- * arbitrary range), so scrubbing a date range reuses already-fetched weeks from
- * cache — only a never-seen week hits the network, and a past week never hits it
- * again. This is what turns date filtering on this table into a cache read
- * instead of a fresh DB query per range. The keys share the
- * `['dashboard-table','shipped', …]` prefix so existing refresh invalidations
- * still bust every bucket.
- */
+/** Fetches the shipped window as canonical Mon–Sun week buckets and merges them. */
 export function useShippedWeekBuckets({
   rangeStart,
   rangeEnd,

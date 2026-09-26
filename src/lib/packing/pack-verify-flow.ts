@@ -1,12 +1,4 @@
-/**
- * Client-side packer verification flow (plan §2d). On Done, the guided capture
- * cross-checks the confirmed tracking against the ERP via the (previously
- * orphaned) GET /api/orders/verify, maps the result to a floor-capture outcome,
- * and POSTs it to /api/packing/verification. The mapping is a pure function so
- * it is unit-testable; the fetches are a thin wrapper around it.
- *
- * Client-safe: imports only the outcome vocabulary (no server-only modules).
- */
+/** Client-side packer verification flow (plan §2d). */
 
 import type { PackVerificationOutcome } from './pack-verification-outcomes';
 import type {
@@ -33,13 +25,7 @@ interface ResolvedPackOutcome {
   detectedOrderId: string | null;
 }
 
-/**
- * Map the tracking cross-check to the packer capture outcome (plan §2d):
- *   • no tracking determined (OCR failed AND no manual entry) → ERROR_OCR_FAILED
- *   • tracking known + order found in the ERP                 → VERIFIED
- *   • tracking known + order NOT found / unconfirmable        → ERROR_MISSING_TRACKING
- * The view never invents status — it renders whatever this returns.
- */
+/** Map the tracking cross-check to the packer capture outcome (plan §2d): */
 export function resolvePackVerifyOutcome(input: {
   tracking: string | null | undefined;
   verify: OrdersVerifyResult | null;
@@ -56,14 +42,7 @@ export function resolvePackVerifyOutcome(input: {
   };
 }
 
-/**
- * Pull a tracking-number candidate out of raw slip OCR text (plan §2c). This is
- * an assist that PRE-FILLS the confirm field — the operator always confirms, so
- * it stays conservative to avoid a confidently-wrong auto-fill:
- *   • a UPS `1Z` + 16 alphanumerics code wins (most distinctive), else
- *   • the longest 12–22 digit run (FedEx / USPS / other numeric tracking).
- * Returns null when nothing tracking-shaped is present (→ manual entry).
- */
+/** Pull a tracking-number candidate out of raw slip OCR text (plan §2c). */
 export function extractTrackingCandidate(rawText: string | null | undefined): string | null {
   const text = (rawText ?? '').toUpperCase();
   if (!text) return null;

@@ -1,28 +1,9 @@
-/**
- * Line-scoped condition write that stamps the Condition procedure gate.
- *
- * Only `PATCH /api/receiving/lines/[id]/condition` writes
- * `receiving_line_testing.condition_graded_at`. Generic receiving-line PATCH
- * updates `condition_grade` alone and leaves the step stuck — dock pills and
- * ledger siblings must share this helper so they cannot drift.
- *
- * The write goes through {@link persistGateWrite}: the optimistic stamp is
- * reverted and the operator told why if it does not land, so the Condition step
- * can never sit settled on a value the database rejected.
- */
+/** Line-scoped condition write that stamps the Condition procedure gate. */
 
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { persistGateWrite } from './receiving-gate-write';
 
-/**
- * The prior durable values, needed to put the step back if the write fails.
- *
- * **Required, with no default, on purpose.** A defaulted snapshot is a silent
- * opt-out that every call site nobody visited takes automatically — the exact
- * trap `.claude/rules/backend-patterns.md` names under *"a safety
- * classification is a REQUIRED parameter"*. Making it required turns a missed
- * call site into a compile error instead of a silent regression.
- */
+/** The prior durable values, needed to put the step back if the write fails. */
 type PreviousLineCondition = {
   condition_grade: string | null;
   condition_graded_at: string | null;

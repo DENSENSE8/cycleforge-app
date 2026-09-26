@@ -1,17 +1,4 @@
-/**
- * Action-plane scan sink — routes a wedge payload to the active station
- * capture handler without React Context or a re-render on active changes.
- *
- * Same altitude as `scan-hotkey/` (focus reclaim) and `record-cursor/` (↑↓
- * ownership). Context is the wrong seam: the global wedge listener lives in
- * the app shell; the dock / serial / station-bar sinks live in station
- * subtrees. A module Map + active-id ref is the shared waist.
- *
- * Dual-path with {@link useWedgeScanner}: when focus is already in an
- * editable field the wedge listener stands down and the field owns keys.
- * This store covers the non-editable case (row focused, chrome focused,
- * middle selected) so a pull of the trigger still lands on the Action sink.
- */
+/** Action-plane scan sink — routes a wedge payload to the active station capture handler without React Context or a re-render on active… */
 
 export type ScanSinkHandler = (value: string) => void;
 

@@ -1,12 +1,4 @@
-/**
- * The Keypad's contract with submit: what one `+` builds must reach
- * `/api/kiosk/intake` through the real cart mapping and pass the price gate
- * with NO approval, at its own price. If either side drifts (the gate comes
- * back, or the keypad starts minting catalog-looking lines), this fails
- * before a counter sale 403s.
- *
- *   node --import tsx --test src/lib/kiosk/keypad-line.test.ts
- */
+/** The Keypad's contract with submit: */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { KEYPAD_LINE_TITLE, keypadLine, type KeypadLine } from './keypad-line';

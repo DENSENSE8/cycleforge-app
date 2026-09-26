@@ -1,13 +1,4 @@
-/**
- * Per-SKU allocations — the REUSE guard.
- *
- * This desk's whole contribution is a layout document and a definition id, and
- * every assertion here exists to keep it that way. A second allocations
- * catalog would pass a shape check and be a second vocabulary for one entity
- * (`unit-allocations.ts`: *"What it must not do is mint `sku-allocations.order`
- * beside `unit-allocations.order`"*), so the tests below pin identity — the
- * same objects, not copies that will drift — rather than deep equality.
- */
+/** Per-SKU allocations — the REUSE guard. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -119,10 +110,7 @@ describe('sku-allocations layout document', () => {
   });
 
   it('declares the unit reach-through the retired cell linked to', () => {
-    // The record plane is the ONE thing that genuinely differs per desk, and
-    // the reason this mount needs a definition of its own at all: the unit
-    // desk's rows are orders with no route to open, these rows are units with
-    // one.
+    // The record plane is the ONE thing that genuinely differs per desk, and the reason this mount needs a definition of its own at all:
     assert.equal(SKU_ALLOCATIONS_TABLE_BINDING.recordPlane.kind, 'navigate');
     assert.equal(UNIT_ALLOCATIONS_TABLE_BINDING.recordPlane.kind, 'none');
     assert.equal(SKU_ALLOCATIONS_TABLE_DEFINITION.capabilities.inCellEdit, false);

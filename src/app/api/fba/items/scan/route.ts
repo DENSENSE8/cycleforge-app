@@ -9,9 +9,6 @@ import { upsertFnskuCatalogRow } from '@/lib/fba/upsert-fnsku-catalog';
 import { withAuth } from '@/lib/auth/withAuth';
 
 // Pack-station FNSKU scan (the packer's scan).
-// Writes into the shared fba_fnsku_logs ledger and, when an open shipment item
-// exists, increments the shipment item's actual_qty and advances it to PACKED
-// (ready to combine). Tech testing is a prior step (PLANNED → TESTED).
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

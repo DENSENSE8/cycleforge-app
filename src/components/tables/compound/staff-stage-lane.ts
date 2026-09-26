@@ -1,13 +1,4 @@
-/**
- * Which active staff belong in a Pick vs Pack assign list.
- *
- * Membership is the staffer's FLOOR FUNCTIONAL ROLES (`staff_functional_roles`:
- * picker, packer) — what they DO — never their RBAC access roles (what they
- * may ACCESS). The two are independent and non-exclusive: one person may pick
- * and pack, and flipping either never changes access. The lane keeps its
- * legacy `technician` name for Pick (compound stage role + work_type TEST).
- * `all` is the full roster (every active member).
- */
+/** Which active staff belong in a Pick vs Pack assign list. */
 
 import type { StaffFunctionalRoleKey } from '@/lib/schemas/staff-functional-roles';
 import type { CompoundStageAssignRole } from './compound-row-model';

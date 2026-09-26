@@ -8,18 +8,7 @@ import { StudioGraphSaveBody } from '@/lib/schemas/studio';
 import { hasNode } from '@/lib/workflow';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * PUT /api/studio/definitions/[id]/graph
- *
- * Replaces a DRAFT definition's nodes + edges in one transaction (the
- * canvas's "Save draft"). Drafts only — the active version is never mutated
- * in place (Studio law #6); publishing a new version is the only way changes
- * go live. A draft may contain gaps (those are diagnostics, gating publish,
- * not saves) but node types must exist in the engine registry and the
- * payload must be internally consistent (schema-enforced).
- *
- * Naturally idempotent: the body is the full desired graph.
- */
+/** PUT /api/studio/definitions/[id]/graph */
 export const dynamic = 'force-dynamic';
 
 export const PUT = withAuth(async (request, ctx) => {

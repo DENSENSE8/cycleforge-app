@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Products Labels sidebar rail — "Printed" (recent unit-label issues).
- * Composes `SidebarRecentRailBase` / `RailRowBody` (Unbox / outbound Labels
- * recent-rail contract). Selecting a row opens unit detail via
- * `?labelsView=recent&historyId=`. Footer: TechRailSearchBar + status facets.
- */
+/** Products Labels sidebar rail — "Printed" (recent unit-label issues). */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -161,10 +156,7 @@ export function ProductLabelsRecentRail() {
             if (unit && loc) return `${unit} · ${loc}`;
             return unit || loc || null;
           }}
-          // The row's copyable identities — one list, three consumers: the
-          // parked-strip peek card, the hover peek below, and the row ⋮ menu
-          // (see SidebarRecentRailBase). It was previously inlined in
-          // `renderPopover` only, so the strip peek and the menu had nothing.
+          // The row's copyable identities — one list, three consumers:
           getCollapsePinFacts={labelPrintFacts}
           renderRowMain={(row) => (
             <RailRowBody className="flex-1" vm={labelPrintFeedToRailVM(row)} />

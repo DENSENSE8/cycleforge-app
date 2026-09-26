@@ -1,14 +1,4 @@
-/**
- * GET /api/admin/staff/[id]/detail
- *
- * Full envelope for the admin StaffAccessDetail view: staff row including
- * override columns, current passkey list, active sessions, last 20 audit
- * entries. One round-trip per detail open.
- *
- * Lives at `/detail` rather than overloading GET on the existing
- * `/api/admin/staff/[id]` (which only has PATCH/DELETE today) so the
- * existing route's contract isn't affected.
- */
+/** GET /api/admin/staff/[id]/detail */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
@@ -44,10 +34,7 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
        FROM staff WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [id, orgId],
   );
-  // staff_passkeys has no organization_id; scope it via its parent staff row
-  // in this org so another tenant's passkeys can never surface for a colliding
-  // id (staff.id is globally unique so this is belt-and-suspenders with the
-  // staff precheck).
+  // staff_passkeys has no organization_id; scope it via its parent staff row in this org so another tenant's passkeys can never surface for…
   const passkeysQ = tenantQuery(
     orgId,
     `SELECT id,

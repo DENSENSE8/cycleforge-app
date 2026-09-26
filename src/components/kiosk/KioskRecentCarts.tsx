@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * KioskRecentCarts — the counter's open carts, one tap to switch.
- *
- * `+ New cart` leads: parking this customer to serve the next is the verb the
- * panel exists for. Then one touch card per open cart of the org, newest
- * first — `#id`, who it is for, `N · $total`, how fresh, and WHERE it is open
- * ("on this tablet" / "on another device"). Tapping a cart held elsewhere takes
- * it over; that tablet is told on its next save, so the card says where it is
- * before the tap, not after.
- *
- * The cart on screen now is marked (`aria-current`, accent wash) rather than
- * hidden: seeing your own cart in the list is how you know the list is live.
- *
- * NO TITLE BAND of its own — the shell's ONE header band is above this sheet
- * and its Carts toggle names the panel and closes it (the paperwork panel's
- * rule, `KioskPaperworkPanel`).
- *
- * Callers: `KioskShell` (utility slot `carts`), fed by `useKioskCartSync`.
- * Affected API: none directly (the hook owns `/api/kiosk/carts`).
- * Schemas: `kiosk_carts` list rows.
- * User 2026-09-24: "recent carts for juggling multiple customers at the same
- * time, IDed for multiple devices".
- */
+/** KioskRecentCarts — the counter's open carts, one tap to switch. */
 
 import { useState } from 'react';
 import { Button } from '@/design-system/primitives';

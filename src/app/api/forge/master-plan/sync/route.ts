@@ -1,15 +1,4 @@
-/**
- * POST /api/forge/master-plan/sync — machine (or session) trigger for the
- * ops-plans bridge after Cursor/`forge.sh` flips a TicketStatus in MDX.
- *
- * Without this, Operations ▸ Plans stayed stale until someone opened the live
- * console (GET /api/forge/master-plan) or the plan agent mutated. Same webhook
- * posture as /api/forge/ingest: `x-forge-token` + configured FORGE_ORG_ID.
- * Session callers need operations.plans.manage.
- *
- * Body (optional): { mdx?: string } — omit to read the live CRDT room.
- * Does NOT write cycle_forge_runs or user_reported_issues — plan tables only.
- */
+/** POST /api/forge/master-plan/sync — machine (or session) trigger for the ops-plans bridge after Cursor/`forge.sh` flips a TicketStatus in… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

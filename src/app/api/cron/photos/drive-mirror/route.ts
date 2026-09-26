@@ -14,13 +14,7 @@ import { isPhotosDriveBackupEnabled } from '@/lib/feature-flags';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * GET /api/cron/photos/drive-mirror
- *
- * Backs up GCS-primary photos into each connected tenant's own Google Drive.
- * No-op for orgs without an active google_drive connection (the selection joins
- * organization_integrations). Mirrors the nas-mirror cron exactly.
- */
+/** GET /api/cron/photos/drive-mirror */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
 

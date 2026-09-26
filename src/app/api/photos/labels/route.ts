@@ -11,12 +11,7 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/photos/labels — the org's photo-label vocabulary.
- * Optional `?scopeImageType=listing` narrows to that type's labels + globals.
- * Degrade-not-fail: returns [] (not a 500) if the table is not yet migrated, so
- * the library sidebar's Labels section just renders empty.
- */
+/** GET /api/photos/labels — the org's photo-label vocabulary. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const scopeImageType = new URL(req.url).searchParams.get('scopeImageType')?.trim() || null;
   let labels: Awaited<ReturnType<typeof listLabels>> = [];

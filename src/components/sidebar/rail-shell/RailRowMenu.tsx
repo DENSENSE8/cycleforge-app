@@ -1,49 +1,6 @@
 'use client';
 
-/**
- * Per-row overflow menu (⋮) for {@link RailRow} — one row, one menu, one action.
- *
- * ## Where it sits
- *
- * The trigger is absolutely positioned over the **trailing track**
- * ({@link SIDEBAR_RAIL_TRAILING_TRACK_CLASS}) — the same `w-8` column the row's
- * relative age (`5h`) occupies. Out of flow, so revealing it moves nothing:
- * the AGENTS.md constraint is that nothing may tween a property which triggers
- * reflow, and a row whose neighbours shift on hover is exactly that. Only
- * `opacity` transitions here.
- *
- * **No plate behind it — the glyph and nothing else.** The age it covers is
- * hidden by `RailRow` in the same breath (`data-rail-row-menu-armed` on the
- * row), so the two never overlap. An earlier build painted a gradient wash to
- * mask the age instead; that put a second, softer edge in the rail's right
- * column on every hover, which reads as chrome appearing rather than one mark
- * swapping for another.
- *
- * ## Three ways in, not one
- *
- * Hover-only row actions are unreachable by keyboard and invisible on a
- * touchscreen, so this affordance has three equal entrances:
- *
- *  1. **Pointer** — hover the row (`group-hover/railrow`).
- *  2. **Keyboard** — the rail is a roving-tabindex listbox, so the CURRENT row's
- *     trigger is the rail's one extra tab stop (`tabIndex` 0 only when its row
- *     is focused; every other trigger is -1, or tabbing the sidebar would cost
- *     twenty-five stops). `Shift+F10` / the `ContextMenu` key open it straight
- *     from the focused row — the invocation the ARIA APG names for a
- *     context-specific menu — and Escape closes it and returns focus to the
- *     trigger (Radix).
- *  3. **Touch** — **there is no hover on a touch device.** `/kiosk*` is a
- *     mounted tablet and `/m/*` is a phone, and warehouse operators wear
- *     gloves. Under `coarse:` (`@media (hover: none), (pointer: coarse)`, see
- *     `globals.css`) the ⋮ is permanently resident and widens to a real tap
- *     target. Gated on the INPUT, never on viewport width — a wall tablet is
- *     desktop-width and still has no hover.
- *
- * The trigger is a **sibling** of the row button, never nested inside it: a
- * button inside a button is invalid, and the row's own click must stay "open
- * the record". Radix portals the menu, so selecting an item never bubbles back
- * into the row either.
- */
+/** Per-row overflow menu (⋮) for {@link RailRow} — one row, one menu, one action. */
 
 import { Fragment, type ReactNode } from 'react';
 import { CheckSquare, Copy, EyeOff, MoreVertical, Share2, Trash2 } from '@/components/Icons';
@@ -139,12 +96,7 @@ export function RailRowMenu({
           </span>
         </button>
       </DropdownMenuTrigger>
-      {/* Placed like the rail's OWN hover peek ({@link RailPopover}): out to the
-          right of the row, flush against the rail edge (`sideOffset={0}`, its
-          `GAP = 0`), top-aligned to the row. The peek and the menu are two
-          answers to the same row, so they must not arrive from two different
-          directions. Radix flips to the left on collision, which is the peek's
-          `flipped` branch. `collisionPadding` mirrors its VIEWPORT_PADDING. */}
+      {/* Placed like the rail's OWN hover peek ({@link RailPopover}): */}
       <DropdownMenuContent
         side="right"
         align="start"

@@ -1,27 +1,4 @@
-/**
- * Pipeline Orchestrator
- *
- * The main autonomous loop that coordinates the self-improving cycle:
- *
- *   ┌──────────┐    ┌───────────┐    ┌──────────┐    ┌───────┐    ┌─────────┐
- *   │ Discover │───▶│ Implement │───▶│ Validate │───▶│ Score │───▶│ Collect │
- *   └──────────┘    └───────────┘    └──────────┘    └───────┘    └─────────┘
- *        ▲                                                              │
- *        └──────────────────── next cycle ──────────────────────────────┘
- *
- * Run as: npx tsx src/lib/pipeline/orchestrator.ts
- *
- * The orchestrator:
- *   1. Discovers actionable tasks (type errors, lint issues, TODOs, test failures)
- *   2. Deduplicates against previously attempted tasks in the DB
- *   3. Creates a git branch per task, sends to the LLM agent
- *   4. Validates the agent's output (typecheck, lint, tests)
- *   5. Scores and stores the result as a training pair
- *   6. Commits passing changes to the feature branch
- *   7. Cleans up failed branches
- *   8. Logs the cycle to pipeline_cycles for observability
- *   9. Sleeps and repeats
- */
+/** Pipeline Orchestrator */
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';

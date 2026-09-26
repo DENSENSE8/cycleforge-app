@@ -1,17 +1,4 @@
-/**
- * **Media links** — a photo or video that lives somewhere else (an unlisted
- * YouTube walkthrough, a Loom, a Vimeo, a Drive clip, a hosted image) attached
- * to a task by URL, and painted in place like an uploaded one.
- *
- * Pure and client-safe: the server validates and normalises with it (the
- * stored `kind` / `provider` / `embed_url` are ITS answer, never the
- * request's), and the evidence column previews a pasted link with the same
- * function before it is saved, so the preview is what will be stored.
- *
- * Only hosts listed here are embedded. An arbitrary page cannot be framed
- * meaningfully (most send `X-Frame-Options`), and framing a URL we did not
- * recognise would be an open redirect into the desk.
- */
+/** **Media links** — a photo or video that lives somewhere else (an unlisted YouTube walkthrough, a Loom, a Vimeo, a Drive clip, a hosted… */
 
 export const MEDIA_LINK_KINDS = ['video', 'photo'] as const;
 export type MediaLinkKind = (typeof MEDIA_LINK_KINDS)[number];

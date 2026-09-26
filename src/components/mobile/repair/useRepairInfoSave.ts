@@ -7,20 +7,7 @@ import { applyRepairInfoDraft, repairInfoPlan, type RepairInfoDraft } from '@/li
 
 export type RepairInfoSaveResult = { error: string | null; saved: string[] };
 
-/**
- * The one information write: the `repairInfoPlan` writes (repair facts on
- * `PATCH /api/repair-service`, the customer link on
- * `/api/repair-service/[id]/customer`, a linked contact on
- * `PATCH /api/customers/[id]`), in order, stopping at the first failure.
- * Optimistic while it runs; on failure the previous row comes back, then the
- * server re-read shows what actually stuck (an earlier write may have). The
- * caller shows `error` (operator words) or acknowledges `saved`.
- *
- * Cache: this repair's `record` facet is re-read. A customer-record edit also
- * shows on every other repair joined to that customer, so their cached
- * `record` facets are invalidated too (`repair.changed` does the same when
- * realtime is up).
- */
+/** The one information write: */
 export function useRepairInfoSave(
   repair: RSRecord | null,
   setRepair: (row: RSRecord) => void,

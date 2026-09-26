@@ -8,12 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { SidebarListPicker } from './SidebarListPicker';
 import { TRACE_RECENTS_KEY, type ListRow } from './audit-log-panel-shared';
 
-/**
- * First-Trace sidebar: the shared search box is the serial input (Enter / the
- * Trace button submits it into `?serial=`). Below it, the recently-traced
- * serials (client-only, localStorage) for one-tap re-trace. The active serial
- * is highlighted. Reuses {@link SidebarListPicker} for the recents list.
- */
+/** First-Trace sidebar: */
 export function TraceSerialPicker({ query }: { query: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();

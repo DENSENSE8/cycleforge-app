@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Synced PO-note editor — carton-level note on the linked purchase order.
- *
- * Flush Displays body (no WorkspaceCard glass island) — parent push column
- * owns {@link DISPLAYS_BODY_INSET}. Save / Sync stay local in this footer;
- * the panel dock is carton-terminal (Print · Receive).
- */
+/** Synced PO-note editor — carton-level note on the linked purchase order. */
 
 import { Check, Download } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';

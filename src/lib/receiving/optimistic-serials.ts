@@ -142,17 +142,7 @@ type BindableUnitSlot = {
   serial_absent?: boolean;
 };
 
-/**
- * Resolve one serial per materialised unit for multi-qty UI.
- *
- * 1. Units with `serial_unit_id` take their matching saved serial (claimed).
- * 2. Remaining unbound saved serials (not `_optimistic: 'removing'`) fill empty
- *    non-waived units in ordinal order.
- *
- * Step 2 covers optimistic / post-confirm scans that update `serials` before
- * `receiving_line_unit.serial_unit_id` is refreshed — without it, every slot
- * stays "empty", `primaryInputRef` sticks on unit 0, and focus snaps back.
- */
+/** Resolve one serial per materialised unit for multi-qty UI. */
 export function bindSerialsToUnitSlots<T extends { id: number; _optimistic?: OptimisticSerialFlag }>(
   units: ReadonlyArray<BindableUnitSlot>,
   saved: ReadonlyArray<T>,

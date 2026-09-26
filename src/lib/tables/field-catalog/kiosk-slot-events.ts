@@ -1,13 +1,4 @@
-/**
- * Kiosk slot-events field catalog — one physical slot / lane state transition.
- *
- * Read map only (filter/export). Revoke is a credential verb on `kiosk-devices`
- * and must never appear on this family.
- *
- * Identity is the device (the tablet the transition happened on). `occurred` is
- * a STATUS track — a ledger is ordered by time; Dates chrome (start/deadline)
- * does not apply to a fact that already happened.
- */
+/** Kiosk slot-events field catalog — one physical slot / lane state transition. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';

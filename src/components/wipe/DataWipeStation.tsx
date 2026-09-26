@@ -16,10 +16,7 @@ import { Panel, Button } from '@/design-system/primitives';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { conditionLabel } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
-// Type-only import — see useDataWipeController for why this never bundles the
-// server module. The `Record<WipeMethod, …>` below is exhaustiveness-checked
-// against the enum, so if WIPE_METHODS ever changes this fails to compile
-// rather than silently drifting.
+// Type-only import — see useDataWipeController for why this never bundles the server module.
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 import {
   useDataWipeController,

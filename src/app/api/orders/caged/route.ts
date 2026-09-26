@@ -5,17 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/orders/caged — the pairing-held set (R-FLOW-7).
- *
- * The main queue (`/api/orders?fulfillmentScope=true`) excludes caged ∩ unpaired
- * rows. Pairing lands an order on To-ship; this endpoint is the exceptions
- * desk's count, not a paperwork hold. Every row still arrives with its live
- * G1–G4 evaluation attached for intake surfaces that read the same record.
- *
- * `?countOnly=1` returns just the number — what the desk's Caged facet needs to
- * label itself without paying for the rows.
- */
+/** GET /api/orders/caged — the pairing-held set (R-FLOW-7). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId as OrgId;

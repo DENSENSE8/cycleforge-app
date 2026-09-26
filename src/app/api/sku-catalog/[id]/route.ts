@@ -49,17 +49,7 @@ export async function GET(
   }
 }
 
-/**
- * PATCH /api/sku-catalog/[id] — Update a SKU catalog entry.
- *
- * Body: { productTitle?, category?, upc?, ean?, gtin?, imageUrl?, isActive? }
- * `sku` is the natural key and is not editable here.
- *
- * `gtin` is the one field with its own write path and its own failure modes:
- * 400 when the digits are not a GTIN this tenant may claim (see
- * `classifyGtinEntry`), 409 when another SKU in the org already holds them,
- * and `null` to clear it back to the internally-minted number.
- */
+/** PATCH /api/sku-catalog/[id] — Update a SKU catalog entry. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -83,10 +73,6 @@ export async function PATCH(
     }
 
     // The GTIN is written by its own helper, not folded into the upsert below:
-    // that upsert is COALESCE-per-column (omitted = preserve, no way to clear),
-    // and a licensed identifier must be both clearable and out of reach of the
-    // inventory sync that shares it. Validated BEFORE the upsert so a refused
-    // GTIN fails the whole PATCH rather than leaving a half-applied edit.
     let gtinDigits: string | null | undefined;
     if (parsed.gtin !== undefined) {
       if (parsed.gtin === null) {
@@ -177,13 +163,7 @@ export async function PATCH(
   }
 }
 
-/**
- * DELETE /api/sku-catalog/[id] — Soft-delete (is_active = false).
- *
- * We never hard-delete: platform ids, manuals, QC checks, stock ledger and
- * audit rows all reference this id. The row simply drops out of active lists
- * and can be revived by re-creating the same sku.
- */
+/** DELETE /api/sku-catalog/[id] — Soft-delete (is_active = false). */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

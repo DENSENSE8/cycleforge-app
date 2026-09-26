@@ -1,11 +1,4 @@
-/**
- * DB-free unit tests for the entity-threads domain layer (house Deps pattern —
- * A scripted fake client answers by SQL
- * fragment; assertions cover BOTH the return value and what was threaded into
- * the deps (org scoping, idempotency, ops_events emission).
- *
- * Run: npx tsx --test src/lib/threads/threads.test.ts
- */
+/** DB-free unit tests for the entity-threads domain layer (house Deps pattern — A scripted fake client answers by SQL fragment; assertions… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

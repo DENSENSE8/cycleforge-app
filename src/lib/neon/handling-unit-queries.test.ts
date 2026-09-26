@@ -1,15 +1,4 @@
-/**
- * DB-free unit tests for the pure handling-unit (LPN) rollup derivation
- * (docs/handling-unit-lpn-plan.md "(+ tests)"). `rollupMembers` is the single
- * source of truth for the box's tested/untested counts and the status the
- * membership IMPLIES — `refreshHandlingUnitStatus` persists whatever this returns.
- *
- * Invariants under test:
- *  - UNTESTED = {UNKNOWN, RECEIVED} only; every other lifecycle state counts as
- *    tested (case-insensitive).
- *  - derived_status: empty → null (caller keeps stored), none-tested → OPEN,
- *    some-tested → IN_TEST, all-tested → CLOSED. STAGED is never derived here.
- */
+/** DB-free unit tests for the pure handling-unit (LPN) rollup derivation (docs/handling-unit-lpn-plan.md "(+ tests)"). */
 
 import { test } from 'node:test';
 import { equal, deepEqual } from 'node:assert';

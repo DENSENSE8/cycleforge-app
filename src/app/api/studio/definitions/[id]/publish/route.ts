@@ -9,21 +9,7 @@ import '@/lib/workflow';
 import { publishDefinition } from '@/lib/studio/definitions';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/definitions/[id]/publish
- *
- * Atomically activates a draft workflow definition (Studio law #6):
- * one transaction — run BLOCKING diagnostics (any error-severity finding
- * refuses with 422 + the findings), deactivate the name's currently-active
- * version, flip the draft to is_active, record the actor. In-flight items
- * keep their workflow_definition_id, so they finish on the old version.
- *
- * Step-up enforced (Studio law #7): publishing changes how the whole floor
- * routes work, so a fresh PIN/passkey grant is required (admins bypass,
- * matching the house step-up semantics in withAuth).
- *
- * Idempotent: publishing the already-active version returns success.
- */
+/** POST /api/studio/definitions/[id]/publish */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

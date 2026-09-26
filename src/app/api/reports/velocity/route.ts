@@ -24,19 +24,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     params.push(limit);
     const limitIdx = params.length;
     const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-    // TENANT ISOLATION: mv_sku_velocity_30d is a cross-tenant-collapsed
-    // materialized view — it GROUP BYs on the bare `sku` string and string-key
-    // JOINs (sku_stock/sku_catalog ON sku) with NO organization_id, so once a
-    // second org carries the same SKU string its movement/stock rows merge and
-    // the MV leaks across tenants. RLS does not apply to MV rows, so the GUC
-    // alone can't fix it. The org dimension DOES exist on the base tables
-    // (sku_stock_ledger / sku_stock / sku_catalog / sku_platform_ids all carry
-    // organization_id — 2026-05-23_org_id_on_business_tables.sql), so we bypass
-    // the leaky MV and recompute the same projection directly from the
-    // org-bearing base tables, scoping every table to ctx.organizationId and
-    // pinning every `sku` string-key JOIN to the same org. This serves only the
-    // caller's own velocity; output column shape is unchanged. (The MV remains
-    // for any future per-org-MV redesign; this route no longer reads it.)
+    // TENANT ISOLATION:
     const r = await tenantQuery(
       ctx.organizationId,
       `WITH movement AS (

@@ -7,21 +7,7 @@ import { StudioTemplateImportBody } from '@/lib/schemas/studio';
 import { installTemplateIntoOrg } from '@/lib/studio/install-template';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/templates/[id]/import
- *
- * Clones a system-owned workflow_templates blueprint into the CALLER's org as a
- * new is_active = FALSE draft workflow_definition (+ nodes + edges) — Studio ST6
- * / Phase E4. Node ids are re-minted (global TEXT PKs); edges remapped through
- * the same map; every cloned row org-stamped (the definition explicitly, the
- * node/edge children via the org-verified workflow_definition_id fk). The owner
- * then edits + publishes it via the existing draft/publish flow.
- *
- * studio.manage (importing creates a draft — same gate as draft creation). The
- * whole clone runs inside withTenantTransaction so it writes ONLY to the
- * caller's org; the template table itself is global and never written here.
- * Returns the new definition id so the client can switch to it (?v=<newId>).
- */
+/** POST /api/studio/templates/[id]/import */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

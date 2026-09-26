@@ -1,10 +1,4 @@
-/**
- * Phone QR companion must authorize the desk from the phone session.
- *
- * Callers: node:test; page is `/m/qr-auth` (`QrAuthContent`).
- * Affected API: POST /api/auth/qr/authorize `{ token }` — no Face ID client.
- * User instruction: auth desktop button not Face ID; phone auth to desktop.
- */
+/** Phone QR companion must authorize the desk from the phone session. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

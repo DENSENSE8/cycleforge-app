@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Wait until this browser holds a `cf_kiosk` cookie for organization one.
- *
- * Callers: `KioskV2Runtime`, `/kiosk` page.
- * Affected API: POST `/api/kiosk/dev-autopair`.
- * Data schemas: none.
- * User: "Whenever you open a kiosk or a tablet page, I must see it automatically
- * connected to organization one".
- */
+/** Wait until this browser holds a `cf_kiosk` cookie for organization one. */
 
 import { useEffect, useState } from 'react';
 

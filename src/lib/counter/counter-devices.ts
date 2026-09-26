@@ -1,13 +1,4 @@
-/**
- * Which tablet the desk may put this visit on — **server** read.
- *
- * The projection, types, and spoken copy live in
- * {@link ./counter-devices-model.ts} so the `/counter` client CTA can import
- * them without pulling `db.ts` (`server-only`) into the station/desk bundle.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5) ·
- * `docs/todo/kiosk-counter-consult-PLAN.md` (Phase 0).
- */
+/** Which tablet the desk may put this visit on — **server** read. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { listKioskDevices } from '@/lib/auth/kiosk-device';

@@ -11,13 +11,7 @@ function flagOff() {
   );
 }
 
-/**
- * GET /api/warranty/lookup?q=<order#|serial|sku>
- *
- * Read-only warranty-coverage check for the "on the phone with a customer" flow.
- * Resolves the identifier to a shipped order and computes the warranty clock
- * without logging a claim. Gated by WARRANTY_LOGGER. Permission: warranty.view.
- */
+/** GET /api/warranty/lookup?q=<order#|serial|sku> */
 export const GET = withAuth(async (request, ctx) => {
   if (!isWarrantyLogger()) return flagOff();
 

@@ -1,13 +1,4 @@
-/**
- * Scan-feedback playback primitives — a short WebAudio confirmation tone and an
- * optional haptic pulse for the receiving station's act-and-clear loop.
- *
- * Framework-agnostic and gated by `useScanFeedback()` (which reads the org master
- * switch + per-staff toggles from the Settings Registry). No audio asset to ship:
- * a tiny oscillator beep keeps the bundle clean and works offline. A rising
- * two-note chirp signals success; a low double-buzz signals a reject — distinct
- * for the eyes-down operator who can't watch the screen.
- */
+/** Scan-feedback playback primitives — a short WebAudio confirmation tone and an optional haptic pulse for the receiving station's… */
 
 export type ScanFeedbackKind = 'success' | 'reject';
 

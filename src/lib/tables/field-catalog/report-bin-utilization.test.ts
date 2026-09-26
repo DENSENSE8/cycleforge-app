@@ -1,23 +1,4 @@
-/**
- * Bin-utilization catalog guards, materialization and adapter behaviour — the
- * family that replaced `/reports`' `UTILIZATION_COLUMNS`.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - the DERIVED FILL. `fill_ratio` is a ratio on the wire and a percentage on
- *   the desk. A `paths: { value: 'fill_ratio' }` entry would promise the engine
- *   a column it can read straight off the row, and `0.88` is not the number
- *   the desk shows. This test fails the day the derivation turns into a path.
- * - the UNPAINTED LOCATION columns. `row_label` / `col_label` are selected by
- *   the route and painted by nothing; a future agent reading "the row already
- *   has the data" will be tempted to bind them.
- * - the FACTLESS `dates` CHROME. This report has no temporal column at all, so
- *   the mandatory Dates track is declared inert rather than cut from the shared
- *   skeleton. That is the one exception to "every painted DATA header sorts"
- *   in this family, and it has to be pinned as a decision so it cannot decay
- *   into a dead header nobody noticed — or be quietly widened to a second
- *   track.
- */
+/** Bin-utilization catalog guards, materialization and adapter behaviour — the family that replaced `/reports`' `UTILIZATION_COLUMNS`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

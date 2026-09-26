@@ -11,28 +11,6 @@ import { TableStickyXScroll } from '../grid/TableStickyXScroll';
 import { EmptyState } from '../../primitives/EmptyState';
 
 // ─── AdminTable ───────────────────────────────────────────────────────────────
-//
-// The canonical NON-VIRTUALIZED table: admin, settings, and reports lifecycle
-// lists. Sibling of the `LedgerGrid` family, not a competitor — an ops queue
-// that wants windowing, a frozen identity pane, per-staff Fields, or in-cell
-// edit belongs on `LedgerGridSurface` with a `GridSurfaceDescriptor`. This is
-// for the small read table that needs none of that.
-//
-// Token-first: surface shell is {@link TABLE_SURFACE_CLIP_CLASS} (rounded-xl +
-// raised elevation); frozen header via {@link TABLE_FROZEN_HEADER_CLASS}.
-// Typography from `tableHeader` / `tableCell`.
-//
-// Horizontal triage scroll uses {@link TableStickyXScroll} (client island) so
-// this file stays free of `'use client'` — RSC admin pages keep zero client JS
-// for static rows aside from that thin scroll chrome.
-//
-// **No `'use client'` on this file, deliberately.** This component holds no
-// state of its own and most call sites (`/inventory/health/**`, `/settings/audit`,
-// …) are React Server Components. A directive here would put every one of them
-// behind a client boundary — the bundle-altitude trap in `build-gotchas.md`.
-// A caller that passes `onRowClick` is inherently interactive and must itself
-// be a client component; React will say so plainly if a server component tries
-// to hand over a function.
 
 export type ColumnAlign = 'left' | 'center' | 'right';
 
@@ -43,16 +21,7 @@ export interface AdminTableColumn<Row> {
   header: ReactNode;
   /** Cell renderer for a row. */
   cell: (row: Row) => ReactNode;
-  /**
-   * Data type — the SAME vocabulary the ledger grids use. Supply this and
-   * alignment is DERIVED (`resolveGridColumnAlign`: digit / id / date tracks end,
-   * word / tag tracks start) instead of hand-picked per column.
-   *
-   * This is the house justification law, and an admin table is exactly where it
-   * used to drift: the wave this component is built for hand-types `text-right`
-   * inside `cell()` on some numeric columns and forgets it on others, so two
-   * count columns in the same table align differently.
-   */
+  /** Data type — the SAME vocabulary the ledger grids use. */
   type?: ColumnType;
   /**
    * Alignment OVERRIDE. Leave unset — `type` already decides. Set it only when a
@@ -83,12 +52,7 @@ export interface AdminTableProps<Row> {
   loading?: boolean;
   /** Rows to draw while `loading` (default 6). */
   loadingRows?: number;
-  /**
-   * Settled with nothing, because nothing exists yet. Distinct from
-   * {@link searchEmptyMessage} — see the four settled states in
-   * `display/workbench.md`. Telling an operator "nothing here yet" when a filter
-   * excluded every row says their data is gone.
-   */
+  /** Settled with nothing, because nothing exists yet. */
   emptyMessage?: string;
   /** Settled with nothing because the active filter/search excluded everything. */
   searchEmptyMessage?: string;
@@ -150,10 +114,7 @@ export function AdminTable<Row>({
     </thead>
   );
 
-  // Loading keeps the header + column widths so the table does not reflow when
-  // the rows land. Pulse is pure CSS on purpose — `SkeletonList` is a client
-  // component that pulls framer-motion, which would defeat the whole reason
-  // this file has no `'use client'`.
+  // Loading keeps the header + column widths so the table does not reflow when the rows land.
   if (loading) {
     return (
       <div data-table-surface="" className={cn(TABLE_SURFACE_CLIP_CLASS, className)}>

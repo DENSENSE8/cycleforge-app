@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Selection status-bar hotkeys — ONE hook for bind + `?` reveal.
- *
- * Pass the same action list you paint on {@link TableStatusBar}. Each action
- * that carries a `hotkey` is:
- *   1. bound while the strip is live (A / C / …)
- *   2. eligible for an absolute overlay letter after keyboard `?`
- *
- * Adding a new CTA: give it a `hotkey` (and register presentation meta in
- * {@link SELECTION_STATUS_BAR_META} if it needs a short label / fill). No second
- * listener to wire.
- *
- * `?` is handled HERE (same module as the surface counter) so reveal cannot
- * drift from a second bundle copy of the cheat sheet. Single-line filter/
- * search inputs do NOT swallow `?` while the strip is mounted — operators
- * usually have "Filter orders…" focused.
- */
+/** Selection status-bar hotkeys — ONE hook for bind + `?` reveal. */
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ButtonVariant } from '@/design-system/primitives/Button';

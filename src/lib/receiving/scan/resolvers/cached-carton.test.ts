@@ -1,12 +1,4 @@
-/**
- * Unit test for the Phase-0 cached-carton resolver — DB/React-free.
- *
- * Run: `tsx --test src/lib/receiving/scan/resolvers/cached-carton.test.ts`
- *
- * This is the template the rest of the scan-ladder rungs follow: a pure resolver
- * fed an injected `readCachedRows` snapshot, asserted on its `ScanResolution`
- * return — no query client, no DOM, no network.
- */
+/** Unit test for the Phase-0 cached-carton resolver — DB/React-free. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

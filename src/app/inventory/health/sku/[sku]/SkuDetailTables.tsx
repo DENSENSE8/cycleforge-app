@@ -1,43 +1,6 @@
 'use client';
 
-/**
- * The per-SKU page's FIVE engine mounts — the CLIENT ISLANDS of an RSC page.
- *
- * `/inventory/health/sku/[sku]` is a server component and `DataTable` is client
- * code, so each ported section crosses the boundary here. The eight loaders
- * stay on the server: these components take already-fetched rows as props and
- * never fetch.
- *
- * No section owns a table, and no section is a `.tsx` of its own — this file is
- * the page's one client boundary, so a mount costs an exported function here
- * and nothing else:
- *
- * - units and events mount families that were already registered
- *   (`inventory-units` sheet, `inventory-events` compound), so a bind / hide /
- *   reorder an org makes on the Units browse or the Ledger lands here too;
- * - allocations mount the registered `unit-allocations` family through this
- *   desk's own layout document (`sku-allocations`) — one catalog, one
- *   resolver, one adapter, two sets of defaults, because the two feeds resolve
- *   different facts (see `field-catalog/sku-allocations-layout.ts`);
- *   the row OPENS the unit, which is the retired cell's `<Link>` as a declared
- *   record plane;
- * - bins and the ledger are families of their own (`sku-bins`, `sku-ledger`):
- *   a (sku, bin) pair and a signed stock movement are entities nothing else in
- *   the product lists.
- *
- * The page's narrower SQL is translated in `./sku-detail-rows`, never forked
- * into a second catalog.
- *
- * Sort and search are LOCAL state on purpose: these are panes on a page with
- * five row sections, and two of them writing the same `?sort=` would fight
- * (the same rule `useInventoryEventsSpreadsheet` documents for the Ledger's
- * two mounts).
- *
- * The empty state is each feed's `emptyMessage`, which is why the page no
- * longer wraps a section in `rows.length > 0 ?`: a vanished panel cannot tell
- * an operator the difference between "nothing is holding this stock" and "this
- * page does not have that section".
- */
+/** The per-SKU page's FIVE engine mounts — the CLIENT ISLANDS of an RSC page. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -150,14 +113,7 @@ export function SkuAllocationsTable({
   const router = useRouter();
   const rows = useMemo(() => skuAllocationTableRows(allocations), [allocations]);
 
-  /**
-   * The binding's `navigate` record plane, wired to the router.
-   *
-   * This is the retired `unit` cell's `<Link>`: the reach-through is declared
-   * once on the binding (`SKU_ALLOCATIONS_TABLE_BINDING.recordPlane`) and the
-   * mount supplies the only thing a binding cannot hold — the router. A hold
-   * whose feed omits the unit has nowhere to go and does nothing.
-   */
+  /** The binding's `navigate` record plane, wired to the router. */
   const openUnit = useCallback(
     (row: UnitAllocationTableRow) => {
       if (row.serial_unit_id == null) return;

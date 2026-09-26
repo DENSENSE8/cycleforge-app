@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * DecisionRulesEditor — the custom config sheet for a `decision` node (Track 1,
- * Stage 1). The generic scalar NodeConfigForm can't express an array of
- * when/then rows, so a decision node gets THIS editor instead: edit the output
- * ports, list/add/remove/reorder rules (each a grade/channel/disposition matcher
- * → a thenPort), and set a default port.
- *
- * It writes the WHOLE rule table back through the same onChange(nodeId, patch)
- * seam the generic form uses (the provider's onUpdateNodeConfig), so the draft
- * dirties and persists exactly like any other node config — no new save path,
- * no new permission. The decision node's run() reads these keys verbatim
- * (src/lib/workflow/nodes/decision.node.ts).
- *
- * Style mirrors the inspector's slate inputs (raw Tailwind, no hardcoded hex).
- */
+/** DecisionRulesEditor — the custom config sheet for a `decision` node (Track 1, Stage 1). */
 
 import type { ChangeEvent } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -352,14 +338,7 @@ export function DecisionRulesEditor({ nodeId, config, onChange }: DecisionRulesE
   );
 }
 
-/**
- * DecisionRulesReadout — the compact, READ-ONLY rendering of the same rule table
- * for the published (non-editable) inspector view. No inputs: each rule shows
- * its when-conditions as chips and the port it routes to, closed by the default
- * port (or "park"). It reads the EXACT same config keys the editor writes and
- * the node evaluates (src/lib/workflow/decision-eval.ts), so editor / readout /
- * runtime can never drift.
- */
+/** DecisionRulesReadout — the compact, READ-ONLY rendering of the same rule table for the published (non-editable) inspector view. */
 export function DecisionRulesReadout({ config }: { config: Record<string, unknown> }) {
   const outputs = readOutputs(config);
   const rules = readRules(config);

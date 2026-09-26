@@ -1,11 +1,4 @@
-/**
- * "Complete carton" — the pure half of the phone's receive action.
- *
- * Request assembly and response→state mapping live here, free of React and
- * `fetch`, so both are unit-testable (this repo has no React-hook test
- * harness — every suite is pure node:test). {@link useCompleteCarton} is the
- * thin stateful shell over these.
- */
+/** "Complete carton" — the pure half of the phone's receive action. */
 
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import {
@@ -25,12 +18,7 @@ export interface CompleteCartonOutcome {
   error: string | null;
   /** Lines the route reported as received (0 on a verify/replay pass). */
   updatedCount: number;
-  /**
-   * Set when this receive went through on a photo-policy WAIVER (the operator
-   * picked a `PHOTO_WAIVED_*` reason). A waived receive must never render as a
-   * clean success — the carton is received carrying an open exception, and the
-   * bench is the last place that can still say so.
-   */
+  /** Set when this receive went through on a photo-policy WAIVER (the operator picked a `PHOTO_WAIVED_*` reason). */
   waiver: PhotoPolicyWaiver | null;
 }
 
@@ -63,16 +51,7 @@ export type CompleteCartonRow = Pick<
   'receiving_id' | 'receiving_source' | 'zoho_purchaseorder_id' | 'intake_type' | 'receiving_type' | 'carton_intake_type'
 >;
 
-/**
- * Body for `POST /api/receiving/mark-received-po`.
- *
- * `station: 'MOBILE'` tags the audit + inventory events as phone-originated
- * (the route accepts MOBILE / TECH / RECEIVING). Unfound, return, and
- * sales-order-linked cartons have no Zoho PO to receive against, so they take
- * the `local_receive` lane — which still advances the lines to RECEIVED, it
- * just never calls Zoho. That choice is delegated to the routing SoT rather
- * than re-derived from `receiving_source` here.
- */
+/** Body for `POST /api/receiving/mark-received-po`. */
 export function completeCartonRequestBody(
   row: CompleteCartonRow,
   receivingId: number,
@@ -86,20 +65,7 @@ export function completeCartonRequestBody(
   };
 }
 
-/**
- * Map a `mark-received-po` response onto the operator-facing state.
- *
- * The load-bearing case is **409 `PHOTO_POLICY` is not an error**: it carries
- * the receive-time evidence gate's blockers, and it is a *fixable* condition —
- * the operator shoots the missing photos and retries the same request. Folding
- * it into the generic error branch is what the old per-line QA loop did, which
- * is why the phone never surfaced the policy at all.
- *
- * Since the gate became a soft block, the same request can also come back 200
- * carrying a `warnings[]` waiver — the receive happened, but on an override the
- * operator consciously took. That is a THIRD outcome, not a success: it is
- * reported as `done` with `waiver` set so the surface can say so out loud.
- */
+/** Map a `mark-received-po` response onto the operator-facing state. */
 export function mapCompleteCartonResponse(
   status: number,
   body: unknown,

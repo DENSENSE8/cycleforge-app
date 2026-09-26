@@ -1,15 +1,4 @@
-/**
- * POST /api/auth/password-reset/confirm  (PUBLIC)
- *
- * Body: { token, password, organizationId? }. Atomically claims a one-time reset
- * token, sets the account password, then signs the owner in:
- *   • 0 memberships  → { ok: true } (password set; nothing to enter)
- *   • 1 membership   → mint session for that org, set cookie
- *   • >1 memberships → { ok: true, needsOrgChoice, memberships } (no cookie — the
- *                      user picks a workspace on /signin with their new password)
- *
- * The token is single-use and short-lived; an invalid/expired token → 400.
- */
+/** POST /api/auth/password-reset/confirm (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -95,11 +84,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
-  // session must not silently promise indefinite persistence — it gets the
-  // normal device-kind window, and the user opts in by signing in with the box
-  // checked. Deliberate default, not an oversight (see the persistent flag in
-  // src/lib/auth/session.ts).
+  // "Keep me signed in":
   const session = await createSession({
     staffId: target.staff_id,
     deviceKind: 'personal',

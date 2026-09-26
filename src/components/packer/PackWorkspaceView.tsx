@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Pack browse workbench — Queue (TESTED Unshipped SoT) · History (packer logs).
- * Sheets flush chrome (Unbox recipe): tabs · KPI · triage in one pinned
- * sheet-chrome stack; body is 'relative flex min-h-0 min-w-0 flex-1 flex-col'. Band 2 uses Unbox SoT
- *
- * Multi-select opens the order right-rail plane (History / dashboard SoT) —
- * no bottom ContextualSelectionBar capsule.
- */
+/** Pack browse workbench — Queue (TESTED Unshipped SoT) · History (packer logs). */
 
 import { Suspense } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
@@ -59,12 +52,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
       activeTab={packView === 'queue' ? '' : packView}
       onTabChange={(id) => setPackView(id === packView ? 'queue' : (id as PackWorkspaceTab))}
     >
-      {/*
-        The bench's one page-level action, at page-header altitude. It already
-        existed as a URL state (`?new=true`) with an opener that lived off in
-        the rail; the frame gives it the place a primary action belongs, and the
-        overlay it opens is unchanged.
-      */}
+      {/* The bench's one page-level action, at page-header altitude. */}
       <DeskActionSlotRegistrar>
         <DeskHeaderAction
           variant="primary"

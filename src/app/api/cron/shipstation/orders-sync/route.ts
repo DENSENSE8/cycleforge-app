@@ -1,15 +1,6 @@
 /**
  * GET /api/cron/shipstation/orders-sync — the scheduled ShipStation order pull.
- *
  * ShipStation is the sole outbound-order importer (owner 2026-09-24). It runs
- * twice a day — 08:00 and 14:00 America/Los_Angeles — instead of inside the
- * 15-minute `integrations.orders_sync` fan-out, so it has its own job key, lock
- * and run ledger. `vercel.json` schedules in UTC; see the registry entry for
- * the daylight-saving shift.
- *
- * Reuses the connection-driven orchestrator scoped to `shipstation`: every org
- * with ShipStation connected runs the same `shipstationSync` the desk's Sync
- * ShipStation face runs. Auth via Bearer CRON_SECRET.
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest } from '@/lib/cron/auth';

@@ -1,17 +1,4 @@
-/**
- * Per-staff MasterNav order — ordered ids into the nav catalog.
- *
- * Org `nav_definitions` decide what exists (hide/rename). Permissions decide
- * who can open a surface. This module only answers *order on my spine*.
- * Prefs store ids only — never href / icon / permission.
- *
- * Absent / null / [] → full catalog in registry order (not an empty slate).
- * Saved order wins; any new catalog ids the staffer can see append at the end.
- *
- * Stations (`floor`) and Workspaces (`desks`) are one slot each — benches and
- * pointer desks are not reorderable as individual L1 rows; they list under
- * standing group labels. Home · Media Library stay structural above both.
- */
+/** Per-staff MasterNav order — ordered ids into the nav catalog. */
 
 import {
   DESK_SPINE_SECTIONS,
@@ -31,59 +18,18 @@ export const SPINE_SLOTS_MAX = 40;
 /** Synthetic spine slot for the Scan Stations enter row / drill. */
 export const SPINE_STATIONS_SLOT_ID = 'floor';
 
-/**
- * The v1/v2 wire value for the single Workspaces parent, as it still sits in
- * `staff_preferences.prefs.spineSlots` rows written before v3.
- *
- * This is a **persisted data token, not an API alias**: no caller navigates by
- * it and nothing emits it. {@link hydrateSpineSlots} recognises it in a saved
- * order and expands it into {@link SPINE_LANE_SLOT_IDS}. It can be deleted once
- * no row carries a `spineSlotsVersion` below 3.
- */
+/** The v1/v2 wire value for the single Workspaces parent, as it still sits in `staff_preferences.prefs.spineSlots` rows written before v3. */
 export const LEGACY_DESKS_SLOT_ID = 'desks';
 
 /**
- * One synthetic slot per LANE — Inbound · Outbound · Inventory · Products ·
- * Sales · Support · Operations, in `DESK_SPINE_SECTIONS` order.
- *
+ * One synthetic slot per LANE — Inbound · Outbound · Inventory · Products · Sales · Support · Operations, in `DESK_SPINE_SECTIONS` order.
  * v3 (operator 2026-09-14) deleted the single "Workspaces" parent. The lanes
- * ARE the parents: one flat band of named groups beside Scan Stations, not a
- * generic wrapper an operator has to open before they can read the domain they
- * came for. "Workspaces" named the software's idea of itself; "Inbound" names
- * the work.
- *
- * Consequence for staff reorder: a lane is now individually draggable, where v2
- * could only move the whole desk block. That is the point — the operator orders
- * their own domains.
- *
- * **Namespace hazard — read before adding a `kind: 'domain'` page.** Several lane
- * ids are string-identical to a desk PAGE id (`inventory`, `sales`, `support`,
- * `sourcing`-era ids). That is safe only because desk pages are never slottable
- * ({@link isSpineSlottable} returns false for them), so a lane id and a page id
- * can never both occupy this list — `laneByDeskId` deliberately folds a saved
- * page id onto the same string its lane already uses, which is what makes the
- * legacy migration a no-op rather than a rename.
- *
- * The day a lane id equals a **slottable** (non-desk) page id, `hydrateSpineSlots`
- * merges the two silently: one slot, two meanings. So naming a new page
- * `inventory`/`sales`/`support` with any kind OTHER than `'domain'` is a bug,
- * and `spine-slots.test.ts` asserts the disjointness ("lane slot ids never
- * collide with a slottable page id").
  */
 export const SPINE_LANE_SLOT_IDS: ReadonlyArray<SpineSectionId> = DESK_SPINE_SECTIONS.map(
   (section) => section.id,
 );
 
-/**
- * Default-order generation. Prod does not hoist Automations above Home —
- * that marketplace-first order is the main worktree's session IA, not this map.
- *
- * • v1 stamped the grouping of Stations + Workspaces.
- * • v2 put Workspaces above Scan Stations.
- * • **v3 dissolves Workspaces into the lane band.** A saved `'desks'` slot
- *   expands, in place, into the lane ids — so a staffer who had moved the desk
- *   block keeps its position, and the lanes arrive in registry order inside it.
- */
+/** Default-order generation. */
 export const SPINE_SLOTS_VERSION = 3;
 
 /** True when this catalog row participates in staff reorder as its own L1. */
@@ -145,16 +91,7 @@ export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] 
   return out.slice(0, SPINE_SLOTS_MAX);
 }
 
-/**
- * Apply a prefs id list onto the allowed catalog. Empty prefs → full default
- * order. Known ids keep staff order; new catalog ids append; unknown / gated
- * ids drop.
- *
- * Three legacy shapes fold in, all in place so a staffer's position survives:
- * a station page id → {@link SPINE_STATIONS_SLOT_ID}; a desk page id → the lane
- * that owns it; and {@link LEGACY_DESKS_SLOT_ID} → the whole lane band, in
- * registry order.
- */
+/** Apply a prefs id list onto the allowed catalog. */
 export function hydrateSpineSlots(
   raw: readonly string[] | null | undefined,
   allowed: readonly SidebarNavItem[],
@@ -207,16 +144,7 @@ export interface SpineSlotsMigration {
   stamp: { spineSlots: string[]; spineSlotsVersion: number } | null;
 }
 
-/**
- * Move the LANE BAND to sit immediately above Scan Stations, preserving every
- * other id and its relative order. Idempotent: an order whose first lane
- * already precedes the benches is returned untouched.
- *
- * This is the v1/v2 → v3 transform, and it is a LIFT, not a re-sort: a staffer
- * who dragged Automations to the top keeps it there. The only fact v3 asserts
- * is that the domains sit above the benches. Lanes keep their own relative
- * order, so a staffer who had already reordered them is not reshuffled.
- */
+/** Move the LANE BAND to sit immediately above Scan Stations, preserving every other id and its relative order. */
 function liftLanesAboveStations(slots: readonly string[]): string[] {
   const laneIds = new Set<string>(SPINE_LANE_SLOT_IDS);
   const floorAt = slots.indexOf(SPINE_STATIONS_SLOT_ID);
@@ -229,15 +157,7 @@ function liftLanesAboveStations(slots: readonly string[]): string[] {
   return [...rest.slice(0, target), ...band, ...rest.slice(target)];
 }
 
-/**
- * Roll a saved order onto the current default generation without overwriting
- * the operator's arrangement. Prod does not float Automations to the front.
- *
- * A `stamp` is the caller's instruction to persist: write both keys, once. The
- * version guard is what makes it once — after the stamp lands, `savedVersion`
- * equals {@link SPINE_SLOTS_VERSION} and this returns `null` forever, so a
- * staffer who drags Scan Stations back on top keeps that choice.
- */
+/** Roll a saved order onto the current default generation without overwriting the operator's arrangement. */
 export function migrateSpineSlots(
   raw: readonly string[] | null | undefined,
   allowed: readonly SidebarNavItem[],
@@ -286,13 +206,7 @@ function isDeskLike(page: { kind?: string; mainGroup?: string }): boolean {
   return isSpineDeskItem(page as SidebarNavItem);
 }
 
-/**
- * Ordered root-map entries for MasterNav — the lane band, the Stations slot,
- * and the remaining L1 pages, each emitted only when the catalog can paint it.
- *
- * v3: a `lane` entry replaces the single `desks` entry. `SidebarNavList` pairs
- * each lane id with its pages, so an empty lane never reaches the render path.
- */
+/** Ordered root-map entries for MasterNav — the lane band, the Stations slot, and the remaining L1 pages, each emitted only when the… */
 export function resolveSpineMapEntries<
   T extends {
     id: string;

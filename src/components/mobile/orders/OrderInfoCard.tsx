@@ -14,12 +14,7 @@ export function orderChannel(source: string | null | undefined): string | null {
   return meta.value ? meta.label : source;
 }
 
-/**
- * The order hub's read-only summary on {@link DetailSummaryCard}: the
- * Zoho-governed title, tracking · carrier (or the honest "no label"), qty ·
- * condition · channel, the public order # bottom-left and the server stage as a
- * `LIFECYCLE` code bottom-right. The whole card opens `/info`.
- */
+/** The order hub's read-only summary on {@link DetailSummaryCard}: */
 export function OrderInfoCard({
   data,
   href,

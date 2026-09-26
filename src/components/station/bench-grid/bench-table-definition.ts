@@ -1,23 +1,4 @@
-/**
- * `tech.bench` / `packer.bench` — the two station-bench table definitions.
- *
- * These are the last third-engine surfaces to join the waist. The benches used
- * to paint `StationHistoryTable` → `StationListTable` → a raw `LedgerGrid` over
- * the hand array `STATION_HISTORY_COLUMNS`: no binding, no catalog, no Fields
- * picker, and a sort vocabulary derived from the array rather than the facts.
- * Registering them costs a catalog, a resolver, an adapter and these two
- * definitions — no new display (`TABLE_ENGINE_ACCEPTANCE`).
- *
- * **Two definitions, not one parametric binding.** Orders can be one binding
- * across seven lanes because those lanes are the same entity narrowed by a
- * query param. Tech and Packer are two stores answering two questions, and the
- * registry's own law is that two bindings must never share a prefs bucket —
- * hiding a column on the pack bench must not densify the test bench.
- *
- * Re-declares nothing: columns and capabilities are the family SoT by
- * reference, and the canonical columns are the product-default MATERIALIZATION
- * (`TECH_COMPOUND_COLUMNS` / `PACKER_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `tech.bench` / `packer.bench` — the two station-bench table definitions. */
 
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
@@ -58,13 +39,7 @@ export const PACKER_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the `grid-default`
- * debt the discover scanner deletes — inheriting a column model by silence is
- * how a second SoT gets minted.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeTechGridDescriptor(
   columns: readonly OrdersQueueColumn[],
 ): GridSurfaceDescriptor<QueueRowRecord, OrdersQueueColumn> {
@@ -131,18 +106,7 @@ export const TECH_TABLE_BINDING: TableSurfaceBinding<QueueRowRecord, OrdersQueue
   definition: TECH_BENCH_DEFINITION,
   columns: TECH_COMPOUND_COLUMNS,
   makeDescriptor: makeTechGridDescriptor,
-  /**
-   * Migration debt, declared honestly. A bench row emits the app event
-   * `open-shipped-details` (`useStationDetailsSelection.openDetails`), which
-   * `StationDetailsHandler` turns into a `ShippedDetailsPanel` — and that panel
-   * is the rail's `detail:order` occupant (`RAIL_OCCUPANT_ID.inspect`, pinned by
-   * `right-rail/selection-occupancy.test.ts`). It is NOT a station work surface:
-   * `kind: 'station'` would document a gesture the bench does not perform.
-   *
-   * No `keyedByRecord`: the bench HAS a prev/next walk
-   * (`navigate-shipped-details`), and a per-record occupant id would replay the
-   * rail's exit → enter on every step of it.
-   */
+  /** Migration debt, declared honestly. */
   recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
 };
 

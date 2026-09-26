@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * /kiosk/v2 shell — cart is the session root.
- *
- * Trail: command dropdown (Repair · Sales · History · Exit), search glyph,
- * filter, carts · cart · paperwork · Work/Show/Verify. No side rails.
- * Center: catalog / repair details, or History, or the cart / paperwork /
- * Recent carts swap. The cart is written to `kiosk_carts` by
- * `useKioskCartSync` (mounted here, once) so several customers can be juggled
- * and any paired tablet can open a cart by its `#id`.
- *
- * Every command is a catalog command. Buyback and Pickup were deleted
- * 2026-09-23 (see `lib/kiosk/commands.ts`): each stacked a title that
- * repeated the mode name, and Pickup ran its lookup as body fields instead of
- * the header search. A new command comes back through the same header band.
- *
- * Callers: `/kiosk`, `/kiosk/v2`. Affected API: `/api/kiosk/carts` (via
- * `useKioskCartSync`).
- * User: "Converting the left sidebar into just a top left drop down so repair
- * or sales or more and then an exit button so you can exit out of the kiosk
- * mode. The right sidebar should also be removed as well and everything placed
- * into the top header, the cart, the paperwork, the work, show, verify, etc."
- */
+/** /kiosk/v2 shell — cart is the session root. */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
@@ -77,14 +56,7 @@ function catalogBasePath(command: KioskCommandId): string {
   return command === 'retail' ? '/api/kiosk/sales' : '/api/kiosk/repair';
 }
 
-/**
- * Favorites list per command — the curated tiles this rail lands on.
- *
- * One list per rail, named by the SURFACE and not by the client: the route
- * behind `catalogBasePath` enforces it (`/api/kiosk/sales/favorites` can only
- * ever be the `sales` list). Buyback and pickup are not catalog browses, so
- * they never reach this.
- */
+/** Favorites list per command — the curated tiles this rail lands on. */
 function catalogFavoritesWorkspace(command: KioskCommandId): FavoriteWorkspaceKey {
   return command === 'retail' ? 'sales' : 'repair';
 }
@@ -112,15 +84,7 @@ export function KioskShell() {
   const [catalogPhase, setCatalogPhase] = useState<CatalogPhase>('browse');
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  /**
-   * The picker's selection, mirrored into a ref as well as state.
-   *
-   * `onSelectProduct` fires from ProductSelector's own effect in the SAME
-   * commit as this setter, so a closure over `selectedItems` there reads the
-   * PREVIOUS selection — which is how the presentation title would lag one tap
-   * behind the tile the staffer just pressed. The ref is written
-   * synchronously, so the summary always names what is selected now.
-   */
+  /** The picker's selection, mirrored into a ref as well as state. */
   const selectedItemsRef = useRef<SelectedItem[]>([]);
   const [servicePrice, setServicePrice] = useState('');
   const [utilitySlot, setUtilitySlotRaw] = useState<KioskUtilitySlotId | null>(null);
@@ -138,13 +102,7 @@ export function KioskShell() {
   const [historyOpen, setHistoryOpen] = useState(false);
   /** Square's Keypad face is up in place of the catalog (menu → Keypad). */
   const [customAmountOpen, setCustomAmountOpen] = useState(false);
-  /**
-   * What the top-left menu SHOWS as selected. History and Keypad set
-   * no `active_command` — but the operator's model is "the dropdown says where
-   * I am" (2026-09-22: *"the top left must select history as well"*), so while
-   * a tool is open the trigger names it and the session underneath is
-   * untouched: closing it returns the trigger to the running command.
-   */
+  /** What the top-left menu SHOWS as selected. */
   const activeServiceId: KioskServiceId = historyOpen
     ? 'history'
     : customAmountOpen
@@ -242,12 +200,7 @@ export function KioskShell() {
     };
   }, [session.faceManualOverride, session.consultStance, actions]);
 
-  // NOTE: there is deliberately NO auto-open of the cart slot here. The old
-  // effect switched to `utilitySlot='cart'` the moment the first line existed,
-  // which meant tapping a product on the catalog never showed a SELECTION —
-  // the click opened the cart and took the grid away. Selection now stays on
-  // the card (check dot + wash), the chrome cart badge counts up, and the
-  // staffer opens the cart when THEY choose to.
+  // NOTE: there is deliberately NO auto-open of the cart slot here.
 
   // Global HID wedge — a UPC adds a retail line; nothing else is routed yet.
   const onWedgeScan = useCallback(
@@ -300,17 +253,7 @@ export function KioskShell() {
   const onSelectProduct = useCallback((product: ProductSelection | null) => {
     setSelectedProduct(product);
     if (!product) return;
-    /*
-     * A VISIT TITLE, never a join. `product.model` is the picker's `', '`-joined
-     * list of every ticked item, and THIS string is what the customer display
-     * paints at display scale — four names leave the viewport, and `A, B, C, D`
-     * is not a title, it is four titles in a trench coat.
-     * `summarizeProductTitles` says "Wave Radio II + 2 more" instead.
-     *
-     * The CART is untouched by this: every line keeps its own single product
-     * title, because every line is its own `repair_service` row. Summarizing
-     * is a chrome concern, not a record one.
-     */
+    /* A VISIT TITLE, never a join. */
     const names = selectedItemsRef.current.map((item) => item.name);
     const title = summarizeProductTitles(
       names.length > 0
@@ -331,17 +274,7 @@ export function KioskShell() {
     });
   }, [actions, session.activeCommand, servicePrice]);
 
-  /**
-   * The catalog's primary key. REPAIR opens the details stage; RETAIL has no
-   * detail step — the tapped item is already a cart line (the sync effect
-   * below), so the only forward move is reviewing the cart.
-   *
-   * Before 2026-09-14 this always set `catalogPhase='checkout'`, but the
-   * prop is pinned to 'browse' for retail and `stageContent` is null there,
-   * so on Sales the key mutated state nobody read — it rendered, enabled,
-   * and did NOTHING. Operator: "the continue button for the services are
-   * not working."
-   */
+  /** The catalog's primary key. */
   const onCatalogContinue = useCallback(() => {
     if (session.activeCommand === 'repair') {
       setCatalogPhase('checkout');
@@ -354,12 +287,7 @@ export function KioskShell() {
     setCatalogPhase('browse');
   }, []);
 
-  /**
-   * Keypad → Charge. A sale hands off to the ONE checkout (the cart ledger,
-   * past its Cart step: the keypad face already showed the lines). A repair
-   * device goes into the repair flow, which collects its serial, reasons and
-   * signature exactly as it would for a catalog pick.
-   */
+  /** Keypad → Charge. */
   const onKeypadCharge = useCallback(() => {
     if (session.activeCommand === 'repair') {
       setCustomAmountOpen(false);
@@ -370,13 +298,7 @@ export function KioskShell() {
     setCartOpenAt('checkout');
   }, [session.activeCommand]);
 
-  /*
-   * Sales tile tap → cart. A tap ADDS: the first puts the item on the cart, a
-   * repeat adds one to that line (Square "Consolidate identical items",
-   * `addRetail`). Until 2026-09-23 Sales rode the picker's toggle selection
-   * and synced it into lines, so a second tap DESELECTED the tile while the
-   * line stayed on the cart, and a third could never add a second unit.
-   */
+  /* Sales tile tap → cart. */
   const salesQuantities = useMemo(
     () => retailQuantitiesByVariation(session.lines),
     [session.lines],
@@ -397,20 +319,7 @@ export function KioskShell() {
     [salesQuantities, onSalesTileTap],
   );
 
-  /*
-   * Sync ProductSelector selectedItems → session REPAIR lines, ONE PER DEVICE.
-   *
-   * Repair keeps the picker's toggle (a device is picked, not counted). Before
-   * this sync, a two-radio drop-off
-   * reached the pane as ONE line with a joined title, one serial field and a
-   * summed quote, so the serial that was recorded belonged to neither unit.
-   * `repair_service` has always been one row per device.
-   *
-   * DESELECTING REMOVES NOTHING. By the time a staffer unticks a tile they may
-   * already have read that device's serial off its chassis and typed it, and a
-   * picker tap is not how a serialised device is thrown away — the device
-   * card's own trash verb is (`KioskRepairPane`, step 1).
-   */
+  /* Sync ProductSelector selectedItems → session REPAIR lines, ONE PER DEVICE. */
   useEffect(() => {
     if (session.activeCommand !== 'repair') return;
     const seen = new Set<string>();
@@ -501,19 +410,10 @@ export function KioskShell() {
       data-testid="kiosk-shell"
       data-cart-empty={cartIsEmpty(session.lines) ? 'true' : 'false'}
     >
-      {/* ONE 56px header band at all times, never a second one stacked.
-          Catalog browse: the picker's glass trail (it owns the same chip
-          vocabulary). A utility panel open over the catalog: this plain band —
-          same chips, same height, same positions — holding the paperwork
-          toggle, so the panel never covers its own way back and never paints
-          a second title band of its own.
-
-          The CART is excluded (2026-09-15): it owns a StepProgressHeader, and
-          that band IS its header — X top-left exits, segments across the
-          middle. Painting this trail above it would stack exactly the two
-          chromes the frame law exists to prevent. Operator 2026-09-14:
-          "displaying without the header and then the X button top left to
-          close the cart and displaying a stepper on the top". */}
+      {/*
+ * ONE 56px header band at all times, never a second one stacked.
+ * chromes the frame law exists to prevent. Operator 2026-09-14:
+ */}
       {utilitySlot !== null && utilitySlot !== 'cart' ? (
           <KioskTopChrome
             activeMode={activeServiceId}
@@ -526,14 +426,10 @@ export function KioskShell() {
             onConsultStance={onStanceChange}
           />
         ) : null}
-      {/* The paperwork SHEET is flat (operator 2026-09-14: "it should
-          not display a depth drop shadow"), so its separation cue is the
-          PLANE: the vacated stage drops to surface-sunken while that bounded
-          card is up. The CART takes no second plane — it is a
-          full-bleed white centre surface now (KIOSK_CENTRE_SURFACE, the repair
-          intake skeleton), so there is nothing to contrast. Conditional either
-          way, never a permanent repaint: KIOSK_POS_CANVAS is the one browse
-          background and kiosk-pos-surface.test.ts pins it. */}
+      {/*
+ * The paperwork SHEET is flat (operator 2026-09-14:
+ * The paperwork SHEET is flat (operator 2026-09-14: "it should
+ */}
       <div
         className={cn(
           'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
@@ -553,18 +449,8 @@ export function KioskShell() {
             running: the catalog below is still the session's state and is
             restored, untouched, the moment a command is picked again. */}
         {historyOpen ? (
-          // No `History` title in the band: the command dropdown already reads
+          // No `History` title in the band:
           // History while the tool is open (operator 2026-09-22). The face
-          // takes the band instead, and seats its search glyph + kind filter
-          // in it — one chrome unit, never a second one.
-          //
-          // And NOTHING mode-specific rides along: cart, paperwork and the
-          // Work · Show · Verify stance all belong to the command running
-          // underneath, which History is only a tool over (operator
-          // 2026-09-22: *"the history tab should not display the cart paper
-          // work and different work modes since that would be specific to a
-          // mode"*). The cart is not cleared — it is not SHOWN; picking a
-          // command again brings its chrome back untouched.
           <KioskHistoryPane
             onClose={() => setHistoryOpen(false)}
             chrome={(center) => (

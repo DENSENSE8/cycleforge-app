@@ -1,14 +1,4 @@
-/**
- * The single resolution point for a tenant's GS1 identity. SERVER-ONLY.
- *
- * Reads the raw block out of `organizations.settings` and hands it to
- * `resolveGs1Identity`, which is where placeholder prefixes and malformed
- * GLNs are dropped. Product code calls THIS, never `getGs1SettingsRaw`
- * directly — mirrors `resolveInboundSettings`, for the same reason: one place
- * decides what a persisted value actually means.
- *
- * Not re-exported from any barrel (it reaches the DB). Import the path.
- */
+/** The single resolution point for a tenant's GS1 identity. */
 
 import pool from '@/lib/db';
 import { parseOrgSettings, getGs1SettingsRaw } from '@/lib/tenancy/settings';
@@ -25,15 +15,7 @@ const defaultDeps: OrgGs1Deps = {
   query: (text, params) => pool.query(text, params) as never,
 };
 
-/**
- * Resolve the tenant's usable GS1 identity.
- *
- * A missing org, an unparseable settings blob, or a DB hiccup all resolve to
- * `{}` — "this tenant has no GS1 identity" — rather than throwing. That is the
- * degrade-not-fail rule, and here it is also the SAFE direction: an empty
- * identity means the projection omits GS1 keys, which is always a legal
- * document. There is no failure mode where guessing would be better.
- */
+/** Resolve the tenant's usable GS1 identity. */
 export async function resolveOrgGs1Identity(
   orgId: string | null | undefined,
   deps: OrgGs1Deps = defaultDeps,

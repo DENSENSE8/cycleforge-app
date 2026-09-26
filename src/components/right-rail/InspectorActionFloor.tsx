@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Workbench inspector action floor — the ONE icons-first Macro floor for desk
- * triage RightRailHost record peeks (History · Orders · Incoming · Unfound ·
- * Bin · SKU · Repair).
- *
- * Shape (never a grid of labelled buttons): a single equal-column icon row —
- * `⋯` overflow leading · icon verbs · flush trailing Delete far-right — with an
- * optional `above` expand (assign / notes composer / error / teaching text).
- * Park / close chrome stays on the top `DeskRailChromeRow`, never in this floor.
- *
- * Compose the shared peers so every panel's row is identical by construction:
- *   <InspectorActionFloor above={…}>
- *     <FloorOverflowButton items={…} data-testid="…" />
- *     <FloorIconButton icon={<Printer/>} label="Print" onClick={…} data-testid="…" />
- *     <InspectorFlushDelete … className={FLOOR_DELETE_PEER_CLASS} data-testid="…" />
- *   </InspectorActionFloor>
- *
- * Under the hood this is `IconActionFloor surface="canvas"` (spread). The intake
- * overlays (Import CSV / Add inbound) are a DIFFERENT job — a labelled commit
- * CTA — and compose `FlushTerminalFooter` directly, not this floor.
- *
- * Not for Station Displays / station docks (that shell is
- * `StationDisplaysHeaderActions` — the station half of the same display method).
- * Law: SoT Macro CTA.
- */
+/** Workbench inspector action floor — the ONE icons-first Macro floor for desk triage RightRailHost record peeks (History · Orders ·… */
 
 import type { MouseEvent, ReactNode } from 'react';
 import { Loader2, MoreHorizontal } from '@/components/Icons';
@@ -49,13 +25,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 /** Fill-width Macro spread peer face (hit target IS the column). */
-/**
- * Glyph size for a spread peer, applied by the CELL rather than by each caller.
- * Callers pass bare icons (`<Printer />`), which default to `w-6 h-6` — so
- * leaving this to the call site meant every floor's glyphs drifted with
- * whoever wrote it last. The host owning it is the same reasoning as the grid
- * cell zeroing `[data-chip-face]` padding instead of ~12 chip call sites.
- */
+/** Glyph size for a spread peer, applied by the CELL rather than by each caller. */
 const FLOOR_GLYPH_CLASS = FLUSH_TERMINAL_SPREAD_GLYPH_CLASS.split(' ')
   .map((c) => `[&_svg]:${c}`)
   .join(' ');
@@ -84,13 +54,8 @@ export function InspectorActionFloor({
    */
   children?: ReactNode;
   /**
-   * Plane paint. `canvas` (default) is the desk floor's own step below the
-   * card — the depth cue that separates a Macro floor from the record body it
-   * commits. `card` keeps the floor **coplanar with the panel**, for a rail
-   * whose body is one continuous white plane and where a grey band would read
-   * as a second surface rather than a floor (Media Library batch rail,
+   * Plane paint. `canvas` (default) is the desk floor's own step below the card — the depth cue that separates a Macro floor from the record…
    * operator-ruled 2026-08-10). Hairline + `border-t` still carry the seam
-   * either way — this is a paint choice, never a geometry one.
    */
   surface?: 'card' | 'canvas';
   className?: string;
@@ -120,13 +85,7 @@ export function InspectorActionFloor({
   );
 }
 
-/**
- * One icon verb in the floor — the shared peer every desk panel composes so the
- * row is identical across rails. Renders an `IconButton size="fill"` (or an
- * `<a>` peer when `href` is set — external listing link). The glyph auto-sizes
- * to the floor rung (the spread layout forces svgs to `h-5 w-5`); `busy` swaps
- * to a spinner; `selected` lights the bottom underline.
- */
+/** One icon verb in the floor — the shared peer every desk panel composes so the row is identical across rails. */
 export function FloorIconButton({
   icon,
   label,

@@ -3,17 +3,7 @@ import { after, before, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { createElement, StrictMode, act } from 'react';
 
-/**
- * The hook decides `AnimatePresence mode` / `initial` / stacking on a station
- * overlay, so the value it returns on the MOUNT render is what the server
- * emitted and what hydration compares. It must be `false` there no matter how
- * many times React runs the body — the previous shape (a ref assigned during
- * render) answered `true` on React's second dev pass and put a live hydration
- * mismatch on every cold `/unbox` load.
- *
- * Mounted rather than reasoned about: the defect only exists across renders,
- * which is exactly what source reading cannot see.
- */
+/** The hook decides `AnimatePresence mode` / `initial` / stacking on a station overlay, so the value it returns on the MOUNT render is what… */
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {
   pretendToBeVisual: true,
 });

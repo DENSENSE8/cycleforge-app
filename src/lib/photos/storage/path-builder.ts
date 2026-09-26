@@ -47,12 +47,7 @@ export function buildGcsObjectKey(opts: {
   return { objectKey, thumbObjectKey: `${prefix}/${thumbSegment}` };
 }
 
-/**
- * Object key for an entity video: `{org}/videos/{flow}/{videoId}.{ext}`, where
- * `{flow}` is the SAME entity directory a photo of that entity files under
- * (see {@link entityFlowDirectory}), so an entity's videos sit beside its photos
- * one `videos/` level down. Videos have no thumbnail object.
- */
+/** Object key for an entity video: */
 export function buildGcsVideoObjectKey(opts: {
   organizationId: string;
   entityType: PhotoEntityType;
@@ -68,12 +63,7 @@ export function buildGcsVideoObjectKey(opts: {
   return `${opts.organizationId}/videos/${flow}/${opts.videoId}.${sanitizePathSegment(opts.extension)}`;
 }
 
-/**
- * The per-entity directory under the org root — one switch shared by photo and
- * video keys so both media kinds of one entity always route to the same place.
- * `fallbackId` names the serial-unit / staff folder when the entity's own key
- * (unit uid / entity id) is absent — the media id, as photos always did.
- */
+/** The per-entity directory under the org root — one switch shared by photo and video keys so both media kinds of one entity always route… */
 function entityFlowDirectory(opts: {
   entityType: PhotoEntityType;
   entityId?: number | null;

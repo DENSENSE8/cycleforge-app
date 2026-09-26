@@ -1,15 +1,4 @@
-/**
- * Rate/label request validation + the pure ShipmentSpec builder.
- *
- * The operator routes (/api/shipping/rates, /api/shipping/labels[…/void])
- * validate their bodies with these Zod schemas and assemble the engine's
- * normalized ShipmentSpec through `buildShipmentSpec` — a pure function so the
- * body→spec mapping (explicit ship-from wins, country upper-cased, empty
- * carrier filters dropped) is unit-testable with zero DB/network.
- *
- * Keep this file pure: no vault, no tenancy, no fetch — mirrors ./client.ts's
- * credential-injected discipline.
- */
+/** Rate/label request validation + the pure ShipmentSpec builder. */
 
 import { z } from 'zod';
 import type { Parcel, ShipAddress, ShipmentSpec } from './types';
@@ -103,14 +92,7 @@ export function toParcel(p: z.infer<typeof ParcelSchema>): Parcel {
   };
 }
 
-/**
- * Build the engine's ShipmentSpec from a validated rates body.
- *
- * - An explicit `body.shipFrom` wins; otherwise `fallbackShipFrom` (the org's
- *   resolved warehouse origin) is used.
- * - Country codes are normalized to upper-case (the client sends them raw).
- * - An empty `carrierIds` array is dropped (= quote all connected carriers).
- */
+/** Build the engine's ShipmentSpec from a validated rates body. */
 export function buildShipmentSpec(body: RatesBody, fallbackShipFrom: ShipAddress): ShipmentSpec {
   const carrierIds = (body.carrierIds ?? []).filter((id) => id.trim().length > 0);
   return {

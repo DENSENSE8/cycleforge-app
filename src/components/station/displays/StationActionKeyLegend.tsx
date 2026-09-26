@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Station Action Plane — leaf key bindings for Displays.
- *
- * Leaf-scoped F-keys / modifiers via {@link useStationActionKeyBindings}.
- * Skips when focus is on an editable ({@link isEditableKeyTarget}). Esc stays
- * on {@link StationDisplaysPushStack} — do not bind Escape here.
- *
- * Painted KeyLegend floor chrome was retired with Inventory's leaf-dismiss
- * footer (stack `→|` only). Bindings stay silent; reintroduce a painted floor
- * only by growing this module when a leaf needs visible chords again.
- *
- * Not desk {@link InspectorActionFloor}. Law: Station Action vs Context planes.
- */
+/** Station Action Plane — leaf key bindings for Displays. */
 
 import { useEffect, useRef } from 'react';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';

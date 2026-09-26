@@ -4,28 +4,7 @@
  * newest scanned carton that has a face note → the line that owns that face.
  */
 
-/**
- * Pick the face text an Unbox carton sticker actually shows for a line.
- *
- * PRECEDENCE — `notes` first, `label_note` only as fallback. This looks
- * backwards next to the column comments, so here is why it is not:
- *
- * On Unbox the carton sticker center is the DOCK DRAFT. `liveCartonPayload`
- * (useUnboxLineController) spreads `{...defaultPayload, notes: itemNote}`, so
- * both the preview and Print · Receive print `receiving_line.notes`; carton
- * print then STAMPS `label_note := itemNote`. `label_note` is therefore either
- * equal to `notes` (printed) or older than it — never newer for this face.
- *
- * `label_note` was backfilled from `notes` by
- * `2026-07-31b_receiving_lines_label_note.sql`, so preferring it made Recent
- * paint the pre-split sentence on every carton the operator re-noted in the
- * dock and received WITHOUT printing. That is the "wrong Recent phrase" bug:
- * the sticker said `untested.....`, the backfilled `label_note` still said the
- * long sentence, and Recent echoed the sentence.
- *
- * `label_note` still wins when `notes` is blank — a face written only through
- * LabelEditPopover / As Listed is the sole face that line has.
- */
+/** Pick the face text an Unbox carton sticker actually shows for a line. */
 export function pickLabelFaceNote(opts: {
   labelNote?: string | null;
   notes?: string | null;
@@ -48,14 +27,7 @@ export type RecentFaceCandidate = {
   trackingNumber: string | null;
   /** `receiving_line.updated_at` — which line on the carton was touched last. */
   lineUpdatedAt: string | null;
-  /**
-   * `receiving_line.face_noted_at` — when the FACE TEXT last changed.
-   *
-   * The honest recency clock, and the reason it is not `lineUpdatedAt`: that
-   * one bumps on every condition / serial / qty patch, so ranking on it floats
-   * an ancient sentence back up the moment someone grades an old carton. Null
-   * on rows written before 2026-08-19 (never backfilled — see the migration).
-   */
+  /** `receiving_line.face_noted_at` — when the FACE TEXT last changed. */
   faceNotedAt?: string | null;
 };
 
@@ -88,20 +60,7 @@ function fresherLine(a: RecentFaceCandidate, b: RecentFaceCandidate): boolean {
   return a.lineId > b.lineId;
 }
 
-/**
- * Resolve Recent from ranked candidates — freshest face first, already filtered
- * to lines that have some face text (see the server module for the ranking).
- *
- * Two-level pick, because a carton is not a line:
- *   1. CARTON — the one carrying the freshest face.
- *   2. LINE   — within that carton, the freshest face again ({@link faceTime}),
- *      i.e. the one the operator actually just labeled.
- *
- * Step 2 is the multi-line fix: ordering by "has a label_note" picked whichever
- * sibling SKU still carried the backfilled sentence instead of the line the
- * operator actually worked. Scan identity (`appliedAt` / `trackingNumber`) stays
- * the carton's newest scan, not the winning line's row.
- */
+/** Resolve Recent from ranked candidates — freshest face first, already filtered to lines that have some face text (see the server module… */
 export function pickRecentFaceRow(
   rows: readonly RecentFaceCandidate[],
 ): RecentFaceRow | null {
@@ -141,23 +100,7 @@ export function recentLabelNoteQueryKey(excludeLineId: number | null | undefined
   return [...RECENT_LABEL_NOTE_QUERY_ROOT, excludeLineId ?? null] as const;
 }
 
-/**
- * Does a persisted line update make the Recent phrase on screen wrong?
- *
- * Closes the save→fetch race. The dock's note write is fire-and-forget
- * (`core.patch` → PATCH /api/receiving-lines), so opening the next carton can
- * fetch Recent BEFORE the previous carton's note lands — the walk then answers
- * with an older carton and keeps that answer for as long as the composer stays
- * mounted. `receiving-line-updated` carries the PERSISTED row once the write
- * resolves, which is the moment to drop the stale answer.
- *
- * Kept narrow so an unbox session's steady patch traffic (condition, verdict,
- * serial — every one of which broadcasts the full row) does not refetch on
- * every keystroke's worth of work:
- *   - no face text on the update → nothing Recent could show
- *   - the update IS the open line → excluded from Recent by construction
- *   - the persisted face already equals what Recent shows → nothing new
- */
+/** Does a persisted line update make the Recent phrase on screen wrong? */
 export function shouldRefreshRecentFace(opts: {
   /** `id` from the `receiving-line-updated` detail. */
   updatedLineId: number | null | undefined;

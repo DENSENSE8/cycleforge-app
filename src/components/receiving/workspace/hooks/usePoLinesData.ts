@@ -59,29 +59,11 @@ export interface PoLinesData {
    * groups. Drives the "Add to box" control. Empty until a serial is scanned.
    */
   cartonUnitIds: number[];
-  /**
-   * True while the first serial-hydration fetch is in flight (no serial data
-   * cached yet). Drives the per-row {@link SerialChipSkeleton} so a line with no
-   * serials *yet* reads as "loading" instead of "none". Metadata rows already
-   * paint from the fast lines-only query, so only the serial slot waits.
-   */
+  /** True while the first serial-hydration fetch is in flight (no serial data cached yet). */
   serialsLoading: boolean;
 }
 
-/**
- * Data + cache-coordination layer for {@link PoLinesAccordion}.
- *
- * Owns the sibling-lines query (keyed by the shared carton `receiving_id`, so
- * it stays warm across line switches), the instant-paint placeholder, and the
- * two window-event bridges that keep the render deriving from a SINGLE source
- * of truth (the query cache):
- *
- * - `receiving-line-updated` → patch the matching line straight into the cache
- *   (the load-bearing flicker fix — never mirror `data` into local state; the
- *   workspace re-seeds per line, and a local mirror starts empty every seed and
- *   paints one blank frame first).
- * - `app-refresh-data` → invalidate so a remote edit reflows the sibling list.
- */
+/** Data + cache-coordination layer for {@link PoLinesAccordion}. */
 export function usePoLinesData({
   receivingId,
   activeLineId,
@@ -117,11 +99,7 @@ export function usePoLinesData({
     seedReceivingSiblingsCache(queryClient, receivingId, [placeholderActiveRow]);
   }, [enabled, receivingId, placeholderActiveRow, queryClient, queryKey]);
 
-  // Primary query = sibling METADATA only (sku / price / condition / qty), no
-  // serials/units — so every sibling row paints without waiting on the heavy
-  // serial resolution. Serials + units are overlaid onto THIS cache by the
-  // hydration query below, keeping `row.serials` / `row.units` the single SoT
-  // every consumer reads.
+  // Primary query = sibling METADATA only (sku / price / condition / qty), no serials/units — so every sibling row paints without waiting on…
   const { data } = useQuery<ApiResponse>({
     queryKey,
     queryFn: async () => {
@@ -170,19 +148,11 @@ export function usePoLinesData({
     enabled,
     placeholderData,
     staleTime: 15_000,
-    // Do NOT refetch on window focus. The Pass+Print flow opens a print
-    // popup / silent-print window, which bounces focus and would otherwise
-    // refetch and wipe the optimistic verdict the operator just set. Still
-    // load-bearing now that the global default is `true` rather than
-    // `'always'`: `true` only suppresses a refetch INSIDE `staleTime`, and a
-    // print round-trip routinely outlasts the 15s below.
+    // Do NOT refetch on window focus.
     refetchOnWindowFocus: false,
   });
 
-  // Parallel serial+units hydration — the heavy `include=serials` resolution
-  // runs on its own cache so the metadata query never waits for it. On resolve,
-  // overlay serials AND units onto the shared siblings cache (per-unit no-serial
-  // Phase 2–3: units drive the multi-qty green check).
+  // Parallel serial+units hydration — the heavy `include=serials` resolution runs on its own cache so the metadata query never waits for it.
   const serialsQuery = useQuery<ApiResponse>({
     queryKey: serialsKey,
     queryFn: async () => {
@@ -197,12 +167,7 @@ export function usePoLinesData({
     refetchOnWindowFocus: false,
   });
 
-  // Overlay resolved serials + units onto the metadata cache. Runs only when the
-  // serials query's data changes (not on every metadata write), so it never
-  // re-applies stale server serials over a just-confirmed optimistic scan. A row
-  // with an in-flight optimistic serial is skipped for serials — the scan path
-  // owns them until its own reconcile lands — but units still overlay (they are
-  // independent of the optimistic serial flag).
+  // Overlay resolved serials + units onto the metadata cache.
   const serialRows = serialsQuery.data?.receiving_lines;
   useEffect(() => {
     if (!serialRows) return;
@@ -254,18 +219,12 @@ export function usePoLinesData({
   }, [serialRows, queryClient, queryKey]);
 
   // First-load only (no serial data cached yet) → drive the per-row skeleton.
-  // A background refetch of already-shown serials keeps `isLoading` false, so
-  // resolved serial chips never flash back to a skeleton. Tier-A hydrate / warm
-  // placeholder serials also suppress the skeleton so row-click opens like scan.
   const hasCachedSerials =
     (data?.receiving_lines ?? []).some((r) => r.serials != null) ||
     placeholderActiveRow?.serials != null;
   const serialsLoading = serialsQuery.isLoading && !hasCachedSerials;
 
-  // Optimistic `receiving-line-updated` patches go straight into the QUERY
-  // CACHE, so the render derives from a SINGLE source of truth (`data`). See
-  // the hook docblock for why a `localRows` mirror flickers. Upserts when the
-  // patch id is new (return-scan creates a line) so we don't wait for refetch.
+  // Optimistic `receiving-line-updated` patches go straight into the QUERY CACHE, so the render derives from a SINGLE source of truth (`data`).
   useEffect(() => {
     const handler = (event: Event) => {
       const patch = (event as CustomEvent<Partial<ReceivingLineRow>>).detail;
@@ -304,13 +263,7 @@ export function usePoLinesData({
     queryClient.invalidateQueries({ queryKey });
   });
 
-  // Single source of truth = the query cache. Original API order is preserved so
-  // clicking a sibling feels like a local expand/collapse, not a "row jumps to
-  // the bottom" switch. Filter to the active line's PO group so mixed-PO cartons
-  // (one receiving_id, multiple Zoho POs) don't leak foreign lines into the
-  // accordion. In the testing workspace, no-test lines (cables toggled off) are
-  // hidden — but the active line is always kept so a mid-flow toggle never
-  // blanks the workspace.
+  // Single source of truth = the query cache.
   const cartonRows = data?.receiving_lines ?? EMPTY_ROWS;
   const allRows = useMemo(() => {
     // Cold / empty cache: paint the known active row — filterLinesByPoGroup([],

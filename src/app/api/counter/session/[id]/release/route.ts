@@ -1,10 +1,4 @@
-/**
- * POST /api/counter/session/{id}/release — hand the counter back.
- *
- * Allowed on a parked session too: the lease and the cart's status are
- * independent facts, and a staffer going home should be able to release one
- * without resuming the other.
- */
+/** POST /api/counter/session/{id}/release — hand the counter back. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

@@ -1,16 +1,4 @@
-/**
- * GET /api/interop/lineage — the station procedures as OpenLineage facets.
- *
- * READ-ONLY and tenant-independent: this projects the product's own DECLARED
- * table lineage (`ProcedureStep.reads` / `.writes`), which is the same for
- * every org and touches no tenant rows. It is still gated on `interop.read`
- * because it discloses this product's internal relation names and which
- * endpoint writes what — a schema map is not customer data, but it is not
- * public either.
- *
- * Table-level only. See `@/lib/interop/lineage-facets` for why that is a
- * decision rather than a limitation.
- */
+/** GET /api/interop/lineage — the station procedures as OpenLineage facets. */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

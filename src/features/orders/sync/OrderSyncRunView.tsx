@@ -2,38 +2,8 @@
 
 /**
  * OrderSyncRunView — the order import, rendered as a measured run.
- *
  * Operator 2026-09-15: *"when I press the sync button there is no user
- * feedback … I want a step-by-step measured what's syncing to build trust."*
- * The run TAKES THE STAGE while it is in flight (`/m` gets the whole screen,
- * the desk swaps it in where the table paints) and it does not leave until the
- * operator acknowledges the result — the old 12-second toast reported a
- * minute-long batch job to an empty room.
- *
- * ## What it is made of, and what it must not be
- *
- * - **Header** is {@link StepProgressHeader} — X left, segmented bar, `n/N`
- *   right. Per its own law: do not compose a step-flow header from a title band
- *   plus an inline meter, and do not hand-roll the bar. `n` is the count of
- *   FINISHED steps (PG6), which {@link syncRunProgress} computes; it is never
- *   the index of the step in view.
- * - **Body** is the step ledger: one row per step, each carrying its own
- *   measured number. This is the trust surface — "214 rows read", "35 orders",
- *   "0 orders" — not a spinner and not a percentage.
- * - **It is NOT a table.** No `*GridRow`, no column catalog, no second grid.
- *   The desk has one
- *   table; this is a status list that stands in front of it.
- * - **One floor, and it is white.** `bg-surface-card` on the section and
- *   nothing else — the bands carry hairlines, never a second wash. This shipped
- *   briefly on `bg-surface-canvas`, which put a grey plane under the ledger
- *   (operator 2026-09-15: *"never propagate the darker gray background — always
- *   the light white background like the repair products in the kiosk page"*).
- *   Same ruling as `KIOSK_POS_CANVAS`: one SoT background, because two whites
- *   (or a white and a grey) on one screen read as a bug.
- *
- * Phone-first by construction: single column, `text-role-*` roles, touch-sized
- * controls, and no hover-only affordance — the same component serves `/m` and
- * the desk (SURFACE_LAW §3).
+ * (operator 2026-09-15: *"never propagate the darker gray background — always
  */
 
 import { useMemo, useState } from 'react';
@@ -63,12 +33,7 @@ export interface OrderSyncRunViewProps {
   onDismiss: () => void;
   /** Roll-up sentence the hook composed for this run. */
   outcome?: SyncRunOutcomeLine | null;
-  /**
-   * The run's per-row record — which orders landed, which rows need a fix.
-   * Opens in {@link OrderSyncRunDetailSheet} from the settled footer. Absent
-   * (or empty) for a provider that reported no detail, and then no Details
-   * affordance paints at all.
-   */
+  /** The run's per-row record — which orders landed, which rows need a fix. */
   detail?: SyncRunDetail | null;
   /** Marks a scripted run so nobody mistakes sample numbers for real ones. */
   demo?: boolean;

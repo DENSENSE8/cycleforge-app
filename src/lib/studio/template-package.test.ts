@@ -1,10 +1,4 @@
-/**
- * DB-free tests for the CycleForgeTemplatePackage v1 contract (Phase 3):
- * validateTemplatePackage (shape + registry/surface semantics) and
- * buildTemplatePackage (derived requiredNodeTypes). Registry predicates are
- * injected, so no engine bootstrap.
- *   npx tsx --test src/lib/studio/template-package.test.ts
- */
+/** DB-free tests for the CycleForgeTemplatePackage v1 contract (Phase 3): */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

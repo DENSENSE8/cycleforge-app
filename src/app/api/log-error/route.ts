@@ -1,15 +1,4 @@
-/**
- * POST /api/log-error
- *
- * Client-side error reporting sink. Lightweight on purpose — the browser
- * POSTs `{ message, stack, url, userAgent, extra? }` and we emit one
- * structured log line server-side. From there it flows to whatever log
- * collector the platform uses.
- *
- * Anonymous-friendly: signed-out pages (signin, signup, /m/enroll) need
- * to be able to report errors too. We do attribute the orgId/staffId
- * when a session is present.
- */
+/** POST /api/log-error */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

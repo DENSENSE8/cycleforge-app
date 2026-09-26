@@ -1,26 +1,4 @@
-/**
- * zoho_po_mirror sync — pulls Zoho Inventory purchase orders and UPSERTs
- * them into the local mirror table (email reconciler + Incoming status
- * source). After the upsert pass it runs ONE follow-up write against
- * receiving_lines: reconcileZohoReceivedLines marks door-scanned lines
- * received when Zoho now reports their PO received/billed/closed, so they
- * drop off the triage SCANNED/Prioritize queue. That is the only workflow
- * write this sync performs.
- *
- * Why separate from src/lib/zoho-receiving-sync.ts:
- *   The receiving sync materializes PO line items into the warehouse's
- *   inbound workflow (EXPECTED → ARRIVED → ...). Polling every PO indis-
- *   criminately would pollute operator queues with closed/cancelled/drop-
- *   shipped POs. This mirror exists so the reconciler can answer
- *   "does Zoho know about PO #X?" without surfacing anything to operators.
- *
- * Two modes:
- *   - delta: passes last_modified_time so Zoho returns only changed POs
- *   - full:  no filter; bring everything (used by nightly safety net)
- *
- * Both paginate via `paginateZohoList` (200 per page). One DB UPSERT per
- * PO header. Returns a SyncReport with counts + timing.
- */
+/** zoho_po_mirror sync — pulls Zoho Inventory purchase orders and UPSERTs them into the local mirror table (email reconciler + Incoming… */
 
 import { paginateZohoList, getPurchaseOrderById } from '@/lib/zoho';
 import type { ZohoPurchaseOrder } from '@/lib/zoho';
@@ -92,10 +70,7 @@ async function upsertOne(po: ZohoPurchaseOrder, orgId: OrgId): Promise<boolean> 
   const number = asString(po.purchaseorder_number);
   if (!id || !number) return false; // skip rows missing identity
 
-  // organization_id stamped explicitly (data-correct regardless of GUC) and the
-  // write runs under the tenant GUC via tenantQuery so it's FORCE-ready. ON
-  // CONFLICT target stays the global zoho_purchaseorder_id (per-org Zoho ids
-  // don't collide across tenants); per-org unique is a deploy-coupled follow-up.
+  // organization_id stamped explicitly (data-correct regardless of GUC) and the write runs under the tenant GUC via tenantQuery so it's…
   await tenantQuery(
     orgId,
     `INSERT INTO zoho_po_mirror
@@ -145,13 +120,7 @@ async function upsertOne(po: ZohoPurchaseOrder, orgId: OrgId): Promise<boolean> 
   return true;
 }
 
-/**
- * Refresh a single PO in the mirror by id — fetches the full PO header from
- * Zoho and UPSERTs it. Powers the Incoming details panel's per-order "Sync"
- * button: an operator who suspects one PO is stale can re-pull just that one
- * without running the whole delta sweep. Returns whether the PO was found +
- * its fresh Zoho status (so the caller can tell the operator "now received").
- */
+/** Refresh a single PO in the mirror by id — fetches the full PO header from Zoho and UPSERTs it. */
 export async function syncOnePoMirror(
   zohoPurchaseOrderId: string,
   orgId: OrgId,
@@ -193,10 +162,7 @@ export async function syncZohoPoMirror(opts: SyncOptions, orgId: OrgId): Promise
   const maxItems = opts.maxItems ?? 20000;
 
   try {
-    // Bind the whole paginated pull to this org's Zoho credential (allowlisted
-    // + audited). Wrapping the entire for-await keeps the AsyncLocalStorage org
-    // binding active across every page fetch (the generator resumes inside the
-    // run scope); upsertOne stamps + GUC-scopes each write to the same org.
+    // Bind the whole paginated pull to this org's Zoho credential (allowlisted + audited).
     await withZohoCredential(orgId, 'purchaseorders.read', async () => {
       for await (const page of paginateZohoList<ZohoPurchaseOrder>(
         '/api/v1/purchaseorders',
@@ -222,14 +188,7 @@ export async function syncZohoPoMirror(opts: SyncOptions, orgId: OrgId): Promise
     report.errors.push(`fetch: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // Propagate fresh terminal statuses onto the local queue. Deliberately
-  // unconditional (not gated on upserted > 0): a box door-scanned AFTER its PO
-  // already went terminal in Zoho produces no new mirror upsert, yet its lines
-  // still need clearing — and the operator Sync Zoho button must clear them
-  // even on a no-change delta. With the partial indexes on zoho_po_mirror.status
-  // and receiving(received_at/unboxed_at) the zero-candidate run is ~free.
-  // Failure here must not fail the sync or stall the callers' cursor advance,
-  // so it logs instead of pushing to errors.
+  // Propagate fresh terminal statuses onto the local queue.
   try {
     const { updated } = await reconcileZohoReceivedLines(orgId);
     report.reconciled = updated;

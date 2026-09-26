@@ -4,16 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { PickQueueRow } from '@/lib/picking/queue';
 import { resolvePickQueueStaffId } from '@/lib/picking/pick-queue-scope';
 
-/**
- * GET /api/pick/queue
- *
- * Returns the picker landing queue for the signed-in staffer: orders that have
- * at least one allocation in ALLOCATED|PICKING AND whose PACK work_assignment
- * is assigned to this staffer OR is unassigned (same visibility pattern as
- * GET /api/orders/next for TEST). Sorted by earliest deadline.
- *
- * Admin.view_logs holders may pass ?staffId=N to inspect another picker's queue.
- */
+/** GET /api/pick/queue */
 
 const QUEUE_SQL = `
   SELECT

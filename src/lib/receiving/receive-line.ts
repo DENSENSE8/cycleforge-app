@@ -38,14 +38,7 @@ export interface ReceiveLineUnitsInput {
   /** receiving_line.id */
   receiving_line_id: number;
 
-  /**
-   * Number of physical units this call represents. Must be >= serials.length.
-   * Use 1 for incremental scan-serial calls; use the remaining-to-receive
-   * qty for finalize calls (mark-received-po).
-   *
-   * Zero is valid — emits no ledger/events but still updates line metadata
-   * (qa/disp/cond/workflow_status).
-   */
+  /** Number of physical units this call represents. */
   units: number;
 
   /** Optional serial numbers — at most `units` long. Remaining units are recorded without serials. */
@@ -57,18 +50,10 @@ export interface ReceiveLineUnitsInput {
   condition_grade?: string | null;
   notes?: string | null;
 
-  // Workflow target. 'DONE' = line finalized. 'UNBOXED' = physically received,
-  // awaiting test. 'MATCHED' = scanned / staged (UI label "SCANNED") — e.g. awaiting Zoho receive.
-  // Anything else is left to the implicit qty rule below.
-  // ('RECEIVED' is *not* a valid value — the inbound_workflow_status_enum has no
-  // such label; using it crashes the whole query at plan time in Postgres.)
+  // Workflow target.
   set_workflow_status?: 'UNBOXED' | 'DONE' | 'MATCHED' | null;
 
-  // Advance-only guard for `set_workflow_status: 'MATCHED'`. When true, a line that
-  // is already UNBOXED-or-beyond is NOT pushed back to MATCHED — the receive path
-  // passes this so a carton unboxed at first scan isn't transiently downgraded
-  // (which would also emit a spurious backward inventory_event). The `scan_only`
-  // "Mark as scanned" revert leaves it false so it can still walk a line back.
+  // Advance-only guard for `set_workflow_status:
   advanceOnly?: boolean;
 
   // Actor + provenance.
@@ -109,13 +94,7 @@ export interface ReceiveLineUnitsResult {
    * without pretending the line progressed.
    */
   already_complete?: boolean;
-  /**
-   * True when one or more serials were logged AFTER quantity_received had
-   * already met quantity_expected. The serial is still recorded in both
-   * `serial_units` and `tech_serial_numbers` so a tech can keep scanning
-   * extras for a PO line without the count or stock ledger changing.
-   * Receiving / Testing UIs use this to render a "supplemental" toast.
-   */
+  /** True when one or more serials were logged AFTER quantity_received had already met quantity_expected. */
   supplemental?: boolean;
   line_state: {
     id: number;
@@ -151,10 +130,7 @@ async function loadLineForUpdate(
   client: import('pg').PoolClient,
   lineId: number,
 ): Promise<LineTarget | null> {
-  // zoho_item_id comes from the receiving_line_zoho facts table (Wave-3
-  // inversion — the spine zoho cluster is dying). FOR UPDATE OF rl: only the
-  // spine row is lockable (FOR UPDATE can't target the nullable side of an
-  // outer join), and the line row is the lock that serializes scans anyway.
+  // zoho_item_id comes from the receiving_line_zoho facts table (Wave-3 inversion — the spine zoho cluster is dying).
   const r = await client.query<LineTarget>(
     `SELECT rl.id, rl.receiving_id, rl.sku, rl.item_name, rz.zoho_item_id,
             rl.quantity_expected, rl.quantity_received, rl.workflow_status
@@ -180,16 +156,7 @@ const MATCHED_ADVANCE_GUARD: ReadonlySet<string> = new Set([
   'UNBOXED', 'AWAITING_TEST', 'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE',
 ]);
 
-/**
- * Pure replica of the workflow CASE the legacy combined UPDATE used to run in
- * SQL (Step D fold): explicit DONE always wins; explicit UNBOXED / MATCHED are
- * advance-only-guarded; with no explicit target, qty completion auto-advances
- * to UNBOXED; otherwise the line stays where it is. Returns the status the
- * line should END UP in (=== `current` means "no transition").
- *
- * NULL semantics match SQL: a NULL current status fails the `IN (...)` guard
- * (SQL NULL → not matched → ELSE branch), so explicit targets always apply.
- */
+/** Pure replica of the workflow CASE the legacy combined UPDATE used to run in SQL (Step D fold): */
 export function resolveReceiveWorkflowTarget(args: {
   current: string | null;
   explicit: 'UNBOXED' | 'DONE' | 'MATCHED' | null;
@@ -235,56 +202,11 @@ function dedupeSerials(input: ReceiveLineUnitsInput): string[] {
 
 // ── Writer ─────────────────────────────────────────────────────────────────
 
-/**
- * Single writer for "units arrived against a receiving_line row." Both
- * /api/receiving/scan-serial (incremental, +1) and /api/receiving/mark-received-po
- * (finalize, +remaining) call this.
- *
- * Side effects (per unit, in order):
- *   1. upsertSerialUnit() — only when a serial is present for that unit
- *   2. tech_serial_numbers audit row — only for serialized units
- *   3. sku_stock_ledger delta = +1 (reason=RECEIVED, dimension=WAREHOUSE)
- *      → trigger updates sku_stock.stock        — SKIPPED for supplemental
- *   4. inventory_events RECEIVED row (joins to ledger via stock_ledger_id)
- *
- * Then once:
- *   5. Facts-only UPDATE receiving_line with notes and
- *      quantity_received += effectiveUnits  (effectiveUnits=0 for supplemental),
- *      plus QA/disp/cond upserted into receiving_line_testing on the same
- *      tx client (Wave-3 writer inversion)
- *   6. When the resolved workflow target differs from the current status,
- *      transitionReceivingLine() (the guarded chokepoint) moves
- *      workflow_status + coarse status/timestamps and emits the one NOTE
- *      transition event (client_event_id `<clientEventId>:workflow-<to>`)
- *
- * Supplemental serials: PO lines are NOT hard-capped at quantity_expected.
- * A tech can keep scanning extras for a line; each extra still lands in
- * serial_units + tech_serial_numbers (so /testing chip lists + master
- * registry stay honest), but the sku_stock_ledger and the line's qty
- * counter both stop at expected so received-vs-actual ratios don't drift.
- * Result.supplemental=true flags the call so the UI can toast accordingly.
- *
- * Bug A is fixed: every serial path now goes through upsertSerialUnit().
- * Bug B is fixed: non-serialized units also emit a ledger row.
- *
- * upsertSerialUnit() MUST run on this same PoolClient (`{ dbClient: client }`).
- * A second pooled connection would block on the receiving_line row locked by
- * FOR UPDATE (FK check on origin_receiving_line_id) until Neon times out.
- */
+/** Single writer for "units arrived against a receiving_line row." Both /api/receiving/scan-serial (incremental, +1) and… */
 export async function receiveLineUnits(
   input: ReceiveLineUnitsInput,
 ): Promise<ReceiveLineUnitsResult> {
-  // withTenantTransaction owns BEGIN / SET LOCAL app.current_org / COMMIT /
-  // ROLLBACK / release. One transaction means the SELECT ... FOR UPDATE on
-  // receiving_line holds for the lifetime of the callback, so concurrent
-  // scan-serial requests on the same line block on this lock and reads/writes
-  // serialize correctly. It also sets the org GUC, so every inventory_events /
-  // sku_stock_ledger insert inside auto-stamps organization_id (the column
-  // default reads current_setting('app.current_org')).
-  // Captured inside the txn, enqueued AFTER it commits (see below): an
-  // unresolved Zoho SKU is a "create in Zoho" to-do. Queuing post-commit keeps
-  // the side-effect off the transaction's connection, so a queue failure can
-  // never poison the receive write.
+  // withTenantTransaction owns BEGIN / SET LOCAL app.current_org / COMMIT / ROLLBACK / release.
   let pendingQueueRaw: string | null = null;
   let pendingQueueTitle: string | null = null;
 
@@ -306,18 +228,7 @@ export async function receiveLineUnits(
     const expectedForGuard =
       line.quantity_expected != null ? Number(line.quantity_expected) : null;
 
-    // Batch-level idempotency. If this client_event_id's batch already committed
-    // (any per-unit event from it exists on this line), this whole call is a
-    // retry — return the current state WITHOUT mutating. The entire op runs in
-    // one transaction holding the line's FOR UPDATE lock, so per-unit events
-    // exist iff the prior call committed; a rolled-back call left none, letting
-    // the retry proceed. Without this, the per-unit ordinal suffix
-    // (`${client_event_id}:unit-N`, N derived from the moving quantity_received)
-    // shifted on retry, so ON CONFLICT(client_event_id) missed and the counter +
-    // non-serial ledger double-applied. This makes receiveLineUnits idempotent
-    // independent of the caller (previously only mark-received-po's qty clamp
-    // masked it). A concurrent duplicate blocks on the FOR UPDATE lock above,
-    // then short-circuits here once the first call commits.
+    // Batch-level idempotency.
     if (input.client_event_id) {
       const replay = await client.query<{ id: number }>(
         `SELECT id FROM inventory_events
@@ -349,10 +260,7 @@ export async function receiveLineUnits(
       }
     }
 
-    // Idempotent re-scan: if the caller sends exactly one serial and that SN is
-    // already on this line, return success without mutating qty. Same-barcode or
-    // retry UX should stay friendly. Only triggers when receiving would exceed
-    // capacity — otherwise the serial path below upserts and bumps the counter.
+    // Idempotent re-scan:
     if (
       units === 1 &&
       serials.length === 1 &&
@@ -392,25 +300,14 @@ export async function receiveLineUnits(
       }
     }
 
-    // Over-cap supplemental scan. PO lines are never hard-capped at the
-    // expected qty — a tech can keep scanning extras and they still land in
-    // serial_units + tech_serial_numbers. The qty counter and the
-    // sku_stock_ledger DO stop at expected so receiving-vs-actual numbers
-    // stay honest; the audit + chip strip do NOT. `supplemental: true`
-    // flows up to the UI so it can toast "Extra serial logged" instead of
-    // a misleading "fully received" message.
+    // Over-cap supplemental scan.
     const isOverCap =
       units > 0 &&
       expectedForGuard != null &&
       priorReceivedForGuard + units > expectedForGuard;
 
     const station: InventoryEventStation = input.station ?? 'RECEIVING';
-    // Title-guarded: a receiving line's SKU is a Zoho SKU, which collides with
-    // the marketplace catalog numbering. Pass the clean Zoho item name (items
-    // mirror; canonical SoT) so scanned units never get bound to a
-    // coincidentally-same-numbered marketplace product (e.g. Zoho 00143
-    // Soundbar vs Ecwid 143 UB-20 Wall Mount). Fall back to the line's
-    // listing-style name only when there's no Zoho item to key on.
+    // Title-guarded:
     let guardTitle = line.item_name;
     if (line.zoho_item_id) {
       const zi = await pool.query<{ name: string | null }>(
@@ -423,10 +320,7 @@ export async function receiveLineUnits(
       ? await resolveSkuCatalogId(line.sku, line.zoho_item_id, guardTitle)
       : null;
 
-    // Additive (§6 / queue-on-miss): the SKU didn't resolve to sku_catalog —
-    // capture it so it lands in the pending_skus to-do after commit. This does
-    // NOT change catalogId or any downstream write; the row's sku_catalog_id
-    // stays NULL exactly as before (that NULL is the unmatched state).
+    // Additive (§6 / queue-on-miss):
     if (line.sku && catalogId == null) {
       pendingQueueRaw = line.sku;
       pendingQueueTitle = guardTitle ?? line.item_name ?? null;
@@ -470,12 +364,7 @@ export async function receiveLineUnits(
       warnings: upserted.warnings,
     });
 
-    // Audit row (lineage). Idempotent via ON CONFLICT DO NOTHING; the
-    // existing migrations cover the unique key on this insert pattern.
-    // Uses the transaction client so it (a) shares the row lock + rollback
-    // semantics and (b) doesn't compete for a fresh connection out of the pool
-    // (poolMax=3 in prod — pool.query here under concurrent load was the source
-    // of "Query read timeout" errors on mark-received-po).
+    // Audit row (lineage).
     try {
       await attachTechSerial(
         {
@@ -491,11 +380,7 @@ export async function receiveLineUnits(
       console.warn('receiveLineUnits: tsn audit insert failed (non-fatal)', err);
     }
 
-    // Ledger delta — only on truly new serials AND only when this scan is
-    // still counted against the PO line's expected qty. Re-scans of an
-    // already-known serial don't double-count, and over-cap supplemental
-    // scans still record the serial but never bump the stock ledger (so
-    // received-vs-actual ratios stay honest).
+    // Ledger delta — only on truly new serials AND only when this scan is still counted against the PO line's expected qty.
     if (upserted.is_new && line.sku && !isOverCap) {
       const ledger = await client.query<{ id: number }>(
         `INSERT INTO sku_stock_ledger
@@ -530,10 +415,7 @@ export async function receiveLineUnits(
         });
       }
 
-      // Lifecycle event row, linked to the ledger row. Passes `client` so the
-      // insert shares the transaction (atomic with the line update) and doesn't
-      // grab a second pool connection — see comment above the tech_serial
-      // insert.
+      // Lifecycle event row, linked to the ledger row.
       const event = await recordInventoryEvent({
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
@@ -557,10 +439,7 @@ export async function receiveLineUnits(
       }, client, input.organizationId);
       inventoryEventIds.push(event.id);
     } else if (upserted.is_new && line.sku && isOverCap) {
-      // Supplemental serial logged after the line was already at expected
-      // qty. Skip the ledger delta (no stock change), but still emit a
-      // RECEIVED inventory event with `supplemental: true` so the audit
-      // timeline records the touch.
+      // Supplemental serial logged after the line was already at expected qty.
       const event = await recordInventoryEvent({
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
@@ -612,11 +491,7 @@ export async function receiveLineUnits(
     }
   }
 
-  // 2. Non-serialized remainder. One ledger row per unit so the audit stays
-  //    per-unit; per-line bulk inserts would lose the unit_ordinal mapping.
-  //    Skipped entirely when the call is over cap — non-serialized units
-  //    can't be "supplemental" because there's no serial to keep beyond
-  //    the qty; we would just be inflating the ledger.
+  // 2. Non-serialized remainder.
   const remainderQty = units - serials.length;
   if (remainderQty > 0 && line.sku && !isOverCap) {
     for (let j = 0; j < remainderQty; j++) {
@@ -677,24 +552,7 @@ export async function receiveLineUnits(
     }
   }
 
-  // 3. Facts-only line UPDATE — runs on the SAME client as the SELECT
-  //    FOR UPDATE so it inherits the row lock. quantity_received += units;
-  //    notes COALESCE. Over-cap scans pass effectiveUnits=0 so
-  //    the counter never goes above quantity_expected even when extras were
-  //    logged as supplemental.
-  //
-  //    workflow_status is deliberately NOT in this SET list (Step D fold).
-  //    Listing it — even via a CASE that keeps the same value — fires the
-  //    coarse trg_receiving_line_coarse_status trigger on EVERY receive call,
-  //    which could COALESCE-stamp lifecycle timestamps (e.g. the triage-owned
-  //    scanned_at) on rows that were not actually transitioning. The status
-  //    half now goes through transitionReceivingLine() below, only for rows
-  //    that really change.
-  //
-  //    qa/disposition/condition are receiving_line_testing facts (Wave-3
-  //    inversion) — written below via upsertReceivingLineTesting on this same
-  //    client, preserving the former COALESCE($n, col) semantics: a provided
-  //    value overwrites; null/unset leaves the stored value untouched.
+  // 3. Facts-only line UPDATE — runs on the SAME client as the SELECT FOR UPDATE so it inherits the row lock.
   const explicitWorkflow = input.set_workflow_status ?? null;
   const effectiveUnits = isOverCap ? 0 : units;
   const update = await client.query<{
@@ -743,19 +601,7 @@ export async function receiveLineUnits(
     workflow_status: line.workflow_status,
   };
 
-  // 4. Workflow-stage transition through the guarded chokepoint (Step D fold —
-  //    was a workflow CASE inside the UPDATE above plus a hand-rolled NOTE
-  //    event). The target is computed in TS from the FOR-UPDATE-locked row
-  //    (resolveReceiveWorkflowTarget replicates the old CASE exactly:
-  //    explicit DONE | advance-only UNBOXED/MATCHED | auto-UNBOXED on qty
-  //    completion | unchanged). CHECK-AND-SKIP: only a real change calls the
-  //    chokepoint — an identity transition would still fire the coarse trigger
-  //    and emit a spurious event. transitionReceivingLine owns the guarded
-  //    workflow_status UPDATE (+ coarse status/timestamps) AND emits the one
-  //    NOTE inventory_event (prev/next status), replacing the hand-rolled
-  //    emission. The `:workflow-<to>` client_event_id suffix is load-bearing:
-  //    batch replay-detection above LIKEs on `<clientEventId>:%` and the
-  //    UNIQUE(client_event_id) retry idempotency both key off this lineage.
+  // 4. Workflow-stage transition through the guarded chokepoint (Step D fold — was a workflow CASE inside the UPDATE above plus a…
   const prevWorkflow = line.workflow_status ?? null;
   const nextWorkflow = resolveReceiveWorkflowTarget({
     current: prevWorkflow,
@@ -828,10 +674,7 @@ export async function receiveLineUnits(
     };
   });
 
-  // Post-commit, best-effort: enqueue any unresolved SKU as a "create in Zoho"
-  // to-do. Runs on a fresh connection AFTER the receive transaction committed,
-  // so it can neither poison that transaction nor block the receive on a queue
-  // failure. The receive result is returned unchanged regardless of outcome.
+  // Post-commit, best-effort:
   if (pendingQueueRaw) {
     try {
       await queuePendingSku({
@@ -878,16 +721,7 @@ export type UnreceiveLineUnitsResult =
     }
   | { ok: false; status: 404 | 409; error: string };
 
-/**
- * Full undo of a website Receive for one line:
- *   - refuse if any linked serial is in a fulfillment/outbound state
- *   - un-putaway STOCKED serials back to RECEIVED (clear bin)
- *   - write a reversing sku_stock_ledger delta (−quantity_received)
- *   - zero quantity_received + clear received_done_at
- *   - transitionReceivingLine → MATCHED (scanned, not received)
- *
- * Idempotent when qty is already 0, stamp is null, and workflow is MATCHED.
- */
+/** Full undo of a website Receive for one line: */
 export async function unreceiveLineUnits(
   input: UnreceiveLineUnitsInput,
 ): Promise<UnreceiveLineUnitsResult> {

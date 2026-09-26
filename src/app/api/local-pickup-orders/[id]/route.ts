@@ -26,10 +26,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ success: false, error: 'Order not found' }, { status: 404 });
     }
 
-    // Titles come from the canonical Zoho `sku_catalog` (not Ecwid display_name)
-    // so the review/reprint panel matches the pickup product search. The
-    // sku_catalog join is on the SKU string (collides across tenants) so it is
-    // org-aligned to the line's own org.
+    // Titles come from the canonical Zoho `sku_catalog` (not Ecwid display_name) so the review/reprint panel matches the pickup product search.
     const itemsResult = await tenantQuery(
       orgId,
       `SELECT oi.*,

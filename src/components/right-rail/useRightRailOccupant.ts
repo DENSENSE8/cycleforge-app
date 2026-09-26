@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * "Is a desk inspector showing right now?" — the one answer, read off the
- * right-rail store rather than re-derived per surface.
- *
- * Band 3's **Show / Hide inspector** ({@link WorkbenchInspectorToggle}) needs to
- * know whether an occupant exists before it can park one. Surfaces that already
- * hold that fact locally (To-ship's `openOrderId`, Unbox History's
- * `historyTriageOpen`) keep their own signal; every other desk grid asks here
- * instead of plumbing a boolean up from the row that opened the peek.
- *
- * The id is matched by **prefix**, because occupants that walk a queue register
- * a stable id (`detail:receiving-line-batch`) while per-entity ones append the record
- * (`detail:sku:<sku>`) — SoT: source-of-truth.md → Right-rail modality.
- */
+/** "Is a desk inspector showing right now?" — the one answer, read off the right-rail store rather than re-derived per surface. */
 
 import { useCallback, useSyncExternalStore } from 'react';
 import {

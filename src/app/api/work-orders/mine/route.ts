@@ -4,25 +4,7 @@ import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { topWorkOrderForStaff } from '@/lib/work-orders/ranking';
 import { filterAssignedToStaff } from '@/lib/work-orders/deadline-bands';
 
-/**
- * GET /api/work-orders/mine
- *
- * The single most important work order for the signed-in operator, feeding the
- * global-header priority chip (P1-WORK-01 acceptance B). Reuses the EXACT queue
- * data source (getOrders) + the shared ranking SoT (topWorkOrderForStaff) so the
- * chip never diverges from the work-orders queue ordering.
- *
- * List mode — `?list=1` → `{ top, rows }`, where `rows` is the FULL set of the
- * staffer's actionable WorkOrderRows (same mine predicate, applied locally via
- * `filterAssignedToStaff` — the shared ranking SoT is untouched). Feeds the
- * mobile `/m/work` queue, which re-bands by deadline client-side (R-FLOW-3).
- * Without the param the response is byte-identical to the original `{ top }`
- * shape — the goal chip (useNextWorkOrder) depends on that.
- *
- * Org/RLS scoped via withAuth's tenantQuery (getOrders takes ctx.organizationId)
- * and operator-scoped via ctx.staffId — only rows the caller owns as tester or
- * packer are considered.
- */
+/** GET /api/work-orders/mine */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const listMode = request.nextUrl.searchParams.get('list') === '1';

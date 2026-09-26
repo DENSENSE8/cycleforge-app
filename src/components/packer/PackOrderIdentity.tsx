@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Packing adapter for the station entity-context header SoT
- * (`CartonContextCard` via `@/components/station/entity-context`).
- *
- * Maps an active pack order onto the Unbox one-row face (order# · tracking ·
- * classify · listing · photos). Photos mount via `photosCell` (Pack send-to-
- * phone) — never a sibling beside the card. Classify is read-only (no
- * receiving row to persist). Pair host with `placement="flow"` +
- * `reserveIdentityClearance={false}` (Unbox-family flat centre). Displays `←|`
- * lives on ScanStationUtilityRail, not inside this identity adapter.
- */
+/** Packing adapter for the station entity-context header SoT (`CartonContextCard` via `@/components/station/entity-context`). */
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';

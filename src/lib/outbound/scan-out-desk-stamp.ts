@@ -1,10 +1,4 @@
-/**
- * Scan-out timestamp + desk-selection source.
- *
- * Dock gun scans may backdate only as far as a plausible offline outbox
- * (one shift). The slot-table selection bar lets an operator name who scanned
- * the carton out and when — that window is longer, still bounded.
- */
+/** Scan-out timestamp + desk-selection source. */
 
 export const SCAN_OUT_DOCK_MAX_BACKDATE_MS = 24 * 60 * 60 * 1000;
 export const SCAN_OUT_DESK_MAX_BACKDATE_MS = 90 * 24 * 60 * 60 * 1000;

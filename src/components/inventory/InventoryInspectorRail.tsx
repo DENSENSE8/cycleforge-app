@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * Inventory push inspector — the Wave-1 keystone. A non-modal `RightRailHost`
- * occupant (`modal={false}`) keyed on `?open=<kind>:<ref>`, replacing the legacy
- * inline `InventoryDetailsOverlay` for the migrated `/inventory/units` route.
- *
- * Chrome is the ONE band: `DeskInspectorIndexShell` in `stance="standalone"`.
- * Nothing routes into this rail through an index — a grid row writes
- * `?open=unit:<ref>` directly — so it owes no Back and declares that with the
- * stance instead of by omitting a header. Never the hero-title
- * `InventoryDetailPanelShell` header, which the right-rail SoT bans on a record
- * inspector (`display/right-rail-inspector.md`). The work surface reflows beside
- * it (push, `edgeCollapse` / resize inherited from the host).
- *
- * **One line, not two (2026-08-21).** The chrome used to stack a
- * `DeskRailChromeRow` over a `PaneHeaderLabel` whose eyebrow (`Unit`) sat above
- * the mono record ref — an eyebrow/title pair on a second header line under the
- * band. The kind is now the band's single-word title and the ref rides the
- * band's trailing cell as a read-only mono cursor, beside the `▦` door onto
- * grid column details. Close stays the host's singleton `✕`; the band reserves
- * its cell.
- *
- * Body scope — the units grid only ever writes `unit:`, so `unit` is the only
- * kind Wave 1 exercises:
- *   - `unit`  → `ByUnitView` (record-content SoT; its own body-level title is
- *               allowed — the SoT bans a hero title in the CHROME, not in the body).
- *   - `alert` / `count` → the existing panels in `chrome="bare"` mode (content
- *               only; the rail owns the chrome + scroll port).
- *   - `sku` / `bin` → an honest deferred hint. Their real bodies compose
- *               `SkuDetailView` (panel mode) / `LocationDetailView`, which are
- *               designed by the `/inventory/{skus,bins}` migration (Wave 3);
- *               rendering their full-page shells raw inside a push rail would
- *               double the header, nest a scroll port, and `router.push('/inventory')`
- *               back into the RETIRED shell on Back. A hand-crafted `?open=sku:`
- *               deep-link on this surface lands the hint instead.
- */
+/** Inventory push inspector — the Wave-1 keystone. */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';

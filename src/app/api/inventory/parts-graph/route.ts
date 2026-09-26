@@ -4,25 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { parsePartSku, normalizeBase } from '@/lib/inventory/part-sku';
 import { listPartLinks } from '@/lib/inventory/part-links';
 
-/**
- * GET /api/inventory/parts-graph
- *
- * Derives the "parts graph" purely from the Zoho `items` mirror (Zoho is the
- * source of truth; this is a read-only enrichment, no local relationship state).
- *
- * Every active item whose SKU carries the `-P` flag is classified as a PART and
- * grouped:
- *
- *   base (whole unit code)
- *     └─ logical part (base + color + condition; stock index collapsed)
- *          └─ N stock-instance SKUs (the -1/-2/-3 dedups)
- *
- * Non-part items whose SKU equals a base code are surfaced as the base node's
- * "candidate parent" — UNVERIFIED. This run does NOT assert any parent↔child
- * link; pairing is a later, manual phase.
- *
- * Never crosses into `sku_catalog` — `items` is an independent SKU scheme.
- */
+/** GET /api/inventory/parts-graph */
 
 interface InstanceSku {
   sku: string;

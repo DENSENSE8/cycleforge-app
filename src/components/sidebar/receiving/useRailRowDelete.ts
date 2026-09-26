@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Irreversible carton delete from the rail's ⋮ menu — the `danger` half of the
- * row's CRUD, opposite the reversible Hide in `useRailRowDismiss`.
- *
- * **This is the one verb that earns a confirmation.** Hide fires immediately
- * with an Undo because it is reversible and per-staff; this removes the
- * `receiving_carton` row for the whole org and there is no undo to offer, so
- * the interruption buys something real. The confirm names the carton and says
- * the blast radius out loud — the operator clicked one line, and the delete
- * takes the package it belongs to.
- *
- * Same endpoint and the same post-delete refresh the History carton peek uses
- * (`DELETE /api/receiving-logs?id=`), so a carton deleted from the rail and one
- * deleted from the desk leave the caches in the same state.
- */
+/** Irreversible carton delete from the rail's ⋮ menu — the `danger` half of the row's CRUD, opposite the reversible Hide in… */
 
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

@@ -8,18 +8,7 @@ import {
   setPinsPersister,
 } from '@/lib/quick-access/storage';
 
-/**
- * Bridges `staff_preferences.prefs.quickAccess` (durable, cross-device) to the
- * Quick Access localStorage cache. Mount once inside the authenticated tree
- * (beside `<ScanHotkeySync/>` / `<TimeFormatSync/>`).
- *
- *   • Hydrates pins from the server when prefs load (server is the SoT).
- *   • If the staffer has never saved pins server-side but has local pins,
- *     seeds the server once (device → account migrate).
- *   • Registers the persister so pin / unpin / rename / reorder PUT back.
- *
- * Renders nothing.
- */
+/** Bridges `staff_preferences.prefs.quickAccess` (durable, cross-device) to the Quick Access localStorage cache. */
 export function QuickAccessSync() {
   const { prefs, update } = useStaffPreferences();
   const seededRef = useRef(false);

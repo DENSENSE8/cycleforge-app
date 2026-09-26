@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Sign-in credential fields — email AND password, together, one step.
- *
- * There was a second step here until 2026-09-07: the email field alone, a
- * `Continue` button, then the password revealed underneath. That shape earns
- * its keep when the identifier decides the method (an SSO tenant, a
- * passkey-only account) — this card has already offered Google, Apple, passkey
- * and QR above it, so by the time someone picks "Sign in with email" they have
- * chosen the password path and the extra press only delayed it. Password
- * managers also fill both fields in one gesture, which the split defeated.
- *
- * No motion import. This component sits on `/signin`'s critical JS graph (the
- * one public route) and the motion barrel statically carries the whole engine;
- * evicting it here is part of what emptied ~48KB gz out of that graph
- * (2026-08-28).
- */
+/** Sign-in credential fields — email AND password, together, one step. */
 
 import { useState } from 'react';
 // Deep path, not the barrel — see the note in `src/app/signin/page.tsx`.

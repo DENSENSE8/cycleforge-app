@@ -29,17 +29,10 @@ export interface EcwidProductSearchPopoverProps {
   popoverMode: EcwidProductPopoverMode;
   /** Optional initial query (e.g. parsed product title from listing URL); catalog mode only */
   initialQuery?: string;
-  /**
-   * Force the catalog search to a specific `searchField` and hide the
-   * title/SKU toggle. Local Pickup passes `'zoho_catalog'` so titles come from
-   * the Zoho `sku_catalog` (not Ecwid `display_name`). Omit for the default
-   * unfound-carton behaviour (Ecwid title / SKU toggle).
-   */
+  /** Force the catalog search to a specific `searchField` and hide the title/SKU toggle. */
   searchFieldOverride?: 'zoho_catalog';
   /**
-   * Relax the repair-service list to include NORMAL orders too (not just -RS
-   * SKUs) — appends include_normal=1 to /api/ecwid/recent-repair-orders. Used by
-   * the triage Smart-Matching inline "Link repair service" list.
+   * Relax the repair-service list to include NORMAL orders too (not just -RS SKUs) — appends include_normal=1 to…
    * @deprecated Use `initialOrderScope="all"` — operators toggle scope via chip row.
    */
   relaxRepairToAllOrders?: boolean;

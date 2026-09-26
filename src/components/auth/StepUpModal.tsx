@@ -1,22 +1,10 @@
 'use client';
 
-/**
- * <StepUpModal scope="bin.remove" open onResolved={…} onCancel={…} />
- *
- * Used by callers that just got `403 STEPUP_REQUIRED` from an API. After
- * the user re-enters their PIN (or uses a passkey), the grant lives for 5
- * minutes — the caller should retry their original request.
- *
- * Lighter than a full PIN screen; renders inline as a centered overlay.
- */
+/** <StepUpModal scope="bin.remove" open onResolved={…} onCancel={…} /> */
 
 import { useCallback, useState } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
-// Deep path, not the barrel. This modal is mounted by the ROOT LAYOUT, so a
-// barrel import here put seven motion-engine primitives (CardShell,
-// StaggerReveal, ChevronToggle, SlicedActionDock, Popover,
-// OmnichannelComposerDock, ProgressBar) on the critical graph of EVERY route
-// in the app — for one button.
+// Deep path, not the barrel.
 import { Button } from '@/design-system/primitives/Button';
 import {
   Dialog,

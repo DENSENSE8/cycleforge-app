@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * useAssistantContext — pages/regions register { page, station, selection,
- * mode, skill } for the global assistant (plan §-2.2). Same
- * last-registered-wins registry-hook pattern as useRegisterScanTarget; the
- * store lives in src/lib/assistant/context-store.ts.
- *
- * The registered context (+ the page's skill fragment) rides every
- * /api/assistant/chat request and is injected into the system prompt
- * server-side. Registration is layout-effect-scoped: unmount restores the
- * previous page's context automatically.
- */
+/** useAssistantContext — pages/regions register { page, station, selection, mode, skill } for the global assistant (plan §-2.2). */
 
 import { useEffect, useSyncExternalStore } from 'react';
 import {

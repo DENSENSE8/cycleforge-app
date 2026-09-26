@@ -1,21 +1,4 @@
-/**
- * Table import — the per-family DESCRIPTOR.
- *
- * Import is a capability of the table definition registry, not a To-Ship
- * feature: any Workbench spreadsheet may take a file, stage it in its own grid
- * with a triage state, correct it inline, and commit. What is shared is the
- * MECHANISM (parse · map · classify · stage · select · commit); what stays per
- * family is the VOCABULARY — its canonical fields, their aliases, the rule that
- * decides Ready vs Action required, and where a confirmed batch is written.
- *
- * There is deliberately **no universal canonical-field vocabulary**. An orders
- * row and a receiving row do not share fields, and pretending they do would put
- * one family's columns in another family's mapping panel.
- *
- * Mounting this per family is a FAN-OUT and is governed golden-first — see
- * `registry.ts` (`TABLE_IMPORT_LIVE_SURFACES`) and
- * `source-of-truth.md` → Table engine fan-out (History first).
- */
+/** Table import — the per-family DESCRIPTOR. */
 
 /** One canonical field a family's file must (or may) bind a source column to. */
 export interface TableImportFieldSpec<TField extends string> {
@@ -32,14 +15,7 @@ export interface TableImportClassification<TField extends string> {
   missing: TField[];
 }
 
-/**
- * Everything the shared staging mechanism needs to serve one `entityFamily`.
- *
- * `TRowView` is the family's grid row shape — the staging table definition's
- * row type. The store keeps raw `Record<string, string>` records; the view is
- * derived on read, which is what makes an edit re-classify in place with no
- * extra plumbing.
- */
+/** Everything the shared staging mechanism needs to serve one `entityFamily`. */
 export interface TableImportCommitSuccess {
   ok: true;
   /** Stable ids of rows newly created by this commit, when the writer has them. */

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Walk-in sales slot-layout hook — this family's CONFIG on useSlotTableLayout.
- *
- * Callers: useWalkInSalesSpreadsheet.
- * Affected API: `/api/tables/layouts` (org layout bag keyed walk-in-sales).
- * Data schemas: SlotLayout.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** Walk-in sales slot-layout hook — this family's CONFIG on useSlotTableLayout. */
 
 import {
   WALKINSALES_FIELD_CATALOG,

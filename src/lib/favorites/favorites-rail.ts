@@ -1,24 +1,4 @@
-/**
- * The favorites RAIL contract — one read and one write, shared by every
- * `<catalog base>/favorites` route (`/api/repair`, `/api/kiosk/repair`,
- * `/api/kiosk/sales`).
- *
- * ## Why the endpoint is relative to the catalog base
- * Favorites are a SCOPE of the catalog picker, not a workspace of their own:
- * `ProductSelector` lands on Favorites, stars a tile from its top-right pip,
- * and pages `?mode=favorites` from the same `ecwid-products` route it already
- * uses. So the picker asks ONE pair of endpoints — `${apiBasePath}/favorites`
- * — and the ROUTE decides which workspace list that is. A client that could
- * name the workspace could read another rail's list with a query string.
- *
- * ## Why both shapes carry `skus`
- * The tile star is a membership question about a catalog SKU, so every response
- * hands back the workspace's normalized keys. The picker rebuilds its set from
- * whichever response arrived last instead of guessing after a toggle.
- *
- * Callers: the three `favorites` routes above. Affected API: those routes.
- * Schemas: `favorite_skus`, `favorite_sku_workspaces`.
- */
+/** The favorites RAIL contract — one read and one write, shared by every `<catalog base>/favorites` route (`/api/repair`,… */
 
 import 'server-only';
 

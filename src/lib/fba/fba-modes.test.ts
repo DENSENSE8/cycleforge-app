@@ -41,13 +41,7 @@ test('every param the legacy /fba redirect forwards is declared at its destinati
   // asserted here so nobody "completes the isolation tier" by giving it one.
   assert.equal(routeParamsFor('/fba'), null);
 
-  // The redirect is a HAND-OFF: an undeclared key is dropped the moment
-  // `/shipping/fba` boundary-parses, which would silently lose an old bookmark's
-  // focused shipment or filters. Same defect class as `/walk-in`'s legacy
-  // deep-links, caught there only after the fact.
-  //
-  // Probe with a value each schema accepts — `fbaMode` is a closed vocabulary
-  // (not paramText), so `=1` would fail the schema even though the key is owned.
+  // The redirect is a HAND-OFF:
   const spec = routeParamsFor(FBA_OUTBOUND_PATH)!;
   const probes: Record<string, string> = {
     [FBA_MODE_PARAM]: 'plan',

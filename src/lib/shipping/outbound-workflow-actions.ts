@@ -1,16 +1,4 @@
-/**
- * Outbound workflow actions — stable, React-free command facts.
- *
- * A renderer may decide where a command is mounted, but it may not rename the
- * command or infer its availability from the current route. The lifecycle
- * resolver supplies the stage; this module projects that verdict into the
- * seven operator verbs shared by phone, desk, and station surfaces.
- *
- * Packing and dock staging are separate physical facts. The latter is supplied
- * by the append-only `DOCK_STAGED` station event; a renderer must never infer
- * it from the lifecycle label (`PACKED_STAGED` remains a legacy lifecycle
- * vocabulary, not proof that a carton reached the dock).
- */
+/** Outbound workflow actions — stable, React-free command facts. */
 
 import type { OrderLifecycleStage } from '@/lib/order-lifecycle';
 
@@ -74,12 +62,7 @@ export const OUTBOUND_CHANNEL_TRIAGE_ACTIONS: readonly OutboundChannelTriageActi
   { id: 'zero_amazon_inventory', platform: 'amazon', label: 'Zero Amazon inventory', mutation: 'set_inventory_zero' },
 ] as const;
 
-/**
- * Priority is not an exception: it is an explicit operator decision that the
- * desk and phone must be able to make through the same assignment write. Keep
- * its two directions closed so a renderer cannot improvise status copy or a
- * local boolean toggle.
- */
+/** Priority is not an exception: */
 export const OUTBOUND_PRIORITY_ACTION_IDS = ['mark_urgent', 'clear_urgent'] as const;
 
 export type OutboundPriorityActionId = (typeof OUTBOUND_PRIORITY_ACTION_IDS)[number];

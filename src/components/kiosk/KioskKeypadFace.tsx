@@ -2,38 +2,9 @@
 
 /**
  * KioskKeypadFace — Square's Keypad, two columns, no progress band.
- *
  * Operator 2026-09-24: *"the keypad custom price should look exactly like
- * square … it would display the cart on the side on the right side it would
- * be the keypad on the left side and automatically adding to the cart display
- * on the right side so two columns exactly like square no progress bar with a
- * pay button bottom right"*.
- *
- * Square Support, "Process custom sale amounts": tap **Keypad** and enter a
- * custom amount; tap the **(+)** icon to add a separate custom amount; from
- * the **Current sale** screen tap **Custom Amount** to adjust it (Comp Item /
- * Remove Item); tap **Charge** to complete the transaction.
- *
- *   LEFT   amount · `1-9 C 0 +` as one bounded block of square keys, edge
- *          to edge (no gaps to mis-touch). `+` lands the amount on the cart
- *          at once as a `Custom Amount` line and resets to $0.00. No title or
- *          note field above the pad (operator 2026-09-24) — a note is added
- *          afterwards from the line's editor.
- *   RIGHT  `Current sale` — the ONE cart's list (`KioskCartLineList`, the same
- *          cards, editor and remove as the cart) under the cart's `N · $total`
- *          header, and a full-width `Charge $X` key pinned bottom-right.
- *
- * Charge commits any pending amount, then hands off to the existing checkout
- * (`onCharge`); money only ever moves through `KioskCartLedger`.
- *
- * No PIN per line: a keypad amount has no catalog price to deviate from, so
+ * note field above the pad (operator 2026-09-24) — a note is added
  * `verifyLinePrices` accepts it unapproved (operator decision 2026-09-24).
- *
- * In Repair a keypad line is a device priced by hand; it lands as
- * `Custom Amount` and the repair stepper runs from Charge.
- *
- * Callers: `KioskShell`. Affected API: none (lines submit via `/api/kiosk/intake`).
- * Schemas: `counter_session_lines` via the kiosk session store.
  */
 
 import { useMemo, useState } from 'react';

@@ -1,27 +1,8 @@
-/**
- * Configuration for the shipped-order → Zoho Inventory fulfillment sync.
- *
- * Everything here is environment-driven so the sync's accounting behavior can be
- * tuned per deployment without code changes. Defaults are deliberately SAFE:
- *   - dry-run is ON by default (the sync logs what it WOULD do but writes nothing
- *     to Zoho) until you explicitly set ZOHO_FULFILLMENT_DRY_RUN=false.
- *   - FBA / Amazon-fulfilled orders are excluded (they are not sold through the
- *     Zoho channel and have their own accounting).
- *
- * See docs/zoho-fulfillment-sync.md for the full setup guide and the field
- * mapping reference.
- */
+/** Configuration for the shipped-order → Zoho Inventory fulfillment sync. */
 
 import { normalizeEnvValue } from '@/lib/env-utils';
 
-/**
- * How far the invoice (accounting record) is taken in Zoho for each shipped order:
- *   - 'none'  : create no invoice (package + shipment only).
- *   - 'draft' : create the invoice but leave it as a Draft.
- *   - 'sent'  : create the invoice and mark it Sent (open accounts-receivable).
- *   - 'paid'  : create + mark Sent + record a full customer payment (closed/paid).
- *               Use this for marketplace orders that are already paid at the source.
- */
+/** How far the invoice (accounting record) is taken in Zoho for each shipped order: */
 export type InvoiceMode = 'none' | 'draft' | 'sent' | 'paid';
 
 export interface FulfillmentSyncConfig {

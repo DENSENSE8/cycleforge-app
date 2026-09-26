@@ -6,41 +6,7 @@ import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 
-/**
- * Warehouse-thread composer.
- *
- * **The shell is {@link OmnichannelComposerDock}** — the one "type a message
- * here" chrome in the app, the same field the Unbox carton notes mount
- * (`LineNotesCard`) and the same one Support replies mount. Until 2026-08-21
- * this file hand-rolled its own bordered textarea + footer strip, which is
- * precisely the fork that dock's docblock bans: the warehouse thread and the
- * customer ticket are supposed to be the same face, and they visibly were not.
- * Enter commits / Shift+Enter newlines now come from the dock rather than a
- * local ⌘↵ handler.
- *
- * What stays local is the only genuinely Cycle-Forge-specific part: the
- * team-only vs on-record toggle. That is thread SEMANTICS, not composer chrome
- * — it is intentionally NOT the Zendesk `VisibilityToggle`, because a team note
- * here is never emailed. It rides the dock's `footerStart` slot.
- *
- * ## One shape (the `float` variant was retired 2026-08-21)
- *
- * This is the bordered composer at the foot of a {@link ThreadPanel}: header
- * eyebrow, visibility toggle, footer status line.
- *
- * A second `float` variant existed for ONE day — a shell-less entry that
- * hovered over the `/search` rail with `chrome="bare"`, no header and no
- * toggle. Its only consumer, `SearchRailQuickNote`, was deleted in the Unbox
- * parity teardown, so the branch went with it rather than sitting here as a
- * reachable-but-unreached fork: `pattern-evolution.md` §6 — a retirement is not
- * done until the old path is DELETED. `onIsOnRecordChange` is required again,
- * because `float` was the only caller that legitimately omitted it, and
- * `isOnRecord` stays required-and-undefaulted for the reason it always was —
- * what a note claims is a safety classification.
- *
- * If a shell-less composer is ever wanted again, the dock's own `chrome="bare"`
- * is still there; bring the variant back with a consumer in the same change.
- */
+/** Warehouse-thread composer. */
 export function ThreadNoteComposer({
   value,
   onChange,
@@ -58,13 +24,7 @@ export function ThreadNoteComposer({
 }: {
   value: string;
   onChange: (next: string) => void;
-  /**
-   * false = team-only; true = visible on the warehouse entity record.
-   *
-   * Never defaulted: what a note claims is a safety classification, and a
-   * default would let a host that never thought about it post on-record by
-   * omission.
-   */
+  /** false = team-only; true = visible on the warehouse entity record. */
   isOnRecord: boolean;
   onIsOnRecordChange: (next: boolean) => void;
   onSubmit: () => void;

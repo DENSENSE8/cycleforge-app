@@ -1,9 +1,4 @@
-/**
- * Inventory › Ledger activity grid surface descriptor — lifts the MOUNTED
- * column model (a `SlotLayout` materialization) into the TanStack defs
- * `LedgerGridSurface` mounts. Row ORDER stays with the house comparator in
- * `PulseView` (state math only).
- */
+/** Inventory › Ledger activity grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization) into the TanStack… */
 
 import {
   makeGridSurfaceDescriptor,

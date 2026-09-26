@@ -1,15 +1,4 @@
-/**
- * POST /api/kiosk/session/lines — the customer stages a line.
- *
- * The counter is a form two people fill at once (D5, revised 2026-08-20): the
- * customer describes what they brought in on the tablet while staff price it on
- * the desktop. So a tablet may CREATE a line — but never priced.
- *
- * `unitAmountCents` is absent from this schema on purpose, not defaulted to
- * something a caller could override. A device principal outlives the customer
- * standing at it; anything it can do, a stranger can do after they leave.
- * Describing a device costs a correction, pricing one is an open till.
- */
+/** POST /api/kiosk/session/lines — the customer stages a line. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

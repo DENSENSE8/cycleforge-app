@@ -2,11 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildStoreZip } from './store-zip';
 
-// ─── The extraction invariant ─────────────────────────────────────────────────
-// Every central-directory record must point at the true byte offset of its
-// entry's local header. The previous per-route builders wrote 0 for every
-// entry, which extracts fine for a single-file archive (offset really is 0)
-// and corrupts every multi-file archive — the exact "zip won't extract" bug.
+// ─── The extraction invariant ───────────────────────────────────────────────── Every central-directory record must point at the true…
 
 const FIXED_DATE = new Date('2026-07-05T12:00:00');
 

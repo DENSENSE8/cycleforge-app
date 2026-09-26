@@ -1,18 +1,6 @@
 /**
  * Label-run stepper — the pure half of the To-ship inline Labels mode
  * (operator ruling R-FLOW-6, 2026-09-01).
- *
- * The operator selects rows, invokes the **Labels** selection verb, and works
- * the queue one row at a time: the shipping panel expands beneath the ACTIVE
- * row, each buy commits per row on the server (K10 — no batch state to lose),
- * and the run advances to the next selected row. This module owns only the
- * arithmetic of that walk — which id is active, what comes next, what happens
- * when a row vanishes out from under the run — so the unit gate covers it
- * without a DOM.
- *
- * The queue is captured ONCE, in display order, when the verb is invoked.
- * Later selection changes do not grow a running queue: a run is a commitment
- * to the rows the operator picked, not a live view of the checkbox column.
  */
 
 export interface LabelRunState {
@@ -50,14 +38,7 @@ export function advanceLabelRun(run: LabelRunState): LabelRunState | null {
   return { queue: run.queue, activeId: run.queue[nextIndex] };
 }
 
-/**
- * Reconcile the run against the rows the table can still show.
- *
- * A refetch can drop a row mid-run (shipped elsewhere, filtered out by a
- * concurrent edit). Missing ids leave the queue; if the ACTIVE row is the one
- * that vanished, the run moves to the next surviving id after its old
- * position (not back to the top). `null` when nothing survives.
- */
+/** Reconcile the run against the rows the table can still show. */
 export function pruneLabelRun(
   run: LabelRunState,
   presentIds: ReadonlySet<number>,

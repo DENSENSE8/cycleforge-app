@@ -40,22 +40,7 @@ function normTrackingKey(value: string | null | undefined): string {
   return (value ?? '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
-/**
- * The stored "tracking#" is byte-identical to the carton's own PO#, and no
- * real carrier was ever resolved for it. There is no separate tracking
- * identity here — just the order number re-echoed into the tracking slot.
- * This happens for vendors (e.g. Home Depot) whose Zoho "PO Number" field IS
- * their own order id: an `auto`-mode scan of that value correctly resolves
- * the PO (`lookup-po` route, ORDER# mode), but the scanned string was never a
- * carrier tracking number.
- *
- * Deliberately NOT folded into {@link isLocalPickupFulfillment} — that drives
- * the "Pickup" pill/label ("Fulfilled in person — no tracking number"), which
- * would misrepresent a genuinely carrier-delivered Home Depot order as a
- * will-call pickup. This box a real tracking number to show — just not this
- * one — so the tracking slot goes empty (via {@link displayTrackingNumber}),
- * not "Pickup".
- */
+/** The stored "tracking#" is byte-identical to the carton's own PO#, and no real carrier was ever resolved for it. */
 export function isPoNumberEchoedAsTracking(row: FulfillmentRow): boolean {
   const trk = normTrackingKey(row.tracking_number);
   if (!trk) return false;

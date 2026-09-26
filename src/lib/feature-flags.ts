@@ -1,20 +1,4 @@
-/**
- * Feature flags — sync env-only + async per-tenant infrastructure.
- * ────────────────────────────────────────────────────────────────────
- * The inventory rewrite is COMPLETE: the unit-level engine (serial_units +
- * inventory_events + sku_stock_ledger + order_unit_allocations) is the only
- * inventory system and runs unconditionally. The former INVENTORY_V2_* flags
- * were removed on 2026-06-14 — there is no V1 path left to gate against.
- *
- * What remains here:
- *   - readBoolEnv(name, default): the sync env-var primitive backing the
- *     handful of product flags below (warranty logger, mobile-receiving
- *     pipeline, receiving physical-state-first / unified-inbound).
- *   - resolveForOrg() + the 30s (orgId, flag) cache: the per-tenant
- *     resolution framework (reads organization_feature_flags, env fallback).
- *     Kept as reusable infrastructure for future per-org flags; invalidate
- *     explicitly via invalidateFeatureFlagCache() when a row is flipped.
- */
+/** Feature flags — sync env-only + async per-tenant infrastructure. */
 
 import pool from '@/lib/db';
 import type { OrgId } from './tenancy/constants';
@@ -68,15 +52,7 @@ async function resolveForOrg(orgId: OrgId, flag: string, envVar: string): Promis
   return readBoolEnv(envVar);
 }
 
-/**
- * Public reader for a per-org override flag with no env fallback. Returns the
- * stored boolean, or `null` when the org has no row for `flag` (so callers can
- * distinguish "explicitly off" from "unset"). Shares the same 30s cache as
- * resolveForOrg and is fail-open (returns null, logged) on a DB error.
- *
- * Used by the Studio entitlement gate to honor a force-grant override
- * (organization_feature_flags(flag='studio')) alongside the plan catalog.
- */
+/** Public reader for a per-org override flag with no env fallback. */
 export async function readOrgFeatureFlag(orgId: OrgId, flag: string): Promise<boolean | null> {
   return readOrgFlag(orgId, flag);
 }
@@ -115,348 +91,113 @@ export async function enableOrgFeatureFlag(orgId: OrgId, flag: string): Promise<
 }
 
 // ─── Sync env-only variants ────────────────────────────────────────────────
-//
-// NOTE: The INVENTORY_V2_* flags were removed on 2026-06-14. The unit-level
-// inventory engine (serial_units + inventory_events + sku_stock_ledger +
-// order_unit_allocations) is now the ONLY inventory system — always on, no
-// flag. The receive→putaway, tech-lifecycle, allocation/pick, pack/ship,
-// FBA-serial-link, returns/holds, picking, bin-roles, replenishment, and RMA
-// phases all run unconditionally. There is no V1 path left to fall back to.
 
-/**
- * Mobile receiving pipeline rewrite (/m/receiving).
- * PO-keyed list, per-Purchase-Order-Item detail, dedicated camera surfaces,
- * and 720p client-side downscale before upload. Reads/writes against the
- * same `receiving_lines` + `photos` tables as the legacy /m/r/[id] flow,
- * with `photos.receiving_line_id` added for first-class item-scoped photos.
- */
+/** Mobile receiving pipeline rewrite (/m/receiving). */
 export function isMobileReceivingPipelineV2(): boolean {
   return readBoolEnv('MOBILE_RECEIVING_PIPELINE_V2');
 }
 
-/**
- * Warranty Claim Logger + Repair Outcome Tracker — 4th mode on the Orders /
- * Shipping page. Now GA: always on, so the support tool is never disabled and
- * the read/write routes + clock sweep always serve data. The env var is honored
- * as a kill-switch only — set WARRANTY_LOGGER=false to force it off.
- * See docs/warranty-claim-logger-plan.md.
- */
+/** Warranty Claim Logger + Repair Outcome Tracker — 4th mode on the Orders / Shipping page. */
 export function isWarrantyLogger(): boolean {
   return readBoolEnv('WARRANTY_LOGGER', true);
 }
 
-/**
- * Google Drive photo backup. Global kill-switch for the drive-mirror cron + the
- * manual backup batch. Default ON so any tenant who connects their Drive gets
- * backed up; the per-org gate is the presence of an active google_drive vault
- * connection, so this only exists to halt the feature platform-wide.
- */
+/** Google Drive photo backup. */
 export function isPhotosDriveBackupEnabled(): boolean {
   return readBoolEnv('PHOTOS_DRIVE_BACKUP_ENABLED', true);
 }
 
-/**
- * Physical-state-first receiving queues (receiving-triage streamline Phase 2).
- * When ON, the triage SCANNED/Prioritize queue no longer hard-excludes POs Zoho
- * marks received/closed — a box physically on the dock stays visible (with a
- * "Zoho: received" badge), and the "Hide Zoho-received" toggle (?zohoStatus=open)
- * re-applies the old filter. Scoped to view=scanned only; Incoming still clears
- * Zoho-received POs by design. Default ON; set
- * RECEIVING_PHYSICAL_STATE_FIRST=false to revert.
- */
+/** Physical-state-first receiving queues (receiving-triage streamline Phase 2). */
 export function isReceivingPhysicalStateFirst(): boolean {
   return readBoolEnv('RECEIVING_PHYSICAL_STATE_FIRST', true);
 }
 
-/**
- * Read the Unbox "Unboxed" rail's `view=unbox_opened` membership from the
- * committed `receiving_unbox.opened_at` street column ONLY, dropping the
- * eventually-written ops_events OR-arm. The column is committed by the same
- * request that opens/matches a carton, so a refetch fired right after a
- * mutation reflects committed state and the rail can't transiently blank
- * (Layer 1 of the rail read-after-write fix). Default OFF during rollout; flip
- * to true after the 2026-07-14 backfill migration applies and proves parity.
- */
+/** Read the Unbox "Unboxed" rail's `view=unbox_opened` membership from the committed `receiving_unbox.opened_at` street column ONLY,… */
 export function isUnboxRailColumnRead(): boolean {
   return readBoolEnv('RECEIVING_UNBOX_RAIL_COLUMN_READ');
 }
 
-/**
- * Drift probe for retiring the lines table's `full` fetch tier.
- *
- * `useReceivingLinesQuery` paints from `?phase=spine` (serial chips off the
- * `serial_projection` read-model) and then runs a SECOND, serialized fetch of
- * the same rows with `?include=serials` (the authoritative resolve). Measured
- * on a cold `/unbox` that pair cost 6697ms strictly serial and 87.9KB for the
- * same 50 rows, and a direct payload diff on the dogfood org found the two
- * serial sets IDENTICAL on all 15 `view=scanned` rows.
- *
- * One org at one moment is not proof the projection never drifts, so this flag
- * turns on a comparison of the two sets on the `include=serials` path — where
- * the route already holds BOTH, so it costs no extra query — and logs any
- * divergence. Leave it on for a week; if nothing logs, the `full` tier can go.
- *
- * Default OFF: this is a measurement, not behaviour, and it must never be the
- * reason a request does more work.
- */
+/** Drift probe for retiring the lines table's `full` fetch tier. */
 export function isSerialProjectionDriftProbe(): boolean {
   return readBoolEnv('RECEIVING_SERIAL_PROJECTION_DRIFT_PROBE');
 }
 
-/**
- * Unified inbound model (receiving-triage streamline Phase 3). Default ON:
- * delivered-unscanned always enriches via receiving_line.shipment_id; lookup-po
- * stamps LPN / shipment_id. Set RECEIVING_UNIFIED_INBOUND=false only as a
- * temporary rollback if the inbound_handling_unit migration is absent.
- */
+/** Unified inbound model (receiving-triage streamline Phase 3). */
 export function isReceivingUnifiedInbound(): boolean {
   return readBoolEnv('RECEIVING_UNIFIED_INBOUND', true);
 }
 
-/**
- * Auto-link a returned serial to its originating order on the normal unbox
- * serial scan (the shipped↔returned loop). When ON, scanning a serial whose
- * unit was previously SHIPPED resolves the prior sales order, flips its open
- * SHIPPED allocation → RETURNED, persists the per-line source order + listing
- * link, and promotes an unfound carton to a found RETURN — all in one request,
- * so the workspace can display + pre-fill instantly (see
- * src/lib/receiving/returned-serial-link.ts). Default ON: the resolve is
- * skipped unless the scan is a return, the writes are idempotent + reversible
- * (detach the serial), and a real Zoho-PO carton is never reclassified. Set
- * RECEIVING_RETURN_AUTOLINK=false to fall back to detect-and-display only.
- */
+/** Auto-link a returned serial to its originating order on the normal unbox serial scan (the shipped↔returned loop). */
 export function isReceivingReturnAutolink(): boolean {
   return readBoolEnv('RECEIVING_RETURN_AUTOLINK', true);
 }
 
-/**
- * Auto-file a helpdesk ticket when an eBay purchase's item-not-received claim
- * window is about to close while the carton sits delivered-but-never-unboxed
- * (docs/todo/ebay-delivered-not-unboxed-PLAN.md Phase 4).
- *
- * **Default OFF, deliberately.** This is the only path in the initiative that
- * creates OUTWARD-FACING artifacts — real tickets in the tenant's helpdesk, which
- * may notify people. A new automation that files tickets on a live warehouse must
- * be switched on by a human who has first read a dry run, not by a deploy. The cron
- * still runs while it is off and reports exactly what it *would* file, so the
- * decision is made on real numbers. Set RECEIVING_CLAIMS_ESCALATION=true to arm it.
- */
+/** Auto-file a helpdesk ticket when an eBay purchase's item-not-received claim window is about to close while the carton sits… */
 export function isReceivingClaimsEscalation(): boolean {
   return readBoolEnv('RECEIVING_CLAIMS_ESCALATION');
 }
 
-/**
- * Unified-engine chokepoint cutover (UNIFIED-ENGINE-MASTER-PLAN §1.1). When ON,
- * domain handlers route their serial-unit status change + inventory event +
- * engine tap through the single guarded applyTransition() chokepoint instead of
- * a hand-rolled raw UPDATE + appendInventoryEvent + tap. recordTestVerdict is the
- * reference call site. Default OFF — when off, every converted handler takes its
- * byte-identical legacy path, so this is a no-op until explicitly enabled per
- * environment. Flip to true once per-site parity is verified, then delete the
- * legacy branch. Set UNIFIED_ENGINE_APPLY_TRANSITION=true to enable.
- */
+/** Unified-engine chokepoint cutover (UNIFIED-ENGINE-MASTER-PLAN §1.1). */
 export function isUnifiedEngineApplyTransition(): boolean {
   return readBoolEnv('UNIFIED_ENGINE_APPLY_TRANSITION');
 }
 
-/**
- * Per-org verdict→status override (Wave 2 / Class A — the §3.A verdict map config
- * deferred out of the Class-D reason-codes work). When ON, recordTestVerdict
- * resolves a tenant's verdict→status mapping from organizations.settings
- * (workflow.verdictStatus), falling back to the hardcoded VERDICT_TO_STATUS for
- * any unset verdict. Default OFF — when off, the hardcoded map is used with NO
- * settings read, so behavior is byte-identical. Set UNIFIED_ENGINE_VERDICT_CONFIG=true.
- */
+/** Per-org verdict→status override (Wave 2 / Class A — the §3.A verdict map config deferred out of the Class-D reason-codes work). */
 export function isUnifiedEngineVerdictConfig(): boolean {
   return readBoolEnv('UNIFIED_ENGINE_VERDICT_CONFIG');
 }
 
-/**
- * Workflow-tap intended-write outbox (roi-execution/03 #10). When ON,
- * tapWorkflow records the INTENT of every tap (INSERT workflow_tap_outbox
- * status='PENDING') before attempting advance() and marks it LANDED once the
- * engine reaches a durable outcome, so the /api/cron/workflow/tap-reconcile
- * cron can re-drive taps that were silently lost (crash mid-tap, transient
- * lock). Default OFF — the write path is fully inert until the backing table
- * migration (2026-07-09b_workflow_tap_outbox.sql) is applied. Set
- * WORKFLOW_TAP_OUTBOX=true to enable.
- */
+/** Workflow-tap intended-write outbox (roi-execution/03 #10). */
 export function isWorkflowTapOutboxEnabled(): boolean {
   return readBoolEnv('WORKFLOW_TAP_OUTBOX');
 }
 
-/**
- * Shipped-table read model. When ON, the /api/packerlogs week query reads the
- * precomputed `packer_log_enrichment` projection (catalog title / v_sku lookup /
- * order match / tracking json) via a 1:1 join instead of re-running the ~6
- * non-indexable LATERAL subqueries per row. Volatile carrier status stays a live
- * join either way.
- *
- * Default ON (2026-07-09): the `2026-06-29f` migration is applied and the
- * projection is fully backfilled (100% of PACK scans), so no Vercel env var is
- * required. The read path in fetchPackerLogRows self-heals missing rows and, if
- * the table is entirely absent (a fresh / branch DB that hasn't run migrations),
- * transparently degrades to the byte-identical legacy query — so a default of ON
- * can never 500 the shipped table. Set PACKER_LOG_ENRICHMENT_READ=false to force
- * the legacy path. See src/lib/neon/packer-log-enrichment.ts.
- */
+/** Shipped-table read model. */
 export function isPackerLogEnrichmentRead(): boolean {
   return readBoolEnv('PACKER_LOG_ENRICHMENT_READ', true);
 }
 
-/**
- * Unified-engine fulfillment-tail taps (UNIFIED-ENGINE-MASTER-PLAN §1.4). When
- * ON, the domain mutations that finish the lifecycle fire their engine taps so a
- * unit flows past the dormant tail of the graph:
- *   - /api/serial-units/[id]/list → tapWorkflow('listed')   (list_ebay → pack)
- *   - /api/pack/ship              → tapWorkflow('packed')   (pack → ship node)
- *                                 → tapWorkflow('shipped')  (ship → done; terminal)
- * All are fire-and-forget observers (tapWorkflow never throws, drops unenrolled
- * units), so this only advances the engine's graph position — it changes no
- * domain state. The irreversible carrier custody already commits in the pack/ship
- * transaction; the 'shipped' tap merely records the unit reached the terminal
- * node. Default OFF: until flipped, the listing fact is still recorded and the
- * pack still ships, but the engine isn't told, exactly as today. Enable once the
- * serial_unit_listings migration is applied and parity is verified. Set
- * UNIFIED_ENGINE_FULFILLMENT_TAPS=true to enable.
- */
+/** Unified-engine fulfillment-tail taps (UNIFIED-ENGINE-MASTER-PLAN §1.4). */
 export function isUnifiedEngineFulfillmentTaps(): boolean {
   return readBoolEnv('UNIFIED_ENGINE_FULFILLMENT_TAPS');
 }
 
-/**
- * Decision-node ZEN evaluator cutover (UNIFIED-ENGINE-MASTER-PLAN §1.6, Stage 2).
- * When ON, the `decision` node routes through the GoRules ZEN expression engine
- * (@gorules/zen-engine-wasm) instead of the in-house rule-table matcher
- * (src/lib/workflow/decision-eval.ts). The operator-editable rule table is
- * compiled to an equivalent ZEN expression at evaluation time and evaluated in
- * WASM; the node, editor, config shape, and result (a port id, or null → park) are
- * all unchanged — this swaps only the matching ENGINE, not behavior. The ZEN path
- * is itself guarded: if the WASM module can't load/init, it transparently falls
- * back to the in-house evaluator, so a miss is a no-op rather than a broken route.
- * Default OFF: until flipped, evaluation is byte-identical Stage-1 in-house
- * matching and the WASM module is never loaded. Set DECISION_ENGINE_ZEN=true to
- * enable. See src/lib/workflow/decision-eval-zen.ts.
- */
+/** Decision-node ZEN evaluator cutover (UNIFIED-ENGINE-MASTER-PLAN §1.6, Stage 2). */
 export function isDecisionEngineZen(): boolean {
   return readBoolEnv('DECISION_ENGINE_ZEN');
 }
 
-/**
- * Placement-strangle OBSERVE-ONLY parity logging (UNIFIED-ENGINE-MASTER-PLAN
- * §1.6 Track 1, Stage 1.x). When ON, a converting placement site (parts-sort
- * first) ALSO computes what the declarative decision-table → resolvePlacementBin
- * mechanism WOULD pick, and logs match / DIVERGENCE / unseeded against the bin
- * the live hardcoded path actually used. It changes NO behavior — the hardcoded
- * path stays the source of truth; this only proves the new mechanism yields the
- * identical bin before any site is flipped to consume it (PLACEMENT_STRANGLE_*
- * per-site flags do the actual cutover, later). Fire-and-forget + self-guarded,
- * so a parity-observer fault never affects the real move. Default OFF — set
- * PLACEMENT_PARITY_OBSERVE=true to start collecting parity signal in an env.
- */
+/** Placement-strangle OBSERVE-ONLY parity logging (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x). */
 export function isPlacementParityObserve(): boolean {
   return readBoolEnv('PLACEMENT_PARITY_OBSERVE');
 }
 
-/**
- * Placement-strangle CUTOVER for parts-sort (UNIFIED-ENGINE-MASTER-PLAN §1.6
- * Track 1, Stage 1.x — the first live site). When ON, sortSerialUnitToParts
- * resolves its destination bin from the declarative placement policy (the org's
- * Studio decision nodes → the system-default parts policy → resolvePlacementBin)
- * instead of the hardcoded env-constant resolvePartsBin(). It degrades to the
- * env-constant bin whenever the policy resolves nothing, so flipping it ON with
- * no decision node authored is byte-identical to today (the system-default policy
- * targets the same PARTS_BIN_BARCODE). Default OFF — flip per env after the
- * PLACEMENT_PARITY_OBSERVE window shows a clean `match`. Set
- * PLACEMENT_STRANGLE_PARTS_SORT=true to enable.
- */
+/** Placement-strangle CUTOVER for parts-sort (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x — the first live site). */
 export function isPlacementStranglePartsSort(): boolean {
   return readBoolEnv('PLACEMENT_STRANGLE_PARTS_SORT');
 }
 
-/**
- * Placement-strangle CUTOVER for receiving default-putaway (UNIFIED-ENGINE-MASTER-PLAN
- * §1.6 Track 1, Stage 1.x — second live site). When ON, mark-received resolves the
- * default putaway bin (disposition=ACCEPT, no operator-scanned bin) from the
- * declarative placement policy (org Studio decision nodes → the system-default
- * receiving policy → a RESERVE+active bin lookup) instead of the env/settings
- * resolveDefaultPutawayBinId(). It degrades to the legacy bin whenever the policy
- * resolves nothing, and the system-default policy targets the org's configured
- * default-putaway barcode via the SAME RESERVE+active lookup — so ON with no
- * decision node authored is byte-identical to today. Default OFF — flip per env
- * after the PLACEMENT_PARITY_OBSERVE window is clean. Set
- * PLACEMENT_STRANGLE_RECEIVING_PUTAWAY=true to enable.
- */
+/** Placement-strangle CUTOVER for receiving default-putaway (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x — second live site). */
 export function isPlacementStrangleReceivingPutaway(): boolean {
   return readBoolEnv('PLACEMENT_STRANGLE_RECEIVING_PUTAWAY');
 }
 
-/**
- * Config-driven RMA restock placement (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1,
- * Stage 1.x — third site). Unlike parts-sort / receiving-putaway, RMA restock has
- * NO legacy hardcoded bin: an ACCEPT'd inbound return goes RETURNED→STOCKED with
- * no bin today. When ON, recordDisposition consults the org's Studio decision
- * policy (NO system default — purely opt-in) for a restock bin and threads it
- * into the restock transition + current_location. With no decision node authored
- * it resolves nothing → restock stays bin-less, exactly as today. So this is
- * additive: it never changes an existing placement, only enables one an org
- * configures. Default OFF. Set PLACEMENT_STRANGLE_RMA_RESTOCK=true to enable.
- */
+/** Config-driven RMA restock placement (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x — third site). */
 export function isPlacementStrangleRmaRestock(): boolean {
   return readBoolEnv('PLACEMENT_STRANGLE_RMA_RESTOCK');
 }
 
-/**
- * Fulfillment substitution / order-line amendment capability (the
- * ordered-vs-fulfilled deviation flow: release the original allocation +
- * allocate a substitute unit, recorded in order_unit_amendments).
- *
- * This is the rollout MASTER SWITCH only — it gates whether the substitute
- * action is exposed/accepted at all. The behavioral knobs are NOT here:
- *   - WHICH node may raise an amendment (default 'pick'),
- *   - advisory vs block_until_approved enforcement,
- *   - propagation reach (internal / notify-customer / channel-sync),
- * all live per-org in the settings registry (docs/settings-registry.md) so a
- * tenant tunes them from /studio without an env redeploy. Default OFF until the
- * 2026-06-27e_order_unit_amendments migration is applied + the flow is verified.
- * Set FULFILLMENT_SUBSTITUTION=true to enable.
- */
+/** Fulfillment substitution / order-line amendment capability (the ordered-vs-fulfilled deviation flow: */
 export function isFulfillmentSubstitution(): boolean {
   return readBoolEnv('FULFILLMENT_SUBSTITUTION');
 }
 
-/**
- * Dual-write owner↔tracking linkage into the unified `shipment_links` table.
- *
- * When ON, the linkage writers (attachBoxToReceiving inbound, applyOrderTrackingOps
- * outbound — wired incrementally) ALSO upsert shipment_links alongside their legacy
- * junction (receiving_shipments / order_shipment_links). The READ path stays on the
- * legacy junctions during the bake; this just keeps shipment_links current beyond
- * the one-time backfill (2026-06-24_shipment_links.sql). Default OFF: until flipped,
- * behavior is byte-identical to today. Enable once parity is verified, ahead of the
- * read cutover. Default ON as of the Phase 4b cutover (the dual-write is
- * additive + same-tx so shipment_links can't drift from the junction); set
- * RECEIVING_SHIPMENT_LINKS_DUAL_WRITE=false to disable if ever needed.
- */
+/** Dual-write owner↔tracking linkage into the unified `shipment_links` table. */
 export function isShipmentLinksDualWrite(): boolean {
   return readBoolEnv('RECEIVING_SHIPMENT_LINKS_DUAL_WRITE', true);
 }
 
-/**
- * Universal Incoming (docs/incoming-universal-purchase-orders-plan.md §6, §8.3).
- * Per-org, async, env-fallback. Universal Incoming is the product path: Incoming
- * surfaces purchase lines from every enabled inbound source (source registry +
- * the org's connection-driven `enabledSources` policy — see
- * src/lib/inbound/org-settings.ts). When ON, `view=incoming` also surfaces
- * eBay-buyer-originated lines (inbound_source_type='ebay') alongside the
- * inventory-backend POs, the `?inbound=` facet filters by source, and the
- * receiving sync runs the cross-source merge. Default OFF — when off, Incoming
- * stays on the byte-identical legacy inventory-backend path and the merge hook
- * is a no-op, so a tenant not using buyer accounts is unaffected. Enabled
- * automatically on successful eBay purchasing (buyer) OAuth connect, or
- * manually via organization_feature_flags(flag='incoming_universal'), or
- * globally via INCOMING_UNIVERSAL=true.
- */
+/** Universal Incoming (docs/incoming-universal-purchase-orders-plan.md §6, §8.3). */
 export async function isIncomingUniversal(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, INCOMING_UNIVERSAL_FLAG, 'INCOMING_UNIVERSAL');
 }
@@ -470,29 +211,12 @@ export async function isBuyerNoteSignals(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'buyer_note_signals', 'BUYER_NOTE_SIGNALS');
 }
 
-/**
- * Studio-driven operator-surface composed rendering (operator-surfaces refactor
- * Phase 3b). When ON, an operator surface (Unbox first) that has an ACTIVE
- * `station_definitions` composition renders through the SurfaceRenderer instead
- * of its hard-coded legacy tree; when OFF (or no composition is published), the
- * surface renders its legacy tree unchanged — the `'legacy'` escape hatch. So
- * the composed path requires BOTH this flag AND a published composition, making
- * 'legacy' the safe per-org default. Enable per org
- * (organization_feature_flags(flag='surface_composed_render')) or globally via
- * SURFACE_COMPOSED_RENDER=true. Default OFF.
- */
+/** Studio-driven operator-surface composed rendering (operator-surfaces refactor Phase 3b). */
 export async function isSurfaceComposedRender(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'surface_composed_render', 'SURFACE_COMPOSED_RENDER');
 }
 
-/**
- * Unified ops-plan inbox (plan tasks + all work-order queues) — per-org
- * staged rollout (audit F34: was env-only). DB row overrides env
- * OPS_PLANS_UNIFIED_INBOX; default OFF — when off, /api/ops-plans/inbox
- * serves plan tasks only, byte-identical to the pre-unified path. Enable per
- * org (organization_feature_flags(flag='ops_plans_unified_inbox')) or
- * globally via OPS_PLANS_UNIFIED_INBOX=true.
- */
+/** Unified ops-plan inbox (plan tasks + all work-order queues) — per-org staged rollout (audit F34: */
 export async function isOpsPlansUnifiedInbox(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'ops_plans_unified_inbox', 'OPS_PLANS_UNIFIED_INBOX');
 }
@@ -505,70 +229,21 @@ export function isTestingAutoLinkTicket(): boolean {
   return readBoolEnv('CF_TESTING_AUTO_LINK_TICKET', false);
 }
 
-/**
- * Operations TV / wall-display board (HOME-OPS plan §7, §27, §28). Per-org,
- * async, env-fallback. Gates the unattended "on-time floor board" kiosk surface
- * (`/operations?tv=1` → OperationsTvBoard + `GET /api/operations/tv-board`).
- * Default OFF — dogfood-first: enable per org
- * (organization_feature_flags(flag='ops_tv_board')) or globally via
- * OPS_TV_BOARD=true. USAV (DOGFOOD_ORG_ID) is seeded ON by
- * 2026-07-12_seed_ops_tv_board_usav.sql. When off, the board API 404s and the
- * kiosk surface shows a "not enabled" teaching empty, so nothing is exposed.
- */
+/** Operations TV / wall-display board (HOME-OPS plan §7, §27, §28). */
 export async function isOpsTvBoard(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'ops_tv_board', 'OPS_TV_BOARD');
 }
 
 
-/**
- * Home Inbox — per-staff subscriptions + notification feed (Phase 1 of
- * docs/todo/home-triage-subscriptions-*.md). Per-org, async, env-fallback.
- *
- * Gates the whole vertical slice: the `inbox` Home mode, `GET /api/inbox`,
- * `PATCH /api/inbox/[id]`, `POST /api/subscriptions/toggle`, and the
- * SubscribeToggle bell on entity surfaces. Default OFF — dogfood-first: enable
- * per org (organization_feature_flags(flag='home_inbox')) or globally via
- * HOME_INBOX=true.
- *
- * The fan-out worker is deliberately NOT gated: it drains the outbox for every
- * org regardless, so an org that flips the flag on sees its recent history
- * already delivered rather than an empty inbox that only fills going forward.
- * Nothing is exposed while off — the routes 404 and the mode is hidden.
- */
+/** Home Inbox — per-staff subscriptions + notification feed (Phase 1 of docs/todo/home-triage-subscriptions-*.md). */
 export async function isHomeInbox(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'home_inbox', 'HOME_INBOX');
 }
 
-/**
- * Watch-a-view — queue-threshold alerts + scheduled digests
- * (docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md). Per-org,
- * async, env-fallback.
- *
- * Gates the whole vertical slice: the "Watch this view…" item on the Band-3 Views
- * control, the /api/view-monitors arm/manage routes, and the cron's fire path
- * (GET /api/cron/view-monitors). Default OFF — dogfood-first: enable per org
- * (organization_feature_flags(flag='view_monitors')) or globally via
- * VIEW_MONITORS=true. USAV (DOGFOOD_ORG_ID) is seeded ON by
- * 2026-08-10b_seed_view_monitors_usav.sql.
- *
- * Resolver (`resolveForOrg(orgId, 'view_monitors', 'VIEW_MONITORS')`) lands with
- * the first arm/manage route. The cron is deliberately NOT gated: it evaluates
- * whatever monitors EXIST, and a monitor can only be armed while the flag is on.
- */
+/** Watch-a-view — queue-threshold alerts + scheduled digests (docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md). */
 export async function isViewMonitors(orgId: OrgId): Promise<boolean> {
   return resolveForOrg(orgId, 'view_monitors', 'VIEW_MONITORS');
 }
 
 // ─── Flag lifecycle registry ──────────────────────────────────────────────────
-/**
- * Lives in `./feature-flags-lifecycle` — a dependency-free sibling, because this
- * module imports `@/lib/db` (which carries `server-only`) and anything that only
- * wants the metadata must not be dragged through the Neon pool to read it.
- * `build-gotchas.md` → bundle altitude.
- *
- * NOT re-exported from here. The house pattern re-exports a light module from
- * its heavy sibling "so server callers keep their import path" — but there are
- * no such callers yet, and a re-export nothing imports is the exact widened
- * surface the hooks-barrel trim just removed. It earns a line here when a real
- * call site wants it.
- */
+/** Lives in `./feature-flags-lifecycle` — a dependency-free sibling, because this module imports `@/lib/db` (which carries `server-only`)… */

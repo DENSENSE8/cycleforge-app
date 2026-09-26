@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Station Displays edge toggle — one control, two exclusive hosts.
- *
- * Closed: utility-rail **bottom** footer (`←|` Open displays) — left-dock
- * expand twin.
- * Open: `✕` Hide displays — seats as {@link TechRailSearchBar}
- * `trailingAction` on Root Index and every leaf (and on
- * the column's header band — there is no footer variant any more).
- *
- * Shared `layoutId` FLIPs the mark across the work surface with the push
- * column width tween (`motionRole.push.rail`). Never mount both at once —
- * that was two dismisses for one edge.
- *
- * **Lives with the shared column, not with Unbox** (moved 2026-08-07). It was
- * born in `receiving/workspace/` and imported back UP into
- * {@link StationDisplaysPushStack}, so the station-wide SoT depended on one
- * domain folder and carried its vocabulary — including a `layoutId` literally
- * named `unbox-…` that all six stations then shared. The `layoutId` is now
- * station-neutral. `data-testid`s deliberately keep their original values: a
- * testid is an address, and E2E specs point at these.
- */
+/** Station Displays edge toggle — one control, two exclusive hosts. */
 
 import { useState } from 'react';
 import { ArrowLeftToLine, X } from '@/components/Icons';

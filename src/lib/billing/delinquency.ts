@@ -1,24 +1,9 @@
-/**
- * Dunning read helper — is this org's subscription in a delinquent state?
- *
- * The Stripe webhook handler is the single writer of the local mirror
- * (`billing_subscriptions.status` via `upsertSubscription` /
- * `markSubscriptionStatus` / `clearPastDue` in ./subscriptions.ts); this is the
- * read side that later dunning UI (banners, billing-page nudges) consumes.
- * Server-only. No UI here by design.
- *
- * Deps-injected (backend-patterns.md) so unit tests run DB-free.
- */
+/** Dunning read helper — is this org's subscription in a delinquent state? */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getSubscription } from './subscriptions';
 
-/**
- * Stripe subscription statuses we treat as "payment is owed and collection is
- * failing". `incomplete`/`trialing`/`canceled` are deliberately NOT delinquent:
- * incomplete = first payment never finished (no service yet), canceled = plan
- * already dropped by the subscription.deleted handler.
- */
+/** Stripe subscription statuses we treat as "payment is owed and collection is failing". */
 export const DELINQUENT_STATUSES = ['past_due', 'unpaid', 'incomplete_expired'] as const;
 
 export interface DelinquencyDeps {
@@ -28,12 +13,7 @@ export interface DelinquencyDeps {
 
 const defaultDeps: DelinquencyDeps = { getSubscription };
 
-/**
- * True when the org's mirrored subscription status is delinquent
- * (past_due / unpaid / incomplete_expired). Orgs with no mirror row (trial /
- * never subscribed) are NOT delinquent — trial expiry is `trial-gate.ts`'s job,
- * not dunning's.
- */
+/** True when the org's mirrored subscription status is delinquent (past_due / unpaid / incomplete_expired). */
 export async function isBillingDelinquent(
   orgId: OrgId,
   deps: DelinquencyDeps = defaultDeps,

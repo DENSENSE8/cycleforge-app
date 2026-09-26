@@ -1,52 +1,4 @@
-/**
- * The kiosk product searcher — one SQL read over the local catalog projection.
- *
- * ## Why this exists
- * The kiosk is the in-person sales contact. A walk-in asks "do you have this",
- * and the staffer must answer three things at once: what it costs, whether we
- * have it, and which bin to walk to. Nothing served that:
- *
- *   - The retail rail SELECTed every active listing for the org on every
- *     request, then filtered and sliced in JS (the loader this replaced).
- *   - The picker's search was a lie: it fetched `mode=all&limit=100` once and
- *     filtered those 100 rows client-side, so typing a product that sorted
- *     101st alphabetically found nothing.
- *   - On-hand and bin location were never joined at all, even though
- *     `bin_contents` + `locations` have held them since 2026-04-09.
- *
- * This module is the replacement: filter, rank, page, and join availability in
- * ONE round trip, in the database.
- *
- * ## Source of truth
- * `platform_listings` — the local Ecwid mirror written by `projectEcwidCatalog`
- * and refreshed hourly by `/api/cron/catalog-projection`. The vendor API is
- * never on this path; a counter search must not wait on a 25-page storefront
- * walk. Rows are mapped back through `fromProjectedListing` so every existing
- * `EcwidProduct` consumer (`ProductSelector`) is unchanged.
- *
- * ## Ranking
- * Reuses the house builders (`buildTextSearchVariants` / `buildRankedSearchSql`,
- * as `orders-queries.ts` does) rather than hand-rolling a CASE ladder. SKU beats
- * name at equal strength because a staffer who types a SKU knows exactly what
- * they want. Fuzzy is name-only and off below 4 characters — `word_similarity`
- * on a 2-character query matches most of the catalog.
- *
- * The fuzzy arm is a DELIBERATE sequential scan. `buildTextSearchVariants`
- * emits `word_similarity($q, LOWER(BTRIM(expr))) >= t`, and pg_trgm's GIN
- * opclass accelerates the `<%` operator rather than that function form — so no
- * trigram index can serve it (measured: 12.4ms over 1,557 active listings,
- * against a ~330ms Neon round trip). A name trigram index was created for this
- * and dropped once EXPLAIN proved 0 scans; see
- * `migrations/2026-09-13a_drop_unused_listing_name_trgm.sql` for the numbers,
- * and `search/hybrid-retrieval.ts:111-119` for the `<%` rewrite to reach for if
- * the catalog ever grows enough to care.
- *
- * ## Paging before the join
- * The availability LATERAL runs against `page`, not `matched`, so the bin
- * aggregate is evaluated for at most `limit` rows instead of the whole result
- * set. `COUNT(*) OVER ()` inside `page` is still computed over `matched`, so
- * `total` stays honest.
- */
+/** The kiosk product searcher — one SQL read over the local catalog projection. */
 
 import 'server-only';
 
@@ -80,25 +32,11 @@ const REPAIR_SKU_PATTERN = '(-RS|-RS-[0-9]+)$';
 /** Fuzzy name matching below this query length matches most of the catalog. */
 const FUZZY_MIN_QUERY_CHARS = 4;
 
-/**
- * The SQL twin of `normalizeFavoriteSku` (`favorite-sku-key.ts`) — case-folded,
- * separator-stripped SKU, i.e. exactly what `favorite_skus.sku_normalized`
- * holds. Stripping is case-insensitive over `[A-Za-z0-9]`, so strip-then-lower
- * here and lower-then-strip in TypeScript cannot disagree.
- * `favorite-sku-key.test.ts` pins that folding: fold the case and drop every
- * separator, or a starred SKU stops matching its own tile.
- */
+/** The SQL twin of `normalizeFavoriteSku` (`favorite-sku-key.ts`) — case-folded, separator-stripped SKU, i.e. */
 export const FAVORITE_SKU_KEY_SQL =
   "LOWER(REGEXP_REPLACE(COALESCE(pl.merchant_sku, ''), '[^A-Za-z0-9]+', '', 'g'))";
 
-/**
- * Which half of the catalog to search.
- *
- * `service` is the kiosk repair rail (`-RS` SKUs only — the repair root also
- * holds shipping fees and warranty add-ons that are not bookable services).
- * `retail` is its exact complement, so no listing is reachable from both rails
- * and none is orphaned by the split.
- */
+/** Which half of the catalog to search. */
 export type KioskCatalogSegment = 'retail' | 'service';
 
 export interface KioskCatalogSearchOptions {
@@ -109,15 +47,7 @@ export interface KioskCatalogSearchOptions {
   categoryId?: string | null;
   /** Scanned barcode — exact identity, bypasses text ranking entirely. */
   barcode?: string | null;
-  /**
-   * Narrow the browse to this workspace's curated favorites, in `sort_order`.
-   *
-   * The favorites list is a SCOPE of the same catalog, not a second data
-   * source: the tiles carry the same photo, price, stock and bin as any other
-   * browse page because they ARE the same rows. Discarded by a `barcode` or a
-   * `query` for the same reason `categoryId` is — a walk-in asking for a
-   * product does not care what the counter pinned.
-   */
+  /** Narrow the browse to this workspace's curated favorites, in `sort_order`. */
   favoritesWorkspace?: FavoriteWorkspaceKey | null;
   limit: number;
   offset: number;
@@ -155,17 +85,7 @@ interface SearchRow {
   bin_qty: number | null;
 }
 
-/**
- * Availability for the paged rows: on-hand across every bin, plus the single
- * bin to walk to first (the one holding the most of this SKU).
- *
- * `bin_contents.sku` is a tenant-scoped TEXT key that collides across orgs, so
- * it is org-filtered directly AND the `locations` join is org-aligned — the
- * same defense-in-depth posture as `getBinLocationsBySku`.
- *
- * Aggregate-only and therefore always one row: zero matching bins yields
- * `on_hand = NULL` (untracked, NOT zero) with `bin_count = 0`.
- */
+/** Availability for the paged rows: */
 const AVAILABILITY_LATERAL = `
     SELECT SUM(bc.qty)::int AS on_hand,
            COUNT(*)::int    AS bin_count,
@@ -180,16 +100,7 @@ const AVAILABILITY_LATERAL = `
        AND bc.sku = p.merchant_sku
        AND l.is_active`;
 
-/**
- * Search (or browse) this org's projected catalog, with availability.
- *
- * Precedence: a `barcode` is an identity lookup and wins over everything; a
- * `query` searches the whole segment and ignores `categoryId` (a walk-in asking
- * for a product does not care which category the staffer happens to be in —
- * that was the defect behind the 100-row client pool); then a
- * `favoritesWorkspace` browse (curated order); otherwise a category or
- * all-products browse ordered by name.
- */
+/** Search (or browse) this org's projected catalog, with availability. */
 export async function searchKioskCatalog(
   orgId: OrgId,
   options: KioskCatalogSearchOptions,
@@ -274,11 +185,6 @@ export async function searchKioskCatalog(
     rankClause = ranked.rankClause;
   } else if (options.favoritesWorkspace) {
     // Curated list — membership in this workspace, painted in its `sort_order`.
-    //
-    // The order rides `rank` rather than a second ORDER BY branch: the page CTE
-    // already sorts `rank DESC, listed_name`, so `1000 - sort_order` puts the
-    // first pinned favorite first and keeps the rest ascending, while every
-    // other scope leaves rank at 0 and sorts by name exactly as before.
     const workspaceParam = push(options.favoritesWorkspace);
     const membership = `
            FROM favorite_skus f
@@ -346,12 +252,7 @@ export async function searchKioskCatalog(
   };
 }
 
-/**
- * The catalog unit price (cents) of each listing id — the price a counter
- * tile charged when it put the item on the cart. `/api/kiosk/intake` holds a
- * submitted sale line to it unless the line carries a manager approval. An id
- * with no row, or no price, is absent.
- */
+/** The catalog unit price (cents) of each listing id — the price a counter tile charged when it put the item on the cart. */
 export async function catalogUnitPrices(
   orgId: OrgId,
   listingIds: readonly string[],

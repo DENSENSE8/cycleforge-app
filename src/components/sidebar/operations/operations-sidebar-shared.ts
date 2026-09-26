@@ -1,14 +1,4 @@
-/**
- * Shared types + constants for the Operations master-page sidebar.
- *
- * The Operations page is a single contextual sidebar + a mostly-visual right
- * pane (the house sidebar-mode contract). The five modes below are the
- * top-level switcher; each owns its own search placeholder, result list, and
- * right-pane view. `?mode=` in the URL is the single source of truth — never a
- * local `useState`. Mirrors `receiving-sidebar-shared.ts`.
- *
- * Pure data only — no JSX.
- */
+/** Shared types + constants for the Operations master-page sidebar. */
 
 import { MapPin, PackageCheck, ScanBarcode } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
@@ -24,31 +14,7 @@ export type OperationsMode =
   // original permission gate.
   | 'goals' | 'quality' | 'staff' | 'sync' | 'logs';
 
-/**
- * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
- * for deep-link + realtime back-compat — it renders the existing floor
- * dashboard. The other modes flip `?mode=`.
- *
- * - live            → real-time operations (the existing OperationsDashboard)
- * - (analytics)     → RETIRED 2026-09-16. The deep-analytics pane's KPI strip
- *   compared a partial PST day with a whole one and carried three
- *   hardcoded-zero deltas, so the operator could not trust any number on it.
- *   The reconcilable half is `/reports?tab=packer`, a registered family whose
- *   every row is one pack scan. `parseOperationsMode` no longer answers the
- *   token, so an old bookmark degrades to Live.
- * - insights        → AI assistant, pre-scoped to live ops/inventory context
- * - history         → forensic "what happened" (Monitor)
- * - signals         → entity_signals timeline + browse
- * - plans           → legacy redirect to Home
- * - reconciliation  → CF-03 smear candidates + open tracking exceptions (Monitor)
- * - checks          → daily-check roster report (who still owes today's list)
- * - goals           → daily output targets and progress (ex-Admin › Goals)
- * - quality         → condition grades, failures, repair throughput (ex-Admin › Quality)
- * - staff           → weekly shifts, availability, shop calendar (ex-Admin › Staff schedule)
- * - sync            → cron job health + run history (ex-Admin › Sync Activity)
- * - logs            → bin / SKU / receiving operations log (ex-Admin › Operations log)
- * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
- */
+/** `live` is the default and stays on the bare `/operations` path (no `?mode=`) for deep-link + realtime back-compat — it renders the… */
 
 export const DEFAULT_OPERATIONS_MODE: OperationsMode = 'live';
 
@@ -147,8 +113,3 @@ export const JOURNEY_DIMENSION_PARAM: Record<
 };
 
 // Analytics time-range options DELETED 2026-09-16 with `?mode=analytics`.
-// `AnalyticsRange` / `ANALYTICS_RANGE_LABELS` / `parseAnalyticsRange` had one
-// consumer — the retired rail — and the range itself was a defect: a
-// `24h/7d/30d` window over a page whose KPI strip was pinned to "today" and
-// whose packing block walked a PST day. A report gets ONE day, stated.
-// Sourcing's own range lives in `sourcing-shared.ts` and is untouched.

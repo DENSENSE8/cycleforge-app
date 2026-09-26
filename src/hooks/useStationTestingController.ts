@@ -39,12 +39,7 @@ function newStationIdempotencyKey(): string {
   return safeRandomUUID();
 }
 
-/**
- * When an order is still short on serials, barcodes that look like "generic" tracking
- * (carrier: unknown — e.g. 10+ chars ending in a digit, or 20+ chars) are usually
- * product serials. Known carrier prefixes (1Z, 9[2-5]…, JD, TBA, etc.) still route
- * as TRACKING so a new label can be scanned without arming tracking mode.
- */
+/** When an order is still short on serials, barcodes that look like "generic" tracking (carrier: */
 function resolveScanType(val: string, contextOrder: ActiveStationOrder | null): StationScanType {
   const base = detectStationScanType(val);
   if (!contextOrder) return base;
@@ -221,10 +216,7 @@ export function useStationTestingController({
     }
   }, [activeOrder]);
 
-  // ── right-pane bridge ─────────────────────────────────────────────────────────
-  // Publish active-order state so TechDashboard's right pane can swap from the
-  // global history table into a focused workspace. Listeners consume this via
-  // `tech-active-order-changed` — payload is null when nothing is active.
+  // ── right-pane bridge ───────────────────────────────────────────────────────── Publish active-order state so TechDashboard's right pane…
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const payload = activeOrder
@@ -366,11 +358,7 @@ export function useStationTestingController({
       return;
     }
 
-    // Ready-to-Pack loose-unit staging (Phase 2): a printed unit-id sticker
-    // ({SKU}-{YYWW}-{SEQ6}) scanned while a packing bench is armed places that
-    // loose unit on the bench. Raw manufacturer serials are NOT unit-id-shaped,
-    // so they still attach to the active order — the Phase 1 order flow is
-    // unchanged, and this only diverts when a bench is actually armed.
+    // Ready-to-Pack loose-unit staging (Phase 2):
     if (!options?.forcedType && looksLikeUnitId(input)) {
       const armedUnitBench = readArmedPackStation();
       if (armedUnitBench) {

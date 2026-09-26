@@ -1,19 +1,4 @@
-/**
- * Generic table-selection event bus.
- *
- * A scope-parameterized generalization of the FBA board's selection wiring
- * (see src/lib/fba/events.ts). Any table can opt into the
- * "Select → pick rows → act" flow by:
- *
- *   1. Broadcasting its current selection with `emitSelection(scope, rows)`
- *      whenever the local selection state changes.
- *   2. Listening for `onToggleAll(scope, …)` so a header "Select all" / "Clear"
- *      control can drive it.
- *
- * The page (not the table) collects the selection with `useTableSelection(scope)`
- * and renders a `<SelectionActionBar>`. This keeps selection state local to the
- * table — exactly like the FBA board — with no global store.
- */
+/** Generic table-selection event bus. */
 
 /** Selection payload broadcast by a table: the full list of selected rows. */
 export function selectionEventName(scope: string): string {

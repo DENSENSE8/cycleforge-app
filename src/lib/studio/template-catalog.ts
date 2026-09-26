@@ -1,21 +1,4 @@
-/**
- * Template catalog → apply-to-org. THIN wrapper over installTemplateIntoOrg
- * (install-template.ts) — the single clone + surface-seed + activate path
- * (Template Platform Phase 2A). This module now only exists to preserve the
- * older boolean-`activate` programmatic signature for pick-a-vertical callers;
- * all real work lives in the installer.
- *
- * Two postures, unchanged:
- *   - Onboarding first-seed (via seedDefaultWorkflowForOrg): default template,
- *     activate=true, skipIfExists=true — a system template boots live.
- *   - Pick-a-vertical (programmatic): explicit templateId, activate=false —
- *     lands a DRAFT the owner reviews + publishes via the human gate (the HTTP
- *     equivalent is POST /api/studio/templates/[id]/import).
- *
- * The boolean maps to the installer's policy: activate=true → 'always',
- * activate=false → 'never'. (System vs custom activation nuance is the chooser's
- * job via 'if_system'; this legacy shim keeps its explicit boolean semantics.)
- */
+/** Template catalog → apply-to-org. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { installTemplateIntoOrg } from './install-template';

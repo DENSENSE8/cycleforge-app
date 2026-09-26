@@ -5,11 +5,7 @@ import { ConditionPills } from '@/components/receiving/workspace/ConditionPills'
 
 export type ConditionGrade = 'BRAND_NEW' | 'LIKE_NEW' | 'REFURBISHED' | 'USED_A' | 'USED_B' | 'USED_C' | 'PARTS';
 
-// Shipped orders historically stored the coarse 3-grade scale (NEW / USED /
-// PARTS); receiving switched to the 5-grade BRAND_NEW / USED_A/B/C / PARTS
-// scale. This maps legacy values forward so the picker can show the right
-// pill for existing rows. Unmapped values default to USED_B (the most
-// neutral "in service" grade).
+// Shipped orders historically stored the coarse 3-grade scale (NEW / USED / PARTS); receiving switched to the 5-grade BRAND_NEW /…
 export function normalizeCondition(value: string | null | undefined): ConditionGrade {
   const normalized = String(value || '').trim().toUpperCase().replace(/[\s-]+/g, '_');
   if (normalized === 'BRAND_NEW' || normalized === 'NEW') return 'BRAND_NEW';

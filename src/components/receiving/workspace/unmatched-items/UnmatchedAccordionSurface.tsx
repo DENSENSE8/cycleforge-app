@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Unified unfound-carton items surface — the ONLY receiving path for an
- * unfound / return / sales-order-linked carton (no feature flag;
- * receiving-condition-serial-unification-plan.md).
- *
- * ONE row surface (Kinetic Ledger):
- *   - ≥1 line (or a known placeholderActiveRow) → {@link PoLinesAccordion}.
- *     Default leaf is `ActiveLineConditionSerial`; Testing overrides via
- *     `activeRowSlot` (verdict pills). No standing carton scanner beside rows.
- *   - 0 lines and no placeholder → {@link ReturnScanCard} (Unbox PoLineRow face).
- *     Shown ONLY when the carton has no line yet — no double-row. Arrival still
- *     paints the face (`unitsChrome={false}`); capture body is Unbox-only.
- *
- * A return import (`handleReturnSerialScan`) writes the accordion's own
- * {@link receivingSiblingsQueryKey} cache via the wrapped `onLinked`, so the new
- * line reflows in the active-row accordion instantly (belt-and-suspenders with
- * the `app-refresh-data` invalidation `usePoLinesData` already listens to).
- *
- * Multi-return: additional returns are added through the header "+" (Package
- * Pairing) / the `UnfoundMatchStrip` order search, mirroring how a matched
- * carton grows — never a persistent second scanner (that was the double-row).
- */
+/** Unified unfound-carton items surface — the ONLY receiving path for an unfound / return / sales-order-linked carton (no feature flag;… */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,13 +52,7 @@ const IDLE_SERIAL_LOOKUP = {
   matchedOrder: null,
 };
 
-/**
- * Per-line serial handlers for unfound carton lines. Interleaved SKU bodies
- * pass an explicit `targetLineId`; otherwise defaults to the controller-active
- * line. Mirrors the matched carton's `useLineSerials` against the same
- * scan-serial / grade endpoints via the shared optimistic-serials +
- * publishLineSerials SoT.
- */
+/** Per-line serial handlers for unfound carton lines. */
 function useActiveUnfoundLineSerials({
   receivingId,
   lineId,
@@ -708,10 +681,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           }
         />
       ) : (
-        // Empty carton: Unbox PoLineRow face via ReturnScanCard. Shown ONLY at
-        // 0 lines (no double-row). Arrival door flow (`unitsChrome={false}` /
-        // no serial scan) still paints the face — never null the centre.
-        // Capture body only when Unbox serial scan is on.
+        // Empty carton:
         <ReturnScanCard
           condition={c.cartonScanCondition}
           onConditionChange={(next) => c.handleCartonConditionChange(next)}

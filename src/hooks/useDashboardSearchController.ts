@@ -75,13 +75,7 @@ export function useDashboardSearchController() {
     return 'closed';
   }, [searchParams]);
 
-  /**
-   * Which order the triage form is bound to. `?triage=new` is a form with no
-   * order yet, so it reads as `null` — the same value the form uses to mean
-   * "Identity has not created anything". A non-numeric value that is not `new`
-   * is treated as `new` rather than throwing: a mangled link should open the
-   * intake, not break the desk.
-   */
+  /** Which order the triage form is bound to. */
   const triageOrderId = useMemo((): number | null => {
     const raw = String(searchParams.get('triage') || '').trim();
     if (!raw || raw === 'new') return null;
@@ -96,12 +90,7 @@ export function useDashboardSearchController() {
     [updateSearch],
   );
 
-  /**
-   * Which order a pending `triage` write should bind to. A ref, not state,
-   * because it is an ARGUMENT to the next write rather than something the UI
-   * renders — and because `writeIngest` must stay a stable callback (it is the
-   * optimistic hook's writer; re-creating it re-arms the paint channel).
-   */
+  /** Which order a pending `triage` write should bind to. */
   const triageTargetRef = useRef<string>('new');
 
   const writeIngest = useCallback((params: URLSearchParams, next: OutboundIngestMode) => {
@@ -157,16 +146,7 @@ export function useDashboardSearchController() {
   const openIngestIndex = useCallback(() => setIngestMode('index'), [setIngestMode]);
   const closeIntakeForm = useCallback(() => setIngestMode('closed'), [setIngestMode]);
 
-  /**
-   * Open the triage form — on a caged order, or on a blank one.
-   *
-   * Goes through `setIngestMode`, NOT a direct URL write. The optimistic
-   * channel only clears its pending value when the URL matches what it wrote,
-   * so a write that bypasses it while a `closed` (or `index`) write is still in
-   * flight leaves the rail painting the stale pending mode until something else
-   * moves it. Every other ingest mode already learned this — see the auto-close
-   * note on `OrderIngestRail`.
-   */
+  /** Open the triage form — on a caged order, or on a blank one. */
   const openTriage = useCallback(
     (orderId?: number | null) => {
       triageTargetRef.current = orderId && orderId > 0 ? String(orderId) : 'new';

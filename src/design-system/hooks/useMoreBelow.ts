@@ -16,15 +16,7 @@ export function moreBelowFromMetrics(
   return scrollTop + clientHeight < scrollHeight - thresholdPx;
 }
 
-/**
- * Industry-standard scroll affordance: `moreBelow` is true while the
- * scrollport can still move down. Prefer {@link SidebarRailScrollport}, which
- * pairs this with `SCROLL_MORE_BELOW_CLASS` — operators see "there's more"
- * until there isn't.
- *
- * Uses a callback ref so the effect re-binds when the scrollport mounts
- * (e.g. Unbox rail after leaving Incoming).
- */
+/** Industry-standard scroll affordance: */
 export function useMoreBelow(thresholdPx = 2): {
   scrollRef: RefCallback<HTMLElement>;
   moreBelow: boolean;

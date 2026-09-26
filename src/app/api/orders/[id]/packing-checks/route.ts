@@ -6,20 +6,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { recordPackingTick } from '@/lib/packing/packing-checks';
 
-/**
- * POST /api/orders/[id]/packing-checks — persist one packing-checklist tick
- * (packing-checklist-plan Phase 2).
- *
- * Path `[id]` = orders.id (the line PK). Body carries which checklist item was
- * confirmed/cleared. Results land in tech_verifications
- * (source_kind='order', step_type='PACKING'|'PACKING_PART') via the idempotent
- * `(source_kind, source_row_id, step_type, step_id)` upsert — a retry with the
- * same `clientEventId` (or without) re-marks the same single row, never
- * duplicates. Mirrors the serial-units/[id]/checklist house pattern.
- *
- * Persistence is advisory: the pack flow itself is never gated here (blocking
- * lives in kit-readiness enforcement, client-side).
- */
+/** POST /api/orders/[id]/packing-checks — persist one packing-checklist tick (packing-checklist-plan Phase 2). */
 
 const PackingCheckBody = z.object({
   kind: z.enum(['KIT_PART', 'PACKING_CHECK']),

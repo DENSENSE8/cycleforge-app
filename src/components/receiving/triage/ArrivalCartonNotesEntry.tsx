@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * Arrival dock note — the Unbox floor, at carton grain.
- *
- * @domain-job Capture a free-text remark about the CARTON at the door, before
- *   anyone opens it ("arrived crushed", "no packing slip", "seal cut"), with the
- *   station's terminal action on the composer's trailing edge.
- * @hardware-target Station
- * @density floor
- * @justification Not a second composer — this file is the carton-grain
- *   CONTROLLER for the shared one. {@link WorkspaceNotesCard} owns the face and
- *   takes `noteGrain="carton"`; all this adds is the draft state and the PATCH
- *   that lands it in `receiving.support_notes`. Arrival has no chosen line, so
- *   it cannot reuse the line-grain controller (`useUnboxLineController`) — but
- *   it must not fork the composer either, and it does not.
- *
- * **Why the display is identical to Unbox's.** It is the same component. Unbox
- * mounts `WorkspaceNotesCard chrome="raised"` with the terminal as
- * {@link trailingAction} — a notes entry with the CTA at its bottom-right — and
- * Arrival now mounts exactly that, with "Save for unbox" in the trailing slot
- * instead of Print · Receive. No two-band dock host, no step-context cell, no
- * progress cell: those were Arrival-only chrome that made the two benches read
- * as different products.
- *
- * **Why `support_notes` and not `receiving_line.notes`.** A door note describes
- * the box. On a multi-line PO, writing the line column would mean silently
- * picking one of N lines, and it would collide with the note the Unbox operator
- * writes later on that same buffer — two stations overwriting one field. The
- * grain split is the house rule (`source-of-truth.md` → Note vs label grain).
- *
- * Commit is Enter / blur — never a scan. This field registers NO scan sink and
- * NO focus target, so the wedge keeps pointing at the sidebar ingest bar.
- */
+/** Arrival dock note — the Unbox floor, at carton grain. */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

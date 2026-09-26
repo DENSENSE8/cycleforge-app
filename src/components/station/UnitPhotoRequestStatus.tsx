@@ -4,14 +4,7 @@ import { useScopedUnitPhotos } from '@/hooks/useScopedUnitPhotos';
 import { useUnitPhotosRealtimeRefresh } from '@/hooks/useUnitPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 
-/**
- * Compact station-card status line: after a genuine unit-label scan fires a
- * `unit_photo_request` to the phone, this shows "Photo request sent → phone" and
- * a live captured count that bumps as the phone's uploads land (via
- * `useUnitPhotosRealtimeRefresh`). Follows the house "status = small dot + text"
- * pattern — ambient chrome, not a toast.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
- */
+/** Compact station-card status line: */
 export function UnitPhotoRequestStatus({
   serialUnitId,
   unitKey,

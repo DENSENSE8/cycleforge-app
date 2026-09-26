@@ -1,46 +1,4 @@
-/**
- * POST /api/receiving/match
- *
- * Phase 2 — Package-to-line matching layer.
- *
- * Links a scanned/unboxed receiving row to one or more open receiving_lines rows
- * that were pre-populated by a Zoho PO sync (receiving_id IS NULL).
- *
- * Matching priority (most specific → least):
- *   1. zoho_purchase_receive_id  (exact receive-level match)
- *   2. zoho_purchaseorder_id     (PO-level match)
- *   3. sku                       (item-level match)
- *   4. manual: explicit line_ids provided by the operator
- *
- * After matching:
- *   - Sets receiving_line.receiving_id = receiving.id (linkage — always, via a
- *     raw UPDATE that deliberately does NOT touch workflow_status)
- *   - Advances workflow_status through transitionReceivingLine() (skipEvent):
- *     → MATCHED from EXPECTED/ARRIVED, or → UNBOXED from EXPECTED/ARRIVED/MATCHED
- *     when unboxed=true. Lines already at/beyond the target keep their linkage
- *     but are never status-regressed.
- *   - If any matched line has needs_test=true, upserts a work_assignment
- *
- * Body:
- * {
- *   receiving_id:             number  (required — the physical receiving row)
- *   zoho_purchase_receive_id?: string
- *   zoho_purchaseorder_id?:   string
- *   sku?:                     string
- *   line_ids?:                number[]  (manual override — match these specific line ids)
- *   unboxed?:                 boolean   (advance to UNBOXED immediately)
- *   unboxed_by?:              number    (staff id)
- * }
- *
- * Response:
- * {
- *   success: true,
- *   receiving_id: number,
- *   matched_line_ids: number[],
- *   assignments_created: number,
- *   match_strategy: string,
- * }
- */
+/** POST /api/receiving/match */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -51,11 +9,7 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { advanceShortageForReceivingLines } from '@/lib/orders/shortage-inbound';
 
-// Which current statuses may advance when a match links lines (chokepoint fold,
-// §7 Step D). → MATCHED only from pre-match states; → UNBOXED additionally from
-// MATCHED. Lines already at/beyond the target keep their linkage but are never
-// status-regressed (the old unconditional SET could pull a DONE line back to
-// MATCHED on a re-match).
+// Which current statuses may advance when a match links lines (chokepoint fold, §7 Step D).
 const MATCH_ADVANCE_FROM: Record<'MATCHED' | 'UNBOXED', ReadonlySet<string>> = {
   MATCHED: new Set(['EXPECTED', 'ARRIVED']),
   UNBOXED: new Set(['EXPECTED', 'ARRIVED', 'MATCHED']),
@@ -108,11 +62,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Server-trusted actor — body.unboxed_by is ignored.
     const unboxedBy             = ctx.staffId;
 
-    // The whole match is one tenant-scoped transaction: withTenantTransaction
-    // checks out the tenant pool, sets the app.current_org GUC (SET LOCAL), and
-    // wraps BEGIN/COMMIT/ROLLBACK for us — so no manual transaction control here.
-    // Every receiving / receiving_lines / work_assignments statement is org-
-    // filtered explicitly so a cross-org id can neither be read nor mutated.
+    // The whole match is one tenant-scoped transaction:
     type MatchOutcome =
       | { kind: 'not_found' }
       | { kind: 'no_candidates' }
@@ -229,12 +179,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const nextStatus = unboxed ? 'UNBOXED' : 'MATCHED';
       const lineIds = candidateLines.map((r) => r.id);
 
-      // Lock the candidates and read their current lifecycle state. The linkage
-      // UPDATE below deliberately does NOT list workflow_status: listing it fires
-      // the coarse trigger on EVERY candidate (even non-transitioning ones),
-      // COALESCE-stamping scanned_at on rows that never went through triage
-      // (Scanned is triage-owned). Only genuinely-advancing lines go through the
-      // chokepoint after this.
+      // Lock the candidates and read their current lifecycle state.
       const lockedLines = await client.query<{ id: number; workflow_status: string }>(
         `SELECT id, workflow_status::text AS workflow_status
          FROM receiving_line
@@ -245,19 +190,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         [lineIds, orgId]
       );
 
-      // Linkage/facts half: receiving_id for EVERY candidate — matching always
-      // links, whatever the lifecycle state.
-      //
-      // This used to also append `\n[unboxed_by staff_id=N]` into
-      // `receiving_line.notes` "for audit trail". That was a structured fact
-      // stored in a prose field: nothing ever parsed it back out, and the actor
-      // already has two real homes — the RECEIVING_MATCH audit row emitted by
-      // this route (recordAudit resolves the actor server-side and the entry
-      // carries `matched_line_ids`), and `actorStaffId` on the transition
-      // below. Since the 2026-07-31 note/label split, `notes` is purely the
-      // operator's item note, so the addendum was machine text in a human
-      // field. Dropped — along with the dynamic SET builder that existed only
-      // to carry it. SoT: source-of-truth.md → Note vs label grain.
+      // Linkage/facts half:
       await client.query(
         `UPDATE receiving_line
          SET receiving_id = $1,
@@ -267,12 +200,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         [receivingId, lineIds, orgId],
       );
 
-      // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this
-      // same transaction (executor mode: the FOR UPDATE above makes the
-      // chokepoint's own re-lock a no-op). skipEvent: this route audits
-      // RECEIVING_MATCH on the carton and never emitted per-line inventory
-      // events — that stays true. Only sensible advances transition:
-      // → MATCHED from EXPECTED/ARRIVED; → UNBOXED from EXPECTED/ARRIVED/MATCHED.
+      // Lifecycle half — through the guarded chokepoint (§7 Step D), inside this same transaction (executor mode:
       const advanceFrom = MATCH_ADVANCE_FROM[nextStatus];
       const skippedLines: Array<{ id: number; workflow_status: string }> = [];
       for (const row of lockedLines.rows) {
@@ -427,14 +355,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     }
 
     const [matchedRes, receivingRow] = await Promise.all([
-      // receiving_lines is org-filtered; staff is tenant-owned so the join is
-      // org-aligned (st.organization_id = rl.organization_id) to keep a tech
-      // name from one tenant off another's line.
-      // Moved line facts (testing cluster → receiving_line_testing rlt, Zoho
-      // cluster → receiving_line_zoho rz; both 1:1 PK joins) are re-selected
-      // AFTER rl.* under their frozen spine names — pg builds row objects in
-      // field order, so the street value shadows the spine copy and the
-      // response shape stays byte-identical.
+      // receiving_lines is org-filtered; staff is tenant-owned so the join is org-aligned (st.organization_id = rl.organization_id) to keep a…
       tenantQuery(
         orgId,
         `SELECT rl.*,
@@ -474,11 +395,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
          ORDER BY rl.id ASC`,
         [receivingId, orgId]
       ),
-      // receiving is org-filtered (cross-org id yields no row). shipping_tracking_
-      // numbers has no organization_id column yet (tenant-owned-NEEDS-COL), so the
-      // join can't be org-aligned; it's keyed on r.shipment_id (an id, not a
-      // colliding string) off an already org-scoped receiving row — deferred until
-      // STN gets a column.
+      // receiving is org-filtered (cross-org id yields no row).
       tenantQuery(
         orgId,
         `SELECT r.id,

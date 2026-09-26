@@ -9,10 +9,7 @@ export { looksLikeTicketScan, parseTicketScanValue } from '@/lib/support/ticket-
 
 export type SupportTicketProvider = 'zendesk' | 'internal';
 
-// Pure ref helpers (TicketReceivingRef, normalizeReceivingTicketEntityRefs,
-// pickTicketLinkAnchor, …) live in ./ticket-refs so client code can use them
-// without this file's server-only tenancy/db import. Re-exported here so
-// server callers keep their existing import path.
+// Pure ref helpers (TicketReceivingRef, normalizeReceivingTicketEntityRefs, pickTicketLinkAnchor, …) live in ./ticket-refs so client code…
 export * from '@/lib/support/ticket-refs';
 import {
   formatSupportTicketLabel,
@@ -32,17 +29,7 @@ export interface SupportTicketRow {
   linkedByInitials?: string | null;
 }
 
-/**
- * Provider-native display label — matches the media library claims chip (`#9395`
- * for Zendesk tickets), so a claim photo and its ticket read the same id.
- * Internal-only tickets fall back to the registry id.
- *
- * NOTE: this is the CLAIMS-PARITY label, deliberately provider-native (a real
- * sibling contract with its own test). The Support-station OPERATOR PRIMARY is
- * the internal registry id — use {@link primaryTicketLabel} +
- * {@link secondaryProviderLabel} there, not this. Two labels for two genuinely
- * different jobs (per the house "two shapes for two jobs is fine" rule).
- */
+/** Provider-native display label — matches the media library claims chip (`#9395` for Zendesk tickets), so a claim photo and its ticket… */
 export function formatSupportTicketDisplayLabel(ticket: SupportTicketRow): string {
   if (ticket.provider === 'zendesk' && ticket.externalTicketId) {
     return `#${ticket.externalTicketId.replace(/^#/, '')}`;
@@ -78,12 +65,7 @@ function mapRow(row: {
   };
 }
 
-/** Upsert a provider ticket into the org registry; returns the internal id.
- *
- * When the row already exists and `subjectCache` / `statusCache` are supplied,
- * refreshes those caches (INSERT-only used to leave them stale forever — the
- * ticket-watch poller and Today subject line both need a write path).
- */
+/** Upsert a provider ticket into the org registry; returns the internal id. */
 export async function upsertSupportTicket(args: {
   orgId: string;
   provider: SupportTicketProvider;
@@ -401,15 +383,7 @@ async function ticketFromPhotoEntityLinks(args: {
   return supportTicketFromZendeskId(orgId, zd);
 }
 
-/**
- * Denormalized display-cache fallback: the `zendesk_ticket` column on
- * receiving_line / receiving_carton (stored "#<id>"). Authoritative link tables
- * win above — this only resolves the column when they're all empty, so the
- * carton header (which resolves via this fn) agrees with the rail flag /
- * ReceivingTicketChip, both of which read this column directly. The link/unlink
- * routes write and clear the column in lockstep with ticket_links, so a set
- * column means genuinely-linked (no ghost after an unlink).
- */
+/** Denormalized display-cache fallback: */
 async function ticketFromReceivingColumn(args: {
   orgId: string;
   lineId?: number | null;
@@ -444,13 +418,7 @@ async function ticketFromReceivingColumn(args: {
   return supportTicketFromZendeskId(orgId, zd);
 }
 
-/**
- * Primary ticket linked to a receiving carton/line. Resolution order:
- *   1. ticket_links on RECEIVING / RECEIVING_LINE
- *   2. ticket_links on SHIPMENT via receiving.shipment_id (STN)
- *   3. ZENDESK_TICKET on photos linked to this carton/line (media library SoT)
- *   4. `zendesk_ticket` display column on receiving_line / receiving_carton
- */
+/** Primary ticket linked to a receiving carton/line. */
 export async function getPrimarySupportTicketForReceiving(args: {
   orgId: string;
   lineId?: number | null;
@@ -501,11 +469,7 @@ export async function getPrimarySupportTicketForReceiving(args: {
   });
   if (viaPhotos) return viaPhotos;
 
-  // Last resort: the denormalized `zendesk_ticket` display column. The authoritative
-  // link tables win above; this only fires when the column is set but every
-  // polymorphic link is missing (out-of-sync legacy rows, or a ticket_links write
-  // that never landed). Without it the carton header shows the CLAIM button while
-  // the rail flag / pairing row — which read this column — already show the ticket.
+  // Last resort: the denormalized `zendesk_ticket` display column.
   return ticketFromReceivingColumn({
     orgId,
     lineId,

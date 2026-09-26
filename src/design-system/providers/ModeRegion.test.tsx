@@ -1,12 +1,4 @@
-/**
- * ModeRegion — modes nest by REGION, one level deep.
- *
- *   npx tsx --test src/design-system/providers/ModeRegion.test.tsx
- *
- * A page region plus one nested region (the right rail) is the whole budget;
- * the third level is the regression this pins, because a depth counter that
- * does not thread through context (or counts from 0) would let it pass silently.
- */
+/** ModeRegion — modes nest by REGION, one level deep. */
 import React from 'react';
 import assert from 'node:assert/strict';
 import test from 'node:test';

@@ -1,16 +1,4 @@
-/**
- * Agent-mutation accept/reject stats (universal-feed plan Phase 5 — the input
- * to trust-list widening). Aggregates `agent_mutations` by (mutation_kind,
- * status) for an org so a human can see which kinds the AI gets RIGHT (applied
- * and kept) vs. WRONG (reverted / rejected) before promoting a kind's trust
- * class (review → draft_scoped → auto). Read-only, org-scoped.
- *
- * The widening decision itself stays a deliberate PR that edits MUTATION_KINDS +
- * the pinned registry test (see registry.ts "Widening protocol") — this readout
- * only surfaces the evidence.
- *
- * Deps-injected (default tenantQuery) so it unit-tests DB-free.
- */
+/** Agent-mutation accept/reject stats (universal-feed plan Phase 5 — the input to trust-list widening). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

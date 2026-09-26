@@ -1,37 +1,4 @@
-/**
- * Counter session events — the pure reducer behind the desk↔iPad shared cart.
- *
- * This module is deliberately **pure**: types, a reducer, a projection, and
- * DB-free helpers. No DB import, no `server-only`, no vendor SDK — so the kiosk
- * face (a client component), the `/counter` desk surface, and the server
- * publisher can all import it without any of them dragging the others' graph
- * into its bundle (`build-gotchas.md` → bundle altitude), exactly like its
- * sibling `counter-transaction-types.ts`.
- *
- * ### The one rule that makes two devices agree
- *
- * The server owns the cart and stamps every mutation with a monotonic
- * `version` (plan D1 + D3). A subscriber applies an event **only** when it is
- * exactly `version + 1`; anything else is refused with a reason, and a `gap`
- * tells the caller to refetch a `session.snapshot` instead of guessing. That
- * single rule is what makes duplicate delivery, reordering, and an iPad that
- * slept for five minutes all converge to the same cart rather than to three
- * different ones.
- *
- * A reducer that silently applied out-of-order events would produce a cart that
- * *looks* fine on both screens and disagrees about the total — the failure mode
- * this whole design exists to prevent, and the one nobody notices until a
- * customer is charged.
- *
- * ### Voiding is not deleting
- *
- * There is one line-removal verb, `line.voided`, and it is soft. A line a
- * customer saw on the display is evidence; it stays in the ledger struck
- * through, with who voided it and why. The device-facing projection drops it
- * entirely (D6) — the customer sees the cart, not the correction.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P0 · D1 · D3 · D5 · D6 · D9).
- */
+/** Counter session events — the pure reducer behind the desk↔iPad shared cart. */
 
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { isBuybackPayload, isLinkedRepairLine, isRepairPayload } from '@/lib/kiosk/cart-line';
@@ -70,17 +37,7 @@ export const COUNTER_PAYMENT_STATES = [
   'canceled',
 ] as const;
 
-/**
- * Card-present state (SQ2). Mirrors `counter_sessions_payment_state_chk`.
- *
- * `approved` is the TERMINAL's answer, not the money's: a device approval and a
- * settled payment arrive on two different webhooks, and the settled one drives
- * `counter_transactions.status` (SQ1). Collapsing them would let a visit read
- * as paid before Square says it is.
- *
- * "canceled" carries Square's spelling deliberately, so their webhook status
- * maps across without a translation table nobody remembers.
- */
+/** Card-present state (SQ2). */
 export type CounterPaymentState = (typeof COUNTER_PAYMENT_STATES)[number];
 
 export function isCounterPaymentState(value: string): value is CounterPaymentState {
@@ -92,14 +49,7 @@ export function isTerminalPaymentOutcome(state: CounterPaymentState): boolean {
   return state === 'approved' || state === 'declined' || state === 'canceled';
 }
 
-/**
- * A staged line, in the session.
- *
- * `KioskCartLine` stays the wire shape (plan D9) — the customer face, the
- * ledger, `computeKioskCartTotals`, and `cart-to-counter.ts` already speak it,
- * and changing it would touch every pane for nothing. Session bookkeeping is
- * added **beside** those fields, never folded into them.
- */
+/** A staged line, in the session. */
 export interface CounterSessionLine extends KioskCartLine {
   sortIndex: number;
   /** ms epoch. Non-null = struck through on the desk, absent for the customer. */
@@ -187,15 +137,7 @@ export type CounterSessionEvent = CounterSessionEventBase &
     /** The resync. Carries the whole truth, so it is exempt from the +1 rule. */
     | { type: 'session.snapshot'; snapshot: CounterSessionSnapshot }
     | { type: 'session.claimed'; staffId: number; staffName: string; claimExpiresAtMs: number }
-    /**
-     * Which tablet this visit drives (P5). `null` hands the tablet back.
-     *
-     * The bind is a header change like any other, so it takes a version — two
-     * desks racing for the same iPad cannot both win. The tablet itself learns
-     * from its own `GET /api/kiosk/session` poll rather than from this event:
-     * at bind time it has no snapshot to fold an event into, and at unbind
-     * time the fan-out has no channel left to publish on.
-     */
+    /** Which tablet this visit drives (P5). */
     | { type: 'session.device_bound'; kioskDeviceId: number | null }
     | { type: 'session.released'; reason: 'done' | 'takeover' | 'expired' }
     | { type: 'line.added'; line: CounterSessionLine }
@@ -244,13 +186,7 @@ export const COUNTER_SESSION_EVENTS = [
   'session.payment_changed',
 ] as const;
 
-/**
- * Why an event was not applied.
- *
- * - `foreign`   — it belongs to another session; never applied, never resynced.
- * - `duplicate` — already seen (`version <= current`). Safe to drop.
- * - `gap`       — the future arrived early. **Refetch a snapshot**; do not guess.
- */
+/** Why an event was not applied. */
 export type CounterSessionRefusal = 'foreign' | 'duplicate' | 'gap';
 
 export type ApplySessionEventResult =
@@ -267,18 +203,7 @@ export function needsResync(result: ApplySessionEventResult): boolean {
   return result.applied === false && result.reason === 'gap';
 }
 
-/**
- * Fold one event into a snapshot.
- *
- * **Never mutates.** A refusal returns the caller's own snapshot by reference,
- * so `result.snapshot` is always the state to render — the caller does not have
- * to branch on `applied` just to know what to paint.
- *
- * An event naming a line that is not here (a void racing a resync) is a
- * **no-op that still takes the version**. Refusing the version because the line
- * is unknown would leave this client one behind forever, turning a harmless
- * race into a permanent desync — the opposite of the fix.
- */
+/** Fold one event into a snapshot. */
 export function applySessionEvent(
   snapshot: CounterSessionSnapshot,
   event: CounterSessionEvent,
@@ -407,16 +332,7 @@ function cloneSnapshot(snapshot: CounterSessionSnapshot): CounterSessionSnapshot
 
 // ── Device-principal projection (D6) ────────────────────────────────────────
 
-/**
- * What a kiosk device is allowed to see.
- *
- * The device principal is unattended-capable, so **every field readable here is
- * readable by a stranger** — the same rationale that already suppresses
- * customer search under `kioskMode` (parent plan D7). This projection is a
- * deliberate allowlist: fields are copied in one by one, so a field added to
- * `CounterSessionSnapshot` later is invisible to the tablet until someone
- * decides otherwise. An exclusion list would leak every future field by default.
- */
+/** What a kiosk device is allowed to see. */
 export interface DeviceSessionProjection {
   sessionId: number;
   version: number;
@@ -481,14 +397,7 @@ export function projectForDevicePrincipal(
   };
 }
 
-/**
- * Strip a line to what belongs on a customer-facing screen.
- *
- * Gone: internal notes, the sourcing SKU, the device passcode, the buyback
- * grade, and the provider variation id. A passcode is the sharpest of these —
- * the customer handed it over for the repair, and leaving it on an unattended
- * display hands it to whoever walks up next.
- */
+/** Strip a line to what belongs on a customer-facing screen. */
 function projectLine(line: CounterSessionLine): KioskCartLine {
   const base = {
     id: line.id,

@@ -20,12 +20,7 @@ function roomSnapshot(rooms: Location[], name: string): Location | null {
   );
 }
 
-/**
- * PATCH /api/rooms/[room]
- * Body: { name?: string, zoneLetter?: string | null }
- * Returns the updated room snapshot so clients can write the shared cache
- * before a refetch (closes the rename ↔ ?room= race).
- */
+/** PATCH /api/rooms/[room] Body: */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ room: string }> },
@@ -52,10 +47,7 @@ export async function PATCH(
     let renameResult = { updated: 0, barcodesRekeyed: 0 };
     let didRename = false;
     if (newName && newName !== oldName) {
-      // Tenant-scoped: renameRoom org-gates every parent/bin/barcode UPDATE on
-      // organization_id and stamps the org on the materialise INSERT, so a
-      // rename never touches (or creates a NULL-org clone of) another tenant's
-      // room that happens to share a name string.
+      // Tenant-scoped:
       renameResult = await renameRoom(oldName, newName, orgId);
       if (renameResult.updated === 0 && renameResult.barcodesRekeyed === 0) {
         return NextResponse.json(
@@ -122,10 +114,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Room name required' }, { status: 400 });
   }
   try {
-    // Tenant-scoped destructive write: softDeleteRoom gates its UPDATE on
-    // organization_id so a tenant can only soft-delete its OWN room/bins. When
-    // nothing matched under this org the room either doesn't exist or belongs
-    // to another tenant — return a 404 (never a 403) per the ownership gate.
+    // Tenant-scoped destructive write:
     const result = await softDeleteRoom(name, orgId);
     if (result.deactivated === 0) {
       return NextResponse.json({ error: 'Room not found' }, { status: 404 });

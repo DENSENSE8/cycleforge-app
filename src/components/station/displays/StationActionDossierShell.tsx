@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Station Action Plane — master-detail dossier shell for Displays leaves.
- *
- * Horizontal collapsed rows; Space/Enter expands when expandable. ↑↓ roves
- * between rows; ←→ moves among interactive children inside an expanded row.
- * Aggressive focus chrome. Esc stays on {@link StationDisplaysPushStack}.
- *
- * Law: source-of-truth.md → Station Action vs Context planes.
- */
+/** Station Action Plane — master-detail dossier shell for Displays leaves. */
 
 import {
   useCallback,

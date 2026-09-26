@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Gate preamble (Fact-Forcing):
- * Importers: KioskDevicesSection history pane (DataTable feed).
- * Affected API: consumes GET /api/kiosk/slot-events rows only — no rowActions.
- * Schemas: KioskSlotEventTableRow → CompoundSpreadsheetFeed.
- * User instruction: Continue to the next phase.
- */
+/** Gate preamble (Fact-Forcing): */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

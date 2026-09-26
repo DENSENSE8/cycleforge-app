@@ -1,13 +1,4 @@
-/**
- * Fixed-width platform identity — a colored {@link BrandIdentityDot}-shaped
- * fill, never EB / AM / az lettermarks and never a brand tile.
- *
- * Same 20px footprint as the old glyph so PO# / tracking chips stay aligned.
- * Label lives in tooltip / aria — the mark itself is always `aria-hidden`.
- *
- * Cannot import {@link BrandIdentityDot} from `grid-cells` (that file imports
- * this). Paint is the same 6px rounded fill via {@link platformMetaBrandDot}.
- */
+/** Fixed-width platform identity — a colored {@link BrandIdentityDot}-shaped fill, never EB / AM / az lettermarks and never a brand tile. */
 
 import { cn } from '@/utils/_cn';
 import {

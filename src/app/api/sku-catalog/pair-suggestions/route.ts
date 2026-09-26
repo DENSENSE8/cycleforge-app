@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/sku-catalog/pair-suggestions?ecwidId=N&limit=5
- *
- * Returns the top-N sku_catalog rows ranked by pg_trgm similarity against the
- * Ecwid row's display_name. Used by the pairing UI to offer click-to-pair
- * suggestions without typing a search.
- */
+/** GET /api/sku-catalog/pair-suggestions?ecwidId=N&limit=5 */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

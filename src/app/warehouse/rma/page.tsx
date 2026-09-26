@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * /warehouse/rma — RMA authorization queue.
- *
- * Supervisor surface for Phase A5. Lists open RMAs, lets staff issue a new
- * authorization (customer return or vendor RTV), and moves each one through
- * AUTHORIZED → RECEIVED → DISPOSITIONED → CLOSED.
- *
- * Per-unit dispositions live on the disposition station (/warehouse/rma/
- * disposition, linked below) — a scan-driven bench, not a row action here:
- * this index covers the lifecycle transitions a supervisor needs at-a-glance.
- */
+/** /warehouse/rma — RMA authorization queue. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -367,13 +357,7 @@ function CreateRmaForm({ onCreated, onError }: CreateFormProps) {
 
 // ─── Disposition backlog ─────────────────────────────────────────────────────
 
-/**
- * Worklist of RETURNED units that have never received a disposition — the
- * Workbench half of the returns-unification Stage 4 pairing: this list is
- * pointer-driven (browse, pick), each row deep-links into the scan-driven
- * Disposition Station (`?serial=`) rather than growing an edit affordance
- * here, so the two archetypes stay split per region instead of blending.
- */
+/** Worklist of RETURNED units that have never received a disposition — the Workbench half of the returns-unification Stage 4 pairing: */
 function DispositionBacklogSection({ rows }: { rows: DispositionBacklogRow[] }) {
   return (
     <section className="mb-4 overflow-hidden rounded-3xl border border-amber-200 bg-amber-50/60">

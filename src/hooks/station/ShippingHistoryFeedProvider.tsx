@@ -25,13 +25,7 @@ export interface ShippingHistoryFeedContextValue {
   loading: boolean;
   isRefreshing: boolean;
   getRowKey: (record: TechRecord) => string;
-  /**
-   * The find box text, shared for the same reason `weekOffset` is: the rail
-   * and the History tab read ONE feed, and the query is part of what that feed
-   * IS. It is answered by the server (it rides `useTechLogs`' fetch key), so a
-   * consumer that kept its own copy would be filtering rows the server already
-   * narrowed by different bounds.
-   */
+  /** The find box text, shared for the same reason `weekOffset` is: */
   query: string;
   setQuery: (next: string) => void;
 }

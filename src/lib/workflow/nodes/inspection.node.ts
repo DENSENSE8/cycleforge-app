@@ -1,11 +1,4 @@
-/**
- * `inspection` — test + condition-grade bench. The domain work (serial status
- * transition, tech_serial_numbers audit, testing_results feed, line rollup)
- * is owned by src/lib/tech/recordTestVerdict, which taps `test_verdict` after
- * its writes land. Verdict → port: PASS → `pass`, TESTING_FAILED → `fail`,
- * TEST_AGAIN re-parks (the unit stays on the bench). Stage span:
- * AWAITING_TEST ④ → PASSED/FAILED ⑥ (workflow-stages.ts).
- */
+/** `inspection` — test + condition-grade bench. */
 
 import { registerNode } from '../registry';
 import { stationNode } from './station-node';

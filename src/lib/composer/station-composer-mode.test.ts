@@ -107,10 +107,7 @@ test('touching the ticket thread hands the composer to Ticket mode AND focus', (
 });
 
 test('already on Ticket: no redundant mode write, but STILL focus', () => {
-  // The bug this splits apart: one `shouldActivate` boolean returned false
-  // here — correctly refusing the redundant `router.replace` — and silently
-  // took the focus with it, so clicking a message while already in Ticket mode
-  // did nothing at all.
+  // The bug this splits apart:
   assert.deepEqual(resolveTicketThreadActivation({ mode: 'ticket' }), {
     setTicketMode: false,
     focusComposer: true,

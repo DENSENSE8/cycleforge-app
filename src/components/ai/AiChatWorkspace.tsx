@@ -7,13 +7,7 @@ import AiChatConversation from '@/components/ai/AiChatConversation';
 import { AiChatArtifactPane } from '@/components/ai/AiChatArtifactPane';
 import { AI_CHAT_PROMPT_EVENT, AI_CHAT_NEW_EVENT } from '@/components/ai/ai-chat-events';
 
-/**
- * Full-page assistant surface for /ai-chat. Conversation is the left work
- * plane; model-created tables and structured live-data answers are promoted
- * into the read-only artifact plane on the right. Both consume the same chat
- * state, so the export is a projection of the answer rather than a second data
- * fetch or a workflow-specific screen.
- */
+/** Full-page assistant surface for /ai-chat. */
 export default function AiChatWorkspace() {
   const { has, isLoaded } = useAuth();
   const chat = useAiChat();

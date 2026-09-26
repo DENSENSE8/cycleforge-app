@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Bidirectional photo move between cartons / POs — chrome-free panel body.
- *
- * Forward: select photos on this carton → pick a target carton → reassign.
- * Back: pick a source carton → select its photos → reassign onto this carton.
- * Reuses the reassign SoT (`reassignPhotoToReceiving` → PATCH /api/photos/:id/reassign).
- *
- * Target search is GET /api/receiving/photo-move-targets (any receiving carton,
- * including unmatched / ticket-anchored) — not the Zoho-PO-only po/list feed.
- *
- * Hosted by Unbox Displays Photos→Move or the thin
- * {@link MovePhotosBetweenPoRail} overlay for non-Unbox hosts.
- */
+/** Bidirectional photo move between cartons / POs — chrome-free panel body. */
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,20 +35,7 @@ import {
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
-/**
- * What the operator put in the box, in the ONE vocabulary the API understands.
- *
- * The box says "type or scan", so a scan is decoded FIRST — through `routeScan`
- * (via {@link scannedReceivingId}), the only thing allowed to interpret a scan.
- * A printed carton sticker carries an absolute Digital Link, not `R-1234`, so
- * before this the scanned URL went to the API as a text needle, matched nothing,
- * and the operator got an empty list with no explanation.
- *
- * A decoded scan is sent as the canonical `R-{id}` handle because
- * `/api/receiving/photo-move-targets` resolves that to an exact `receiving_id`;
- * `parsePoListSearch` stays the *human-text* helper it was, never a second
- * decoder.
- */
+/** What the operator put in the box, in the ONE vocabulary the API understands. */
 function poSearchNeedle(raw: string): string {
   const scanned = scannedReceivingId(raw);
   if (scanned != null) return receivingHandle(scanned);
@@ -144,12 +119,7 @@ export function MovePhotosBetweenPoPanel({
   receivingId,
   onClose,
   onMoved,
-  /**
-   * `display` — Unbox Displays Photos→Move: strip + Move·Send tabs already
-   * name the verb; omit icon+title band and X (column `→|` owns dismiss).
-   * Success stays on Move and resets the form (does not call `onClose`).
-   * `modal` — right-rail / overlay hosts keep the title + close; success dismisses.
-   */
+  /** `display` — Unbox Displays Photos→Move: */
   chrome = 'modal',
 }: {
   open: boolean;
@@ -239,9 +209,6 @@ export function MovePhotosBetweenPoPanel({
   }, [direction, success]);
 
   // Carton search — any receiving carton (PO-bearing, unmatched, ticket-linked).
-  // Accepts PO #, tracking #, ticket #, and carton QR handles (`R-<id>` / `#R-<id>`).
-  // Self-match (needle is this carton) → server returns recent browse + matchedExcludedSelf.
-  // Sole hit for a real needle → auto-select so Move can arm without a second click.
   useEffect(() => {
     if (!open || success) return;
     const controller = new AbortController();

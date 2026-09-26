@@ -1,30 +1,4 @@
-/**
- * Incoming street — delivery-state rules-as-data SoT.
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §2c / §7 Step E.
- *
- * The Incoming `delivery_state` buckets were defined TWICE in the 2,075-line
- * /api/receiving-lines route — once as a WHERE ladder (facet filter, route
- * :715-781) and once as a SELECT CASE (the computed column, route :930-962) —
- * and they had to be kept in lockstep by hand. This module is the one bucket
- * list; both the CASE column and the WHERE facet are DERIVED from it, so the tile
- * counts (filter) and the rendered badges (CASE) can never drift.
- *
- * Server-only: the predicates reference carrier facts (stn.*) and the shared
- * delivered-unscanned predicates, so this is not client-safe (unlike precedence).
- *
- * CASE vs WHERE asymmetry (modeled explicitly):
- *  - `caseWhen` is the predicate used INSIDE the ordered SELECT CASE — it may rely
- *    on earlier WHEN arms having peeled rows off (e.g. PENDING_CARRIER's CASE arm
- *    runs after CARRIER_MISMATCH/AWAITING_TRACKING, so it omits those guards).
- *  - `whereStandalone` is the SELF-CONTAINED predicate for the facet filter (no
- *    ordering to lean on), so PENDING_CARRIER's WHERE re-adds the guards.
- *  For every bucket that is BOTH a CASE arm and a facet, the two predicates are
- *  identical EXCEPT PENDING_CARRIER (asserted in the test).
- *
- * Wiring the route GET to import `deliveryStateCaseSql()` + `deliveryStateWhereSql()`
- * (replacing the two inline copies) is the incoming-street cutover PR (plan §8).
- */
+/** Incoming street — delivery-state rules-as-data SoT. */
 
 import { SHIPMENT_SCANNED_PREDICATE, CARRIER_MISMATCH_PREDICATE } from '../../delivered-unscanned';
 
@@ -48,11 +22,7 @@ export function isDeliveryState(v: unknown): v is DeliveryState {
   return typeof v === 'string' && (DELIVERY_STATES as readonly string[]).includes(v);
 }
 
-// ── Shared predicate fragments (defined once) ───────────────────────────────
-// Wave-2 reader cutover: the carton "unboxed" milestone reads from the
-// receiving_unbox street table (ru.unboxed_at, 1:1 with the carton) via a
-// correlated NOT EXISTS — no row / NULL unboxed_at ≡ the old NULL spine value —
-// so consumers of these fragments need no extra join.
+// ── Shared predicate fragments (defined once) ─────────────────────────────── Wave-2 reader cutover:
 const NOT_UNBOXED_STREET = `NOT EXISTS (
              SELECT 1 FROM receiving_unbox ru_ds
               WHERE ru_ds.receiving_id = r.id

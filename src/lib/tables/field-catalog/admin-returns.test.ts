@@ -1,13 +1,4 @@
-/**
- * Admin › Returns catalog guards + resolver behaviour — the family that
- * replaced the dock's seven hand-written `AdminTableColumn` objects.
- *
- * The REUSE assertions are the ones worth reading: five of this catalog's
- * eight facts are the `inventory-events` field definitions by reference, and
- * the tests below pin both halves of that claim — the objects are identical
- * (not copies that will drift), and this feed's resolver actually answers them
- * off a realistic returns row.
- */
+/** Admin › Returns catalog guards + resolver behaviour — the family that replaced the dock's seven hand-written `AdminTableColumn` objects. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -2,17 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-/**
- * Per-device open/closed state for the spine's section disclosures.
- *
- * Same call as the spine width (`SIDEBAR_SPINE_RESIZE.storageKey`): view
- * state for this device, not a staff prefs field.
- *
- * The store holds OPEN ids. A lane the operator has never opened stays
- * folded — including on first login, and including a newly registered
- * section. The previous store held CLOSED ids so every new lane arrived
- * open, which is what painted every parent expanded after sign-in.
- */
+/** Per-device open/closed state for the spine's section disclosures. */
 export const SPINE_SECTIONS_OPEN_STORAGE_KEY = 'sidebar-spine-sections-open';
 
 /** Retired 2026-09-15 — closed-id polarity. Wiped on hydrate so leftover `[]` cannot reopen every lane. */

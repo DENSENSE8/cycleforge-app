@@ -18,17 +18,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 
 const ROUTE_SKU_RELATIONSHIP_POST = 'sku-relationship.post';
 
-/**
- * POST /api/sku-catalog/graph/relationships — Add a parent→child SKU edge.
- *
- * Body: { parentSkuId, childSkuId, qty?, notes?, idempotencyKey? }
- *
- * Validation:
- *  - both SKUs must exist (404)
- *  - no self-edge (caught by the Zod schema + DB CHECK)
- *  - no duplicate edge (409)
- *  - no cycle: child must not already be an ancestor of parent (409)
- */
+/** POST /api/sku-catalog/graph/relationships — Add a parent→child SKU edge. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

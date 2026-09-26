@@ -13,10 +13,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     try {
         // Check in orders table via shipping_tracking_numbers join (shipment_id FK).
-        // shipping_tracking_numbers has no organization_id column (NEEDS-COL); it
-        // joins on the integer surrogate PK (stn.id = o.shipment_id) so the join is
-        // tenant-safe, and the whole read is GUC-wrapped via tenantQuery. orders,
-        // work_assignments and packer_logs are tenant-owned → filtered by org_id.
         const ordersResult = await tenantQuery(
             orgId,
             `SELECT o.id, o.order_id, stn.tracking_number_raw AS tracking_number,

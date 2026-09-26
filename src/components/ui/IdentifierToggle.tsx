@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * A small segmented toggle used in timeline/journey headers — e.g. the order
- * timeline's serial↔order switch, and the operations journey's
- * order/serial/tracking dimension switch. Pure presentation: the caller owns the
- * value + options; this renders a pill rail with a single "active" segment
- * (house micro-typography eyebrow scale, no size shift on selection). Generic
- * over the option value so it works for any small enum.
- *
- * VARIANTS
- *   `rail` (default) — sunken track behind the whole group, raised white
- *     active segment. Reads as a control that lives inside denser chrome.
- *   `bare` — no track at all: only the ACTIVE option is painted, the rest are
- *     plain text. For surfaces that are already a panel (the ⌘K palette), where
- *     a sunken track under the group adds a second depth the panel did not ask
- *     for and makes four unselected options look like four filled buttons.
- */
+/** A small segmented toggle used in timeline/journey headers — e.g. */
 
 interface IdentifierToggleOption<T extends string> {
   value: T;

@@ -25,13 +25,7 @@ import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 // Distinct from 'scan_only', which stays SCANNED without clearing qty/stamp.
 export type ReceiveIntent = 'zoho_receive' | 'scan_only' | 'local_receive' | 'unreceive';
 
-/**
- * Last response from POST /api/receiving/mark-received-po. Surfaced inline
- * below the label (ReceiveResponsePanel for non-success) so operators can see
- * exactly why a Zoho receive succeeded, was skipped (missing zoho ids), or
- * failed (rate_limit, circuit_open, api, other). No more silent failures —
- * and no more bottom-right toasts.
- */
+/** Last response from POST /api/receiving/mark-received-po. */
 export type ReceiveResponseRecord = {
   at: number;
   /** ms wall-clock from POST → response */
@@ -44,12 +38,7 @@ export type ReceiveResponseRecord = {
   networkError?: string;
 };
 
-/**
- * The per-action breakdown the inline ReceiveSuccessChecklist renders as
- * staggered green checks. It describes what THIS request committed. The
- * inventory purchase receive is no longer part of the round trip — the
- * scheduled receive backfill drains it and owns its own backlog surface.
- */
+/** The per-action breakdown the inline ReceiveSuccessChecklist renders as staggered green checks. */
 export type ReceiveSummary = {
   /** Zoho purchase receive was attempted against a linked PO. */
   markedReceived: boolean;
@@ -77,12 +66,7 @@ export type ReceiveSummary = {
   photoPolicyWaiver: PhotoPolicyWaiver | null;
 };
 
-/**
- * The inline receive feedback shown below the label. Replaces the old
- * bottom-right toast entirely:
- *   - `success`    → animated ReceiveSuccessChecklist (green checks)
- *   - `diagnostic` → the existing ReceiveResponsePanel (skip / cooldown / error)
- */
+/** The inline receive feedback shown below the label. */
 export type ReceiveResult =
   | {
       kind: 'success';
@@ -105,14 +89,7 @@ export type ReceiveResult =
 
 export type ReceiveInFlight = { startedAt: number; intent: ReceiveIntent };
 
-/**
- * The Receive / Mark-as-scanned action for a single line. The local commit is
- * the whole request now — the inventory purchase receive is drained later by
- * the scheduled receive backfill — and the button does NOT visually lock; a ref
- * guards against double-clicks. All feedback is inline below the label:
- * `receiving` drives a compact progress strip, `receiveResult` the success
- * checklist or the diagnostic panel.
- */
+/** The Receive / Mark-as-scanned action for a single line. */
 export function useReceiveAction(
   row: ReceivingLineRow,
   {
@@ -151,12 +128,7 @@ export function useReceiveAction(
   // Multimodal confirmation cue (gated by org master switch + per-staff toggles).
   const { playScanFeedback } = useScanFeedback();
 
-  /**
-   * `options.photoPolicyOverride` waives the receive-time photo-evidence gate.
-   * It is only ever supplied by the surface that just made the operator pick a
-   * reason (`PhotoPolicyOverrideSheet`); omitting it leaves the gate a hard
-   * block, which is the safe default and why it has no default value here.
-   */
+  /** `options.photoPolicyOverride` waives the receive-time photo-evidence gate. */
   const handleReceive = useCallback(
     (
       receiveIntent: ReceiveIntent = 'zoho_receive',
@@ -184,10 +156,7 @@ export function useReceiveAction(
         setResponseExpanded(false);
         return Promise.resolve(false);
       }
-      // Unfound / unmatched cartons call mark-received-po with local_receive —
-      // the server stamps unboxed locally and never posts a Zoho purchase
-      // receive (including the empty-line unfound_no_po path). Do not block on
-      // a stub line id here.
+      // Unfound / unmatched cartons call mark-received-po with local_receive — the server stamps unboxed locally and never posts a Zoho purchase…
       receiveInFlightRef.current = true;
       const startedAt = Date.now();
       setReceiving({ startedAt, intent: receiveIntent });
@@ -196,20 +165,10 @@ export function useReceiveAction(
       setReceiveResult(null);
       setResponseExpanded(false);
 
-      // Stable per-click id used as both the Idempotency-Key header and the
-      // body's client_event_id so api_idempotency_responses replays the cached
-      // response on retry / double-click instead of re-running the receive flow
-      // (which would double-call Zoho).
+      // Stable per-click id used as both the Idempotency-Key header and the body's client_event_id so api_idempotency_responses replays the…
       const clientEventId = randomId();
 
-      // Returns a promise so Inventory Displays (and other awaiters) can refresh
-      // the dossier after push. Dock print+receive still fires without await —
-      // the print popup was opened synchronously by the caller (runPrintLabel).
-      //
-      // NOTE: the former /api/zoho/health circuit pre-check (up to 3s on EVERY
-      // receive) is gone. The server now reads its own in-process breaker and
-      // returns skip_reason 'zoho_circuit_open' inline, so a cooldown surfaces
-      // with zero added latency on the happy path.
+      // Returns a promise so Inventory Displays (and other awaiters) can refresh the dossier after push.
       return (async () => {
         let succeeded = false;
         try {
@@ -238,10 +197,7 @@ export function useReceiveAction(
               client_event_id: clientEventId,
               ...(photoPolicyOverride ? photoPolicyOverrideField(photoPolicyOverride) : null),
             }),
-            // Hard ceiling so a wedged handler cannot spin the progress strip
-            // forever. The request does local work only, so a timeout here is a
-            // genuine request failure — there is no detached push left to wait
-            // on.
+            // Hard ceiling so a wedged handler cannot spin the progress strip forever.
             signal: AbortSignal.timeout(30_000),
           });
           const markData = await markRes.json().catch(() => null);
@@ -264,10 +220,7 @@ export function useReceiveAction(
             playScanFeedback('reject');
           } else {
             succeeded = true;
-            // Prefer the Unbox `stage` bin over silent default putaway
-            // (`putaway-placement` / UNSORTED). Fire-and-forget after inventory
-            // commit — putaway requires `receiving.bin_assign`; stage stamp alone
-            // used `mark_received`.
+            // Prefer the Unbox `stage` bin over silent default putaway (`putaway-placement` / UNSORTED).
             const stagedBinId = Number(row.staged_location_id);
             if (
               receiveIntent !== 'unreceive' &&
@@ -287,11 +240,7 @@ export function useReceiveAction(
                 /* non-fatal — inventory already committed; stock desk can relocate */
               });
             }
-            // Optimistic workspace + Unboxed dock: POST already carries updated
-            // qty/workflow. Narrow bus patches update accordion/selection;
-            // Unboxed is opted off that bus — allowlisted carton qty helper
-            // flips the dock within a frame. Segment membership (Queue→Unboxed)
-            // reconciles on the deferred invalidate below.
+            // Optimistic workspace + Unboxed dock:
             const receivedRows = Array.isArray(markData?.receiving_lines)
               ? (markData.receiving_lines as Array<Partial<ReceivingLineRow> & { id?: unknown }>)
               : [];
@@ -329,10 +278,7 @@ export function useReceiveAction(
               });
             }
 
-            // Reuse the panel's verdict taxonomy: emerald = a genuine success
-            // (received / scanned / already-received) → animated checklist;
-            // amber/rose (no-PO-link, cooldown, rate-limit, api error) → the
-            // detailed diagnostic panel.
+            // Reuse the panel's verdict taxonomy:
             const classification = classifyReceiveResponse(respRecord);
             if (classification.tone === 'emerald') {
               const serverSummary = (markData?.summary || {}) as Partial<{
@@ -387,19 +333,11 @@ export function useReceiveAction(
             }
           }
 
-          // Reconcile every receiving feed — but DEFER it to idle now that the
-          // optimistic dispatch above already flipped the visible row. This
-          // moves the heavy 5-root refetch stampede off the critical path so
-          // the receive reads as instant; it still reconciles the rail SEGMENT
-          // move + tile counts a beat later. `app-refresh-data` stays for the
-          // non-receiving listeners that also key off the global signal.
+          // Reconcile every receiving feed — but DEFER it to idle now that the optimistic dispatch above already flipped the visible row.
           deferInvalidateReceivingFeeds(queryClient);
           refreshDomains(REFRESH_BUNDLES.receivingWrite);
 
-          // Fire-and-forget workspace reconcile. Prefer narrow patches — a full
-          // by-id/by-carton GET row must not ride `receiving-line-updated` onto
-          // mode docks (Unboxed / Testing opted out; Triage still listens).
-          // Deferred invalidate + realtime channel cover dock membership.
+          // Fire-and-forget workspace reconcile.
           if (markRes.ok) {
             void (async () => {
               try {

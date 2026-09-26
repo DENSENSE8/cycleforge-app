@@ -1,28 +1,4 @@
-/**
- * Unbox side displays — which surface the right-edge Displays push column shows.
- *
- * Pure: no React. The workbench body no longer hosts a tab strip
- * (`overview` IS the centre), so this vocabulary covers only the surfaces
- * that live in {@link StationDisplaysPushStack}.
- *
- * Navigation is Root-to-Leaf drill-down (local React state via
- * `useUnboxDisplayView` — Arrival parity; never URL wires):
- *   - `display === 'index'` → Root Index (status rows)
- *   - `display === <leaf>` → full-height leaf body
- *   - `null` → column CLOSED
- *
- * Index / leaf order (PO-identity first): Listings · Pairing · Inventory ·
- * Units · Prebox · Photos · Ticket · Tracking. Ticket is
- * presence-exclusive (Claim vs Chat). Inventory is a **secondary vertical drill**
- * (Information · Lines · PO notes · Activity) via `useDisplaysLeafChrome` — never
- * a nested switcher strip and never a second LeafHeader. Photos · Linkage are
- * **armed-row verbs + local nest drills**. Prebox is an Assets peer leaf (not
- * nested under Units). `checklist` is a Displays leaf (never a floor % ring).
- *
- * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
- * `claim` → `ticket` (with `ticketAction=claim`);
- * `timeline` / `support` → Root Index (leaves removed).
- */
+/** Unbox side displays — which surface the right-edge Displays push column shows. */
 
 import {
   STATION_DISPLAY_INDEX,
@@ -30,15 +6,7 @@ import {
   isDisplaysHostedLeaf,
 } from '@/components/station/displays/display-index';
 
-/**
- * Sentinel — Displays open on the Root Index (no leaf body).
- *
- * DERIVED from {@link STATION_DISPLAY_INDEX}, never re-typed: a hand-written
- * `'index'` twin here would go on compiling if the station SoT ever moved, and
- * Unbox would silently stop agreeing with the shared push stack about what
- * "open on the index" means. Deep import (not the `station/displays` barrel) so
- * this stays a pure module and cannot pull the push column's React graph in.
- */
+/** Sentinel — Displays open on the Root Index (no leaf body). */
 export const UNBOX_DISPLAY_INDEX = STATION_DISPLAY_INDEX;
 
 export type UnboxSideTab =
@@ -59,18 +27,7 @@ export type UnboxDisplayNav =
   | UnboxSideTab
   | typeof STATION_LOOK_DISPLAY_ID;
 
-/**
- * Photos leaf surfaces (`photoAction` nest). Absent / legacy `browse` → armed
- * Actions rows (no nested switcher strip). Move · Send · Compare are nest
- * drill-downs from those rows (Compare = listing vs bench — trailing).
- *
- * {@link UNBOX_PHOTO_ACTION_ORDER}: default first, then drill surfaces — not a
- * horizontal tab strip. Never land a trailing verb when `photoAction` is absent.
- *
- * `link` is the exact-linkage attach surface (select carton photos → Link to a
- * PO item · Link as an aspect → reassign). It replaced the off-screen dock
- * popover — the attach grid lives in the rail, never a floating panel.
- */
+/** Photos leaf surfaces (`photoAction` nest). */
 export type UnboxPhotoAction = 'actions' | 'link' | 'move' | 'send' | 'compare';
 
 /** Photos nest surfaces — Actions (default) → Link · Move · Send → Compare. */
@@ -82,15 +39,7 @@ export const UNBOX_PHOTO_ACTION_ORDER = [
   'compare',
 ] as const satisfies readonly UnboxPhotoAction[];
 
-/**
- * Linkage leaf surfaces (`linkageAction` nest). Absent → armed Actions rows;
- * `link` · `return` · `note` are nest drill-downs (Photos twin).
- *
- * `return` is the shipped-order Return # search. It is a Linkage drill rather
- * than a lane inside `link` because the pairing VERBS live on the Linkage
- * actions list — the Link body is the avenue combobox + its search, and a
- * second search nested inside it is a search inside a search.
- */
+/** Linkage leaf surfaces (`linkageAction` nest). */
 export type UnboxLinkageAction = 'actions' | 'link' | 'return' | 'note';
 
 const UNBOX_LINKAGE_ACTION_ORDER = [
@@ -184,16 +133,7 @@ export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null
   return canonicalizeUnboxSideTab(raw);
 }
 
-/**
- * Resolve Displays open state + active leaf.
- *
- * - `null` → closed
- * - `index` → open on Root Index (`leaf: null`)
- * - leaf id → open on that leaf (gated-off falls back to first visible index leaf)
- * - unknown id (e.g. Displays-hosted `look`) → stay on the Root Index.
- *   Never treat an unknown id as a gated-off carton leaf — that used to dump
- *   Look onto Linkage, the first visible strip survivor.
- */
+/** Resolve Displays open state + active leaf. */
 export function resolveUnboxDisplayNav(
   requested: UnboxDisplayNav | null,
   gates: UnboxSideTabGates,
@@ -263,9 +203,6 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
     case 'tracking':
       return gates.hasTrackingTab;
     // Ticket · Photos · Prebox · Checklist — always on an open carton.
-    // Prebox is an Assets peer leaf (empty body when no serials — never gated off).
-    // Locations is a TOOL, not a beat of the carton's procedure — always
-    // reachable so the putaway pill's New location has somewhere to land.
     case 'ticket':
     case 'photos':
     case 'prebox':

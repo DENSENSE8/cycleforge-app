@@ -1,26 +1,4 @@
-/**
- * One order's money, broken down for the Selected-order column —
- * `GET /api/orders/[id]/price-breakdown`.
- *
- *   items      qty × unit price per ShipStation v1 line (adjustment lines apart)
- *   shipping   what the buyer paid for shipping (v1 `shippingAmount`)
- *   tax        v1 `taxAmount`
- *   total/paid v1 `orderTotal` / `amountPaid`
- *   labels     every live label on the order (all its rows of the same
- *              ShipStation order): shipment + insurance cost — the purchase
- *              ledger's cost for in-app buys, the persisted v1 shipment cost
- *              for ShipStation labels — split by purpose
- *   net        paid − tax − label costs. No marketplace fees: that data does
- *              not exist here, and the face says so.
- *
- * Money is summed in integer cents so `0.1 + 0.2` never reaches the screen.
- * Missing inputs are never invented: an unknown label cost is reported in
- * `gaps` and the net is flagged `incomplete`.
- *
- * Sources are persisted rows only — `shipstation_order_refs` /
- * `shipstation_shipment_refs` (the ShipStation connector writes them on every
- * sync) and `shipping_label_purchases`. Nothing here calls ShipStation.
- */
+/** One order's money, broken down for the Selected-order column — `GET /api/orders/[id]/price-breakdown`. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';

@@ -1,14 +1,4 @@
-/**
- * Amazon LWA (Login with Amazon) token exchange.
- *
- * SP-API auth is LWA-only (no AWS IAM/SigV4 since 2023-10-02). Two flows:
- *   - exchangeAuthCode()   : OAuth authorization-code → refresh token (Connect screen)
- *   - exchangeRefreshToken(): refresh token → 1-hour access token (every request)
- *
- * Token storage mirrors the eBay helper: encrypt at rest when INTEGRATION_KMS_KEY
- * is configured, otherwise store plaintext so the integration keeps working until
- * the key is provisioned. readAmazonToken() reads either form transparently.
- */
+/** Amazon LWA (Login with Amazon) token exchange. */
 import { normalizeEnvValue } from '@/lib/env-utils';
 import {
   decryptIntegrationPayload,

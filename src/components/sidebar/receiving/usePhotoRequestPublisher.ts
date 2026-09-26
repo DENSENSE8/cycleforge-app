@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Publishes a `receiving_photo_request` on `staffstation:{staffId}` so a phone
- * loaded on the same staff id auto-navigates to the photo capture page.
- *
- * Implicit pairing: the channel name is the gate — no claim flow required.
- * Extracted from ReceivingSidebarPanel; the scan flow calls the returned
- * publisher after a matched/unmatched carton resolves.
- *
- * Stage is required at the call site (Unbox → `unbox_carton`, Arrival →
- * `arrival_package`) — never hardcoded here. See
- * `photoStageForScanIntakeSurface`.
- */
+/** Publishes a `receiving_photo_request` on `staffstation:{staffId}` so a phone loaded on the same staff id auto-navigates to the photo… */
 
 import { useCallback } from 'react';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';

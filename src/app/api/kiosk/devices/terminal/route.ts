@@ -1,17 +1,4 @@
-/**
- * PATCH /api/kiosk/devices/terminal — pair a Square Terminal with a counter lane.
- *
- * Manager surface (`walk_in.enroll_kiosk`), beside enrolment, because it is the
- * same act: describing the physical counter. One iPad facing the customer, one
- * card reader beside it.
- *
- * Sending `null` CLEARS the pairing, which is a real configuration — a cash-only
- * lane — not an unset. `resolveTerminalDeviceId` treats a cleared lane as
- * standless and refuses, rather than falling back to the deployment env and
- * prompting a reader at another counter.
- *
- * Plan: `docs/todo/counter-square-enterprise-PLAN.md` (SQ3 · gap G3).
- */
+/** PATCH /api/kiosk/devices/terminal — pair a Square Terminal with a counter lane. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

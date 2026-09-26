@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * The pace-and-next panel's foot: **one door, to Home**.
- *
- * The panel previews what is next and how today is pacing; until now every exit
- * from it was the work order's own record, or nothing. This is the one control
- * that takes the operator to `/` — Home → Daily, the full surface for the shift
- * list and the day's report.
- *
- * ## It is a door, not a second Home
- *
- * Home is one route. This navigates there; it never mounts a mini-Home inside a
- * 290px popover, and it does not read `daily_check_items`. The panel's own rows
- * stay on `staff_todos` (personal, per-station) — the two checklist stores are
- * siblings answering different questions and neither writes the other.
- *
- * A `Link` rather than `<Button>` because the job is navigation: middle-click,
- * prefetch, and a real `href` all matter here. It wears `focusRing` and the
- * house tokens exactly as `NextWorkOrderRow` does — no page-local hue or radius.
- */
+/** The pace-and-next panel's foot: */
 
 import Link from 'next/link';
 import { Home, ChevronRight } from '@/components/Icons';

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Alert (new-york), restyled to house tokens.
- *
- * shadcn STRUCTURE (`cva` variants, the icon/title/description grid, `role`),
- * house COLOUR. Variants beyond upstream's default/destructive because
- * warehouse chrome states *conditions* — an unpaired SKU is a warning, a
- * completed pairing is a success — and colour alone never carries the message
- * (callers pass a glyph, and the text says it too).
- *
- * No animation: an alert appears or it does not (AGENTS.md motion law).
- */
+/** shadcn/ui Alert (new-york), restyled to house tokens. */
 
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';

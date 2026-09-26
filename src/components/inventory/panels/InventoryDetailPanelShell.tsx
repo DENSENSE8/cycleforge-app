@@ -17,25 +17,12 @@ export interface InventoryDetailPanelShellProps {
     onClose?: () => void;
     /** When false, hides the up/down nav arrows in the header. */
     showNavigation?: boolean;
-    /**
-     * `'default'` (legacy inline overlay) renders the hero-title header + Escape /
-     * nav keydown. `'bare'` renders ONLY the body — no header, no key handlers —
-     * for a host that owns its own chrome (the `RightRailHost` push inspector,
-     * whose `DeskRailChromeRow` provides close and whose `useEscapeClose` owns
-     * Escape). Default keeps every existing consumer unchanged.
-     */
+    /** `'default'` (legacy inline overlay) renders the hero-title header + Escape / nav keydown. */
     chrome?: 'default' | 'bare';
     children: React.ReactNode;
 }
 
-/**
- * Inline container shared by all inventory detail panels.
- *
- * Phase 2 mounted this as a fixed right-side slide-in. Phase 5b refactors
- * to render as the *main* right-pane content — the panel now fills its
- * parent and uses normal flex flow. The previous overlay behavior is gone:
- * detail content is the primary view, not a slide-over.
- */
+/** Inline container shared by all inventory detail panels. */
 export function InventoryDetailPanelShell({
     title,
     subtitle,

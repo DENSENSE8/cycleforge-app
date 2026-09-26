@@ -1,28 +1,4 @@
-/**
- * ingest-purchase — the ONE UPSERT that lands an external purchase onto the
- * Incoming spine, shared by the Phase 2 manual bridge import AND the Phase 3 API
- * sync (so bridge rows and API rows are byte-identical and upgrade in place).
- *
- * Plan: docs/incoming-universal-purchase-orders-plan.md §5.1 (Track B bridge), §5.3.
- *
- * This is HOW a purchasing account links to the Incoming display:
- *   buyer eBay account  →  ebay_accounts(account_role='buyer')
- *                       →  platform_accounts (integration_scope = account label)
- *   ingestPurchase()    →  resolves that platform_account_id
- *                       →  finds/creates ONE receiving_lines spine row (EXPECTED)
- *                       →  primary inbound_purchase_order_links (is_primary, the
- *                          account id) + ebay_purchase facts + reconcile mirror
- * so `/receiving?mode=incoming` shows the row with the eBay source badge and the
- * buyer account chip (rl.platform_account_id → platform_accounts join, §6.3).
- *
- * Idempotent: a re-import of the same (source, order, line) targets the SAME spine
- * row (the link natural key), and a per-(org,source,order) advisory lock serializes
- * concurrent imports so a first-time order can't create two spine rows.
- *
- * Deps-injected (default real impls) so unit tests run DB-free — the sub-writers
- * (upsertPurchaseLink / upsertInboundMirror) are injected and run on the SAME
- * transaction client, keeping the whole ingest atomic.
- */
+/** ingest-purchase — the ONE UPSERT that lands an external purchase onto the Incoming spine, shared by the Phase 2 manual bridge import AND… */
 
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -207,10 +183,7 @@ export async function ingestPurchase(
     const listingUrl = input.listingUrl?.trim() || null;
 
     if (receivingLineId == null) {
-      // Create the pre-physical EXPECTED spine row (receiving_id NULL — no carton
-      // scanned yet, same shape as a Zoho PO pre-staging line). The zoho/testing
-      // clusters moved off the spine (W3): a marketplace line has no rz row, and
-      // condition_grade lands on receiving_line_testing below.
+      // Create the pre-physical EXPECTED spine row (receiving_id NULL — no carton scanned yet, same shape as a Zoho PO pre-staging line).
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO receiving_line (
            receiving_id, sku, item_name, sku_catalog_id, listing_url,
@@ -241,11 +214,7 @@ export async function ingestPurchase(
       );
       receivingLineId = inserted.rows[0].id;
 
-      // BIRTH INVARIANT: every receiving_line birth creates its 1:1
-      // receiving_line_testing row in the same transaction, with the explicit
-      // values the birth used to set on the spine. An eBay purchase carries the
-      // buyer-declared condition grade; it is not bench-test routed at intake
-      // (needs_test false — the spine birth never set it).
+      // BIRTH INVARIANT:
       await deps.upsertReceivingLineTesting(
         orgId,
         receivingLineId,

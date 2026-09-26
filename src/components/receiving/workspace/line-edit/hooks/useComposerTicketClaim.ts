@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * The claim, headless, for the station composer's Ticket tab.
- *
- * Before this, filing a claim meant a separate form — subject field, body
- * field, its own File footer — mounted above the composer while the composer
- * sat there with a disabled Enter and a placeholder pointing UP at that form
- * ("Create or link a ticket above"). Two text surfaces, one message.
- *
- * Now the composer IS the claim on an unlinked carton (operator ruling,
- * 2026-08-30): the textarea holds the template BODY, the subject rides above it
- * in the dock's own inset, and Enter files the ticket. There is no second
- * editor, which is what {@link OmnichannelComposerDock}'s one-composer law asks
- * for anyway.
- *
- * Linked carton → this goes quiet (`isClaim` false) and the composer keeps its
- * reply path. Nothing here fetches or fires in that case.
- */
+/** The claim, headless, for the station composer's Ticket tab. */
 
 import { useCallback, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
@@ -174,15 +158,7 @@ export function useComposerTicketClaim({
     onTicketCreated,
   ]);
 
-  /**
-   * Test create — the same POST with `dryRun`, which assembles the subject and
-   * body and BUILDS THE SHARE PACK but creates no ticket.
-   *
-   * The result replaces the composer draft, deliberately: the thing under test
-   * is what the vendor will actually read, so the way to check it is to put it
-   * in the field the operator is already looking at — pack link folded in, one
-   * message. Nothing is filed, so the draft is safe to overwrite.
-   */
+  /** Test create — the same POST with `dryRun`, which assembles the subject and body and BUILDS THE SHARE PACK but creates no ticket. */
   const testCreate = useCallback(() => {
     if (!isClaim || testing || receivingId == null) return;
     setTesting(true);

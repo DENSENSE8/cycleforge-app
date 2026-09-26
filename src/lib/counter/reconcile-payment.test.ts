@@ -1,14 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/reconcile-payment.test.ts
- *
- * SQ1 of `docs/todo/counter-square-enterprise-PLAN.md`.
- *
- * The two rules worth breaking a build over: a settled visit never walks
- * backwards on a webhook redelivery, and an order that belongs to no counter
- * visit is a normal outcome rather than a failure — because the caller is a
- * webhook whose other work must survive it.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/reconcile-payment.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Unbox Middle region while a carton line workspace is open.
- *
- * Registers `⌘;` → `m` → letter targets for scan focus · ledger steps · dock
- * CTA · Print/Receive. Band 3 browse (`UnboxWorkspaceHeader`) nulls Middle
- * while this hook is live — one Middle owner at a time.
- */
+/** Unbox Middle region while a carton line workspace is open. */
 
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { emitReceiving } from '@/components/receiving/receiving-events';

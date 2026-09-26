@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Inventory › Locations › Totes — bulk `H-{id}` plate runs from the desk.
- *
- * Consumes the `/m/print` tote SoT ({@link TotePrintRunFields}): New vs
- * Reprint, tote-count slider, copies left of Print. Total = totes × copies.
- *
- * Callers: LocationsWorkspace `?tab=totes`.
- */
+/** Inventory › Locations › Totes — bulk `H-{id}` plate runs from the desk. */
 
 import { useCallback, useMemo, useState } from 'react';
 import {

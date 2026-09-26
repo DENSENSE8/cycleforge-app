@@ -6,43 +6,7 @@ import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import { useReceivingPhotosRealtimeRefresh } from '@/hooks/useReceivingPhotosRealtimeRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 
-/**
- * One carton's photos, from `GET /api/receiving-photos`.
- *
- * ## Why this exists
- *
- * Three implementations used to query this endpoint on three different cache
- * keys: `ReceivingPhotosSection`'s inline `useQuery` on
- * `['receiving-photos', <STRING id>]`, `useReceivingPhotoCount`'s private query
- * on `receivingPhotosQueryKey(<NUMBER id>)`, and `useScopedReceivingPhotos` on a
- * three-element scope key. The first two are the same question asked twice, and
- * because `"1234" !== 1234` they were two cache entries — so a delete that
- * patched one left the other showing a photo that no longer existed, and any
- * surface mounting both fetched the same rows twice.
- *
- * This hook is the carton-scoped answer, keyed through the shared
- * {@link receivingPhotosQueryKey} (number), so it shares one cache entry with
- * the camera badge and the progress stepper's stage counts.
- *
- * `useScopedReceivingPhotos` is deliberately NOT folded in: its key encodes a
- * different question (PO vs line vs all scope) and it owns a delete path.
- *
- * ## The payload shape is load-bearing
- *
- * Entries under this key store the RAW `{ photos }` envelope, because
- * `useReceivingPhotoCount` reads `data.photos` and
- * `invalidateReceivingPhotoCaches` patches `old.photos`. Storing a bare array
- * here would silently zero the camera badge.
- *
- * ## Errors always throw
- *
- * The fetch never swallows a failure into an empty list, whatever `readOnly`
- * says. Two observers on one key can each be the one that runs the queryFn, so a
- * queryFn whose error behaviour depended on its caller would give the OTHER
- * caller whichever semantics happened to win the race. Read surfaces branch on
- * `isError` at render time instead — an outage must never read as "no evidence
- * exists".
- */
+/** One carton's photos, from `GET /api/receiving-photos`. */
 export interface ReceivingPhotoRow {
   id: number;
   receivingId: number | null;

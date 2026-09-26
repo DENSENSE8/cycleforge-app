@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * The rows that sit at the TOP of the ticket composer, inside the outline.
- *
- *   ┌──────────────────────────────────────────┐
- *   │ @ Cc  cc@… [type email…]  ← Public only   │
- *   │ [📷 staged thumbs]                        │
- *   │  Message…                                 │
- *   │ [+] [Internal │ Public]     [↵ File ticket]│
- *   └──────────────────────────────────────────┘
- *
- * Recipients and attachments DESCRIBE the message, so they sit above the text
- * they apply to. The channel is something you DO to the draft, so it lives on
- * the action bar beside `+` ({@link ComposerTicketChannelToggle}) — operator
- * ruling, 2026-08-30.
- *
- * The subject does NOT live here. A title slice at the top of the dock made the
- * composer read as a form, and it duplicated the title the ticket display
- * already carries. It moved into the display's own scroll port on 2026-08-31
- * (operator ruling) — one title, in the thread, scrolled to like any other
- * part of the record.
- *
- * There is no attached-context chip row. Product / “what happened” chips were
- * removed from `+` the same day, so nothing can create one.
- *
- * Nothing here animates. Switching to Public shows the Cc row instantly;
- * tweening its height would push the draft out from under the caret.
- *
- * It renders NOTHING when there is nothing to say — an internal note with no
- * staged photos gets the full field, not an empty rule above it.
- */
+/** The rows that sit at the TOP of the ticket composer, inside the outline. */
 
 import type { ReactNode } from 'react';
 import { ComposerTicketCcStrip } from './ComposerTicketCcStrip';

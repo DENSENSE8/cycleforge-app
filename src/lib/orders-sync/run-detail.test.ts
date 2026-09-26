@@ -1,10 +1,4 @@
-/**
- *   npx tsx --test src/lib/orders-sync/run-detail.test.ts
- *
- * The run's per-row answer to "which ones?". The cases that matter are the ones
- * that mislead an operator when they are wrong: work-to-do must sort above
- * good news, and a run with no detail must read as empty, not broken.
- */
+/** npx tsx --test src/lib/orders-sync/run-detail.test.ts */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

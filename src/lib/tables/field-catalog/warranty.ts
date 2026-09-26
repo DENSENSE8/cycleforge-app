@@ -1,34 +1,4 @@
-/**
- * Warranty field catalog — the bindable claim facts, as DATA. Wave 1.4's third
- * family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `warranty` row:
- * "claim/serial/status. Structural action track stays a capability, not an org
- * column.").
- *
- * Every entry names a fact `WarrantyClaimListRow` already carries. Resolution
- * is `./warranty-resolve.ts`, kept separate so this module stays a LEAF.
- *
- * Warranty is a SHEET morph. `warranty.claim` is the IDENTITY fact — the claim
- * number, which the structural Claim track paints (the same shape pickup uses,
- * where `pickup.order` is identity and the Order track is structural). It is
- * therefore NOT in the status band: the slot write gate counts identity toward
- * duplicate bindings, and a fact cannot be both the row's handle and one of its
- * columns.
- *
- * ## The support ticket: the CONTROL stays, the FACT is bindable
- *
- * The `ticket` TRACK is an ACTION, not a fact — a row-scoped control a staffer
- * must never be able to hide and then wonder where it went. It stays in the
- * structural skeleton and is not offered in Fields, exactly as Ready's
- * Stage-FBA escape and Receiving's `actions` track are.
- *
- * WHETHER a claim has a linked ticket is a different thing, and it IS a fact
- * the row already carries (`zendeskTicketId`). It is in the catalog below,
- * unbound: an org that triages on "which claims have gone to support" binds it
- * and gets a column; the button beside it never moves. Removing a control and
- * making its subject bindable are opposite operations, and the port does the
- * second one only.
- */
+/** Warranty field catalog — the bindable claim facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -101,15 +71,7 @@ export const WARRANTY_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default warranty layout — visual parity with the retired hand
- * model's CORE view (`select · title · claim · customer · status · warranty ·
- * logged · ticket`): the five questions a support operator on a phone call
- * actually asks — what is it, which claim, whose is it, what state is it in,
- * how much cover is left, and when was it logged. `warranty.serial` stays in
- * the catalog unbound.
- * Guard: `warranty.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default warranty layout — visual parity with the retired hand model's CORE view (`select · title · claim · customer · status… */
 export const WARRANTY_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'warranty.claim',

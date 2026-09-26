@@ -1,14 +1,4 @@
-/**
- * Yield the main thread so the browser can handle pending input (INP).
- *
- * Warehouse wedges fire the next keydown within ~8–20ms of the previous
- * commit. If we stay on the keydown stack to run React work, that next
- * keystroke is delayed and INP goes red. `scheduler.yield()` (when present)
- * is the platform primitive; MessageChannel is the portable macrotask
- * fallback. `queueMicrotask` is NOT a yield — it stays in the same task.
- *
- * Inject `deps` in tests. Production callers use the default.
- */
+/** Yield the main thread so the browser can handle pending input (INP). */
 
 export interface YieldToInputDeps {
   /** Override `scheduler.yield`. `null` forces the macrotask fallback. */

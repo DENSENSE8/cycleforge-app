@@ -9,12 +9,7 @@ import type {
   TicketLinkTimelineRow,
 } from '@/lib/timeline';
 
-/**
- * Pure, DB-free helpers + types for the Master Operations Journey. Split out from
- * `journey.ts` (which holds the `server-only` DB readers) so the cursor codec,
- * station mapping, source pruning, and browse-SQL builder are unit-testable
- * without pulling the pg pool. Re-exported from `journey.ts`.
- */
+/** Pure, DB-free helpers + types for the Master Operations Journey. */
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -88,13 +83,7 @@ export interface JourneyCursor {
   id: number;
 }
 
-/**
- * Per-serial provenance facts for the journey's serial-grouped "By unit" view —
- * the band header card (SKU · grade · status · originating PO). Resolved once
- * per entity lookup ({@link EntityAnchors}); the timeline rows themselves stay
- * lean. PO comes from `serial_units.origin_receiving_line_id →
- * receiving_lines.zoho_purchaseorder_number`.
- */
+/** Per-serial provenance facts for the journey's serial-grouped "By unit" view — the band header card (SKU · grade · status · originating PO). */
 export interface SerialProvenance {
   serialUnitId: number;
   serial: string;
@@ -235,20 +224,8 @@ export function resolveSources(filters: JourneyFilters): JourneySource[] {
 }
 
 /**
- * Audit-spine access gate for BROWSE mode (Operations History Consolidation
- * plan Decision §3.2, Option B). The `audit` spine carries field-level
- * before/after edits, so browsing it is admin-only. Given the parsed `?sources=`
- * request (`undefined` = "all spines") and whether the caller holds
- * `admin.view_logs`:
- *   - admin → pass the request through untouched (`undefined` still means all).
- *   - non-admin who EXPLICITLY asked for the audit spine → `forbidden` (the
- *     route turns this into a 403; they requested a spine they can't read).
- *   - non-admin otherwise → the audit spine is silently dropped, so a default
- *     browse degrades to SAL / inventory / carrier / warranty rather than 403ing.
- *
+ * Audit-spine access gate for BROWSE mode (Operations History Consolidation plan Decision §3.2, Option B).
  * Pure (no DB, no request object) so the security-sensitive decision is
- * unit-tested rather than reachable only through a live route. Applies to
- * BROWSE only; entity/Trace mode is unchanged in this phase.
  */
 export function resolveBrowseSources(
   requested: JourneySource[] | undefined,
@@ -261,18 +238,8 @@ export function resolveBrowseSources(
 }
 
 /**
- * Redact the field-level audit diff for callers without `admin.view_logs`
- * (Operations History plan §3.2 Option B). Audit rows carry a `before_data`
- * snapshot; nulling it means the client-side `diffChanges` (which needs BOTH
- * before and after) produces no change list, so no field VALUE — before or
- * after — is exposed. The audit ROW itself (title/actor/time) is kept, so a
- * non-admin still sees that an edit happened, just not what changed.
- *
- * Pure (returns new objects, never mutates input) so it's unit-tested and the
+ * Redact the field-level audit diff for callers without `admin.view_logs` (Operations History plan §3.2 Option B).
  * security decision lives in one place the route calls for BOTH modes. In
- * browse the audit spine is already dropped for non-admins upstream
- * (`resolveBrowseSources`), so this is a redundant-but-cheap backstop there and
- * the real gate for entity/Trace mode.
  */
 export function redactAuditDiffs(events: JourneyEvent[], canViewAudit: boolean): JourneyEvent[] {
   if (canViewAudit) return events;

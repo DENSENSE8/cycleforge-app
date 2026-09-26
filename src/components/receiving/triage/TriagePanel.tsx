@@ -1,47 +1,6 @@
 'use client';
 
-/**
- * TriagePanel — the standalone right-pane editor for the **Receiving (Arrival /
- * triage)** mode: the fast "identify the carton before unbox" pass.
- *
- * Station column anatomy (Arrival port of the Unbox golden — see
- * `display/station-port-from-unbox.md`):
- *   - CENTRE is the door flow and NOTHING else — identity
- *     ({@link StationContextBar} `placement="flow"`) → one sunken door-flow plane
- *     (`DISPLAYS_FLUSH_HOST` + `STATION_SCAN_WELL_CLASS`) holding PO /
- *     unfound **items** (no units chrome). Identity abuts items with zero air
- *     (`reserveIdentityClearance={false}`, `bodyGap="none"`). Nothing stacks
- *     under the items: the centre `TriageClassifySection` and the Staging
- *     control are both deleted (2026-08-20). **Classify is the identity
- *     header's pills and only those** — one surface for urgency · platform ·
- *     type, at the top, never a second copy in the middle. No advisory strip,
- *     no Omnichannel notes float.
- *   - **Staging is Displays-only.** Shelf + lane come from
- *     {@link ArrivalLocationsLeaf} on the right edge, whose `selectShelf`
- *     auto-routes the lane (`resolveTriageLane`) — so one placement satisfies
- *     BOTH fields `completeTriage` gates Save-for-unbox on. That gate is
- *     untouched; the control moved, the requirement did not.
- *   - The bottom **dock** is Unbox flush geometry: dogfood strip =
- *     Save-for-unbox (`data-arrival-dogfood-terminal`); Band 1 = ONE carton-note
- *     entry ({@link ArrivalCartonNotesEntry} → `receiving.support_notes`),
- *     mirroring the Unbox dock; Band 2 = quiet "Note" pager cell. No scan cell
- *     and no focus target here — the wedge stays the sidebar ingest bar's.
- *   - Ticket + Pairing/Linkage are the right-edge **Displays** push
- *     ({@link StationDisplaysPushStack} + {@link buildTriageDisplayTabs}),
- *     never a centre `SectionTabsSlider` strip. Ticket create/link/chat uses
- *     {@link TicketDisplayHost} (Unbox grain); Pairing hosts Store · PO.
- *   - {@link ScanStationUtilityRail} (slim white trailing chrome) carries the
- *     **carton cursor** (`↑` / `↓`) at the top and, when Displays is closed, the
- *     **`←|` Open displays** toggle in the **bottom** footer (left-dock twin).
- *     That control lands the Root Index (2+ displays). Contextual opens
- *     (PO chip → Pairing, Find ticket → Ticket) skip the index. Not carton
- *     identity — a separate scan-station rail.
- *
- * The `# ----`
- * PO chip opens the Linkage display and hands the PO avenue over as DATA
- * (`setPairingFocus` → the hub's `focusTab`), read on mount — never a timed
- * event (mirrors Unbox).
- */
+/** TriagePanel — the standalone right-pane editor for the **Receiving (Arrival / triage)** mode: */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -233,10 +192,7 @@ export function TriagePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset per carton open
   }, [row.id]);
 
-  // On open, tell the operator when there is nothing left to do — the carton is
-  // already staged. Displays open on demand (`←|` index / PO chip / Find ticket /
-  // Macro floor Edit); Staging is the Locations display; Classify is the identity
-  // header. The centre is items only.
+  // On open, tell the operator when there is nothing left to do — the carton is already staged.
   useEffect(() => {
     const facts = deriveTriageFocusFacts(
       row,
@@ -426,10 +382,7 @@ export function TriagePanel({
                     staffId={staffId}
                     c={c}
                     expandClassifyWhenPending={false}
-                    // Classify (urgency · platform · type) lives HERE, on the
-                    // identity header, and nowhere else on this station. The
-                    // stacked centre `TriageClassifySection` under the items is
-                    // deleted — one classify surface, at the top, not two.
+                    // Classify (urgency · platform · type) lives HERE, on the identity header, and nowhere else on this station.
                     showClassifyControls
                     classifyInteractive
                     onEditPo={openPoPairing}
@@ -466,11 +419,7 @@ export function TriagePanel({
                   />
                 }
                 dock={
-                  // The Unbox floor, exactly: one raised WorkspaceNotesCard with
-                  // the station terminal on its trailing edge. Same component,
-                  // same geometry, same Enter-to-send grammar as
-                  // `LineEditPanel` — Arrival differs only in the note's grain
-                  // (carton) and the CTA's verb (Save for unbox).
+                  // The Unbox floor, exactly:
                   <div
                     className={slicedActionDockWrapperClass({ docked: false })}
                     data-arrival-dock-float
@@ -509,12 +458,7 @@ export function TriagePanel({
                     <POUnboxingSection
                       row={row}
                       staffId={staffId}
-                      // Door-flow items: matched → PoLinesAccordion; unfound →
-                      // interactive UnmatchedAccordionSurface without units
-                      // editors (no serial stamp / Units). Meta still paints
-                      // Unbox five-track PoLineRow. No "Open in unbox" — save
-                      // for unbox from the dock. Suppress the "PO items · N"
-                      // eyebrow — identity abuts the lines.
+                      // Door-flow items:
                       suppressItemsHeader
                       poItems
                       matching
@@ -524,12 +468,7 @@ export function TriagePanel({
                       unitsChrome={false}
                       c={c}
                     />
-                    {/* Nothing stacks under the items. Shelf + lane left the
-                        centre 2026-08-20 for the Locations display
-                        (ArrivalLocationsLeaf): its `selectShelf` auto-routes the
-                        lane, so one placement still satisfies both fields
-                        completeTriage gates Save-for-unbox on — the gate is
-                        untouched, only its control moved. */}
+                    {/* Nothing stacks under the items. */}
                   </div>
                 </div>
               </StationWorkbench>

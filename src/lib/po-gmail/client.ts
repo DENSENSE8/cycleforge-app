@@ -1,24 +1,4 @@
-/**
- * PO Gmail mailbox — auth plumbing only.
- *
- * Token home is DUAL-READ, VAULT-PREFERRED during the integrations-as-SoT
- * migration:
- *   1. organization_integrations (provider='gmail', GmailCredentials) — the
- *      vault row written by the oauth-callback dual-write. When present it is
- *      the source of truth: refresh uses the row's clientId/clientSecret,
- *      refreshed access tokens persist back via upsertIntegrationCredentials,
- *      and invalid_grant flags the row via markIntegrationError.
- *   2. google_oauth_tokens (provider='po_gmail') — the legacy global-singleton
- *      row (plaintext refresh_token, needs_reconnect flags). Read only when NO
- *      vault row exists; behavior on this path is unchanged (USAV-only).
- *
- * Exposes:
- *   - getAccessToken(): refreshes when expired, persists the new token
- *   - poGmailFetch(): Bearer-authed wrapper around fetch() for Gmail API
- *
- * Gmail-specific helpers (list messages, modify labels, etc.) live in
- * messages.ts — this module is auth only.
- */
+/** PO Gmail mailbox — auth plumbing only. */
 
 import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
@@ -39,13 +19,7 @@ export const PO_GMAIL_SCOPE = [
 
 const PROVIDER = 'po_gmail';
 
-/**
- * Thrown when the PO mailbox can't be reached because it's not connected or its
- * Google refresh token was revoked/expired (invalid_grant — Google rotates
- * test-mode refresh tokens ~weekly). Callers map this to a 409 with a reconnect
- * prompt instead of an opaque 500, so the operator knows the fix is "reconnect
- * at Admin → PO Mailbox", not "retry".
- */
+/** Thrown when the PO mailbox can't be reached because it's not connected or its Google refresh token was revoked/expired (invalid_grant —… */
 export class PoGmailNotConnectedError extends Error {
   constructor(message: string, public readonly needsReconnect: boolean) {
     super(message);
@@ -53,15 +27,7 @@ export class PoGmailNotConnectedError extends Error {
   }
 }
 
-/**
- * Thrown when a tenant OTHER than USAV tries to read or refresh the PO
- * mailbox token. The `google_oauth_tokens` row is a global singleton
- * (provider='po_gmail', no organization_id column) belonging to USAV's
- * connected mailbox — there is intentionally one mailbox, not one per org.
- * This guard makes that ownership explicit so a non-USAV tenant can never
- * touch USAV's credentials, even though the table itself can't isolate rows
- * by org.
- */
+/** Thrown when a tenant OTHER than USAV tries to read or refresh the PO mailbox token. */
 export class PoGmailWrongTenantError extends Error {
   constructor() {
     super('PO mailbox is not configured for this workspace');
@@ -69,12 +35,7 @@ export class PoGmailWrongTenantError extends Error {
   }
 }
 
-/**
- * Singleton-mailbox tenant guard. The PO Gmail token has no organization_id
- * column, so RLS can't fence it — instead every token accessor takes an
- * `orgId` (defaulting to USAV's) and asserts it through here. Any non-USAV
- * org throws before a single byte of the token is read or refreshed.
- */
+/** Singleton-mailbox tenant guard. */
 export function assertDogfoodMailbox(orgId: string): void {
   if (orgId !== DOGFOOD_ORG_ID) {
     throw new PoGmailWrongTenantError();
@@ -82,20 +43,8 @@ export function assertDogfoodMailbox(orgId: string): void {
 }
 
 /**
- * Soft, non-throwing companion to {@link assertDogfoodMailbox}. The PO Gmail
- * mailbox is a global singleton owned by USAV (see {@link PoGmailWrongTenantError}),
- * so it is only ever "available" to USAV today.
- *
- * Route handlers should call this FIRST and, when it returns false, short-circuit
- * with a clean "not configured for this org" result (empty list / `{ configured:
- * false }`) BEFORE invoking any token-touching function (`getAccessToken`,
- * `poGmailFetch`, …). Those functions still hard-guard via `assertDogfoodMailbox`,
+ * Soft, non-throwing companion to {@link assertDogfoodMailbox}.
  * so security is unchanged — this predicate just lets callers degrade gracefully
- * instead of catching a thrown `PoGmailWrongTenantError`.
- *
- * Note: this answers "is the PO mailbox feature available to this org at all",
- * NOT "is a mailbox currently connected" (that's a token-row read gated by the
- * hard guard). A non-USAV org is never available regardless of connection state.
  */
 export function isPoGmailAvailableForOrg(orgId: string): boolean {
   return orgId === DOGFOOD_ORG_ID;
@@ -113,13 +62,7 @@ async function loadVaultCreds(orgId: string): Promise<GmailCredentials | null> {
   return creds?.refreshToken ? creds : null;
 }
 
-/**
- * Access token off the vault row: reuse the stored short-lived token when
- * fresh, otherwise refresh with the row's own clientId/clientSecret (falling
- * back to the app-level PO_GMAIL_* env pair) and persist the new
- * accessToken/expiresAt back into the vault. invalid_grant (400/401) marks
- * the row status='error' so the admin/settings UI surfaces a reconnect prompt.
- */
+/** Access token off the vault row: */
 async function getAccessTokenFromVault(orgId: string, creds: GmailCredentials): Promise<string> {
   const now = Date.now();
   if (creds.accessToken && creds.expiresAt && creds.expiresAt > now + 30_000) {

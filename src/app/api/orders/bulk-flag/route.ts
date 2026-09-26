@@ -8,19 +8,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import pool from '@/lib/db';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 
-/**
- * Set or clear the triage flag on many orders at once — the multi-select action
- * plane (`ContextualSelectionBar`).
- *
- * A real bulk route rather than N per-row PUTs: one value onto N rows is the
- * one case that genuinely IS a single mutation (`display/workbench.md` → Bulk ≠
- * a batch-edit panel), and fanning 50 selected rows into 50 requests would put
- * 50 audit rows and 50 round trips behind one operator gesture.
- *
- * Ids the org does not own are dropped, not fatal — the response reports what
- * actually changed so the client reconciles against truth rather than assuming
- * its selection was still current.
- */
+/** Set or clear the triage flag on many orders at once — the multi-select action plane (`ContextualSelectionBar`). */
 
 const BulkFlagBody = z.object({
   orderIds: z.array(z.number().int().positive()).min(1).max(500),

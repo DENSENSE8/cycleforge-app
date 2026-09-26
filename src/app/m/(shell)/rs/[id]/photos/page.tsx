@@ -41,15 +41,7 @@ const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm';
 /** Dock verbs: idle (select / video / photo) or, while selecting, the two send targets. */
 type PhotoVerb = 'select' | 'video' | 'photo' | TicketThreadVisibility;
 
-/**
- * `/m/rs/[id]/photos` — the repair's evidence photos and videos. Grid + full-screen
- * viewer (videos play inline); **Take photo** uploads through `/api/photos/upload`
- * (entity `REPAIR_SERVICE`) and refetches; **Add video** records and uploads
- * through the same entity routing (`/api/photos/upload/video`, direct to
- * storage, then finalize); **Select to send** hands the chosen photos
- * to the linked ticket thread staged as a Public reply or Internal note —
- * the thread's composer sends, this screen never does.
- */
+/** `/m/rs/[id]/photos` — the repair's evidence photos and videos. */
 function RepairPhotosInner() {
   const params = useParams<{ id: string }>();
   const repairId = Number(params?.id);

@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * ReceivingPhotoPeek — data/realtime wrapper around the presentational
- * {@link PhotoPeekFan}. Feeds it the carton's capture photos and keeps them live
- * over Ably (`useReceivingPhotosRealtimeRefresh`: phone-bridge
- * `receiving_photo_uploaded` + station `receiving-photo.changed`), so the newest
- * shot swaps in the instant it lands on mobile. In-flight shutters arrive as
- * `receiving_photo_taken` count bumps and render as pending placeholders until
- * each upload commits.
- *
- * `?photoPeekDemo=1` on the unbox URL swaps in stock images (and stages "live"
- * arrivals) so the peek can be previewed on any open carton without real NAS
- * photos. The gesture/visuals all live in PhotoPeekFan.
- */
+/** ReceivingPhotoPeek — data/realtime wrapper around the presentational {@link PhotoPeekFan}. */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';

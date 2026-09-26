@@ -1,13 +1,4 @@
-/**
- * POST /api/receiving/disposition-suggest
- *
- * Suggest a disposition code (ACCEPT/HOLD/RTV/SCRAP/REWORK) from the QA
- * outcome + condition grade + tester notes (roadmap B3). Suggestion only —
- * the operator confirms or overrides before it's written to the line.
- *
- * Body: { qaStatus?, conditionGrade?, notes? }
- * Returns: { success, dispositionCode, confidence, model }
- */
+/** POST /api/receiving/disposition-suggest */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';

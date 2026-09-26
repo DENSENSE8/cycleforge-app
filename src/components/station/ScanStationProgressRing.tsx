@@ -9,16 +9,7 @@ const PROGRESS_STROKE = '#94A3B8';
 /** Selected face — stronger ink when checklist (or peer) display is live. */
 const PROGRESS_STROKE_SELECTED = '#334155';
 
-/**
- * Scan-station procedure progress ring — the same SVG face as house icons
- * (`viewBox="0 0 24 24"`, sized by `className`, no wrapping pixel box).
- *
- * A sized `<div>` + a rotated inner SVG sits on a different alignment than
- * `PackageOpen` (`<svg className="h-3.5 w-3.5">`), which is why the composer
- * ring used to float above Unbox even when both claimed `items-center`.
- *
- * Not {@link GoalRing}: that chip owns daily goal pace in GlobalHeader.
- */
+/** Scan-station procedure progress ring — the same SVG face as house icons (`viewBox="0 0 24 24"`, sized by `className`, no wrapping pixel… */
 export function ScanStationProgressRing({
   percent,
   tone = 'idle',

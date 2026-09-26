@@ -1,16 +1,4 @@
-/**
- * GET /api/auth/session
- *
- * Returns the current user envelope used by AuthContext on the client.
- * Always 200 — `user: null` if no session. Never throws.
- *
- * When the resolved user is null, attaches an `x-auth-debug` response header
- * (and logs a single line server-side) with the *reason* — one of:
- *   no-cookie · sid-malformed · no-row · revoked · expired ·
- *   idle-timed-out · db-error · no-staff-row
- * Use this to tell apart "the user never signed in" from "their session was
- * idle-killed" when a reload unexpectedly bounces them to /signin.
- */
+/** GET /api/auth/session */
 
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -53,11 +41,7 @@ export async function GET() {
       { user: null, debug: reason },
       { headers: { 'cache-control': 'no-store', 'x-auth-debug': reason } },
     );
-    // Critical: if the cookie was present but the session it points to is
-    // invalid (revoked / expired / idle-killed / no-row), clear the cookie
-    // so the next reload triggers the proxy's no-cookie redirect to /signin.
-    // Without this the zombie cookie keeps the page rendering forever and
-    // the user has to manually clear cookies to get unstuck.
+    // Critical: if the cookie was present but the session it points to is invalid (revoked / expired / idle-killed / no-row), clear the cookie…
     if (sid && reason !== 'no-cookie') {
       res.cookies.set(SESSION_COOKIE_NAME, '', {
         httpOnly: true,
@@ -71,11 +55,7 @@ export async function GET() {
     return res;
   }
 
-  // Resolve the full user envelope from the DB (roles + overrides). This
-  // path matches what withAuth uses for every authenticated request, so the
-  // client's `useAuth().has(perm)` and the server's permission gate now
-  // see the same set of permissions — no more drift between
-  // client-rendered UI and server-enforced API.
+  // Resolve the full user envelope from the DB (roles + overrides).
   const user = await getCurrentUserBySid(session.sid);
   if (!user || user.role === 'unknown') {
     console.warn(
@@ -92,10 +72,7 @@ export async function GET() {
   // pushes it forward ~1 year on every heartbeat.
   const slidExpiresAt = (await touchSession(session.sid)) ?? session.expiresAt;
 
-  // Resolve the active tenant's display identity so the client can show which
-  // workspace the user is in (a passive multi-tenant safety signal). Cheap:
-  // getOrganization() is cached in-process for 30s. Best-effort — a lookup
-  // miss must never break session hydration.
+  // Resolve the active tenant's display identity so the client can show which workspace the user is in (a passive multi-tenant safety signal).
   const org = await getOrganization(user.organizationId).catch(() => null);
 
   // All workspaces this account can act in. Best-effort + always ≥1 entry
@@ -135,11 +112,7 @@ export async function GET() {
     { headers: { 'cache-control': 'no-store', 'x-auth-debug': 'ok' } },
   );
 
-  // Re-issue the cookie so the browser's max-age tracks the live session
-  // expiry. Without this the cookie's expiry is frozen at sign-in, so a
-  // persistent (sliding) session still gets dropped by the browser when the
-  // original max-age elapses — the "have to sign back in every day / after
-  // closing the lid" symptom. Setting it every heartbeat keeps the two in sync.
+  // Re-issue the cookie so the browser's max-age tracks the live session expiry.
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

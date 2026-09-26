@@ -1,18 +1,4 @@
-/**
- * SlotLayout — the strict WRITE gate (zod).
- *
- * Types, budgets and the tolerant read path live zod-free in
- * `slot-layout-core.ts` (bundle-weight split — see that file's docblock).
- * This module owns what only a trust boundary needs:
- *
- * - {@link slotLayoutSchema} — structural strict schema, embedded by the
- *   staff-preferences PUT schema and the org-layout route body.
- * - {@link parseSlotLayout} — schema + catalog refinements. An editor saves a
- *   whole valid document or nothing: unknown fields, over-budget arrays,
- *   bindings a field's `slotKinds` forbids, and duplicate bindings all reject
- *   with a named reason, because each of them otherwise fails later as a
- *   silent layout bug (a phantom track, an unbindable identity).
- */
+/** SlotLayout — the strict WRITE gate (zod). */
 
 import { z } from 'zod';
 import {

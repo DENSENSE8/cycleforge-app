@@ -28,13 +28,7 @@ import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-/**
- * Single icon-button entry point for a claim's support thread. Click → anchored
- * popover with the merged history (internal claim events + Zendesk comments,
- * chronological), a reply composer, create-ticket when none is linked yet, and
- * a resolve action. Comments are fetched live from Zendesk when the popover
- * opens (read-time sync; Zendesk owns the conversation).
- */
+/** Single icon-button entry point for a claim's support thread. */
 export function WarrantyTicketButton({
   claimId,
   linked,
@@ -131,10 +125,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
   const [isPublic, setIsPublic] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Link-an-existing-ticket picker (only relevant while unlinked). `linkQuery`
-  // doubles as the search box and the manual "#1234" id entry — the server
-  // resolves a bare id to a direct lookup, so typing one behaves exactly like
-  // picking it from the recent list. Debounced so each keystroke isn't a fetch.
+  // Link-an-existing-ticket picker (only relevant while unlinked).
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkQuery, setLinkQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');

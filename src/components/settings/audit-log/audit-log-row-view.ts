@@ -1,30 +1,4 @@
-/**
- * `AuditLogRow → CompoundRowView` — the audit desk adapter.
- *
- * Pure, strings and enums, no JSX: "the moment a family can pass a node, the
- * fork walks back in wearing a view model." Every fact not named here is a
- * bound SLOT resolved through `audit-log-resolve.ts`.
- *
- * ## What the compound row says about one audited write
- *
- * - TITLE — the ACTION. The retired cell stacked action over source under a
- *   header that read "Source · Action"; the render order won, so the bold line
- *   is still what happened and `source` is bound as the subtitle beneath it.
- * - IDS — the ENTITY ID, the handle of the thing that was written. No tracking
- *   line: an audit row has no carrier, and inventing one would paint a chip
- *   over a fact this feed does not have.
- * - STATE — the ENTITY TYPE. A closed vocabulary (`order`, `staff`, …) is a
- *   pill, which is what the retired cell's first line already was in prose.
- * - DATES — the stamp, on BOTH lines: the civil day on the Hash line and the
- *   clock face (with seconds) on the Calendar line. The retired `fmtTs` cell
- *   printed date AND time to the second, and on an audit log the second is the
- *   point — two writes a heartbeat apart are a different story from two writes
- *   an hour apart. Putting the clock in the Hash tip and leaving the Calendar
- *   line `--` would lose it (the kiosk dwell rule).
- *
- * There is no money, no photo and no deadline on an audit row; all three stay
- * null and the shared cells paint the honest empty face.
- */
+/** `AuditLogRow → CompoundRowView` — the audit desk adapter. */
 
 import { format } from 'date-fns';
 import type {
@@ -55,13 +29,7 @@ function parseInstant(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * The Calendar (secondary) line of the DATES cell — time of day to the second.
- *
- * Exported because it IS the fact the retired `fmtTs` cell carried and the
- * test pins it: a face that quietly dropped the seconds would read as a
- * formatting choice rather than as the regression it is.
- */
+/** The Calendar (secondary) line of the DATES cell — time of day to the second. */
 export function auditClockFace(iso: string | null | undefined): string | null {
   const d = parseInstant(iso);
   return d ? format(d, 'h:mm:ss a') : null;
@@ -90,10 +58,8 @@ export function auditLogCompoundView(row: AuditLogRow): CompoundRowView {
     // subtitles and a bound subtitle replaces this. Says where the write came
     // from when an org unbinds both.
     note: str(row.source),
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(str(row.entity_id), 'Entity id'),
     orderId: null,
     tracking: null,

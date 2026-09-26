@@ -1,13 +1,4 @@
-/**
- * The published OpenAPI projection of `GET /api/v1/reminders`. Data-only (no
- * DB, no server imports) so the Swift/Kotlin generators and
- * `scripts/generate-v1-openapi.ts` can load it — the same stance as
- * `buildOutboundWorkOpenApi`.
- *
- * `StaffReminder` is a TypeScript interface, not a Zod schema, so the
- * component is spelled here by hand; keep it field-for-field with
- * `reminder-contract.ts`.
- */
+/** The published OpenAPI projection of `GET /api/v1/reminders`. */
 
 import {
   REMINDER_SOURCES,

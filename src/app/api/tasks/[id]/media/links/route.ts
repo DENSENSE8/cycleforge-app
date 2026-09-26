@@ -1,23 +1,4 @@
-/**
- * `/api/tasks/[id]/media/links` — photos and videos attached to a task by
- * URL (unlisted YouTube, Vimeo, Loom, Google Drive, or a direct https image /
- * video file).
- *
- * GET               → `{ ok, links: TaskMediaLink[] }`, oldest first.
- * POST              → attach a link. 201 with the new link; 200 with the
- *                     EXISTING one when that (canonical) URL is already on
- *                     the task — a retried paste is a no-op.
- * PATCH ?linkId=N   → re-point (`url`) and/or re-title (`title`) one link;
- *                     `{ ok, link }`. A URL already on another link of the
- *                     task refuses `duplicate_link` (409).
- * DELETE ?linkId=N  → `{ ok, changed }`; `changed: false` when already gone.
- *
- * kind / provider / url / embed / thumbnail are always `parseMediaLink`'s
- * answer (`src/lib/tasks/media-links.ts`); a body contributes only the pasted
- * URL and a caption. Refusals answer `{ error: <MEDIA_LINK_REFUSAL_COPY key> }`.
- *
- * PERMISSION — `work_orders.claim`, the gate every task verb uses.
- */
+/** `/api/tasks/[id]/media/links` — photos and videos attached to a task by URL (unlisted YouTube, Vimeo, Loom, Google Drive, or a direct… */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * The task row's `⋯` — **one overflow control per row, on the right, opening
- * leftward** (the Telegram message-menu shape the operator already knows).
- *
- * ## Why a menu and not a row of glyphs
- *
- * The row used to carry a single trash can behind `opacity-0 group-hover:` —
- * three problems in one line: it was the ONLY verb a row had (no rename, no
- * restore), it was invisible until hover, and hover does not exist on the phone
- * this panel now has to work on. A touch operator could create and check tasks
- * and could never delete one.
- *
- * So the row's verbs are **declared once, here**, and the same list serves both
- * densities. Adding a verb is adding a row to this file, never a fifth glyph
- * competing for 290px of panel width.
- *
- * ## It opens to the LEFT, and that is structural
- *
- * `align="end"` pins the menu's right edge to the dots, so it expands back
- * across the row it belongs to instead of off the panel edge. In a 290px
- * popover anchored `bottom-end` under the header, any other alignment leaves
- * the viewport.
- */
+/** The task row's `⋯` — **one overflow control per row, on the right, opening leftward** (the Telegram message-menu shape the operator… */
 
 import { MoreHorizontal, Pencil, Trash2, Check, RotateCcw } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';

@@ -1,15 +1,4 @@
-/**
- * The add-a-task composer vocabulary — ONE form, two mounts.
- *
- * `DailyComposerRow` (desk, under the slot table) and `MobileDailyComposerSheet`
- * (phone, BottomSheet) both build their fields from THIS module: field order,
- * labels, the emoji palette, cadence words, and validation. If a fact of the
- * form is not here, the two mounts have drifted — which is the fork the
- * handoff names as the failure mode ("If the two drift, the form has forked").
- *
- * Pure: no React. localStorage is guarded because the desk can SSR a composer
- * shell before hydration.
- */
+/** The add-a-task composer vocabulary — ONE form, two mounts. */
 
 import type { DailyCheckCreateInput, DailyCheckLinkInput, DailyCheckItemKind } from './types';
 
@@ -24,28 +13,8 @@ export const DAILY_COMPOSER_FIELD_ORDER = [
 ] as const;
 
 /**
+ * WHAT the one field means (operator 2026-09-15:
  * WHAT the one field means (operator 2026-09-15: *"I need a switcher for
- * something like the title and the ticket — assigning a regular to-do list for
- * the title, and then assigning a ticket number for just the task as the
- * ticket"*).
- *
- * Two shapes the operator named, and they are genuinely different rows:
- *
- * • `task`   — a normal to-do. The typed text IS the title ("Customer support
- *              for Amazon"). Default cadence `recurring`: the named shift jobs
- *              are what recur.
- * • `ticket` — the task IS the ticket. The typed digits are a ticket id, the
- *              title DERIVES (`Ticket #N`), and the link is the row's real
- *              identity, so two people triaging 48120 tick ONE row instead of
- *              minting near-duplicate titles the report cannot join. Cadence is
- *              forced `once` — a recurring ticket would reappear forever and
- *              miss on every future report.
- *
- * An EXPLICIT switch replaces the earlier auto-detect (a bare-number title
- * silently became a ticket). Auto-detect was clever and unreliable: it could
- * not tell the task "5150" from ticket 5150, and the operator asked for a
- * reliable v1. The parse survives as {@link parseTicketFastPath} and now runs
- * only in `ticket` mode, where the intent is declared.
  */
 export const DAILY_COMPOSER_SUBJECT = [
   { id: 'task', label: 'Task' },
@@ -142,15 +111,7 @@ export function newDailyComposerDraft(): DailyComposerDraft {
   };
 }
 
-/**
- * Flip the switcher, carrying the consequences the operator would otherwise
- * have to remember. Immutable.
- *
- * Ticket mode forces `once` and clears a `task`-mode title (it was prose, and
- * prose is not a ticket id). Task mode restores `recurring` and drops the
- * ticket link, because a titled to-do that silently kept a ticket attached
- * would put the row in the manager's ticket report under a name nobody typed.
- */
+/** Flip the switcher, carrying the consequences the operator would otherwise have to remember. */
 export function setComposerSubject(
   draft: DailyComposerDraft,
   subject: DailyComposerSubject,
@@ -161,33 +122,8 @@ export function setComposerSubject(
     : { ...draft, subject, title: '', kind: 'recurring', ticketId: '' };
 }
 
-/**
- * ── Ticket-mode normalization (operator 2026-09-15) ──────────────────────────
- *
- * *"Just focusing on ticket number first to link the to-do list and checklist
- * item to the ticket number."*
- *
- * In `ticket` mode the one field holds the ticket, so the commit shape derives:
- * title `Ticket #N`, a real `ZENDESK_TICKET` link, cadence `once`. The link —
- * not the words — is the row's identity, which is what lets the manager report
- * join every tick on ticket 48120 into one row.
- *
- * Accepted in that field: `48120` · `#48120` · `zd 48120` · `ticket #48120` · a
- * Zendesk agent URL. A chip tapped in the slider sets `ticketId` directly and
- * wins over whatever is typed.
- *
- * **`task` mode never parses.** The title "5150" stays the title "5150". That
- * is the whole point of the switcher: intent is declared, not guessed.
- *
- * Normalization runs inside {@link dailyComposerCreateBody},
- * {@link dailyComposerError} and {@link dailyComposerLinkInputs}, so BOTH
- * mounts — the phone sheet and the desk `DailyComposerRow` — inherit it with no
- * UI fork. Desktop and mobile capture identically by construction.
- */
-// One digit is legal: the SWITCHER declares intent, so there is no prose to
-// protect. The old 2-digit floor existed only to stop auto-detect turning the
-// task "5" into ticket 5 — the Ticket face makes that impossible, and a slider
-// that offers ticket #4 must accept "4" typed.
+/** ── Ticket-mode normalization (operator 2026-09-15) ────────────────────────── */
+// One digit is legal:
 const TICKET_BARE_RE = /^(?:#|zd|zen|ticket)?[\s#:-]*(\d{1,10})$/i;
 const TICKET_URL_RE = /zendesk\.com\/(?:agent\/)?tickets\/(\d{1,10})/i;
 
@@ -202,11 +138,8 @@ export function parseTicketFastPath(rawTitle: string): number | null {
 }
 
 /**
- * Resolve a `ticket`-mode draft into its commit shape. Immutable and
- * idempotent. A no-op in `task` mode.
- *
+ * Resolve a `ticket`-mode draft into its commit shape.
  * **No glyph** (operator 2026-09-15: *"it wouldn't even have icons"*). An
- * operator who wants one can still pick it in the full form.
  */
 export function applyTicketFastPath(draft: DailyComposerDraft): DailyComposerDraft {
   if (draft.subject !== 'ticket') return draft;
@@ -240,12 +173,7 @@ export function dailyComposerCreateBody(
   };
 }
 
-/**
- * Validate the draft the way the API will, and say it in the operator's own
- * vocabulary: in `ticket` mode a missing/garbled id is a TICKET problem, not "a
- * title is required" — an error naming a field the mode does not show is how a
- * form becomes unusable.
- */
+/** Validate the draft the way the API will, and say it in the operator's own vocabulary: */
 export function dailyComposerError(rawDraft: DailyComposerDraft): string | null {
   const draft = applyTicketFastPath(rawDraft);
 

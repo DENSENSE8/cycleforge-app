@@ -1,12 +1,4 @@
-/**
- * Order-import-staging catalog guards + resolver behaviour — wave 1.4's tenth
- * family and the last of the wave.
- *
- * Two things this family pins that no other does: the triage STATUS is
- * structural (unbindable, because a staging queue that no longer says which
- * rows block the commit is not a staging queue), and the resolvers do NOT
- * reformat — a staging surface shows what the FILE said.
- */
+/** Order-import-staging catalog guards + resolver behaviour — wave 1.4's tenth family and the last of the wave. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

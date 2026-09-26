@@ -1,16 +1,4 @@
-/**
- * POST /api/receiving/visual-identify
- *
- * Enrich ranked SKU candidates produced by the LAN vision box (the RTX 5070 Ti) —
- * see vision/ and src/lib/vision-identify.ts. The browser posts the captured frame
- * straight to the box (the full-res image never reaches Vercel) and forwards the
- * resulting [{ sku, score }] here so we can resolve each against sku_catalog for
- * display + pairing.
- *
- * Read-only: this only looks up catalog rows. The actual pairing reuses the existing
- * idempotent /api/receiving/add-unmatched-line (unfound cartons) or a line PATCH —
- * so there's no mutation here and no idempotency key needed.
- */
+/** POST /api/receiving/visual-identify */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import {

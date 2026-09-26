@@ -1,11 +1,4 @@
-/**
- * Task **documents** — the pure half: which refusal a create body earns, how a
- * `repo` document is read live, and the SQL-row mapper. No fs, no pool: the
- * org-bound seam ({@link TaskDocumentsDeps}) is supplied by
- * `task-documents-db.ts`, so every branch here unit-tests DB- and disk-free.
- *
- * Wire shapes live in `task-documents-shared.ts`.
- */
+/** Task **documents** — the pure half: */
 
 import type { PlanFileRead } from './plan-files';
 import {

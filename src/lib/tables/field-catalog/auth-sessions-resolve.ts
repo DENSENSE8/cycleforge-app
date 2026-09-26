@@ -1,11 +1,4 @@
-/**
- * Auth-sessions slot resolvers — pure.
- *
- * Dates resolve to the ABSOLUTE INSTANT, never to `5m ago`: the engine turns a
- * `date` display type into the age face (`compoundSlotPrimary`) and keeps the
- * instant in the hover, and a pre-relativized string would also sort by the
- * letter `m`. The desk's old `fmtRelative` cell is now that engine face.
- */
+/** Auth-sessions slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { AuthSessionTableRow } from '@/lib/auth/auth-session-row';

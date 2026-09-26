@@ -66,18 +66,7 @@ export const SkuCatalogUpdateBody = z
     category: optNullableText,
     upc: optNullableText,
     ean: optNullableText,
-    /**
-     * The tenant's LICENSED GS1 GTIN for this product.
-     *
-     * Shape only here — the digits are gated by `classifyGtinEntry`
-     * (`@/lib/interop/gs1-keys`) in the route, which is where length, check
-     * digit, GS1 documentation prefixes and internally-minted
-     * restricted-circulation numbers are refused with a reason. A Zod regex
-     * would be a second, weaker copy of that answer.
-     *
-     * `null` CLEARS it, and that is a real operator action: the row falls back
-     * to the internal number `getOrCreateInternalGtin` re-mints on demand.
-     */
+    /** The tenant's LICENSED GS1 GTIN for this product. */
     gtin: trimmed.min(1).nullable().optional(),
     imageUrl: optNullableText,
     isActive: z.boolean().optional(),
@@ -103,19 +92,7 @@ export const SkuCatalogUpdateBody = z
 
 // ─── POST /api/sku-catalog/flag-missing ─────────────────────────────────────
 
-/**
- * Flag an item that was identified (e.g. OCR'd off a local-pickup label) but is
- * NOT in the system yet, into the `pending_skus` "needs creating in Zoho" queue.
- *
- * Used by the OCR local-pickup intake (P2-AI-01) as the one-step alternative to
- * creating a SKU outright: the operator read a real product but doesn't have a
- * SKU for it yet, so it goes on the to-do list instead of being dropped.
- *
- * `sku` is the dedup key (normalized server-side). When the operator only has a
- * title (no SKU), they pass a placeholder/raw label string as `sku` — the queue
- * is keyed on whatever raw token uniquely names the unfound item. `suggestedTitle`
- * seeds the eventual Zoho item.
- */
+/** Flag an item that was identified (e.g. */
 export const SkuCatalogFlagMissingBody = z
   .object({
     sku: trimmed.min(1, 'sku is required'),

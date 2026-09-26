@@ -5,18 +5,7 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { relinkReceivingPo, type RelinkScope } from '@/lib/receiving/relink-po';
 
-/**
- * Operator PO relink — make the website authoritative over Zoho.
- *
- * The "Link a PO" tab in Package Pairing posts here after the operator picks the
- * correct PO (from /api/receiving/po-search). Writes the chosen PO (and optional
- * SKU correction) onto the line + carton via the audited domain helper, then
- * fires cache-invalidate + realtime refresh in after(). House route skeleton:
- * validate → domain helper → map status → audit (withAuth) → after() side-effects.
- *
- * Body: { receiving_id, line_id?, zoho_purchaseorder_id, zoho_purchaseorder_number?,
- *         sku?, zoho_item_id?, scope? }  (scope default 'both')
- */
+/** Operator PO relink — make the website authoritative over Zoho. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);
 

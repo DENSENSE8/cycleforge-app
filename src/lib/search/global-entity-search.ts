@@ -1,14 +1,4 @@
-/**
- * global-entity-search — per-entity exact/ILIKE searchers extracted from
- * src/app/api/global-search/route.ts (AI search Phase 0) so the hybrid
- * engine's exact-ID/serial bypass REUSES them instead of duplicating the
- * last-8 / normalization / aggregation logic. The route imports from here.
- *
- * These hit the PARENT tables directly (orders + tech_serial_numbers +
- * serial_units + shipping_tracking_numbers joins, etc.) — they are the
- * deterministic fast path that must never be removed (plan non-goal),
- * independent of entity_search_docs freshness.
- */
+/** global-entity-search — per-entity exact/ILIKE searchers extracted from src/app/api/global-search/route.ts (AI search Phase 0) so the… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -39,13 +29,7 @@ function normalizeSerialQuery(raw: string): string {
 
 export interface GlobalSearchResult {
   id: number;
-  /**
-   * Fan-out vocabulary. It is a strict SUPERSET of the doc-index vocabulary
-   * (`SearchHitEntityType`) by contract — `hitToResult` in find-records.ts
-   * widens a doc hit into this type without a map. `warranty` / `ticket` /
-   * `location` have no exact fan-out producer here yet (the doc arm is their
-   * only source), but they belong to the union so that invariant holds.
-   */
+  /** Fan-out vocabulary. */
   entityType:
     | 'order'
     | 'repair'
@@ -62,12 +46,7 @@ export interface GlobalSearchResult {
   subtitle: string;
   href: string;
   matchField: string;
-  /**
-   * Optional facet bag — same keys as doc-arm SearchHit.facets. Exact hits
-   * ranked first used to omit these, leaving Status/Tracking/Date empty on the
-   * rows operators see most. Hydrate when the parent-table SELECT already has
-   * the columns (or cheaply can).
-   */
+  /** Optional facet bag — same keys as doc-arm SearchHit.facets. */
   facets?: {
     status?: string | null;
     condition_grade?: string | null;
@@ -184,12 +163,7 @@ function looksLikeTrackingIdentifier(
 }
 
 async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // Marketplace order # / item number / tracking identifier: exact
-  // (separator-insensitive) or last-8 when the paste has ≥8 digits.
-  //
-  // Identifier path MUST NOT OR order-number equality with a correlated
-  // tracking EXISTS — that plan seq-scans every order's shipment and times
-  // out, then `.catch(() => [])` leaves Find showing only "See all results".
+  // Marketplace order # / item number / tracking identifier:
   const identifier = looksLikeIdentifier(query);
   const digits = query.replace(/\D/g, '');
   const last8 = digits.length >= 8 ? digits.slice(-8) : '';
@@ -264,19 +238,7 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
     return merged;
   }
 
-  // Buyer identity is matched here as well as in the index, so a support call
-  // can be answered from a name the moment this ships rather than after the
-  // next reindex. Phone is deliberately absent: a typed "555-1234" does not
-  // ILIKE a stored "+15551234", and the honest place to solve that is the
-  // digit-folded text in entity_search_docs, which the hybrid arm reads.
-  // NO tracking predicate here, deliberately. This branch only runs for
-  // free-text — an actual tracking number takes the identifier path above,
-  // which resolves shipment ids FIRST and joins to orders (cheap). The
-  // correlated `EXISTS` over every order's shipment is the plan this file's
-  // own header warns "seq-scans every order's shipment and times out", and it
-  // did: on a 4.4k-order org this branch measured ~49s before it came out, and
-  // ~6s of that was the rest of the query. It went unnoticed only because the
-  // dead $3 bind made Postgres reject the statement before it could run.
+  // Buyer identity is matched here as well as in the index, so a support call can be answered from a name the moment this ships rather than…
   const broadMatch = `(
             o.order_id ILIKE $2
          OR o.item_number ILIKE $2
@@ -358,14 +320,7 @@ async function searchFba(orgId: OrgId, query: string, limit: number): Promise<Gl
 }
 
 async function searchReceiving(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // Join shipping_tracking_numbers so search matches rows reachable only via
-  // receiving.shipment_id (post inbound-tracking unification). Falls back to
-  // hyphens/spaces carriers sometimes include. Also match Zoho PO /
-  // source_order_id — operators often paste those as the "order #" search.
-  // Tenant scope: receiving carries organization_id, so filter on it. The
-  // shipping_tracking_numbers join (`stn`) has NO organization_id column yet
-  // (NEEDS-COL) — it is reachable only through this org-scoped receiving row,
-  // so the GUC-wrapped tenantQuery is the isolation backstop for it.
+  // Join shipping_tracking_numbers so search matches rows reachable only via receiving.shipment_id (post inbound-tracking unification).
   const identifier = looksLikeIdentifier(query);
   const normalizedQuery = query.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
   const digits = query.replace(/\D/g, '');
@@ -534,10 +489,7 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
 }
 
 async function searchSkus(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // sku_catalog is the marketplace SKU scheme the Products workbench selects on
-  // (NOT the Zoho `items` namespace — they collide on the same strings). Match
-  // the SKU string or title; deep-link to the workbench with the numeric
-  // sku_catalog.id, which the sidebar picker reads from ?skuId=.
+  // sku_catalog is the marketplace SKU scheme the Products workbench selects on (NOT the Zoho `items` namespace — they collide on the same…
   const result = await tenantQuery(
     orgId,
     `SELECT id, sku, product_title
@@ -649,12 +601,7 @@ async function searchSerialUnits(
   });
 }
 
-/**
- * Tech / packer unmatched-tracking holds (`orders_exceptions`) and sheet
- * import holds (`order_import_exceptions`). These are not live orders — a
- * tracking can exist only here when ingest failed (no item number) or a
- * station scan missed the order table. Header find must still surface them.
- */
+/** Tech / packer unmatched-tracking holds (`orders_exceptions`) and sheet import holds (`order_import_exceptions`). */
 async function searchTrackingHolds(
   orgId: OrgId,
   query: string,
@@ -983,12 +930,7 @@ async function searchInternalIds(
   return merged.slice(0, limit);
 }
 
-/**
- * KIT master label → the kit's member units. `routeScan` types `KIT-…` as
- * `manifest` with NO redirect (the manifest detail is a /test workbench panel,
- * not a URL), so Find fans out the membership instead — each unit paints on
- * `/search?sel=unit:{id}` and carries the manifest uid in its subtitle.
- */
+/** KIT master label → the kit's member units. */
 async function searchManifestUnits(
   orgId: OrgId,
   query: string,
@@ -1073,12 +1015,7 @@ async function searchRepairByPk(
   }));
 }
 
-/**
- * Axis-scoped searchers. Header Internal ID never fans out. Callers that
- * omit `axis` (hybrid exact arm, CommandBar) keep the cross-entity bypass.
- * A printed QR / handle always resolves as Internal ID — same decode as
- * the station scan bar — so a carton Digital Link is never ILIKE'd as text.
- */
+/** Axis-scoped searchers. */
 export async function searchAllEntities(
   orgId: OrgId,
   query: string,
@@ -1086,18 +1023,9 @@ export async function searchAllEntities(
   axis?: SearchByScope,
 ): Promise<GlobalSearchResult[]> {
   // One decode for the whole dispatch — same decoder the station scan bar uses.
-  // `printed` follows the `decodedHandle` rule: a route WITH a redirect is a
-  // genuine label decode; a redirect-less route is a guess (or, for `manifest`,
-  // an anchored type with no URL of its own — handled explicitly below).
   const scanRoute = routeScan(query);
   const printed = Boolean(scanRoute?.redirect);
-  // Printed classes that are NOT internal PK keys must be routed before the
-  // Internal ID branch, which knows no ticket / repair / manifest keys and
-  // would answer them with an empty list:
-  //   T-{id}   → /support?ticket={id} — resolve the provider ticket id.
-  //   REP-{id} → /m/rs/{id}           — a repair, not a carton (routeScan types
-  //                                     it `receiving`; the redirect is the tell).
-  //   KIT-…    → type `manifest`, no redirect — fan out the kit's units.
+  // Printed classes that are NOT internal PK keys must be routed before the Internal ID branch, which knows no ticket / repair / manifest…
   if (printed && scanRoute?.type === 'support-ticket') {
     const ticketId = /^\/support\?ticket=(\d+)/.exec(scanRoute.redirect ?? '')?.[1];
     const tickets = ticketId
@@ -1146,12 +1074,7 @@ export async function searchAllEntities(
     if (tickets.length > 0) return tickets.slice(0, limit);
   }
   if (looksLikeIdentifier(query)) {
-    // SKU and FBA belong here as much as orders do. A bare SKU ("00624",
-    // "00053-P-2") and an FBA shipment ref ("FBA-08/28/26") both satisfy
-    // `looksLikeIdentifier`, so they never reached the fan-out below — and this
-    // branch did not ask the catalog or the FBA table, so an operator typing a
-    // SKU they were holding in their hand got nothing back. The rows were
-    // always there; nothing queried them.
+    // SKU and FBA belong here as much as orders do.
     const [orders, units, holds, receiving, skus, fba, repairs] = await Promise.all([
       searchOrders(orgId, query, limit).catch(() => []),
       searchSerialUnits(orgId, query, limit).catch(() => []),

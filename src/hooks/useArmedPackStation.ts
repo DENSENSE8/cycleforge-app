@@ -38,12 +38,7 @@ function getArmSnapshot(): ArmedPackStation | null {
   return readArmedPackStation();
 }
 
-/**
- * Armed packing DESK/STAGING for Ready-to-Pack tracking scans.
- * Syncs sessionStorage ↔ optional `?packStation=` filter param, and seeds the
- * bench from the device's Settings → Workstation binding (Phase 1.5) so an
- * operator does not re-arm the same bench every session.
- */
+/** Armed packing DESK/STAGING for Ready-to-Pack tracking scans. */
 export function useArmedPackStation() {
   const armed = useSyncExternalStore(subscribeArm, getArmSnapshot, () => null);
   const router = useRouter();
@@ -88,10 +83,7 @@ export function useArmedPackStation() {
     setBoundBenchId(getWorkstation().packBenchLocationId);
   }, []);
 
-  // ── Workstation bench auto-arm (Phase 1.5) ─────────────────────────────────
-  // Only ask for the bench list when there is something to seed, so a device
-  // with no binding pays nothing. The list is the shared pack-placement query
-  // key, so the KPI strip's copy is reused rather than refetched.
+  // ── Workstation bench auto-arm (Phase 1.5) ───────────────────────────────── Only ask for the bench list when there is something to seed,…
   const wantsAutoArm = mounted && armed == null && boundBenchId != null;
   const benchQuery = useQuery({ ...packPlacementQuery(), enabled: wantsAutoArm });
   const benchLocations = benchQuery.data?.locations;

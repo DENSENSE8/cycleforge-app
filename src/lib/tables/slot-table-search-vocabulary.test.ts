@@ -1,13 +1,4 @@
-/**
- * The search box must match what the row PAINTS — cohort-wide.
- *
- * Every assertion here is a regression the old implementation actually had: it
- * read `columns[].fieldId` alone, so on a compound peer the product title, the
- * identity handle, the state word, the date stamp and the line qty were all
- * visible and none of them were searchable. The retired Inventory › Stock desk
- * is where that surfaced (operator asked to "search for product title and the
- * qty"), but the fix is the engine's, so this pins the engine.
- */
+/** The search box must match what the row PAINTS — cohort-wide. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

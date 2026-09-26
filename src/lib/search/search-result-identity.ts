@@ -9,12 +9,7 @@ import { receivingOrderIdFromParts } from '@/lib/search/receiving-search-title';
 
 type SearchIdentityKind = 'order' | 'serial' | 'empty';
 
-/**
- * Left-chip identity string:
- *   - order → marketplace order_id (facet or subtitle)
- *   - receiving → PO# / source_order_id (facets) or subtitle lead (doc arm)
- *   - else → empty (serial units use unitSerialFromHit separately)
- */
+/** Left-chip identity string: */
 export function orderIdFromHit(hit: AiSearchHit): string {
   const fromFacet = hit.facets?.order_id?.trim() ?? '';
   if (fromFacet) return fromFacet;

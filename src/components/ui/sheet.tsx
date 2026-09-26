@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Sheet (new-york / Radix), restyled to house tokens.
- *
- * Sibling of `ui/dialog.tsx`: shadcn STRUCTURE (Radix Dialog parts,
- * `data-slot` naming), house COLOUR (`surface-*` / `text-*` / `border-*`,
- * `z-modal`, `bg-scrim`) — never the upstream `bg-background` palette, which
- * does not exist here.
- *
- * Built on `@radix-ui/react-dialog` directly, like `dialog.tsx`. The upstream
- * file imports the `radix-ui` umbrella package; this app installs the scoped
- * packages, so adding the umbrella would ship a second copy of the same
- * primitives.
- *
- * **No open/close animation on purpose** — the house motion law is "show it or
- * do not" (AGENTS.md). Upstream tweens `translate-x` on every side; nothing
- * here tweens a layout property.
- *
- * Exists for ONE consumer: the mobile branch of `ui/sidebar.tsx`, which swaps
- * the same nav tree into a side sheet under the `md` breakpoint. Do not reach
- * for it as a generic drawer — `BottomSheet` is the phone detail surface
- * (`ds_contract "phone list row opens a detail"`).
- */
+/** shadcn/ui Sheet (new-york / Radix), restyled to house tokens. */
 
 import * as React from 'react';
 import * as SheetPrimitive from '@radix-ui/react-dialog';

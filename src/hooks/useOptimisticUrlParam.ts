@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Paint-pending URL param — see `@/lib/routing/optimistic-url-param`.
- *
- * Inject the surface's existing `replaceParams` + a `write` that mutates the
- * params bag for `next`. Domain parsing stays in the caller.
- *
- * Optional `shareKey`: when sidebar and main shell are separate React trees
- * (each calling this hook), pass the same key so one pending paints both.
- */
+/** Paint-pending URL param — see `@/lib/routing/optimistic-url-param`. */
 
 import {
   startTransition,

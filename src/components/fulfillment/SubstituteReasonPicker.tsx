@@ -3,16 +3,7 @@
 import { ReasonChipPicker } from '@/components/ui/ReasonChipPicker';
 import { SUBSTITUTION_REASONS, type SubstitutionReason } from '@/lib/fulfillment/substitution-reasons';
 
-/**
- * Reason picker for a fulfillment substitution. Presentational + controlled —
- * the parent owns the selected code, and reasons + tones come from the SoT
- * (substitution-reasons.ts).
- *
- * The chip chrome itself now lives in the shared `ReasonChipPicker`
- * (`@/components/ui/ReasonChipPicker`), promoted when the receiving
- * photo-policy waiver needed the same job. This stays as the substitution
- * vocabulary's named entry point — same props, same markup, one primitive.
- */
+/** Reason picker for a fulfillment substitution. */
 
 export interface SubstituteReasonPickerProps {
   value: string | null;

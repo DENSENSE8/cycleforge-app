@@ -1,17 +1,4 @@
 // Single source of truth for tracking-exception (inventory triage) status tones.
-//
-// Mirrors the lib/<domain>-status.ts pattern (see unit-status.ts,
-// outbound-state.ts): one tone map + resolver fns, two render variants —
-// `badge` (no ring, used in workspace headers) and `chip` (ring, used in
-// sidebar rows). Replaces the two divergent inline STATUS_TONE maps that
-// previously lived in TriageWorkspace.tsx and InventoryTriageSidebar.tsx.
-//
-// Hue meanings follow the documented color story (DESIGN_SYSTEM.md →
-// Functional Color Mapping): open = caution, resolved = success,
-// discarded = neutral. Classes are preserved verbatim from the originals so
-// this consolidation is visually identical; a later pass may snap them to the
-// semantic `*-warning`/`*-success` aliases. src/lib is in Tailwind's content
-// globs, so these classes are generated.
 
 export type TriageExceptionStatus = 'open' | 'resolved' | 'discarded';
 

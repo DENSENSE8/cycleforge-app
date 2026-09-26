@@ -9,15 +9,7 @@ interface ModeDropdownProps {
   onChange: (next: BarcodeMode) => void;
 }
 
-/**
- * Compact print/log/reprint switcher pinned to the top of the horizontal
- * workspace. `onChange` is the controller's handleModeChange, which writes
- * `?mode=` and resets the step progression.
- *
- * Same flush combobox grammar as the ticket claim's Create|Link picker
- * (`ClaimModeSelect`) — keyboard-searchable, filters the option list as you
- * type. Used to be a plain click-only `DropdownMenu` (2026-08-24 fix).
- */
+/** Compact print/log/reprint switcher pinned to the top of the horizontal workspace. */
 export function ModeDropdown({ mode, onChange }: ModeDropdownProps) {
   const options = useMemo(
     () =>

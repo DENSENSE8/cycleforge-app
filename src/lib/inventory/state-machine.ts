@@ -1,16 +1,4 @@
-/**
- * Serial unit state machine — single source of truth for allowed transitions.
- *
- * Phase A1 of the WMS modernization. Every new state change should go through
- * `transition()` so that:
- *   1. Disallowed transitions are rejected before the UPDATE fires.
- *   2. `serial_units.current_status` and `inventory_events` stay atomic.
- *   3. The allowed-transition graph has one canonical definition (this file).
- *
- * Existing call sites that do raw `UPDATE serial_units SET current_status = ...`
- * keep working — they are not gated yet. Phase A1.1 (follow-up) migrates them
- * one-by-one as their owning workflows are touched.
- */
+/** Serial unit state machine — single source of truth for allowed transitions. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -47,13 +35,7 @@ export const SERIAL_STATES = [
 
 export type SerialState = (typeof SERIAL_STATES)[number];
 
-// ─── Transition allow-list ───────────────────────────────────────────────────
-// Source of truth for what is reachable from each state. Direction is from → to.
-// Any pair not in this map is rejected by guard()/transition().
-//
-// Keep this terse — additions should be paired with a comment explaining the
-// workflow that produced the new edge. ON_HOLD is special-cased below and not
-// listed per-state.
+// ─── Transition allow-list ─────────────────────────────────────────────────── Source of truth for what is reachable from each state.
 
 const TRANSITIONS: Readonly<Record<SerialState, ReadonlySet<SerialState>>> = {
   UNKNOWN:     new Set<SerialState>(['RECEIVED']),
@@ -76,21 +58,11 @@ const TRANSITIONS: Readonly<Record<SerialState, ReadonlySet<SerialState>>> = {
   SHIPPED:     new Set<SerialState>(['RETURNED']),
   RETURNED:    new Set<SerialState>(['TRIAGED', 'STOCKED', 'RMA', 'SCRAPPED', 'SHIPPED' /* returns-intake undo (returns/undo): restore the pre-return SHIPPED state when a unit was scanned into returns by mistake */]),
   RMA:         new Set<SerialState>(['SCRAPPED', 'RETURNED']),
-  SCRAPPED:    new Set<SerialState>([]), // terminal
-  // Release-from-hold restores the pre-hold state. The destination is dynamic
-  // (recovered from the unit's HELD event, or an operator force_status), but it
-  // is ALWAYS one of hold.ts' RESTORABLE_STATUSES — so model exactly that set as
-  // ON_HOLD's outgoing edges. Entry to ON_HOLD stays universal via guard()'s
-  // to===ON_HOLD special-case below; these edges are the exits.
+  SCRAPPED:    new Set<SerialState>([]), // terminal Release-from-hold restores the pre-hold state.
   ON_HOLD:     new Set<SerialState>(['STOCKED', 'TRIAGED', 'IN_REPAIR', 'REPAIR_DONE', 'IN_TEST', 'GRADED', 'ALLOCATED', 'PICKED', 'PACKED', 'LABELED', 'STAGED']),
 };
 
-/**
- * Any state can transition to ON_HOLD via the hold flow (see hold.ts).
- * Release-from-hold restores the prior state, which is recorded in
- * `inventory_events.payload.restore_status` — not modeled as an edge in this
- * graph because the destination is dynamic.
- */
+/** Any state can transition to ON_HOLD via the hold flow (see hold.ts). */
 const HOLD_STATE: SerialState = 'ON_HOLD';
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -135,11 +107,7 @@ export interface TransitionInput {
    */
   expectedFrom?: SerialState;
 
-  // ── Event passthrough fields ──────────────────────────────────────────────
-  // recordInventoryEvent already persists these columns; surface them here so a
-  // call site that emits a richer event (receiving putaway, pick scan, etc.) can
-  // route through transition() instead of hand-writing an inventory_events INSERT
-  // and losing the linkage. All optional + backward-compatible.
+  // ── Event passthrough fields ────────────────────────────────────────────── recordInventoryEvent already persists these columns; surface…
   /** Override the event's bin_id. When omitted, defaults to the unit's current_location coerced to an integer id. Pass an explicit value (incl. null) to override. */
   binId?: number | null;
   receivingId?: number | null;
@@ -153,72 +121,27 @@ export type TransitionResult =
   | { ok: true; eventId: number; from: SerialState; to: SerialState }
   | { ok: false; status: 404 | 409; error: string; from?: SerialState };
 
-/**
- * Atomically transition a unit's state and emit an inventory_event.
- *
- * Pass `db` to share a transaction with the caller. Without it, this function
- * opens and commits its own transaction.
- *
- * Tenancy: `orgId` is REQUIRED. There are two modes, and no third:
- *   - `db` OMITTED — the function runs inside `withTenantTransaction(orgId, …)`
- *     (BEGIN + `set_config('app.current_org')` + COMMIT) and owns the tx.
- *   - `db` PROVIDED (executor pattern) — the GUC is set on the caller's client
- *     (transaction-local) before the writes; the caller keeps owning the tx.
- * Either way the SELECT/UPDATE on `serial_units` carry an explicit
- * `AND organization_id = $n` predicate (404 on a cross-tenant miss), and the
- * `inventory_events` row is stamped from `orgId` rather than a column default.
- */
+/** Atomically transition a unit's state and emit an inventory_event. */
 export async function transition(
   input: TransitionInput,
-  // Only `.query` is used when a caller passes its own client (the executor
-  // path), so accept the narrow shape — lets callers thread a Pick<…'query'>
-  // tx client without an unsafe cast. Pass `undefined` to let transition() own
-  // the transaction; it is positional-before-orgId, so it must be named either way.
+  // Only `.query` is used when a caller passes its own client (the executor path), so accept the narrow shape — lets callers thread a…
   db: Pick<PoolClient, 'query'> | undefined,
-  /**
-   * Tenant scope — REQUIRED, and deliberately un-defaulted.
-   *
-   * This was optional through the strangler migration, and the cost was not a
-   * missing filter: an org-less call ran the whole transition on the raw pool
-   * with no `organization_id` predicate on the `serial_units` SELECT…FOR UPDATE
-   * or UPDATE, and then stamped its `inventory_events` row `DOGFOOD_ORG_ID` via
-   * an explicit fallback — so a cross-tenant unit id transitioned successfully
-   * and the audit trail attributed it to the dogfood tenant. `inventory_events`
-   * is FORCE-RLS but with a dogfood-fallback column default, so nothing failed
-   * loudly; the row just landed under the wrong org.
-   *
-   * Required makes every unvisited call site a compile error. Do not re-add a
-   * default here, and do not make one configurable: the default IS the defect.
-   */
+  /** Tenant scope — REQUIRED, and deliberately un-defaulted. */
   orgId: OrgId,
 ): Promise<TransitionResult> {
-  // ── No caller transaction: run the whole thing GUC-wrapped. ────────────────
-  // withTenantTransaction owns BEGIN/SET LOCAL/COMMIT, so the core helper must
-  // NOT open its own transaction — pass useOwnTx=false and let the wrapper
-  // commit/rollback. Errors propagate so the wrapper rolls back.
+  // ── No caller transaction:
   if (!db) {
     return withTenantTransaction<TransitionResult>(orgId, (client) =>
       runTransition(input, client, /* useOwnTx */ false, orgId),
     );
   }
 
-  // ── Caller-owned transaction (executor pattern). ───────────────────────────
-  // Transaction-local GUC on the caller's client so the inventory_events INSERT
-  // (column default reads current_setting('app.current_org')) and any RLS-
-  // enforced write attribute to this org. is_local=true → auto-clears on the
-  // caller's COMMIT/ROLLBACK.
+  // ── Caller-owned transaction (executor pattern).
   await db.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
   return runTransition(input, db, /* useOwnTx */ false, orgId);
 }
 
-/**
- * Core transition logic over a single client. `useOwnTx` controls whether this
- * helper issues its own BEGIN/COMMIT/ROLLBACK — always false now that both
- * entry modes (GUC wrapper, executor pattern) own the transaction; the flag
- * survives because the rollback bookkeeping below reads it.
- * `orgId` adds the explicit `organization_id` predicate to the serial_units
- * read/UPDATE; the GUC is set by the caller of this helper.
- */
+/** Core transition logic over a single client. */
 async function runTransition(
   input: TransitionInput,
   client: Pick<PoolClient, 'query'>,
@@ -272,19 +195,12 @@ async function runTransition(
       [input.unitId, input.to, orgId],
     );
 
-    // serial_units.current_location is TEXT and, by convention, can hold either a
-    // bin id as a string ("42") or — in some paths — a free-text location name.
-    // inventory_events.bin_id is INTEGER REFERENCES locations(id), so only coerce
-    // the numeric form; a non-numeric name maps to NULL rather than blowing up the
-    // INSERT with an int-cast error.
+    // serial_units.current_location is TEXT and, by convention, can hold either a bin id as a string ("42") or — in some paths — a free-text…
     const binId = row.current_location != null && /^\d+$/.test(row.current_location.trim())
       ? Number(row.current_location.trim())
       : null;
 
-    // The event is stamped from `orgId` explicitly AND written on the GUC-scoped
-    // `client`, so it never depends on the inventory_events.organization_id
-    // column default — which falls back to the dogfood org rather than failing,
-    // and was therefore silently mis-attributing every org-less transition.
+    // The event is stamped from `orgId` explicitly AND written on the GUC-scoped `client`, so it never depends on the…
     const event = await recordInventoryEvent(
       {
         event_type: input.eventType,

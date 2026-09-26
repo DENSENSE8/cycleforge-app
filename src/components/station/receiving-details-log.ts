@@ -1,12 +1,4 @@
-/**
- * `ReceivingDetailsLog` — the carton/receiving overlay shape rendered by
- * `ReceivingDetailsStack` and assembled by `lib/receiving/receiving-details-overlay`.
- *
- * Extracted out of `ReceivingDetailsStack.tsx` into this leaf module so the
- * type can be referenced without importing the component (which imports
- * `utils/events`, forming a cycle). `ReceivingDetailsStack` re-exports this
- * type for backwards compatibility.
- */
+/** `ReceivingDetailsLog` — the carton/receiving overlay shape rendered by `ReceivingDetailsStack` and assembled by… */
 export interface ReceivingDetailsLog {
   id: string;
   timestamp: string;

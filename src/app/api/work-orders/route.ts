@@ -299,9 +299,6 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     const notes = String(body?.notes || '').trim() || null;
 
     // Track whether assignedPackerId was explicitly included in the request body.
-    // When it is absent (undefined) the caller is doing a tech-only partial save and
-    // we must NOT touch the PACK work-assignment — otherwise we would null-out any
-    // packer that was already saved, causing the "packer disappears" bug.
     const packerIdProvided = 'assignedPackerId' in (body ?? {});
 
     if (!['ORDER', 'REPAIR', 'FBA_SHIPMENT', 'RECEIVING', 'SKU_STOCK'].includes(entityType)) {
@@ -350,10 +347,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
           notes,
         });
 
-        // PACK row owns the packer slot.  Only upsert it when the caller explicitly
-        // included assignedPackerId in the request body — either to set a new packer
-        // (non-null) or to intentionally clear one (null).  Skipping this call on
-        // tech-only partial saves prevents the PACK WA from being null-wiped.
+        // PACK row owns the packer slot.
         if (packerIdProvided) {
           await upsertAssignment(client, ctx.organizationId, {
             entityType: 'ORDER',

@@ -1,12 +1,4 @@
-/**
- * Repair-queue rail selection occupancy.
- *
- * Slot-table selection stays on the table (mirrors orders / receiving occupancy
- * SoTs). Checkbox cardinality never claims `RightRailHost`. Record open is row
- * click / `?openRepair=`, not a 1-check inspect or a 2+ batch shell.
- *
- * Plan: hoard History rail SoT → Wave 3 Repair.
- */
+/** Repair-queue rail selection occupancy. */
 
 import { normalizeRailSelection } from '@/lib/right-rail/selection-occupancy';
 

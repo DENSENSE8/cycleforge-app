@@ -1,15 +1,4 @@
-/**
- * eBay account + credential accessors.
- *
- * Tenancy model: "shared eBay app, many sellers/buyers."
- *
- *   - App credentials (appId/certId/ruName) → getEbayAppCreds (vault scope=null
- *     or shared env).
- *   - Per-account user tokens → organization_integrations scoped
- *     `seller:{slug}` / `buyer:{slug}` (SoT after vault migration).
- *   - ebay_accounts → metadata only (label, role, ebay_user_id, sync watermarks,
- *     token_expires_at cache for Settings chips). No long-lived secrets.
- */
+/** eBay account + credential accessors. */
 import { normalizeEnvValue } from '@/lib/env-utils';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

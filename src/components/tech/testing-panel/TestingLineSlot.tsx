@@ -11,12 +11,7 @@ async function confirmDeleteSerial(serialNumber: string): Promise<boolean> {
   });
 }
 
-/**
- * The verdict/serial slot for one testing line. Used by matched and unfound
- * accordion paths via `activeRowSlot` — the only differences are the line id,
- * expected count, disabled state, selected index, and header-serial editing
- * affordances, all passed in.
- */
+/** The verdict/serial slot for one testing line. */
 export function TestingLineSlot({
   c,
   lineId,

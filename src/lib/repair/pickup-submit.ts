@@ -1,16 +1,4 @@
-/**
- * The ONE client write path for a repair pickup. Desk (`RepairPickupFlow`)
- * and phone (`RepairPickupSheet`) both call {@link submitRepairPickup}, so
- * the body the server sees — and the terms the customer read — cannot drift
- * between surfaces.
- *
- * Server: `POST /api/repair-service/pickup` (closes the repair as Done,
- * stamps pickup time, closes the work assignment, stores the signed or
- * declined `pickup_agreement` document).
- *
- * Callers: `src/components/repair/RepairPickupFlow.tsx`,
- * `src/components/mobile/repair/RepairPickupSheet.tsx`.
- */
+/** The ONE client write path for a repair pickup. */
 
 /**
  * What the customer agrees to by signing. The server stamps the same sentence

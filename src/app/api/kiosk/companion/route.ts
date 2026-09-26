@@ -1,15 +1,4 @@
-/**
- * POST /api/kiosk/companion — the tablet opens (or re-opens) its phone link.
- *
- * Callers: `useKioskCompanionLink` (Device & quote "Scan with phone").
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_companion_links` via `openCompanionLink`.
- * User: "a QR code that you would be able to scan on your phone to join the
- *   same repair service session".
- *
- * Returns the raw token ONCE, for the QR; only its hash is stored. The org and
- * the device come from the device principal, never the body.
- */
+/** POST /api/kiosk/companion — the tablet opens (or re-opens) its phone link. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

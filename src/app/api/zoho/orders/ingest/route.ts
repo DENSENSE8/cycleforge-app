@@ -18,11 +18,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const shouldEnqueue = body.enqueue === true || request.nextUrl.searchParams.get('enqueue') === 'true';
 
     if (shouldEnqueue) {
-      // DB-backed queue (outbox) — replaces the QStash event queue. The drain
-      // cron (/api/cron/zoho/orders-ingest-drain) processes pending rows every
-      // minute. UNIQUE(channel_order_id) dedups bursts; a row that already
-      // finished is re-queued with the fresh payload, an in-flight one is left
-      // alone (the ON CONFLICT WHERE).
+      // DB-backed queue (outbox) — replaces the QStash event queue.
       if (!body.channelOrderId) {
         return NextResponse.json(
           { success: false, error: 'channelOrderId is required to enqueue' },

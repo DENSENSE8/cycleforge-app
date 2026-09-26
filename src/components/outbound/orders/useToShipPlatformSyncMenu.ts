@@ -36,14 +36,7 @@ async function fetchOrderSources(): Promise<OrderSyncSource[]> {
   return data.sources ?? [];
 }
 
-/**
- * Connected sales-channel sync rows for the To-ship Sync dropdown.
- *
- * Face click stays ShipStation. The chevron lists every other connected order
- * source with a wired connector sync by name (`Sync Square · {connection}`,
- * `Sync Shopify · {store}`), then Sync more → Settings › Integrations. eBay,
- * Amazon and Ecwid orders arrive through ShipStation and never list.
- */
+/** Connected sales-channel sync rows for the To-ship Sync dropdown. */
 export function useToShipPlatformSyncMenu(): ToShipPlatformSyncRow[] {
   const router = useRouter();
   const queryClient = useQueryClient();

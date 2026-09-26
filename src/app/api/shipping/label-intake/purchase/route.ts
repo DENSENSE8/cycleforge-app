@@ -11,18 +11,7 @@ import { labelIntakeErrorResponse } from '@/lib/shipping/label-intake-errors';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/label-intake/purchase
- *
- * Buy a return or replacement label for an order number that is NOT in the
- * system (IRREVERSIBLE — charges the ShipStation account). The purchase is
- * claimed and recorded in `shipping_label_purchases` under the typed
- * `order_ref` with its `ship_to` (`purchaseLabelOnce`): a retry under the same
- * `clientEventId` replays, a claim that never finished answers 409. A number
- * that IS an order answers 409 — buy against the order instead.
- *
- * Body: { ref, purpose, rateId, carrierId, serviceCode, clientEventId, shipTo, parcel }
- */
+/** POST /api/shipping/label-intake/purchase */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   try {

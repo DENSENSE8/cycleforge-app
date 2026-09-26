@@ -1,10 +1,4 @@
-/**
- * SQL membership predicates for the outbound desk views (`pair=po`,
- * `queue=pick`) and the base queues they refine. One fragment per rule, read
- * by BOTH `GET /api/orders` and `GET /api/orders/desk-counts`, so a sidebar
- * badge and the list it opens cannot disagree. Parsing lives in
- * `@/lib/orders/desk-view-filters` (client-safe).
- */
+/** SQL membership predicates for the outbound desk views (`pair=po`, `queue=pick`) and the base queues they refine. */
 
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
@@ -37,17 +31,7 @@ export function sqlOrderHasPoPairedShortage(orderAlias = 'o'): string {
     )`;
 }
 
-/**
- * True when every live allocation on the order is picked — the complement of
- * the pick list's "picked < allocated, or nothing picked".
- *
- * Same unit grain as `/api/orders`' `allocation_facts` lateral (live =
- * not RELEASED/RETURNED; picked = PICKED/PACKED/SHIPPED; allocation joined to
- * its org-scoped serial unit). Picked is a subset of live, so "picked <
- * allocated OR picked = 0" is exactly "NOT (allocated > 0 AND nothing unpicked)".
- * `COUNT(*) > 0` is load-bearing: an aggregate over zero rows still yields
- * one row, and without it an order with NO allocations would read as picked.
- */
+/** True when every live allocation on the order is picked — the complement of the pick list's "picked < allocated, or nothing picked". */
 function sqlOrderFullyPicked(orderAlias: string): string {
   const o = alias(orderAlias);
   return `EXISTS (
@@ -75,12 +59,7 @@ export function sqlOrderAwaitingPick(orderAlias = 'o'): string {
   return `(NOT ${sqlOrderHasPackScan(o)} AND NOT ${sqlOrderFullyPicked(o)})`;
 }
 
-/**
- * In-warehouse To-ship membership — `/api/orders?inWarehouse=true` (the
- * To-ship desk's row feed) spelled as one predicate for the counts feed.
- * Expects `stn` = `shipping_tracking_numbers` joined on `o.shipment_id`
- * (the alias `SHIPPED_BY_CARRIER_SQL` is written against).
- */
+/** In-warehouse To-ship membership — `/api/orders?inWarehouse=true` (the To-ship desk's row feed) spelled as one predicate for the counts feed. */
 export function sqlOrderInWarehouseToShip(orderAlias = 'o'): string {
   const o = alias(orderAlias);
   return `(

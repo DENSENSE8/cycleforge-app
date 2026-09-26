@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Products QC `?skuId=` paint-pending — the sidebar picker and the workspace
- * share one pending (`shareKey`) so selection paints in the click commit.
- *
- * The Kit Parts view was removed 2026-09-15, so `view` is now a single value
- * rather than a `qc | kit` union. Kept as a parameter, not inlined: the picker
- * needs the view stamp and the selection written in ONE replace, or the pane
- * renders the previous view against the new SKU for a frame.
- */
+/** Products QC `?skuId=` paint-pending — the sidebar picker and the workspace share one pending (`shareKey`) so selection paints in the… */
 
 import { startTransition, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

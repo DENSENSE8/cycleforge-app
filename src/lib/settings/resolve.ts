@@ -1,16 +1,4 @@
-/**
- * Settings Registry — the effective-value resolver.
- *
- * resolveSetting() layers, most-specific wins:
- *   1. entitlement missing on plan  → LOCKED (→ schema default, disabled)
- *   2. scope 'staff'                → staff value ?? default
- *   3. scope 'org' + personalizable → staff value ?? org value ?? default
- *   4. scope 'org'                  → org value ?? default  (hard policy)
- *
- * Stored values are validated against the registry schema; an invalid or
- * plan-locked option falls back rather than crashing. Pure — give it plain
- * record bags + the plan features. See docs/settings-registry.md.
- */
+/** Settings Registry — the effective-value resolver. */
 
 import type { Entitlements } from '@/lib/billing/plans';
 import { settingsForPage } from './registry';

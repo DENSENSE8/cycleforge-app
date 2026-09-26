@@ -1,9 +1,4 @@
-/**
- * placement-policy — per-org placement resolution from the Studio graph. Proves
- * org rules win over the system default, the system default is the fallback,
- * route-only org rules don't shadow the default, and a read fault degrades to
- * the default — all DB-free via injected policy + bin deps.
- */
+/** placement-policy — per-org placement resolution from the Studio graph. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,31 +1,4 @@
-/**
- * returned-serial-link.ts
- * ────────────────────────────────────────────────────────────────────
- * Close the shipped↔returned loop ON THE NORMAL UNBOX SERIAL SCAN, and the
- * manual counterpart: import a sales order onto a carton by its order number.
- *
- * Two entry points share one persistence core (`persistReturnLinkage`):
- *   - linkReturnedSerial(serial)  — fired when `attachSerialToLine` reports
- *     `is_return` (the unit was previously SHIPPED). Resolves the originating
- *     order from the SERIAL, flips that unit's open SHIPPED allocation →
- *     RETURNED (idempotent, ledger-free — a serial scan never moves stock; that
- *     is the Receive action), records a RETURNED lifecycle event for the unit's
- *     journey, then persists the carton/line linkage.
- *   - importSalesOrderByNumber(orderNumber) — fired from the PO-number field.
- *     Resolves the order by ORDER NUMBER (no serial, so no allocation flip) and
- *     persists the same carton/line linkage.
- *
- * persistReturnLinkage (shared) writes: receiving_line.source_order_id +
- * source_system + receiving_type='RETURN' + listing_url, the receiving_line_return
- * typed fact, and promotes an unfound carton → found RETURN (is_return,
- * return_platform, intake_type='RETURN', source unmatched→zoho_po with the order#
- * as display rep, open exception resolved). A carton already matched to a REAL
- * Zoho PO is never reclassified.
- *
- * Idempotent throughout (re-resolves the same order, allocation flip is a no-op,
- * COALESCE'd writes never clobber operator edits). Deps-injected (default real
- * impls) so unit tests run DB-free, per returns.ts / relink-po.ts.
- */
+/** returned-serial-link.ts ──────────────────────────────────────────────────────────────────── Close the shipped↔returned loop ON THE… */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
@@ -92,14 +65,7 @@ export interface ReturnLinkagePersisted {
   workflowStatus: string | null;
 }
 
-/**
- * The exact receiving-line row patch a return import / returned-serial scan
- * produces. Field names match `ReceivingLineRow` (the UI row shape) so the
- * client can apply it OPTIMISTICALLY via `dispatchLineUpdated` instead of a
- * heavy `/api/receiving-lines` refetch: type → RETURN, listing, carton source
- * flip, order# as display rep, and the received (UNBOXED) status all land in
- * one merge. Null fields are omitted so a merge never clobbers a real value.
- */
+/** The exact receiving-line row patch a return import / returned-serial scan produces. */
 export interface ReturnLinkageLinePatch {
   id: number;
   receiving_type: 'RETURN';
@@ -114,12 +80,7 @@ export interface ReturnLinkageLinePatch {
   workflow_status?: string | null;
 }
 
-/**
- * Build the optimistic line patch from a persisted linkage. Returns null when
- * the carton wasn't eligible (a real Zoho PO is never reclassified, so there's
- * nothing to flip in the UI). Only includes the fields that were actually
- * written, so applying it never blanks an existing platform/listing.
- */
+/** Build the optimistic line patch from a persisted linkage. */
 function buildReturnLinkagePatch(
   receivingLineId: number,
   orderId: string,
@@ -164,12 +125,7 @@ type PersistLinkageDeps = {
 
 const KNOWN_PLATFORMS = new Set(['fba', 'amazon', 'ebay', 'walmart']);
 
-/**
- * Collapse a free-form channel string (orders.account_source, or an
- * item-number-derived platform key) to one of the known marketplaces so it maps
- * cleanly onto the intake-classification return platform. Unknown values (e.g.
- * ecwid) pass through and carry no return_platform.
- */
+/** Collapse a free-form channel string (orders.account_source, or an item-number-derived platform key) to one of the known marketplaces so… */
 function collapsePlatform(raw: string | null | undefined): string | null {
   const s = (raw || '').toLowerCase().trim();
   if (!s) return null;
@@ -195,13 +151,7 @@ function resolveReturnPlatformCols(
 
 // ─── Shared persistence ────────────────────────────────────────────────────────
 
-/**
- * Persist the carton/line return linkage for a resolved order. Loads the carton,
- * skips a real Zoho PO, and on an eligible carton writes the per-line source
- * order + the typed return fact, promotes the carton (is_return / platform /
- * intake_type / source flip / display rep) and resolves its open exception.
- * Runs on the caller's open transaction client.
- */
+/** Persist the carton/line return linkage for a resolved order. */
 export async function persistReturnLinkage(
   client: PoolClient,
   params: {
@@ -231,11 +181,7 @@ export async function persistReturnLinkage(
   const isRealPo = !!carton && carton.source === 'zoho_po' && !!carton.zoho_purchaseorder_id;
   const cartonEligible = receivingId != null && !!carton && !isRealPo;
 
-  // Per-line source order linkage (lights up the existing RETURN UI). The
-  // linkage UPDATE deliberately does NOT list workflow_status, so the coarse
-  // trigger no longer fires (and can't spuriously stamp lifecycle timestamps)
-  // on a line whose status isn't changing. The row lock this UPDATE takes also
-  // covers the status read in RETURNING.
+  // Per-line source order linkage (lights up the existing RETURN UI).
   const lineUpd = await client.query<{ workflow_status: string | null }>(
     `UPDATE receiving_line
         SET source_order_id   = $2,
@@ -262,12 +208,7 @@ export async function persistReturnLinkage(
   );
   const currentStatus = lineUpd.rows[0]?.workflow_status ?? null;
 
-  // A return is RECEIVED by the act of processing it (there is no Zoho-PO
-  // receive step), so advance a pre-receive line → UNBOXED (the enum's
-  // "physically received" state; the UI labels MATCHED/UNBOXED+ as RECEIVED).
-  // Check-and-skip so a tested/DONE line is never regressed and an identity
-  // write never re-fires the coarse trigger. skipEvent: both callers record
-  // their own richer inventory_event after this returns (Step D fold).
+  // A return is RECEIVED by the act of processing it (there is no Zoho-PO receive step), so advance a pre-receive line → UNBOXED (the enum's…
   let workflowStatus = currentStatus;
   if (currentStatus === 'EXPECTED' || currentStatus === 'ARRIVED' || currentStatus === 'MATCHED') {
     const tr = await deps.transitionLine(
@@ -302,11 +243,7 @@ export async function persistReturnLinkage(
     return { eligible: true, promotedToFound: false, listingUrl, returnPlatform, sourcePlatform, productTitle: order.productTitle ?? null, sku: order.sku ?? null, workflowStatus };
   }
 
-  // Promote the carton: flag the return + platform + type, flip an unmatched
-  // carton to zoho_po with the order# as the DISPLAY representative
-  // (zoho_purchaseorder_id stays NULL → no unique-index collision). COALESCE so a
-  // real platform/PO# already present is preserved. These classification columns
-  // all STAY on the spine (Wave-4 decisions).
+  // Promote the carton:
   const promo = await client.query(
     `UPDATE receiving_carton
         SET is_return                 = true,
@@ -321,12 +258,7 @@ export async function persistReturnLinkage(
   );
   const promotedToFound = (promo.rowCount ?? 0) > 0;
 
-  // A processed return is unboxed/received, not just scanned. Wave-3 writer
-  // inversion: the unboxed stamp moved off the promo UPDATE onto the
-  // receiving_unbox street table (COALESCE-once inside the helper — a serial
-  // scan that already stamped it keeps the original time). Same tx client, so
-  // it commits atomically with the promotion. No unboxedBy: the old spine
-  // write never attributed this stamp either.
+  // A processed return is unboxed/received, not just scanned.
   await deps.upsertUnbox(client, orgId, receivingId, {
     unboxedAt: 'now',
     deriveIntakePath: true,
@@ -363,12 +295,7 @@ export interface ReturnedSerialLinkResult {
   /** True when an unfound carton was promoted off the Unfound queue. */
   promotedToFound: boolean;
   matchedOrder: ReturnedSerialMatchedOrder | null;
-  /**
-   * Optimistic receiving-line row patch (type/listing/source/order#/status) the
-   * client applies via `dispatchLineUpdated` so the workspace flips to RETURN
-   * instantly — no `/api/receiving-lines` refetch. Null when nothing was
-   * reclassified (real Zoho PO, or no prior order resolved).
-   */
+  /** Optimistic receiving-line row patch (type/listing/source/order#/status) the client applies via `dispatchLineUpdated` so the workspace… */
   linePatch: ReturnLinkageLinePatch | null;
 }
 
@@ -523,12 +450,7 @@ export async function linkReturnedSerial(
   });
 
   const knownReturn = result.linked || input.priorStatus === 'SHIPPED';
-  // Studio tap (Tap 1, §7.1 of the returns-unification plan): fired after the
-  // transaction commits, never inside it — the tap opens its own connection
-  // and advances engine state, so it must only run once the RETURNED write is
-  // durably persisted, not while it could still roll back. First-seen serials
-  // with no prior outbound are ordinary inbound scans — do not tap or flag
-  // RETURN_NO_ORDER. A SHIPPED→RECEIVED unit with no order still taps.
+  // Studio tap (Tap 1, §7.1 of the returns-unification plan):
   if (knownReturn) {
   await deps.tap({
     serialUnitId: input.serialUnitId,
@@ -539,10 +461,7 @@ export async function linkReturnedSerial(
   });
   }
 
-  // "Why" signal (plan §2.3 emitter #1 — return reasons, incl. the matched-
-  // order context). Post-commit like the tap, for the same durability reason;
-  // fires for both outcomes (a physical return happened either way — the
-  // sales-order match just enriches meta). Never fails the scan.
+  // "Why" signal (plan §2.3 emitter #1 — return reasons, incl.
   if (knownReturn) {
     await (deps.emitSignal ?? emitEntitySignalSafe)({
     organizationId: orgId,
@@ -562,11 +481,7 @@ export async function linkReturnedSerial(
   });
   }
 
-  // A physical return with NO matching sales order — record a line-level
-  // "investigate" exception so it surfaces in the Unfound/triage queue (this is
-  // the "log & investigate, not a hard wall" path: the serial already attached,
-  // the carton is already flagged is_return). Post-commit + best-effort: a
-  // failure here must never fail the scan.
+  // A physical return with NO matching sales order — record a line-level "investigate" exception so it surfaces in the Unfound/triage queue…
   if (knownReturn && !result.linked) {
     try {
       await (deps.recordException ?? recordReceivingException)(orgId, {
@@ -633,12 +548,7 @@ interface OrderRow {
   condition: string | null;
 }
 
-/**
- * Import a sales order onto a carton/line by its ORDER NUMBER (the manual
- * counterpart to a returned-serial scan — no serial, so no allocation flip).
- * Resolves the `orders` row by order_id, then persists the same carton/line
- * return linkage. Returns the matched order (with listing link) for the UI.
- */
+/** Import a sales order onto a carton/line by its ORDER NUMBER (the manual counterpart to a returned-serial scan — no serial, so no… */
 export async function importSalesOrderByNumber(
   input: ImportSalesOrderInput,
   orgId: OrgId,
@@ -658,11 +568,7 @@ export async function importSalesOrderByNumber(
     );
     const priorSourceOrderId = priorLink.rows[0]?.source_order_id ?? null;
 
-    // Exact, org-anchored match on order_id — uses idx_orders_order_id. The old
-    // UPPER(order_id) = UPPER($1) wrapped the indexed column in a function, which
-    // defeated the index and forced a full-table scan on every keystroke commit.
-    // Order numbers are exact-case (scanned / pasted), so the case-fold bought
-    // nothing but a seq-scan.
+    // Exact, org-anchored match on order_id — uses idx_orders_order_id.
     const r = await client.query<OrderRow>(
       `SELECT id AS order_pk, order_id, item_number, account_source,
               product_title, sku, condition
@@ -761,14 +667,7 @@ export async function importSalesOrderByNumber(
 
 // ─── Entry 3: read-only shipped-order lookup + serial compare ─────────────────────
 
-/**
- * The compare outcome of a received serial against the serials we shipped on a
- * resolved order:
- *   match             — the received serial is one we shipped on this order.
- *   mismatch          — we shipped serials, but not this one.
- *   no_received       — no received serial supplied (order-only preview).
- *   no_shipped_serial — order resolved, but we have no serial on record for it.
- */
+/** The compare outcome of a received serial against the serials we shipped on a resolved order: */
 export type SerialCompareOutcome = 'match' | 'mismatch' | 'no_received' | 'no_shipped_serial';
 
 export interface ShippedOrderCompare {
@@ -811,15 +710,7 @@ interface CompareOrderRow {
   tracking_number: string | null;
 }
 
-/**
- * READ-ONLY. Resolve a shipped sales order by its ORDER NUMBER and compare the
- * serial(s) we shipped on it against a received serial (the unit in hand). Powers
- * the "Order #" search lane on an Unfound carton: the operator types the order
- * number off the return label to confirm the physical unit matches what we
- * shipped — before any link/promote (that stays with importSalesOrderByNumber)
- * or ticket. No mutation, no allocation flip, no audit. Deps-injected so the
- * compare logic unit-tests DB-free.
- */
+/** READ-ONLY. Resolve a shipped sales order by its ORDER NUMBER and compare the serial(s) we shipped on it against a received serial (the… */
 export async function lookupShippedOrderForCompare(
   input: { orderNumber: string; receivedSerial?: string | null },
   orgId: OrgId,
@@ -914,13 +805,7 @@ export interface ShippedOrderSuggestDeps {
 
 const suggestDefaultDeps: ShippedOrderSuggestDeps = { query: tenantQuery };
 
-/**
- * READ-ONLY typeahead behind the Order # search: candidate shipped orders whose
- * order number CONTAINS the partial the operator is typing (org-scoped, capped
- * at 8, exact order_id first). Feeds the Auto-match list on an Unfound carton; an
- * exact order_id match auto-links via {@link importSalesOrderByNumber}. No
- * mutation. Deps-injected so it unit-tests DB-free.
- */
+/** READ-ONLY typeahead behind the Order # search: */
 export async function suggestShippedOrdersByNumber(
   query: string,
   orgId: OrgId,
@@ -1000,26 +885,7 @@ const logSerialDefaultDeps: LogUnmatchedSerialDeps = {
   emitSignal: emitEntitySignalSafe,
 };
 
-/**
- * Record that this carton's pairing question is ANSWERED: it is a return, and
- * the return matched no sales order, so there is nothing left to pair it to.
- *
- * Without this the carton has no `receiving_triage` row at all, and every
- * reader falls through `COALESCE(rt.pairing_state, 'UNFOUND')` — so a state
- * nobody ever recorded reads back as a search that failed. On carton 50354
- * that surfaced as a permanent "No matched PO" finding and an "Unmatched"
- * disposition on a return that can never have a PO.
- *
- * `WAIVED`, not `MATCHED`: we looked (the scan compared the serial against
- * shipped units) and there is nothing to bind to. That is exactly the state
- * `isTriagePaired` in `triage-focus.ts` already treats as paired for a
- * return — this makes the fact explicit on the row instead of leaving it
- * derivable only by the one surface that knows the rule.
- *
- * Never downgrades a carton already `MATCHED` to a PO (`preserveMatchedPairing`).
- * Best-effort: the serial is already attached, and a pairing bookkeeping
- * failure must not fail the scan.
- */
+/** Record that this carton's pairing question is ANSWERED: */
 async function settleReturnPairing(
   receivingId: number,
   orgId: OrgId,
@@ -1033,18 +899,7 @@ async function settleReturnPairing(
   });
 }
 
-/**
- * Log a received serial that had no platform/order match as an UNFOUND record,
- * PAIRED to its receiving line. Attaches the serial to the line via the shared
- * `attachSerialToLine` (upserts the serial_units row, writes the RECEIVING_LINE
- * provenance edge + tsn lineage — the actual serial↔line pairing), then records
- * a `RETURN_NO_ORDER` line exception so it surfaces in the Unfound/triage queue.
- * The carton is NOT promoted (there's no order to bind — it stays unfound).
- *
- * When no receiving line is available it degrades to a registry-only upsert +
- * investigate note so the serial still enters the system. Idempotent (attach is
- * a friendly no-op on re-log). Deps-injected so it unit-tests DB-free.
- */
+/** Log a received serial that had no platform/order match as an UNFOUND record, PAIRED to its receiving line. */
 export async function logUnmatchedReturnSerial(
   input: LogUnmatchedSerialInput,
   orgId: OrgId,

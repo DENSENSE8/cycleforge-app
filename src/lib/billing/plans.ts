@@ -1,14 +1,4 @@
-/**
- * Plan catalog — single source of truth for what a tenant gets at each
- * tier. Pricing lives in Stripe (we never duplicate price strings here);
- * what a plan ENTITLES the tenant to is owned by the app.
- *
- * Add a plan by:
- *   1. Creating a Stripe Product + Price.
- *   2. Wiring its price id into PLAN_PRICE_IDS via env (one env var per plan
- *      keeps the catalog config-driven without redeploy).
- *   3. Updating ENTITLEMENTS to declare what the plan unlocks.
- */
+/** Plan catalog — single source of truth for what a tenant gets at each tier. */
 
 import type { PlatformPlan } from '../tenancy/constants';
 
@@ -46,23 +36,6 @@ export interface Entitlements {
     // / send-resolution knobs (Settings Registry `receiving.vision.*`). Pro+.
     advancedVision: boolean;
     // Operations Studio capability (entitlement tiers — Part-2 Track 2).
-    //
-    // For now this is a single boolean that simply EXISTS so the studio gate
-    // has something to read; it is TRUE on every plan below so the mechanism
-    // is permissive and revokes nothing. The eventual Tracker / Ops / Studio
-    // tiering maps onto the existing RBAC perms rather than this flag:
-    //   - Tracker (read-only)  → studio.view only
-    //   - Ops (templated edit) → studio.view + a future template-only restriction
-    //   - Studio (full edit)   → studio.view + studio.manage
-    // i.e. WHAT you can do inside Studio stays an RBAC concern; this flag only
-    // gates WHETHER the plan includes the Studio surface at all. Splitting the
-    // plan ladder into Tracker/Ops/Studio prices is an unmade owner decision
-    // (Stripe catalog) and is intentionally out of scope here.
-    //
-    // NOTE: enforcement of this flag is OFF by default (gated behind
-    // STUDIO_ENTITLEMENT_ENFORCED) and the dogfood/internal org is exempt, so
-    // this is "cosmetic until the Part-3 RLS work" — it provides no real tenant
-    // isolation on its own. See src/lib/billing/studio-gate.ts.
     studio: boolean;
   };
 }
@@ -86,10 +59,7 @@ const STARTER_FEATURES: Entitlements['features'] = {
   customBranding: false,
   nasArchive: false,
   advancedVision: false,
-  // Studio is granted on EVERY plan by default (it spreads up through
-  // GROWTH/PRO/ENTERPRISE) so turning the mechanism on never revokes Studio
-  // from an existing trial/internal org. Tighten per-tier later if/when the
-  // plan ladder is split — see the Entitlements interface comment.
+  // Studio is granted on EVERY plan by default (it spreads up through GROWTH/PRO/ENTERPRISE) so turning the mechanism on never revokes…
   studio: true,
 };
 

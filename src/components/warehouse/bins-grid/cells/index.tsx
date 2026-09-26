@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Bins LedgerGrid cell registry — one switch, edit the matching case.
- *
- * Since the wave 1.4 slot port the fact tracks are MATERIALIZED
- * (`status:1…N` / `subtitle:1…N`), so the switch runs on the bound FIELD ID,
- * not on a hardcoded column key. Structural tracks (`select · barcode`) keep
- * their own cases. A new bindable fact needs a catalog entry, a resolver case
- * and — only if it wants a face richer than text — a case here.
- *
- * Row shell builds {@link BinsGridCellCtx}; domain values stay here.
- */
+/** Bins LedgerGrid cell registry — one switch, edit the matching case. */
 
 import type { ReactNode } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';

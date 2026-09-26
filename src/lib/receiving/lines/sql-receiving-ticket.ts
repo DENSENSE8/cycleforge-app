@@ -1,11 +1,4 @@
-/**
- * SQL fragments for resolving a receiving line's filed support ticket label.
- *
- * Mirrors {@link getPrimarySupportTicketForReceiving} priority 1–2 (direct
- * ticket_links on RECEIVING_LINE / RECEIVING / SHIPMENT) so the unbox sidebar
- * rail flag matches the workspace header. Lineless unmatched / unbox-opened
- * placeholder feeds use {@link sqlCartonLinkedSupportTicketLateralJoin}.
- */
+/** SQL fragments for resolving a receiving line's filed support ticket label. */
 
 /** LATERAL join — requires `rl` + `r` (receiving_carton) aliases in scope. */
 export function sqlLinkedSupportTicketLateralJoin(): string {

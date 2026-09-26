@@ -12,14 +12,7 @@ export const maxDuration = 60;
 
 const STATE_TTL_MS = 15 * 60 * 1000;
 
-/**
- * GET /api/amazon/oauth/callback
- *
- * Amazon's server-side redirect after consent. No session cookie is present, so
- * tenant scope is recovered purely from the encrypted `state` (AES-GCM = tamper
- * proof, with a 15-min freshness window). Exchanges spapi_oauth_code for a
- * refresh token, stores it in the org vault, and upserts the amazon_accounts row.
- */
+/** GET /api/amazon/oauth/callback */
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const back = (q: string) => NextResponse.redirect(`${origin}/settings/integrations?${q}`);

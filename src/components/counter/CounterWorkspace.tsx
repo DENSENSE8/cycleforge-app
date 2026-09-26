@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * @domain-job Drive one shared counter visit from the desk: claim a paired
- *   tablet, stage and correct its lines, take the customer's identity, park or
- *   finish — while the customer watches the same cart on the tablet.
- * @hardware-target Workbench
- * @density ops
- * @justification The named Workbench assemblies serve a COLLECTION (select a
- *   row → inspect → edit → persist): `WorkbenchSheetView` mounts a spreadsheet
- *   over `LedgerGridSurface`, and `RightRailHost` inspects the row you picked.
- *   This surface has no collection and no row to pick — it is one live document
- *   being co-edited by two devices, where the "rows" are 1–8 lines that exist
- *   only for the next few minutes and every edit is a versioned write against a
- *   session another screen is rendering. Mounting the sheet shell would give an
- *   ephemeral cart a saved-views menu, column visibility, and a KPI band, none
- *   of which mean anything for a visit; the grid engine's virtualization is
- *   overhead for eight rows. It composes the DS primitives directly
- *   (`Panel`/`Button`/`TextField`) and the counter session waist
- *   (`session-store` via `useCounterSession`), and forks nothing.
- *
- * The customer-facing twin of this cart is `KioskCartLedger` on `/kiosk/v2`.
- * The two are deliberately NOT one component today: that one reads
- * `kioskSessionStore` directly and carries the pay + step-up flow, while this
- * one is the operational face (voided lines visible, price editable). P4 makes
- * the store shared, which is the point at which the ledger row itself is worth
- * promoting into one primitive both faces mount.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5).
- */
+/** @domain-job Drive one shared counter visit from the desk: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -84,10 +57,7 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
 
-  // The submit response is the ONLY place the counter transaction id and the
-  // RS numbers ever reach the client — the snapshot that follows never carries
-  // them again. Held here so the receipt and repair-ticket links survive a
-  // poll refresh without a second round trip.
+  // The submit response is the ONLY place the counter transaction id and the RS numbers ever reach the client — the snapshot that follows…
   const [lastTransaction, setLastTransaction] = useState<CounterTransactionResult | null>(null);
 
   const finishVisit = useCallback(async () => {
@@ -168,17 +138,7 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
     <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-auto bg-surface-canvas p-4">
       {deviceAction}
 
-      {/*
-        Band 1 — who holds this counter, and whether the customer can see it.
-
-        No session id, no version number, no device row id. They were on here
-        as debugging chrome and they are the wrong kind of fact for this
-        surface: a staffer cannot act on `Version 7`, and this screen sits an
-        arm's length from a customer, so anything that reads like a database is
-        both noise and a small leak. The tablet is named by its LABEL, on the
-        header CTA; the version still governs every write (`expectedVersion`),
-        it just does not need a chip.
-      */}
+      {/* Band 1 — who holds this counter, and whether the customer can see it. */}
       <Panel padding="md" radius="none" className="flex flex-wrap items-center gap-3">
         <div className="flex flex-col">
           <span className={SECTION_LABEL}>Visit</span>
@@ -494,21 +454,7 @@ function LedgerRow({
   );
 }
 
-/**
- * The cold `/counter` face: no visit open yet.
- *
- * The copy here used to read "Open one with `?session=<id>`, or start a new
- * visit" — a URL contract printed at a customer-facing desk. Operator ruling
- * 2026-09-05: **never show backend session text or row ids to staff or
- * customers.** A staffer cannot mint an id, and the person on the other side
- * of the monitor should never read query-string syntax. The link still carries
- * `?session=` (that is how a takeover is handed over); it is just not
- * instructions any more.
- *
- * This is the one call `useCounterSession` cannot make for itself: there is no
- * session to hook onto until this button is pressed. Starting a visit ON a
- * tablet lives on the header Kiosk CTA.
- */
+/** The cold `/counter` face: */
 function EmptyCounter() {
   const router = useRouter();
   const [starting, setStarting] = useState(false);

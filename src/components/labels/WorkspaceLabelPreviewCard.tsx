@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Headerless workspace label preview — shared by Unbox and Testing.
- *
- * Chrome:
- * - `worksheet` (default) — glass + nested field; hover reveals label-type
- *   selector (top-left) and Edit label CTA (top-right).
- * - `procedure` — bare face for Unbox centre. Overlays are off by default:
- *   label kind + Edit live on the Print · Receive dock split menu.
- */
+/** Headerless workspace label preview — shared by Unbox and Testing. */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';

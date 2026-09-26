@@ -1,14 +1,4 @@
-/**
- * Tech bench catalog guards + resolver behaviour — Wave C's first family, and
- * the Packer bench's sibling.
- *
- * The guard that matters most here is the one pinning WHICH ROW this family
- * speaks about: a bench row is not a `TechRecord`, it is the shared
- * `QueueRowRecord` that `techRecordToQueueRow` maps one into. Every fixture
- * below therefore goes through the real mapper — a catalog path that the
- * mapper does not project would fail here rather than dash silently on the
- * floor.
- */
+/** Tech bench catalog guards + resolver behaviour — Wave C's first family, and the Packer bench's sibling. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

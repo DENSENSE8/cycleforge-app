@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Band-3 **Views** menu — the PAGE-WIDE saved-views control for ops-queue /
- * workbench data tables. Inner refinement: sits in Band 3's RIGHT control
- * cluster (right of find, immediately before the KPI + inspector toggles) —
- * never Band-1 beside lifecycle tabs, and never inside the find group (it is a
- * control, not part of the query).
- *
- * Two different scopes, two different controls (ruled 2026-08-09):
- *
- *   - MasterNav Pinned cluster (`cf.quickAccess`) — WEBSITE-WIDE page pin.
- *   - `WorkbenchViewsMenu` (here) — PAGE-WIDE named FILTER COMBINATION on this
- *     surface's `paramKeys` (`useSavedViews`). Personal by default; optional
- *     org-share via `is_shared`.
- *
- * Trigger: **Bookmark + name** on the shared band face
- * ({@link WorkbenchBandControl}) — one rung, one resting tone and one lit fill
- * with its KPI / inspector peers. Abuts the find plane at `gap-0` (no white
- * seam between paste/refine and Views). The label carries the ACTIVE VIEW'S
- * NAME, falling back to `Views` when none is applied, because the one thing an
- * operator needs from this control while it is closed is *which view am I
- * looking at* — and a name that lives only in a tooltip answers that for nobody
- * scanning the band. Truncated at 14ch with the full name still in the tooltip
- * and the accessible name. Lit fill is the control box only (never a full-row /
- * full-band wash). SoT: source-of-truth.md → Left-edge occupant.
- *
- * Panel: the SAME house Popover + {@link DROPDOWN_SHELL_CORNER} as Sort and
- * Filter. Header chrome (`HeaderChromeMenu`, `rounded-none`) is the GlobalHeader
- * page/recents/pins face — a sibling a thumb-width away must not disagree about
- * whether a menu in this product has corners.
- */
+/** Band-3 **Views** menu — the PAGE-WIDE saved-views control for ops-queue / workbench data tables. */
 
 import { useEffect, useState } from 'react';
 import { Bookmark } from '@/components/Icons';
@@ -78,15 +49,7 @@ export function WorkbenchViewsMenu({
   const controller = useSavedViews({ storageKey, paramKeys });
   const tip = controller.activeView ? controller.activeView.name : 'Views';
 
-  /**
-   * Publish the applied view's layout so `useSlotTableLayout` can put it at the
-   * head of the cascade.
-   *
-   * The page calls the layout hook and passes its result DOWN into the table
-   * that mounts this menu, so the component that knows which view is active
-   * sits below the hook that needs the answer — hence a module store rather
-   * than a prop. Costs one frame on apply; applying a view is deliberate.
-   */
+  /** Publish the applied view's layout so `useSlotTableLayout` can put it at the head of the cascade. */
   const activeLayout = controller.activeView?.layout ?? null;
   useEffect(() => {
     if (!tableId) return;
@@ -130,21 +93,7 @@ export function WorkbenchViewsMenu({
   );
 }
 
-/**
- * The Views **face** — flush Bookmark trigger + the same `Popover` /
- * {@link DROPDOWN_SHELL_CORNER} panel as DataTable Sort and Filter, with
- * no opinion about where the views come from.
- *
- * Exported because a surface may legitimately own a different saved-views
- * STORE while wearing this control. Media Library (`/ops/photos`) is the second
- * consumer: its views persist a JSON `{filters, view}` snapshot through
- * `useMediaLibrarySavedViews`, not a URL-param set, so it cannot compose
- * {@link WorkbenchViewsMenu} — and must not fork the icon, the tooltip or the
- * panel either. Three client hooks over ONE `saved_views` store is the ruling
- * (source-of-truth.md → Tabs vs. saved views); three *faces* never was.
- *
- * Own the store, compose the face.
- */
+/** The Views **face** — flush Bookmark trigger + the same `Popover` / {@link DROPDOWN_SHELL_CORNER} panel as DataTable Sort and Filter,… */
 export function ViewsMenuShell({
   open,
   tip,

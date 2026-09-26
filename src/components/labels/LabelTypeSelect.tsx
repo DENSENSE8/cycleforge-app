@@ -15,12 +15,7 @@ export interface LabelTypeOption {
   grain?: string;
 }
 
-/**
- * Compact header dropdown that selects which label is queued for printing
- * (e.g. Unit label / Carton label / As Listed) on a workspace label preview.
- * Typography matches the "Edit label" secondary button (sentence case,
- * text-role-caption + font-semibold) — not the uppercase eyebrow style.
- */
+/** Compact header dropdown that selects which label is queued for printing (e.g. */
 export function LabelTypeSelect({
   value,
   options,

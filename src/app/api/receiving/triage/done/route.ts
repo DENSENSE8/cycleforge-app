@@ -3,20 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
 
-/**
- * GET /api/receiving/triage/done — cartons staged + saved for unbox
- * (`receiving_triage.triage_complete = true`), newest-completed first.
- *
- * Backs BOTH:
- *   - the Done tab (`?triview=done`, `TriageDoneList`)
- *   - the "Staged" badge on the combined Triage tab (`useTriageStagedCartons`,
- *     called with a wide `?limit=` and no `?q=` to build a receiving_id Set)
- *
- * Deliberately a standalone endpoint rather than a new `view=` on the giant
- * `/api/receiving-lines` route — mirrors the existing `unfound-queue`
- * precedent (a separate small query, not a 6th branch through a 2000+ line
- * shared SELECT).
- */
+/** GET /api/receiving/triage/done — cartons staged + saved for unbox (`receiving_triage.triage_complete = true`), newest-completed first. */
 interface DoneRow {
   id: number;
   zoho_purchaseorder_number: string | null;

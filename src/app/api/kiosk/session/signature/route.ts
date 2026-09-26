@@ -1,13 +1,4 @@
-/**
- * POST /api/kiosk/session/signature — verb 2 of the tablet's three.
- *
- * Kiosk-ONLY by design, and the domain module enforces it: a signature captured
- * on the staff desktop is a signature the customer did not give. This is the
- * one asymmetry in this family that runs toward the tablet rather than away.
- *
- * A signature on a non-REPAIR line is a 422, not a silent no-op — the caller
- * asked for something that cannot mean anything.
- */
+/** POST /api/kiosk/session/signature — verb 2 of the tablet's three. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

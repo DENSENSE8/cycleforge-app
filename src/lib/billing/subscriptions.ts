@@ -1,10 +1,4 @@
-/**
- * Subscription repository — mirrors the Stripe subscription lifecycle into
- * billing_subscriptions for fast app-layer reads.
- *
- * Webhook handler is the single writer here. App code reads through
- * `getSubscription(orgId)`; entitlements derive from the `plan` column.
- */
+/** Subscription repository — mirrors the Stripe subscription lifecycle into billing_subscriptions for fast app-layer reads. */
 
 import pool from '@/lib/db';
 import { invalidateOrgCache, setOrgPlan } from '../tenancy/organizations';
@@ -120,15 +114,7 @@ export async function upsertSubscription(input: UpsertSubscriptionInput): Promis
   invalidateOrgCache(input.organizationId);
 }
 
-/**
- * Resolve the org that owns a Stripe subscription/customer via the local mirror.
- *
- * Used by webhook events whose payload carries no `organization_id` metadata
- * (e.g. `invoice.*` — Stripe puts metadata on the subscription, not the
- * invoice). Prefers the subscription id (1:1 with an org) and falls back to the
- * customer id. Returns null for a customer/sub we don't mirror (e.g. an invoice
- * for a subscription created outside our flow).
- */
+/** Resolve the org that owns a Stripe subscription/customer via the local mirror. */
 export async function getOrgIdByStripeRef(ref: {
   subscriptionId?: string | null;
   customerId?: string | null;
@@ -150,17 +136,7 @@ export async function getOrgIdByStripeRef(ref: {
   return null;
 }
 
-/**
- * Mirror a subscription status into the local table — the dunning path.
- *
- * `invoice.payment_failed` marks `past_due`; the local `status` column already
- * models it (see 2026-05-22_billing.sql). This does NOT touch
- * `organizations.plan`/`status`: a failed payment doesn't change the plan, and
- * `OrgStatus` has no `past_due` value — the subscription mirror is the single
- * place the dunning state lives, matching how `upsertSubscription` is the only
- * writer of `billing_subscriptions.status`. Idempotent (setting the same status
- * twice is a no-op). Returns true when a mirror row was actually updated.
- */
+/** Mirror a subscription status into the local table — the dunning path. */
 export async function markSubscriptionStatus(orgId: OrgId, status: string): Promise<boolean> {
   const r = await pool.query(
     `UPDATE billing_subscriptions SET status = $2, updated_at = now() WHERE organization_id = $1`,
@@ -170,13 +146,7 @@ export async function markSubscriptionStatus(orgId: OrgId, status: string): Prom
   return (r.rowCount ?? 0) > 0;
 }
 
-/**
- * Recovery side of dunning: clear a `past_due` mirror back to `active` on
- * `invoice.payment_succeeded`. Guarded to ONLY flip a row that is currently
- * `past_due`, so a routine success (or the $0 trial invoice) never clobbers a
- * more specific status like `trialing` that `customer.subscription.*` owns.
- * Returns true when a past_due row was cleared.
- */
+/** Recovery side of dunning: */
 export async function clearPastDue(orgId: OrgId): Promise<boolean> {
   const r = await pool.query(
     `UPDATE billing_subscriptions
@@ -188,18 +158,7 @@ export async function clearPastDue(orgId: OrgId): Promise<boolean> {
   return (r.rowCount ?? 0) > 0;
 }
 
-/**
- * Idempotent webhook gate. Returns true when the caller SHOULD process this
- * delivery: a brand-new event, OR a previously-recorded event whose handler
- * never completed (processed_at IS NULL → a prior attempt failed and Stripe
- * redelivered). Returns false only for an already-successfully-handled
- * duplicate. The handler must call markStripeEventProcessed() after success.
- *
- * Safe before/after the processed_at-nullable migration: the INSERT does not
- * set processed_at, so pre-migration it defaults to now() (a redelivery then
- * resolves to "already processed" = the old skip-dupes behavior), and
- * post-migration it is NULL until markStripeEventProcessed sets it.
- */
+/** Idempotent webhook gate. */
 export async function recordStripeEvent(
   eventId: string,
   eventType: string,

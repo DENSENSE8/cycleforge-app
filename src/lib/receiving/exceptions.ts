@@ -1,21 +1,4 @@
-/**
- * Receiving line-level exception domain — the decomposition home for per-line
- * exception facts that used to be stuck at carton level on the receiving
- * god-table.
- *
- * Scope (deliberately line-level): exceptions that belong to a SPECIFIC line —
- * the PROBLEM lifecycle dimension (DAMAGED / SHORT / OVER / WRONG_ITEM), and
- * line-level claims. A multi-line carton can now say "line A damaged, line B
- * fine" — structurally impossible when these lived on `receiving`.
- *
- * NOT moved here (genuinely carton-level, stays on `receiving`): the NO_PO /
- * CARRIER_MISMATCH scan exception on an UNFOUND carton that has no lines yet,
- * carton `support_notes`, and `return_reason` (a return is a package fact). The
- * god-table critique conflated those with line facts; they are correctly
- * carton-scoped and do not move.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** Receiving line-level exception domain — the decomposition home for per-line exception facts that used to be stuck at carton level on the… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -52,12 +35,7 @@ export interface ReceivingExceptionsDeps {
 
 const defaultDeps: ReceivingExceptionsDeps = { query: tenantQuery, emitSignal: emitEntitySignalSafe };
 
-/**
- * Record one OPEN line-level exception. Org-scoped (organization_id stamped
- * explicitly AND via the GUC default, matching the FORCE-isolation pattern).
- * Returns the inserted id. Best-effort dedup is the caller's concern; this
- * always inserts a row so the audit trail is complete.
- */
+/** Record one OPEN line-level exception. */
 export async function recordReceivingException(
   orgId: OrgId,
   input: RecordReceivingExceptionInput,

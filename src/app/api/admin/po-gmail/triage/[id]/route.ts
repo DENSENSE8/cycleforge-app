@@ -1,28 +1,4 @@
-/**
- * PATCH /api/admin/po-gmail/triage/[id]
- *
- * Move a scanned email between piles (inbox / upload / ignore / done)
- * and/or update its per-field triage state (extraction confirmations,
- * notes, Zoho PO# the human typed in).
- *
- * Body (all fields optional, but at least one must be present):
- *   {
- *     pile?:                    'inbox' | 'upload' | 'ignore' | 'done',
- *     triage_state?:            object,    // deep-merged into existing JSONB
- *     notes?:                   string,
- *     assigned_to?:             uuid | null,
- *     zoho_uploaded_po_number?: string | null
- *   }
- *
- * Setting `pile = 'done'` (or `zoho_uploaded_po_number`) timestamps
- * `zoho_uploaded_at` if it isn't already set, so the auto-resolve loop
- * (po-sync cron) has a record of the human's action even if the mirror
- * hasn't caught up yet.
- *
- * `status` and `resolved_at` are kept in lockstep with `pile` by the
- * email_missing_purchase_orders_sync_status trigger — callers don't need
- * to touch them directly.
- */
+/** PATCH /api/admin/po-gmail/triage/[id] */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';

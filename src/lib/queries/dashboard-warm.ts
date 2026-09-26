@@ -8,31 +8,10 @@ import {
   packedOrdersQuery,
 } from '@/lib/queries/dashboard-queries';
 
-/**
- * Default Unshipped page size — keep in lockstep with `UnshippedTable`'s
- * `rowLimit` initial (200) and `UNSHIPPED_SEED_LIMIT` in
- * `unshipped-queue-seed.server.ts`.
- *
- * This is part of the CACHE KEY, not just the request. Warming without it built
- * a `limit: null` entry while the table mounts `limit: 200`, so the prefetch
- * (a) never satisfied the render and (b) asked `/api/orders` for the ENTIRE
- * unshipped backlog with no ceiling — on every desk mount and every settled
- * search change. With the limit threaded, the warm key is byte-identical to the
- * RSC seed's key, so on a seeded desk the prefetch resolves from fresh cache
- * and issues no request at all.
- */
+/** Default Unshipped page size — keep in lockstep with `UnshippedTable`'s `rowLimit` initial (200) and `UNSHIPPED_SEED_LIMIT` in… */
 const UNSHIPPED_WARM_LIMIT = 200;
 
-/**
- * Warm the active dashboard view's data into the React Query cache. Shared by
- * the page-level warm-up effect and the sign-in BootGate so a prefetch and the
- * table that later mounts always hit the same cache key (the factories are the
- * single source of truth). `shippedFilter` falls back to the stored preference,
- * matching how the Shipped ledger (`useShippedTableFilters`) resolves it. Returns a promise that
- * settles when the active view is ready.
- *
- * Warranty Logger lives under Support (`/support?mode=warranty`) — not warmed here.
- */
+/** Warm the active dashboard view's data into the React Query cache. */
 export function warmActiveView(
   queryClient: QueryClient,
   searchParamsString: string,
@@ -65,13 +44,7 @@ export function warmActiveView(
   return queryClient.prefetchQuery(unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId)));
 }
 
-/**
- * The Unshipped warm args, mirroring how `UnshippedTable` mounts the same
- * factory: `strictSearchScope`, the `?staff=` scope, and the bounded page —
- * except while searching, where the table deliberately drops the ceiling
- * (`limit: deferredSearchQuery ? undefined : rowLimit`) because the results are
- * already the matches.
- */
+/** The Unshipped warm args, mirroring how `UnshippedTable` mounts the same factory: */
 function unshippedWarmArgs(searchQuery: string, staffId: number | undefined) {
   return {
     searchQuery,

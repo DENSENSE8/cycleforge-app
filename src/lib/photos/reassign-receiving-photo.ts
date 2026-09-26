@@ -3,18 +3,7 @@ import { resolvePoRef } from './resolve-po-ref';
 import { remapReceivingPhotoTypeOnMove } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from './types';
 
-/**
- * The minimum a caller's transaction client must provide.
- *
- * Executor pattern (same shape as `transitionReceivingLine`): every impl below
- * has a `…On(client, …)` core plus a wrapper that opens its own transaction.
- * A caller that ALREADY owns a transaction — the AI mutation chokepoint, which
- * must write the photo move and its `agent_mutations` row atomically — passes
- * its client via `makeReassignDepsForClient` and gets one transaction instead
- * of four. Without this the move would commit on its own connection, and a
- * later failure in the outer transaction would leave a moved photo with no
- * mutation row: invisible to audit and impossible to revert.
- */
+/** The minimum a caller's transaction client must provide. */
 export interface ReassignClient {
   query<R extends Record<string, unknown> = Record<string, unknown>>(
     sql: string,
@@ -253,14 +242,7 @@ const defaultDeps: ReassignReceivingPhotoDeps = {
   resolvePoRef,
 };
 
-/**
- * Deps bound to a caller-owned transaction client.
- *
- * For callers that must make the move atomic with their own writes — see
- * {@link ReassignClient}. `resolvePoRef` keeps its own connection: it is a
- * read of denormalised reference data, not part of the atomic unit, and
- * threading it would widen this seam for no correctness gain.
- */
+/** Deps bound to a caller-owned transaction client. */
 export function makeReassignDepsForClient(client: ReassignClient): ReassignReceivingPhotoDeps {
   return {
     loadPrimaryLink: (organizationId, photoId) =>

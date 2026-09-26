@@ -1,12 +1,4 @@
-/**
- * Shape of a marketplace order # (eBay 2-5-5 `11-15067-72584`, Amazon 3-7-7
- * `111-1234567-1234567`, or a 10+ digit compact paste). Leaf module — imported
- * by header axis routing without going through {@link order-number-match}
- * (Turbopack live-binding). Keep this file import-free.
- *
- * Exact shapes live in `src/lib/marketplace-order-id.ts`; the regexes here are
- * duplicated so this module stays a leaf.
- */
+/** Shape of a marketplace order # (eBay 2-5-5 `11-15067-72584`, Amazon 3-7-7 `111-1234567-1234567`, or a 10+ digit compact paste). */
 
 export function looksLikeMarketplaceOrderNumber(raw: string): boolean {
   const q = String(raw ?? '')

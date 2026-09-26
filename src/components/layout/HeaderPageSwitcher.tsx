@@ -2,27 +2,7 @@
 
 /**
  * Identity + switcher for GlobalHeader.
- *
- * Closed face = icon + display name for the current page (or active child).
- * Compact {@link HEADER_PAGE_FACE_WIDTH} chip — same width as the open menu.
- * Find sits flush to its right. Never a beam-filling bar.
- * On Scan Stations the face opens an {@link AnchoredLayer} over
- * {@link floorStationPages} — Arrival · Unbox · Local Pickup · Repair Service ·
- * Quality Control · Ready to Pack · Packing · Scan out — so a bench operator
- * can triage with the spine closed. Desk / table pages do not get this chip:
  * {@link DeskPageChrome} already owns the page title (operator 2026-08-31).
- *
- * Menu chrome = {@link HeaderChromeMenu} / {@link HeaderChromeMenuItem} (shared
- * with Recents + Pins).
- *
- * **It survives the spine flatten deliberately, on Scan Stations only.** The
- * flatten made a page's children ordinary spine rows, so this is a second
- * door onto the same destinations — but `ResponsiveLayout` holds `navOpen` in
- * an unpersisted `useState(false)`, so the spine is CLOSED on every cold load.
- * Deleting the switcher on the floor would leave a bench operator with no
- * visible way to change stations until they open a column that does not
- * remember being open. Desks do not need that door: their title and tabs live
- * in the page chrome.
  */
 
 import { useMemo, useRef, useState } from 'react';
@@ -46,20 +26,7 @@ import {
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
-/**
- * Shared face chrome — menu trigger and static chip stay pixel-matched.
- *
- * **Quiet label, `role-body` (2026-08-20).** This face names the page you
- * are already ON — a READOUT, not a destination — so the LABEL alone stays
- * `text-text-muted` (the 2026-08-19 "quiet by design" ruling: it is the one
- * thing on the beam that cannot be clicked-to-go-anywhere, and full ink here
- * out-shouted Pins / Recents / the toggle beside it). Size moved up a step
- * same-day, `role-caption` (12px) → `role-body` (14px), to match the
- * spine's same-day label bump (`SidebarNavList.tsx`) — quiet and legible are
- * independent axes; the mute ruling only ever governed ink. The glyph keeps
- * the beam's shared full-ink token from {@link HEADER_ICON_BTN_CLASS}
- * unchanged, so only the label is quiet, never the icon.
- */
+/** Shared face chrome — menu trigger and static chip stay pixel-matched. */
 /** Host that owns the face width — the dropdown anchors to this box. */
 const PAGE_FACE_WRAP_CLASS = cn(
   'relative flex h-full shrink-0 items-stretch',
@@ -78,14 +45,7 @@ const PAGE_FACE_CLASS = cn(
 function PageFaceContent({ Icon, label }: { Icon: SidebarIconComponent; label: string }) {
   return (
     <>
-      {/*
-        The glyph is a plain child span, never `Button`'s `icon` prop: that prop
-        wraps the node in `iconBox[size]` and forces `[&>svg]:h-full`, so a
-        `size="sm"` Button drew this at **14px** while every other beam glyph —
-        including this face's own static twin — drew at 16px. The prop silently
-        overrode the size token, which is why "the icon sizing doesn't match"
-        survived a pass that set the token correctly.
-      */}
+      {/* The glyph is a plain child span, never `Button`'s `icon` prop: */}
       <span className="flex min-w-0 flex-1 items-center gap-1">
         <span className={cn(TOP_CHROME_ICON_FACE, 'flex shrink-0 items-center justify-center')}>
           <Icon className="h-full w-full" aria-hidden />

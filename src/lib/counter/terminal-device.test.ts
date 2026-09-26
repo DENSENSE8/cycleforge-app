@@ -1,11 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/terminal-device.test.ts
- *
- * SQ3. The resolution ORDER is the whole point: a lane that has been configured
- * with no stand must not inherit the deployment's, or a cash-only counter starts
- * prompting a card reader in another room.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/terminal-device.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgId } from '@/lib/tenancy/constants';

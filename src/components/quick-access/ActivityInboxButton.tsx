@@ -20,18 +20,7 @@ import {
 } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
-/**
- * The notifications button — glyph, unread corner count, and the panel it opens.
- *
- * Extracted from {@link GlobalHeaderActions} on 2026-08-21 so the mobile drawer
- * footer could mount the SAME control instead of re-deriving one. The face is
- * the shared header icon face in both places; only `placement` differs, because
- * a footer has room above it and a header has room below.
- *
- * The unread count lives here rather than at each call site — a second reader of
- * `useActivityInboxOptional().items.length` is how two surfaces come to disagree
- * about how many notifications there are.
- */
+/** The notifications button — glyph, unread corner count, and the panel it opens. */
 export function ActivityInboxButton({
   placement = 'bottom-end',
   size = 'md',
@@ -83,14 +72,7 @@ export function ActivityInboxButton({
         gap={0}
         /**
          * The panel reaches the SCREEN edge, not the button's.
-         *
          * Operator 2026-09-22: *"the drop down for the inbox on click must have
-         * no spacing to the right of the screen."* The header pads its icon
-         * cluster (`HEADER_INSET_X`), so a trigger-aligned panel left that
-         * inset standing as a gutter down the panel's right side — a strip of
-         * page showing past a surface that is meant to hang off the corner.
-         * The inbox is the last control on the beam, so its edge is the
-         * screen's.
          */
         edgeAlign="viewport"
       >

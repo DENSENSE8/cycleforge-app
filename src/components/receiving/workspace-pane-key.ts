@@ -1,36 +1,4 @@
-/**
- * Presence identity for a receiving carton overlay (`AnimatePresence` key).
- *
- * ONE key per physical carton, stable across:
- *
- *   (a) **the scan-resolution upgrade.** The pre-resolve optimistic stub
- *       (`buildOptimisticUnmatchedPaneStub`) has no `receiving_id` yet, so the
- *       scan slot ADOPTS the carton it resolves into. `buildMatchedStubRow`
- *       already documents this contract — "the workspace is keyed on
- *       receiving_id, so the real row reconciles IN PLACE (no remount)" — but
- *       the key derivation had drifted to `client_event_id`, which changes
- *       (`scan:<TRK>` → absent) at exactly that moment. Under `mode="wait"`
- *       that is a full exit-then-enter with an empty canvas, mid-scan.
- *
- *   (b) **the entry route.** Scanning a carton and then clicking that same
- *       carton's rail row is the same physical box; it must not exit-then-enter
- *       against itself.
- *
- * A genuinely DIFFERENT carton always yields a different key, so a scan that
- * lands on a new box still remounts the shell — the empty-pane-first policy
- * `ReceivingRightPane.pending.guard.test.ts` protects. The granularity moves
- * from "any scan-driven open" to "a scan-driven open of a different carton";
- * the intent (never reuse the prior carton's shell) is unchanged.
- *
- * `resolveWorkspacePaneSlot` is **idempotent under repeated application** —
- * `resolve(resolve(s, r), r) === resolve(s, r)` — which is what makes it safe to
- * advance the slot from a ref during render (React StrictMode double-invokes
- * render, and the key is needed at render time).
- *
- * Pure + dependency-light on purpose: `Triage` mounts the identical expression
- * today and is the intended second consumer (see the port note in
- * `docs/todo/station-workbench-port-FOLLOWUPS.md`).
- */
+/** Presence identity for a receiving carton overlay (`AnimatePresence` key). */
 
 import { normalizeScanKey } from '@/lib/receiving/scan/normalize';
 
@@ -83,10 +51,7 @@ export function resolveWorkspacePaneSlot(
     return { key: scanKey ?? `line:${row.id}`, cartonId: null };
   }
 
-  // The pending scan slot adopts the carton it just resolved into: same
-  // physical box, so the pane upgrades in place. Guarded on `cartonId` so two
-  // cartons that happen to share a tracking number still crossfade against
-  // each other (nothing enforces one carton per tracking at the DB level).
+  // The pending scan slot adopts the carton it just resolved into:
   if (
     prev != null &&
     scanKey != null &&

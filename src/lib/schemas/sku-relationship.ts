@@ -8,15 +8,7 @@ const optNullableNotes = z.string().trim().min(1).nullable().optional();
 
 // ─── POST /api/sku-catalog/graph/relationships ──────────────────────────────
 
-/**
- * Create a directed parent→child edge between two sku_catalog ids. Both ids are
- * required; `qty` defaults to 1. `idempotencyKey` lets a retried create replay
- * the original response instead of colliding on the (parent, child) unique key.
- *
- * Business rules enforced in the route (not here): both SKUs must exist, no
- * self-edge, no duplicate, and no cycle (child must not already be an ancestor
- * of parent).
- */
+/** Create a directed parent→child edge between two sku_catalog ids. */
 export const SkuRelationshipCreateBody = z
   .object({
     parentSkuId: positiveInt,

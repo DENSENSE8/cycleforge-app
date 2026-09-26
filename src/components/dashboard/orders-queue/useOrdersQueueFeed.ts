@@ -36,20 +36,7 @@ import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
 import { useRecentImportedOrders } from '@/lib/orders/recent-imports';
 
-/**
- * `getDaysLateNullable`, memoized on `(today, deadline)`.
- *
- * The row list called it once per ROW per render, and each call builds TWO
- * `Intl.DateTimeFormat` instances — one to fold the deadline into a PST civil
- * date, one for today's. A 62-row To-ship window therefore constructed ~124
- * formatters on every render of the table, for a value that is a pure function
- * of a string and the civil date.
- *
- * `todayKey` is part of the key rather than captured, so the answer self-heals
- * across a PST midnight instead of pinning a desk left open overnight to
- * yesterday's lateness. The underlying resolver is untouched — this is a cache
- * in front of the date SoT, never a second implementation of the arithmetic.
- */
+/** `getDaysLateNullable`, memoized on `(today, deadline)`. */
 const DAYS_LATE_CACHE = new Map<string, number | null>();
 
 export function daysLateOn(todayKey: string, deadlineAt: string | null | undefined): number | null {
@@ -157,17 +144,7 @@ export interface OrdersQueueFeed extends OrdersQueueCommits {
   views: { storageKey: string; paramKeys: readonly string[]; emptyHint: string } | undefined;
 }
 
-/**
- * The outbound queue FEED — every data / behaviour hook an outbound lane
- * needs, with no presentation: painted rows + grouping + URL sort, the
- * selection / cursor / inspector plane, the one assignment waist and its
- * inline-edit commits, the sort menu and saved views.
- *
- * Two presenters read it: {@link useOrdersSpreadsheet} (the slot DataTable,
- * every lane but To ship) and `OutboundOrdersLedger` (the To-ship industrial
- * ledger). One feed, so the two can never disagree about which rows exist,
- * what is selected or how an edit commits.
- */
+/** The outbound queue FEED — every data / behaviour hook an outbound lane needs, with no presentation: */
 export function useOrdersQueueFeed({
   records,
   searchValue,
@@ -270,22 +247,7 @@ export function useOrdersQueueFeed({
     activeFace: queueDisplaySortFace(sort),
   };
 
-  // The lane's saved views, resolved through the ONE outbound resolver so the
-  // toolbar menu and the rail's `OutboundSavedViewsList` cannot disagree about
-  // what a view captures.
-  //
-  // `shipped` was wired 2026-09-23: `SHIPPED_VIEW_PARAMS` is commented
-  // "matches DashboardShippedTable", the `dashboard_shipped` surface is in
-  // the `saved_views` CHECK set and in `GENERIC_SAVED_VIEW_SURFACES`, and
-  // `SHIPPED_SAVED_VIEWS_KEY` already resolves to it — the Shipped desk was
-  // the one operator worklist with filters + sort whose whole saved-view
-  // path existed and had no control on the table to reach it.
-  //
-  // `staged` and `labels` stay out on purpose, and not for lack of a key:
-  // a view is a named set of FILTER params, and those lanes have no filter
-  // to name. The staged dock's only URL state is its find text, which a view
-  // must never capture (`UNSHIPPED_VIEW_PARAMS`: "filters + sort pin, never
-  // search text"). A Views control there would save nothing.
+  // The lane's saved views, resolved through the ONE outbound resolver so the toolbar menu and the rail's `OutboundSavedViewsList` cannot…
   const views =
     queueMode === 'fulfillment'
       ? {
@@ -323,13 +285,7 @@ export function useOrdersQueueFeed({
   };
 }
 
-/**
- * The outbound inline-edit commits — condition, ship-by, pick / pack assign,
- * the under-title facts, platform, SKU bin, tracking — each keyed by the
- * record's `orders.id`. The feed spreads these onto its presenters; a record
- * opened outside a queue feed (the Shipped desk's `OrderRecordView`) mounts
- * the same waist directly.
- */
+/** The outbound inline-edit commits — condition, ship-by, pick / pack assign, the under-title facts, platform, SKU bin, tracking — each… */
 export function useOrdersQueueCommits(): OrdersQueueCommits {
   // ONE mutation hook for the whole table (not one per row): every in-place
   // edit commits through the same `useOrderAssignment` waist — a scalar field
@@ -373,19 +329,7 @@ export function useOrdersQueueCommits(): OrdersQueueCommits {
     [assignMutate],
   );
 
-  /**
-   * The other under-title facts, written through the same waist.
-   *
-   * Keyed by catalog field id so the handler does not have to learn a new name
-   * every time an org binds a different fact under the title.
-   *
-   * `orders.notes` goes to the TRAIL, not through the assign waist. Notes are
-   * append-only: `POST /api/orders/[id]/notes` adds an entry and (since
-   * 2026-08-31) refreshes the denormalized `orders.notes` column the subtitle
-   * paints, so the glyph shows what was just written instead of a stale scalar.
-   * `/api/orders/assign` still has no `notes` branch, and must not grow one —
-   * that would be a second independent author of the same field.
-   */
+  /** The other under-title facts, written through the same waist. */
   const handleCommitSubtitleField = useCallback(
     (record: ShippedOrder, fieldId: string, value: string | null) => {
       const id = Number(record.id);
@@ -417,12 +361,7 @@ export function useOrdersQueueCommits(): OrdersQueueCommits {
     [assignMutate],
   );
 
-  /**
-   * Platform correction: an order the import filed under the wrong channel.
-   * Goes through the order record PATCH (`orders.create`), which invalidates
-   * the queue caches and publishes the realtime change — not the assign
-   * waist, which has no `account_source` field and must not grow one.
-   */
+  /** Platform correction: */
   const handleCommitPlatform = useCallback((record: ShippedOrder, accountSource: string) => {
     const id = Number(record.id);
     const next = accountSource.trim();
@@ -439,12 +378,7 @@ export function useOrdersQueueCommits(): OrdersQueueCommits {
       .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to change the platform'));
   }, []);
 
-  /**
-   * SKU home bin: `POST /api/update-sku-location` (`bin.set`) — the same write
-   * the stock desk's Change Location uses, with its `location_transfers` audit.
-   * It moves no allocated unit; the record's BIN shows it only while nothing is
-   * allocated (see `sku_home_location` in `/api/orders`).
-   */
+  /** SKU home bin: */
   const handleCommitSkuBin = useCallback((record: ShippedOrder, locationBarcode: string) => {
     const sku = String(record.sku ?? '').trim();
     const location = locationBarcode.trim();

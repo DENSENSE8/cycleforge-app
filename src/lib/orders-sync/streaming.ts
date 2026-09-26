@@ -9,16 +9,7 @@ interface NdjsonStreamHandle<T> {
   fail: (error: unknown) => void;
 }
 
-/**
- * Returns a ReadableStream that emits NDJSON-encoded events plus a pair of
- * helpers (`emit`, `finish`) for the job to push events into. The stream stays
- * open until `finish()` or `fail()` is called.
- *
- * Defaults to the orders-sync `SyncStreamEvent` contract but is generic so
- * other feeds (e.g. carrier-sync) can reuse the same machinery with their own
- * event union — `fail()` always emits a `{ type: 'error', error }` line, which
- * every such union includes.
- */
+/** Returns a ReadableStream that emits NDJSON-encoded events plus a pair of helpers (`emit`, `finish`) for the job to push events into. */
 export function createNdjsonStream<T = SyncStreamEvent>(): NdjsonStreamHandle<T> {
   const encoder = new TextEncoder();
   let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;

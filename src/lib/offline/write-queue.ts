@@ -2,21 +2,7 @@
 
 import { toast } from '@/lib/toast';
 
-/**
- * Offline write queue.
- *
- * Goal: a tap-Confirm on the Numpad sheet must "land" even when the receiver
- * is mid-aisle with no signal. Each mutating request is enqueued in IndexedDB
- * with its idempotency key; the queue drains the moment connectivity returns.
- *
- * Safety: P1-1.1 already makes every mutating endpoint idempotent on
- * `Idempotency-Key`, so a queued request replaying after the server already
- * processed an in-flight copy returns the cached response, not a double-apply.
- *
- * Scope: covers POST/PATCH/DELETE calls submitted via `queueOrFetch()`.
- * GETs are not queued — they're served from the SW's `NetworkFirst` cache
- * (already configured in next.config.ts).
- */
+/** Offline write queue. */
 
 // ─── IndexedDB shim (tiny, deps-free) ──────────────────────────────────────
 
@@ -122,15 +108,7 @@ export function isOnline(): boolean {
   return navigator.onLine;
 }
 
-/**
- * Drop-in replacement for `fetch()` on mutating endpoints. If the network
- * is up, fires through normally. If offline (or the fetch throws a network
- * error), enqueues for later replay and returns a synthetic 202-Accepted
- * Response so the caller's success path can run optimistically.
- *
- * The `Idempotency-Key` header is required and must be a stable UUID per
- * user action — the queue replays under this key so the server dedups.
- */
+/** Drop-in replacement for `fetch()` on mutating endpoints. */
 export async function queueOrFetch(input: {
   url: string;
   method: 'POST' | 'PATCH' | 'DELETE';

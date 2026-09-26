@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Receiving's compound track — an ADAPTER call, not a cell.
- *
- * This file used to export five wrapper components, one per compound column,
- * each hand-assembling the grid-cell class, `data-col` and the frozen offset.
- * That wrapper is now shared too ({@link renderCompoundGridCell}), because it
- * is where a cell's POSITION is decided and two families had already drifted
- * apart there while agreeing on the body. All that is left for a family is what
- * only it knows: how its row maps to a {@link CompoundRowView}.
- *
- * Serves Unbox / History / Testing — one dispatcher, because they share a row
- * type.
- */
+/** Receiving's compound track — an ADAPTER call, not a cell. */
 
 import type { ReactNode } from 'react';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
@@ -36,10 +24,7 @@ export { isCompoundCellKey };
  */
 function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
   return {
-    // Materialized slot tracks (wave 1.3) — one resolved value per BOUND slot,
-    // keyed by track key. Empty on the product default, which is why the port
-    // reproduces the row exactly; an org that binds Location gets a real column
-    // with no change to this adapter.
+    // Materialized slot tracks (wave 1.3) — one resolved value per BOUND slot, keyed by track key.
     slots: receivingSlotValuesFor(ctx.row, ctx.columns ?? []),
     ...receivingCompoundView(ctx.row, {
     title: ctx.productTitle,
@@ -55,19 +40,7 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
   };
 }
 
-/**
- * The row's SELECTION capability, in the family's own terms.
- *
- * Two planes, and the gutter serves whichever this surface split out:
- *
- * - **click-select** (Unbox History): the ROW carries
- *   `role="checkbox"` and owns the toggle, so the gutter is DECORATIVE — no
- *   `onToggle`, no second control for a screen reader to disambiguate. It still
- *   paints the face, which is the whole point of the change: that column was
- *   blank at rest and read as dead space.
- * - **split planes** (row body opens the record, gutter ticks): a real
- *   checkbox, hit plane the full 48px cell.
- */
+/** The row's SELECTION capability, in the family's own terms. */
 function selectFor(
   ctx: ReceivingGridCellCtx,
   detail?: {
@@ -86,13 +59,7 @@ function selectFor(
   };
 }
 
-/**
- * Paint one compound track for this family, or `null` if the key is not one.
- *
- * `ctx.columns` is the mounted model. It has a fallback at the call site rather
- * than here so a row shell that forgets to thread it fails visibly in one
- * place, not silently in five.
- */
+/** Paint one compound track for this family, or `null` if the key is not one. */
 export function renderReceivingCompoundCell(
   col: ReceivingGridCellColumn,
   rule: boolean,

@@ -1,10 +1,4 @@
-/**
- * `/dashboard` domain axis + the retired-front-door redirect contracts.
- *
- * The redirect tables are load-bearing: `?mode=search`, `?fba`, and `/walk-in`
- * were bookmarkable surfaces, so every shape they could carry has to land
- * somewhere honest rather than 404-ing or silently dropping the operator's query.
- */
+/** `/dashboard` domain axis + the retired-front-door redirect contracts. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

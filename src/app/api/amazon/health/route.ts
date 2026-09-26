@@ -6,13 +6,7 @@ import { loadActiveAmazonAccounts, loadAmazonCreds } from '@/lib/amazon/accounts
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-/**
- * GET /api/amazon/health
- *
- * Live "connection healthy" check for the Connections screen. For each active
- * account, exchanges the stored refresh token and calls getMarketplaceParticipations
- * (cheap, non-PII). Returns per-account ok/error so the UI can show a green check.
- */
+/** GET /api/amazon/health */
 export const GET = withAuth(async (req, ctx) => {
   const accounts = await loadActiveAmazonAccounts(ctx.organizationId);
 

@@ -1,13 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/app/kiosk/v2/kiosk-history-day.test.ts
- *
- * DB-free. The band is pure string surgery over an already-PST-normalized
- * stamp, and every case below is a boundary a bug would cross silently: the
- * today/yesterday edge across a month end, the refusal to re-parse a timestamp
- * into a zone, and the "consecutive, never bucketed" rule that keeps the rail
- * in keyset order.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/app/kiosk/v2/kiosk-history-day.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {

@@ -1,10 +1,4 @@
-/**
- * Parity + precedence for Unbox named flows (Found · Unfound · Return).
- *
- * Pins the resolved capture/commit key sequences so a flow-table edit cannot
- * silently change the operator walk. Legacy three-boolean inputs must map to
- * the same keys as the named-flow context.
- */
+/** Parity + precedence for Unbox named flows (Found · Unfound · Return). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets primary surface — Orders/Unbox workbench recipe.
- *
- * Chrome: ONE toolbar — status facets, find, sort, refresh — above the queue.
- * Body:   full ticket queue (SupportTicketRow) + pagination
- *
- * The status strip used to sit at the FOOT of the page as a second band, and
- * the New ticket CTA sat inside the find row. Both moved on 2026-08-31: filters
- * belong with the search that narrows the same list (the To-ship desk's
- * grammar), and a page-level primary action belongs in the desk chrome's
- * top-right slot with every other page's — published through
- * {@link DeskActionSlotRegistrar}, so this page stops drawing its own.
- *
- * URL: `/support` (+ `tstatus` / `tq`). Row open writes `?ticket=` for Station focus.
- * Sidebar owns the recently-selected dock only — not this list.
- */
+/** Support · Tickets primary surface — Orders/Unbox workbench recipe. */
 
 import { useCallback, useEffect, useMemo, useState, startTransition } from 'react';
 import Link from 'next/link';
@@ -229,12 +214,7 @@ export function SupportTicketsBoard() {
 
   return (
     <>
-      {/*
-        The board owns its OWN column. It used to return a bare double fragment
-        and inherit the flex context from whatever mounted it — which worked
-        only because `ServiceWorkspaceShell`'s list slot happens to be a
-        `flex-col`, and left the queue unable to fill any other host.
-      */}
+      {/* The board owns its OWN column. */}
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       {/* ONE toolbar: what narrows the list sits with the list it narrows. */}
       <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
@@ -293,11 +273,7 @@ export function SupportTicketsBoard() {
               </div>
             ) : tickets.length === 0 ? (
               <div className="p-6">
-                {/* Absence and no-match are different answers (workbench.md → the four
-                    settled states). Both signals were already in hand and neither was
-                    used, so a Solved tab with genuinely nothing solved told the operator
-                    their filter was wrong. Zero on a "what needs me" lane is an all-clear,
-                    not an absence — say so. */}
+                {/* Absence and no-match are different answers (workbench.md → the four settled states). */}
                 {searchQuery ? (
                   <EmptyState
                     title="No tickets match that search"

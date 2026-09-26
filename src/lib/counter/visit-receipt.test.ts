@@ -1,17 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/visit-receipt.test.ts
- *
- * DB-free — both `buildVisitReceipt` and `renderVisitReceiptHtml` are pure
- * functions of a hand-built `CounterVisit` / `VisitReceipt`, so every case
- * below is a fixture, never a fake DB call.
- *
- * The two rules worth breaking a build over: a voided line is desk evidence,
- * not something the customer paid for, so it is dropped from the customer
- * receipt; and the printed HTML carries zero external references, because
- * the operator's requirement is a receipt that still prints when the shop's
- * internet is down.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/visit-receipt.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgLetterhead } from '@/lib/branding/letterhead';
@@ -333,11 +320,7 @@ describe('renderVisitReceiptHtml', () => {
     });
     const html = renderVisitReceiptHtml(buildVisitReceipt(v, letterhead()));
 
-    // The barcode <svg>'s `xmlns="http://www.w3.org/2000/svg"` is a required
-    // XML namespace declaration, not a network reference — parsers never
-    // fetch it. Strip it before checking for an actual resource reference, so
-    // this assertion is about what the browser would try to LOAD, not every
-    // occurrence of the substring "http".
+    // The barcode <svg>'s `xmlns="http://www.w3.org/2000/svg"` is a required XML namespace declaration, not a network reference — parsers…
     const withoutSvgNamespace = html.replace(/xmlns=(["'])http:\/\/www\.w3\.org\/2000\/svg\1/g, '');
     assert.ok(!withoutSvgNamespace.includes('http://'), 'no http:// resource reference anywhere in the page');
     assert.ok(!withoutSvgNamespace.includes('https://'), 'no https:// resource reference anywhere in the page');

@@ -1,22 +1,4 @@
-/**
- * Photo "image types" — the library's primary sidebar organizer.
- *
- * Five types are BUILT-IN and defined here in code; they are derived from a
- * photo's capture entity at query time (see `library-filter-state.ts`) and keep
- * their existing GCS layout (entity-derived flow in `storage/path-builder.ts`).
- *
- * Operators can add CUSTOM image types — persisted in `photo_image_types`
- * (org-scoped). Each custom type carries:
- *   - `key`        — matched against `photos.photo_type` at upload + query time
- *                    (no new column on the hot photos table).
- *   - `gcsPrefix`  — so its photos land under a distinct bucket path,
- *                    `{org}/{gcsPrefix}/{yyyy}/{mm}/…` (see `path-builder.ts`).
- *
- * All reads/writes go through `tenantQuery` / `withTenantTransaction` (SET LOCAL
- * app.current_org) AND keep an explicit `organization_id = $1` clause — belt and
- * suspenders while the app connects as a BYPASSRLS role. Writes are audited by
- * the `/api/photos/image-types` route.
- */
+/** Photo "image types" — the library's primary sidebar organizer. */
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -28,10 +10,7 @@ import {
   type CustomImageType,
 } from './image-type-defs';
 
-// Pure declarations (types, BUILTIN_IMAGE_TYPES, slugifyImageType) live in
-// ./image-type-defs so client modules can use them without this file's
-// server-only tenancy/db import. Re-exported here so server callers keep
-// their existing import path.
+// Pure declarations (types, BUILTIN_IMAGE_TYPES, slugifyImageType) live in ./image-type-defs so client modules can use them without this…
 export * from './image-type-defs';
 
 export interface ImageTypeDeps {

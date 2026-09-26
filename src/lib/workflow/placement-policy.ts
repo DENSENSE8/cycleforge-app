@@ -1,25 +1,4 @@
-/**
- * placement-policy — resolve a tenant's placement rules from its Studio graph
- * (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x).
- *
- * This is what makes the placement strangle "config, not code": instead of a
- * site hardcoding a bin, it asks for the org's decision-table rules and resolves
- * the destination from them — so an operator editing a `decision` node in
- * /studio (DecisionRulesEditor) changes runtime routing with no deploy.
- *
- * The policy is the UNION of every `decision` node's rules in the org's ACTIVE
- * workflow definition. A site passes its facts (e.g. { disposition: 'parts' });
- * `resolveDecision` first-match-wins picks the rule, and the rule's `then`
- * placement directive is what the action layer (`placement.ts`) resolves to a
- * bin. When the org's graph carries no matching placement rule, the loader
- * returns the rules it found (possibly none) and the caller falls back to its
- * system-default policy — so a tenant that hasn't authored a decision node keeps
- * today's behavior exactly.
- *
- * DB reads are lazy-imported in the default deps so importing this module (tests
- * inject fakes) never pulls in the drizzle client — the engine's DB-free-test
- * discipline.
- */
+/** placement-policy — resolve a tenant's placement rules from its Studio graph (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -71,12 +50,7 @@ const defaultDeps: PlacementPolicyDeps = {
   },
 };
 
-/**
- * The org's placement rules — the union of every decision node's `config.rules`
- * in its active definition. Returns [] when the org has no active definition or
- * no decision nodes (the caller then uses its system-default policy). Never
- * throws on a read fault — degrades to [] so a strangled site falls back safely.
- */
+/** The org's placement rules — the union of every decision node's `config.rules` in its active definition. */
 export async function loadOrgPlacementRules(
   orgId: OrgId,
   deps: PlacementPolicyDeps = defaultDeps,
@@ -96,13 +70,7 @@ interface SitePlacementResult {
   source: 'org' | 'system';
 }
 
-/**
- * Resolve a destination bin for a strangled site from the declarative policy:
- * the org's Studio decision rules FIRST (config wins), then the caller's
- * system-default policy. Returns null when neither yields a resolvable bin —
- * the caller then degrades to its legacy hardcoded resolver. Never throws (each
- * layer self-guards). This is the single entry a converting site calls.
- */
+/** Resolve a destination bin for a strangled site from the declarative policy: */
 export async function resolveSitePlacementBin(args: {
   orgId: OrgId;
   facts: DecisionFacts;

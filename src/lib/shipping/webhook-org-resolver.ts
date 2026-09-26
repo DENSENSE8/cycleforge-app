@@ -1,24 +1,4 @@
-/**
- * Webhook org resolution — session-less carrier/marketplace callbacks.
- *
- * Carrier pushes (USPS/FedEx/UPS) and Square notifications arrive with no
- * session, so the receiving route must derive the owning org from the payload
- * itself. This module is the single place that mapping lives:
- *
- *   • tracking number → org via `shipping_tracking_numbers` (the registration
- *     table the tracking-poll cron writes), falling back to the linked
- *     `orders.organization_id` for as-yet-unstamped (NULL-org) rows.
- *   • Square merchant_id → org via `organization_integrations`
- *     (provider = 'square'), preferring an exact `scope` match over the
- *     common single-account NULL-scope row.
- *
- * FAIL-CLOSED: ambiguous (2+ candidate orgs) or missing mappings return null —
- * the caller must SKIP the event, never write under a guessed org. The lookups
- * are deliberately unscoped reads (the whole point is to FIND the org) and
- * return organization_id only.
- *
- * Deps are injectable so unit tests run DB-free (see webhook-org-resolver.test.ts).
- */
+/** Webhook org resolution — session-less carrier/marketplace callbacks. */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { normalizeTrackingNumber } from '@/lib/tracking-format';

@@ -1,13 +1,4 @@
-/**
- * Server-side permission helpers — DB-backed pieces of the auth system.
- *
- * Pure types and runtime sets live in `./permissions-shared.ts` (client-safe;
- * no `pg` import). This module re-exports everything from there and adds the
- * DB-using helpers.
- *
- * Phase 2b: the static role-permission matrix was deleted. All permission
- * resolution now reads `roles.permissions` from the DB via `role-store.ts`.
- */
+/** Server-side permission helpers — DB-backed pieces of the auth system. */
 
 import pool from '@/lib/db';
 import { effectivePermissionsForStaff } from './role-store';
@@ -56,14 +47,7 @@ export async function getStaffRole(staffId: number): Promise<StaffRole> {
   }
 }
 
-/**
- * Server-side gate: throws PermissionDeniedError if the staff lacks the
- * permission. Route handlers catch this and convert to 403 via
- * `permissionDeniedResponse`.
- *
- * Reads the effective permission set from the DB (roles + per-staff overrides);
- * matches what withAuth uses.
- */
+/** Server-side gate: */
 export async function assertPermission(
   staffId: number | null | undefined,
   action: PermissionAction,

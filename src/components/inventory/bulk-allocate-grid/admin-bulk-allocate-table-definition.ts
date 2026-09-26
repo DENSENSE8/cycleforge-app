@@ -1,11 +1,4 @@
-/**
- * `admin-bulk-allocate.candidates` — the bulk-allocate table definition,
- * capabilities and surface descriptor.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `admin-bulk-allocate.candidates` — the bulk-allocate table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -22,22 +15,7 @@ import {
   type AdminBulkAllocateGridColumn,
 } from './admin-bulk-allocate-grid-layout';
 
-/**
- * One WRITE, per row, and it is a VERB rather than a cell
- * (`admin-bulk-allocate-verbs.ts`).
- *
- * `multiSelect` stays OFF. The page is named "bulk allocate" because the LIST
- * is bulk — a hundred candidates on one screen — not because the verb is: the
- * retired desk had no checkboxes and no bulk submit, and `allocateOne` writes
- * exactly one order. Turning the gutter on would paint a control with no verb
- * behind it (the `admin-returns` ruling). Bulk is a cardinality, not a mode:
- * the day someone wires a bulk allocate it is THIS verb at n>1 and this flag
- * flips — nothing else changes.
- *
- * `inCellEdit: false` like every family in this repo — the allocation payload
- * is one order id, so the verb needs no parameter and therefore no editor and
- * no plane.
- */
+/** One WRITE, per row, and it is a VERB rather than a cell (`admin-bulk-allocate-verbs.ts`). */
 export const ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -46,12 +24,7 @@ export const ADMIN_BULK_ALLOCATE_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the `grid-default`
- * debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeAdminBulkAllocateGridDescriptor(
   columns: readonly AdminBulkAllocateGridColumn[],
 ): GridSurfaceDescriptor<AllocationCandidateRow, AdminBulkAllocateGridColumn> {
@@ -93,13 +66,7 @@ export const ADMIN_BULK_ALLOCATE_TABLE_BINDING: TableSurfaceBinding<
   definition: ADMIN_BULK_ALLOCATE_TABLE_DEFINITION,
   columns: ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS,
   makeDescriptor: makeAdminBulkAllocateGridDescriptor,
-  /**
-   * The row's record is the SKU's stock page — `/inventory/health/sku/<sku>` is
-   * where an operator goes to find out why a candidate is short, and it is the
-   * exact destination the retired SKU cell's `<Link>` carried. That is a ROUTE,
-   * not a panel, so the plane is `navigate` and the reach-through is declared
-   * once on the entity instead of as per-cell JSX.
-   */
+  /** The row's record is the SKU's stock page — `/inventory/health/sku/<sku>` is where an operator goes to find out why a candidate is short,… */
   recordPlane: {
     kind: 'navigate',
     reason:

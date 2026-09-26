@@ -15,10 +15,7 @@ test('connected is the only healthy Ably state', () => {
 });
 
 test('pre-init and connecting are unknown — never healthy', () => {
-  // AuthenticatedAblyProvider does not mount a client for a signed-out visitor,
-  // so the store sits at `initialized` forever on /signin. Claiming health there
-  // would be a lie; claiming degradation would light chrome on a page with no
-  // station link to begin with.
+  // AuthenticatedAblyProvider does not mount a client for a signed-out visitor, so the store sits at `initialized` forever on /signin.
   for (const state of ['initialized', 'connecting', '', null, undefined, 'some_future_state']) {
     assert.equal(classifyRealtimeState(state), 'unknown', `${String(state)} must be unknown`);
   }

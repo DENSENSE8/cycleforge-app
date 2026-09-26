@@ -3,46 +3,6 @@
 /**
  * KioskFloatingPhoneKeypad — the Contact step's phone keypad as a MOUNTED
  * display, not a keypad living inside the form (operator 2026-09-25: tapping
- * the phone field mounts the pad; it goes away when done).
- *
- * ## Why a custom pad at all (checked 2026-09-25)
- *
- * iPad Safari cannot raise a numeric-only phone pad for a web field.
- * `inputmode="numeric"` / `"tel"` are only hints (MDN, `inputmode`), and
- * WebKit hands them to UIKit as a `UIKeyboardType`; iPadOS has no number-only
- * or phone-pad keyboard, so UIKit falls back to the closest match — the full
- * keyboard on its numbers layer. UIKit's own `UITextInputTraits.h`: "the input
- * method will make a best effort to find a close match to the requested type
- * (e.g. displaying UIKeyboardTypeNumbersAndPunctuation type if
- * UIKeyboardTypeNumberPad is not supported)"; iPad: "iPad doesn't have number
- * only keyboard. You should implement your own."
- *   - https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Global_attributes/inputmode
- *   - https://stackoverflow.com/a/2599744 (quotes UITextInputTraits.h)
- *   - https://stackoverflow.com/a/53249363
- * So the field keeps `inputMode="none"` (no OS keyboard at all) and this pad
- * is the phone's only on-glass input.
- *
- * ## Where it floats
- *
- * Portalled into the pane's dock ({@link useKioskPaneDock}) — the in-flow
- * band between the scroll body and the action floor. It sits in the thumb
- * zone directly ABOVE the step's Continue and can never cover it: mounting it
- * shrinks the scroll body, the floor stays put. Outside a pane it renders in
- * place.
- *
- * ## How it goes away
- *
- * The X, Escape, or a tap / focus anywhere outside the pad and the phone
- * field. It does NOT auto-close on the tenth digit: the pad vanishing would
- * put the Name / Address fields under the thumb that was just on the keys, so
- * a hurried extra tap would land in a text field and raise the OS keyboard.
- * The staffer's next move (Continue below, or Name above) closes it anyway.
- *
- * Keys are {@link KioskPhoneKeypad}'s — the pad owns no key logic. A mouse /
- * touch press never takes focus from the phone input, so a desk keyboard keeps
- * typing into the field while the pad is up.
- *
- * Callers: `KioskCustomerIntake` (entry face). Affected API: none. Schemas: none.
  */
 
 import { useEffect, useRef, type RefObject } from 'react';

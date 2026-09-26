@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * SubscribeToggle — the ONE follow/mute affordance.
- *
- * Mounted on the HOME INBOX ROW only. Station surfaces (Unbox, Triage,
- * Testing, …) deliberately do NOT carry a bell: the scan bench serves the
- * scan, and a follow control there is pointer chrome competing with it
- * (display/station.md). You manage what you follow from Home.
- *
- * Composes the house primitives (`IconButton` for the hit-box per the
- * control-size contract, `HoverTooltip` for the label — never `title=`).
- *
- * Three states, not two — the label says which:
- *   subscribed / auto → following (click to mute)
- *   muted            → explicitly off (click to follow)
- *   none             → not following (click to follow)
- *
- * `auto` renders the same as `subscribed` because the distinction is *why*, not
- * *whether*; the reason surfaces on the inbox row instead.
- */
+/** SubscribeToggle — the ONE follow/mute affordance. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Separator, restyled to house tokens.
- *
- * Native element rather than `@radix-ui/react-separator` (not installed) —
- * shadcn's `data-slot` naming and orientation API are preserved, and the
- * decorative default carries `role`/`aria` exactly as the Radix part would.
- */
+/** shadcn/ui Separator, restyled to house tokens. */
 
 import * as React from 'react';
 import { cn } from '@/utils/_cn';

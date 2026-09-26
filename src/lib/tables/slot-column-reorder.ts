@@ -1,10 +1,4 @@
-/**
- * Header-track keys → catalog field ids for a slot-layout drop.
- *
- * Track keys are positional (`status:1`, `subtitle:2`). The reorder write
- * speaks field ids. Chrome tracks (`select`, `item`, `_fill`) carry no
- * `fieldId` and are ignored — same law as `LedgerGridColumnHeader`.
- */
+/** Header-track keys → catalog field ids for a slot-layout drop. */
 
 export function columnFieldId(col: { fieldId?: unknown } | null | undefined): string | undefined {
   const id = col?.fieldId;

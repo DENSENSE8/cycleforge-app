@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * The Shipped desk (`/shipping/shipped`) on the industrial record ledger — one
- * {@link ShippedPackageRecord} per PACKAGE (carrier tracking number), the open
- * package's {@link ShipmentRecordView} placed by `DeskRecordPlane` through
- * {@link RecordLedger}: in place of the list by default, list-left /
- * record-right when the staffer turns fullscreen on.
- *
- * ## Feed — unchanged
- *
- * The packer-log week feed (`useShippedTableFilters` → `useShippedTableRecords`,
- * `/api/packerlogs`, canonical week buckets, load-more) is the one this desk
- * always read; only its presentation changed. Period / date range, type,
- * carrier, status and exceptions-only stay URL state written by the same
- * hooks, so an old `?shipped=&carrier=UPS` bookmark still reads identically;
- * free text is the server's `?q=` answer inside the period.
- *
- * ## Open key — the package, in the URL
- *
- * `?shipment=<shipping_tracking_numbers.id>` ({@link SHIPMENT_RECORD_PARAM}) is
- * the open record, written with `history.replaceState` (never a push, never a
- * soft RSC navigation). The key may name a package outside the loaded window:
- * a share link, a sibling box, or a tracking # typed into the find box that the
- * window does not carry (resolved through `/api/shipments/lookup`). Legacy
- * `?openOrderId=<orders.id>` bookmarks map to that line's package, else drop.
- *
- * ## Keys
- *
- * J / K walk the published record cursor; Esc belongs to the plane. Verbs sit
- * under the toolbar: the package's own (Resolve exception while an unmatched
- * scan is open, copy / track), then its primary order line's
- * (`OrderRecordActionStrip`, Shipped mode) when an order owns the box.
- */
+/** The Shipped desk (`/shipping/shipped`) on the industrial record ledger — one {@link ShippedPackageRecord} per PACKAGE (carrier tracking… */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';

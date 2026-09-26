@@ -45,18 +45,8 @@ export type DateRangePickerCompactProps = SharedFieldProps & {
   /** Always a day. Compact cannot clear. */
   onChange: (next: Date) => void;
   /**
-   * Override the trigger WORD when the surface has a truer face for this day
-   * than the day itself.
-   *
-   * The slot table's ship-by is the case this exists for: an operator working a
-   * queue does not ask "what is the date", they ask "how late is this", so the
-   * cell paints `2d late` / `1m late` and hands the civil date to the hover
+   * Override the trigger WORD when the surface has a truer face for this day than the day itself.
    * tooltip (operator 2026-09-04). The CONTROL is unchanged — same month grid,
-   * click still commits — which is the point: one date field, two faces, not a
-   * second inline date control.
-   *
-   * Never a blank string: an empty face is what `--` is for, and the trigger is
-   * a click target that must always show something.
    */
   faceLabel?: string;
   /**
@@ -64,12 +54,7 @@ export type DateRangePickerCompactProps = SharedFieldProps & {
    * the visible word can be `2d late`, which says the value but not the field.
    */
   ariaLabel?: string;
-  /**
-   * Leading glyph. Omit for the house calendar (form / filter mounts). Pass a
-   * house icon for the slot-table DATES cell (`Hash` order date, `CalendarClock`
-   * ship-by). A custom glyph inherits the trigger ink so overdue paint reaches
-   * the mark; the default calendar stays faint.
-   */
+  /** Leading glyph. */
   leadingGlyph?: ComponentType<{ className?: string }>;
   /**
    * Desk pointer: Chrome click glyph. Slot-table DATES opts in so hover rides
@@ -134,18 +119,7 @@ const POPOVER_CLASS = cn(
   DROPDOWN_SHELL_CORNER,
 );
 
-/**
- * Trigger + popover over the house calendar.
- *
- * Slot-table ship-by / due date / pick a date in a cell is **compact** —
- * not the filter range, not a native `input type=date`.
- *
- * - `range` (default): filter grammar. Presets, month grid, Clear/Apply, X
- *   on the trigger, year in the face.
- * - `compact`: one civil day. Calendar only — no presets, no footer, no X.
- *   Clicking a day commits and closes. Face is `MMM d` (no year) and is never
- *   blank (`--` until a day exists). Slot-table DATES passes `leadingGlyph`.
- */
+/** Trigger + popover over the house calendar. */
 export function DateRangePickerField(props: DateRangePickerFieldProps) {
   if (props.variant === 'compact') {
     return <CompactDatePickerField {...props} />;
@@ -263,14 +237,7 @@ function RangeDatePickerField({
 
   return (
     <Popover.Root open={open} onOpenChange={handleOpenChange}>
-      {/*
-        Clear is a SIBLING of the trigger, not a child of it.
-        A `<button>` inside a `<button>` is invalid HTML: React logs a
-        hydration error on every paint of this chip, and the browser's own
-        recovery re-parents the inner button out of the trigger, so which
-        control a click lands on stops being ours to decide. The wrapper keeps
-        the one-chip look; `pr-7` reserves the X's gutter inside the trigger.
-      */}
+      {/* Clear is a SIBLING of the trigger, not a child of it. */}
       <span className={cn('relative inline-flex', hasValue ? 'items-center' : null)}>
         <Popover.Trigger asChild>
           <button

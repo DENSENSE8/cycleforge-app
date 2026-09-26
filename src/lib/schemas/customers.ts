@@ -1,15 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Customer contact writes: `PATCH /api/customers/[id]` (correct a contact) and
- * `/api/repair-service/[id]/customer` (POST create + link, PUT link existing).
- *
- * Name columns: the app reads a buyer's name as
- * `COALESCE(display_name, customer_name, first_name || ' ' || last_name)`
- * (`getRepairById`, `searchRepairCustomers`), so a name change writes all four
- * or the old `display_name` keeps winning. {@link customerContactColumns} is
- * that rule.
- */
+/** Customer contact writes: */
 
 /** Digits a non-empty phone needs — same floor `parseLegacyContactInfo` uses. */
 const MIN_PHONE_DIGITS = 7;
@@ -68,18 +59,7 @@ export function splitCustomerName(full: string): { first: string; last: string }
   return { first: parts[0] ?? '', last: parts.slice(1).join(' ') };
 }
 
-/**
- * The column writes that turn `before` into what `patch` asks for — only the
- * columns whose value actually changes, so an unchanged save writes nothing.
- *
- * - `name` sets `display_name` + `customer_name`, and first/last from its split
- *   unless the patch names them itself.
- * - `firstName`/`lastName` alone rebuild the display name from the merged pair,
- *   so the name every surface reads follows the edit. A pair that merges to
- *   nothing is refused (the row would lose its name).
- * - Blank phone/email store NULL (the read side coalesces `phone, mobile`, so a
- *   cleared phone lets a stored mobile show through — nothing is invented).
- */
+/** The column writes that turn `before` into what `patch` asks for — only the columns whose value actually changes, so an unchanged save… */
 export function customerContactColumns(
   before: CustomerContactColumns,
   patch: CustomerContactPatch,

@@ -1,13 +1,4 @@
-/**
- * Deep link for an inbox row.
- *
- * Composes the cross-entity link SoT (`searchHitHref`, src/lib/search/search-hit.ts)
- * rather than re-deriving per-surface routes — a second href map is exactly the
- * drift the search waist exists to prevent. Only the two entity types the
- * search vocabulary does not carry are resolved locally, and they are marked.
- *
- * Pure + dependency-free so the client Inbox can import it (bundle altitude).
- */
+/** Deep link for an inbox row. */
 
 import { searchHitHref } from '@/lib/search/search-hit';
 import type { InboxEntityType } from './event-vocabulary';
@@ -24,11 +15,7 @@ export function notificationHref(entityType: string, entityId: number): string {
       return searchHitHref('REPAIR', entityId);
     case 'fba_shipment':
       return searchHitHref('FBA_SHIPMENT', entityId);
-    // `?ticket=` takes `support_tickets.id` — `resolveSupportContext` probes the
-    // PK first and the provider id second, so the LOCAL id an inbox row carries
-    // lands on the right thread. (The desk task row links with the PROVIDER
-    // number instead, because that is the one an operator reads aloud; both
-    // resolve, and `taskDeskTicketNumber` is why they never get swapped.)
+    // `?ticket=` takes `support_tickets.id` — `resolveSupportContext` probes the PK first and the provider id second, so the LOCAL id an inbox…
     case 'support_ticket':
       return searchHitHref('SUPPORT_TICKET', entityId);
     // Not in SearchEntityType — a receiving LINE opens its carton's workspace

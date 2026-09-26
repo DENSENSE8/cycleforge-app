@@ -1,9 +1,4 @@
-/**
- * Warehouse › Bins grid surface descriptor — lifts the MOUNTED column model
- * (a `SlotLayout` materialization since the wave 1.4 hand-model kill)
- * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
- * house comparator in `BinsTable` (state math only).
- */
+/** Warehouse › Bins grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization since the wave 1.4 hand-model… */
 
 import {
   makeGridSurfaceDescriptor,
@@ -17,13 +12,7 @@ import {
   type BinsGridColumn,
 } from './bins-grid-layout';
 
-/**
- * Warehouse bins map — browse + parent-controlled multi-select.
- *
- * `multiSelect: true`: the bulk action bar (print labels / cycle count) acts on
- * N bins at once, so the left gutter is a live checkbox plane. Everything else
- * is browse-only — no in-cell edit, no triage wash, no day bands.
- */
+/** Warehouse bins map — browse + parent-controlled multi-select. */
 export const BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

@@ -53,10 +53,7 @@ describe('evaluateReceivingPhotoPolicyGate · fast paths (zero count queries)', 
   });
 
   it("policy 'optional' runs ZERO evidence queries (counted, not just non-throwing)", async () => {
-    // §4 regression guard. The soft-block work only changed what a route does
-    // with a `!ok` verdict — the default tier must still cost nothing. A
-    // throwing dep proves "not called on the happy path"; a counter proves it
-    // for every shape of call, including one that swallows its own error.
+    // §4 regression guard.
     const { deps, calls } = fakes(NO_EVIDENCE);
     for (const receivingId of [42, 1, 999]) {
       const result = await evaluateReceivingPhotoPolicyGate(
@@ -216,13 +213,6 @@ describe('receivingPhotoEvidenceCountsSql', () => {
 });
 
 // ─── §4 soft block — the override half ──────────────────────────────────────
-//
-// The gate above is deliberately UNCHANGED by §4: it still returns the same
-// verdict, and `evaluateReceivingPhotoPolicyGate` knows nothing about an
-// override. What changed is only what a receive route does with a `!ok`
-// verdict, which lives in the sibling `./photo-policy-override.ts`. These
-// suites cover that module (pure + Deps-injected, so DB-free) and then assert
-// the two route call sites are actually wired to it.
 
 describe('parsePhotoPolicyOverride · the override is a vocabulary, not free text', () => {
   it('accepts every PHOTO_WAIVED_* system code (and trims)', () => {

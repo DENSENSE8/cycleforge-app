@@ -1,29 +1,4 @@
-/**
- * Pickability regression test.
- *
- * ## The bug this exists to catch (found 2026-09-14)
- *
- * `pickableSerialUnitsWhereClause()` referenced `su.expires_at`, a column
- * `serial_units` does not have. The fragment is interpolated into SQL, so
- * nothing failed at build or type time — it failed at RUNTIME, inside every
- * query that composed it. That silently disabled BOTH manual allocation doors
- * (`POST /api/orders/[id]/allocate` and `/inventory/bulk-allocate`) and is the
- * likeliest reason the live org held ONE allocation row against 116 pickable
- * units.
- *
- * ## Why the assertion is shaped this way
- *
- * Asserting on the fragment's TEXT (e.g. "must not contain expires_at") would
- * only pin the one column that already bit us, and would be a source-text
- * tautology. Instead this cross-checks the fragment against the OTHER source
- * of truth — the drizzle table definitions — so ANY future phantom column
- * fails here instead of in production. Two independently-maintained
- * declarations must agree.
- *
- * DB-free: the drizzle schema is plain table metadata.
- *
- * Run: npx tsx --test src/lib/inventory/pickability.test.ts
- */
+/** Pickability regression test. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

@@ -1,19 +1,4 @@
-/**
- * Warranty clock — the single source of truth for when a warranty starts and
- * expires. Pure + isomorphic (no DB, no env, no Date.now side effects beyond an
- * optional injected `now`), so it runs the same in a route, a cron, and a test.
- *
- * Rule (confirmed 2026-06-06):
- *   expiry = (carrier DELIVERED date, else packed/scanned date + 4 days) + term
- *
- * The DELIVERED date is authoritative. When no carrier delivered status exists
- * yet, we fall back to the packed/scanned date plus a delivery estimate — this
- * yields a *provisional* window (basis = PACKED_PLUS_ESTIMATE) that the tracking
- * cron later recomputes (basis → DELIVERED) once a real delivered date lands.
- *
- * Term is per-org (default 30); callers resolve it from organizations.settings
- * and pass it in as `warrantyDays`, keeping this module free of tenancy lookups.
- */
+/** Warranty clock — the single source of truth for when a warranty starts and expires. */
 
 export const DEFAULT_WARRANTY_DAYS = 30;
 /** Days added to the packed/scanned date as an in-transit estimate when no
@@ -97,10 +82,7 @@ export function daysUntilExpiry(
   if (!exp) return null;
   const ms = exp.getTime() - now.getTime();
   const days = ms / (24 * 60 * 60 * 1000);
-  // Future window: ceil (whole days still remaining). Past window: floor, so a
-  // claim that expired within the last 24h reads −1 (clearly expired) instead
-  // of 0 — preserving the docstring's "negative once expired" contract that a
-  // bare Math.ceil broke at the sub-day boundary.
+  // Future window:
   return ms >= 0 ? Math.ceil(days) : Math.floor(days);
 }
 
@@ -120,13 +102,7 @@ export interface ClockRecomputeDecision {
   flippedToDelivered: boolean;
 }
 
-/**
- * Pure decision for the recompute sweep: compare a claim's currently-stored clock
- * against a freshly-computed one and report whether to persist + whether the
- * basis just became authoritative (provisional → DELIVERED).
- *
- * Same-millisecond expiry + same basis ⇒ no write (keeps the sweep cheap).
- */
+/** Pure decision for the recompute sweep: */
 export function decideClockRecompute(
   current: { basis: WarrantyClockBasis | null; expiresAt: Date | string | null },
   next: WarrantyClockResult,

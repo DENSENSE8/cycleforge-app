@@ -1,19 +1,4 @@
-/**
- * Native capture-phase HID wedge listener.
- *
- * SoT for barcode-wedge input. React's synthetic event system is the wrong
- * altitude: a scan of 20 chars + Enter must never enter a fiber, and the
- * keydown handler must return before `onScan` (React state, routing, sink
- * dispatch) runs. This factory:
- *
- *  1. Classifies keys via the pure {@link wedgeReduce} machine.
- *  2. Enqueues accepted payloads on {@link createScanCommitQueue}.
- *  3. Yields the main thread before `onScan` so the next wedge char lands.
- *  4. Never reads or writes focus.
- *
- * {@link useWedgeScanner} is the React mount adapter — tests drive *this*
- * function, not the hook.
- */
+/** Native capture-phase HID wedge listener. */
 
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import {

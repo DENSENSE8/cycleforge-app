@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Station Action Plane — dense fact band.
- *
- * Two layouts (pick by surface):
- *   - `rows` (default for Displays Action / Inventory Information) — one
- *     horizontal label|value row per fact. WMS muscle-memory: scan down the
- *     label column, read values on the trailing edge. Empty paints `—`.
- *   - `strip` — fixed multi-column label-above-value cells for wide desk
- *     Incoming mirrors. Never use `strip` inside Station Displays leaves.
- *
- * Read facts are coplanar with the Displays `bg-surface-card` host — hairline
- * dividers only. Never `bg-surface-canvas` / `bg-surface-sunken` as a fact-list
- * wash; sunken depth-indent is exclusive to `DenseComposeBodyBand` (notes ·
- * claim create/edit).
- *
- * Law: source-of-truth.md → Station Action vs Context planes · Spatial
- * predictability (locked triage boxes).
- */
+/** Station Action Plane — dense fact band. */
 
 import type { ReactNode } from 'react';
 import { Copy as CopyIcon } from '@/components/Icons';

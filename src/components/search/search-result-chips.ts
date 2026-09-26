@@ -1,22 +1,4 @@
-/**
- * search-result-chips — shared presentation config for the one search-result
- * renderer (SearchResultRow). Extracted out of AiQuickJumpResults so the row,
- * the header preview, /search, and operations all import one map (SoT rule:
- * "never build a per-surface search" → also never fork its chrome).
- *
- * Three exports:
- *   1. CHIP_TONE_CLASSES — the house 3-layer chip families (bg / text / ring).
- *   2. ENTITY_ICONS      — entity → leading glyph for the generic row.
- *   3. orderStatusTone   — the ORDER-status → dot/chip tone SoT.
- *
- * Why a dedicated order-status tone map (not workflowStageDot, not
- * deriveOutboundState): the search doc carries only the raw `orders.status`
- * string. `workflowStageDot` only knows the receiving/testing lifecycle
- * (EXPECTED…DONE) — every order status would fall through to the neutral
- * "unknown" dot. `deriveOutboundState` needs pack/ship/carrier signals that
- * are not on the search doc. So the dot AND the status chip both flow from
- * this one map, so they can never disagree (plan L8).
- */
+/** search-result-chips — shared presentation config for the one search-result renderer (SearchResultRow). */
 
 import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Search } from '@/components/Icons';
 import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
@@ -67,12 +49,7 @@ export const CHIP_TONE_CLASSES: Record<string, string> = {
   purple: `${STATE_TONE_CLASSES.fulfillment.pill} ${STATE_TONE_CLASSES.fulfillment.ring}`,
 };
 
-/**
- * Entity-glyph ink per tone. Exported because three surfaces draw the same
- * glyph — the /search feed, the compact rails, and the ⌘K palette's recents —
- * and each one having its own copy is how the palette ended up painting every
- * icon flat grey while the feed painted them by type.
- */
+/** Entity-glyph ink per tone. */
 export const GLYPH_TONE_CLASSES: Record<ChipTone, string> = {
   gray: 'text-text-soft',
   blue: 'text-blue-600',
@@ -112,12 +89,7 @@ const CHIP_TONE_FOR_STATE: Record<StateName, ChipTone> = {
   success: 'emerald',
 };
 
-/**
- * Raw `orders.status` → tone. Values are lowercased before lookup, so the
- * mixed-case DB vocabulary (SHIPPED / delivered / RETURNED / …) all resolve.
- * Unknown statuses fall back to neutral gray (never a crash, never the
- * receiving "unknown" dot).
- */
+/** Raw `orders.status` → tone. */
 const ORDER_STATUS_TONE: Record<string, ChipTone> = {
   delivered: 'emerald',
   completed: 'emerald',

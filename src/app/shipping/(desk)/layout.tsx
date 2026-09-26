@@ -4,42 +4,9 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
-/**
- * The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions.
- *
- * A route GROUP, so every desk segment shares one {@link DeskPageLayout} mount
- * while `/shipping/scan-out` — a Scan Station — sits outside it and keeps its
- * edge-to-edge station shell. The group adds no URL segment: the routes are
- * still `/shipping/orders|fba|shipped|exceptions`.
- *
- * **`/shipping/fba` is inside this group but is NOT one of those tabs**
- * (2026-09-14). FBA became a row in the Outbound LANE beside Shipping, so the
- * Amazon Prep tab was deleted — two doors to one page is what the `deskChrome`
- * law forbids. It still wears this frame: `useDeskPageChromeTabs` resolves
- * title and tabs from whichever page the path resolves to, so the FBA board
- * gets its own title ("FBA") and **no tab row** — it is not `deskChrome`, and
- * its stages are `?fbaMode=` facets the board draws itself.
- *
- * Everything generic (tabs, title, CTA slot, fullscreen) moved into
- * `DeskPageLayout` on 2026-08-31 when the chrome became the design system's
- * (`@/design-system/components/desk`). What is left here is the ONE thing that
- * is Shipping's alone: the held-order count on the Exceptions tab.
- */
+/** The Shipping **desk** frame — Pending · To ship · Shipped · Exceptions. */
 export default function ShippingDeskLayout({ children }: { children: ReactNode }) {
-  /**
-   * The Exceptions tab carries the held-order count, so "22 blocked" is legible
-   * from To ship without navigating (a status overview costs ≤1 interaction).
-   * Decorated HERE rather than in `useDeskPageChromeTabs` because that adapter
-   * is shared by every desk and must not learn one desk's query.
-   *
-   * A PLAIN FETCH, deliberately — not `useQuery`. This layout renders ABOVE the
-   * app's `QueryClientProvider`, so a react-query hook here throws "No
-   * QueryClient set" and takes down all the desk tabs with it. One uncached
-   * count on desk mount is the cheaper trade than hoisting a provider.
-   *
-   * A failed or absent count omits the badge — never a zero, which would assert
-   * "nothing is blocked" on no evidence.
-   */
+  /** The Exceptions tab carries the held-order count, so "22 blocked" is legible from To ship without navigating (a status overview costs ≤1… */
   const [cagedCount, setCagedCount] = useState<number | null>(null);
   useEffect(() => {
     let cancelled = false;

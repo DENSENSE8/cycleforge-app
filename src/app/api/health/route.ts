@@ -1,14 +1,4 @@
-/**
- * Liveness endpoint — always 200 when the process can serve a request.
- *
- * Use this for orchestrator/load-balancer liveness probes that should restart
- * the process if it doesn't respond, NOT for readiness (DB/Redis). That's
- * /api/ready.
- *
- * Public (allowlisted in proxy.ts). Never returns sensitive info — the
- * version is read from APP_VERSION or VERCEL_GIT_COMMIT_SHA so an unauthed
- * curl reveals only the deploy SHA.
- */
+/** Liveness endpoint — always 200 when the process can serve a request. */
 
 import { NextResponse } from 'next/server';
 

@@ -1,20 +1,4 @@
-/**
- * `AuthSessionTableRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * The desk's five cells, as one compound row:
- *   · identity  — the session handle (a `sid` prefix; the hover has all of it)
- *   · title     — the staff member signed in
- *   · subtitle  — the device nickname, painted by the bound `device_label`
- *   · state     — the device KIND pill the old `device` cell carried
- *   · dates     — Hash (start) = last activity, civil face
- *                 Calendar (secondary) = the relative face `fmtRelative` used
- *                 to paint inline ("5m ago"), via CompoundDelay.faceLabel
- *
- * Never jam the relative face into the Hash tip while leaving the Calendar
- * line `--` (the kiosk dwell rule).
- *
- * Callers: useAuthSessionsSpreadsheet → DataTable.
- */
+/** `AuthSessionTableRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -91,10 +75,8 @@ export function authSessionsCompoundView(row: AuthSessionTableRow): CompoundRowV
     // Fallback line only — the layout binds `device_label` as the subtitle, and
     // a bound subtitle replaces this. Says what the device is when unnamed.
     note: label || (kind ? `Unnamed ${kind} session` : null),
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(handle || null, 'Session'),
     orderId: null,
     tracking: null,

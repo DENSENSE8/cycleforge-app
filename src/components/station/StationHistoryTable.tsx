@@ -24,24 +24,7 @@ import { useStationReconnectSync } from '@/hooks/station/useStationReconnectSync
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 
-/**
- * `StationHistoryTable<T>` — the Tech / Packer bench history desk.
- *
- * Wave C of the slot-table SoT port: this was the last THIRD display engine.
- * It used to render `StationQueueRow` (a per-family row component wrapping
- * `OrdersQueueTableRow` over the hand `STATION_HISTORY_COLUMNS` array) inside
- * `StationListTable`'s raw `LedgerGrid` — a table outside `PRODUCT_TABLES` and
- * `REGISTERED_BINDINGS`, with its own week band, its own bulk bar and its own
- * copy pill. `tech` and `packer` are now registered families on the ONE engine:
- * the desk mounts {@link DataTable} with the feed from
- * {@link useBenchSpreadsheet}, so the benches get header click-to-sort, the
- * filter funnel, a Fields picker, saved views that capture columns, the shared
- * selection gutter and selection-copy — none of it declared here.
- *
- * What this component still owns is genuinely the desk's, not the table's: the
- * WEEK the query covers (portaled into the workspace chrome), the optional
- * pipeline board, keyboard row focus and the `?techLogId=` deep link.
- */
+/** `StationHistoryTable<T>` — the Tech / Packer bench history desk. */
 export interface StationHistoryTableProps<T> {
   loading: boolean;
   weekRange: WeekRange;
@@ -91,16 +74,7 @@ export interface StationHistoryTableProps<T> {
     /** Deep link: a URL param whose numeric value selects + scrolls to a row. */
     deepLinkParam?: string;
   };
-  /**
-   * The find box, ANSWERED BY THE SERVER. The desk's controller owns the text
-   * because only the controller can spend it on the fetch key — a bench feed
-   * arrives windowed, so a value filtered in React here would search the
-   * newest page and call the rest of the week absent.
-   *
-   * `pending` is the controller's `isFetching` for the CURRENT value: it
-   * lights the field spinner and holds the body in its loading face, so the
-   * operator never reads a stale row set as the answer to what they just typed.
-   */
+  /** The find box, ANSWERED BY THE SERVER. */
   search: {
     value: string;
     onChange: (value: string) => void;
@@ -194,12 +168,7 @@ export function StationHistoryTable<T>({
       ]) as [string, RowGroup<QueueRowRecord>[]][];
   }, [feed.rows]);
 
-  /**
-   * Selection copy keeps the bench's own TSV vocabulary
-   * (`format-station-copy-row`), which is written against the DOMAIN record —
-   * so the cells come from splitting that line rather than from a second
-   * column list that could drift from it.
-   */
+  /** Selection copy keeps the bench's own TSV vocabulary (`format-station-copy-row`), which is written against the DOMAIN record — so the… */
   const copyExport = useMemo(
     () => ({
       columns: selection.copyHeader,
@@ -302,12 +271,7 @@ export function StationHistoryTable<T>({
     <>
       {portaledControls}
       <div
-        // `h-full` alongside `flex-1`: the pack/tech hosts lay this out in a
-        // fixed-height BLOCK container (`h-[calc(100dvh-13rem)]`), where
-        // `flex-1` resolves to nothing and the box grows to content — which
-        // collapses the virtualizer's viewport measurement and renders an
-        // empty grid. `h-full` bounds it under a block parent; `flex-1` still
-        // governs under a flex one.
+        // `h-full` alongside `flex-1`:
         className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
         tabIndex={0}
         onKeyDown={onKeyDown}

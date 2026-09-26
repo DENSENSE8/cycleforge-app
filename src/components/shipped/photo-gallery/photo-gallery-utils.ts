@@ -4,12 +4,7 @@ import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state'
 import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
 
-/**
- * Source-scoped context for a single photo, surfaced by the fullscreen viewer's
- * info panel ({@link PhotoContextPanel}). Every field is optional so callers that
- * only have a URL (legacy thumbnail strips) keep working — the panel simply
- * renders less. Populated from `LibraryPhoto` in the photo library.
- */
+/** Source-scoped context for a single photo, surfaced by the fullscreen viewer's info panel ({@link PhotoContextPanel}). */
 export interface PhotoMeta {
   /** Denormalized ticket/PO ref (PO# for receiving, order/scan ref for packing). */
   poRef?: string | null;
@@ -20,25 +15,12 @@ export interface PhotoMeta {
   takenByStaffName?: string | null;
   /** Server-INSERT instant. This is the UPLOAD time, not the shutter time. */
   createdAt?: string | null;
-  /**
-   * Device-reported capture instant (`photos.client_captured_at`) — the shutter
-   * clock, which for a queued mobile upload can precede `createdAt` by hours.
-   * Null for desktop/legacy rows with no usable timestamp, and NOT
-   * server-attested; the panel labels it as device-reported for that reason.
-   */
+  /** Device-reported capture instant (`photos.client_captured_at`) — the shutter clock, which for a queued mobile upload can precede… */
   clientCapturedAt?: string | null;
   damageDetected?: boolean | null;
   hasAnalysis?: boolean | null;
   caption?: string | null;
-  /**
-   * Evidence stage (`@/lib/photos/stages`) — resolved from (entity × photo_type)
-   * by the builder, rendered as a label by the panel.
-   *
-   * This field exists because the receiving builders used to put the raw
-   * `photo_type` into {@link PhotoMeta.caption}, so the viewer's **Caption**
-   * field showed the literal string `receiving_package` to the operator. A stage
-   * is not a caption; it now has its own slot and its own SoT label.
-   */
+  /** Evidence stage (`@/lib/photos/stages`) — resolved from (entity × photo_type) by the builder, rendered as a label by the panel. */
   stage?: PhotoEvidenceStage | null;
   /** Library source scope, for the source badge + "view all from source" link. */
   sourceScope?: PhotoLibrarySourceScope;
@@ -49,12 +31,7 @@ export function unboxingPhotoMeta(fields: {
   poRef?: string | null;
   caption?: string | null;
   createdAt?: string | null;
-  /**
-   * Shutter clock off the row (`/api/receiving-photos` → `clientCapturedAt`).
-   * Threaded here rather than left off, so the carton peek reports the same
-   * provenance the media-library viewer does — a field written on upload and
-   * never read back is not evidence, it is a column.
-   */
+  /** Shutter clock off the row (`/api/receiving-photos` → `clientCapturedAt`). */
   clientCapturedAt?: string | null;
   takenByStaffName?: string | null;
   stage?: PhotoEvidenceStage | null;
@@ -89,14 +66,7 @@ export interface ReceivingPhotoRowLike {
   clientCapturedAt?: string | null;
 }
 
-/**
- * The ONE place receiving/unbox photo meta is built. Every surface that shows
- * carton photos (workspace peek + header pill, station details section) maps
- * through here so none can silently drop the PO linkage again — `poRef` is a
- * REQUIRED arg (pass `null` when genuinely unknown), not an optional field a
- * call site can forget. See `photo-context-provenance.ts` for how `poRef`
- * drives the viewer's "Linked to PO …" readout + deep link.
- */
+/** The ONE place receiving/unbox photo meta is built. */
 export function receivingPhotoMeta(
   row: Pick<
     ReceivingPhotoRowLike,
@@ -116,13 +86,7 @@ export function receivingPhotoMeta(
   });
 }
 
-/**
- * Evidence stage of a receiving photo row.
- *
- * Entity wins for lines (the identity law), and `photoType` falls back to the
- * `caption` alias so a caller that has not migrated still resolves. Resolution
- * itself is the SoT's — never a local map.
- */
+/** Evidence stage of a receiving photo row. */
 export function receivingPhotoStage(
   row: Pick<ReceivingPhotoRowLike, 'caption' | 'photoType' | 'receivingLineId'>,
 ): PhotoEvidenceStage | null {
@@ -138,12 +102,7 @@ export function receivingPhotoToGalleryInput(
   return { id: row.id, url: row.photoUrl, meta: receivingPhotoMeta(row, ctx) };
 }
 
-/**
- * Photo input shapes accepted by the gallery. Pass `{id, url}` to enable the
- * delete affordance — the gallery hits `DELETE /api/photos/[id]` directly. Attach
- * `meta` to light up the viewer's context panel. Bare strings or the legacy
- * `{url, index, uploadedAt}` shape render read-only with no panel.
- */
+/** Photo input shapes accepted by the gallery. */
 export type PhotoGalleryInput =
   | string
   | { id?: number; url: string; thumbUrl?: string; index?: number; uploadedAt?: string; meta?: PhotoMeta };
@@ -190,13 +149,7 @@ export function photosFingerprint(parsed: { id: number | null; url: string }[]):
   return parsed.map((p) => `${p.id ?? ''}|${p.url}`).join(' ');
 }
 
-/**
- * Shared `layoutId` for the media-library grid tile ↔ fullscreen viewer hero
- * morph — the SAME id on `PhotoThumb` (grid) and the viewer's main image lets
- * framer-motion travel the actual clicked photo into the lightbox instead of
- * crossfading two unrelated elements. `null`/missing ids (legacy bare-URL
- * photos) opt out — there's nothing stable to key the morph on.
- */
+/** Shared `layoutId` for the media-library grid tile ↔ fullscreen viewer hero morph — the SAME id on `PhotoThumb` (grid) and the viewer's… */
 export function photoHeroLayoutId(id: number | null | undefined): string | undefined {
   return typeof id === 'number' && Number.isFinite(id) ? `photo-hero-${id}` : undefined;
 }

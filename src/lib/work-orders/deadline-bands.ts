@@ -1,24 +1,7 @@
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 
-/**
- * Deadline banding for the staffer's own queue (`/m/work`) — R-FLOW-3.
- *
- * On the staff member's personal view, DEADLINE outranks priority: rows group
- * into civil-date bands (Overdue · Must ship today · Upcoming · No deadline),
- * and priority only breaks ties INSIDE a band. This module is deliberately
- * separate from the global ranking SoT (`ranking.ts` / `topWorkOrderForStaff`),
- * which stays priority-first and drives the goal chip + desktop My Day —
- * do not merge the two comparators.
- *
- * Bands compare warehouse civil dates (`toPSTDateKey`), not raw timestamps, so
- * "today" means the warehouse's today regardless of the host TZ. Note
- * `getDaysLateNullable` cannot classify Upcoming — it clamps at 0 — which is
- * why the future-date check lives here.
- *
- * Pure and import-safe on both sides (no 'use client', no DB) so the API route
- * and the mobile page share one classifier, and node:test covers it directly.
- */
+/** Deadline banding for the staffer's own queue (`/m/work`) — R-FLOW-3. */
 
 export type DeadlineBand = 'overdue' | 'today' | 'upcoming' | 'none';
 
@@ -32,12 +15,7 @@ export const DEADLINE_BAND_LABEL: Record<DeadlineBand, string> = {
   none: 'No deadline',
 };
 
-/**
- * Classify one deadline into its band relative to `todayKey` (defaults to the
- * warehouse's current civil date; injectable for tests). Invalid / missing
- * deadlines land in 'none'. Date keys are YYYY-MM-DD, so plain string
- * comparison is chronological.
- */
+/** Classify one deadline into its band relative to `todayKey` (defaults to the warehouse's current civil date; injectable for tests). */
 export function classifyDeadlineBand(
   deadlineAt: string | null | undefined,
   todayKey: string = getCurrentPSTDateKey(),
@@ -49,12 +27,7 @@ export function classifyDeadlineBand(
   return 'upcoming';
 }
 
-/**
- * The staffer's own actionable rows. Mirrors the mine-filter half of
- * `topWorkOrderForStaff` (techId OR packerId, not yet DONE/CANCELED) WITHOUT
- * touching the shared ranking module — the byte-identical goal-chip contract
- * depends on that predicate staying where it is.
- */
+/** The staffer's own actionable rows. */
 export function filterAssignedToStaff(rows: WorkOrderRow[], staffId: number): WorkOrderRow[] {
   return rows.filter(
     (row) =>

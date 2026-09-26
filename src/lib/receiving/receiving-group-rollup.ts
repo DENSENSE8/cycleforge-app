@@ -1,17 +1,4 @@
-/**
- * Group-band rollups (operator 2026-09-14, "implement all 1-3"):
- *
- * 1. STATUS rollup — the collapsed/expanded band carries a compound state pill
- *    summarizing its children ("2 RECEIVED", "1 RECEIVED · 1 UNBOXED"), worst
- *    child tone wins, so a group answers "does this need me?" without
- *    expanding. Industry-standard summary-row behavior (AG Grid row grouping /
- *    Airtable grouped aggregates).
- * 2. QTY rollup — receiving bands sum quantity_received / quantity_expected
- *    onto the under-title qty subtitle, the way To-ship already rolls
- *    qty + money (parentOrderLineTotals).
- *
- * Pure, DB-free: rows in, display facts out.
- */
+/** Group-band rollups (operator 2026-09-14, "implement all 1-3"): */
 
 import type {
   CompoundStateTone,
@@ -65,12 +52,7 @@ export interface ReceivingGroupRollup extends StatusWordRollup {
   qtyExpected: number;
 }
 
-/**
- * Receiving fold rollup: status words through the coarse vocabulary, tone via
- * the receiving three-tone SoT ({@link receivingStateTone} — applied to the
- * word so exception vocabulary keeps its alert), qty summed from the line
- * columns.
- */
+/** Receiving fold rollup: */
 export function receivingGroupRollup(rows: readonly ReceivingLineRow[]): ReceivingGroupRollup {
   const rollup = statusWordRollup(
     rows.map((row) => String(row.workflow_status || 'EXPECTED').toUpperCase()),
@@ -88,9 +70,7 @@ export function receivingGroupRollup(rows: readonly ReceivingLineRow[]): Receivi
 }
 
 /**
- * The BAND's qty part — `received/expected`, NOT a bare number, so it must
- * not reuse {@link lineQtySubtitlePart}'s `widthCh: 2` slot (the leaf law): a
- * "3/3" face in a 2ch box is exactly the "3/3 is blocked off" clip the
+ * The BAND's qty part — `received/expected`, NOT a bare number, so it must not reuse {@link lineQtySubtitlePart}'s `widthCh:
  * operator reported (2026-09-14). Width fits the two counts plus the slash.
  */
 export function bandQtyRollupPart(fieldId: string, received: number, expected: number): CompoundSubtitlePart {

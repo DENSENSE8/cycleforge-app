@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Receiving-lines table — thin composition layer.
- *
- * The data/selection/grouping/navigation logic lives in focused hooks, and the
- * row/summary/list rendering in dedicated components, all under
- * `@/components/station/`:
- *   - useReceivingModeContext ..... URL → mode descriptor + parsed context
- *   - useReceivingLinesData ....... list + delivered-unscanned queries + localRows
- *   - useReceivingGrouping ........ dedupe → PO groups → day bands → ordered rows
- *   - useReceivingRowSelection .... single + bulk selection + event bridges
- *   - useReceivingTableNavigation . arrow/chevron + detail-overlay nav
- *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
- *   - useReceivingAutoWeek ........ History empty-week back-jump
- *   - IncomingDeliveriesLedger ... Incoming (Unbox Inbound, `/incoming`) → RecordLedger
- *   - DockedReceiptsLedger ....... History (Unbox History, `/incoming?lane=docked`) → RecordLedger
- *   - ReceivingSpreadsheet ....... Unbox Queue / Recent, standalone History → DataTable
- *
- * Types + dispatchers live in leaf modules — import those, never this file,
- * unless you are mounting the table:
- *   - `receiving-line-row` ............. `ReceivingLineRow`
- *   - `receiving-lines-table-helpers` ... dispatchers / selection scope
- *   - `ReceivingLineOrderRow` .......... board-layout row (legacy)
- *
- * Re-exports below remain for accidental legacy imports; new code must use leaves.
- */
+/** Receiving-lines table — thin composition layer. */
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
@@ -256,23 +232,11 @@ export default function ReceivingLinesTable({
     clearTableImportDraft(INBOUND_RETURNS_IMPORT_DESCRIPTOR.surfaceId);
   }, [isIncomingMode, returnsImportDraft, returnsImportActive]);
 
-  // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the
-  // Unbox workbench's History tab (`embedded`), and `/incoming?lane=docked` —
-  // so the mode id alone can never decide the gesture. The Unbox tab and the
-  // Docked lane mount the Docked ledger (record on DeskRecordPlane); only the
-  // standalone History surface navigates to the carton read page.
+  // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the Unbox workbench's History tab (`embedded`), and…
   const isHistorySurface = isHistoryMode && !embedded && !isInboundDocked;
-  // The Unbox workbench — all three of its tabs. Measured on dogfood before the
-  // flip: Recent 117 rows, Queue 12, Viewed 22, every one of them ticking a
-  // checkbox on click with zero `receiving-select-line` events, i.e. its own
-  // browse feed could not open a carton even though
-  // `useReceivingWorkspacePane` says operators "open a line via click or scan".
-  // Flipped as a SET so no tab diverges from its siblings.
+  // The Unbox workbench — all three of its tabs.
   const isUnboxWorkbench = embedded;
-  // Every RecordLedger host — Unbox History + Inbound tabs and the `/incoming`
-  // On the way + Docked lanes — shows a picked row on the ledger's
-  // DeskRecordPlane. The open row rides `?openLine=`, so a reload restores it
-  // in whichever view (in place / split) the staffer's setting selects.
+  // Every RecordLedger host — Unbox History + Inbound tabs and the `/incoming` On the way + Docked lanes — shows a picked row on the…
   const isUnboxHistory = isHistoryMode && embedded;
   const isLedgerHost = isIncomingMode || isInboundDocked || isUnboxHistory;
   const openLineRaw = isLedgerHost ? searchParams.get('openLine') : null;
@@ -298,12 +262,7 @@ export default function ReceivingLinesTable({
   // gutter checkbox owns bulk membership (checks never open the record plane).
   const selectGutterChrome = 'always' as const;
 
-  /**
-   * History's record plane: the durable carton READ page. `receiving_id` is the
-   * carton (a History row was physically received, so it has one); a row that
-   * somehow lacks it gets deterministic feedback rather than a silent no-op —
-   * a click that does nothing is the exact defect this change set removes.
-   */
+  /** History's record plane: */
   const openHistoryCarton = useCallback(
     (row: ReceivingLineRow) => {
       const cartonId = Number(row.receiving_id);
@@ -327,11 +286,7 @@ export default function ReceivingLinesTable({
     scrollRef,
   });
 
-  // KPI-tile click-to-filter (Unbox only). The predicate is the SAME one
-  // UnboxChromeKpiCluster used to compute the tile's number, so a filtered
-  // table can never disagree with the count that told the operator to click.
-  // `embedded` is the Unbox-workbench gate (all three tabs) — never applies
-  // to Incoming / standalone History, which share this component.
+  // KPI-tile click-to-filter (Unbox only).
   const ukpiParam = searchParams.get(UNBOX_KPI_FILTER_PARAM);
   const unboxTabForFilter = getUnboxWorkspaceTabFromSearch(searchParams);
   const kpiFilteredRows = useMemo(() => {
@@ -379,33 +334,11 @@ export default function ReceivingLinesTable({
     selectModeRef,
   } = useReceivingRowSelection({
     selectMode,
-    // Row body opens, the gutter checkbox owns bulk membership. The ledger
-    // hosts open through `openLedgerRow` directly; this hook still serves the
-    // spreadsheet bodies (Unbox Queue / Recent, standalone History).
-    //
-    // Unbox (`isUnboxWorkbench`) needs no `openRow`: its `receiving-select-line`
-    // already opens the LineEditPanel in place — the default dispatch IS the
-    // right destination.
+    // Row body opens, the gutter checkbox owns bulk membership.
     rowClickOpens: isIncomingMode || isInboundDocked || isHistorySurface || isUnboxWorkbench,
-    // History's default `receiving-select-line` branch does
-    // `router.replace('/unbox?openReceivingId=…')`, i.e. it drops a browse click
-    // into the scan bench — a Workbench map handing off to a Station, which
-    // `contextual-display.md` calls the most common way surfaces feel wrong.
-    // The durable READ record is `/carton/[id]` (already where `searchHitHref`
-    // sends a RECEIVING hit), so that is what a History row opens.
-    //
-    // Also armed on `/dashboard?mode=inbound`, which reaches this table with
-    // `selectMode` OFF and therefore already dispatched `receiving-select-line`
-    // on every click — into nothing, because that page mounts no receiving
-    // sidebar or overlay host. It has been a dead click since it shipped (its
-    // own release note says so); giving it the same carton destination is the
-    // fix that note asked for, and costs nothing here.
+    // History's default `receiving-select-line` branch does `router.replace('/unbox?openReceivingId=…')`, i.e.
     openRow: isHistorySurface ? openHistoryCarton : undefined,
-    // A click on the Unbox FEED opens the carton but does NOT stamp the
-    // operator's recents. Browsing a queue is navigation; Recent answers "which
-    // cartons did I actually open", and if the map itself counted it would
-    // converge on a copy of the feed. Scans, the recent rail, sibling PO lines
-    // and deep links still record — they are all deliberate single-carton opens.
+    // A click on the Unbox FEED opens the carton but does NOT stamp the operator's recents.
     recordViewOnOpen: !isUnboxWorkbench,
     localRows,
     orderedVisibleRows,
@@ -453,16 +386,10 @@ export default function ReceivingLinesTable({
 
   const emptyMessage = mode.emptyMessage(modeContext);
 
-  // Fourth settled state (degraded): the authoritative list fetch failed AND we
-  // have nothing to paint. Show a retryable box instead of the skeleton-forever
-  // / silent-empty this surface used to fall into. Rows present (cache/seed) →
-  // keep showing them; a background refetch error must not blank the grid.
+  // Fourth settled state (degraded):
   const incomingDegraded = isIncomingMode && isError && localRows.length === 0;
 
-  // Incoming column sort — DURABLE on `?colsort=`/`?coldir=`, deliberately NOT
-  // `?sort=` (that param is the Incoming SERVER ORDER BY vocabulary).
-  // `isIncomingGridSortable` resolves a receiving/history column key to null,
-  // so this always-live hook never acts on the other family's sort.
+  // Incoming column sort — DURABLE on `?colsort=`/`?coldir=`, deliberately NOT `?sort=` (that param is the Incoming SERVER ORDER BY vocabulary).
   const {
     sort: incomingColumnSort,
     dir: incomingSortDir,
@@ -621,15 +548,7 @@ export default function ReceivingLinesTable({
   const receivingChrome = useReceivingTableChrome();
 
   const receivingGrid = () => (
-    // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape,
-    // not a per-lane variant. Unbox, History and Testing all mount it: they
-    // are the same table read at different moments, so a lane-conditional
-    // column model would be exactly the fork this engine exists to prevent.
-    // Density is an operator control in Column display, not chrome here.
-    //
-    // The tracks are MATERIALIZED from the effective slot layout (wave 1.3):
-    // the shared compound skeleton plus whatever facts the organization has
-    // bound, which before this port took a new React column.
+    // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape, not a per-lane variant.
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <ReceivingSpreadsheet
         search={receivingSearch}
@@ -683,12 +602,7 @@ export default function ReceivingLinesTable({
       )
       : null;
 
-  // Record ledgers — Incoming (Unbox Inbound tab, `/incoming` On the way) and
-  // Docked history (Unbox History tab, `/incoming?lane=docked`). One list and
-  // one record per collection: each RecordLedger owns its toolbar and shows the
-  // open row on DeskRecordPlane. On the Inbound desk, Add replaces either
-  // ledger with the centred receiving-order composer until it closes, and
-  // Returns CSV staging swaps the On the way centre (Orders golden path).
+  // Record ledgers — Incoming (Unbox Inbound tab, `/incoming` On the way) and Docked history (Unbox History tab, `/incoming?lane=docked`).
   if (isLedgerHost) {
     // The ledgers paint on the industrial record face (`mode-*` tokens). The
     // Inbound desk page declares its triage region; the Unbox workbench does

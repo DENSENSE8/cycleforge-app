@@ -1,32 +1,4 @@
-/**
- * **listStaffReminders** — the one resolver behind `GET /api/v1/reminders`:
- * every instant a staffer's phone should ring in a window, from both sources.
- *
- * Pure orchestration over a {@link StaffReminderDeps} seam; the real bindings
- * live in `list-staff-reminders-db.ts` (house split, like `list-tasks.ts` /
- * `list-tasks-db.ts`). The deps only NARROW (by staffer, window, day); every
- * rule that decides whether something rings lives here, so it unit-tests with
- * zero DB.
- *
- * ## Tasks
- * `FOLLOW_UP` rows assigned to the staffer and still open (OPEN / ASSIGNED /
- * IN_PROGRESS). A task rings at `remind_at`; a task with a deadline but no
- * `remind_at` rings AT its deadline, so a due date alone still notifies — the
- * desk never has to ask "did you also want a reminder?". An explicit
- * `remind_at` outside the window wins over a deadline inside it: the operator
- * picked when to be nudged.
- *
- * ## Checklist
- * For each warehouse civil day the window can ring on, the items live that day
- * (the shared window predicate in `daily-checks/queries.ts`) with a due time
- * and an offset, that this staffer owes (recurring / unowned / owned by them —
- * the report's per-staff denominator), minus the days they already ticked.
- * Rings at `civil(day, due_time) − offset` in the warehouse zone.
- *
- * The days scanned run PAST the window's last day by one: an offset may be up
- * to a whole day, so tomorrow's 08:00 item with a 1440-minute offset rings
- * today and belongs in today's feed.
- */
+/** **listStaffReminders** — the one resolver behind `GET /api/v1/reminders`: */
 
 import {
   isTaskDeskOpen,
@@ -150,12 +122,7 @@ export async function listStaffReminders(
   return { generatedAt: new Date().toISOString(), staffId, from: fromIso, to: toIso, reminders };
 }
 
-/**
- * Civil days whose due times can ring inside `[fromMs, toMs)`: from the day
- * `from` falls on through the day AFTER the window's last instant (offset ≤ one
- * day — see the module doc). A ring never precedes `from`, and it never follows
- * its due time, so no earlier day can contribute.
- */
+/** Civil days whose due times can ring inside `[fromMs, toMs)`: */
 function checklistDayKeys(fromMs: number, toMs: number): string[] {
   const first = toPSTDateKey(new Date(fromMs));
   const last = addDaysToDateKey(toPSTDateKey(new Date(toMs - 1)), 1);

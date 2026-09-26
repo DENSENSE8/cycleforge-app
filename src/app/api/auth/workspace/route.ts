@@ -1,25 +1,4 @@
-/**
- * GET /api/auth/workspace  (PUBLIC)
- *
- * Resolves the tenant for the current host and returns ONLY its display name +
- * slug — never staff, never any sensitive column. Also advertises which login
- * buttons /signin should render:
- *   - `platformProviders`: configured social logins (google / microsoft)
- *   - `sso`: the tenant's enterprise SSO button (only when a workspace is
- *            resolved, it has an active provider, AND the `sso` entitlement)
- *
- * Apex / unknown slug (fail-closed nil org) → `{ resolved: false }` (still lists
- * platform providers, which are host-independent).
- *
- * Failure class: **PARTIAL.** `resolved: false` is a legitimate state (apex
- * host), so an unexpected throw must not borrow it silently — that is the
- * `staff-picker` outage in a second costume. But unlike the picker this payload
- * has a genuinely useful half: `platformProviders` is env-derived, so social
- * sign-in still works while the DB is down. So the throw keeps **200** (to
- * preserve that half) and adds `degraded: true` + `error`; a caller that needs
- * to distinguish "no workspace here" from "we could not look it up" branches on
- * the flag, not on `resolved`.
- */
+/** GET /api/auth/workspace (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

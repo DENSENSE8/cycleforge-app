@@ -4,12 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { type SavedViewSurface } from '@/lib/saved-views/surfaces';
 
-/**
- * Polymorphic saved views — one table (`saved_views`), discriminated by
- * `surface`. Personal presets owned by a staff member within an org
- * (optionally shared org-wide). Every query is org-scoped; mutations are
- * ownership-scoped (`staff_id = $me`). See `2026-07-29g_saved_views.sql`.
- */
+/** Polymorphic saved views — one table (`saved_views`), discriminated by `surface`. */
 
 export interface SavedViewRow {
   id: number;

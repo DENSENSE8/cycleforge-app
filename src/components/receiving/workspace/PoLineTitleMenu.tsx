@@ -22,18 +22,7 @@ interface Props {
   serialSplit?: PoLineSerialSplitContext;
 }
 
-/**
- * Title-row ⋮ overflow for a PO line — currently just the (conditional)
- * unlink/split action: move a serial onto its own unmatched row after a
- * {@link RightPaneOverlay} confirm (same shell family as ReceivingClaimModal).
- *
- * Item-description ("more details") editing left this menu on 2026-08-08: the
- * per-line description is edited in the right-edge **Inventory** Display
- * (`InventoryDisplayHost` → `onSaveDescription`), so the redundant inline
- * editor was removed from the centre PO line item. When no action applies
- * (a matched line with no unlink target) the menu renders nothing — the ⋮
- * only appears where it still does something.
- */
+/** Title-row ⋮ overflow for a PO line — currently just the (conditional) unlink/split action: */
 export function PoLineTitleMenu({ line, serialSplit }: Props) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);

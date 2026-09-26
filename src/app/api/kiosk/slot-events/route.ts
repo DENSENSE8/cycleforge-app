@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: KioskDevicesSection fetch for history DataTable.
- * Affected API: GET /api/kiosk/slot-events with permission walk_in.enroll_kiosk.
- * Data schemas: JSON { events: KioskSlotEventTableRow[] }.
- * User instruction (verbatim): Continue to the next phase
- */
+/** Gate preamble (Fact-Forcing): */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

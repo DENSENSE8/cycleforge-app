@@ -3,30 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { processReturnsIntake } from '@/lib/inventory/returns';
 
-/**
- * POST /api/returns/intake
- *
- * Phase 7 returns dock. For each resolved unit:
- *   - inventory_events RETURNED (prev=current, next='RETURNED')
- *   - serial_units.current_status → RETURNED
- *   - sku_stock_ledger +1 reason='RETURN_CUSTOMER' (trigger projects
- *     the qty back onto sku_stock.stock)
- *
- * Body:
- *   {
- *     tracking_number?: string,
- *     order_id?: number,
- *     reason?: string,
- *     serials?: string[],         // raw serials or GS1 Digital Link URLs
- *     serial_unit_ids?: number[],
- *     client_event_id?: string    // UUID, per-unit suffixed for idempotency
- *   }
- *
- * Shared transaction in src/lib/inventory/returns.ts (used by the
- * /inventory/returns admin page too).
- *
- * Permission: receiving.mark_received.
- */
+/** POST /api/returns/intake */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
 

@@ -1,26 +1,6 @@
 /**
  * Auto-cage — the ingest half of the accepted/exception **split**.
- *
  * Operator ruling R-FLOW-2 (2026-08-31) as amended by R-FLOW-7 (2026-09-01,
- * `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2): a freshly ingested
- * order enters the cage when it is **unpaired** (`sku_catalog_id` null) —
- * the system splits sync output into *accepted* (item resolves to Zoho
- * inventory, `release_state` stays NULL) and *exceptions* (`release_state =
- * 'caged'`, surfacing on `/shipping/exceptions` for catalog pairing). Missing
- * manuals or shipping labels do not cage; they are To-ship paperwork.
- *
- * Two disciplines, both load-bearing:
- *
- * 1. **One rule.** The verdict is G4 pairing (`skuCatalogId` on the live
- *    release record). G1–G3 stay the packet/intake contract; they are not
- *    this split.
- * 2. **New rows only, defensively.** The UPDATE re-checks
- *    `release_state IS NULL` and skips rows that arrived already fulfilled
- *    (`status = 'shipped'` — the eBay lane imports 30 days of already-shipped
- *    orders and Amazon FBA rows land shipped; caging those would flood the
- *    desk with orders that need no triage). NULL-means-released stays the law
- *    for everything historical (`2026-08-30c`); this module never touches a
- *    row it was not handed as newly inserted.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';

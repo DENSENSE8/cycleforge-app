@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * FBA board data: fetches `/api/fba/board`, holds the working `pending` list,
- * and keeps it fresh via the FBA event bus — full refetch on refresh/print, plus
- * optimistic single-item inject (select-mode auto-add) and bulk remove
- * (after combine/ship) without a round-trip. Also refetches on the `?r=` URL
- * trigger. Extracted from fba/page; behaviour is unchanged.
- */
+/** FBA board data: */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';

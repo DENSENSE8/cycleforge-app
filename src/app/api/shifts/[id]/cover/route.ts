@@ -1,17 +1,4 @@
-/**
- * POST /api/shifts/:id/cover
- *
- * Admin-only cover transaction:
- *   1. Cancel the original shift (status='cancelled').
- *   2. Insert a new shift for the covering staff, with covers_shift_id
- *      pointing back at the original for audit.
- *   3. Revoke any open sessions belonging to the original (covered) staff
- *      so they're forced to sign out — leaving the workstation free for
- *      the covering staff to sign in.
- *
- * Body: { coveringStaffId: number, startsAt?: ISO, endsAt?: ISO, notes?: string }
- * `startsAt` / `endsAt` default to the original shift's window.
- */
+/** POST /api/shifts/:id/cover */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { audit } from '@/lib/auth/audit';

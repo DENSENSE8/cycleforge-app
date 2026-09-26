@@ -57,35 +57,7 @@ import { UnboxNotesLocationControl } from './UnboxNotesLocationControl';
 import { UnboxNotesStatusDialog } from './UnboxNotesStatusDialog';
 import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
 
-/**
- * Item-note composer — the operator's durable note on this line
- * (`receiving_line.notes`).
- *
- * GRAIN: this note is **not printed**. The printed label face is a separate
- * buffer (`receiving_line.label_note`) owned by the label editor. They were one
- * column until 2026-07-31; splitting them is what lets an operator record
- * something about an item without it landing on the sticker.
- *
- * Hydrates from the row and saves on blur / Send. Built on
- * {@link OmnichannelComposerDock} (ChatGPT-style dock chrome).
- *
- * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
- * like Send-in-chat: save the note, then fire {@link onPrimaryAction}.
- *
- * Ghost autocomplete (label-note MRU via {@link useLabelNoteGhostAutocomplete})
- * paints an inline suffix; Tab / ArrowRight / click accept; Escape dismisses.
- *
- * Recent (History) applies the **sticker center from the newest scanned carton
- * that has one** (`/api/receiving/recent-label-note` → walk scans → the line on
- * that carton touched last → `notes` before the older `label_note`, since the
- * dock draft is what the Unbox face prints). Hover paints that phrase as a
- * ghost placeholder in an empty field; click replaces the draft with the same
- * string.
- *
- * Insert rail (staff stamp / ticket / price / synced PO / title) lives in
- * the composer + menu. Location save is the quiet pill left of Print inside
- * the outline — not a mode face.
- */
+/** Item-note composer — the operator's durable note on this line (`receiving_line.notes`). */
 
 export function LineNotesCard({
   row,
@@ -189,23 +161,9 @@ export function LineNotesCard({
   onPrimaryAction?: () => void;
   /** When true, Enter is a no-op (mirrors the disabled Receive pill). */
   primaryActionDisabled?: boolean;
-  /**
-   * Where the header ⓘ sends the operator. When provided it opens that station's
-   * Displays → Timeline leaf (the right edge owns contextual detail); when
-   * omitted the local {@link UnboxNotesStatusDialog} still opens, so a surface
-   * with no Displays column keeps a route to the stamps.
-   */
+  /** Where the header ⓘ sends the operator. */
   onOpenStatusHistory?: () => void;
-  /**
-   * Repoint the header ⓘ at a different job, with its own label.
-   *
-   * It exists so the dev receive-panel tester can take that corner without
-   * anyone forking a second composer to hold a second glyph — the corner is
-   * ONE slot, and which verb sits in it is a prop. When set it OUTRANKS
-   * {@link onOpenStatusHistory}, so a host that repoints the corner is
-   * responsible for keeping a route to the timeline (the tester mounts its own
-   * Timeline button for exactly that reason).
-   */
+  /** Repoint the header ⓘ at a different job, with its own label. */
   headerAction?: { label: string; onClick: () => void; pressed?: boolean };
   /** Line stamps for the notes Info dialog + current putaway face. */
   statusStamps?: LineStatusExactSource & {
@@ -256,11 +214,7 @@ export function LineNotesCard({
   const recentPhrase = (recentNoteQuery.data || '').trim();
   const [recentHover, setRecentHover] = useState(false);
 
-  // Close the save→fetch race. The dock's note write is fire-and-forget, so the
-  // next carton's Recent fetch can beat the PATCH carrying the face the operator
-  // just typed — and would then hold that pre-save answer for the whole carton.
-  // This event fires with the PERSISTED row once the write resolves.
-  // {@link shouldRefreshRecentFace} keeps it off the steady patch traffic.
+  // Close the save→fetch race.
   const queryClient = useQueryClient();
   useReceivingEvents({
     'receiving-line-updated': (detail) => {
@@ -311,18 +265,6 @@ export function LineNotesCard({
   const paintGhostSuffix = ghostPaint.ghostSuffix;
 
   // DELETED 2026-08-02 — an auto-focus on the print step.
-  //
-  // It fired on DERIVED step advance, with no operator gesture: the carton
-  // reached `print`, the caret jumped into this textarea, and the next wedge
-  // scan was typed into the note instead of the scan bar. Nothing errored and
-  // nothing was shown — the operator scans a box, sees nothing happen, and
-  // scans again. That is the most expensive bug this bench can ship, and it is
-  // the one thing `display/station.md` §3 and the procedure surface's focus rule
-  // exist to prevent.
-  //
-  // A composer is focused because the operator CLICKED it, never because a
-  // derivation moved. Do not restore this, and do not re-add it for another
-  // step key.
 
   useEffect(
     () => () => {
@@ -421,17 +363,7 @@ export function LineNotesCard({
   const staffStamp = buildStaffStampText({ name: user?.name, staffId: user?.staffId });
   const numericTicketId = resolvedTicketId ? Number(resolvedTicketId) : null;
   const [ticketDraft, setTicketDraft] = useState('');
-  // PUBLIC by default (operator ruling 2026-08-31), for BOTH paths this dock
-  // drives — filing a new claim and replying on a linked ticket. The station's
-  // ticket work is outbound: a claim exists to reach the seller, and a reply
-  // typed at the bench is the answer to one. Defaulting to Internal meant the
-  // common case was the one that needed an extra tap, and a note written to be
-  // read by a seller sat private until someone noticed.
-  //
-  // It drives the claim too — `notePublic` / `ccEmails` below — so create and
-  // reply prefill identically: same channel, same visible Cc row, same body.
-  // The console composer keeps Internal-first; an agent triaging a queue is
-  // not doing the same job.
+  // PUBLIC by default (operator ruling 2026-08-31), for BOTH paths this dock drives — filing a new claim and replying on a linked ticket.
   const [ticketPublic, setTicketPublic] = useState(true);
   // CC is an AUDIENCE control: chips + the address still being typed. The draft
   // is held here rather than inside the strip so send can fold a half-typed
@@ -455,10 +387,7 @@ export function LineNotesCard({
   const canBrowsePhotoLibrary = isLoaded && has('photos.view');
   const staffName = user?.name?.trim() || '';
 
-  // Photos ride the same staging pipeline as the console composer: the upload
-  // lands under the ticket the instant it is picked, then attaches to the next
-  // comment as `photoIds`. Ticket id 0 is unreachable — the Photos rows only
-  // exist when this line has a ticket.
+  // Photos ride the same staging pipeline as the console composer:
   const photoStaging = useTicketPhotoStaging(numericTicketId ?? 0);
   const photoPicker = usePhotoDropzone(photoStaging.addFiles);
   const stagedDone = photoStaging.staged.filter(
@@ -507,10 +436,7 @@ export function LineNotesCard({
     photoStaging,
   ]);
 
-  // Report the draft's filled-ness up so the carton-context corner can swap the
-  // Claim verb for the number the ticket is heading for. An effect, not a call
-  // inside onChange: the body also arrives from the claim template landing, and
-  // a change handler would miss that.
+  // Report the draft's filled-ness up so the carton-context corner can swap the Claim verb for the number the ticket is heading for.
   const ticketDraftFilled = claim.isClaim && claim.body.trim().length > 0;
   useEffect(() => {
     onTicketDraftFilledChange?.(ticketDraftFilled);
@@ -663,10 +589,7 @@ export function LineNotesCard({
         labelValue={notes}
         onLabelChange={(next) => {
           onValueChange(next);
-          // Typing a note opens the Label band so the sticker shows what is
-          // being written — the dock draft live-drives the label centre, and
-          // an operator writing blind into a shut band cannot see that.
-          // Typing only: hydrating a saved note leaves the band as it was.
+          // Typing a note opens the Label band so the sticker shows what is being written — the dock draft live-drives the label centre, and an…
           if (next.trim()) onNoteTyped?.();
         }}
         onLabelCommit={handleCommit}

@@ -1,12 +1,4 @@
-/**
- * PUT /api/staff/[id]/functional-roles — grant / revoke a floor functional
- * role (picker, packer) for one staffer.
- *
- * Gate — `work_orders.claim`, the same operator-level permission as the
- * listing→staff assign route: whoever routes Pick / Pack work on To Ship may
- * say who picks and packs. This never touches RBAC access roles
- * (`staff_roles`), so it cannot widen what anyone may access.
- */
+/** PUT /api/staff/[id]/functional-roles — grant / revoke a floor functional role (picker, packer) for one staffer. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';

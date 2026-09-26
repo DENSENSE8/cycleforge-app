@@ -24,12 +24,7 @@ interface SerialUnit {
   current_location: string | null;
   condition_grade: string | null;
   origin_receiving_line_id: number | null;
-  /**
-   * The line this unit is CURRENTLY on (most recent inventory_events touch) —
-   * use this for navigation/actions, never origin_receiving_line_id, which
-   * freezes to the first-ever line and would target/link to a stale PO once
-   * the unit has been returned and re-received elsewhere.
-   */
+  /** The line this unit is CURRENTLY on (most recent inventory_events touch) — use this for navigation/actions, never… */
   current_receiving_line_id: number | null;
   received_at: string | null;
   received_by: number | null;

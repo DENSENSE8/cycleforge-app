@@ -11,12 +11,7 @@ function parseRange(raw: string | null): SourcingAnalyticsRange {
   return (RANGES as readonly string[]).includes(raw ?? '') ? (raw as SourcingAnalyticsRange) : '90d';
 }
 
-/**
- * GET /api/sourcing/analytics?range=30d|90d|1y — org-scoped sourcing rollup
- * for the hub's Analytics mode (Monitor archetype: pure read, no persistence).
- * Spend/acquisitions per week, fill-rate inputs, time-to-source, and per-SKU
- * acquisition cost vs the catalog target/baseline.
- */
+/** GET /api/sourcing/analytics?range=30d|90d|1y — org-scoped sourcing rollup for the hub's Analytics mode (Monitor archetype: */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

@@ -1,54 +1,6 @@
 'use client';
 
-/**
- * The station centre's bands — Items · Label · Placement — as ONE component.
- *
- * ## Why they had to stop being three siblings
- *
- * Each band used to render its own {@link StationCollapsibleBlock}. Collapsed,
- * that gave three hairline strips stacked one under the other, each holding
- * nothing but a word — a ragged little ladder with no rungs, taking three rows
- * of vertical budget to say "nothing here". No band could know it was the last
- * one closed, because no band knew the others existed.
- *
- * So the stack is the component and the bands are its data.
- *
- * ## One layout: a full-width accordion row per band
- *
- *     ┌──────────────────────────────────────┐
- *     │ ▾ Items                   Collapse all│
- *     │ …rows…                               │
- *     ├──────────────────────────────────────┤
- *     │ ▸ Label                              │
- *     └──────────────────────────────────────┘
- *
- * Every band is always a row in declared order. Click the row to open or close
- * it. The header bar is flush — no outer gutter on top, left, or right. The
- * only inset is `px-3` on the band names (icon + word + chevron). Bodies are
- * flush edge-to-edge so capture rows and sticker previews fill the column.
- *
- * This replaced a CHIP RAIL (2026-08-30) — closed bands became eyebrow chips
- * in a wrap row at the top, so closing Placement did not read as "close
- * Placement", it read as "the page changed" (the row vanished and a chip
- * appeared elsewhere). One stack of rows has no such flip: the header stays
- * put, the body unmounts, the chevron turns.
- *
- * `Expand all` rides the first header while every band is shut — it is the
- * way back to everything in one press. `Collapse all` rides the first header
- * while every band is open. Mixed state has neither: click the row you mean.
- *
- * ## Separation is a seam — never a gutter around the bar
- *
- * Headers sit on {@link STATION_SCAN_BENCH_CLASS} (transparent under the
- * industrial skin). The header is edge to edge; a `border-subtle` rule is
- * the only separator.
- *
- * An open body sits in {@link STATION_BAND_BODY_WELL_CLASS} (inset bevel) so
- * a working row can lift off it (`selectedStationClass` = plate). Every band
- * inherits the well — Unbox, Testing, Search. Fill follows the station skin.
- *
- * **No layout animation** (AGENTS.md). Bodies unmount — nothing tweens a height.
- */
+/** The station centre's bands — Items · Label · Placement — as ONE component. */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';

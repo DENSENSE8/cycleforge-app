@@ -67,10 +67,7 @@ describe('photo type predicates', () => {
 
 describe('receivingUploadStage (capture-queue write stage)', () => {
   it('defaults a carton shot to unbox_carton, NOT arrival_package', () => {
-    // Regression: the mobile queue used to stamp every carton shot
-    // `receiving_package`, so `receiving_unbox_carton` had zero writers and a
-    // photo taken after the box was opened satisfied the `require_one`
-    // arrival gate.
+    // Regression: the mobile queue used to stamp every carton shot `receiving_package`, so `receiving_unbox_carton` had zero writers and a…
     assert.equal(receivingUploadStage(null), 'unbox_carton');
     assert.equal(receivingUploadStage(undefined), 'unbox_carton');
     assert.equal(

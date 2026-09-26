@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Staff adapter over {@link AssigneeCombobox} for Pick / Pack / full roster.
- *
- * Assign mode lists staff holding the lane's FLOOR FUNCTIONAL ROLE (picker /
- * packer — `staff_functional_roles`), never RBAC access roles. Search sits
- * left; the Edit pickers / Edit packers button on the right opens the roster:
- * every active member with that lane's functional-role switch. Flipping it
- * writes the functional role only; access roles are never touched. A name
- * click in either mode assigns when that member holds the lane's role.
- *
- * `role="all"` + `onCommit` is a full-roster assign (scan-out, mark shipped).
- * `role="all"` without `onCommit` is roster-only (actions-column switches).
- */
+/** Staff adapter over {@link AssigneeCombobox} for Pick / Pack / full roster. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';

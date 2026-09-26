@@ -1,17 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/tracking-status
- *
- * The residual report behind the bulk-tracking paste: for a pasted list, which
- * keys this org has no inbound shipment for, and which exist but have left the
- * Incoming lane (with the reason). Read-only.
- *
- * Deliberately NOT folded into the list response: the list is paginated, so a
- * residual computed from one page would over-report "not found" the moment a
- * paste matched more rows than a page holds.
- *
- * Body: { trackings: string | string[] }
- * Gated `receiving.view` — the same gate as the Incoming toolbar siblings.
- */
+/** POST /api/receiving-lines/incoming/tracking-status */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

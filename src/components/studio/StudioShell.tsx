@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * StudioShell — the Operations Studio page body: a full-width canvas with a
- * contextual Inspector.
- *
- *   Canvas (React Flow, L0 ⇄ L1 semantic zoom) | Inspector
- *
- * All state lives in StudioWorkspaceContext (mounted in app/layout.tsx) so the
- * master-nav route panel (StudioSidebarPanel) and this body share one source of
- * truth. The View dropdown, node Library and Issues rail live in that panel;
- * this shell keeps only the canvas, the inspector, and the shell-scoped header
- * actions (version switch · draft ▸ publish · in-flight count).
- *
- * View state is URL-persisted so any view is shareable (`?v=&focus=&z=&lens=`).
- * See StudioWorkspaceContext for the data/edit/live mechanics.
- */
+/** StudioShell — the Operations Studio page body: */
 
 import { useLocalStorage } from '@/hooks';
 import { ChevronLeft, ChevronRight, Plus, Sparkles, Upload } from '@/components/Icons';
@@ -84,11 +70,7 @@ export function StudioShell() {
     skill: STUDIO_SKILL,
   });
 
-  // AI-first refactor (plan §4): when the assistant dock is OPEN it ABSORBS the
-  // inspector — focused-node detail renders in the dock instead of the standalone
-  // w-72 aside. Gated on the dock actually being open (not just permissioned):
-  // a closed dock must leave the classic aside/rail, else a permissioned user
-  // who never opened it would have no inspector at all at ≥lg.
+  // AI-first refactor (plan §4):
   const dockAbsorbsInspector = useAssistantDockOpen();
 
   // Inspector is a workspace preference (not shareable view state) → localStorage.
@@ -256,10 +238,7 @@ export function StudioShell() {
                 </Button>
               </>
             )}
-            {/* Submit-to-catalog reads the LIVE definition, so it sits OUTSIDE
-                the draft-only branch — a manager can share the active version or
-                a draft alike. Plain fetch (no step-up); studio.manage is
-                server-enforced. */}
+            {/* Submit-to-catalog reads the LIVE definition, so it sits OUTSIDE the draft-only branch — a manager can share the active version or a… */}
             <HoverTooltip
               label={
                 dirty
@@ -352,11 +331,7 @@ export function StudioShell() {
           </aside>
         )}
 
-        {/* An OPEN dock absorbs the inspector (plan §4). But the dock/FAB are
-            desktop-lg only, so at 768–1024px keep the aside (lg:hidden) as the
-            fallback — otherwise that band would have no inspector at all. A
-            closed dock leaves the aside/rail everywhere (dockAbsorbsInspector
-            is false), so a permissioned first-run user still gets an inspector. */}
+        {/* An OPEN dock absorbs the inspector (plan §4). */}
         {inspectorOpen ? (
           <aside
             className={cn(

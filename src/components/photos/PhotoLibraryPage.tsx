@@ -87,12 +87,7 @@ export function PhotoLibraryPage() {
   const { density: gridDensity, setDensity: setGridDensity } = usePhotoGridDensity();
   const queryClient = useQueryClient();
 
-  // A finder search OR a carton deep-link (receivingId) resolves to one PO when
-  // every loaded photo shares it. Mirror that PO into the breadcrumb + folder-path
-  // chrome so the right panel reads like an opened PO folder — without writing
-  // poRef to the URL when the search box / receivingId is the source of truth.
-  // An explicit PO drill (filters.poRef) always wins; a multi-PO result stays
-  // generic.
+  // A finder search OR a carton deep-link (receivingId) resolves to one PO when every loaded photo shares it.
   const resolvedPoRef = useMemo<string | undefined>(() => {
     if (filters.poRef) return filters.poRef;
     const canInfer = Boolean(filters.poFinder) || Boolean(filters.receivingId);
@@ -103,17 +98,7 @@ export function PhotoLibraryPage() {
 
   const scope = sourceScopeFromFilters(filters);
 
-  /**
-   * The find-bar, session-local — it NEVER writes the URL.
-   *
-   * Typing used to `patch({ poFinder })`, which soft-navigated `/ops/photos` and
-   * refetched the library on every keystroke: the wrong input for a filter, and
-   * the anti-pattern the slot-table lane already removed from every desk
-   * (`docs/todo/prod-slot-table-SOT-HANDOFF.md`). The box now narrows the rows
-   * already painted, the same way `filterShippedOrdersByQuery` and
-   * `receivingLineMatchesQuery` narrow theirs. Structured drills (PO, ticket,
-   * carton, date, label) stay URL filters — those are deep links, not typing.
-   */
+  /** The find-bar, session-local — it NEVER writes the URL. */
   const [searchQuery, setSearchQuery] = useState('');
   const [searchField, setSearchField] = useState<PhotoSearchField>('all');
   const visiblePhotos = useMemo(
@@ -203,16 +188,7 @@ export function PhotoLibraryPage() {
   const shareLinks = usePhotoShareLinks();
 
   // ── The desk inspector ────────────────────────────────────────────────────
-  //
-  // Cardinality is the mode switch, and there is no third state: one photo
-  // selected opens the rail; two or more hand the chrome slot to the bulk
-  // toolbar; zero closes both. The tile click is untouched — it still opens the
   // fullscreen viewer (operator ruling 2026-08-09).
-  //
-  // `?photoId=` is written FROM this selection and cleared WITH it, which is the
-  // eviction rule: the `scopeKey` effect below already clears the selection
-  // whenever a filter swaps `photos` out, so the rail closes with it and there
-  // is no "open photo" state that can outlive the set it was picked from.
   const { photoId: openPhotoId, setPhotoId } = usePhotoInspectorParam();
   /** `?photoId=` as it stood on first paint — the reload / deep-link seed. */
   const [seedPhotoId] = useState(() => openPhotoId);
@@ -227,11 +203,7 @@ export function PhotoLibraryPage() {
   }, [photos, selected]);
   const inspectorPhotoId = inspectorPhoto ? String(inspectorPhoto.id) : null;
 
-  // Seed the selection from the URL exactly ONCE, so a reload lands on the same
-  // photo. Gated on `isSettled` because the first page has to be in hand before
-  // "is this photo in the set" can be answered; a seed that is NOT in the set
-  // stays unselected, and the sync effect below then clears the param — the same
-  // eviction rule, applied at load.
+  // Seed the selection from the URL exactly ONCE, so a reload lands on the same photo.
   useEffect(() => {
     if (inspectorHydrated || !seedPhotoId || !isSettled) return;
     const target = Number(seedPhotoId);
@@ -248,24 +220,10 @@ export function PhotoLibraryPage() {
     setPhotoId(inspectorPhotoId);
   }, [inspectorHydrated, inspectorPhotoId, openPhotoId, setPhotoId]);
 
-  /**
-   * The batch rail and the record inspector are ONE right-edge slot at two
-   * cardinalities, so they are mutually exclusive by construction rather than by
-   * two booleans that can both be true. `selectionActive && !inspectorPhoto`
-   * also keeps the pencil's zero-selected entry state (Select all N) exactly as
-   * it was — that state moved into the rail with the verbs rather than being
-   * dropped with the toolbar.
-   */
+  /** The batch rail and the record inspector are ONE right-edge slot at two cardinalities, so they are mutually exclusive by construction… */
   const showBatchRail = selectionActive && inspectorPhoto === null;
 
   // Trailing breadcrumb crumb naming the entity in view (PO / ticket / carton).
-  //
-  // This used to be gated on `folderIsLeaf` — i.e. only while the operator had
-  // physically descended to a folder leaf. With the drill gone, the crumb is
-  // gated on the thing it actually describes: whether an entity filter is
-  // active. That KEEPS the capability rather than dropping it with the folders
-  // — `?poRef=` still reads as "… › PO 14-…" — and it now works in every view,
-  // including List, which the old gate excluded for no reason.
   const leafPoRef = resolvedPoRef ?? filters.poRef;
   const leafTicketId = resolvedTicketId ?? filters.ticketId;
   const leafReceivingId = filters.receivingId;
@@ -291,11 +249,7 @@ export function PhotoLibraryPage() {
   // never the most-recent PO or photo type.
   const today = useMemo(() => getCurrentPSTDateKey(), []);
 
-  // A view switch is presentation only — it never touches the filter set. The
-  // old `folders` branch cleared poRef/ticketId because entering the drill had
-  // to reset to the top of the hierarchy; there is no hierarchy to re-enter now,
-  // and silently dropping an entity filter on a display toggle would be a
-  // surprise (switch to List, lose the PO you were looking at).
+  // A view switch is presentation only — it never touches the filter set.
   const handleViewChange = setView;
   const mostRecentDay = useMemo(
     () => buildPhotoDateTree(photos)[0]?.months[0]?.days[0]?.ymd,
@@ -307,13 +261,7 @@ export function PhotoLibraryPage() {
     clear();
   }, [clear]);
 
-  // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb
-  // jump, source-scope switch, or search. Selection is keyed by id and (by
-  // design) survives paging, but a scope change swaps `photos` out from under it,
-  // leaving stale ids from the previous folder in the set: the count desyncs and
-  // bulk delete/share/copy silently operate on photos the user can no longer see.
-  // Keyed on `filters` (the folder/breadcrumb/source/search identity), NOT on
-  // `photos`, so loading more pages within one folder still keeps the selection.
+  // Reset selection when the BROWSE SCOPE changes — a folder drill, breadcrumb jump, source-scope switch, or search.
   const scopeKey = useMemo(() => JSON.stringify(filters), [filters]);
   const prevScopeKey = useRef(scopeKey);
   useEffect(() => {
@@ -325,15 +273,7 @@ export function PhotoLibraryPage() {
   /** Every id the find-bar is currently painting — the select-all target. */
   const visibleIds = useMemo(() => visiblePhotos.map((p) => p.id), [visiblePhotos]);
 
-  // "Select all matching filters" — fetch every matching photo id (capped) for
-  // the current filter set and select them, so a bulk share/ZIP/delete spans the
-  // whole result, not just the loaded page.
-  //
-  // The find-bar is deliberately NOT part of that server set: it is a local
-  // narrowing of painted rows, and the ids endpoint only speaks filters. With a
-  // query typed, "all matching" therefore means the rows on screen — selecting
-  // the wider filter set would hand bulk delete photos the operator just
-  // narrowed away.
+  // "Select all matching filters" — fetch every matching photo id (capped) for the current filter set and select them, so a bulk…
   const selectAllMatching = useCallback(async () => {
     if (searchQuery.trim()) {
       selectIds(visibleIds);
@@ -723,12 +663,7 @@ export function PhotoLibraryPage() {
   );
 
   return (
-    /*
-      The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome`
-      via `DeskPageLayout`. Title top-left; lifecycle scopes as its tab row;
-      media-type overflow at `tabsLead`. Overall Download + primary Add photos
-      register into the frame's action slot.
-    */
+    /* The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome` via `DeskPageLayout`. */
     <DeskPageLayout
       className="h-full"
       title="Media"
@@ -744,12 +679,7 @@ export function PhotoLibraryPage() {
       uploadTarget={uploadTarget}
       onUploaded={refreshLibrary}
     />
-    {/*
-      `min-w-0 flex-1` is load-bearing, not decoration: this host is a flex ITEM
-      in its parent's row, and without a grow it sizes to `max-content` — which
-      measured **721px inside a 1440 viewport**, i.e. below `MIN_WORK_SURFACE_PX`
-      (784). Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
-    */}
+    {/* `min-w-0 flex-1` is load-bearing, not decoration: */}
     <RightPaneOverlayHost className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <DashboardScrollShell
       chrome={
@@ -910,16 +840,7 @@ export function PhotoLibraryPage() {
   );
 }
 
-/**
- * Sentinel inside {@link DashboardScrollShell} so IntersectionObserver roots on
- * the scroll port.
- *
- * `autoLoad` is off while the find-bar holds a query. A local find can narrow
- * the painted set to nothing, which leaves the sentinel parked in the viewport
- * with no rows above it — and an auto-observer would then page the entire
- * library one request at a time. With a query active the operator pulls the
- * next page explicitly.
- */
+/** Sentinel inside {@link DashboardScrollShell} so IntersectionObserver roots on the scroll port. */
 function PhotoLibraryLoadMoreSentinel({
   hasNextPage,
   isFetchingNextPage,

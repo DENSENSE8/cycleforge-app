@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * Entity scan-station pane — the ONE host composition for any single record
- * rendered in station chrome.
- *
- * Promoted 2026-08-20 out of `SupportOrdersFocusHost`, which had hand-typed
- * this exact tree; `PackOrderPanel` and `ActiveOrderWorkspace` had typed it a
- * third and fourth time. Widened from `OrderStationPane` the same day: the host
- * was only order-typed by accident (it read `order.id` for a motion key and
- * nothing else), and `unit` / `sku` previews need the identical tree. What is
- * genuinely per-entity is the IDENTITY adapter and the CENTRE — both props.
- *
- * The tree is the Unbox anatomy:
- *
- *   StationScanPaneHost
- *     └ StationPanelRoot
- *         ├ StationContextBar placement="flow"   ← identity (CartonContextCard)
- *         └ StationWorkbench                     ← centre = ops-flow only
- *     └ StationDisplaysPushStack                 ← right edge = reference leaves
- *
- * **The right edge is Displays, never `RightRailHost`.** The desk inspector
- * beside a Displays column is the `kinetic-ledger.md` dual-right-edge ban, and
- * `unbox-station.md` bars the desk `InspectorActionFloor` from this column.
- *
- * **Displays open on the Root Index, never a guessed leaf** — and a requested
- * leaf that gated away falls back to the index rather than to `tabs[0]`.
- * Silently swapping in an unrelated display is the failure the index exists to
- * prevent.
- *
- * Displays nav state is CONTROLLED by the host: a leaf's own content often
- * needs to close the column (Pack's Locations leaf does), which an internally
- * owned `useState` could never reach.
- */
+/** Entity scan-station pane — the ONE host composition for any single record rendered in station chrome. */
 
 import { useCallback, useMemo, type ReactNode } from 'react';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
@@ -56,19 +25,7 @@ import {
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 export type StationDisplayNav = string;
 
-/**
- * Whether this mount may commit work.
- *
- * **REQUIRED — no default, deliberately.** A defaulted classification is a
- * silent opt-in for every call site you did not visit, and the compiler stays
- * quiet about exactly the ones you missed (same law as `scanKind` /
- * `intakeSurface` in).
- *
- *   • `work`    — the operator's bench. A dock may mount; the centre commits.
- *   • `preview` — a read surface (`/search?sel=order:`). No dock, and the
- *                 centre paints its fields read-only. The Displays column
- *                 still WRITES: preview is about the centre, not the edge.
- */
+/** Whether this mount may commit work. */
 export type StationStance = 'work' | 'preview';
 
 export interface EntityStationPaneProps {

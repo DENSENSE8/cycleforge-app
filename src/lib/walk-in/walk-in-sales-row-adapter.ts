@@ -1,11 +1,4 @@
-/**
- * `SaleRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * Callers: `useWalkInSalesSpreadsheet`.
- * Affected API: none.
- * Data schemas: `SaleRow`.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** `SaleRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {

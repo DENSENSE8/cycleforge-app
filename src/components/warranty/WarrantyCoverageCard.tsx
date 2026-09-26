@@ -10,12 +10,7 @@ import { WARRANTY_STATUS_LABEL } from '@/lib/warranty/types';
 import { formatDateTimePST } from '@/utils/date';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-/**
- * Read-only warranty-coverage banner for the "on the phone with a customer"
- * flow: the rep types/scans an order #, serial, or SKU into the sidebar search
- * and this card — the prominent first result above the claims table — answers
- * "is this still under warranty?" with a days-left clock, then offers Log Claim.
- */
+/** Read-only warranty-coverage banner for the "on the phone with a customer" flow: */
 export function WarrantyCoverageCard({ query }: { query: string }) {
   const q = query.trim();
   const { data, isLoading, isFetching } = useWarrantyCoverage(q);

@@ -84,16 +84,7 @@ export async function buildReceivingClaimTemplate(
 ): Promise<ClaimTemplateResult> {
   const { receivingId, lineId, claimType, reason, poReceivingLink, listingUrl } = input;
 
-  // When orgId is present, scope the read to the tenant: filter the
-  // org-bearing `receiving_carton` row and align the org-bearing `receiving_line`
-  // join on organization_id. `shipping_tracking_numbers` has no
-  // organization_id column (NEEDS-COL) — it stays scoped via the integer
-  // surrogate-PK join `s.id = r.shipment_id` off the tenant-filtered carton.
-  // When omitted, behavior is byte-identical to the original raw-pool path.
-  // Wave-2 reader cutover: carton unbox facts come from receiving_unbox (ru)
-  // and line Zoho facts from receiving_line_zoho (rz) — both 1:1 street tables
-  // trigger-mirrored from the spine. Carton-level r.zoho_* fallbacks stay on
-  // the spine (out of the Wave-2 moved set).
+  // When orgId is present, scope the read to the tenant:
   const recvSql = orgId
     ? `SELECT r.id,
             r.source_platform,
@@ -173,12 +164,7 @@ export async function buildReceivingClaimTemplate(
   // must never block filing a claim. Scope to the line when one is given.
   let serials: string[] = [];
   try {
-    // Receiving serials live in two stores, both keyed to the line: serial_units
-    // (origin_receiving_line_id — NOTE: this table has NO receiving_line_id
-    // column; that linkage is origin_receiving_line_id only) and
-    // tech_serial_numbers (station_source='RECEIVING', receiving_line_id). We
-    // UNION both so a serial shows even if one store lags the other. A CTE
-    // resolves the carton's lines once for both halves.
+    // Receiving serials live in two stores, both keyed to the line:
     const serialSql = orgId
       ? `WITH lines AS (
            SELECT id FROM receiving_line WHERE receiving_id = $1 AND organization_id = $3
@@ -267,25 +253,14 @@ export async function buildReceivingClaimTemplate(
     }
   }
 
-  // Unfound flow: collapse subject + body to a single short token ("Unfound
-  // PO") and stop pretending the receiving_id IS a PO# — operators were
-  // getting confused by "PO #4232" where 4232 was just the internal row id.
-  //
-  // An operator-linked ORDER id (link-carton-identifier.ts) counts as the
-  // handle too: a carton paired to `111-8911758-3549041` is not "Unfound PO" to
-  // the agent reading the ticket, it is that order. It reads as "Order <id>"
-  // because it is not a purchase order.
+  // Unfound flow:
   const poNumber = carton.zoho_purchaseorder_number || carton.zoho_purchaseorder_id;
   const orderId = (carton.source_order_id || '').trim();
   const hasPo = !!poNumber;
   const hasOrderId = !hasPo && orderId.length > 0;
   const poRef = hasPo ? (poNumber as string) : hasOrderId ? orderId : 'Unfound PO';
   const trackingRef = carton.tracking_number || 'n/a';
-  // Not routed through effectiveIntakeKind (the line-vs-carton-default SoT,
-  // src/lib/receiving/kinds/registry.ts): this carton shape carries no
-  // carton-level default field, and receivingLabelTypeDisplay below must pass
-  // an org-custom type string through verbatim rather than have it silently
-  // coerced to 'PO' by that resolver's strict built-in-kind validation.
+  // Not routed through effectiveIntakeKind (the line-vs-carton-default SoT, src/lib/receiving/kinds/registry.ts):
   const effectiveReceivingType = (carton.receiving_type || carton.intake_type || 'PO').trim().toUpperCase();
   // Org catalog labels win (renamed / custom platforms + types) — same contract
   // as classify pills and printed carton labels. Built-ins remain the fallback.
@@ -311,10 +286,7 @@ export async function buildReceivingClaimTemplate(
     catalogPlatformLabel,
     catalogTypeLabel,
   });
-  // The title is composed by `buildClaimSubject` and NOWHERE else — the modal
-  // re-renders it from these same parts when the operator reclassifies, so a
-  // Platform / Type / claim-type change moves the title in real time without a
-  // second composer to drift against.
+  // The title is composed by `buildClaimSubject` and NOWHERE else — the modal re-renders it from these same parts when the operator…
   const subjectParts: ClaimSubjectParts = {
     identity: subjectPlatform,
     claimTypeLabel: CLAIM_TYPE_LABEL[claimType],
@@ -370,12 +342,7 @@ export async function buildReceivingClaimTemplate(
   };
 }
 
-/**
- * Render a plaintext claim/ticket body as Zendesk-safe HTML for `comment.html_body`:
- * HTML-escapes the text, turns http(s) URLs into clickable links (so attached
- * photo URLs are one click for agents), bolds "Label:" prefixes, and converts
- * newlines to <br>. Works on both the generated template and operator-edited text.
- */
+/** Render a plaintext claim/ticket body as Zendesk-safe HTML for `comment.html_body`: */
 export function claimBodyToHtml(text: string): string {
   const escape = (s: string) =>
     s

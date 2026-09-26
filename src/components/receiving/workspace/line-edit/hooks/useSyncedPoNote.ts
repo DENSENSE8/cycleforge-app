@@ -28,13 +28,7 @@ export type SaveOverallNoteResult = {
   liveLastModifiedZoho?: string | null;
 };
 
-/**
- * Shared handler to persist the carton-level synced PO note (overwrite + push to
- * the inventory PO field) and surface the result in the workspace feedback slot.
- *
- * Used by the standalone "PO note" display tab ({@link LinePoNoteCard}), so the
- * PATCH + feedback path lives in exactly one place.
- */
+/** Shared handler to persist the carton-level synced PO note (overwrite + push to the inventory PO field) and surface the result in the… */
 export function useSyncedPoNote(
   row: ReceivingLineRow,
   onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void,

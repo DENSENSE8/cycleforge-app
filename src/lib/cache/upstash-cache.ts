@@ -1,25 +1,4 @@
-/**
- * Upstash Redis JSON cache — v2, org-scoped (Phase 0.2 / 0.3).
- *
- * The house cross-instance cache: cache-aside reads, invalidate-on-write, fail-open,
- * unconfigured-noop. Built on the consolidated REST client (`src/lib/redis/client.ts`).
- *
- * ── The v2 correctness fix ──────────────────────────────────────────────────
- * v1 folded orgId into the *key* but its *tags were global*, so
- * `invalidateCacheTags(['receiving-lines'])` flushed every tenant. v2 makes BOTH
- * the key and the tag org-scoped:
- *     key = cache:v2:{ns}:{orgId}:{key}
- *     tag = cache_tags:v2:{tag}:{orgId}
- * New code calls the org forms: getCachedJson(ns, orgId, key),
- * setCachedJson(ns, orgId, key, val, ttl, tags), invalidateCacheTags(orgId, tags),
- * and — preferred — getOrSet(ns, orgId, key, ttl, tags, loader).
- *
- * ── Legacy compat ───────────────────────────────────────────────────────────
- * The ~100 pre-existing callers still use the org-less forms. Those route to a
- * GLOBAL_ORG sentinel, so their reads and invalidations still match each other
- * (blast radius unchanged from v1 — no regression) while they are migrated to the
- * org form incrementally. Overloads dispatch legacy vs org at runtime by arity/type.
- */
+/** Upstash Redis JSON cache — v2, org-scoped (Phase 0.2 / 0.3). */
 import { isRedisConfigured, redisPipeline } from '@/lib/redis/client';
 import { isNamespaceCacheEnabled } from './cache-flags';
 import {
@@ -30,12 +9,7 @@ import {
 } from './cache-metrics';
 import { acquireCacheLock, sleep } from '@/lib/redis/cache-lock';
 
-// Environment segment: a single Upstash instance is shared across production,
-// preview, and local dev, so keys AND tag-sets are namespaced per env. This makes
-// it safe to run the cache everywhere at once — dev browsing (or a preview
-// deploy) can never read, overwrite, or tag-invalidate a production entry.
-// VERCEL_ENV is 'production' | 'preview' | 'development' on Vercel; off-platform
-// it falls back to NODE_ENV / 'local'. (New segment ⇒ one cold re-warm on rollout.)
+// Environment segment:
 const CACHE_ENV = (process.env.VERCEL_ENV || process.env.NODE_ENV || 'local').toLowerCase();
 const CACHE_PREFIX = `cache:v2:${CACHE_ENV}:`;
 const TAG_PREFIX = `cache_tags:v2:${CACHE_ENV}:`;
@@ -163,14 +137,7 @@ export function invalidateCacheTags(a: string | string[], b?: string[]): Promise
   return Array.isArray(a) ? invalidateCore(GLOBAL_ORG, a) : invalidateCore(a, b ?? []);
 }
 
-/**
- * Cache-aside read-through with single-flight rebuild (Phase 0.3). The workhorse
- * new code should use. Org-scoped; kill-switch/namespace-gated; fail-open.
- *
- *   hit  → return cached value.
- *   miss → acquire single-flight lock → re-check → loader() → setCachedJson → return.
- *   disabled / no-org / any Redis error → run loader() directly (no caching).
- */
+/** Cache-aside read-through with single-flight rebuild (Phase 0.3). */
 export async function getOrSet<T>(
   namespace: string,
   orgId: string,

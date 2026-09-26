@@ -1,22 +1,4 @@
-/**
- * Products-catalog field catalog — the bindable SKU-catalog facts, as DATA.
- * Wave 1.4's fourth family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `catalog` row: "product
- * browse. SKU/inventory/channels are catalog fields, not a second grid
- * product.").
- *
- * Every entry names a fact `CatalogListRow` already carries. Resolution is
- * `./catalog-resolve.ts`, kept separate so this module stays a LEAF.
- *
- * Catalog is a SHEET morph. `catalog.sku` is the IDENTITY fact — how a product
- * is keyed everywhere else in the system — and the structural Product track
- * paints the title beside it.
- *
- * The four ROLL-UP counts (channels · manuals · qc · orders) are drill-down
- * analytics, not scan facts. They shipped `tier: 'optional'` so a first-load
- * catalog reads as a product list rather than a numbers table; here that is
- * simply four unbound facts, and a staffer who wants them binds them.
- */
+/** Products-catalog field catalog — the bindable SKU-catalog facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -88,11 +70,7 @@ export const CATALOG_FIELD_CATALOG: FieldCatalog = [
       pending: 'has_pending_action',
     },
   },
-  // The plan's §08 names cost as the missing seller fact, and observes that the
-  // nearest one in the schema "lives on the SKU catalog and is never selected".
-  // It IS selected here — the list row carries it — so on THIS family it is a
-  // binding, not an ingestion project. Unbound by default: the retired hand
-  // model never printed it, and the port reproduces before it improves.
+  // The plan's §08 names cost as the missing seller fact, and observes that the nearest one in the schema "lives on the SKU catalog and is…
   {
     id: 'catalog.cost',
     family: 'catalog',
@@ -111,14 +89,7 @@ export const CATALOG_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default catalog layout — visual parity with the retired hand
- * model's CORE view (`select · title · sku · inventory · status`): what the
- * product is, how it is keyed, whether it is wired to the inventory master, and
- * whether it needs attention. The four roll-up counts, the cost and the
- * category stay in the catalog unbound.
- * Guard: `catalog.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default catalog layout — visual parity with the retired hand model's CORE view (`select · title · sku · inventory · status`): */
 export const CATALOG_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'catalog.sku',

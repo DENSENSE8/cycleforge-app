@@ -1,22 +1,4 @@
-/**
- * Local Pickup sheet column model — MATERIALIZED from a {@link SlotLayout},
- * never a hand array.
- *
- * The static `PICKUP_GRID_COLUMNS` died with the Wave-2 hand-model kill
- * (`docs/kill-list/07-slot-table-hand-models.md` §4): a track whose key IS a
- * field (`sku`, `date`, `price`) was a frozen layout no org could capture.
- * What remains structural is the SHEET SKELETON — the frozen `select · title`
- * pane and the `order` identity track (the LCPU PO#, the one-to-many fold
- * key) — and everything else is a catalog fact an org/staffer binds:
- * status band (`status:1…N`) after the subtitle band, subtitle band
- * (`subtitle:1…N`) directly after Order. Pickup is the first live consumer of
- * the materializer's SHEET morph path.
- *
- * Sort and frozen-offset helpers derive from the MOUNTED model, never a
- * module constant — the Wave-1 lesson (`CompoundGridCell`'s docblock): a
- * key-only closure over a static list is how offsets and sortability go stale
- * the moment the mounted model moves.
- */
+/** Local Pickup sheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import { PICKUP_FIELD_CATALOG, PICKUP_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/pickup';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
@@ -76,12 +58,7 @@ const PICKUP_SHEET_BASE: readonly PickupGridColumn[] = [
   },
 ];
 
-/**
- * Materialize the mounted pickup columns from an effective layout. Both bands
- * anchor on `order`: subtitles land directly after it (they are line detail —
- * the old sku/qty/cond/price optionals), the status band after those (date ·
- * status close the row, as the hand model's core view did).
- */
+/** Materialize the mounted pickup columns from an effective layout. */
 export function pickupSheetColumnsFor(layout: SlotLayout): readonly PickupGridColumn[] {
   return materializeTracks<PickupGridColumn>({
     layout,
@@ -100,12 +77,7 @@ export function pickupSheetColumnsFor(layout: SlotLayout): readonly PickupGridCo
 export const PICKUP_SHEET_COLUMNS: readonly PickupGridColumn[] =
   pickupSheetColumnsFor(PICKUP_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort: base tracks map
- * to their structural facts, slot tracks to their bound field id. Positional
- * `?colsort=` keys stay meaningful because widths/prefs are slot-keyed by the
- * same law.
- */
+/** The FACT a column sorts by, or null when it offers no sort: */
 export function pickupSortFactFor(col: PickupGridColumn): string | null {
   if (col.sortable === false || col.key === 'select') return null;
   if (col.key === 'title') return 'title';

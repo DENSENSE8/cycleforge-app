@@ -1,19 +1,4 @@
-/**
- * Auth-sessions column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced five hand-written `AdminTableColumn` objects carrying JSX — a
- * second table engine's column type, with no header sort, no Fields picker and
- * no org binding, because that engine never grew them.
- *
- * The skeleton is mounted WHOLE — no `.filter`. The photo gutter has no photo
- * on a session row and paints the typed placeholder, which is what
- * `kiosk-slot-events` already does: `COMPOUND_SKELETON_FILTER_DEBT` is
- * shrink-only, and a new desk cutting chrome to taste is the fork the law
- * names. Chrome headers are RENAMED to this family's vocabulary instead
- * (Session · Staff · Activity · Device) — a label is family data, a geometry
- * cut is not.
- */
+/** Auth-sessions column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {

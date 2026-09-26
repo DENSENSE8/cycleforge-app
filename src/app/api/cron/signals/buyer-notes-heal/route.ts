@@ -1,20 +1,4 @@
-/**
- * Nightly heal sweep for buyer-note signal derivation (plan §2.3 heal path).
- *
- * Re-scans each eBay-connected org's `orders` mirror (wide window) and emits
- * any `buyer_note` entity_signals the fresh path missed — a sync crash, a
- * deploy mid-run, a flag flipped on later. Signals derive from the LOCAL
- * mirror, so this sweep makes zero platform API calls; `source_ref`
- * idempotency (ux_entity_signals_source_ref + ON CONFLICT DO NOTHING) makes
- * re-emission structurally impossible, so drift cannot accumulate. A full
- * backfill is this sweep with `?limit=` widened.
- *
- * Per-tenant gate: deriveBuyerNoteSignals checks isBuyerNoteSignals(orgId)
- * itself (flag buyer_note_signals / env BUYER_NOTE_SIGNALS).
- *
- * House cron contract: isAuthorizedCronRequest → withCronLock → withCronRun;
- * registered in src/lib/cron/registry.ts + vercel.json (both SoTs).
- */
+/** Nightly heal sweep for buyer-note signal derivation (plan §2.3 heal path). */
 import { NextResponse, type NextRequest } from 'next/server';
 import pool from '@/lib/db';
 import { EBAY_PLATFORM_PREDICATE } from '@/lib/ebay/credentials';

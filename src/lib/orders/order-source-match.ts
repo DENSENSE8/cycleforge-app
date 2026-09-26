@@ -1,32 +1,4 @@
-/**
- * Which existing `orders` rows an incoming order IS, across account sources.
- *
- * Orders are keyed on `(account_source, order_id)` because order numbers are
- * only unique per channel. ShipStation breaks that: it is an AGGREGATOR — its
- * orders are the marketplaces' orders (Amazon, eBay, Walmart, Ecwid …) under
- * the same number. The connector attributes each ShipStation order to its
- * platform `account_source` (store → platform), and the writer then resolves
- * it with {@link matchAggregatorOrderRows}:
- *
- *   • `same`      rows under exactly that account_source (the writer's own
- *                 per-source key) — handled by the writer before this runs;
- *   • `adopt`     no such row, but every other row carrying the number belongs
- *                 to ONE platform (another spelling — 'ECWID' vs 'ecwid' — or
- *                 another grain — 'MEKONG' vs 'eBay' — or a blank source): enrich
- *                 those rows, keep their source, delete nothing;
- *   • `claim`     only legacy rows the pre-attribution connector wrote as
- *                 `shipstation`: re-key them to the platform;
- *   • `ambiguous` rows from more than one platform, or a legacy `shipstation`
- *                 row beside a marketplace row: never guess — the connector
- *                 quarantines the order;
- *   • `none`      genuinely new: insert.
- *
- * Marketplace lanes (Square, Shopify, CSV) use {@link matchMarketplaceOrderRows}:
- * they claim a legacy `shipstation` row for their number, nothing else.
- *
- * Pure, so the writer, the reconciliation planner and the tracking attach
- * share one rule.
- */
+/** Which existing `orders` rows an incoming order IS, across account sources. */
 import type { BackfillPolicy } from '@/lib/orders/order-row-backfill';
 
 /** The account_source the pre-attribution ShipStation connector wrote. */
@@ -98,12 +70,7 @@ export function matchMarketplaceOrderRows<R extends { accountSource: string | nu
   return { kind: 'none', rows: [] };
 }
 
-/**
- * How the writer backfills rows matched across sources. `adopt`: the matched
- * rows are marketplace history — fill blanks only (a blank account_source gets
- * the platform), never the title. `claim`: the row is a legacy aggregator copy
- * — re-key it to the incoming source, the source's own title authority applies.
- */
+/** How the writer backfills rows matched across sources. */
 export function crossSourceBackfillPolicy(
   kind: 'adopt' | 'claim',
   sourceTitleAuthoritative: boolean,
@@ -129,13 +96,7 @@ export function shouldRekeyToIncomingSource(
   );
 }
 
-/**
- * Collapse order for rows sharing an order id, keeper first: every marketplace
- * row before any legacy aggregator (`shipstation`) row, then most-populated
- * first (`score`), stable otherwise. A collapse deletes every row after the
- * first, so this is what guarantees it can only ever delete the aggregator's
- * copy of a marketplace order, never the marketplace row.
- */
+/** Collapse order for rows sharing an order id, keeper first: */
 export function orderCollapseCandidates<R extends { accountSource: string | null }>(
   rows: readonly R[],
   score: (row: R) => number,

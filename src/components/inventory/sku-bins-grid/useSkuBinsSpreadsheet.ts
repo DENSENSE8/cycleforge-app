@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * **Per-SKU bins spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second table
- * component.
- *
- * ```tsx
- * const sheet = useSkuBinsSpreadsheet({ rows });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * This is a PANE on `/inventory/health/sku/[sku]`, which renders five row
- * sections. The page's own search param is the SKU in its path; a header click
- * here writing `?sort=` would fight the other panes for one channel and would
- * re-run the page's eight server loaders to reorder a handful of bins the
- * client already holds. Durability in the URL is the rule for a lane that IS a
- * page; it is not a rule for a pane (the same rule `SkuDetailTables` and the
- * Ledger's two mounts already follow).
- */
+/** **Per-SKU bins spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Triage "Triage" list — the combined working feed: Prioritize ∪ Unfound in ONE
- * list, newest-scanned first. This is the default triage view.
- *
- * Why combined: a carton must not jump out of the operator's list the instant
- * its PO is linked. The "Prioritize" tab (matched, priority-sorted) and the
- * "Unfound" tab (unmatched, no PO) are filtered SUBSETS of this list — linking a
- * PO moves a carton between those subsets, but on the Triage tab it simply stays
- * put (re-sorted by recency), so the operator keeps working what they just
- * scanned in without it disappearing.
- *
- * Composition, not a fork: the union (and its degrade-not-fail merge) lives in
- * `buildTriageCombinedFetcher` (`@/lib/receiving/rail/feeds`), which reuses the
- * EXACT same two subset fetchers the sub-tab rails use (so Triage = their union,
- * never a divergent third query). This component is a thin binding over
- * {@link ReceivingFeedRail}.
- */
+/** Triage "Triage" list — the combined working feed: */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';

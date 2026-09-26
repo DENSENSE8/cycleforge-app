@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * FBA board detail panel — slide-over for one FNSKU's plan entries + scan
- * activity. Thin composition shell: data + fetch live in {@link useFbaBoardDetail};
- * the plan-entry card + armed delete control are presentational components
- * under `./board-detail/`.
- *
- * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`).
- * There is no index above this panel — the board grid is the list, and a row
- * click lands here directly — so it declares `standalone` and is owed no Back
- * cell. Everything else rides the single band: the read-only expected / actual
- * metric, then the contextual verbs, then the host's own `⤢` / `✕` in the
- * reserved trailing cell the shell paints for them.
- *
- * **The panel paints NO close.** `RightRailHost` owns the singleton `✕` and
- * fires `closeRightPanel()`, which runs the lifecycle half AND this occupant's
- * `onClose`. This file used to stack a `DeskRailChromeRow` over a
- * `PaneHeaderLabel` identity line over an FNSKU + totals row — three rows of
- * chrome where the contract allows one — and the identity pair (eyebrow
- * "FBA Item" over the product title) was a second header line. Identity moved
- * into the body, where a long title can wrap without deforming the band.
- */
+/** FBA board detail panel — slide-over for one FNSKU's plan entries + scan activity. */
 
 import { Check, ClipboardList, Loader2 } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
@@ -49,10 +29,7 @@ export function FbaBoardDetailPanel({
   } = useFbaBoardDetail({ item, onSaved });
 
   return (
-    // Non-modal + STABLE occupant id: the board walks up/down behind this
-    // panel, and the host keys its crossfade on the occupant id — a per-FNSKU
-    // id played exit→empty→enter on every step while the board sat dimmed
-    // behind a scrim it needed to read.
+    // Non-modal + STABLE occupant id:
     <DetailStackRailRegistrar
       id="detail:fba-plan"
       onClose={onClose}
@@ -81,10 +58,7 @@ export function FbaBoardDetailPanel({
               {panelActions.length ? (
                 <PaneHeaderActionBar
                   iconOnly
-                  // `variant` DEFAULTS to 'card' — the deleted chrome pill. It is
-                  // banned on a registrar file, and the ban only ever matched an
-                  // explicit `variant="card"`, so omitting it passed the guard
-                  // while rendering the thing the guard exists to stop.
+                  // `variant` DEFAULTS to 'card' — the deleted chrome pill.
                   variant="flat"
                   className="py-0"
                   actions={panelActions.map((a) => ({

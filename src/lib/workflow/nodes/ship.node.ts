@@ -1,11 +1,4 @@
-/**
- * `ship` — carrier handoff, the graph's terminal step. Domain work is owned
- * by src/lib/shipping + /api/pack/ship (label print → carrier scan). The
- * `shipped` port is intentionally unrouted in the seeded graph: the engine
- * treats a fired port with no edge as terminal, marking the run done. No tap
- * fires this yet; wiring is one tapWorkflow({ event: 'shipped' }) call at
- * the ship mutation.
- */
+/** `ship` — carrier handoff, the graph's terminal step. */
 
 import { registerNode } from '../registry';
 import { stationNode } from './station-node';

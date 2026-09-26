@@ -1,22 +1,4 @@
-/**
- * GS1 Digital Link resolver.
- *
- * Two callers (public anon traffic and authenticated staff) scan the
- * same printed QR. This module decides the destination based on which
- * audience the caller is in:
- *
- *   resolvePublic()   → routes to the canonical Digital Link PAGE, which
- *                       renders the tenant's branded interstitial.
- *                       No DB lookups, no internal data exposed.
- *   resolveInternal() → walks a priority tree (location > serial > GTIN)
- *                       and returns the matching back-office URL.
- *
- * `resolveGs1()` is the orchestrator: parse the raw URL, branch on
- * `isInternal`, return a structured result the API/page can consume.
- *
- * DB lookups are passed in via `LookupDeps` so the lib stays testable
- * without a live Postgres. Default deps wire to the real query helpers.
- */
+/** GS1 Digital Link resolver. */
 
 import { productDetailHref } from '@/components/products/products-view';
 import { parseGs1DigitalLink, type Gs1Context } from './parser';
@@ -24,18 +6,7 @@ import { getLocationByBarcode } from '../neon/location-queries';
 import { findByNormalizedSerial } from '../neon/serial-units-queries';
 import { getSkuCatalogByGtin } from '../neon/sku-catalog-queries';
 
-/**
- * Where an anonymous scan goes when the input carries no resolvable AI.
- *
- * Deliberately a RELATIVE path, not a storefront URL. This module used to
- * export `PUBLIC_LANDING_URL` (`NEXT_PUBLIC_STOREFRONT_URL ??
- * 'https://usavshop.com'`) and send every anon scan there — which was a
- * single-tenant assumption hiding in a multi-tenant resolver: once labels mint
- * on `{slug}.app.cycleforge.ai`, one workspace's sticker would have shipped a
- * customer to another workspace's shop. The tenant's own website now comes
- * from `brand.publicLandingUrl`, resolved by the interstitial at the landing
- * page — one place, per tenant, configurable by the tenant.
- */
+/** Where an anonymous scan goes when the input carries no resolvable AI. */
 export const PUBLIC_QR_FALLBACK_PATH = '/qr';
 
 export type ResolverKind =
@@ -69,17 +40,7 @@ const defaultDeps: LookupDeps = {
   getSkuCatalogByGtin,
 };
 
-/**
- * Public branch — pure, no DB. An external scan still receives no contextual
- * deep-link: it is routed to the canonical Digital Link *page* for what it
- * scanned, and that page renders the tenant interstitial. The path is echoed
- * back from the parsed AIs, so nothing is looked up and nothing internal is
- * disclosed — a customer sees brand + "continue to website", never a record.
- *
- * Relative on purpose: `/gs1/resolve` resolves it against the request origin,
- * which for a platform-minted sticker IS `{slug}.app.cycleforge.ai` — so the
- * interstitial resolves the right tenant with no extra plumbing.
- */
+/** Public branch — pure, no DB. */
 export function resolvePublic(ctx: Gs1Context): ResolverResult {
   if (ctx.gln && ctx.locationCode) {
     return {
@@ -97,21 +58,7 @@ export function resolvePublic(ctx: Gs1Context): ResolverResult {
   return { kind: 'public', redirect: PUBLIC_QR_FALLBACK_PATH };
 }
 
-/**
- * Internal branch — priority tree.
- *
- * Order matters when multiple AIs are present on the same QR:
- *   1. Location (AI 254) — physical-place scans win even if a GTIN
- *      sits beside them, because a staffer scanning a bin sticker
- *      wants the bin view.
- *   2. Serial (AI 21) — unique-unit scans take precedence over the
- *      product-class GTIN they're paired with.
- *   3. GTIN alone (AI 01) — product class, used for bulk SKUs.
- *   4. Fallback — known-good landing for unrecognised input.
- *
- * Lookups are best-effort: a missing row doesn't change the redirect,
- * since the target page already renders a sensible empty state.
- */
+/** Internal branch — priority tree. */
 export async function resolveInternal(
   ctx: Gs1Context,
   deps: LookupDeps = defaultDeps,
@@ -155,12 +102,7 @@ export async function resolveInternal(
   return { kind: 'fallback', redirect: '/inventory' };
 }
 
-/**
- * Top-level entry. Parses the raw scan, then dispatches to the public
- * or internal branch. Unparseable input always falls through to the
- * public landing for anon callers, or the staff dashboard for authed —
- * either way, no error surface is exposed to the scanner.
- */
+/** Top-level entry. */
 export async function resolveGs1(
   rawInput: string,
   opts: { isInternal: boolean; deps?: LookupDeps; orgId?: string },

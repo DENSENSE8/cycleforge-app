@@ -1,23 +1,4 @@
-/**
- * Per-staff rail dismiss (universal-feed plan Phase 4 — "bulk actions target
- * the exclusion table").
- *
- * A receiving-rail "dismiss" hides an entity from THIS staffer's rail only, by
- * writing a `staff_rail_exclusions` row — reversible, never a shared delete
- * (the pre-Phase-4 bulk action hard-DELETE'd the receiving line/carton for
- * everyone). The rail read path (rail-exclusions read filter) anti-joins the
- * same set so the row simply disappears from that operator's view.
- *
- * Reuses the SAME guarded writers the AI mutation path uses
- * (`insertStaffRailExclusion` / `deleteStaffRailExclusion` in surfaces/feed-writes),
- * so there is exactly one writer per table. Deps-injected (default:
- * withTenantTransaction + tenantQuery) so it unit-tests DB-free.
- *
- * `station` is DERIVED server-side from the feed_key (not trusted from the
- * client) so the writer and the read filter always agree on the exclusion's
- * natural key. Receiving feeds all map to the physical 'RECEIVING' station; the
- * feed_key (receiving_triage vs receiving_unbox) carries the surface split.
- */
+/** Per-staff rail dismiss (universal-feed plan Phase 4 — "bulk actions target the exclusion table"). */
 
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

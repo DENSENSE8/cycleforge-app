@@ -1,12 +1,4 @@
-/**
- * Map polymorphic kiosk cart lines → `CounterTransactionInput` parts.
- *
- * D1 preserved: UI cart is polymorphic; persist is still a counter header +
- * optional retail staging + a repair_service row PER device dropped off.
- * (Was 1:1 until 2026-08-21 — see `services` below.)
- *
- * BUYBACK → retail lines with negative `unitAmountCents` (credit).
- */
+/** Map polymorphic kiosk cart lines → `CounterTransactionInput` parts. */
 
 import type { KioskCartLine, LinePriceAdjustment } from '@/lib/kiosk/cart-line';
 import {
@@ -39,14 +31,7 @@ function counterAdjustment(a: LinePriceAdjustment | null | undefined): CounterPr
 
 interface KioskCartMappedParts {
   retailLines: CounterRetailLine[];
-  /**
-   * Every REPAIR line, in cart order.
-   *
-   * Was `service` + `extraRepairCount` until 2026-08-21: the first repair won
-   * and the rest were counted into a field with no consumer anywhere, so a
-   * two-device drop-off silently became a one-device record. There is nothing
-   * left to count, so the counter is gone rather than left reporting zero.
-   */
+  /** Every REPAIR line, in cart order. */
   services: CounterServiceLine[];
   /**
    * REPAIR lines that point at an existing ticket. Only the id travels: the
@@ -106,13 +91,7 @@ export function mapKioskCartToCounterParts(
           .join('\n') || null,
         serialNumber: p.serialNumber,
         price: p.price,
-        // Was discarded here until 2026-08-22, which meant every kiosk-cart
-        // repair's money could only reach the header/staged-order total by a
-        // second, independent parse of `price` (the text quote) —
-        // `serviceLineCents`'s fallback path. The cart already computed this
-        // integer for its own on-screen total; carrying it through means that
-        // total and the counter's are the SAME number, not two parses of one
-        // quote that can drift.
+        // Was discarded here until 2026-08-22, which meant every kiosk-cart repair's money could only reach the header/staged-order total by a…
         unitAmountCents: Math.max(0, Math.trunc(line.unitAmountCents)),
         notes: p.notes ?? null,
         signatureDataUrl: p.signatureDataUrl ?? null,

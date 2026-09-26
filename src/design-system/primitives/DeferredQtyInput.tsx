@@ -18,14 +18,7 @@ export interface DeferredQtyInputProps {
   'aria-label'?: string;
 }
 
-/**
- * Number input with deferred commit — draft lives inside the component.
- *
- * - Typing updates the display only (no parent state changes mid-edit)
- * - Commits on blur or Enter: clamps to [min, max], calls onChange only if value changed
- * - Backspace to empty / invalid → reverts to the last committed value on blur
- * - External `value` prop changes sync into the input only while unfocused
- */
+/** Number input with deferred commit — draft lives inside the component. */
 export function DeferredQtyInput({
   value,
   onChange,

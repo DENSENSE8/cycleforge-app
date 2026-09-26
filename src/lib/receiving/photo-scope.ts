@@ -1,15 +1,4 @@
-/**
- * Receiving photo SCOPE — one shape every capture surface shares (desktop
- * pills, mobile studio, upload queue, phone-bridge requests) mapping a
- * receiving stage onto the Wave-0 write matrix (`./photo-intent.ts`):
- *
- *   arrival_package → RECEIVING       + receiving_package        (Triage door)
- *   unbox_carton    → RECEIVING       + receiving_unbox_carton   (Unbox header)
- *   unbox_item      → RECEIVING_LINE  + receiving_item           (Unbox line)
- *
- * Pure + client-safe. Composes the stage SoT — never re-derives entity or
- * photo_type mappings here.
- */
+/** Receiving photo SCOPE — one shape every capture surface shares (desktop pills, mobile studio, upload queue, phone-bridge requests)… */
 
 import { isAspectLegalForStage, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import {
@@ -38,27 +27,13 @@ export function parseArrivalGuidedStep(
 /** Carton-level (RECEIVING-entity) stages — everything but the line stage. */
 type ReceivingCartonPhotoStage = Exclude<ReceivingPhotoStage, 'unbox_item'>;
 
-/**
- * Capture-scope identity law (for the surfaces that will call into here):
- * a scope's `sku` / `serial` are display chrome only — the PO · SKU · serial
- * identity rendered next to a camera affordance. They never pick the write
- * target; item evidence links by RECEIVING_LINE id, nothing else.
- *
- * The resolvers below each take the NARROWEST structural subset they actually
- * need rather than one wide scope object, so a caller can't smuggle an unused
- * field into a decision.
- */
+/** Capture-scope identity law (for the surfaces that will call into here): */
 
 interface ReceivingPhotoWriteTarget {
   entityType: 'RECEIVING' | 'RECEIVING_LINE';
   entityId: number;
   photoType: string;
-  /**
-   * What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`).
-   * `null` when the surface cannot name it — legal, and means *unclassified
-   * evidence*. Passed through rather than inferred: an aspect is a claim, and
-   * this resolver is not in a position to make one on the caller's behalf.
-   */
+  /** What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`). */
   aspect: PhotoAspect | null;
 }
 
@@ -72,19 +47,7 @@ export function parseReceivingPhotoStage(
     : null;
 }
 
-/**
- * Parse a stage for a CARTON capture surface (mobile carton routes, carton
- * photo pill). Missing/unknown → `unbox_carton`, never `arrival_package`: the
- * mobile capture pipeline overwhelmingly runs at the unbox bench (generic
- * `/m/receiving/...` browse/list/history surfaces, share-to-phone handoffs),
- * so a stage-less request is far more likely to be a post-opening shot than a
- * door shot — mirrors the reasoning in `receivingUploadStage`
- * (`./photo-intent.ts`). Arrival must always be requested explicitly (Triage
- * passes it on every capture surface it owns). `unbox_item` is illegal on a
- * carton surface and coerces to `unbox_carton` (the shot is happening
- * mid-unbox; the carton bucket is the closest legal stage — never re-create
- * the item-on-carton mis-stamp).
- */
+/** Parse a stage for a CARTON capture surface (mobile carton routes, carton photo pill). */
 export function parseReceivingCartonPhotoStage(
   raw: string | null | undefined,
 ): ReceivingCartonPhotoStage {
@@ -93,17 +56,7 @@ export function parseReceivingCartonPhotoStage(
   return stage ?? 'unbox_carton';
 }
 
-/**
- * Normalize a possibly-partial scope to a coherent stage. The ENTITY wins
- * (identity law): a line id makes it item evidence regardless of the claimed
- * stage; without a line id an `unbox_item` claim degrades to `unbox_carton`
- * (same station, legal carton stamp) and a missing stage defaults to
- * `unbox_carton` — the same safe-default reasoning as
- * {@link parseReceivingCartonPhotoStage}. Never `arrival_package`: that stage
- * must always be threaded explicitly by the one surface (Triage) that owns
- * it, not inherited as a fallback. Lenient by design — used where old queue
- * entries / wire messages without a stage must keep working.
- */
+/** Normalize a possibly-partial scope to a coherent stage. */
 export function effectiveReceivingPhotoStage(scope: {
   stage?: ReceivingPhotoStage | null;
   receivingLineId?: number | null;
@@ -122,12 +75,7 @@ export function resolveReceivingPhotoTarget(scope: {
   receivingId: number;
   receivingLineId?: number | null;
   stage: ReceivingPhotoStage;
-  /**
-   * Optional. Omitted → `null` (unclassified evidence). An aspect ILLEGAL for
-   * the scope's stage throws, like every other incoherence here — this is the
-   * strict resolver new capture wiring composes, so a mis-wired surface must
-   * fail in dev and tests rather than send a body the server would 400.
-   */
+  /** Optional. Omitted → `null` (unclassified evidence). */
   aspect?: PhotoAspect | null;
 }): ReceivingPhotoWriteTarget {
   const entityType = receivingEntityTypeForStage(scope.stage);
@@ -204,14 +152,7 @@ interface NormalizedReceivingPhotoRequest {
   requestId: string | null;
 }
 
-/**
- * Normalize an incoming phone-bridge request. Every live sender threads an
- * explicit `stage` (the desktop "send to phone" pill always computes one);
- * a stage-less message defaults to `unbox_carton` via
- * {@link effectiveReceivingPhotoStage} — never arrival, which must be
- * requested explicitly. Entity-wins coherence via the same helper. Returns
- * null when the message has no usable receiving id.
- */
+/** Normalize an incoming phone-bridge request. */
 export function normalizeReceivingPhotoRequest(
   msg: ReceivingPhotoRequestMessage | null | undefined,
 ): NormalizedReceivingPhotoRequest | null {
@@ -232,17 +173,7 @@ export function normalizeReceivingPhotoRequest(
   };
 }
 
-/**
- * Mobile capture route for a normalized request.
- *
- *   arrival_package / unbox_carton → /m/r/{id}/photos?stage=…
- *     (arrival also gets `guided=1` — door capture is label → box)
- *   unbox_item (line + PO known)   → /m/receiving/po/{po}/item/{line}/photos?stage=unbox_item
- *   unbox_item (PO unknown)        → carton page at unbox_carton — there is no
- *                                    id-based line route, and landing item shots
- *                                    on the carton page must not mis-stamp them
- *                                    as item evidence.
- */
+/** Mobile capture route for a normalized request. */
 export function mobileCaptureHrefForRequest(req: NormalizedReceivingPhotoRequest): string {
   const qs = (stage: ReceivingPhotoStage) => {
     const params = new URLSearchParams({ stage });

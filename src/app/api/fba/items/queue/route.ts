@@ -3,10 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// ── GET /api/fba/items/queue ──────────────────────────────────────────────────
-// Returns individual FNSKU items from all active (non-SHIPPED) FBA shipments,
-// joined with their shipment context. Used by UpNextOrder FBA tab.
-// Query params: status (comma-sep, default PLANNED,TESTED,PACKED,LABEL_ASSIGNED), limit
+// ── GET /api/fba/items/queue ────────────────────────────────────────────────── Returns individual FNSKU items from all active…
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

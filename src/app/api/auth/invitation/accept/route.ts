@@ -1,14 +1,4 @@
-/**
- * /api/auth/invitation/accept  (PUBLIC — invitee is not yet authenticated)
- *
- *   GET  ?token=…  — preview an invitation (org name, email, role) for the
- *                    accept page. Does not consume the token.
- *   POST {token, name, password}
- *                  — accept: find-or-create account, membership, staff profile,
- *                    then sign the user in (mint a session + set the cookie).
- *
- * Under /api/auth/ so it matches the PUBLIC_PATHS allowlist in src/proxy.ts.
- */
+/** /api/auth/invitation/accept (PUBLIC — invitee is not yet authenticated) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -103,12 +93,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'INTERNAL' }, { status: 500 });
   }
 
-  // Sign the new member in: mint a personal-device session for their profile.
-  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
-  // session must not silently promise indefinite persistence — it gets the
-  // normal device-kind window, and the user opts in by signing in with the box
-  // checked. Deliberate default, not an oversight (see the persistent flag in
-  // src/lib/auth/session.ts).
+  // Sign the new member in:
   const session = await createSession({
     staffId: result.staffId,
     deviceKind: 'personal',

@@ -30,11 +30,7 @@ describe('photo evidence write matrix', () => {
     }
   });
 
-  // Regression: the guided Packer Review two-step capture
-  // (MobilePackerPhotoStudio → PackerPhotoUploadQueue → /api/photos/upload)
-  // sends these two literals against PACKER_LOG. They post-date the original
-  // stage matrix, so a port that reinstates the narrower vocabulary would 400
-  // every guided pack capture at the write waist.
+  // Regression: the guided Packer Review two-step capture (MobilePackerPhotoStudio → PackerPhotoUploadQueue → /api/photos/upload) sends…
   it('admits the guided Packer Review capture types as packing evidence', () => {
     for (const photoType of ['pack_slip', 'pack_box'] as const) {
       assert.equal(

@@ -1,10 +1,4 @@
-/**
- * Pure formatting for photo share links — turns the API's link list into the
- * block of text that gets copied to the clipboard / dropped via dataTransfer.
- *
- * Kept dependency-free (no React, no DOM) so it is trivially unit-testable and
- * reusable by the drag handler, the "Copy links" button, and any future export.
- */
+/** Pure formatting for photo share links — turns the API's link list into the block of text that gets copied to the clipboard / dropped via… */
 
 export interface ShareLinkLine {
   filename: string;
@@ -18,14 +12,7 @@ export interface FormatShareLinksOptions {
   expiresInLabel?: string | null;
 }
 
-/**
- * Format share links as one `Filename: url` per line.
- *
- * - A single link is returned bare (just the URL) — the common "grab one link"
- *   case, so pasting drops a clean URL rather than a labeled list of one.
- * - Multiple links are labeled per line, optionally prefixed with a group URL
- *   header and suffixed with an expiry note.
- */
+/** Format share links as one `Filename: */
 export function formatShareLinksText(
   links: ShareLinkLine[],
   options: FormatShareLinksOptions = {},

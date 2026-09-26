@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The stock-ledger slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline — `paintMorph` coerces, and the org
- * write gate (`slotMorphsFor('sku-ledger')`) refuses the foreign morph.
- *
- * Its OWN document, never `inventory-events`': the Ledger activity feed is a
- * STATUS history of units ("what happened to this thing"), while this is the
- * authoritative signed-QUANTITY store ("how the number changed"). Two stores,
- * two vocabularies, one engine — the same ruling that keeps `admin-returns` a
- * sibling of `inventory-events` rather than a view of it.
- */
+/** The stock-ledger slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   SKU_LEDGER_FIELD_CATALOG,

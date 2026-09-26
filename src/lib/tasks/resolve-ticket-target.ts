@@ -1,34 +1,4 @@
-/**
- * Ticket number → **the thing a task can point at**.
- *
- * The Daily agenda's composer offers three types — *Daily checklist*, *Task*,
- * *Ticket* — and the third one has to answer a question the scan resolver
- * cannot. `POST /api/scan/resolve` decodes what this app PRINTS (carton
- * stickers, tracking, order handles) and {@link resolveThrowTargets} reads
- * cartons and orders back out of it. A helpdesk ticket is neither: the operator
- * quotes `#48120`, a number this app does not mint and cannot decode.
- *
- * ## Two numbers, and only one of them may be stored
- *
- * `#48120` is the PROVIDER number. `work_assignments.entity_id` must be the
- * LOCAL `support_tickets.id` — migration `2026-08-08a` says the enum arm "keys
- * on the LOCAL support_tickets.id … never a bare Zendesk id", and
- * `2026-08-08b` hangs a delete trigger on that parent. So this module's whole
- * job is the translation, and it refuses rather than guessing: a task anchored
- * to a number that is not a registry row would be a dangling polymorphic
- * parent the schema cannot catch.
- *
- * ## Registering the mirror is not creating a ticket
- *
- * A ticket the workspace has never linked has no `support_tickets` row yet. We
- * do NOT invent one from the typed digits: {@link TicketTargetDeps.fetchProviderTicket}
- * asks the helpdesk first, and only a ticket the provider confirms gets a
- * mirror through `upsertSupportTicket` — the same registry write every link
- * path already uses. A typo resolves to `not_found`, never to a fresh row.
- *
- * Pure orchestration with an injected `Deps`, so the branch table above is a
- * DB-free unit test rather than something a bench discovers.
- */
+/** Ticket number → **the thing a task can point at**. */
 
 import { parseTicketScanValue } from '@/lib/support/ticket-scan';
 import type { ThrowTarget } from './throw-targets';
@@ -73,13 +43,7 @@ export type ResolveTicketTargetResult =
     }
   | { ok: false; reason: 'invalid_number' | 'not_found' | 'helpdesk_unavailable' };
 
-/**
- * `Ticket 48120`, with the subject underneath.
- *
- * The label deliberately matches `taskDeskRecordLabel`'s ticket face, so the
- * row the operator picks in the composer reads the same as the row that lands
- * in the agenda a second later.
- */
+/** `Ticket 48120`, with the subject underneath. */
 function ticketThrowTarget(ticket: RegisteredTicket): ThrowTarget {
   const subject = ticket.subject?.trim();
   return {

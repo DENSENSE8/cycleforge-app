@@ -1,15 +1,4 @@
-/**
- * Cached, server-side read layer for the org platform / type catalog
- * (migration 2026-06-13g + 2026-06-14f). Mirrors the in-process cache pattern
- * of `getIntegrationCredentials` (src/lib/integrations/credentials.ts): each
- * org's lists are cached for 5 minutes and invalidated explicitly on any CRUD
- * write via {@link invalidateCatalogCache}.
- *
- * Use this — not the raw `catalog-queries` functions — from server code that
- * resolves a platform/type/account per request (write-validation, dual-write,
- * API response formatting), so the DB isn't hit on every call. Client code uses
- * the `useCatalog` React Query hooks instead.
- */
+/** Cached, server-side read layer for the org platform / type catalog (migration 2026-06-13g + 2026-06-14f). */
 
 import {
   listPlatforms,
@@ -35,10 +24,7 @@ const platformCache = new Map<string, CacheEntry<PlatformRow[]>>();
 const typeCache = new Map<string, CacheEntry<TypeRow[]>>();
 const accountCache = new Map<string, CacheEntry<PlatformAccountRow[]>>();
 
-// Two-tier: L1 per-instance Map (existing 5-min TTL) in front of an L2 shared
-// Redis cache (via getOrSet) so a cold instance offloads to Redis instead of
-// Neon. Revocation semantics are unchanged from the L1-only design — the L1 TTL
-// still bounds cross-instance staleness; invalidateCatalogCache clears both.
+// Two-tier: L1 per-instance Map (existing 5-min TTL) in front of an L2 shared Redis cache (via getOrSet) so a cold instance offloads to…
 
 /** Active platforms for the org (sorted), cached 5 min. */
 export async function getOrgPlatforms(orgId: string): Promise<PlatformRow[]> {
@@ -62,25 +48,7 @@ export async function getOrgTypes(orgId: string): Promise<TypeRow[]> {
   return rows;
 }
 
-/**
- * The org's platform → receiving-type dependency matrix.
- *
- * **Deliberately UNCACHED — do not "fix" this to match its siblings.**
- *
- * It lives here for one import site, but it is the one catalog read that sits on
- * a WRITE path: every carton PATCH touching platform or type reads it to
- * validate the resulting pair. Behind the shared 5-minute cache that means an
- * admin's rule edit does not take effect for five minutes, and — worse — a rule
- * they just DELETED keeps rejecting operator writes for the same window. The
- * lists above are display/validation vocabularies that change once a quarter;
- * this one is a live gate an admin edits and expects to bind immediately.
- *
- * The cost is one indexed query on a table with a handful of rows, joined to two
- * small catalogs, on a route that already runs several. That is the right side
- * of this trade. If it ever shows up in a profile, cache it with an AWAITED
- * invalidation — not the fire-and-forget tag clear, which is what let a deleted
- * rule keep being served here in the first place.
- */
+/** The org's platform → receiving-type dependency matrix. */
 export async function getOrgPlatformTypeRules(orgId: string): Promise<PlatformTypeRule[]> {
   return listPlatformTypeRules(orgId);
 }
@@ -136,12 +104,7 @@ export async function resolveType(orgId: string, typeId: number): Promise<Resolv
   };
 }
 
-/**
- * Resolve the carton's effective receiving flow to a `type_id` for dual-write.
- * Maps the denormalized text (`intake_type`, falling back to `is_return`) to the
- * matching active type slug. Returns null when nothing maps (the backfill's
- * dry-run reports these so they're never silently dropped).
- */
+/** Resolve the carton's effective receiving flow to a `type_id` for dual-write. */
 export async function resolveReceivingTypeId(
   orgId: string,
   input: { intakeType?: string | null; isReturn?: boolean | null },
@@ -168,14 +131,7 @@ export interface ResolvedChannel {
   label: string | null;
 }
 
-/**
- * Resolve `orders.account_source` (hybrid grain: eBay = account slug like
- * 'ebay-mk', others = platform slug like 'ecwid'/'fba') to its catalog platform.
- * This is the read-side that the order-channel display overlays on top of the
- * built-in `getOrderPlatformLabel` so renamed/custom channels read correctly.
- * Returns all-null when the value matches nothing in the catalog (caller falls
- * back to the built-in helper).
- */
+/** Resolve `orders.account_source` (hybrid grain: */
 export async function resolveOrderChannel(orgId: string, accountSource: string | null | undefined): Promise<ResolvedChannel> {
   const key = String(accountSource ?? '').trim().toLowerCase();
   if (!key) return { platform: null, account: null, label: null };

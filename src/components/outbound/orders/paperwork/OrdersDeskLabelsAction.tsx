@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * To-ship Labels CTA — `role="leading"`, immediately left of Sync ShipStation.
- *
- * Display toggle for the paperwork walk (`?paperwork=`). Pressed = walk on;
- * press again (or `L`) to return to the table. Badge is print-packet incomplete
- * (not G3). Bind `L` while this desk is up; staff `?` still belongs to the
- * selection strip when it is mounted — this button does not paint a standing
- * keycap.
- */
+/** To-ship Labels CTA — `role="leading"`, immediately left of Sync ShipStation. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import { FileText } from '@/components/Icons';

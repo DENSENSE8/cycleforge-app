@@ -1,14 +1,4 @@
-/**
- * maxConcurrentSessions enforcement.
- *
- * When an org sets `maxConcurrentSessions > 0`, a new sign-in revokes the
- * OLDEST active sessions for that staff so no more than `limit` remain. Extracted
- * as a Deps-injected pure function so it unit-tests with zero DB (see
- * session-concurrency.test.ts) and so `createSession` stays a thin caller.
- *
- * Keep-newest policy: the just-created session is the newest, so trimming the
- * oldest never signs the user out of the device they just logged in on.
- */
+/** maxConcurrentSessions enforcement. */
 
 export interface ActiveSid {
   sid: string;

@@ -1,21 +1,4 @@
-/**
- * The scan SUBJECT — what the operator's last scan was about.
- *
- * A command sticker carries a verb and no noun. `CMD-PASS-GO-READY` has to act
- * on something, and the only thing it can honestly act on is the unit the
- * operator just scanned. This module is that one-slot memory.
- *
- * Same altitude and same shape as `station-scan-sink/store.ts` (a module Map +
- * an active id): the writer is the shared scan bar, the reader is the command
- * handler, and they live in different subtrees — so a React context would be
- * the wrong seam and a prop chain would be a worse one.
- *
- * **It expires.** A subject with no TTL is a loaded gun on a shared bench: the
- * operator scans a unit, walks away, someone else scans a verdict sticker an
- * hour later and it lands on a unit nobody is holding. {@link SUBJECT_TTL_MS}
- * is deliberately short — long enough to scan a unit and then a sticker, not
- * long enough to survive a coffee break.
- */
+/** The scan SUBJECT — what the operator's last scan was about. */
 
 export type ScanSubjectKind = 'unit' | 'order';
 

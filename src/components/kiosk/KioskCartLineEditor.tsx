@@ -2,38 +2,8 @@
 
 /**
  * Cart line editor — the UPDATE half of kiosk line CRUD.
- *
- * @domain-job Correct a line already on the cart without voiding it.
- * @hardware-target Station (counter tablet)
- * @density floor
- * @justification The ledger could create (catalog / scan / pane) and delete
- *   (the row `X`) but never update: a mistyped serial, a wrong quantity or a
- *   re-quoted repair meant voiding the line and re-entering the whole intake,
- *   which also threw away the signature. `kioskSessionStore.updateLine` existed
- *   the whole time with no caller — this is that caller.
- *
  * ## One cart system (operator 2026-09-24: "no forks")
- *
- * Every field is the kiosk entry field ({@link KioskEntryField}) — the same
- * face Device & quote and the contact step wear — and every write goes through
- * the rule its line type already has elsewhere:
- *
- * - **Repair**: Serial numbers (every serial on the unit), Price and Notes,
- *   exactly as on its Device & quote card. The quote is typed, not "adjusted": it is the repair's price,
- *   written by {@link repairQuotePatch}, the one quote rule both surfaces use.
- *   No PIN — a repair has no catalog price to deviate from.
- * - **Custom amount** (the Keypad's line): Change amount on the same keypad
- *   that made it. No PIN, for the reason `+` on the Keypad needs none.
- * - **Catalog sale**: Square's item-details verbs — a Price adjustment switch
- *   and a Comp switch, each saved behind a `walk_in.adjust_price` PIN, because
- *   they move a price the catalog set. Off restores the catalog price, no PIN.
- * - **Trade-in**: the credit offer, IMEI and grade.
- *
- * A linked repair (an existing ticket brought into this visit) states its
- * facts and edits none of them: its serial and quote live on its own record.
- *
  * Removing is one tap, no PIN (operator 2026-09-24). Quantity lives on the
- * card's `−  N  +`.
  */
 
 import { useState } from 'react';

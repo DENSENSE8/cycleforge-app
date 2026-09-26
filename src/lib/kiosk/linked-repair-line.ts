@@ -1,27 +1,4 @@
-/**
- * An EXISTING repair, brought into the cart as a linked line.
- *
- * ## Why this exists
- * Most repairs in the book never went through a tablet cart — Ecwid drop-offs
- * and desk tickets. When that customer is at the counter (to pay, to pick up,
- * to add a cable), the visit has to carry the ticket without re-taking it in:
- * no serial prompt, no symptom, no signature, no second RS number. Operator
- * 2026-09-24: *"I must be able to link an existing repair service with
- * signature NOT needed."*
- *
- * Two doors lead here — the cart's `Link existing repair` search and History's
- * `Add to cart` on a standalone ticket — and both go through
- * {@link addLinkedRepair}, so the two cannot build different lines or disagree
- * about twins.
- *
- * Pure: no React, no fetch, no store import (the cart is injected), so the
- * contract is unit-tested without a DOM.
- *
- * Callers: `KioskLinkRepair`, `KioskHistoryDetail`. Affected API: none here —
- * the line reaches `POST /api/kiosk/intake` as `linkedRepairs[]` through
- * `mapKioskCartToCounterParts`. Schemas: `RepairPayload.linkedRepairId` /
- * `linkedTicketNumber`; server side `repair_service.counter_transaction_id`.
- */
+/** An EXISTING repair, brought into the cart as a linked line. */
 
 import type { KioskVisitRow } from '@/lib/counter/list-kiosk-visits';
 import type { KioskRepairHeader } from '@/lib/counter/read-repair-ticket';
@@ -111,13 +88,7 @@ export interface LinkedRepairCart {
   setCustomer(fields: { phone?: string; name?: string }): void;
 }
 
-/**
- * Put a linked repair on the cart. `already` when that ticket is on it —
- * a second tap must not charge one repair twice. When the visit has no phone
- * yet, the ticket's customer becomes the visit's: the person at the counter IS
- * that ticket's owner, and making the operator retype a number the book holds
- * is the friction this door removes. A phone already typed wins.
- */
+/** Put a linked repair on the cart. */
 export function addLinkedRepair(
   record: LinkableRepairRecord,
   cart: LinkedRepairCart,

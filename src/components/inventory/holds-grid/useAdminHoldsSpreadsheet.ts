@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * **Holds desk spreadsheet** — the family glue that resolves a {@link DataTable}
- * feed bag. Spread it onto the host; there is no second table component.
- *
- * ```tsx
- * const sheet = useAdminHoldsSpreadsheet({ rows, rowActions, onOpenRow });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * `/inventory/holds` owns exactly one search param and it is the hold
- * form's flash channel (`?error=missing_input|not_found`). Writing `?sort=`
- * beside it would make a header click re-render the RSC — re-running
- * `loadHeldUnits`' lateral join — to reorder at most two hundred rows the
- * client already holds, and would replay that error banner while doing it.
- * Durability in the URL is the rule for a lane that IS a queue route; it is not
- * a rule for an admin ops page whose params belong to a form.
- */
+/** **Holds desk spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

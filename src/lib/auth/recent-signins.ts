@@ -26,14 +26,7 @@ export function writeRecentSignin(staffId: number): void {
   }
 }
 
-/**
- * Which sign-in method last worked on this device — used purely to promote that
- * one method on the next visit so the returning user doesn't re-scan the list.
- *
- * Redirect flows (OAuth / SSO / magic link) navigate away before we learn the
- * outcome, so those are recorded on *attempt*; password and passkey are recorded
- * on *success*. It is a display hint, never an authorization fact.
- */
+/** Which sign-in method last worked on this device — used purely to promote that one method on the next visit so the returning user doesn't… */
 export type SigninMethod =
   | 'password'
   | 'google'

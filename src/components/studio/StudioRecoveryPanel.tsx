@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * StudioRecoveryPanel — the unpark/recovery surface (engine Phase 1.0).
- *
- * Lists the workflow items the engine parked as `blocked` (a node is awaiting a
- * human/event) or `error` (a node threw or its type vanished) for the active
- * definition, with a one-click Recover that resets the position to `active` so
- * the next tap advances it. Self-contained: fetches GET /api/studio/items/stuck
- * and POSTs /api/studio/items/[id]/recover. Recovery is gated server-side by
- * `studio.recover`; a caller without it gets a 403 surfaced inline.
- *
- * Rendered in the Inspector's no-node (workflow summary) view — the graph-level
- * place "items needing attention across the whole flow" belongs. The richer
- * triage view (filters, bulk recover) is the Studio §2 roadmap item.
- */
+/** StudioRecoveryPanel — the unpark/recovery surface (engine Phase 1.0). */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';

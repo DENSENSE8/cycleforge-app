@@ -3,15 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ShippedOrderSuggestion } from '@/lib/receiving/returned-serial-link';
 
-/**
- * Typeahead layer behind the "Order #" search in {@link UnfoundMatchStrip}.
- *
- * Debounced (latest-wins, abortable) `GET /api/receiving/shipped-order-lookup?q=`
- * returning candidate shipped orders whose order number contains what the
- * operator is typing. Read-only — the caller links the picked order via
- * import-sales-order. Mirrors {@link useShippedOrderCompare} in shape so the
- * Order # lane stays consistent.
- */
+/** Typeahead layer behind the "Order #" search in {@link UnfoundMatchStrip}. */
 export function useShippedOrderSuggest(rawQuery: string, enabled = true) {
   const [candidates, setCandidates] = useState<ShippedOrderSuggestion[]>([]);
   const [loading, setLoading] = useState(false);

@@ -2,14 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { failureModeTone } from './useFailureModes';
 
-/**
- * The severity→tone map is what paints the bench's fail chips, so it must be
- * TOTAL over the severity vocabulary and must never quietly paint a critical
- * fault in the same colour as a scuff. `failure_modes.severity` is a CHECK'd
- * three-value column (critical | major | minor); an unknown value is possible
- * only from a hand-edited row, and must degrade to the quietest tone rather
- * than to `undefined` (which would render an unstyled chip).
- */
+/** The severity→tone map is what paints the bench's fail chips, so it must be TOTAL over the severity vocabulary and must never quietly… */
 describe('failureModeTone', () => {
   it('maps every severity in the vocabulary to a distinct tone', () => {
     assert.equal(failureModeTone('critical'), 'danger');

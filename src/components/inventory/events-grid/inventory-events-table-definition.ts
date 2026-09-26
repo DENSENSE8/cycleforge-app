@@ -1,13 +1,4 @@
-/**
- * `inventory.events` — the Inventory Ledger activity table definition.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference.
- * Frozen pane is the shared compound prefix; the identity fact is
- * `inventory-events.sku` — the thing the event happened to, and the only `id`
- * fact in the family (the engine requires an id for identity).
- * `recordPlane` is an honest `none`: an event is a fact, not a record to open;
- * the SKU and serial cells carry their own copy affordances instead.
- */
+/** `inventory.events` — the Inventory Ledger activity table definition. */
 
 import type { PulseEventRow } from '@/components/inventory/types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

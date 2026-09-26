@@ -70,12 +70,7 @@ describe('mapCompleteCartonResponse', () => {
   });
 
   it('§4: with NO override, a 409 PHOTO_POLICY still blocks — the default is unchanged', () => {
-    // The soft block only relaxes the gate when the operator supplies a
-    // PHOTO_WAIVED_* code. The DEFAULT body carries none — `useCompleteCarton`
-    // spreads `photoPolicyOverrideField(...)` on top only when the operator
-    // picks a reason — so the phone's plain "Complete carton" must keep landing
-    // on `blocked`. A waiver leaking into the default body would silently
-    // disable the gate for every receive.
+    // The soft block only relaxes the gate when the operator supplies a PHOTO_WAIVED_* code.
     const body = completeCartonRequestBody(row(), 42, 'k') as Record<string, unknown>;
     assert.equal(
       body.photo_policy_override,
@@ -91,10 +86,7 @@ describe('mapCompleteCartonResponse', () => {
   });
 
   it('§4: a waived receive (200 + warnings) completes, but is NOT a clean success', () => {
-    // The third outcome. The receive happened, so the phase is `done` and the
-    // counts are unchanged — but `waiver` is set, because the carton is
-    // received carrying an open exception and the bench is the last place that
-    // can still say so.
+    // The third outcome.
     const out = mapCompleteCartonResponse(200, {
       success: true,
       updated_count: 2,

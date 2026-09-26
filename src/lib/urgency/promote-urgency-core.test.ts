@@ -95,13 +95,7 @@ test('a missing record is a refusal, not a silent success', async () => {
   assert.deepEqual(result, { ok: false, reason: 'not_found' });
 });
 
-/**
- * A receiving LINE never paired to a carton has no `receiving` row to carry
- * `priority_tier`, so it is genuinely un-promotable today — a live product gap
- * the UI already refuses ("Link a PO first to set priority"). The domain must
- * refuse it too, or a caller that skips the UI writes nothing and claims
- * success.
- */
+/** A receiving LINE never paired to a carton has no `receiving` row to carry `priority_tier`, so it is genuinely un-promotable today — a… */
 test('an unsupported record kind refuses without touching any storage', async () => {
   for (const entityType of ['receiving_line', 'serial_unit', 'repair', 'carton', null, undefined]) {
     const { deps, calls } = fakes();

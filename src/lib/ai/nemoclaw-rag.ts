@@ -12,13 +12,7 @@ export interface RagQueryResult {
   sources: string[];
 }
 
-/**
- * Query the NemoClaw RAG pipeline via Cloudflare tunnel.
- *
- * Routes through rag.michaelgarisek.com → WSL NemoClaw (:8765).
- * Retrieves from Qdrant, re-ranks with BM25 + RRF, then synthesises
- * via the configured model. 30s timeout for synthesis latency.
- */
+/** Query the NemoClaw RAG pipeline via Cloudflare tunnel. */
 export async function queryNemoClawRag(
   query: string,
   topK = 5,

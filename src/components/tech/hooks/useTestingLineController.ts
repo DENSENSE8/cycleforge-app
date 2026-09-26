@@ -58,22 +58,7 @@ export type TestingLabelDraft = {
   condition: string;
 };
 
-/**
- * Controller for the TESTING workspace display. Composes the mode-agnostic
- * `useReceivingLineCore` (carton identity / copy / audit·claim) — passing
- * `dispatchTestingLineUpdated` for narrow workspace patches — and layers the
- * testing domain on top: per-unit verdicts, the fire-and-forget serial queue,
- * lazy unit-id minting, and the Pass + Print auto-advance.
- *
- * `TestingRecentRail` is opted off the shared bus; dock refresh is via
- * `testing-result-recorded` / `app-refresh-data`. Never dump a full by-id GET
- * row onto `receiving-line-updated` — use {@link narrowTestingWorkspacePatch}.
- *
- * Unlike the unbox controller, the parent (`TestingLineWorkspace`) owns `row`
- * and updates it from `receiving-line-updated`; this controller propagates its
- * mutations by dispatching that event (via core / dispatchTestingLineUpdated)
- * rather than holding a private row copy.
- */
+/** Controller for the TESTING workspace display. */
 export function useTestingLineController(
   row: ReceivingLineRow,
   staffId: string,
@@ -95,12 +80,7 @@ export function useTestingLineController(
   // a GS1 element string to an absolute `{slug}.app…/01/…` URL.
   const { user } = useAuth();
   const orgSlug = user?.organizationSlug ?? null;
-  // Editable carton label (default draft + preview payload + Save & print),
-  // driving the label preview's pencil → editor CTA — same face as unbox.
-  // Center text = the PRINTED face buffer (`label_note`), same as Unbox — a
-  // carton reprinted from Testing must show the identical face. Reading
-  // `notes` here would print the operator's item note and drift the two
-  // surfaces apart the first time either buffer is edited. (2026-07-31 split.)
+  // Editable carton label (default draft + preview payload + Save & print), driving the label preview's pencil → editor CTA — same face as…
   const cartonLabel = useCartonLabelEditor(row, core, {
     conditionCode: row.condition_grade || 'USED_A',
     notes: (row.label_note || '').trim(),
@@ -142,11 +122,6 @@ export function useTestingLineController(
   }, [row.id, row.notes]);
 
   // Refresh the line's serials when it changes — table-side caches are slower.
-  // A synthetic unfound-carton stub carries a negative id and has no
-  // receiving_lines row to fetch (buildUnmatchedStubRow), so skip the request
-  // rather than firing a guaranteed `success:false` GET on every stub scan.
-  // Narrow workspace patch only — never dump the full by-id row onto the bus
-  // (TestingRecentRail is opted out; other rails must not inherit hydrate junk).
   const refreshLineWithSerials = useCallback(async (id: number) => {
     if (!Number.isFinite(id) || id <= 0) return;
     try {
@@ -203,24 +178,13 @@ export function useTestingLineController(
     label: string;
   } | null>(null);
 
-  // ── Per-unit verdict (optimistic) ─────────────────────────────────────────
-  // Reflect the verdict IMMEDIATELY so the pill highlights and the Pass·Print
-  // button enables with no processing wait, then persist in the background and
-  // roll the unit status back on failure. `isMutating` stays a NON-blocking
-  // "saving" chip on the toolbar — it no longer gates the verdict pills.
+  // ── Per-unit verdict (optimistic) ───────────────────────────────────────── Reflect the verdict IMMEDIATELY so the pill highlights and…
   const handleSlotVerdict = useCallback(
     async (
       lineId: number,
       serial: UnitSlotSerial,
       next: TestingVerdict,
-      /**
-       * The fault being claimed. REQUIRED and undefaulted: it decides what is
-       * recorded against the unit, and a default here is a silent opt-out that
-       * every call site nobody visited takes automatically
-       * (`backend-patterns.md` → a safety classification is a required
-       * parameter). `null` is only legal for a non-fail verdict — go through
-       * `requestSlotVerdict` and the fail gate answers it.
-       */
+      /** The fault being claimed. */
       failureModeId: number | null,
     ) => {
       const priorStatus = serial.current_status;
@@ -263,11 +227,7 @@ export function useTestingLineController(
           return;
         }
 
-        // Name the fault on the unit. Same shape the server already uses when a
-        // QC step with a linked mode fails (`/api/serial-units/[id]/checklist`
-        // auto-tag-on-fail), so a hand-failed unit and a step-failed one land in
-        // the same place and both resolve the same way. Best-effort: the verdict
-        // is already recorded and must not roll back because the tag missed.
+        // Name the fault on the unit.
         if (next === 'TESTING_FAILED' && failureModeId != null) {
           try {
             await fetch(`/api/serial-units/${serial.id}/failure-tags`, {
@@ -387,13 +347,7 @@ export function useTestingLineController(
     [handleSlotVerdict, refreshLineWithSerials],
   );
 
-  /**
-   * The ONE door every verdict press goes through. A pass / re-test records
-   * straight away; a fail parks the press and opens the fail-reason sheet, so
-   * "what is wrong with it" is asked once, in one place, no matter which control
-   * was pressed (the dock's Not as listed, or a unit pill). Mirrors the Unbox QA
-   * fail gate — a fail that names nothing is what left the fault columns empty.
-   */
+  /** The ONE door every verdict press goes through. */
   const requestSlotVerdict = useCallback(
     (lineId: number, serial: UnitSlotSerial, next: TestingVerdict) => {
       if (next === 'TESTING_FAILED') {
@@ -453,10 +407,7 @@ export function useTestingLineController(
       // before anything optimistic or persisted reads it.
       const serial = unwrapScannedSerial(raw ?? '');
       if (!serial || serialSubmittingRef.current) return;
-      // A linked carton is NOT required — the scan-serial route attaches by
-      // receiving_line_id, so a returned unit on a not-yet-cartoned line can still
-      // capture its serial (no hard wall). Only a REAL line is needed; a synthetic
-      // stub carries a negative id and has no line to attach to.
+      // A linked carton is NOT required — the scan-serial route attaches by receiving_line_id, so a returned unit on a not-yet-cartoned line can…
       if (!Number.isFinite(lineId) || lineId <= 0) {
         toast.error('Link this line to a PO or carton first to add serials.');
         return;

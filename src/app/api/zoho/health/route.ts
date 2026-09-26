@@ -6,15 +6,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zoho/health
- *
- * Tenant-aware connection check for the Settings → Connections Zoho card.
- * Resolves THIS org's Zoho credentials from the vault (env fallback for USAV),
- * confirms the refresh token still mints an access token, and returns the
- * non-secret connection facts (Zoho org id, data center) alongside the shared
- * rate-limiter / circuit-breaker status. Never returns secrets.
- */
+/** GET /api/zoho/health */
 export const GET = withAuth(async (_req, ctx) => {
   const orgId = ctx.organizationId;
   const limiter = getZohoHttpClientStatus();

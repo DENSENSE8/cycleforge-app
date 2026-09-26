@@ -1,15 +1,4 @@
-/**
- * Cron: poll Zendesk for watched-ticket updates.
- *
- * GET /api/cron/zendesk/ticket-watch?limit=100
- *
- * For each org with Zendesk connected, walks `support_ticket_assignments`,
- * pulls live ticket state, refreshes `support_tickets` caches, and notifies
- * the assignee via staff_messages + Ably when subject/status change.
- *
- * Auth: CRON_SECRET bearer — same gate as other /api/cron
- * routes.
- */
+/** Cron: poll Zendesk for watched-ticket updates. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

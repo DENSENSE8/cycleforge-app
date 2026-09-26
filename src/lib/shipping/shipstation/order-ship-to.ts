@@ -1,15 +1,4 @@
-/**
- * Order → ship-to resolution, shared by the rate-shop and label-purchase
- * routes. Precedence:
- *
- *   1. ShipStation-sourced order → the LIVE v1 order's stored ship-to (the
- *      marketplace is the system of record for it)
- *   2. otherwise → the linked local `customers` row's shipping columns (the
- *      customer book the syncs maintain)
- *
- * Extracted from POST /api/shipping/order-rates when label purchase needed the
- * same resolution — two private copies of one precedence is how they drift.
- */
+/** Order → ship-to resolution, shared by the rate-shop and label-purchase routes. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -128,13 +117,7 @@ export interface ShipmentSnapshotMeta {
   purchasedBy: string | number | null;
 }
 
-/**
- * Snapshot the AS-SHIPPED ship-to (+ purchase facts) onto the tracking row.
- * The address a label was bought against otherwise exists only inside the PDF
- * bytes — unrecoverable for a return/replacement label once the marketplace
- * order ages out. Merge-semantics (`metadata ||`), never a wholesale
- * overwrite, so carrier-webhook metadata survives.
- */
+/** Snapshot the AS-SHIPPED ship-to (+ purchase facts) onto the tracking row. */
 export async function snapshotShipToOnShipment(
   orgId: OrgId,
   shipmentId: number,

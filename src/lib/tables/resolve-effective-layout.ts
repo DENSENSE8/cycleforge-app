@@ -1,24 +1,4 @@
-/**
- * The layout cascade — which SlotLayout a given staffer actually sees.
- *
- * Plan: `docs/todo/slot-based-metadata-table-PLAN.md` §4.3. Precedence, LOCKED:
- *
- *   savedViewLayout ?? staffLayout ?? orgLayout ?? productDefault
- *
- * Last non-null wins **as a whole document** — never a deep merge of binding
- * arrays. Partial merges of positional arrays produce silent half-configs
- * (org's status:2 grafted under staff's status:1 is a layout nobody authored);
- * editors always load-edit-save the full layout instead.
- *
- * After the pick, the winning document is validated against the family catalog
- * the SOFT way: a binding whose field id the catalog no longer knows (a field
- * renamed in code, a custom field deleted) is DROPPED with a warning, and the
- * layout still paints. A queue must never white-screen because an org override
- * aged; it degrades toward the product default one binding at a time. The one
- * non-droppable slot is identity — a table with no identity column is not a
- * table — so a stale identity field falls back to the product default's, which
- * is valid by construction (guard-tested at module load).
- */
+/** The layout cascade — which SlotLayout a given staffer actually sees. */
 
 import {
   catalogById,

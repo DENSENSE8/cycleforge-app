@@ -99,12 +99,7 @@ export function PhotoLibraryFilterDropdown({
         </label>
       </div>
 
-      {/*
-        Evidence stage is an Unboxing-only sub-filter: `buildPhotoLibraryParams`
-        drops `?stage=` under any other scope, so offering it there would render
-        a control whose value can never survive a URL round-trip. Labels resolve
-        through `photoStageLabel` — never a second stage→label map.
-      */}
+      {/* Evidence stage is an Unboxing-only sub-filter: */}
       {filters.sourceScope === 'unboxing' ? (
         <label className="block">
           <span className={labelClass}>Evidence stage</span>

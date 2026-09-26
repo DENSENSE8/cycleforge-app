@@ -1,12 +1,4 @@
-/**
- * Procedure deck rem constants — face height + gap between full rows.
- *
- * Flat foundation: every step is a full face at a fixed height; selection is
- * outline-only. Evidence mounts in a band under the list — faces never grow.
- * No peek pull-up, no space budget.
- *
- * Law: Procedure Focus Deck.
- */
+/** Procedure deck rem constants — face height + gap between full rows. */
 
 /** Face row height — 40px at default root (matches checklist row). */
 export const PROCEDURE_STACK_FACE_REM = 2.5;

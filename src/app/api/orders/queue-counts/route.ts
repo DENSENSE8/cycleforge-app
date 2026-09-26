@@ -8,31 +8,7 @@ import { PRINT_PACKET_INCOMPLETE_SQL } from '@/lib/orders/print-packet';
 import { withAuth } from '@/lib/auth/withAuth';
 import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
 
-/**
- * GET /api/orders/queue-counts — lightweight Unshipped-queue tallies WITHOUT
- * downloading the rows (Phase 2 of the unshipped-dashboard-performance plan).
- *
- * The sidebar legend + stage dropdown + nav badge used to count off the full
- * `/api/orders?fulfillmentScope=true` row payload — i.e. download every open
- * order just to size three numbers. This route replaces that with a single
- * `COUNT(*)` grouped by the two RAW signals the fulfillment lane is derived from
- * (`has_tech_scan`, `is_out_of_stock`). It deliberately does NOT map those
- * to PENDING/TESTED/BLOCKED here: that mapping is `deriveFulfillmentState` (SoT
- * `src/lib/order-lifecycle.ts`, Decision 8) and is applied CLIENT-side over the
- * returned `combos`. SQL only aggregates facts; TS owns the lane rule.
- *
- * Scope mirrors the in-warehouse To-ship desk: labeled (shipment_id) with a
- * non-empty tracking number (blank-tracking stays on Labels), not
- * carrier-shipped, not Amazon-fulfilled, and not yet dock-scanned (no
- * SHIP_CONFIRM). Includes packed-staged rows still sitting on a rack.
- * Optional `?staff=` narrows to one staff's assigned work (packer OR tech).
- *
- * "Mirrors" is now literal: the tech-scan and pack facts come from the shared
- * ORDER-GRAIN fragments (`sqlOrderHasTechScan` / `sqlOrderHasPackScan`), not a
- * second hand-rolled shipment-grain copy. A count that disagrees with the row
- * list is a bug in this file, so there is exactly one implementation of the
- * membership rule and both endpoints call it.
- */
+/** GET /api/orders/queue-counts — lightweight Unshipped-queue tallies WITHOUT downloading the rows (Phase 2 of the… */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const startedAt = Date.now();
   let ok = false;
@@ -75,27 +51,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       paramCount++;
     }
 
-    // GROUP BY the two raw signals only. At most 4 rows come back
-    // (has_tech_scan × blocked); the client maps each via deriveFulfillmentState.
-    //
-    // ORDER-GRAIN (CF-03 / CF-04). Both membership facts below come from
-    // `@/lib/orders/order-grain-sql` — the SAME fragments `/api/orders` uses for
-    // the row list. They used to be hand-rolled shipment-grain EXISTS here, and
-    // that is precisely why the badge could disagree with the grid:
-    //
-    //   - `has_tech_scan` was `EXISTS(sal WHERE sal.shipment_id = o.shipment_id)`
-    //     with NO activity_type filter, so ANY station activity on a shared
-    //     carton — a pack scan, a receiving scan — counted as "tested". That
-    //     inflated `tested` and, since `pending = total - tested`, deflated
-    //     Pending. `sqlOrderHasTechScan` requires a real TECH_TEST activity
-    //     attributed to THIS order (tsn.order_id / metadata.order_row_id), with
-    //     the shipment-grain path only when the shipment has a single order.
-    //   - the pack exclusion was shipment-grain `NOT EXISTS`, which drops an
-    //     order because a SIBLING sharing its carton was packed — the "vanish
-    //     bug" the row route's own comment names.
-    //
-    // Two endpoints answering "is this order in the queue?" differently is the
-    // defect; there is one answer and it lives in order-grain-sql.ts.
+    // GROUP BY the two raw signals only.
     const sql = `
       SELECT
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
@@ -134,25 +90,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       GROUP BY 1, 2, 3
     `;
 
-    /**
-     * "Shipped today" — the third number on To-ship's today strip, and the one
-     * that hands off to the Shipped desk.
-     *
-     * Counted off `station_activity_logs` at the PACK station, because that is
-     * exactly the feed the Shipped desk lists (`/api/packerlogs` →
-     * `packer-logs-week.ts`). Counting SHIP_CONFIRM instead would be a
-     * different, defensible truth — and it would print a number the operator
-     * cannot find when they click through to today's window, which is worse
-     * than either truth alone.
-     *
-     * Civil PST day, the same frame `getCurrentPSTDateKey` and the week ranges
-     * use, so "today" does not roll over at 5pm local.
-     *
-     * `?staff=` narrows to who PACKED it. The row feed's staff filter is
-     * packed-OR-tested, so a staff-scoped count can read low against a
-     * staff-scoped list; that is a known, documented narrowing rather than a
-     * second membership rule — the strip is org-wide on the default desk.
-     */
+    /** "Shipped today" — the third number on To-ship's today strip, and the one that hands off to the Shipped desk. */
     const shippedTodayParams: unknown[] = [ctx.organizationId];
     let shippedTodayStaffClause = '';
     if (staffId != null) {

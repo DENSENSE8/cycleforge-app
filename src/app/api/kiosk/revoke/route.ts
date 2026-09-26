@@ -1,11 +1,4 @@
-/**
- * POST /api/kiosk/revoke
- *
- * Manager (staff session, `walk_in.enroll_kiosk`) revokes a lost/retired kiosk
- * tablet. Org-scoped: a manager can only revoke a device in their own org. The
- * device token dies server-side immediately (next `withKioskAuth` call → 401);
- * no staff-password rotation is involved.
- */
+/** POST /api/kiosk/revoke */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

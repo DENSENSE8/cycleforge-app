@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: src/app/settings/devices/page.tsx.
- * Affected API: none. URL ?view=devices|history via router.replace.
- * Data schemas: KioskDevicesPageView.
- * User (verbatim): "tabs component should not be blocky… friendly apple-like
- * slider. Rewrite the tabs component." + match enroll name/Generate code height.
- */
+/** Gate preamble (Fact-Forcing): */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

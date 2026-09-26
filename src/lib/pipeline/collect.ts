@@ -1,14 +1,4 @@
-/**
- * Training Data Collector
- *
- * Extracts training pairs from pipeline implementations and stores them
- * in the training_samples table. Also provides a git-commit collector
- * that can be hooked into post-commit workflows.
- *
- * Both successful AND failed implementations are stored — the Jetson
- * trainer uses rating thresholds to select which samples to include
- * in each fine-tuning run.
- */
+/** Training Data Collector */
 
 import { db } from '@/lib/drizzle/db';
 import { trainingSamples } from '@/lib/drizzle/schema';
@@ -46,13 +36,7 @@ export async function collectTrainingPair(input: TrainingPairInput): Promise<num
 
 // ─── Git Commit Collector ────────────────────────────────────
 
-/**
- * Extract a training pair from a git commit. Designed to be called
- * from a post-commit hook or a scheduled git-log scanner.
- *
- * This captures human-authored code changes (not just pipeline changes)
- * which provides diverse training data.
- */
+/** Extract a training pair from a git commit. */
 export async function collectFromCommit(data: {
   message: string;
   diff: string;

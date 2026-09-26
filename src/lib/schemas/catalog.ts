@@ -1,14 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Request bodies for the org-scoped platform / type catalog CRUD
- * (/api/catalog/platforms, /api/catalog/types). Mirrors the sku-catalog schema
- * house style: trimmed strings, `.strict()`, update bodies require ≥1 field.
- *
- * `slug` is optional on create — the route derives it from `label` when absent
- * (see slugify in catalog-queries.ts) — and is never editable afterward, since
- * it is the per-org natural key callers resolve against.
- */
+/** Request bodies for the org-scoped platform / type catalog CRUD (/api/catalog/platforms, /api/catalog/types). */
 
 const trimmed = z.string().trim();
 const slug = trimmed
@@ -102,16 +94,7 @@ export const TypeUpdateBody = z
 
 // ─── priority_tiers ───────────────────────────────────────────────────────────
 
-/**
- * Rename / repaint ONE rung of the priority ladder.
- *
- * There is deliberately no `PriorityTierCreateBody`. The ladder's length is a
- * code constant (`PRIORITY_OVERRIDE_TIERS`) and `tier` is a storage contract
- * with `receiving.priority_tier`, so a rung is addressed by its tier in the
- * URL and upserted — never inserted by the client, never deleted into
- * non-existence. Sending `colorHex: null` clears back to the built-in tone;
- * omitting the key leaves the current paint alone.
- */
+/** Rename / repaint ONE rung of the priority ladder. */
 export const PriorityTierUpdateBody = z
   .object({
     label: trimmed.min(1).max(40).optional(),

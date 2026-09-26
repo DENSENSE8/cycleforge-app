@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Dashboard · Recents — the inbound domain's context-panel recents list.
- *
- * Harvested from the `Recent` half of the retired `DashboardSearchSidebar` when
- * Search stopped being a dashboard mode (`docs/todo/dashboard-ia-rework-PLAN.md`
- * Phase 1.1). Inbound's context panel used to render `null` — 360px of empty
- * chrome; this list fills it. Retrieval lives on `/search`; re-open navigation
- * lives here beside the inbound picker.
- *
- * Rows re-open through `detailStackHref`, the same SoT the ⌘K palette uses —
- * so an order always lands on the To-ship desk (`?openOrderId=`), never on a
- * second order shell.
- *
- * Also publishes top-N mid-strip MRU pins while the context rail is parked
- * (not a `SidebarRecentRailBase` — thin `usePublishCollapsePins` here).
- */
+/** Dashboard · Recents — the inbound domain's context-panel recents list. */
 
 import { useMemo } from 'react';
 import Link from 'next/link';

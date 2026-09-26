@@ -84,14 +84,7 @@ export const PATCH = withAuth(async (request, ctx) => {
   });
 }, { permission: 'warranty.manage', feature: 'repair' });
 
-/**
- * DELETE /api/warranty/claims/[id]
- *
- * Soft-deletes a claim (deleted_at tombstone — claims keep their event/audit
- * trail and RMA / repair links, so rows are never hard-dropped). Idempotent at
- * the domain level: deleting an already-deleted claim returns 404. Gated by
- * WARRANTY_LOGGER.
- */
+/** DELETE /api/warranty/claims/[id] */
 export const DELETE = withAuth(async (request, ctx) => {
   if (!isWarrantyLogger()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 1);

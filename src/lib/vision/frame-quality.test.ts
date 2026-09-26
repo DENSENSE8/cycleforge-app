@@ -1,9 +1,4 @@
-/**
- * Frame-quality gating invariants. Pure functions, so we synthesize ImageData-like
- * fixtures: a sharp checkerboard, a flat (blurry/featureless) field, a dark field,
- * and a shifted copy for motion. Guards the live-scan funnel: a regression here would
- * either flood the vision box with junk frames or starve it of good ones.
- */
+/** Frame-quality gating invariants. */
 import { test } from 'node:test';
 import { strictEqual, ok } from 'node:assert';
 

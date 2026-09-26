@@ -1,12 +1,4 @@
-/**
- * Voicemail follow-up mutations (mark done / snooze / assign / note) and case
- * linkage. The follow-up row is the in-app workflow state; linkage reuses the
- * universal `ticket_links` table (entity_type='voicemail') so the existing
- * candidate-listing / "already linked" logic applies — `linked_ticket_id` on
- * the voicemail is a denormalized read cache.
- *
- * All writes run under `withTenantTransaction` (org GUC auto-stamps + scopes).
- */
+/** Voicemail follow-up mutations (mark done / snooze / assign / note) and case linkage. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -129,13 +121,7 @@ export async function linkVoicemailToTicket(
       return { ok: true, linkedTicketId: null };
     }
 
-    // A voicemail link is the ticket's ANCHOR (the ticket is *about* the call),
-    // so it takes the primary slot. ticket_links is many-per-ticket now, with the
-    // one-anchor rule enforced by ux_ticket_links_ticket_primary — hence
-    // demote-then-upsert-on-natural-key, mirroring linkTicket()/linkShipment().
-    // (A single ON CONFLICT can only name one of the two unique indexes, and
-    // re-anchoring onto an entity already held as a reference row must promote
-    // that row rather than error.)
+    // A voicemail link is the ticket's ANCHOR (the ticket is *about* the call), so it takes the primary slot.
     await client.query(
       `UPDATE ticket_links SET is_primary = false, updated_at = now()
         WHERE organization_id = $1

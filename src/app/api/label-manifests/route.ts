@@ -8,12 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/label-manifests — create an OPEN label manifest (the "one label,
- * many serials" preboxed kit), optionally seeded with units. Returns the new
- * manifest detail plus any units skipped because they're already in another live
- * manifest (`conflicts`). Auth: `label.manifest.manage`.
- */
+/** POST /api/label-manifests — create an OPEN label manifest (the "one label, many serials" preboxed kit), optionally seeded with units. */
 const Body = z.object({
   manifestType: z.enum(['PREBOX', 'KIT', 'MASTER_CARTON']).optional(),
   sku: z.string().trim().min(1).nullable().optional(),

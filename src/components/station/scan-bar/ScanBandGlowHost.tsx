@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Station scan-band glow host — Framer opacity layer over a white base.
- *
- * - Idle: whisper opacity (`scanBandGlowOpacity.idle`)
- * - Focus / click into the band: animate to full (`focused`)
- * - Submit (form submit capture): pulse flash then settle focused
- * - Outcome flash (`cf:scan-band-flash`): emerald success / rose reject overlay
- *   for ~800ms — primary visual channel once scan lines are a flat data floor
- *
- * Catalog: `framerTransition.scanBandGlow` / `scanBandGlowPulse` +
- * `scanBandGlowOpacity`. Reduced motion via `useMotionTransition`.
- */
+/** Station scan-band glow host — Framer opacity layer over a white base. */
 
 import {
   useCallback,
@@ -148,11 +137,7 @@ export function ScanBandGlowHost({
 
   return (
     <div
-      // Chrome fill defaults to the shared SoT (`appSurfaceFillClass('chrome')`,
-      // theme-correct — the old hardcoded paper-white fill stayed white even under a
-      // dark theme). Listed before `className` so a caller's own tone (all
-      // current callers pass `receivingScanBandClass`, which resolves to the
-      // same fill) still wins the `cn()` merge.
+      // Chrome fill defaults to the shared SoT (`appSurfaceFillClass('chrome')`, theme-correct — the old hardcoded paper-white fill stayed white…
       className={cn('relative isolate overflow-hidden', appSurfaceFillClass('chrome'), className)}
       onFocusCapture={handleFocusCapture}
       onBlurCapture={handleBlurCapture}

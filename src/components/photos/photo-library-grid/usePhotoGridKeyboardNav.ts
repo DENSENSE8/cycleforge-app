@@ -19,23 +19,7 @@ function moveFocus(el: HTMLElement | undefined) {
   el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 }
 
-/**
- * Roving arrow-key navigation across media-library grid tiles — the missing
- * industry-standard interaction (Google Photos / Lightroom / Finder). Returns an
- * `onKeyDown` for the grid container; it operates on the rendered
- * `[data-photo-tile]` buttons via their live geometry, so it's view-agnostic
- * (flat grid, list, ticket) and correct under any responsive column count or
- * variable tile height — no assumed grid math.
- *
- * - ←/→ step one tile; ↑/↓ move to the nearest tile in the adjacent visual row
- *   (keeping horizontal position); Home/End jump to first/last.
- * - Space toggles selection on the focused tile (Shift+Space extends the range).
- * - Enter opens the focused tile — handled by the tile's own native button click,
- *   so it isn't intercepted here.
- *
- * Attached to the container, so it only fires while focus is inside the grid and
- * never fights the page-level shortcuts or the fullscreen viewer's own keys.
- */
+/** Roving arrow-key navigation across media-library grid tiles — the missing industry-standard interaction (Google Photos / Lightroom /… */
 export function usePhotoGridKeyboardNav(opts: {
   onSelect: (id: number, mods: TileSelectMods) => void;
 }) {

@@ -1,32 +1,4 @@
-/**
- * returns.ts
- * ────────────────────────────────────────────────────────────────────
- * Phase 7 returns intake transaction. Shared by /api/returns/intake
- * and the /inventory/returns admin page so the bookkeeping
- * lives in one place.
- *
- * Per resolved unit, in one transaction:
- *   - Reverse-link on inbound: resolve the outbound order this unit last
- *     shipped on (resolvePriorOutbound) and flip its open SHIPPED
- *     order_unit_allocations row → RETURNED, so "returns for order X" is a
- *     plain JOIN. (Relational-reuse plan Phase 1.)
- *   - sku_stock_ledger row +1 reason='RETURN_CUSTOMER' (the trigger
- *     projects the qty back onto sku_stock.stock automatically).
- *   - serial_units.current_status → RETURNED.
- *   - inventory_events RETURNED with prev_status = actual prior state and the
- *     resolved order on payload.
- *
- * The operator-supplied orderId still wins when provided; otherwise the
- * resolved prior order is used. Idempotent via per-unit suffixed
- * clientEventId. Rejects with 404
- * (with the missing serials/ids) if any input cannot be resolved —
- * zero mutations committed in that case so the operator can fix the
- * input and retry.
- *
- * Caller responsibilities: feature-flag check, permission gate,
- * scan-URL normalization (callers pre-extract serials from GS1
- * Digital Link URLs via parseScannedUrl before invoking).
- */
+/** returns.ts ──────────────────────────────────────────────────────────────────── Phase 7 returns intake transaction. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -48,16 +20,7 @@ export interface ReturnsIntakeInput {
   /** UUID; per-unit suffixed for retry-safe inventory_events inserts. */
   clientEventId?: string | null;
   actorStaffId: number | null;
-  /**
-   * Tenant scope — REQUIRED, and deliberately un-defaulted. Every org predicate
-   * below is written against it, and its presence is what routes the whole
-   * intake through `withTenantTransaction`. When this was optional, a caller
-   * that omitted it did not get a scoped-but-empty result — it got the raw
-   * BYPASSRLS owner pool with every predicate short-circuited, resolving any
-   * tenant's serial by string and flipping their allocations. That is exactly
-   * how the admin dock shipped cross-tenant. Required makes the miss a compile
-   * error instead of a silent privilege escalation.
-   */
+  /** Tenant scope — REQUIRED, and deliberately un-defaulted. */
   organizationId: string;
 }
 
@@ -99,10 +62,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
   const reason = input.reason?.trim() || 'customer return';
   const orgId = input.organizationId;
 
-  // The whole intake runs inside withTenantTransaction (app_tenant + the
-  // app.current_org GUC) so the serial_units / order_unit_allocations RLS
-  // policies apply and the sku_stock_ledger INSERT auto-stamps org from the GUC
-  // column default. There is no longer an org-less raw-pool branch to fall into.
+  // The whole intake runs inside withTenantTransaction (app_tenant + the app.current_org GUC) so the serial_units / order_unit_allocations…
   const run = async (client: PoolClient): Promise<ReturnsIntakeResult> => {
     const unitsQ = await client.query<{
       id: number;
@@ -148,10 +108,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
       );
       const resolvedOrderId = input.orderId ?? prior?.orderPk ?? null;
 
-      // Flip the unit's open SHIPPED allocation → RETURNED. This is the durable,
-      // queryable shipped↔returned link and frees the unit for re-allocation.
-      // Legacy tech-serial ships have no allocation row, so this is a no-op for
-      // them (the link survives on the event payload below).
+      // Flip the unit's open SHIPPED allocation → RETURNED.
       const flipQ = await client.query(
         `UPDATE order_unit_allocations
             SET state = 'RETURNED', returned_at = NOW(), returned_reason = $2
@@ -175,13 +132,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
         ledgerId = ledgerQ.rows[0]?.id ?? null;
       }
 
-      // status → RETURNED + the RETURNED event via the guarded chokepoint (SoT
-      // rule: never hand-write current_status). transition() emits the event
-      // (scan_token=tracking, stock_ledger_id=ledger preserved) atomically on
-      // this tx client. The allocation flip + ledger above stay outside it.
-      // SHIPPED/STOCKED/RMA → RETURNED are modeled; an unmodeled source throws,
-      // rolling back the whole batch — consistent with the all-or-nothing intake
-      // contract (zero mutations committed, operator fixes input and retries).
+      // status → RETURNED + the RETURNED event via the guarded chokepoint (SoT rule:
       const perUnitKey = input.clientEventId ? `${input.clientEventId}:return:${u.id}` : null;
       const moved = await transition(
         {
@@ -236,14 +187,6 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
   const result = await withTenantTransaction<ReturnsIntakeResult>(orgId, run);
 
   // Studio tap (Tap 1, §7.1/§9 Stage 2.6 of the returns-unification plan):
-  // fired per unit, after the transaction commits, never inside it — same
-  // timing rule as linkReturnedSerial's Tap 1 (an engine failure must never
-  // roll back a domain write, and the tap must never advance a position for a
-  // write that could still roll back). This is Path B (the bulk admin dock-
-  // intake tool, /inventory/returns) — audited and found to be a
-  // genuinely distinct capability from Path A's per-carton scan flow (a
-  // multi-serial paste/batch tool, not a receiving-line-scoped scan), so it
-  // gets the same tap rather than being retired.
   if (result.ok) {
     for (const u of result.units) {
       await tapWorkflow({

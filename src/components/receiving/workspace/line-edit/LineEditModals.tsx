@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Page-level tool surfaces for non-Unbox hosts (Triage).
- *
- * All three are NON-MODAL `RightRailHost` occupants now (`detail:receiving-audit`,
- * `detail:photo-note`, `detail:move-photos`) — the host's single-slot store keeps
- * them mutually exclusive, so rendering all three here is safe: only the one
- * whose `open` is true registers.
- *
- * Unbox mounts the same bodies in Displays (Photos / Timeline) instead — a
- * station-scoped push column that squeezes the workbench in-flow — see
- * LineEditPanel.
- */
+/** Page-level tool surfaces for non-Unbox hosts (Triage). */
 
 import { ReceivingAuditRail } from '../ReceivingAuditRail';
 import { SendPhotoNoteRail } from '../SendPhotoNoteRail';

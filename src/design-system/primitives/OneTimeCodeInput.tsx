@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Segmented one-time-code field — one box per character (desk pairing code,
- * OTP, authenticator code). The native pattern every auth app uses: the
- * keyboard comes up already capitalised, a keystroke advances, Backspace
- * retreats, and a paste / SMS autofill of the whole code spreads across boxes.
- *
- * Why a primitive and not a `TextField`: a free-text field makes the operator
- * hold Shift (or hunt for Caps Lock) for a code that is uppercase by
- * definition, gives no per-character target, and needs a second line of chrome
- * to echo what was typed. The boxes ARE the echo.
- *
- * `transform` owns the alphabet: it runs on every candidate string, so
- * lowercase input is uppercased on the way in and characters outside the
- * alphabet never reach state (default: uppercase alphanumerics).
- *
- * Callers: `SignInQrScanDialog` (desk→phone pairing code, length 4).
- */
+/** Segmented one-time-code field — one box per character (desk pairing code, OTP, authenticator code). */
 
 import {
   useCallback,
@@ -41,13 +25,7 @@ export interface CodeEdit {
   focusIndex: number;
 }
 
-/**
- * Write `typed` at box `index`, overwriting that box and spilling rightward —
- * so one character advances one box and a full-code paste lands whole from
- * wherever it was dropped. Empty `typed` clears the box.
- *
- * `typed` MUST already be normalized by the field's `transform`.
- */
+/** Write `typed` at box `index`, overwriting that box and spilling rightward — so one character advances one box and a full-code paste… */
 export function writeCodeChars(
   code: string,
   index: number,

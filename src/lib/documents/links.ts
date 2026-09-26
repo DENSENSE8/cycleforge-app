@@ -1,10 +1,4 @@
-/**
- * document_entity_links — read/write API for the polymorphic document↔entity
- * link hub (docs/outbound-documents-plan.md §4.1). Mirrors the shape of
- * src/lib/shipping/shipment-links.ts: org-scoped, Deps-free at the query
- * layer, accepts an optional transaction client so callers can enlist in a
- * larger write (e.g. attachOutboundDocument's insert-then-link).
- */
+/** document_entity_links — read/write API for the polymorphic document↔entity link hub (docs/outbound-documents-plan.md §4.1). */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

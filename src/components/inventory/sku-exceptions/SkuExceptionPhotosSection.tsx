@@ -20,12 +20,7 @@ import { uploadPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-/**
- * What the placeholder looks like: the hero full-frame, the rest as a 4-up
- * strip; any photo opens Unbox's viewer. Uploads land as `SKU_STOCK` photos on
- * the placeholder's `sku_stock` row — the entity the phone attaches to and the
- * one a pair carries onto the real SKU.
- */
+/** What the placeholder looks like: */
 export function SkuExceptionPhotosSection({
   item,
   onChanged,

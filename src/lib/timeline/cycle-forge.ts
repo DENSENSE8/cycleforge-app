@@ -28,12 +28,7 @@ const STATUS_TONE: Record<string, TimelineTone> = {
   skipped: 'muted',
 };
 
-/**
- * Map `cycle_forge_run_steps` rows → {@link TimelineItem}s for the shared
- * `EventTimeline`, so a forge run renders as a chat-like stage trail using the
- * same timeline language as the rest of the app. Title = the stage label;
- * subtitle carries the stage detail; a muted badge names the raw status.
- */
+/** Map `cycle_forge_run_steps` rows → {@link TimelineItem}s for the shared `EventTimeline`, so a forge run renders as a chat-like stage… */
 export function cycleForgeStepsToTimeline(rows: CycleForgeStepRow[]): TimelineItem[] {
   return rows.map((r) => {
     const tone = STATUS_TONE[r.status] ?? 'default';

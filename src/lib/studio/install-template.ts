@@ -1,37 +1,4 @@
-/**
- * install-template — the ONE path that lands a workflow_templates blueprint into
- * an org (Template Platform Phase 2A). Every caller (HTTP import, onboarding
- * chooser, dogfood/script seed) composes THIS function instead of re-implementing
- * clone + surface-seed + activate. It is the productized replacement for the
- * three slightly-different clone paths that existed before (the import route's
- * inline seed, applyTemplateToOrg, seedDefaultWorkflowForOrg).
- *
- * One withTenantTransaction wraps the whole install so the graph clone, the
- * surface drafts, and the (optional) activation are atomic and org-scoped:
- *   1. skipIfExists → no-op if the org already has ANY definition (idempotent seed).
- *   2. Resolve the template id + its is_system flag (needed for the `if_system`
- *      activate policy). Omitted id → the blessed default (is_default) system row.
- *   3. createDraftFromTemplate — the byte-identical, guarded clone (never rewritten;
- *      composed around, per the Phase 2A contract).
- *   4. Read the re-minted nodes back and seed a node-bound, draft ('legacy'-config)
- *      station_definition for each surface those node types imply
- *      (buildTemplateSurfaceSeeds + seedTemplateSurfaces).
- *   5. Apply the activate policy: 'never' | 'if_system' (system templates only) |
- *      'always'. Activation only ever fires on a SUCCESSFUL clone+seed.
- *
- * Activation vs diagnostics: a `system` template is a curated, known-good graph,
- * so we activate it on a successful clone+seed rather than re-running the publish
- * diagnostics gate inside this tx (which would need the full graph load + rule
- * pass — not cheap here). Custom / import / AI packages must NOT auto-activate:
- * callers pass `activate: 'never'` (or `'if_system'`, which is a no-op for them)
- * so they land as a draft the owner reviews + publishes through the human gate.
- * If diagnostics-gated activation is later wanted, wrap it in the activation
- * branch — the shape already isolates it.
- *
- * DB-free: every collaborator that isn't the raw tx client is INJECTED (real
- * impls by default) so the unit test passes fakes that capture the SQL/calls,
- * exactly like createDraftFromTemplate and the other studio domain helpers.
- */
+/** install-template — the ONE path that lands a workflow_templates blueprint into an org (Template Platform Phase 2A). */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

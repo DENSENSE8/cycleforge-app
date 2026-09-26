@@ -5,29 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { findByNormalizedSerial } from '@/lib/neon/serial-units-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 
-/**
- * POST /api/serial-units/[id]/move — move a unit into a bin/zone.
- *
- * Resolves the target location by `bin_barcode`, `bin_name`, or `bin_id`
- * (first non-empty wins). Updates `serial_units.current_location` to the
- * canonical bin name and emits an `inventory_events` MOVED row carrying
- * `prev_bin_id` + `bin_id` so the History Log shows the actual transition.
- *
- * Body:
- *   {
- *     bin_barcode?: string;
- *     bin_name?: string;
- *     bin_id?: number;
- *     notes?: string;
- *     client_event_id?: string; // idempotency key
- *   }
- *
- * Notes:
- *   - We DO NOT touch bin_contents/qty here. That projection is maintained
- *     via sku_stock_ledger triggers; serial moves don't change a SKU's
- *     total stock, only its location. See locations repo header.
- *   - If the unit has no prior location, this acts as the first putaway.
- */
+/** POST /api/serial-units/[id]/move — move a unit into a bin/zone. */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     const idParam = extractIdSegment(request.nextUrl.pathname);
@@ -61,11 +39,7 @@ export const POST = withAuth(
 
     const orgId = ctx.organizationId;
 
-    // 1. Resolve target location — org-scoped so a caller can't reference (or
-    //    probe the existence of) another org's bin by barcode/name/id. locations
-    //    is tenant-owned; the shared repo lookups run unscoped on the bypass
-    //    pool, so we resolve through the tenant pool with an explicit
-    //    organization_id predicate instead.
+    // 1. Resolve target location — org-scoped so a caller can't reference (or probe the existence of) another org's bin by barcode/name/id.
     let target =
       binBarcode != null ? await findLocationByBarcodeOrg(binBarcode, orgId) : null;
     if (!target && binName != null) target = await findLocationByNameOrg(binName, orgId);
@@ -183,11 +157,7 @@ async function resolveUnit(raw: string, orgId: OrgId): Promise<UnitLite | null> 
   };
 }
 
-// ─── locations: org-scoped lookups ───────────────────────────────────────────
-// locations is tenant-owned (has organization_id). The shared repo helpers read
-// it bare on the bypass pool, which lets a caller resolve another org's bin by
-// barcode/name/id. We re-resolve through the tenant pool with an explicit
-// organization_id predicate so a cross-tenant bin is invisible (404).
+// ─── locations:
 
 interface LocationLite {
   id: number;

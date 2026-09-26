@@ -31,12 +31,7 @@ export const TESTING_WORKSPACE_TAB_LABEL: Record<TestingWorkspaceTab, string> = 
 
 const VALID: ReadonlySet<string> = new Set(TESTING_WORKSPACE_TABS);
 
-/**
- * Raw-string form of {@link getTestingWorkspaceTabFromSearch}, for callers that
- * hold a value rather than a `URLSearchParams` — notably the `/test` param spec
- * (`@/lib/routing/query-mode-routes`), which composes this via `paramRoundTrip`
- * so the route contract cannot drift from `VALID`.
- */
+/** Raw-string form of {@link getTestingWorkspaceTabFromSearch}, for callers that hold a value rather than a `URLSearchParams` — notably the… */
 export function parseTestingWorkspaceTab(raw: string | null): TestingWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
   return VALID.has(value) ? (value as TestingWorkspaceTab) : 'returns';
@@ -48,12 +43,7 @@ export function getTestingWorkspaceTabFromSearch(
   return parseTestingWorkspaceTab(searchParams.get(TESTING_WORKSPACE_TAB_PARAM));
 }
 
-/**
- * Normalize URL state for a Testing workbench tab switch.
- * Search never bleeds. History-only layout / weekOffset clear on queue tabs.
- * Staff scope (`?staff=`) persists across queue tabs (Pending · Urgent · Returns · All)
- * and History — ownership focus is orthogonal to lifecycle tabs.
- */
+/** Normalize URL state for a Testing workbench tab switch. */
 export function normalizeTestingWorkspaceTabParams(
   params: URLSearchParams,
   preferredTab?: TestingWorkspaceTab,

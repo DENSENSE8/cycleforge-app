@@ -1,16 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/session-store.test.ts
- *
- * P2 of `docs/todo/kiosk-desk-session-channel-PLAN.md`, with zero DB: a fake
- * `CounterSessionDeps` holds the session in memory and honours the same
- * conditional-bump contract the real SQL does, so the verb set, the D5 door,
- * and the D3 conflict path are all exercised here rather than against Postgres.
- *
- * The two things worth breaking a build over:
- *   1. the kiosk door is THREE verbs wide — every line write must 403 there;
- *   2. a lost version race returns the CURRENT snapshot, never a partial write.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/session-store.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -96,10 +84,7 @@ function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
 
   fake.deps = {
     async runInTransaction(_orgId, fn) {
-      // The fake rolls back on a throw, because the real one does
-      // (withTenantTransaction issues ROLLBACK in its catch). A fake that
-      // committed through a throw would have hidden the exact bug the P6
-      // two-device spec caught: a line written, then reported as not written.
+      // The fake rolls back on a throw, because the real one does (withTenantTransaction issues ROLLBACK in its catch).
       const before = JSON.parse(JSON.stringify(fake.state)) as CounterSessionSnapshot;
       try {
         return await fn(TX);

@@ -1,13 +1,4 @@
-/**
- * Read-only aggregator for the SKU audit-log section — cross-station feed
- * for a single SKU code.
- *
- * Event sources:
- *   • inventory_events                — receiving lifecycle (joined via receiving_lines.sku)
- *   • station_activity_logs (packer)  — packer_log → orders.sku for the tracking
- *   • station_activity_logs (tech)    — tech_serial_numbers.source_sku_id → sku.static_sku
- *   • audit_logs                      — entity_type='RECEIVING_LINE' rows with matching SKU
- */
+/** Read-only aggregator for the SKU audit-log section — cross-station feed for a single SKU code. */
 
 import 'server-only';
 import type { QueryResultRow } from 'pg';
@@ -51,10 +42,7 @@ interface ListOpts {
 
 export async function listSkus(opts: ListOpts, orgId?: OrgId): Promise<SkuSummary[]> {
   const { filters, search } = opts;
-  // When orgId is present we reserve $1 for the org and offset every other
-  // positional parameter by one; the CTE branches gain explicit
-  // `<t>.organization_id = $1` predicates so each tenant table is filtered at
-  // the source. The org GUC is also set by tenantQuery as an RLS backstop.
+  // When orgId is present we reserve $1 for the org and offset every other positional parameter by one; the CTE branches gain explicit…
   const params: unknown[] = [];
   const orgParamIdx = orgId ? (params.push(orgId), params.length) : 0;
   const orgPred = orgId ? `$${orgParamIdx}` : '';
@@ -156,14 +144,7 @@ export async function getSkuDetail(
   const dateEnd = filters.range.end;
   const staffId = filters.staffId;
 
-  // When orgId is present, $1 holds the org and the SKU shifts to $2; the rest
-  // of the positional params follow. Each tenant table also gains an explicit
-  // `<t>.organization_id = $1` predicate (in the ON clause for LEFT JOINs so the
-  // line-less / unmatched-order behavior is preserved). When orgId is omitted
-  // the original $1=sku layout and raw-pool path are kept byte-identical.
-  // shipping_tracking_numbers has NO organization_id column; it is joined by
-  // its integer surrogate PK (stn.id = ...shipment_id), so it is implicitly
-  // scoped through its org-bearing parent rows (see notes / needsColTables).
+  // When orgId is present, $1 holds the org and the SKU shifts to $2; the rest of the positional params follow.
   const orgPrefix: unknown[] = orgId ? [orgId] : [];
   const skuIdx = orgId ? 2 : 1; // positional index of the sku param
   const orgPred = orgId ? '$1' : '';
@@ -255,10 +236,7 @@ export async function getSkuDetail(
     techParams,
   );
 
-  // 3) Lifecycle spine. LEFT JOIN + COALESCE(rl.sku, ie.sku) so line-less
-  //    serial/SKU events (e.g. ADMIN label prints → LABELED, which carry
-  //    ie.sku but no receiving_line_id) surface under their SKU here — the
-  //    SKU view is the home for label-print activity that has no line/PO/tracking.
+  // 3) Lifecycle spine.
   const recParams: unknown[] = [...orgPrefix, sku];
   let p3 = buildDateClauses('ie.occurred_at', recParams.length);
   recParams.push(...p3.params);

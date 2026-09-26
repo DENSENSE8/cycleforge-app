@@ -1,11 +1,4 @@
-/**
- * Normalized connection reader — a typed, capability-aware view of an org's
- * integrations, built from the `organization_integrations` vault rows joined
- * with connector metadata. This is what the settings UI and the (Phase 1)
- * sync orchestrator read instead of hand-querying the table.
- *
- * Read-only + org-scoped. Does not decrypt the payload (metadata only).
- */
+/** Normalized connection reader — a typed, capability-aware view of an org's integrations, built from the `organization_integrations` vault… */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
@@ -80,10 +73,7 @@ export async function getConnectionStatus(
   return r.rows[0] ? toStatus(r.rows[0]) : null;
 }
 
-/** Count of distinct connected providers — the unit `plans.ts.maxIntegrations`
- *  is measured in. Includes vault rows plus active ebay/amazon account tables
- *  so OAuth connections that have not yet (or no longer) land an unscoped vault
- *  row still count (INT-006). */
+/** Count of distinct connected providers — the unit `plans.ts.maxIntegrations` is measured in. */
 export async function countConnectedProviders(orgId: OrgId): Promise<number> {
   const r = await pool.query<{ n: string }>(
     `SELECT COUNT(*)::text AS n FROM (
@@ -184,21 +174,7 @@ export interface PlanLimitRefusal {
   upgrade: true;
 }
 
-/**
- * Entitlement guard for EVERY integration connect/start path (eBay, Amazon,
- * Google Drive, Nango session, …). Returns the typed refusal when connecting
- * `provider` as a NEW provider would exceed the org's plan ceiling, or `null`
- * when the connect may proceed (reconnecting an already-connected provider is
- * always allowed). Route wiring:
- *
- *   const refusal = await assertCanConnectProvider(ctx.organizationId, 'ebay');
- *   if (refusal) return NextResponse.json(refusal, { status: 403 });
- *
- * PERMISSIVE BY DEFAULT (mirrors plan-feature-gate.ts): a NO-OP with no DB
- * read until `PLAN_FEATURE_ENFORCED` is on; the dogfood/internal org is always
- * exempt; any infra error fails open — a flaky read must never block a
- * tenant from connecting an integration.
- */
+/** Entitlement guard for EVERY integration connect/start path (eBay, Amazon, Google Drive, Nango session, …). */
 export async function assertCanConnectProvider(
   orgId: OrgId,
   provider: IntegrationProvider,

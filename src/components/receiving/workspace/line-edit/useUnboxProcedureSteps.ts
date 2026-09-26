@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * ONE derivation of the Unbox procedure, for every surface that shows it.
- *
- * Two surfaces render these steps at the same time now — the work cards in the
- * centre and the reference checklist on the right edge — and they are on screen
- * *together*. Two views of one procedure are only honest if they cannot
- * disagree, and the way to guarantee that is not a rule saying "keep them in
- * sync": it is one hook, so there is only ever one answer to derive.
- *
- * That is also why the old "there is exactly ONE procedure surface" rule could
- * be relaxed. The danger was never two views; it was two derivations.
- *
- * ## Real time is the whole point at a scan station
- *
- * The operator's hands are on the product, and the checklist is what tells them
- * the scan landed. So this subscribes to the carton's photo realtime channel and
- * to the local `receiving-line-updated` bus, and both surfaces re-render the
- * moment evidence arrives — including evidence shot on the PHONE, which is the
- * case a poll would show a minute late and a page-focus refetch would not show
- * at all while the operator is looking at the box.
- *
- * ## It derives; it never stores a step state
- *
- * Completion comes from the carton's own facts through `deriveProcedureSteps` —
- * the same function the receipt read model calls. Nothing is ticked by hand, so
- * nothing can be ticked falsely.
- */
+/** ONE derivation of the Unbox procedure, for every surface that shows it. */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -74,16 +48,7 @@ import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { resolveStepRailLeaf } from './steps/rail';
 import type { UnboxSideTab } from './unbox-side-tabs';
 
-/**
- * A settled step's completion instant, for the deck's history rows.
- *
- * Same-day work is the overwhelming case at a bench, and a date the operator
- * already knows costs the row width it needs for the label — so today shows a
- * clock and anything older shows the date too. Both go through `@/utils/date`
- * against the warehouse zone: a raw `toLocaleTimeString` would render the
- * viewer's zone, and a receipt read on a laptop in another state would then
- * disagree with the bench about when the box was opened.
- */
+/** A settled step's completion instant, for the deck's history rows. */
 function formatStepAt(at: string | null): string | undefined {
   if (!at) return undefined;
   const dayKey = toPSTDateKey(at);
@@ -186,25 +151,11 @@ interface UnboxProcedureStepsResult {
   flowLabel: string;
   /** The step the operator is on. `null` ⇒ every step settled. */
   activeKey: string | null;
-  /**
-   * The Displays leaf the cockpit rail auto-shows for the active step — the KNOW
-   * half of the DO/KNOW split (`display/scan-cockpit.md`). `null` when the step
-   * is settled or its reference is the work plane (declared reference-less).
-   * Derived from `activeKey` here so the ONE derivation drives both the centre
-   * action and the rail leaf — never a second store.
-   */
+  /** The Displays leaf the cockpit rail auto-shows for the active step — the KNOW half of the DO/KNOW split (`display/scan-cockpit.md`). */
   railLeaf: UnboxSideTab | null;
   /** What a skip would advance TO — the skip target, not the next card. */
   nextStep: ProcedureStepRow | null;
-  /**
-   * The active card's NEIGHBOURS in vocabulary order — what the pager pages to.
-   *
-   * Deliberately NOT {@link UnboxProcedureStepsResult.nextStep}: that is the
-   * SKIP target, which walks past every settled step, so a pager wired to it
-   * would silently carry the operator beyond a completed step they can still
-   * reopen. Paging is positional; skipping is a decision. `null` at the ends —
-   * honest absence, never a disabled control that wraps.
-   */
+  /** The active card's NEIGHBOURS in vocabulary order — what the pager pages to. */
   prevStep: ProcedureStepRow | null;
   nextNeighbour: ProcedureStepRow | null;
   /** Declared photo aspect per step key — never inferred from the key. */
@@ -312,17 +263,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     return map;
   }, [stepMeta]);
 
-  /**
-   * When each photo step's gate closed — resolved from the payload the bench
-   * already holds, keyed off the declared stage/aspect rather than the step name.
-   *
-   * `classify` and `serial` are deliberately absent: neither leaves a client-side
-   * instant (classification's attested time is an audit row, and a serial row
-   * carries no timestamp on this read), so the deck renders honest absence rather
-   * than the nearest number to hand. The receipt, which can see both, still fills
-   * them — the two surfaces answer the same question with what each actually
-   * knows, never with a guess.
-   */
+  /** When each photo step's gate closed — resolved from the payload the bench already holds, keyed off the declared stage/aspect rather than… */
   const evidenceAt = useMemo(() => {
     const map: Record<string, string | null> = {};
     for (const [key, meta] of Object.entries(stepMeta)) {
@@ -333,10 +274,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
       } else if (meta.stage === 'unbox_carton') {
         map[key] = meta.aspect ? (counts.cartonAspectFirstAt[meta.aspect] ?? null) : null;
       } else if (meta.stage === 'unbox_item') {
-        // This gate spans a SET, so it closes when the LAST required aspect
-        // first got a shot — not when the first item photo landed. With no
-        // required aspects the org said "any item photo counts", and then the
-        // first one is exactly when it closed.
+        // This gate spans a SET, so it closes when the LAST required aspect first got a shot — not when the first item photo landed.
         map[key] =
           requiredItemAspects.length === 0
             ? counts.itemFirstAt
@@ -478,12 +416,7 @@ export function useUnboxProcedureSteps(row: ReceivingLineRow): UnboxProcedureSte
     ? (steps.find((step) => step.key === skipTargetKey) ?? null)
     : null;
 
-  // Positional neighbours, for the under-dock step context (bottom-left). They
-  // were cut on 2026-08-02 when chips trailed the deck mid-document; they live
-  // under the flush floor as the step prompt — beside the input, not above it.
-  //
-  // Vocabulary order, NOT `skipTargetKey`. That distinction is the whole reason
-  // these are separate values.
+  // Positional neighbours, for the under-dock step context (bottom-left).
   const activeIndex = activeKey ? steps.findIndex((step) => step.key === activeKey) : -1;
   const prevStep = activeIndex > 0 ? steps[activeIndex - 1] : null;
   const nextNeighbour =

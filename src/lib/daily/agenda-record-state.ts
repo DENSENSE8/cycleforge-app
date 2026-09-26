@@ -1,22 +1,4 @@
-/**
- * One agenda row's STATE, read once for the ledger record and the evidence
- * column so the spine, the band-1 code and the evidence strip can never
- * disagree about the same row.
- *
- * The ledger's spine colour comes from `LIFECYCLE` (the design system's only
- * state palette), but its WORDS are an order's — `SHP · Shipped` on a finished
- * task would be a lie. So the lifecycle state is borrowed for its tone only
- * and the code / word are this module's own:
- *
- * | Row | Code | Spine |
- * |---|---|---|
- * | done (either half) | `DONE` | shipped (success) |
- * | withdrawn task | `CXL` | packed (neutral fulfilment) |
- * | past its due instant | `LATE` | urgent |
- * | urgent task | `URG` | urgent |
- * | task in progress | `WIP` | ready |
- * | anything else open | `OPEN` / `DUE` | ready |
- */
+/** One agenda row's STATE, read once for the ledger record and the evidence column so the spine, the band-1 code and the evidence strip can… */
 
 import type { LifecycleState } from '@cycleforge/design-tokens';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';

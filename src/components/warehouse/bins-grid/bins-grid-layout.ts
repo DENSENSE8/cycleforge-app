@@ -1,21 +1,4 @@
-/**
- * Warehouse › Bins spreadsheet column model — MATERIALIZED from a
- * {@link SlotLayout}, never a hand array.
- *
- * A row is one bin with pre-computed fill / stale / low / over-capacity flags —
- * a pickable inventory map with bulk membership (label / cycle-count actions),
- * not a work-item queue. The static `BINS_GRID_COLUMNS` died with wave 1.4 of
- * the seller-table program: tracks whose keys WERE fields (`fill`,
- * `last_counted`, `status`) are a frozen layout no organization can capture.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `select` gutter
- * (live multi-select) and the frozen, flexing `barcode` identity track
- * (`bins.barcode` is the fact it resolves). Everything after it is a catalog
- * fact an org/staffer binds.
- *
- * Sort and frozen-offset helpers derive from the MOUNTED model, never a module
- * constant.
- */
+/** Warehouse › Bins spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -92,14 +75,7 @@ export function binsSheetColumnsFor(layout: SlotLayout): readonly BinsGridColumn
 export const BINS_SHEET_COLUMNS: readonly BinsGridColumn[] =
   binsSheetColumnsFor(BINS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * `bins.status` is deliberately unsortable wherever it is bound: it is a
- * COMPOSITE of four independent flags, so ordering it would compare whichever
- * flag happened to be first. That rule belongs to the FACT, not to a track key
- * — a rebind must carry it.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function binsSortFactFor(col: BinsGridColumn): string | null {
   if (col.sortable === false || col.key === 'select') return null;
   if (col.key === 'barcode') return 'bins.barcode';

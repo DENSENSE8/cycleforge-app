@@ -14,14 +14,7 @@ export interface CartonPayloadContext {
   resolvePlatformShortLabel: (platform: string | null | undefined) => string | null;
 }
 
-/**
- * Assemble a carton-label payload from a (default or hand-edited) label draft —
- * the single carton payload builder shared by the label editor's live preview
- * and its Save & print. Mirrors the corner-mode branch of
- * `useUnboxLineController.buildLabelPayload`, and feeds the one
- * {@link receivingPayloadToFace} face SoT so every surface prints the identical
- * label (matrix = platform Digital Link when orgSlug is set; HRI stays `R-{id}`).
- */
+/** Assemble a carton-label payload from a (default or hand-edited) label draft — the single carton payload builder shared by the label… */
 export function buildCartonLabelPayloadFromDraft(
   draft: LabelEditDraft,
   ctx: CartonPayloadContext,
@@ -42,9 +35,6 @@ export function buildCartonLabelPayloadFromDraft(
     date: draft.date,
   };
   // Bottom-right corner is operator-chosen — steer the label-corner helper:
-  //   ticket   → set zendeskTicket    (helper shows `#ticket`)
-  //   tracking → force scanValue to the internal `RCV-{id}` handle + set tracking
-  //   order    → show the order/PO last-8 (or `R-{id}` when there's no PO).
   if (draft.cornerMode === 'ticket') {
     return {
       ...base,

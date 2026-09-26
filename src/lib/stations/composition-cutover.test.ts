@@ -1,15 +1,4 @@
-/**
- * Verifies the Pack + Test surface compositions (operator-surfaces refactor
- * Phase 13) are registry-valid — every block/source/field is registered and
- * slot-compatible, so validateStationConfig passes and publish would accept
- * them. Pure / DB-free; mirrors the shapes the seed migrations use.
- *
- * These compositions are DORMANT: the SurfaceGate on `/pack` + `/test` renders
- * them ONLY when an active station_definitions row exists AND the per-org
- * `surface_composed_render` flag is on (default OFF). This test proves the
- * *capability* is publishable, not that any org has opted in.
- *   node --import tsx --test src/lib/stations/composition-cutover.test.ts
- */
+/** Verifies the Pack + Test surface compositions (operator-surfaces refactor Phase 13) are registry-valid — every block/source/field is… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -2,29 +2,7 @@
 
 /**
  * One row of the phone checklist — the check, the title, the doors.
- *
- * Three facts, because a phone row is not a compound row: the desk's five
- * tracks (photo, order, dates, status, slack) do not fit, and everything this
- * row leaves out lives one tap deeper in the sheet (SURFACE_LAW §5 — cards +
- * BottomSheet). The `once` caption is the ONE extra line the row earns: it is
- * the exception marker ("only the exception is marked"), and it carries the
- * owner's avatar when the one-off belongs to someone. A fourth fact belongs in
- * the sheet, not here.
- *
- * The whole title is the tick target: `<button>` is a labelable element, so
- * `htmlFor` wiring gives pointer and keyboard ONE control with no second
- * handler. No glyph, no status blip: the row paints the plain title (operator
- * ruling 2026-09-15 — "it wouldn't even have icons"). The owner avatar stays,
- * because an owner is identity, not decoration.
- *
- * Two more hit areas ride the right edge, both 44px, in the order the operator
- * named them: the ticket glyph (a door to the thread, or a bare mark without
- * the permission) and then the PENCIL, hard right, which opens the detail
- * sheet. The row prints no id — that moved into the sheet's top-right corner
  * (operator 2026-09-15).
- *
- * The strike is {@link StruckLabel}, the same design-system face the desk's
- * compound cell paints — one animation for both surfaces.
  */
 
 import { ChevronRight, Pencil, Ticket } from '@/components/Icons';
@@ -78,21 +56,11 @@ export function MobileDailyRow({
   subtitleTone?: 'muted' | 'danger';
   /** Linked Zendesk ticket — paints the rightmost orange door. Null = plain task. */
   ticketId?: number | null;
-  /**
-   * What the hard-right door promises. `edit` opens the item's own sheet
-   * (pencil); `record` opens a task's sheet — its instructions, media and the
-   * records it links (chevron). A task has no editable list entry, so it
-   * never wears a pencil.
-   */
+  /** What the hard-right door promises. */
   detail?: 'edit' | 'record';
   onToggle: (next: boolean) => void;
   onOpenDetail: () => void;
-  /**
-   * Opens the ticket thread. OMITTED when the viewer lacks `integrations.zendesk`
-   * — the glyph then stays a MARK, because recognition ("this row is a ticket")
-   * is permission-free while the thread is not, and the house rule is that a
-   * door which 403s is worse than an absent one.
-   */
+  /** Opens the ticket thread. */
   onOpenTicket?: () => void;
 }) {
   const checkboxId = `m-daily-${rowKey ?? `check-${itemId}`}`;
@@ -142,28 +110,9 @@ export function MobileDailyRow({
         ) : null}
       </label>
       {/*
-       * The ticket glyph, on the right edge (operator 2026-09-15: *"just the
-       * ticket icon most right and the customer will be able to recognize and
-       * identify that it's an open ticket display"*). It sits INSIDE the pencil
-       * now — the same ruling that put the pencil hard right moved this one
-       * notch in, and the two never compete because a plain task has no ticket
-       * glyph at all. Always orange — `text-text-warning` is the house amber,
-       * and the glyph means one thing wherever it appears.
-       *
-       * Present ONLY on a row carrying a real `ZENDESK_TICKET` link, so it is
-       * never furniture on a plain task. It paints in TWO registers, and the
-       * difference is a permission, not a preference:
-       *
-       *  - a DOOR (44px `size="touch"` box) to `/m/t/[ticketId]` — the phone's
-       *    thread + reply surface — for a viewer who may read the helpdesk
-       *    (operator: *"I can open the ticket and reply to the ticket within
-       *    the mobile app"*);
-       *  - a bare MARK for everyone else. Recognition is permission-free; the
-       *    thread is not, and a door that 403s is worse than an absent one.
-       *
-       * The host decides which by passing `onOpenTicket` or omitting it, so the
-       * row never reads a permission itself.
-       */}
+ * The ticket glyph, on the right edge (operator 2026-09-15:
+ * The ticket glyph, on the right edge (operator 2026-09-15: *"just the
+ */}
       {ticketId != null ? (
         onOpenTicket ? (
           <IconButton
@@ -181,21 +130,9 @@ export function MobileDailyRow({
         )
       ) : null}
       {/*
-       * The EDIT door — pencil, hard right (operator 2026-09-15: *"display a
-       * pencil icon on the most right of the to-do list row so I can edit more
-       * details and removing the ID from the mobile display"*).
-       *
-       * It replaced the bare `#id` handle that used to sit here. The id was
-       * doing two jobs badly: it was the row's only door to detail, and it
-       * spent a column of a 390px row printing a number an operator on the
-       * floor never quotes — that is a DESK habit, from a surface where a lead
-       * says "check 7" across a queue. The number is not lost; it moved to the
-       * top-right of the sheet this pencil opens, where it is a handle at the
-       * moment you need one and nowhere else.
-       *
-       * A pencil, not a chevron: the sheet behind it EDITS the item, and the
-       * glyph should promise the verb it delivers.
-       */}
+ * The EDIT door — pencil, hard right (operator 2026-09-15:
+ * The EDIT door — pencil, hard right (operator 2026-09-15: *"display a
+ */}
       <IconButton
         onClick={onOpenDetail}
         ariaLabel={detail === 'record' ? `Open ${title}` : `Edit ${title}`}

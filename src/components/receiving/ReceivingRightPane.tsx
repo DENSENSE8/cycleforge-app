@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The `/receiving` right-pane column. The History/Incoming table stays mounted
- * (display-toggled) so its cache + scroll survive tab flips; over it the focused
- * line workspace soft-swaps in. Unbox, Triage, and Local Pickup share the
- * browse+overlay crossfade SoT (`UnboxLineWorkspace` / `TriageLineWorkspace`);
- * pickup reuses Unbox's shell (no parallel Pickup* UI). Repair mounts
- * `RepairTable` with `RepairWorkspaceHeader` (Active/Done · search · Add) —
- * LedgerGrid day-banded queue, not ReceivingLines.
- *
- * Bulk selection no longer mounts a bottom capsule — History / Incoming open
- * `ReceivingLineRailShell` on `RightRailHost` instead. A picked row's record
- * never lands here: the Unbox History / Inbound tabs open it on their table's
- * `DeskRecordPlane`, the Inbound desk on its RecordLedger.
- */
+/** The `/receiving` right-pane column. */
 
 import { useSearchParams } from 'next/navigation';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';

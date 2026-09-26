@@ -86,25 +86,10 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
         ref={ref}
         type={type}
         role="menuitem"
-        // `"page"` (was the generic `"true"`) — every row here IS a page /
-        // destination (Page switcher's children, a Recents entry, a Pin), so
-        // the more specific WAI-ARIA value applies, matching the spine rows
-        // these menus are a second door onto (`SidebarNavList.tsx`).
+        // `"page"` (was the generic `"true"`) — every row here IS a page / destination (Page switcher's children, a Recents entry, a Pin), so the…
         aria-current={active ? 'page' : undefined}
         className={cn(
-          // Rail-matched row type (2026-08-16, bumped again same day) —
-          // `font-semibold text-text-default`, same weight/ink as
-          // RailRowBody's title line, at `role-title` (18px) — matching the
-          // spine's own settled size (`SidebarNavList.tsx` —
-          // `SPINE_ROW_FACE_CLASS` docblock has the full sizing history).
-          // These rows are the SAME destinations as the spine, opened from a
-          // second door (the header face), so they take the spine row's own
-          // size — `role-nav` (13px). They ran at `role-title` (18px) until
-          // 2026-08-19, which was correct while the header face was also 18px
-          // and wrong the moment it quieted: an 18px dropdown hanging off a
-          // 12px trigger reads as a different system, not a second door.
-          // `active` marks itself via the `bg-surface-sunken` fill below,
-          // never a font-weight bump.
+          // Rail-matched row type (2026-08-16, bumped again same day) — `font-semibold text-text-default`, same weight/ink as RailRowBody's title…
           'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-none px-3 py-2.5 text-left text-role-nav text-text-default',
           focusRing('control', 'accent'),
           !hasSideSlots && 'w-full border-b border-border-hairline hover:bg-surface-sunken',
@@ -113,17 +98,10 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
         )}
         {...rest}
       >
-        {/* `text-text-default` (2026-08-16) — matches HEADER_ICON_BTN_CLASS's
-            base ink (header-shell.ts) and the spine's constant ink
-            (spine-section-accent.ts); these menu rows (Page / Recents /
-            Pins) are the same nav system as the row they open from. */}
+        {/* `text-text-default` (2026-08-16) — matches HEADER_ICON_BTN_CLASS's base ink (header-shell.ts) and the spine's constant ink… */}
         <span
           className={cn(
-            // TOP_CHROME_ICON_FACE, not the bare glyph box: these rows open
-            // FROM the beam and must draw at the beam's weight (page stroke
-            // 1.5). Passing icons in as `<Icon />` with no className left every
-            // dropdown row at Lucide's native stroke 2 — a heavier glyph in the
-            // menu than on the control that opened it.
+            // TOP_CHROME_ICON_FACE, not the bare glyph box:
             TOP_CHROME_ICON_FACE,
             'flex shrink-0 items-center justify-center text-text-default [&>svg]:h-full [&>svg]:w-full',
           )}
@@ -163,15 +141,7 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
   },
 );
 
-/**
- * A BAND caption inside the menu — the same word the desk paints over the same
- * run of rows.
- *
- * Daily's preview carries three stores' worth of work (checklist · task ·
- * ticket) and a flat list of them asserts they are one kind of thing. The
- * caption is `role="presentation"` because a menu's children are its items;
- * the rows under it already say what they are in their accessible names.
- */
+/** A BAND caption inside the menu — the same word the desk paints over the same run of rows. */
 export function HeaderChromeMenuLabel({ children }: { children: ReactNode }) {
   return (
     <p

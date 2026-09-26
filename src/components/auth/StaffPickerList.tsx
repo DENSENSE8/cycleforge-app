@@ -2,26 +2,7 @@
 
 /**
  * Row-layout staff picker — the ONE "pick a person" face.
- *
- * Mounted by `/signin` (station sign-in), the FAB `SwitchStaffSheet` (desktop
- * staff switching) and `KioskPaymentStepUpSheet` (counter tablet PIN step-up).
- *
- * Visual identity:
- *   • Avatar circle filled with the staff's theme color
- *   • Name + role in muted UPPERCASE
- *   • "RECENT" group on top, "ALL STAFF" below (drives by `recent` prop)
- *
- * ## Two principals, one list
- *
- * The roster ENDPOINT is a prop because the caller's principal decides which
- * roster is legal to read: a staff/anonymous browser reads
- * `/api/auth/staff-picker`, while a kiosk tablet reads its device-authed
- * `/api/kiosk/staff-for-stepup` (org resolved from the device row, PIN-holders
- * only) through `kioskFetchHealed`, which re-binds a dropped device cookie.
- * Both answer the same `{ staff: StaffRow[] }` shape, so everything below —
- * grouping, search, the degraded state, the row anatomy — is shared rather
  * than forked per surface. Operator 2026-09-22: *"for the staff id for history
- * reuse the same component for the switching staff on desktop."*
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -46,13 +27,7 @@ export type StaffRow = {
 interface StaffPickerListProps {
   /** Staff that should appear at the top under a "RECENT" header. */
   recent?: number[];
-  /**
-   * Whether `recent` has finished hydrating (callers read it from localStorage
-   * in an effect to avoid an SSR mismatch). While false the skeleton is held so
-   * the "Recent" group never pops in — and re-groups rows — after first paint,
-   * which would otherwise shift a row out from under the user's click. Defaults
-   * to true for callers that pass `recent` synchronously.
-   */
+  /** Whether `recent` has finished hydrating (callers read it from localStorage in an effect to avoid an SSR mismatch). */
   recentReady?: boolean;
   /** Called when a staff is tapped. */
   onPick: (s: StaffRow) => void;
@@ -107,11 +82,7 @@ export function StaffPickerList({
 }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
-  // "The roster is empty" and "we could not load the roster" are DIFFERENT
-  // answers. Before 2026-08-02 a thrown query returned `{ staff: [] }` + 200
-  // and this list rendered "No active staff. Ask an admin to add you." — a
-  // legitimate-looking absence that hid a total sign-in outage. The route now
-  // answers 503 + `degraded`; render that as its own retryable state.
+  // "The roster is empty" and "we could not load the roster" are DIFFERENT answers.
   const [degraded, setDegraded] = useState(false);
   // When recent staff exist, keep the full roster collapsed behind a "More"
   // button so the 3 recent names stay the focused, one-tap choice.
@@ -292,10 +263,8 @@ interface RowProps {
 
 function Row({ staff: s, onPick, onMessage, isRecent, pickVerb }: RowProps) {
   return (
-    // ONE staff row on the auth surface: the shared StaffChoiceRowButton
+    // ONE staff row on the auth surface:
     // (email-flow display, operator 2026-09-08). The old per-staff
-    // theme-hover variance table is gone with it - one identity, not two.
-    // No PIN-setup chip: switching is pinless (act-as), and at dogfood stage
     // "tap to set up" was noise (operator 2026-09-15).
     <StaffChoiceRowButton
       staffId={s.id}

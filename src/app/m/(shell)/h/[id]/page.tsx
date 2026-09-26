@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Mobile handling-unit (box / LPN) page — `/m/h/[id]`.
- *
- * Routed to from /m/scan via `routeScan()` whenever the operator scans an
- * `H-{id}` box DataMatrix. One box scan opens the whole box: every member unit
- * with its test status and a `k/n tested` rollup chip, so a tech can work
- * through the box without re-scanning each unit (the existing multi-picker flow,
- * but native on the phone).
- *
- * Actions:
- *   1. Add unit   — POST /api/handling-units/[id]/assign  (scan a U-/serial)
- *   2. Remove     — POST /api/handling-units/[id]/unassign
- *   3. Print label — client-side ZPL/DataMatrix via printHandlingUnitLabel
- *
- * See docs/handling-unit-lpn-plan.md (Phase H5).
- */
+/** Mobile handling-unit (box / LPN) page — `/m/h/[id]`. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';

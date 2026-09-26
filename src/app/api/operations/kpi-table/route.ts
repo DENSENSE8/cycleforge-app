@@ -18,17 +18,7 @@ function pushParam(params: any[], value: any): string {
   return `$${params.length}`;
 }
 
-/**
- * Org-scoped, route-local equivalent of operations_events_unified_v1.
- *
- * The shared view does NOT project organization_id and has no RLS policy, so a
- * tenantQuery GUC wrap provides zero isolation against it (cross-tenant leak).
- * We cannot edit the view (migration-owned), so the station-distribution and
- * coverage reads instead union the org-bearing base tables (audit_logs +
- * station_activity_logs both carry organization_id) directly, filtered by the
- * caller's org. The projection/dedup mirrors the view so response shapes are
- * unchanged. `orgParamPlaceholder` must be the `$n` placeholder bound to orgId.
- */
+/** Org-scoped, route-local equivalent of operations_events_unified_v1. */
 function buildOrgEventsCte(orgParamPlaceholder: string): string {
   return `org_events AS (
     WITH audit_events AS (
@@ -193,18 +183,7 @@ export async function GET(req: NextRequest) {
         ? 'r.bucket_start::timestamptz'
         : 'r.bucket_start';
 
-    // NEEDS-COL (unresolved at route layer): the rollup tables
-    // (operations_kpi_rollups_hourly|daily) carry NO organization_id column AND
-    // are aggregated GLOBALLY by refresh_operations_kpi_rollups (it reads the
-    // org-less unified view with no org partition), so every tenant's event
-    // counts are physically commingled inside the same rows. There is no org
-    // dimension to filter on, so the rows/summary/eventVolume/distribution
-    // reads below CANNOT be tenant-scoped from the route — a tenantQuery GUC
-    // wrap sets app.current_org but the table has nothing to bind it to. The
-    // staff LEFT JOIN is tenant-aligned (hides cross-tenant actor NAMES) but
-    // the underlying commingled volume still leaks. The real fix is a migration
-    // that re-keys the rollups + refresh function by organization_id (and the
-    // unified view to project it); that is out of scope for this route edit.
+    // NEEDS-COL (unresolved at route layer):
     const rowsParams = params.slice();
     const staffOrgParam = pushParam(rowsParams, orgId);
 
@@ -279,10 +258,7 @@ export async function GET(req: NextRequest) {
     const stationCoverageStart = start || new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const stationCoverageEnd = end || new Date().toISOString();
     const stationParams: any[] = [stationCoverageStart, stationCoverageEnd];
-    // org param drives the org_events CTE (audit_logs + station_activity_logs
-    // are both org-bearing); the CTE confines actor_staff_id rows to this org,
-    // so the optional actorStaffId filter below can no longer probe a foreign
-    // org's actor volume — a cross-org staff id matches zero rows here.
+    // org param drives the org_events CTE (audit_logs + station_activity_logs are both org-bearing); the CTE confines actor_staff_id rows to…
     const stationOrgParam = pushParam(stationParams, orgId);
     const stationWhere: string[] = ['u.event_ts >= $1::timestamptz', 'u.event_ts <= $2::timestamptz'];
     if (source) {
@@ -381,13 +357,7 @@ export async function GET(req: NextRequest) {
       ORDER BY source_table ASC
     `;
 
-    // All reads run inside the tenant GUC. distributionByStation + coverage are
-    // now genuinely org-scoped: they no longer read the org-less unified view —
-    // they union the org-bearing base tables (audit_logs + station_activity_logs)
-    // via buildOrgEventsCte with an explicit organization_id = $n filter.
-    // rows/summary/eventVolume/distribution still read the rollup tables, which
-    // have no organization_id and are aggregated globally (NEEDS-COL migration —
-    // see comment above rowsParams); GUC-wrapping cannot scope them.
+    // All reads run inside the tenant GUC.
     const [rowsRes, summaryRes, volumeRes, distributionRes, distributionByStationRes, coverageRes] = await Promise.all([
       tenantQuery(orgId, rowsQuery, rowsParams),
       tenantQuery(orgId, summaryQuery, params),

@@ -25,28 +25,12 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 
-// The sidebar is its own chunk: desktop mounts it immediately (the whole shell
-// is client-gated behind `mounted`, so there is no SSR paint to preserve),
-// while mobile routes never download it unless the drawer opens. The fixed-
-// width placeholder keeps the desktop frame from shifting while the chunk
-// lands.
-//
-// Named `.then` (same pattern as `SidebarNavColumn`) so knip sees the export
-// as live. Warm still goes through `warmSpineChunk` (bundler dedupes the chunk).
+// The sidebar is its own chunk:
 const DashboardSidebar = dynamic(
   () => import('@/components/DashboardSidebar').then((m) => m.DashboardSidebar),
   {
     ssr: false,
-    // The spine owns no width — its host (the desktop push column or the mobile
-    // drawer) does — so the placeholder just fills that host while the chunk
-    // lands. The frame cannot jump, because the host's width never depended on
-    // the chunk.
-    //
-    // This placeholder is INVISIBLE on purpose, and that is only defensible
-    // because the chunk is warmed before the operator can see it (measured: a
-    // cold first open showed 306ms of fully-formed empty column; warm shows
-    // rows before the width even moves). See `preload-spine.ts` — the fix is to
-    // fetch earlier, not to draw fake rows over the wait.
+    // The spine owns no width — its host (the desktop push column or the mobile drawer) does — so the placeholder just fills that host while…
     loading: () => <div className="h-full w-full" aria-hidden />,
   },
 );
@@ -81,12 +65,7 @@ const GlobalDesktopSkuScanner = dynamic(
 );
 
 
-/**
- * Slim fallback shown when the sidebar subtree throws. It must be narrow chrome,
- * not a full-frame takeover: the whole point of wrapping the sidebar in an
- * `ErrorBoundary` is that the *main content keeps rendering* while only the rail
- * degrades. Offers a retry that re-mounts the sidebar.
- */
+/** Slim fallback shown when the sidebar subtree throws. */
 function SidebarFallback({ reset }: { reset: () => void }) {
   return (
     <aside className={cn('flex h-full shrink-0 flex-col border-r border-border-soft', SIDEBAR_SPINE_WIDTH, appChromeClass)}>
@@ -137,29 +116,14 @@ const drawerTransition = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-/**
- * ResponsiveLayout — wraps the desktop app frame.
- *
- * Desktop routing owns the permanent nav spine, global header, dense-workspace
- * content row, desktop scanner, and desktop-only command surfaces. Mobile
- * `/m/*` routes are selected by `WarehouseShell` before this component mounts
- * and are owned by `MobileRouteShell`.
- */
+/** ResponsiveLayout — wraps the desktop app frame. */
 export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   const { isMobile } = useUIMode();
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // A route's OWN sidebar (picker / facet rail / bench) is no longer mounted
-  // here at all: `ContextPanelLayout` renders it inside the content region,
-  // beside the workspace. The left column is the nav spine and nothing else.
-  //
-  // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
-  // covers nothing, and a navigator that collapsed on the first row you clicked
-  // would reflow the frame twice per jump for no gain. Closing is the toggle
-  // (and nothing else). Reopen paths: GlobalHeader / spine-head click, or ⌘K.
-  // Hover does not open or peek the spine (`SidebarNavColumn` from main).
+  // A route's OWN sidebar (picker / facet rail / bench) is no longer mounted here at all:
   const [navOpen, setNavOpen] = useState(false);
   const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
   useEffect(() => {
@@ -172,25 +136,12 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     disabled: true,
   });
   const drawerRef = useRef<HTMLDivElement>(null);
-  // The CONTENT ROW, measured for the right rail's push/overlay decision. This
-  // element and not a descendant: its width is invariant under everything the
-  // resolver decides (parking the route rail and growing the panel both
-  // redistribute space INSIDE it), so the measurement can never chase its own
-  // consequence. See `lib/right-rail/frame.ts`.
+  // The CONTENT ROW, measured for the right rail's push/overlay decision.
   const contentRowRef = useRef<HTMLDivElement>(null);
-  // Mobile devices may only reach a narrow allowlist of routes (see
-  // isMobileAllowedPath() in sidebar-navigation.ts). Any other path on a
-  // phone bounces to /m/home — the scan-first cockpit — so the device
-  // stays focused on the warehouse-floor jobs it was issued for.
+  // Mobile devices may only reach a narrow allowlist of routes (see isMobileAllowedPath() in sidebar-navigation.ts).
   const mobileRouteRestricted = isMobile && !isMobileAllowedPath(pathname);
 
-  // `/m/*` routes are inherently mobile — the edge proxy only ever serves them
-  // to phones. Device detection (useDeviceMode) is client-only, so on a fresh
-  // load/refresh it reports `desktop` for the first render(s); without this the
-  // page would flash the desktop layout (top header, no bottom nav) and then
-  // snap to mobile once detection resolves — a refresh-only layout jump. Treat
-  // `/m` paths as mobile deterministically so SSR + first paint match the final
-  // layout (no blank gate, no desktop→mobile flip).
+  // `/m/*` routes are inherently mobile — the edge proxy only ever serves them to phones.
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
   /** Auth / enroll / offline — no permanent sidebar; page owns full-bleed chrome.
    *  (Kiosk paths never reach this shell: `AppShellSwitch` gives them `KioskAppShell`.) */
@@ -202,20 +153,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     setMounted(true);
   }, []);
 
-  /**
-   * Warm the spine chunk during the first idle window — the backstop tier of
-   * the prefetch (`preload-spine.ts`). Hover/focus on the toggle covers the
-   * pointer path; this covers the operator who taps, or Tabs straight to it,
-   * or clicks faster than the fetch.
-   *
-   * It FETCHES, it does not mount: the column still starts collapsed and the
-   * nav graph still does not render, so `SidebarNavColumn`'s bundle-altitude
-   * rule holds. `requestIdleCallback` (with a fallback timer for Safari) keeps
-   * it strictly behind paint and hydration.
-   *
-   * Desktop only, chromeful only — a mobile route uses the drawer and a
-   * kiosk/public path has no spine to open, so warming there is pure waste.
-   */
+  /** Warm the spine chunk during the first idle window — the backstop tier of the prefetch (`preload-spine.ts`). */
   useEffect(() => {
     if (!mounted || isMobile || onMobileRoute || chromeless) return;
     const ric = (window as typeof window & {
@@ -265,28 +203,8 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   useBodyScrollLock(drawerOpen);
 
   // There is NO pre-hydration blank gate, and there must not be one again.
-  //
-  // Mobile is a ROUTING decision, not a width decision: phones are served the
-  // `/m/*` shell by the edge proxy, and a phone that lands on a desktop-only
-  // path bounces to `/m/home` via `mobileRouteRestricted`. So a non-`/m` route
-  // resolves to the desktop branch as its FINAL state on every device — there
-  // is no desktop→mobile flip left to hide.
-  //
-  // The gate that used to sit here returned `<div aria-hidden />` for every
-  // mobile-allowed path (`/unbox`, `/receiving`, `/triage`, `/pack`, …) until
-  // `mounted` flipped after hydration. Because `mounted` starts false on the
-  // server, that blanked the ENTIRE shell in the SSR HTML: `/unbox` shipped
-  // 285KB of flight payload over 544 bytes of empty DOM, so no server-rendered
-  // content could ever own LCP and every station's first paint waited on the
-  // JS bundle. Deleting it is the LCP lever — see the Paint content order SoT
-  // (P0 shell must paint).
 
-  // Drawer overlay is rendered regardless of which branch is active so pages
-  // that ship their own mobile UI (e.g. /receiving uses `md:hidden`) can still
-  // open the side nav at narrow viewports — useUIMode can return `desktop`
-  // when device detection misses and we'd otherwise leave the drawer
-  // unmounted. CSS-hides on real desktop widths — every desktop route now has
-  // the permanent (collapsible) sidebar, so the drawer is mobile-only.
+  // Drawer overlay is rendered regardless of which branch is active so pages that ship their own mobile UI (e.g.
   const drawerOverlay = (
     <AnimatePresence>
       {drawerOpen && (
@@ -333,18 +251,6 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
   );
 
   // ── Desktop layout ──
-  //
-  // The branch is keyed on the ROUTE, never on viewport width. `/m` routes get
-  // the mobile shell (deterministically, so a refresh never flashes the desktop
-  // frame); every other route gets this one on every device.
-  //
-  // It used to read `!isMobile && !onMobileRoute`, which flipped a non-`/m`
-  // route to the content-only mobile branch once client-side device detection
-  // resolved. That in-place flip is what forced the pre-hydration blank gate
-  // above (to hide the flash), and the blank gate is what cost the whole app
-  // its SSR paint. It was also redundant: `/m/*` already IS the mobile routing
-  // answer, and pages that need a narrow-width treatment do it in CSS
-  // (`md:hidden`), which keeps working here because CSS needs no JS to resolve.
   if (!onMobileRoute) {
     return (
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
@@ -352,10 +258,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
         <PhoneScanBridgeMount />
         <StaffPrintBridgeMount />
 
-        {/* The nav spine — the page list, and only the page list. It is a flex
-            SIBLING of the header+content column, so opening it moves the frame
-            right instead of painting over it. The route's own sidebar rides
-            inside `<main>`, so the two never contend for the same edge. */}
+        {/* The nav spine — the page list, and only the page list. */}
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
@@ -381,18 +284,7 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
-            {/* The route's own sidebar rides HERE, beside the workspace — one
-                wrapper for every route, benches included. See
-                `ContextPanelLayout`.
-
-                The right rail is its mirror on the trailing edge: a flex-row
-                sibling, so a non-modal inspector PUSHES the workspace instead of
-                floating over it (`source-of-truth.md` → Right-rail modality).
-                It lives inside `<main>` rather than beside the header+content
-                column on purpose — `appContentShellClass` already paints the
-                canvas + wash its card needs as a ground plane, and GlobalHeader
-                stays full width, which keeps the header's own right-rail slot
-                geometry true. */}
+            {/* The route's own sidebar rides HERE, beside the workspace — one wrapper for every route, benches included. */}
             {chromeless ? (
               children
             ) : (
@@ -418,19 +310,6 @@ export function DesktopRouteShell({ children }: DesktopRouteShellProps) {
     );
   }
 
-  // (The `mobileRouteRestricted` blank that used to sit here is gone: only `/m`
-  // paths reach this far now, and `/m` is always mobile-allowed, so it could
-  // never fire. The redirect effect above still bounces a phone off a
-  // desktop-only path — that is routing, and it is unchanged.)
-  //
-  // There is no `/m/*` branch below either, and there must not be one again.
-  // The handheld frame is its own module (`MobileRouteShell`), picked by
-  // `WarehouseShell` from the pathname. A runtime branch here shipped this
-  // file's whole import graph — header, spine, command bar, context panel,
-  // desktop scanner — to every phone that loaded a `/m/*` route.
-  //
-  // `onMobileRoute` therefore only ever describes a route this shell does NOT
-  // own; it survives because the drawer and the width-published frame still
-  // read it while a desk route is displayed narrow.
+  // (The `mobileRouteRestricted` blank that used to sit here is gone:
   return null;
 }

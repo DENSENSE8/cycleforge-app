@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Shared inventory PO header — dense Action Plane fact bands.
- * Composed by Unbox Inventory
- * Displays Information (`instrument` = WMS horizontal rows).
- * Capability nouns in labels ("inventory"), not vendor product.
- */
+/** Shared inventory PO header — dense Action Plane fact bands. */
 
 import { PoChip, getLast8 } from '@/components/ui/CopyChip';
 import {
@@ -23,13 +18,7 @@ export function InventoryPoHeader({
   variant = 'full',
 }: {
   data: DetailsResponse;
-  /**
-   * `full` — desk Incoming context (multi-column strip).
-   * `compact` — densify strip (legacy desk).
-   * `instrument` — Unbox Inventory Displays Information: WMS horizontal
-   *   label|value rows via {@link StationDenseFactStrip} `layout="rows"`.
-   *   Never a multi-column label-above-value grid.
-   */
+  /** `full` — desk Incoming context (multi-column strip). */
   variant?: 'full' | 'compact' | 'instrument';
 }) {
   const po = data.po;

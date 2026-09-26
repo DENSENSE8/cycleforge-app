@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Reads for Review · Listing match and Review · Missing item number.
- *
- * Two stores, two queries — never one list with a source switch. Linking a
- * chore and resolving an exception are different writes; the caches stay
- * distinct so a resolve cannot leave the listing queue showing a stale count.
- */
+/** Reads for Review · Listing match and Review · Missing item number. */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';

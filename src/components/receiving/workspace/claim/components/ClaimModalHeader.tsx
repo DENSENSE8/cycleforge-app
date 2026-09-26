@@ -7,13 +7,7 @@ interface Props {
   submitting: boolean;
   archiveSubmitting?: boolean;
   onClose: () => void;
-  /**
-   * `display` — Unbox Displays push: strip + Chat·Claim tabs already name the
-   * verb; carton identity lives on StationContextBar. No second gray title /
-   * PO restatement / X (column `→|` owns dismiss).
-   * `modal` — right slide-over (Testing / triage): no carton context beside it,
-   * so eyebrow + PO key + close are load-bearing.
-   */
+  /** `display` — Unbox Displays push: */
   chrome?: 'modal' | 'display';
 }
 

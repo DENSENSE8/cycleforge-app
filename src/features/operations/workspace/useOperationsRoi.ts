@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * First-week ROI rollup for the Operations → Analytics mode.
- *
- * Reads ONLY the org-scoped GET /api/operations/roi (captured throughput from
- * workflow_node_stats + units/labor-hour + cycle-by-stage + units stuck). No
- * cross-tenant data, no polling — a 5-minute staleTime keeps it a glance metric,
- * not a live feed (the neon-cost rule). A non-OK / unsuccessful response resolves
- * to null so the section renders its teaching empty state instead of throwing.
- */
+/** First-week ROI rollup for the Operations → Analytics mode. */
 
 import { useQuery } from '@tanstack/react-query';
 

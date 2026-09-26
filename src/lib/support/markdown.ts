@@ -1,26 +1,4 @@
-/**
- * Lightweight, dependency-free markdown for the support console.
- *
- * Supports the small grammar staff actually use in replies/notes:
- *   **bold**   *italic*   `code`   ![alt](url)   bare URLs (autolinked)   line breaks,
- *   plus the BLOCK grammar a customer-facing reply actually arrives in —
- *   `#`/`##`/`###` headings, `-`/`*`/`1.` lists, `>` blockquotes, `---` rules.
- *
- * Three outputs from one grammar:
- *   - `renderInlineMarkdown(text)` → safe React nodes, one line at a time.
- *   - `renderBlockMarkdown(text)`  → safe React nodes with block structure, on the
- *                                    house type scale (there is no Tailwind
- *                                    typography plugin in this repo, so the block
- *                                    scale is defined ONCE here — never per call
- *                                    site, and never as a `prose` class).
- *   - `markdownToHtml(text)`       → sanitized HTML string for the Zendesk
- *                                    `html_body`, with the SAME block structure, so
- *                                    the customer's email is formatted rather than
- *                                    carrying a literal `###`.
- *
- * All three escape first, then tokenize — there is no `dangerouslySetInnerHTML` and
- * no user input ever reaches the DOM/HTML un-escaped.
- */
+/** Lightweight, dependency-free markdown for the support console. */
 
 import React from 'react';
 
@@ -37,10 +15,7 @@ type RenderInlineMarkdownOptions = {
   onOpenPhoto?: (url: string) => void;
 };
 
-// Order matters: code first (so ** inside `code` is literal), then images
-// (before bare URLs so `![alt](https://…)` is not split), then bold before
-// italic (so ** isn't eaten as two * ), then autolinked URLs.
-// Optional whitespace after `]` covers paste quirks like `![] (url)`.
+// Order matters:
 const INLINE_RE =
   /(`[^`\n]+`)|(!\[([^\]]*)\]\s*\(([^)\s]+)\))|(\*\*[^*\n]+\*\*)|(\*[^*\n]+\*)|((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)])/g;
 
@@ -170,13 +145,7 @@ const BULLET_RE = /^[-*•]\s+(.*)$/;
 const ORDERED_RE = /^\d+[.)]\s+(.*)$/;
 const RULE_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 
-/**
- * Split a message body into blocks.
- *
- * Deliberately line-based and forgiving: staff paste from email, so a paragraph
- * is a run of consecutive non-blank lines (its own soft line breaks preserved)
- * and a list does not need a blank line before it.
- */
+/** Split a message body into blocks. */
 export function parseMarkdownBlocks(text: string): MarkdownBlock[] {
   const lines = String(text ?? '').split(/\r?\n/);
   const blocks: MarkdownBlock[] = [];
@@ -254,14 +223,7 @@ export function parseMarkdownBlocks(text: string): MarkdownBlock[] {
   return blocks;
 }
 
-/**
- * The block type scale, defined exactly once.
- *
- * There is no Tailwind typography plugin in this repo, so `prose` does not
- * exist — a block scale invented at a call site would be the drift this map
- * prevents. Body stays `text-role-data` (the ledger row's own body role, which
- * the wrapper sets); headings step UP from it and the weight ceiling is 600.
- */
+/** The block type scale, defined exactly once. */
 const BLOCK_CLASS = {
   h1: 'text-role-title text-text-default',
   h2: 'text-role-body font-semibold text-text-default',
@@ -286,13 +248,7 @@ function softWrapped(lines: string[], keyPrefix: string, onOpenPhoto?: (url: str
   });
 }
 
-/**
- * Render a message body with block structure — headings, lists, blockquotes and
- * rules — on the house type scale.
- *
- * The caller supplies the body role on the wrapper (`text-role-data`); this only
- * emits structure and the per-block overrides above.
- */
+/** Render a message body with block structure — headings, lists, blockquotes and rules — on the house type scale. */
 export function renderBlockMarkdown(
   text: string,
   options?: RenderInlineMarkdownOptions,
@@ -379,16 +335,7 @@ function inlineHtml(line: string): string {
     .join('');
 }
 
-/**
- * Render markdown to a sanitized HTML string (used for the Zendesk `html_body`).
- *
- * Same block grammar as `renderBlockMarkdown` — one parser, two renderers — so a
- * staffer who writes `### Next steps` sees the same structure in the ledger and in
- * the customer's inbox. It emitted inline-only HTML until 2026-08-03, which meant a
- * heading, list or quote reached the customer as a literal `###` / `-` / `>`.
- *
- * Bare semantic tags, no classes: an email client has no stylesheet of ours.
- */
+/** Render markdown to a sanitized HTML string (used for the Zendesk `html_body`). */
 export function markdownToHtml(text: string): string {
   return parseMarkdownBlocks(text)
     .map((b) => {

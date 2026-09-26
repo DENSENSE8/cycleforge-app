@@ -1,23 +1,4 @@
-/**
- * Activation gate — first-run funnel before empty operator desks.
- *
- * A new org without an active workflow (`workflow_definitions.is_active`) must
- * land on `/onboarding/template`, not an empty `/incoming` skeleton or My Day.
- * Mirrors the trial-gate shape (pure allowlist + injectable deps) but is always
- * on — there is no env kill-switch; dogfood orgs with a workflow are unaffected.
- *
- * Fail-open: if the workflow probe throws / cannot be trusted, do NOT redirect.
- * We deliberately do **not** use `getOnboardingStats` here — that helper
- * degrade-to-zeros on DB error, which would falsely treat mature orgs as
- * template-less during a blip.
- *
- * Wired into:
- *   - `requirePermission` (page.tsx choke points)
- *   - root layout (covers desks that skip page-guard, e.g. `/`, `/incoming`)
- *
- * The DB probe is dynamically imported so unit tests of the pure decision stay
- * free of `server-only` / Neon.
- */
+/** Activation gate — first-run funnel before empty operator desks. */
 
 import { cache } from 'react';
 import type { OrgId } from '@/lib/tenancy/constants';

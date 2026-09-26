@@ -1,14 +1,4 @@
-/**
- * The compound seam: FOUR families, ONE renderer and ONE column declaration.
- *
- * These used to assert that Receiving's and Orders' hand-copied column arrays
- * had stayed byte-identical. That is a weaker property than it looks: it lets
- * the drift happen and then reports it, and it says nothing about the third and
- * fourth family. The arrays are now DERIVED from `COMPOUND_TRACKS`, so equality
- * is structural — and what is left to pin is the thing a cast cannot check:
- * that every family's key union really does carry the compound keys, and that
- * nobody has quietly reintroduced a per-family array.
- */
+/** The compound seam: */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
@@ -52,10 +42,7 @@ const widths = (c: readonly { key: string; width?: string }[]) =>
  */
 const FAMILIES = [
   ['Receiving (Unbox · History · Testing)', RECEIVING_COMPOUND_COLUMNS],
-  // Tasks and Daily are NOT here: both are engine-record families
-  // (`TASKS_FAMILY`, `DAILY_FAMILY`), so the engine binds their identity fact
-  // into the identity chrome track and the array is DERIVED rather than the
-  // shared object. Each gets its own assertion below, beside Orders.
+  // Tasks and Daily are NOT here:
   ['Review · Listing match', CATALOG_LINK_COMPOUND_COLUMNS],
   ['Review · Missing item number', IMPORT_EXCEPTION_COMPOUND_COLUMNS],
 ] as const;
@@ -285,14 +272,7 @@ describe('firstNote', () => {
 
 describe('every table measures the same row', () => {
   it('one constant owns the row box — paint AND the virtualizer estimate', () => {
-    // Receiving rendered a single visible line while To-Ship rendered two,
-    // because `ReceivingGridRow` pinned itself to the HEADER band constant
-    // (`PRIMARY_CHROME_ROW_FACE`, h-7 = 28px, shrink-0) while the orders row
-    // carried no height class at all. A 48px compound cell inside a 28px
-    // shrink-0 row overflows and `[contain:layout_style]` clips it silently.
-    //
-    // The rule this pins: a compound row's height is a property of what it
-    // CONTAINS, and it comes from exactly one number.
+    // Receiving rendered a single visible line while To-Ship rendered two, because `ReceivingGridRow` pinned itself to the HEADER band…
     assert.equal(COMPOUND_ROW_PX, 48);
   });
 

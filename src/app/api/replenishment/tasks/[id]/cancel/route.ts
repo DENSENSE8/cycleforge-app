@@ -2,14 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { cancelTask } from '@/lib/replenishment/pick-face';
 
-/**
- * POST /api/replenishment/tasks/[id]/cancel
- *
- * Cancels an open (REQUESTED or IN_PROGRESS) task. Terminal-state tasks
- * return 409.
- *
- * Body: { reason: string }
- */
+/** POST /api/replenishment/tasks/[id]/cancel */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;

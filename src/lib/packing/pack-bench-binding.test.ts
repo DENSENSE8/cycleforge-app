@@ -1,10 +1,4 @@
-/**
- * Phase 1.5 — the Settings → Workstation packing-bench binding.
- *
- * DB-free: every rule here is pure or browser-storage, so it is unit-testable.
- * What it pins is the SoT boundary — the binding REFERENCES a `locations` row
- * and never becomes one, and it never wins over an explicit operator act.
- */
+/** Phase 1.5 — the Settings → Workstation packing-bench binding. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

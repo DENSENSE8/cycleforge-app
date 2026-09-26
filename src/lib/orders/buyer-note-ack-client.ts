@@ -3,19 +3,7 @@
 import { requestConfirm } from '@/design-system/components/confirm';
 import { BUYER_NOTE_HOLD_CODE } from '@/lib/orders/buyer-note-interlock';
 
-/**
- * Client half of the buyer-note interlock (`src/lib/orders/buyer-note-interlock.ts`).
- *
- * `send` performs one attempt of a pack / label request and MUST mint a fresh
- * idempotency key per call: the held attempt's 409 is cached against its key,
- * so a retry under the same key would replay the hold.
- *
- * When the server holds the order, the full buyer note opens in the app's one
- * confirm dialog. Confirm → `POST /api/orders/[id]/buyer-note/ack` → `send`
- * again. Cancel (or a failed ack) returns the held response, so the caller's
- * existing error path shows the server's message — the interlock never fails
- * open.
- */
+/** Client half of the buyer-note interlock (`src/lib/orders/buyer-note-interlock.ts`). */
 export async function sendWithBuyerNoteAck(send: () => Promise<Response>): Promise<Response> {
   const first = await send();
   if (first.status !== 409) return first;

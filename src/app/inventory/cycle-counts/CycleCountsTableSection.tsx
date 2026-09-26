@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Admin › Cycle count campaigns — the PAGE feed for
- * `/inventory/cycle-counts`, and the RSC boundary for the desk.
- *
- * The page is a server component: it guards the permission, runs
- * `loadCampaigns` and owns the create form (a server action). `DataTable` is a
- * client island — staff prefs, the Fields picker, the search box and column
- * drag all live in the browser — so the page renders THIS and hands the
- * already-loaded rows across as plain props. No fetch moves to the client.
- *
- * It exists for the boundary and nothing else: the mount holds no column
- * model, no cell and no row component (`TABLE_ENGINE_ACCEPTANCE`). Same shape
- * as `EventsExplorerTable` one route over.
- */
+/** Admin › Cycle count campaigns — the PAGE feed for `/inventory/cycle-counts`, and the RSC boundary for the desk. */
 
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';

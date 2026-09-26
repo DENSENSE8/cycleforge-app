@@ -24,10 +24,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // Thread the caller's active tenant so the shared module filters out any
-    // cross-tenant replenishment_request_ids (org-scoped SELECT/UPDATE) and
-    // stamps the true organization_id on status-log writes. Without this,
-    // org A could read/Zoho-create-against/mutate org B's rows.
+    // Thread the caller's active tenant so the shared module filters out any cross-tenant replenishment_request_ids (org-scoped SELECT/UPDATE)…
     const created = await createDraftPurchaseOrders(ids, ctx.organizationId);
 
     return NextResponse.json({

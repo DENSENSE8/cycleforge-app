@@ -12,17 +12,6 @@ const SLASH_DATE_RE = /^\d{1,2}\/\d{1,2}\/\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?$
 const TZ_SUFFIX_RE = /(Z|[+-]\d{2}:\d{2})$/i;
 
 // ─── Civil date keys (YYYY-MM-DD) ─────────────────────────────────────────────
-//
-// A *civil date* is a calendar day with no time-of-day. It is NOT an Instant.
-// Never parse a date key as host-local midnight (`new Date(`${key}T00:00:00`)`)
-// and re-format it in another zone — that is the class of bug that shifts a day
-// on UTC CI runners. All arithmetic and display for date keys go through these
-// helpers.
-//
-// Three types (keep them separate):
-//   Instant      → ISO-8601 with Z/offset; format with timeZone: WAREHOUSE_TIME_ZONE
-//   Civil date   → YYYY-MM-DD only; use parseDateKey / addDaysToDateKey / formatDateKey*
-//   Zoned wall   → Instant + explicit zone (SQL: timezone('America/Los_Angeles', ts)::date)
 
 interface DateKeyParts {
   y: number;
@@ -131,12 +120,7 @@ export function formatDateKeyMedium(
   }).format(date);
 }
 
-/**
- * Calendar-widget bridge only: civil key → local-midnight `Date` for
- * react-day-picker / native date inputs. Round-trip ONLY with
- * {@link localDateToDateKey}. Do not pass this `Date` to zoned formatters
- * or `toISOString()` for warehouse day logic.
- */
+/** Calendar-widget bridge only: */
 export function dateKeyToLocalDate(dateKey: string): Date | undefined {
   const parts = parseDateKey(dateKey);
   if (!parts) return undefined;
@@ -166,12 +150,7 @@ export function warehouseDayUtcBounds(
   return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
-/**
- * Warehouse civil day + wall clock (`HH:MM`) → the true instant. DST-honest:
- * `09:00` on a PDT day and on a PST day are different UTC hours, which is the
- * whole reason this is not `dayStart + minutes`. Null when either part is
- * malformed.
- */
+/** Warehouse civil day + wall clock (`HH:MM`) → the true instant. */
 export function warehouseCivilTimeToInstant(dateKey: string, hhmm: string): Date | null {
   if (!parseDateKey(dateKey) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return null;
   const instant = fromZonedTime(`${dateKey}T${hhmm}:00.000`, PST_TIME_ZONE);
@@ -436,12 +415,7 @@ export function formatDateTimePST(
     .replace(',', '');
 }
 
-/**
- * Dense instant face for ledger columns: short month + day + wall clock, no
- * year — e.g. `Jul 13, 4:15 PM`. Warehouse PST; follows the user's 12h/24h
- * preference (override with `hour12`). Use for Tested-at and similar stamps
- * where the full numeric `formatDateTimePST` truncates in a narrow track.
- */
+/** Dense instant face for ledger columns: */
 export function formatMonthDayTimePST(
   input: string | Date | null | undefined,
   options?: { hour12?: boolean },
@@ -604,13 +578,7 @@ export function formatOpsStageTime(
   return formatTime12hPST(input);
 }
 
-/**
- * Wall-clock time in America/Los_Angeles, following the user's clock-format
- * preference (12-hour with AM/PM by default, or 24-hour `HH:mm`). Pass
- * `hour12` to force a specific format regardless of the preference.
- *
- * (Name kept for back-compat; it is no longer strictly 12-hour.)
- */
+/** Wall-clock time in America/Los_Angeles, following the user's clock-format preference (12-hour with AM/PM by default, or 24-hour `HH:mm`). */
 export function formatTime12hPST(
   input: string | Date | null | undefined,
   options?: { withSeconds?: boolean; hour12?: boolean }
@@ -645,13 +613,7 @@ export function formatTime12hPST(
   return formatWallClock(h24, m, s, { hour12, withSeconds });
 }
 
-/**
- * Stage/row clock time (no seconds) that FOLLOWS the user's clock-format
- * preference: `HH:mm` in 24-hour mode, `h:mm AM/PM` in 12-hour mode. Use for
- * pipeline stage rows (scanned / unboxed / received) and any dense timestamp
- * where the format should track the setting. For a hard-24h clock regardless of
- * preference, use {@link formatClockTimePST}.
- */
+/** Stage/row clock time (no seconds) that FOLLOWS the user's clock-format preference: */
 export function formatStageClockTimePST(input: string | Date | null | undefined): string {
   return formatTime12hPST(input, { withSeconds: false });
 }
@@ -771,12 +733,7 @@ export interface WeekRange {
   endStr: string;
 }
 
-/**
- * Compute Sunday–Saturday civil date range for a week offset
- * (0 = warehouse week containing today, 1 = previous week, …).
- * `startStr` / `endStr` are YYYY-MM-DD civil keys (host-TZ independent).
- * `start` / `end` are local calendar Dates for legacy pickers only.
- */
+/** Compute Sunday–Saturday civil date range for a week offset (0 = warehouse week containing today, 1 = previous week, …). */
 export function computeWeekRange(weekOffset: number, anchorDateKey?: string): WeekRange {
   const todayPst =
     anchorDateKey && parseDateKey(anchorDateKey) ? anchorDateKey : getCurrentPSTDateKey();

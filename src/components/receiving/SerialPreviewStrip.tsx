@@ -23,12 +23,7 @@ export function distinctBoxIds(serials?: BoxableSerial[] | null): number[] {
   );
 }
 
-/**
- * Non-interactive box-membership hint (teal, matching HandlingUnitChip's LPN
- * convention). Shows `H-{id}` when a line's serials all sit in one box, or
- * `N boxes` when they're spread — a glance at physical grouping without the
- * interactive CopyChip, so it is safe inside a clickable row/button.
- */
+/** Non-interactive box-membership hint (teal, matching HandlingUnitChip's LPN convention). */
 export function BoxMembershipHint({
   serials,
   className,
@@ -49,19 +44,7 @@ export function BoxMembershipHint({
   );
 }
 
-/**
- * Non-interactive serial preview — a strip of emerald `serial`-tone pills
- * (last-8) that lets an operator see WHICH serials sit on a line at a glance
- * (e.g. when a PO carries duplicate SKUs). Plain spans, so it is safe to render
- * inside a clickable row/button; caps at `max` with a +N overflow so a
- * many-serial line can't blow out the row height.
- *
- * A LABELED unit (has a minted `unit_uid`) reads emerald (the `serial`
- * CHIP_TONE); an UNLABELED unit reads muted gray — a glanceable "not printed
- * yet" cue. No invented colors. Shared by the testing multi-picker
- * (TestingSidebarPanel) and the receiving carton units explosion so
- * the two never drift.
- */
+/** Non-interactive serial preview — a strip of emerald `serial`-tone pills (last-8) that lets an operator see WHICH serials sit on a line… */
 export function SerialPreviewStrip({
   serials,
   max = 5,

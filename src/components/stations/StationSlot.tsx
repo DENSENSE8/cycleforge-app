@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * StationSlot — the mount point that makes a station page composable.
- *
- * Drop `<StationSlot pageKey="receiving" modeKey="incoming" slot="queue" />`
- * into a mode panel and it renders whatever blocks the published
- * station_definitions config places in that slot (nothing, for pages that
- * were never customized — the legacy tree around it keeps rendering as the
- * explicit escape hatch).
- *
- * For holders of `stations.manage` it also carries the whole edit loop, the
- * same affordance ladder as the rail edit-mode pencil escalated one level:
- * pencil → live edit mode (slot outline, per-block ⚙/✕/↑↓) → "+ Add block"
- * palette → Config Sheet → Save draft / Publish. The page stays LIVE while
- * editing — blocks render real data from the draft config as you compose.
- */
+/** StationSlot — the mount point that makes a station page composable. */
 
 import React, { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

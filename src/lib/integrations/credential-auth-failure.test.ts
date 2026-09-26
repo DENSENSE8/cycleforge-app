@@ -5,12 +5,7 @@ import {
   isTransientCredentialFailure,
 } from './credential-auth-failure';
 
-/**
- * The exact prod message that latched Zoho off for 25 h on 2026-09-14. It
- * contains "token refresh", so the auth classifier used to claim it and flip
- * organization_integrations.status to 'error' — a state only a human OAuth run
- * cleared. It is a 10-minute throttle. It MUST classify as transient only.
- */
+/** The exact prod message that latched Zoho off for 25 h on 2026-09-14. */
 const ZOHO_MINT_THROTTLE =
   'Zoho token refresh failed: 400 (Access Denied): You have made too many requests continuously. Please try again after some time.';
 

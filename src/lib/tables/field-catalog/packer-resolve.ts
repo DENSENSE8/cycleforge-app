@@ -1,16 +1,4 @@
-/**
- * Packer bench slot resolvers — row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks, no fetch, no clock.
- *
- * The row is the shared `QueueRowRecord` that `packerRecordToQueueRow`
- * produced. Unlike the tech bench, that mapper DOES project name aliases for
- * both actors (`tested_by_name` / `tester_name`, `packed_by_name`), so both
- * steps below can paint a name; the staff id still rides along so the cell
- * can draw the avatar.
- *
- * Neither step resolves a `station`: the mapper projects no bench label, and
- * an invented one would be a column that disagrees with the floor.
- */
+/** Packer bench slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';

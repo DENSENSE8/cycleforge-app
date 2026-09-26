@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getWorkOrdersInRange } from '@/lib/work-orders/queries';
 
-/**
- * GET /api/work-orders/calendar?from=<ISO>&to=<ISO>
- *
- * Windowed work-order feed for the scheduling calendar page (P3-ADM-03).
- * Reuses the SAME work_assignments model + the additive windowed query
- * (getWorkOrdersInRange) — the calendar is purely an alternate VIEW over the
- * existing assignment data, not a new store. Create/assign on a day is handled
- * by the existing PATCH /api/work-orders endpoint (untouched here).
- *
- * Org/RLS scoped via withAuth (getWorkOrdersInRange takes ctx.organizationId).
- * `from` inclusive, `to` exclusive (UTC ISO). Defaults to the current month if
- * absent/invalid.
- */
+/** GET /api/work-orders/calendar?from=<ISO>&to=<ISO> */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

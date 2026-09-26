@@ -1,11 +1,6 @@
 import type { CarrierCode, NormalizedShipmentStatus } from '@/lib/shipping/types';
 
-/**
- * Live per-carrier sync feed for POST /api/receiving-lines/incoming/refresh/stream.
- * Mirrors the orders-sync NDJSON contract (see
- * {@link import('@/lib/orders-sync/types').SyncStreamEvent}) but is keyed by
- * carrier instead of source.
- */
+/** Live per-carrier sync feed for POST /api/receiving-lines/incoming/refresh/stream. */
 
 /** One shipment's outcome from a single re-poll. */
 export interface CarrierSyncShipmentDetail {
@@ -18,13 +13,7 @@ export interface CarrierSyncShipmentDetail {
   newStatus: NormalizedShipmentStatus | null;
   /** New carrier events written this poll (0 = no movement). */
   eventsInserted: number;
-  /**
-   * Bucket the row lands in:
-   *  - delivered: flipped to a terminal state (DELIVERED / RETURNED)
-   *  - updated:   non-terminal status with fresh carrier events
-   *  - unchanged: polled successfully but nothing new
-   *  - error:     the carrier poll failed
-   */
+  /** Bucket the row lands in: */
   kind: 'delivered' | 'updated' | 'unchanged' | 'error';
   error?: string;
 }

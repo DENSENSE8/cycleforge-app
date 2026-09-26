@@ -1,12 +1,4 @@
-/**
- * Packer-log completion contract.
- *
- * A PACKER_LOG is also the photo-evidence parent.  A capture can therefore
- * exist before the physical pack is complete, but it must not appear as a
- * packed order merely because photos have started uploading.  These values
- * are persisted in `packer_logs.completion_state`; keep the vocabulary here
- * so API writers and read projections do not invent their own draft marker.
- */
+/** Packer-log completion contract. */
 export const PACKER_LOG_COMPLETION_STATES = ['CAPTURING', 'COMPLETED', 'CANCELLED'] as const;
 
 export type PackerLogCompletionState = (typeof PACKER_LOG_COMPLETION_STATES)[number];

@@ -5,14 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/serial-units/[id]/print-history
- *
- * Ordered (newest-first) label print jobs for a serial unit — the read side of
- * the `label_print_jobs` ledger. Proves reprint-vs-first-issue and surfaces the
- * exact DataMatrix payload that was on each sticker. Org-scoped. Auth:
- * `print.label`.
- */
+/** GET /api/serial-units/[id]/print-history */
 export const GET = withAuth(
   async (request, ctx) => {
     const segments = request.nextUrl.pathname.split('/').filter(Boolean);

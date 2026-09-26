@@ -7,14 +7,7 @@ import {
   type ResolveBuyerCustomersDeps,
 } from './resolve-buyer-customers';
 
-/**
- * DB-free unit tests for the buyer resolver's precedence + persistence
- * (domain-unit-test pattern: a capturing fake behind the `runQuery` dep —
- * no pool, no network). The SQL text is asserted by PREFIX (what the resolver
- * asks for), not by string equality — the contract is the tier order, the
- * org scoping, and what gets stamped where.
- * Run: npx tsx --test src/lib/orders/resolve-buyer-customers.test.ts
- */
+/** DB-free unit tests for the buyer resolver's precedence + persistence (domain-unit-test pattern: */
 
 const ORG = '00000000-0000-0000-0000-000000000002' as never;
 

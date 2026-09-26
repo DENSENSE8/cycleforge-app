@@ -1,11 +1,4 @@
-/**
- * Slot-table paging — one page size, every PRODUCT_TABLES mount.
- *
- * Pages fill to the chosen size in LEAVES (line rows), not whole folds.
- * Packing by fold left "45 of 96" when the next order would not fit in 100.
- * A fold that straddles a boundary is split; each page still groups what it
- * holds so the parent band stays honest for the lines on that page.
- */
+/** Slot-table paging — one page size, every PRODUCT_TABLES mount. */
 import {
   flattenRenderOrder,
   type GroupedRenderOrder,

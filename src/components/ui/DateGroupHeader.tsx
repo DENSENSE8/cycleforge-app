@@ -8,42 +8,9 @@ import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
-/**
- * Day-group header shown between each day's rows in station / receiving / repair
- * lists that still band by civil day.
- *
- * Micro sticky label (date + qty) — quiet chrome so lane headers and rows stay
- * primary. Sticky so as a day's rows scroll past, the label docks to the top of
- * the scroll container and *is* the live date header.
- *
- * **Outbound spreadsheets do not use this** — absolute civil date lives in a
- * per-row Date column ({@link LedgerGrid} / the outbound spreadsheet pass
- * `showDayHeaders={false}`).
- *
- * When `animate` is on (dense queue / swimlane Show more), the sticky row + label
- * use the same layout spring as chip columns / order rows so the top-left date
- * reflows with the list; the qty count crossfades when the day total changes.
- *
- * One component for every day-banded table (packer / tech / shipped / Packed /
- * receiving / repair / sales, desktop + mobile) and the swim-lane board lanes.
- */
+/** Day-group header shown between each day's rows in station / receiving / repair lists that still band by civil day. */
 
-/**
- * Sticky row wrapper — left-aligned micro date+qty.
- *
- * Two fills, and the choice is about WHAT SCROLLS UNDER the band:
- *
- * - **`translucent` (default)** — `bg-surface-card/90` + a hairline backdrop
- *   blur. Right over dense TEXT rows, where a hint of the row passing beneath
- *   reads as depth and the label still wins on contrast.
- * - **`solid`** — plain `bg-surface-card`. Required over a media stream: full
- *   colour PHOTOS scroll under this band, so at 90% they tint the label and the
- *   band itself stops reading as white. It also drops `backdrop-blur-[2px]`,
- *   an arbitrary-value class the house bans everywhere it can be avoided.
- *
- * The default is unchanged, so the four text-row consumers keep their look;
- * this is the shared primitive GROWN for a second surface, not forked for it.
- */
+/** Sticky row wrapper — left-aligned micro date+qty. */
 export const dayGroupChipRowClass = cn(
   'flex items-center bg-surface-card/90 py-0.5 backdrop-blur-[2px]',
   QUEUE_ROW.px,

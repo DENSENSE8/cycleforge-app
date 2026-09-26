@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * `DeskRecordPlane` — the ONE place a desk record is placed (operator 2026-09-25).
- *
- * A surface hands it the list, the open record's view and the walk cursor; the
- * plane decides HOW the record shows from the desk's fullscreen state, which is
- * the staffer's choice (the table-row `DataTableFullscreenToggle`, remembered
- * per staffer per desk by `DeskPageLayout`):
- *
- *   in place (default, fullscreen off, or no desk stage)
- *   ┌ fixed stage ───────────────────────────────┐
- *   │ record  (DeskStageOverlay fill="stage")     │  ← list still mounted under it
- *   └─────────────────────────────────────────────┘
- *
- *   split (fullscreen on)
- *   ┌ list ─────────────────────┬ record pane ────┐
- *   │ rows — click / J·K swaps  │ title · n of N ✕│
- *   │ the right side            │ the same record │
- *   └───────────────────────────┴─────────────────┘
- *
- * - The same record component shows in both views; it adapts with a CONTAINER
- *   query ({@link DeskRecordLayout}), never a viewport breakpoint.
- * - `list` renders at one tree position in both views, so switching views never
- *   remounts it — scroll, cursor and check-set survive the toggle.
- * - Nothing registers with `RightRailHost`; there is no rail.
- * - Keys: the surface owns J/K / arrows (its record cursor —
- *   `useRecordCursorKeyboard({ …, escape: false })` — or its own handler); the
- *   in-place overlay does not claim the overlay stack, so ambient J/K keep
- *   stepping it. The plane owns Esc in both views, after any popover / inset
- *   form inside the record: the FIRST Esc closes the record, the NEXT reaches
- *   `DeskPageChrome` and exits fullscreen.
- * - Focus: on close, the row carrying `data-desk-record-key={recordKey}` inside
- *   `list` gets focus back (the exact row, even after J/K walked the record).
- *
- * @see docs/handoff/HANDOFF-desk-surface-law-2026-09-25.md
- */
+/** `DeskRecordPlane` — the ONE place a desk record is placed (operator 2026-09-25). */
 
 import {
   createContext,
@@ -65,13 +31,7 @@ export function useDeskRecordView(): DeskRecordView {
   return useDeskStageOptional()?.fullscreen ? 'split' : 'in-place';
 }
 
-/**
- * Published around the list AND the record. `ownsEscape` lets a list primitive
- * stand its own Escape down (DataTable's row Esc → find field) whenever the
- * plane needs the key: a record is open (Esc closes it), or the split view is
- * up (the next Esc exits fullscreen). Its mere presence tells a record body the
- * plane owns Escape (no inner leaf → index ladder). `null` outside a plane.
- */
+/** Published around the list AND the record. */
 export interface DeskRecordPlaneState {
   open: boolean;
   view: DeskRecordView;
@@ -164,11 +124,7 @@ export function DeskRecordPlane({
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Split: the first Esc closes the record. Document bubble runs before the
-  // chrome's window listener, and `preventDefault` is how the chrome knows the
-  // press was spent. An open popover / menu inside the record owns Esc first
-  // (overlay stack); in a field, the first Esc only leaves the field. In place,
-  // `DeskStageOverlay` applies the same order.
+  // Split: the first Esc closes the record.
   useEffect(() => {
     if (!split || !open) return;
     const onKeyDown = (event: KeyboardEvent) => {

@@ -1,23 +1,4 @@
-/**
- * Trial-expiry enforcement — the "no free tier" gate.
- *
- * A tenant on the `trial` plan whose `trial_ends_at` has passed is blocked
- * from the app until it subscribes. The predicate ONLY fires on
- * `plan === 'trial'`, so enterprise/paid orgs (USAV included) are
- * structurally immune — they can never be locked out by this.
- *
- * OFF BY DEFAULT. Set `TRIAL_ENFORCEMENT=1` (or true/on/yes) to enable. When
- * off, `isTrialBlocked` returns immediately with NO database read, so the hot
- * auth path pays nothing for a feature that isn't turned on.
- *
- * Wired into the two Node-runtime choke points (proxy.ts is Edge and can't
- * read the DB, so it can't host this):
- *   - withAuth (API)            → 402 PAYMENT_REQUIRED JSON
- *   - requirePermission (pages) → redirect to /settings/billing
- *
- * Billing + auth paths are exempt so an expired-trial tenant can always reach
- * checkout and there's no redirect loop.
- */
+/** Trial-expiry enforcement — the "no free tier" gate. */
 
 import { getOrganization } from '../tenancy/organizations';
 import type { OrgId } from '../tenancy/constants';

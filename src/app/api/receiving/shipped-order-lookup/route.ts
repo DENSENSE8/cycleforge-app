@@ -5,18 +5,7 @@ import {
   suggestShippedOrdersByNumber,
 } from '@/lib/receiving/returned-serial-link';
 
-/**
- * GET /api/receiving/shipped-order-lookup?order_number=<n>&received_serial=<s>
- *
- * READ-ONLY. Resolve a shipped sales order by its ORDER NUMBER and compare the
- * serial(s) we shipped on it against a received serial (the unit in hand).
- *
- * Powers the "Order #" search lane in the Unfound-carton Auto-match row: instead
- * of a hard wall when a scanned serial has no shipped match, the operator types
- * the order number off the return label to confirm the physical unit matches
- * what we shipped, then links it (import-sales-order) or files a ticket. This
- * endpoint only reads — no mutation, no allocation flip, no promote, no audit.
- */
+/** GET /api/receiving/shipped-order-lookup?order_number=<n>&received_serial=<s> */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   // Typeahead mode: `?q=<partial>` returns candidate orders for the Auto-match
   // order-number list. Read-only; no compare, no mutation.

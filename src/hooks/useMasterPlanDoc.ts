@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Live master-plan doc on the client (ALP-3.2).
- *
- * Binds one Y.Doc to the org's `forge:master-plan` channel through the ONE
- * app-wide Ably connection (AblyProvider — never a second Realtime client):
- *   1. attach + subscribe (provider; readOnly for staff without manage)
- *   2. bootstrap canonical state from GET /api/forge/master-plan (a base64
- *      Yjs update — applying it verbatim keeps CRDT identity; re-typing the
- *      text locally would fork the doc)
- *   3. re-render on every remote update; no polling anywhere.
- */
+/** Live master-plan doc on the client (ALP-3.2). */
 
 import { useEffect, useRef, useState } from 'react';
 import * as Y from 'yjs';

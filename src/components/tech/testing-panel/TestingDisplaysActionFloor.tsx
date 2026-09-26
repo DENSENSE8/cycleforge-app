@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Testing (QC) Station Displays carton Macro floor:
- *   [ ⋯ ][ Edit ][ Delete ]
- *
- * Thin station recipe over {@link CartonDisplaysActionFloor} (no Print, no Sync).
- * Print stays on the dock Pass · Print terminal. Never desk `InspectorActionFloor`.
- */
+/** Testing (QC) Station Displays carton Macro floor: */
 
 import { CartonDisplaysActionFloor } from '@/components/station/displays';
 import type { TestingDisplayTab } from './build-testing-displays';

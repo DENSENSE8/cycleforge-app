@@ -1,16 +1,4 @@
-/**
- * POST /api/receiving/inbound/import-ebay
- *
- * Universal Incoming — Phase 2 Track B (bridge import). Manually land an eBay
- * buyer-account purchase onto the Incoming spine BEFORE (or without) the eBay Buy
- * Order API sync, using the SAME UPSERT the Phase 3 API sync will use
- * (src/lib/inbound/ingest-purchase.ts). The row shows in `/receiving?mode=incoming`
- * with the eBay source badge + the buyer account chip.
- * Plan: docs/incoming-universal-purchase-orders-plan.md §5.1, §5.2.
- *
- * Skeleton: withAuth(permission) → validate → ingestPurchase() domain helper →
- * map 200/400 → recordAudit → after() cache refresh.
- */
+/** POST /api/receiving/inbound/import-ebay */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

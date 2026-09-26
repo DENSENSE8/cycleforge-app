@@ -1,31 +1,9 @@
-/**
- * studio/definitions — the draft-copy + publish-flip domain logic, extracted
- * verbatim from the /api/studio/definitions route handlers so it is unit-testable
- * DB-free (Phase C.3). Same pattern as applyTransition / markUnitListed: every
- * collaborator that isn't the raw tx client is INJECTED (real impls by default),
- * so a test passes fakes that capture the SQL calls.
- *
- * CRITICAL invariant: the SQL here is byte-identical to what lived inline in the
- * routes — same statements, same order, same transaction boundaries. The route
- * still owns the `withTenantTransaction(orgId, …)` boundary, the body parse, and
- * the audit; it just calls these helpers inside the tx. Do NOT change the SQL
- * semantics (the version-group FOR UPDATE lock, the node-id re-minting + edge
- * remapping, the single-statement deactivate+activate CTE, the blocking-
- * diagnostics gate, the in-flight guard) — that would change publish behavior.
- *
- * The helpers take the already-org-verified tx `client` (a Pick<PoolClient,
- * 'query'>) so the GUC/transaction lives in the route, exactly as before.
- */
+/** studio/definitions — the draft-copy + publish-flip domain logic, extracted verbatim from the /api/studio/definitions route handlers so… */
 
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
-// NOTE: import getNode/hasNode from the DB-free ./registry, NOT the @/lib/workflow
-// barrel — the barrel pulls in the Drizzle store (and thus a live DB handle) at
-// load, which would crash the DB-free unit test. The barrel's only extra job is
-// registering the built-in node types (import side-effect); the route handler
-// statically imports it so the registry is populated by the time the real deps
-// run. Tests inject fakes for getNode/hasNode and never touch the registry.
+// NOTE: import getNode/hasNode from the DB-free ./registry, NOT the @/lib/workflow barrel — the barrel pulls in the Drizzle store (and…
 import { getNode, hasNode } from '@/lib/workflow/registry';
 import { validateNodeConfig } from '@/lib/workflow/validate-config';
 import { runDiagnostics, type Diagnostic } from '@/lib/workflow/diagnostics';
@@ -63,14 +41,7 @@ const defaultCopyDeps: CopyDefinitionToDraftDeps = {
   newId: (prefix) => `${prefix}-${randomUUID()}`,
 };
 
-/**
- * Copies a source definition into the next version number for that name,
- * is_active = FALSE. Node ids are re-minted (global TEXT PKs); edges remapped
- * accordingly. Locks the whole (org, name) version group FOR UPDATE so two
- * concurrent creations can't read the same MAX(version) and collide.
- *
- * SQL moved verbatim from POST /api/studio/definitions/draft.
- */
+/** Copies a source definition into the next version number for that name, is_active = FALSE. */
 export async function copyDefinitionToDraft(
   args: CopyDefinitionToDraftArgs,
   deps: CopyDefinitionToDraftDeps = defaultCopyDeps,
@@ -100,11 +71,7 @@ export async function copyDefinitionToDraft(
     [orgId, src.name],
   );
 
-  // INSERT...SELECT copies organization_id from the org-verified source row;
-  // the copy is additionally fenced to id = $4 (src.id, already org-scoped).
-  // `annotations` (the canvas sticky-note layer, Phase E3) rides along verbatim
-  // from the source row — it's a definition-row column, so the draft fork copies
-  // it like name/organization_id (no per-row re-minting; ids are canvas-local).
+  // INSERT...SELECT copies organization_id from the org-verified source row; the copy is additionally fenced to id = $4 (src.id, already…
   const draft = await client.query<{ id: number; version: number }>(
     `INSERT INTO workflow_definitions (organization_id, name, version, is_active, created_by, annotations)
      SELECT organization_id, name,
@@ -194,14 +161,7 @@ const defaultPublishDeps: PublishDefinitionDeps = {
   stationKeys: new Set(STATIONS.map((s) => s.key)),
 };
 
-/**
- * Atomically activates a draft: lock the definition FOR UPDATE, run BLOCKING
- * diagnostics (abort on any error-severity finding), refuse an empty graph,
- * then flip via the single deactivate+activate CTE. Idempotent: re-publishing
- * the already-active version returns success without a flip.
- *
- * SQL moved verbatim from POST /api/studio/definitions/[id]/publish.
- */
+/** Atomically activates a draft: */
 export async function publishDefinition(
   args: PublishDefinitionArgs,
   deps: PublishDefinitionDeps = defaultPublishDeps,
@@ -257,10 +217,7 @@ export async function publishDefinition(
       stationRows.map((r) => ({ workflowNodeId: r.workflow_node_id, label: r.label, config: r.config })),
     ),
   });
-  // Config-schema gate: a node whose jsonb `config` violates its type's
-  // configSchema blocks publish, the same way a granular write is rejected —
-  // this catches any config that reached the draft by a path other than the
-  // guarded draftUpdate/ReplaceNodeConfig writers (validate-config.ts).
+  // Config-schema gate:
   const configDiagnostics: Diagnostic[] = nodes.rows.flatMap((n) =>
     validateNodeConfig(n.type, n.config ?? {}).errors.map((message, i) => ({
       id: `invalid-config:${n.id}:${i}`,

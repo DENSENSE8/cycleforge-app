@@ -1,15 +1,4 @@
-/**
- * Orders row → {@link CompoundRowView}. Pure; no React, no hooks.
- *
- * The second family adapter into the shared compound renderer. It exists so
- * Orders can join the one layout WITHOUT copying a cell — which is the whole
- * point of the view-model seam.
- *
- * Dense identity (To-ship): stage stays on the state pill; tester / station /
- * packer ride the item secondary when there is no operator note — so the
- * compound grid answers “where is this / who touched it” without mounting
- * ORDERS_QUEUE_COLUMNS.
- */
+/** Orders row → {@link CompoundRowView}. */
 
 import type { LifecycleState } from '@cycleforge/design-tokens';
 import {
@@ -36,14 +25,7 @@ import {
 import { shortageIdentityFromRow } from '@/lib/orders/order-shortage-identity';
 import { shortagePipelineFrom } from '@/lib/orders/shortage-pipeline';
 
-/**
- * Fulfillment lane → the three-tone vocabulary.
- *
- * `BLOCKED` is the only lane that needs a human, so it is the only `alert`.
- * `TESTED` / packed / shipped are progress that has completed a step (`done`);
- * everything else is ordinary queue movement and stays neutral, so a floor
- * screen reserves its one loud colour for the row that is actually stuck.
- */
+/** Fulfillment lane → the three-tone vocabulary. */
 export function ordersStateTone(stateLabel: string | null | undefined): CompoundStateTone {
   const s = String(stateLabel || '').toUpperCase();
   if (!s) return 'neutral';
@@ -101,13 +83,7 @@ export interface OrdersCompoundParts {
    * once per row from the materialized columns (`ordersSlotValues`).
    */
   slots?: CompoundRowView['slots'];
-  /**
-   * Bound-subtitle parts for the item cell (`ordersSubtitleParts`).
-   * `undefined` = the layout binds no subtitles, keep the legacy note/identity
-   * fallback; an array (even empty) = the org chose what rides under the
-   * title, and that choice is final — a blank line, never the implicit
-   * identity filler.
-   */
+  /** Bound-subtitle parts for the item cell (`ordersSubtitleParts`). */
   subtitleParts?: CompoundRowView['subtitleParts'];
   /**
    * True when a multi-line order parent already owns the ids — the leaf
@@ -173,12 +149,7 @@ export function ordersIdentityLine(
   return bits.length > 0 ? bits.join(' · ') : null;
 }
 
-/**
- * Absolute ship-by for the STATUS line — deadline, then `ship_by_date`.
- * Never created-at: that stamp is when the order landed, not when it must
- * leave, and painting it as ship-by is how a missing deadline used to look
- * like a real one.
- */
+/** Absolute ship-by for the STATUS line — deadline, then `ship_by_date`. */
 function ordersShipByRaw(
   record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
 ): string | null {
@@ -208,14 +179,7 @@ export function ordersShipByDelay(
   };
 }
 
-/**
- * Whole days from `fromKey` to `toKey`, both civil `YYYY-MM-DD`. Null when
- * either is missing or the target is in the past.
- *
- * Civil-day arithmetic on purpose (the same shape `getDaysLateNullable` uses):
- * a deadline is a DAY, and counting instants would make a row due tomorrow read
- * as "in 0d" all afternoon.
- */
+/** Whole days from `fromKey` to `toKey`, both civil `YYYY-MM-DD`. */
 function civilDaysBetween(fromKey: string, toKey: string | null): number | null {
   if (!toKey || !fromKey) return null;
   const [fy, fm, fd] = fromKey.split('-').map(Number);
@@ -226,30 +190,7 @@ function civilDaysBetween(fromKey: string, toKey: string | null): number | null 
   return to > from ? to - from : null;
 }
 
-/**
- * DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the
- * honest fallback.
- *
- * Two different facts, in preference order:
- *
- * 1. `order_date` — the channel's purchase instant (eBay / Amazon sync). This
- *    is the date an operator means by "order date", and the one a buyer quotes.
- * 2. `created_at` — when the row landed in this system. Every row has one,
- *    because it is the insert stamp.
- *
- * A manual row, a CSV import or a backfill carries no `order_date` at all, and
- * the cell must still say something — a blank top line on half the queue reads
- * as a broken column. So it falls back, and **the tooltip names which fact is
- * on screen** (`Ordered ·` vs `Imported ·`, and why). Staff can therefore tell
- * a real purchase date from the day we happened to import it, which is the one
- * thing a silent fallback would take away: the same failure this file's
- * `ordersShipByRaw` already refuses, where painting `created_at` as the ship-by
- * made a missing deadline look like a real one.
- *
- * Never the reverse preference, and never a fused "earliest of the two": the
- * import stamp is always later than the purchase, so mixing them would make the
- * column's own ordering meaningless.
- */
+/** DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the honest fallback. */
 export function ordersOrderedAt(
   record: Pick<ShippedOrder, 'created_at' | 'order_date'>,
 ): NonNullable<CompoundRowView['orderedAt']> | null {
@@ -280,16 +221,7 @@ export function ordersOrderedAt(
 
 /**
  * The row's leading rail — TRIAGE HEAT, in precedence order.
- *
- * Urgent is the yellow bob (an operator promise about time). A shortage or an
  * exception is the same bob in RED: operator 2026-09-15, "the out of stock
- * alert component also carries the same flashing opacity and edge mark pulse in
- * red, similar to urgent". Before that the rail was urgent-only, so the row
- * that cannot ship at all was the quietest row on the desk.
- *
- * Precedence matches {@link ordersItemStatus} (exception over shortage) so the
- * rail, the resting gutter glyph and the triangle beside the title are always
- * talking about the same fact. One row, one mark.
  */
 export function ordersEdgeMark(
   record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception'>,
@@ -462,18 +394,12 @@ export function ordersCompoundView(
   const tracking = String(row.shipping_tracking_number || row.tracking_number || '').trim();
   const opNote = firstNote([record.notes]);
   const identity = ordersIdentityLine(record, parts);
-  // The item secondary: bound subtitle PARTS (an explicit org choice) are
-  // final — the cell paints them and ignores `note`. Otherwise the operator
-  // note wins and identity fills an empty note line. When both note and
-  // identity exist, identity rides the state tip so nothing is lost.
+  // The item secondary:
   const secondary = parts.subtitleParts !== undefined ? null : (opNote ?? identity);
   const stateTipParts = [parts.delayTip, opNote && identity ? identity : null].filter(Boolean);
   const todayKey = parts.todayKey ?? getCurrentPSTDateKey();
   const delay = ordersShipByDelay(record, parts.delayDays, todayKey);
-  // The deadline line paints its AGE (`2d late`), so the civil day now exists
-  // ONLY here. The tooltip therefore states both — the date and the lateness in
-  // words — rather than the bare `Ship by · …` it carried when the cell itself
-  // printed the day.
+  // The deadline line paints its AGE (`2d late`), so the civil day now exists ONLY here.
   const shipByTooltip = (() => {
     const base = formatQueueRowDateCell(ordersShipByRaw(record))?.tooltip;
     if (!base) return undefined;
@@ -520,11 +446,7 @@ export function ordersCompoundView(
     // Marketplace/channel the order came from — the platform SoT resolves the mark.
     platformValue: row.account_source || null,
     carrier: row.carrier || null,
-    // `''`, not null: the shared compound row model takes a string and
-    // `CompoundCells` renders it directly, so an empty label paints an empty
-    // state cell — the same "nothing to say" the receiving grid already uses.
-    // Widening the shared model to null would ripple through every compound
-    // surface to say what `''` already says here.
+    // `''`, not null:
     stateLabel: parts.stateLabel ?? '',
     stateTone: ordersStateTone(parts.stateLabel),
     stateLifecycle: ordersStateLifecycle(parts.stateLabel),

@@ -6,23 +6,7 @@ import { cardTitle, monoValue } from '@/design-system/tokens/typography/presets'
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
 
-/**
- * Top bar for both faces of {@link SkuDetailView} — and they are different jobs,
- * so they wear different chrome.
- *
- * **Panel (a `RightRailHost` occupant)** composes the Desk single-card SoT:
- * `DeskRailChromeRow` (`→|` dismiss, chrome ONLY, outside the scroll port) over
- * a dense `PaneHeaderLabel` identity — eyebrow + the SKU, which is the short
- * durable key. The product title drops to a truncated caption beneath it.
- * It previously hand-rolled an `<h1 className={cardTitle}>{productTitle}</h1>`
- * plus a bare `<X>` close: a **wrapping hero title** and a dismiss glyph that
- * both say the panel goes away rather than parks. Both are banned on a record
- * inspector — `display/right-rail-inspector.md` → identity Hard Never.
- *
- * **Page (`/products/sku/[sku]`)** owns the whole route and registers no rail
- * occupant, so it keeps its page `<h1>` and its Back chevron. The SoT bans a
- * hero title in RAIL identity, not on a page.
- */
+/** Top bar for both faces of {@link SkuDetailView} — and they are different jobs, so they wear different chrome. */
 function SkuCopyableSku({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
   return (
     <button

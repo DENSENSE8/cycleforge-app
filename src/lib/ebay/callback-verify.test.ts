@@ -1,11 +1,4 @@
-/**
- * Unit gate for the eBay OAuth callback verifier (node:test, no DOM).
- *
- * Builds REAL AES-GCM states with encryptIntegrationPayload (fixed test key,
- * same pattern as crypto.test.ts) so the decrypt path is exercised, not
- * mocked — then walks every rejection the callback can answer with, plus the
- * membership re-check deps contract.
- */
+/** Unit gate for the eBay OAuth callback verifier (node:test, no DOM). */
 import assert from 'node:assert/strict';
 import { before, describe, test } from 'node:test';
 import { randomBytes } from 'node:crypto';

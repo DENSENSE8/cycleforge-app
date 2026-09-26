@@ -1,22 +1,4 @@
-/**
- * /api/staff-todos — the logged-in staffer's own header to-do lists.
- *
- * Backs the header goal chip's "Recurring" and "To-do" modes (replacing the
- * localStorage v1). No special permission — like /api/staff-goals/me, every
- * authenticated staffer reads and writes only their OWN list; staffId always
- * comes from the verified session, never the request.
- *
- *   GET    ?station=TECH|ALL[&archived=1] → { items: StaffTodoRow[] }
- *   POST   { station, kind, text, intervalMs?, idempotencyKey? } → { item }
- *   PATCH  { action: 'toggle', id, done }                        → { item }
- *   PATCH  { action: 'rename', id, text }                        → { item }
- *   PATCH  { action: 'set_interval', station, intervalMs }       → { items }
- *   DELETE ?id=123                                               → { success }
- *
- * Recurring "done" is derived client-side from recur_anchor_ms /
- * recur_interval_ms / last_completed_at_ms (see staff-todos-queries), so
- * cycle rollover needs no polling and no reset job.
- */
+/** /api/staff-todos — the logged-in staffer's own header to-do lists. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

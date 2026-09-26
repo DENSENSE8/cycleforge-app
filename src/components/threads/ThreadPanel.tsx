@@ -45,24 +45,7 @@ export interface ThreadComposerBridge {
   canPost: boolean;
   focus: () => void;
   submit: () => void;
-  /**
-   * Insert a drafted body into the composer. **NEVER sends** — this bridge
-   * member has no access to `submit` and must never gain one.
-   *
-   * `mode` sets the public/internal toggle so a draft addressed to the customer
-   * cannot arrive with `Internal` selected (silently withheld), and a note
-   * meant to stay internal cannot arrive public (silently emailed).
-   *
-   * **Overwrite rule: EXPLICIT CONFIRM.** An empty composer applies straight
-   * through with no dialog; a composer holding the operator's own text prompts
-   * (house `requestConfirm`) before replacing it, and a decline leaves their
-   * words exactly as they were. The rule itself lives in ONE place —
-   * {@link seedComposerDraft} — so the two composers implementing this bridge
-   * cannot drift on the one behaviour whose failure mode is losing typed work.
-   *
-   * Resolves when the draft has landed or been declined; callers that only fire
-   * and forget may ignore it.
-   */
+  /** Insert a drafted body into the composer. */
   setDraft: (text: string, opts?: { mode?: ComposerDraftMode }) => void | Promise<unknown>;
 }
 
@@ -80,14 +63,7 @@ const CONNECTION_ICON: Record<string, typeof Package> = {
   WARRANTY_CLAIM: ShieldCheck, FBA_SHIPMENT: Box, SUPPORT_TICKET: Ticket,
 };
 
-/**
- * ThreadPanel — the one reusable entity-conversation surface (chat bubbles +
- * composer), ticket-optional, mounted in the idiomatic slot of every entity
- * detail Workbench (docs/todo/entity-threads-conversation-plan.md D5).
- * Message cards compose {@link ConversationMessageCard} (hard DS SoT) — same
- * face as helpdesk ticket chat. The read-only merged history stays
- * `EventTimeline`. Do NOT mount the composer on a Monitor surface (D8).
- */
+/** ThreadPanel — the one reusable entity-conversation surface (chat bubbles + composer), ticket-optional, mounted in the idiomatic slot of… */
 
 function MessageBubble({
   m,
@@ -145,10 +121,7 @@ function MessageBubble({
     );
   }
 
-  // The author's REAL avatar — `StaffAvatar` resolves `staff.avatar_photo_id`
-  // through the authenticated photo route and falls back to initials + the
-  // staffer's assigned colour only when no photo is linked. Text initials were
-  // the only face here until 2026-08-21.
+  // The author's REAL avatar — `StaffAvatar` resolves `staff.avatar_photo_id` through the authenticated photo route and falls back to…
   const mark = (
     <div className={CONVERSATION_MARK_BOX}>
       {m.authorStaffId != null ? (
@@ -682,10 +655,7 @@ export function ThreadPanel({
             Couldn’t load the conversation.
           </div>
         ) : messages.length === 0 ? (
-          // Transparent, not `bg-surface-canvas`: the dashed outline already
-          // carries the empty state, and a canvas fill paints an off-white
-          // block on any host whose column is white (the /search station). On
-          // a canvas ground it reads exactly as it did before.
+          // Transparent, not `bg-surface-canvas`:
           <div className="rounded-xl border border-dashed border-border-soft px-4 py-8 text-center">
             <MessageSquare className="mx-auto mb-2 h-5 w-5 text-text-faint" />
             <p className="text-role-caption text-text-faint">
@@ -710,22 +680,7 @@ export function ThreadPanel({
       </div>
 
       {canPost ? (
-        /**
-         * The entry band does NOT fork on `dense`, and that is deliberate
-         * (2026-08-22). It used to: `px-3` on a dense host (the Unbox
-         * Conversation tab, via `SupportContextHub variant="station"`) and
-         * `px-4` everywhere else, with the field itself flipping compact →
-         * default underneath. So the same composer sat at two different insets
-         * and two different densities depending on which surface happened to
-         * mount it, and `/search` drifted a notch looser than the station the
-         * operator compares it to.
-         *
-         * `dense` still governs the READING half above — a side panel wants a
-         * tighter message list than a full centre column. It has no business
-         * governing the writing half: the entry is one instrument, and an
-         * operator who types a note on the bench and types one on the find
-         * surface must be typing into the same box.
-         */
+        /** The entry band does NOT fork on `dense`, and that is deliberate (2026-08-22). */
         <div className="shrink-0 border-t border-border-hairline bg-surface-card px-3 py-3">
           <ThreadNoteComposer
             value={body}

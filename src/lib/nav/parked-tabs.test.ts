@@ -1,13 +1,6 @@
 /**
+ * The hard gate for the PARKED-TAB law (operator 2026-09-15):
  * The hard gate for the PARKED-TAB law (operator 2026-09-15): *"parking and
- * removing the tabs and displays from the code base … these are all the tabs
- * that are not working properly … inside of the parent level inventory you
- * will be parking health, quick picks, reason codes, replenish, graph, pulse,
- * tracking exceptions."*
- *
- * Runs in verify's **Unit tests** gate. `PARKED_TABS` is the ledger; this file
- * is what stops it from being decorative — the same relationship
- * `nav-mobile-first.test.ts` has to `LANE_MOBILE_FIRST`, one altitude down.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -104,10 +97,7 @@ test('the ROUTE survives the parked door — parking is not deleting', () => {
 });
 
 test('the Inventory tabs that work still display — parking is per tab, not per lane', () => {
-  // The lane gate (`LANE_MOBILE_FIRST`) could only have hidden Inventory
-  // whole, which is the wrong instrument: the desk is in daily use. These five
-  // are why the tab altitude exists — Stock and SKU Exceptions lead; Replenish
-  // rejoined once its purchasing ledger shipped.
+  // The lane gate (`LANE_MOBILE_FIRST`) could only have hidden Inventory whole, which is the wrong instrument:
   const inventory = filterPageChildren(getSidebarPageNav('inventory')!, ALL_PERMISSIONS);
   assert.deepEqual(
     inventory.children?.map((child) => child.id),

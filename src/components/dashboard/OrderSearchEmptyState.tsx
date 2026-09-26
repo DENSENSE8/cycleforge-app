@@ -16,12 +16,7 @@ interface OrderSearchEmptyStateProps {
   onClear: () => void;
 }
 
-/**
- * Search "no-results" teaching box (Workbench empty state). A no-match is a
- * normal outcome, not an error — so this uses a neutral icon + the canonical
- * dashed teaching box, and routes entrance motion through the reduced-motion
- * hooks (never a raw spring). Reused by Unshipped + Shipped search-empty paths.
- */
+/** Search "no-results" teaching box (Workbench empty state). */
 export function OrderSearchEmptyState({
   query,
   title = 'Order not found',

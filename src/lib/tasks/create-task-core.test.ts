@@ -152,12 +152,7 @@ test('a note is trimmed, an empty note is null, an oversized note is refused', a
   assert.equal(long.inserts.length, 0);
 });
 
-/**
- * The composer captures assignee · priority · deadline in ONE form, so the
- * deadline has to survive the create. If it did not, the desk would POST then
- * PATCH — showing the assignee a half-made task and splitting one act across
- * two audit rows.
- */
+/** The composer captures assignee · priority · deadline in ONE form, so the deadline has to survive the create. */
 test('a deadline reaches the insert, and omitting it inserts NULL', async () => {
   const { deps, inserts } = fakes();
   await createTaskCore({ ...base, deadlineAt: '2026-09-30T17:00:00.000Z' }, deps);
@@ -228,12 +223,7 @@ test('a failed notification still lands the task', async () => {
   assert.equal(inserts.length, 1);
 });
 
-/**
- * `support_ticket` joined `staff_inbox_items_entity_type_chk` in migration
- * `2026-09-22a`, so a ticket handoff now raises a badge like any other. This
- * pins the arm that used to be the exception — a regression here would put
- * `skipped_entity` back and silently un-notify every ticket task.
- */
+/** `support_ticket` joined `staff_inbox_items_entity_type_chk` in migration `2026-09-22a`, so a ticket handoff now raises a badge like any… */
 test('a ticket task notifies its assignee like any other record', async () => {
   const { deps, inserts, notifications } = fakes();
   const result = await createTaskCore({ ...base, entityType: 'support_ticket' }, deps);

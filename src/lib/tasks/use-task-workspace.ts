@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The open task's evidence — its links and its media — as queries, plus the
- * writes the evidence column makes.
- *
- * Keys live under `['tasks', …]` beside the desk's own `['tasks','desk',…]`,
- * and every write here ALSO invalidates the desk: the ledger row paints the
- * link faces and the photo / video counts, so a link added in the column must
- * repaint the row it was added to or the two disagree about the same task.
- */
+/** The open task's evidence — its links and its media — as queries, plus the writes the evidence column makes. */
 
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -121,13 +113,7 @@ export function useTaskMedia(taskId: number | null) {
 
   const [uploading, setUploading] = useState<TaskMediaUploadState | null>(null);
 
-  /**
-   * Photos and videos through ONE door — a drop, a paste or a picker hands a
-   * mixed bag, and asking the operator to sort it first is a step that says
-   * nothing. Images take the multipart photo route; videos go direct to GCS
-   * through the signed two-step upload, so a 400 MB clip never transits a
-   * function. Sequential, so the progress face is one honest number.
-   */
+  /** Photos and videos through ONE door — a drop, a paste or a picker hands a mixed bag, and asking the operator to sort it first is a step… */
   const upload = useCallback(
     async (files: readonly File[]) => {
       if (taskId == null || files.length === 0) return;

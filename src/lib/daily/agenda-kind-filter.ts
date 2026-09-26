@@ -1,18 +1,4 @@
-/**
- * Agenda kind filter — MULTI-select, reorderable (operator 2026-09-23, wearing
- * the PM/e-commerce-manager hat: *"it should feature a drag and drop and a
- * rearrange and checklist selection of what is showing — not just all and one
- * at a time"*).
- *
- * The filter is a row of chips, one per band of the one task list
- * ({@link DailyAgendaType}). A chip PRESSED = that kind is showing; several
- * may be pressed at once. The row can be DRAGGED to rearrange — an operator
- * who lives in tickets puts Ticket first, and the row remembers.
- *
- * ONE declaration for both surfaces — the phone (`/m/home`) and the desk
- * (`/`) consume the same prefs model, so the two faces cannot disagree about
- * which kinds are showing. Pure: no React, no fetch.
- */
+/** Agenda kind filter — MULTI-select, reorderable (operator 2026-09-23, wearing the PM/e-commerce-manager hat: */
 
 import type { DailyAgendaRow, DailyAgendaType } from '@/lib/daily/daily-agenda-row';
 import { DAILY_AGENDA_TYPE_LABEL } from '@/lib/daily/daily-agenda-row';

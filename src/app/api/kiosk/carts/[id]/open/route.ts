@@ -1,15 +1,4 @@
-/**
- * POST /api/kiosk/carts/[id]/open — pick a cart up on THIS tablet: take the
- * hold and get `{ id, version, snapshot }`. Any paired tablet of the org may,
- * which is the point; the tablet that held it loses its next save (409) and
- * lets go, so one cart never has two writers.
- *
- * Callers: `useKioskCartSync` (Recent carts row tap).
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_carts` via `openKioskCart`.
- * User 2026-09-24: "recent carts for juggling multiple customers at the same
- * time, IDed for multiple devices".
- */
+/** POST /api/kiosk/carts/[id]/open — pick a cart up on THIS tablet: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { openKioskCart } from '@/lib/kiosk/kiosk-carts.server';

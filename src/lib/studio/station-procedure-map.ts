@@ -1,26 +1,4 @@
-/**
- * Station procedure map — the projection behind the Operations Studio
- * "Procedure" lens.
- *
- * Turns a declared `ProcedureDefinition` plus the station registries into the
- * thing an operator reads: an ordered list of acts, each carrying the endpoints
- * it drives, the realtime channels it rides, and the persistent relations it
- * reads and writes. Composed steps INHERIT their lineage from the registered
- * source/action they name; code-only steps carry their own.
- *
- * Pure by construction — no fetch, no React, no registry import. The registries
- * arrive as plain maps, which is what lets this be unit-tested DB-free and what
- * makes the lens correct with zero traffic: nothing here consults a runtime.
- * That "correct while idle" property is the whole point of a static map, and it
- * has a precedent — OpenLineage's static-lineage proposal exists precisely so
- * lineage can be stated outside the context of a run.
- *
- * Sibling of `static-flow-graph.ts`, NOT a replacement: that one classifies the
- * whole definition's nodes into sources → transforms → sinks (the topology
- * question, "where can data flow between steps"). This one goes one altitude
- * deeper into a single station ("what happens inside this step, and what does
- * each act touch"). Two different questions, two selectors, one canvas.
- */
+/** Station procedure map — the projection behind the Operations Studio "Procedure" lens. */
 
 // Type-only imports: erased at compile time, so this module pulls in neither the
 // registry side-effects nor the block components' React graph.
@@ -65,12 +43,7 @@ export interface ProcedureStepView {
   summary: string;
   /** 1-based position — what the canvas paints as the step number. */
   index: number;
-  /**
-   * Which surface renders this step. `capture` is the slice the station's
-   * right-rail checklist shows the operator; `intake` precedes it and `commit`
-   * is the terminal dock. Surfacing it here is what lets Studio say "these five
-   * are what the bench walks them through" instead of implying all nine are.
-   */
+  /** Which surface renders this step. */
   phase: ProcedurePhase;
   /** The station registry drives this step; false = hand-coded UI over a hand-coded route. */
   composed: boolean;

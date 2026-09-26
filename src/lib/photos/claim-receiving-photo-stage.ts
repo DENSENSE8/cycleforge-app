@@ -1,23 +1,4 @@
-/**
- * Claim an EXISTING carton photo as door evidence for a procedure step.
- *
- * ## Why this exists
- *
- * Within-stage aspect pairing (`set-photo-aspect.ts`) names what a shot shows
- * *inside* its current stage. Arrival Link needs a different verb: promote a
- * bench carton shot (`receiving_unbox_carton`) onto the door stage
- * (`receiving_package`) **and** stamp a legal door aspect in one audited write.
- *
- * Entity reassign (`reassign-receiving-photo.ts`) only hops carton↔line and
- * remaps type on that hop — same-carton stage claim is out of its job.
- *
- * ## One write, two columns
- *
- * `photo_type` → package type for `arrival_package`
- * `photo_aspect` → caller-named legal door aspect (`shipping_label` | `box_exterior`)
- *
- * Aspect overwrite, never COALESCE — same rule as aspect classification.
- */
+/** Claim an EXISTING carton photo as door evidence for a procedure step. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {

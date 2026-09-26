@@ -1,10 +1,4 @@
-/**
- * Guard + unit tests for the operator-surface registry (Phase 0).
- * Pure / DB-free: the registry, archetype decision, and resolver decision core
- * are all in-memory CODE.
- *
- *   node --import tsx --test src/lib/stations/surface-keys.test.ts
- */
+/** Guard + unit tests for the operator-surface registry (Phase 0). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -140,11 +134,7 @@ test('registry archetypes agree with the surface intent', () => {
   assert.equal(getSurface('history').archetype, 'monitor');
 });
 
-// ─── Support is a WORKBENCH branch, not a Station (ratified 2026-08-01) ──────
-// docs/todo/support-service-workspace-PLAN.md. The registry said 'station' for
-// months purely because Support was promoted into the Stations spine section —
-// a nav DOMAIN, which is not a region contract. Pin the corrected reading so a
-// future nav change cannot silently drag the contract back with it.
+// ─── Support is a WORKBENCH branch, not a Station (ratified 2026-08-01) ────── docs/todo/support-service-workspace-PLAN.md.
 
 test('support: archetype is workbench (service-workspace branch), never station', () => {
   assert.equal(getSurface('support').archetype, 'workbench');

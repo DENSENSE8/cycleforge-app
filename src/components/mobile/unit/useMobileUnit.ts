@@ -2,12 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-/**
- * One serial unit as the phone reads it — `GET /api/serial-units/[ref]`. The
- * ref is whatever the label carried (numeric id, serial, or minted unit_uid);
- * the route resolves it, and `id` is the numeric `serial_units.id` every
- * unit-scoped write (checklist, allocate, move) keys on.
- */
+/** One serial unit as the phone reads it — `GET /api/serial-units/[ref]`. */
 export interface MobileUnit {
   id: number;
   serial_number: string;

@@ -1,16 +1,4 @@
-/**
- * Read-only aggregator for the Tech audit-log section.
- *
- * Sources:
- *   • tech_serial_numbers        — one row per serial scanned by a tech
- *   • station_activity_logs      — granular events tagged with tech_serial_number_id
- *   • audit_logs                 — entity_type='TECH_SERIAL' or station_activity_log_id matches
- *   • sku                        — resolved via tech_serial_numbers.source_sku_id
- *   • orders                     — fallback SKU summary via shipment_id
- *   • shipping_tracking_numbers  — canonical tracking text
- *
- * A "session" is grouped by tracking (per the locked-in plan trade-off).
- */
+/** Read-only aggregator for the Tech audit-log section. */
 
 import 'server-only';
 import pool from '@/lib/db';
@@ -74,10 +62,7 @@ export async function listTechSessions(
   const { filters, search } = opts;
   const params: unknown[] = [];
 
-  // Tenant scope: when an orgId is supplied we push it first so every CTE can
-  // reference the same $pOrg placeholder, run via tenantQuery (GUC-wrapped),
-  // and add explicit `organization_id = $pOrg` predicates. When omitted the
-  // query runs against the raw pool with byte-identical (un-scoped) behavior.
+  // Tenant scope:
   let pOrg = 0;
   if (orgId) {
     params.push(orgId);
@@ -137,10 +122,7 @@ export async function listTechSessions(
     )`);
   }
 
-  // ── PO-anchored sessions (receiving lines that were tested — "Line under PO") ──
-  // Wave-2 reader cutover: the line's zoho cluster reads from receiving_line_zoho
-  // (rz, 1:1 on the line PK); rz rows exist for every line with any zoho field,
-  // so LEFT JOIN + rz-predicates ≡ the old spine filters.
+  // ── PO-anchored sessions (receiving lines that were tested — "Line under PO") ── Wave-2 reader cutover:
   const poWhere: string[] = ['rz.zoho_purchaseorder_id IS NOT NULL'];
   // Scope on both org-bearing tables in the JOIN (testing_results + the
   // receiving_lines parent it joins on the surrogate rl.id = tr.receiving_line_id).
@@ -252,20 +234,12 @@ export async function getTechSessionDetail(
   filters: AuditLogFilters,
   orgId?: OrgId,
 ): Promise<TechSessionDetail | null> {
-  // ── 1. Resolve the session anchor ───────────────────────────────────────
-  // Primary: a carrier tracking number → shipment_id (legacy / standalone tech
-  // sessions). Fallback: a Zoho PO id → its receiving_lines — the "Line under
-  // PO" anchor — so testing that arrived through receiving is reachable even
-  // when no tracking was ever attached (testing verdicts leave shipment_id
-  // NULL on tech_serial_numbers; only receiving_line_id is set).
+  // ── 1. Resolve the session anchor ─────────────────────────────────────── Primary:
   let shipmentId: number | null = null;
   let canonicalTracking = session;
   let anchorLineIds: number[] = [];
 
-  // shipping_tracking_numbers has NO organization_id column (NEEDS-COL) and no
-  // org-bearing parent is reachable from this standalone resolution query, so
-  // when scoped we GUC-wrap it only (tenantQuery) — the RLS GUC is the backstop
-  // once the column lands / FORCE is enabled.
+  // shipping_tracking_numbers has NO organization_id column (NEEDS-COL) and no org-bearing parent is reachable from this standalone…
   const trackingSql = `SELECT id, tracking_number_raw
        FROM shipping_tracking_numbers
        WHERE tracking_number_raw = $1
@@ -479,11 +453,7 @@ export async function getTechSessionDetail(
     ? await tenantQuery(orgId, auditSql, auditParams)
     : await pool.query(auditSql, auditParams);
 
-  // ── Unified lifecycle spine (inventory_events) ───────────────────────────
-  // The testing verdict path writes inventory_events (TEST_PASS/TEST_FAIL/
-  // TEST_START) tagged with receiving_line_id + serial_unit_id, and receiving
-  // writes RECEIVED there too. Anchoring on those keys surfaces the full
-  // cross-station timeline that the shipment-only query used to miss.
+  // ── Unified lifecycle spine (inventory_events) ─────────────────────────── The testing verdict path writes inventory_events…
   const invRows = await readInventorySpine({
     lineIds: Array.from(lineIds),
     serialUnitIds: Array.from(serialUnitIds),
@@ -491,10 +461,7 @@ export async function getTechSessionDetail(
     order: 'asc',
   }, orgId);
 
-  // Serials that already have a first-class TEST_* lifecycle event. For these
-  // we suppress the synthetic SERIAL_TESTED row so the verdict isn't shown
-  // twice — inventory_events is the source of truth for testing (carries the
-  // prev→next status transition and verdict payload).
+  // Serials that already have a first-class TEST_* lifecycle event.
   const serialsWithTestEvent = new Set<string>();
   for (const r of invRows) {
     if (r.event_type.startsWith('TEST') && r.serial_number) {

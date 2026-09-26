@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * One row in the "Page access" card: page label + permission string,
- * theme-coloured switch, and a tag showing the access source.
- *
- *   Role          — granted by the staff's role (default state)
- *   Granted       — override-add (custom grant)
- *   Revoked       — override-remove (custom revoke)
- *   Role denies   — not in role + no override
- */
+/** One row in the "Page access" card: */
 
 import { type StationTheme } from '@/utils/staff-colors';
 import type { PermissionSource } from '@/lib/auth/permissions-shared';

@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * The compound ROW — the one row component, for every table.
- *
- * ## Why this exists
- *
- * The cells were shared, then the cell WRAPPERS were shared, and each time the
- * fork simply moved outward one layer. It ended up in the row components:
- * `TasksGridRow` and `DailyGridRow` were 120-line twins that each took eight
- * bespoke props, each built a view, each mapped columns, and each hand-rolled a
- * row shell with its own selection wash. Two components doing one job, drifting
- * by exactly as much as nobody happened to compare.
- *
- * So the row is shared too, and the fork has nowhere left to move. A family now
- * INSERTS ITS DATA and nothing else:
- *
- * - a {@link CompoundRowView} — the row's facts, from a pure adapter;
- * - the mounted `columns`;
- * - the capabilities it actually has (`select`, `onOpen`);
- * - whatever DOM hooks its own interaction needs, passed straight through.
- *
- * There is deliberately no per-family prop for geometry, template, cell class,
- * row shell, selection paint or frozen offset. Those are all answers the shared
- * model already carries, and every one of them was a place two families had
- * previously answered differently.
- *
- * ## What a family may still bring
- *
- * The DOM props spread (`role`, `aria-*`, `onClick`, `onKeyDown`, `data-*`).
- * That is not a fork: a row's *gesture contract* is genuinely per-surface — a
- * checklist row opens a record on click while a click-select grid row toggles
- * membership — and those are behaviours, not layout. What they can no longer do
- * is disagree about how the row is BUILT.
- */
+/** The compound ROW — the one row component, for every table. */
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import {
@@ -97,22 +65,7 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   /** Present ⇒ the actions column mounts the all-staff Picker / Packer roster. */
   staffRoster?: boolean;
 
-  /*
-   * ── The IN-CELL EDIT capabilities ──────────────────────────────────────────
-   *
-   * Every one of these is a capability OBJECT the shared cells already know how
-   * to paint (`renderCompoundGridCell` has taken them since the compound cells
-   * landed); they were simply not reachable from this component, so a family
-   * that wanted an editable row had to bypass it and map the columns itself.
-   * That is how `OrdersQueueTableRow` came to exist — a 1300-line family row
-   * whose desktop branch is this component with more props.
-   *
-   * They are DATA and callbacks, never JSX and never render props: presence of
-   * the object arms the editor, absence leaves the identical cell read-only.
-   * `compound-row-capability.test.ts` pins that this list stays complete — a
-   * new cell capability that this row does not forward is a new reason to write
-   * a family row, which is the fork invariant 1 exists to refuse.
-   */
+  /* ── The IN-CELL EDIT capabilities ────────────────────────────────────────── */
 
   /** In-place SELECT editors for bound subtitle parts, matched by part key. */
   subtitleSelects?: readonly CompoundSubtitleSelect[];
@@ -130,16 +83,7 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   orderedAtEdit?: CompoundOrderedAtEdit;
   /** Present ⇒ the tracking line opens the paperwork walk. */
   onOpenLabels?: () => void;
-  /**
-   * Optional triage wash for the whole row — the family's own SoT class, gated
-   * by `capabilities.rowTriageFlags` inside `ledgerRowFillClass`.
-   *
-   * The fill CASCADE (selection → triage flag → personal paint) is already
-   * engine-owned on `LedgerGridLeafRow`; this row simply had no way to hand it
-   * the flag, so a family with row flags had to rebuild the shell to apply one.
-   * That is `OrdersQueueTableRow`'s zebra/fill branch, and it is why the same
-   * cascade exists twice today with two different precedence orders.
-   */
+  /** Optional triage wash for the whole row — the family's own SoT class, gated by `capabilities.rowTriageFlags` inside `ledgerRowFillClass`. */
   flagClass?: string | null;
   /**
    * When false, skip the shared scroll-min shell width var. Forwarded rather
@@ -156,13 +100,7 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
    * plane. A family never passes this: it does not own the plane either.
    */
   ref?: Ref<HTMLDivElement>;
-  /**
-   * The registered row-anchored plane, already bound to its row.
-   *
-   * Engine-supplied and engine-only (`CompoundPlaneRow` reads it off
-   * `TableSurfaceBinding.rowPlane`). It is not a family slot: what a picked row
-   * opens is a property of the ENTITY, declared once at registration.
-   */
+  /** The registered row-anchored plane, already bound to its row. */
   plane?: ReactNode;
 }
 

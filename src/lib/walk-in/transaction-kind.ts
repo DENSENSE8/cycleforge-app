@@ -1,12 +1,4 @@
-/**
- * Transaction kind → label / dot / icon — the tone+label registry for the Sales
- * feed, mirroring `workflow-stages.ts` (lifecycle) and `condition-tone.ts`.
- *
- * Split from `transactions.ts` on purpose: that module is the pure data waist
- * (adapters / merge / rollup), this one is its display vocabulary. A view resolves
- * a kind through here and stays dumb — never hardcode a per-kind hue or glyph in
- * a component.
- */
+/** Transaction kind → label / dot / icon — the tone+label registry for the Sales feed, mirroring `workflow-stages.ts` (lifecycle) and… */
 
 import { Package, SalesPrice, Wrench } from '@/components/Icons';
 import type { TransactionKind } from './transactions';

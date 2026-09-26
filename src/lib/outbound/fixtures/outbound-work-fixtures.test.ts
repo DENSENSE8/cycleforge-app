@@ -4,13 +4,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { outboundWorkPageSchema } from '../work-contract';
 
-/**
- * The shared outbound-work fixtures (promoted from the SwiftUI lane's
- * CycleForgeClientTests / CycleForgeContractsTests at b7e7653a3) are the pages
- * native clients decode in their tests. A change to `outboundWorkPageSchema`
- * that a fixture no longer satisfies is a contract break for those clients, so
- * it fails here — before a device ever sees it.
- */
+/** The shared outbound-work fixtures (promoted from the SwiftUI lane's CycleForgeClientTests / CycleForgeContractsTests at b7e7653a3) are… */
 const DIR = __dirname;
 const fixtures = readdirSync(DIR).filter((f) => /^outbound-work-.*\.json$/.test(f));
 

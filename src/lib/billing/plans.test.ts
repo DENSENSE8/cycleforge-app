@@ -1,10 +1,4 @@
-/**
- * Plan catalog invariants — make sure the entitlements ladder is monotonic
- * and that planFromPriceId is the inverse of PLAN_PRICE_IDS lookup.
- *
- * These prevent the "we accidentally let trial users export audit logs"
- * class of regression when someone touches plans.ts in a hurry.
- */
+/** Plan catalog invariants — make sure the entitlements ladder is monotonic and that planFromPriceId is the inverse of PLAN_PRICE_IDS lookup. */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

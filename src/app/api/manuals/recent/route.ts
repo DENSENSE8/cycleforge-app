@@ -15,10 +15,7 @@ function buildDocUrls(googleFileId: string) {
 
 export async function GET(req: NextRequest) {
   try {
-    // This route is intentionally ungated (gate: NONE) — keep that behavior.
-    // Soft-resolve the org from the session cookie: when a user is present we
-    // scope reads to their tenant + GUC-wrap; when truly anonymous (as today)
-    // we keep the prior session-less pool.query behavior unchanged.
+    // This route is intentionally ungated (gate:
     const user = await getCurrentUser();
     const orgId = user?.organizationId ?? null;
     const { searchParams } = new URL(req.url);
@@ -33,10 +30,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: true, manuals: [] });
     }
 
-    // ── Hub-first: resolve through sku_catalog ──────────────────────────────
-    // Thread orgId (when a user is present) so the crosswalk only matches THIS
-    // tenant's catalog. When anonymous, orgId is null and the resolver keeps its
-    // prior session-less behavior.
+    // ── Hub-first:
     const skuCatalogId = await resolveSkuCatalogId(sku || null, itemNumber || null, null, orgId ?? undefined);
 
     let rows: any[] = [];
@@ -89,16 +83,7 @@ export async function GET(req: NextRequest) {
 
     // ── Fallback: legacy item_number match for un-migrated records ──────────
     if (rows.length === 0 && normalizedItemNumber) {
-      // Legacy item_number path: un-migrated rows have no sku_catalog_id, so
-      // there is no parent to scope through and product_manuals carries no
-      // organization_id column. The GUC is INERT for this table (no RLS, no org
-      // column), so tenantQuery alone provides ZERO isolation. To close the
-      // cross-tenant read leak for AUTHENTICATED callers we (a) restrict to
-      // genuinely-legacy rows (sku_catalog_id IS NULL — hub-linked rows are
-      // already org-scoped above) and (b) refuse to return a shared item_number
-      // that resolves, through THIS org's crosswalk, to a DIFFERENT org's
-      // catalog row. (NEEDS-COL: full isolation still requires product_manuals
-      // to grow an organization_id column + RLS.)
+      // Legacy item_number path:
       const fallbackResult = orgId
         ? await tenantQuery(
             orgId,
@@ -125,11 +110,7 @@ export async function GET(req: NextRequest) {
              LIMIT $2`,
             [normalizedItemNumber, limit, orgId]
           )
-        // Anonymous/session-less callers (route is intentionally gate: NONE):
-        // no org to scope to, so this keeps the prior raw-pool behavior. This
-        // path remains a cross-tenant read for shared item_numbers and cannot
-        // be fully closed here — it requires either gating the route or an
-        // organization_id column on product_manuals (NEEDS-COL).
+        // Anonymous/session-less callers (route is intentionally gate:
         : await pool.query(
             `SELECT
                id,

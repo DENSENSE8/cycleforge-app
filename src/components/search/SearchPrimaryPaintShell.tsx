@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Client shell for `/search` — holds the house loading field over the body
- * until the `?sel=` record has actually resolved.
- *
- * It replaces the old station pane's bare `<div className="min-h-0 flex-1"
- * aria-busy />`: a deep-linked record used to land on an empty white plane with
- * only the header pulse to say anything was happening. Same recipe as
- * {@link UnboxBrowseShell} — the field owns no geometry, the real body stays
- * mounted underneath and keeps defining layout, so the reveal is CLS 0.
- *
- * **The cover is COLD LAND only, and `primaryReady` is one-way.** Record→record
- * afterwards is {@link SearchDetailWorkspace}'s opaque hard-cut crossfade, which
- * is already seamless; re-covering on every swap would flash a field over it.
- *
- * **`search:primary` is stamped when the cover LIFTS, never on mount.** Marking
- * it at mount is how a surface reports a fast LCP for a plane that is still
- * empty — the mark and the loader's `paintSurface` attribution have to name the
- * same moment or the number is fiction.
- */
+/** Client shell for `/search` — holds the house loading field over the body until the `?sel=` record has actually resolved. */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';

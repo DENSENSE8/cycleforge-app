@@ -1,14 +1,4 @@
-/**
- * Visual scan-feedback bus — scan-band locus flash + matched-line pulse.
- *
- * Paired with {@link playScanTone} / {@link useScanFeedback}: audio/haptic stay
- * gated by settings; these CustomEvents always fire so the flat data floor still
- * gets instant outcome chrome after card borders are gone.
- *
- * Listeners:
- *   - {@link ScanBandGlowHost} → emerald / rose locus flash (~800ms)
- *   - {@link PoLineRow} → one-shot inset ring pulse on the matched line
- */
+/** Visual scan-feedback bus — scan-band locus flash + matched-line pulse. */
 
 export type ScanVisualKind = 'success' | 'reject';
 

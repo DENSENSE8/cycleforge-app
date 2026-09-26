@@ -1,16 +1,8 @@
 'use client';
 
 /**
- * Scan-out station controller — the SHIP_CONFIRM scan loop shared by the dock
- * Station body and any compact bar.
- *
+ * Scan-out station controller — the SHIP_CONFIRM scan loop shared by the dock Station body and any compact bar.
  * ## Async / non-blocking (operator 2026-08-31)
- *
- * The gun must never wait on a prior POST. Each submit clears the input,
- * refocuses, fires `POST /api/shipped/scan-out` in flight, and accepts the next
- * wedge immediately. Concurrent confirms are fine — each shipment is
- * idempotent server-side. The "active" carton follows the latest settled
- * response (or an optimistic pending chip for the most recent fire).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Device-local "recently copied" history — the read side of the header
- * clipboard popover.
- *
- * Deliberately NOT in the database: a copy log is personal, ephemeral, and
- * per-device, and every CopyChip click would otherwise be a Neon write for no
- * benefit. It lives in memory (mirrored to localStorage so it survives a
- * reload) as a tiny framework-agnostic external store, fed from the single
- * copy choke-point in `useCopyChip` (so all chip copies are captured without
- * touching the ~245 call sites) plus `copyToClipboard` in utils/_dom.
- *
- * The persistent half — sending an entry to a coworker's inbox — is the
- * staff_messages table (see /api/staff-messages); this module only tracks what
- * THIS device copied.
- */
+/** Device-local "recently copied" history — the read side of the header clipboard popover. */
 
 import { useSyncExternalStore } from 'react';
 

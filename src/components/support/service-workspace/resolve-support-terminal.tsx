@@ -35,16 +35,7 @@ export function resolveSupportTerminal(input: {
   }
 }
 
-/**
- * The dock label follows the composer's VISIBILITY MODE at rest, not only once a
- * draft exists.
- *
- * It used to read "Reply" on an empty composer whose toggle said `Internal` and
- * whose placeholder said "Internal note — not emailed…" — three controls in one
- * band telling two different stories, and the button only became honest after
- * the operator had already typed. The mode is known before the first keystroke,
- * so the button says what pressing it will do from the first frame.
- */
+/** The dock label follows the composer's VISIBILITY MODE at rest, not only once a draft exists. */
 function resolveTicketTerminal(bridge: ThreadComposerBridge | null): TerminalActionVm {
   const hasDraft = bridge?.hasDraft ?? false;
   const isPublic = bridge?.isPublic ?? false;

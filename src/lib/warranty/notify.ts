@@ -1,15 +1,4 @@
-/**
- * Warranty staff notifications (Phase 4).
- *
- * Pushes an Ably inbox event (channel `inbox:{staffId}`, event `warranty_claim`)
- * to the person who LOGGED a claim whenever it moves through its lifecycle, so
- * they see progress live in the header Activity inbox. Customer-facing email is
- * intentionally out of scope for now (deferred).
- *
- * Always best-effort: a notification failure must never break the mutation that
- * triggered it. Each send also appends a NOTIFICATION_SENT row to the claim
- * timeline so the audit story is complete.
- */
+/** Warranty staff notifications (Phase 4). */
 
 import pool from '@/lib/db';
 import { publishWarrantyClaimNotification } from '@/lib/realtime/publish';

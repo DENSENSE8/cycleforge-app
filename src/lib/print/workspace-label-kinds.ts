@@ -1,10 +1,4 @@
-/**
- * Workspace print-label kinds — the SoT for which faces a station can preview /
- * print. Separate from lifecycle chip `LabelKind` in `src/lib/labels/types.ts`.
- *
- * Availability + display names live here; face adapters and print fns stay in
- * their domain modules (`printReceivingLabel`, `unitLabelCore`, etc.).
- */
+/** Workspace print-label kinds — the SoT for which faces a station can preview / print. */
 
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 import {
@@ -38,15 +32,7 @@ export type WorkspaceLabelKind =
 
 export type WorkspaceLabelEditor = 'carton' | 'unit' | 'as_listed' | null;
 
-/**
- * What physical thing the sticker goes on. This is the label's GRAIN, and it is
- * the question an operator must be able to answer before printing: am I
- * labelling the whole receipt, or one unit inside it?
- *
- *   carton    — one label for the whole PO / carton
- *   item      — one label per item / unit
- *   container — a tote / LPN that spans POs (handling unit); neither of the above
- */
+/** What physical thing the sticker goes on. */
 type WorkspaceLabelGrain = 'carton' | 'item' | 'container';
 
 /** Operator-facing grain names — the SoT for how grain reads in any picker. */

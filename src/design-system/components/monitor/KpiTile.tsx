@@ -11,27 +11,10 @@ export type KpiTileProps = {
   label: string;
   /** Hero number or preformatted string. */
   value: ReactNode;
-  /**
-   * Optional signed % delta — renders compact top-right next to the label.
-   *
-   * A delta is a CLAIM about a comparable window. Pass it only when the
-   * snapshot behind the tile actually measures one: the Operations strip had
-   * to drop every chip on 2026-09-16 because its comparison divided
-   * today-so-far by all of yesterday. Prefer {@link KpiTileProps.meta} when
-   * there is no honest comparison to make.
-   */
+  /** Optional signed % delta — renders compact top-right next to the label. */
   delta?: number;
   invertDelta?: boolean;
-  /**
-   * One quiet line under the hero number: what this counts, over what window.
-   *
-   * Added 2026-09-16 for the Operations strip, where four tiles counted four
-   * different things (distinct scans, tech scans, raw FNSKU events, an open
-   * queue depth) under labels that implied one vocabulary. A monitor tile that
-   * cannot say what its number is has no way to be trusted or disproved — this
-   * is the slot where it says so. NOT a footer status and not a second metric:
-   * plain words, no tone.
-   */
+  /** One quiet line under the hero number: */
   meta?: string;
   /** Extra classes on the hero number (tone). Prefer theme text tokens. */
   valueClassName?: string;

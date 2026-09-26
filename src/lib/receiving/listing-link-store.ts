@@ -1,20 +1,4 @@
-/**
- * receiving_listing_links — the DURABLE listing-link store for an inbound
- * carton (migration `2026-08-10f`). This module is the writer half the
- * migration header parked: N labeled links per carton, the buyer's ordering,
- * and an explicit line binding.
- *
- * Read waist stays {@link collectCartonListingLinks} — it merges these rows
- * over the computed tiers. Only the two DURABLE sources live here
- * (`manual` | `sync_notes`, CHECK-enforced); `catalog` / `derived` are resolved
- * at read time and are NOT editable, because materializing a fallback would
- * freeze a guess into a fact.
- *
- * Executor pattern (same shape as `transitionReceivingLine`): pass a `db` to
- * run inside a caller's transaction, or let the call own a
- * {@link withTenantTransaction}. `orgId` is REQUIRED on every entry — it comes
- * from `ctx.organizationId`, never a body.
- */
+/** receiving_listing_links — the DURABLE listing-link store for an inbound carton (migration `2026-08-10f`). */
 
 import type { PoolClient } from 'pg';
 import { normalizeListingHref } from '@/lib/receiving/listing-href';
@@ -79,14 +63,7 @@ function toLink(row: Row): StoredListingLink {
   };
 }
 
-/**
- * Runs `fn` on the caller's executor, or opens one org-scoped transaction.
- *
- * `@/lib/tenancy/db` is imported LAZILY: it pulls `@/lib/db` (`server-only` +
- * the Neon driver), and a static import would put that whole graph behind
- * anything importing this module — including the DB-free unit tests, which
- * pass their own executor and must never touch a pool.
- */
+/** Runs `fn` on the caller's executor, or opens one org-scoped transaction. */
 async function run<T>(orgId: OrgId, db: Executor | undefined, fn: (x: Executor) => Promise<T>): Promise<T> {
   if (db) return fn(db);
   const { withTenantTransaction } = await import('@/lib/tenancy/db');

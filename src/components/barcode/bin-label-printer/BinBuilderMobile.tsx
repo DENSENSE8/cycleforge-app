@@ -10,12 +10,7 @@ import {
 } from '../LabelPrinterWorkHeader';
 import type { BinLabelPrinterController } from './useBinLabelPrinter';
 
-/**
- * Narrow-column builder (mobile / `lg:hidden`): full five-step flow inline.
- * Callers: BinLabelPrinter. No data schemas.
- * User: "toggle like single or bulk" / "remove the configure counts button" /
- * "slider on the top right" / "reset button away from the slider".
- */
+/** Narrow-column builder (mobile / `lg:hidden`): */
 export function BinBuilderMobile({
   c,
   variant,

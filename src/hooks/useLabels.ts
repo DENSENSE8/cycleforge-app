@@ -9,15 +9,7 @@ interface LabelsResponse {
 
 const QUERY_KEY = ['photo-labels'];
 
-/**
- * The org's photo-label vocabulary + CRUD/assignment mutations. The vocabulary
- * is cached (5 min) and shared by the sidebar Labels section and the per-photo
- * editor. Assignment mutations invalidate the photo-library list so chips
- * re-render with the new set.
- *
- * `scopeImageType` narrows the vocabulary to a type's labels + globals (used by
- * the listing composer); omit it for the full library list.
- */
+/** The org's photo-label vocabulary + CRUD/assignment mutations. */
 export function useLabels(scopeImageType?: string) {
   const queryClient = useQueryClient();
   const queryKey = scopeImageType ? [...QUERY_KEY, scopeImageType] : QUERY_KEY;

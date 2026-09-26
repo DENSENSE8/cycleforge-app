@@ -3,17 +3,6 @@
 /**
  * Evidence column parts — the open record read as a TRIAGE evidence stack
  * (BRIEF §4 triage): what it is → evidence → decision bar.
- *
- *   title (the record's ID, large mono)
- *   state strip   CODE · word ···························· → next
- *   sections      photos · fields · facts · counts (mono label heads, 1px rules)
- *   decision bar  2–4 verbs, keys 1–4, primary = ink fill
- *
- * Mounted as a {@link RecordLedger} record, which `DeskRecordPlane` places in
- * place of the list or in the split pane; the plane owns the header band
- * (title · n of N · ‹ › ✕). Colours are the region's mode; the corner is
- * `rounded-mode` (4 in triage, 0 in industrial), so the same parts read
- * correctly in either region.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
@@ -203,14 +192,7 @@ function signedDraft(raw: string): string {
   return negative ? `-${digits}` : digits;
 }
 
-/**
- * − / signed amount / + / Apply — the ONE count control of every evidence
- * column (SKU exception locations, a Stock record), so a count reads the same
- * wherever it is made. The amount is a signed delta clamped at the shelf: a
- * take larger than what the bin holds is not a count. `onCommit` performs the
- * write and throws on failure; the stepper owns the draft, the busy state and
- * the toast.
- */
+/** − / signed amount / + / Apply — the ONE count control of every evidence column (SKU exception locations, a Stock record), so a count… */
 export function EvidenceCountStepper({
   face,
   qty,

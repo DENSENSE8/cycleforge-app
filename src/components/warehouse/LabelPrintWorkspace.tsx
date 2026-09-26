@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Main-area Labels workspace.
- *
- * Hosts the full location label printer (formerly in the sidebar). The printer
- * now lives here so the 5-step picker + live preview can breathe in the
- * full content column instead of being cramped against the rail.
- *
- * Sidebar shows a short contextual hint; bulk-print events from the Bins
- * tab surface as a toast at the top of this workspace.
- */
+/** Main-area Labels workspace. */
 
 import { useEffect, useState } from 'react';
 import { toast } from '@/lib/toast';

@@ -1,17 +1,6 @@
 import pool from '@/lib/db';
 
-/**
- * The carrier scan trail for one package — `shipment_tracking_events` rows,
- * newest first. Shared by the order timeline (`GET /api/orders/[id]/timeline`)
- * and the shipment record (`getShipmentRecord`) so both read the same rows.
- *
- * Carrier events are carrier-global and are mostly written with a NULL
- * `organization_id` by the sync worker, so under the RLS-subject tenant pool
- * (`TENANT_APP_DATABASE_URL`) a GUC-scoped read returns NOTHING for them. The
- * read therefore runs on the owner pool, and tenant isolation rides on
- * `shipmentId`, which every caller MUST have resolved from an org-checked row —
- * never from the request.
- */
+/** The carrier scan trail for one package — `shipment_tracking_events` rows, newest first. */
 export interface CarrierEventRow {
   id: number | string;
   event_occurred_at: Date | string | null;

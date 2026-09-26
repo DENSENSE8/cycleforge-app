@@ -1,11 +1,4 @@
-/**
- * Dry-run preview of unread PO mailbox emails.
- *
- * No DB writes, no labeling — just fetch, parse, and return enough to
- * eyeball whether the order-number extractor is catching real POs.
- * Once the user is happy with the matches, the same pipeline graduates
- * into the cron-triggered reconciler.
- */
+/** Dry-run preview of unread PO mailbox emails. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

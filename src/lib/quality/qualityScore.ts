@@ -1,10 +1,4 @@
-/**
- * Pure quality-scoring + grade-advice for the Condition Grading QC System
- * (docs/condition-grading-repair-qc-plan.md §5). No DB access — inputs are
- * gathered by quality-queries.ts and the output is cached in unit_quality_scores.
- *
- * Compute-and-display only in v1: ebayConditionId is a mapping, not a live push.
- */
+/** Pure quality-scoring + grade-advice for the Condition Grading QC System (docs/condition-grading-repair-qc-plan.md §5). */
 
 // Grade union from the single source of truth (src/lib/conditions.ts).
 export type { ConditionGrade } from '@/lib/conditions';

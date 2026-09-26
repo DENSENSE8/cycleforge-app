@@ -1,11 +1,4 @@
-/**
- * decision-eval-zen — parity test (Track 1, Stage 2).
- * Proves the GoRules ZEN-backed evaluator returns the SAME routing as the in-house
- * Stage-1 matcher across representative rule tables, so flipping DECISION_ENGINE_ZEN
- * is a pure engine swap. Skips cleanly when the WASM module isn't loadable in this
- * runtime (e.g. CI without the prebuilt .wasm), since unavailability simply means
- * the node keeps using the in-house path.
- */
+/** decision-eval-zen — parity test (Track 1, Stage 2). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,10 +15,7 @@ const rule = (id: string, when: DecisionRule['when'], thenPort: string): Decisio
   thenPort,
 });
 
-// When the WASM engine can't load, evaluateDecisionZen() transparently falls back
-// to the in-house evaluator — making a parity assertion trivially true and NOT a
-// real test — so a WASM-dependent test skips itself instead. (Checked in-body, not
-// at top level: tsx transforms .test.ts to CJS, where top-level await is illegal.)
+// When the WASM engine can't load, evaluateDecisionZen() transparently falls back to the in-house evaluator — making a parity assertion…
 const SKIP_REASON = '@gorules/zen-engine-wasm not loadable in this runtime';
 
 interface ParityCase {

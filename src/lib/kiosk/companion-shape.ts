@@ -1,16 +1,4 @@
-/**
- * The phone companion's wire shapes — what a counter tablet shares with a
- * staff phone joined to its repair visit, and what the phone sends back.
- *
- * Pure (no DB, no React): the routes validate with these schemas, the tablet
- * and the phone type their payloads with them, {@link mergeCompanionDevices}
- * is the one rule for which serial list wins on the server, and
- * {@link layPhoneWrites} is the same rule on the phone for its own writes.
- *
- * Callers: `src/lib/kiosk/companion-link.ts`, `/api/kiosk/companion/**`,
- * `/api/counter/companion`, `useKioskCompanionLink`, `/m/repair-scan`.
- * Schemas: `kiosk_companion_links.devices` / `.pending_serials`.
- */
+/** The phone companion's wire shapes — what a counter tablet shares with a staff phone joined to its repair visit, and what the phone sends… */
 
 import { z } from 'zod';
 import { joinSerials, SERIAL_LIST_MAX_CHARS } from './serial-list';
@@ -52,18 +40,7 @@ export interface CompanionVisit {
   cart: { id: number; customer: string | null } | null;
 }
 
-/**
- * The snapshot the phone should see after a tablet sync: the tablet's devices
- * (it owns WHICH units exist), with every serial list the phone wrote that the
- * tablet had not applied yet laid over them. Without the overlay the tablet's
- * own snapshot — taken a beat before it applied the write — would blank the
- * phone's serials for one sync.
- *
- * A pending list is the unit's WHOLE list (a scan appends, undo removes), so
- * it replaces the tablet's value rather than joining it. A pending list for a
- * unit the tablet no longer has is dropped: the staffer removed that unit, so
- * there is nothing to write it onto.
- */
+/** The snapshot the phone should see after a tablet sync: */
 export function mergeCompanionDevices(
   tablet: readonly CompanionDevice[],
   pending: readonly CompanionSerial[],
@@ -98,20 +75,7 @@ export interface PhoneSerialWrite extends CompanionSerial {
  */
 export const PHONE_WRITE_HOLD_MS = 10_000;
 
-/**
- * The phone's view of a snapshot it just read: its own recent writes laid
- * over the units the snapshot has not caught up on yet. A poll that left
- * before a write landed would otherwise put the unit's OLD list back, and the
- * next scan onto that unit — built on the list the phone shows — would drop
- * the serial just read (two quick scans on one Wave: the second must build on
- * the first).
- *
- * `readAt` is when the snapshot's request LEFT. A snapshot that left before a
- * write can say nothing about it: the write stays. One that left after it
- * settles the write when it shows the same list, and outranks it once the
- * write is `holdMs` old (the tablet's value wins — its staffer may have edited
- * the field). A write for a unit the snapshot no longer has is dropped.
- */
+/** The phone's view of a snapshot it just read: */
 export function layPhoneWrites(
   devices: readonly CompanionDevice[],
   writes: readonly PhoneSerialWrite[],

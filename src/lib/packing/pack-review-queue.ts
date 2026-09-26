@@ -1,20 +1,4 @@
-/**
- * getPackReviewQueue — the latest-outcome queue read for the Review station's
- * packer mode (docs/todo/packer-review-station-plan.md Phase 3c / §4c).
- *
- * pack_verification_events is append-only, so the queue is the DISTINCT ON
- * latest outcome per packer_log, joined to the order / tracking for display and
- * filtered into the station's tabs:
- *   • needs_review — latest = VERIFIED (awaiting a manager decision)
- *   • exceptions   — latest = ERROR_* (floor capture or EOD error)
- *   • flagged      — latest = REVIEW_FLAGGED
- *   • approved     — latest = REVIEW_APPROVED, TODAY (warehouse civil day)
- *   • history      — latest ∈ {REVIEW_APPROVED, REVIEW_FLAGGED, READY, ERROR_*}
- *   • latest       — all latest outcomes (hydrate Packed/Shipped chips)
- *
- * Read-only, org-scoped through tenantQuery. The order lookup is a LATERAL
- * LIMIT 1 so a shipment with more than one order never fans the queue out.
- */
+/** getPackReviewQueue — the latest-outcome queue read for the Review station's packer mode (docs/todo/packer-review-station-plan.md Phase… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

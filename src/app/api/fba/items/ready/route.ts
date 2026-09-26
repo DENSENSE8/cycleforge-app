@@ -6,12 +6,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// ── POST /api/fba/items/ready ─────────────────────────────────────────────────
-// Tech marks an FNSKU item as TESTED after testing/validation.
-// Increments actual_qty and transitions status PLANNED → TESTED.
-// Writes to fba_fnsku_logs in the same transaction.
-//
-// Body: { shipment_id, fnsku, station? } — actor is from the verified session.
+// ── POST /api/fba/items/ready ───────────────────────────────────────────────── Tech marks an FNSKU item as TESTED after testing/validation.
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

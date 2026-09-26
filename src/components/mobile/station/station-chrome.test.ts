@@ -1,15 +1,4 @@
-/**
- * station-chrome contracts — the tone vocabulary every mobile station inherits.
- *
- * The maps' own doc comments are the law's history: tone-as-ground (a 10px ink
- * stamp at 3.26:1 was not a signal), semantic tokens not raw palette steps
- * (emerald vs green-600 showed two mismatched greens in one row), and an
- * untinted ok row ("a ledger where every row is coloured has no signal").
- * These tests make each of those regressions a failure, not a story.
- *
- * Pure data contracts — the render consumption (MobileStationTapeItem) is
- * covered by the maps being total over StationTone.
- */
+/** station-chrome contracts — the tone vocabulary every mobile station inherits. */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {

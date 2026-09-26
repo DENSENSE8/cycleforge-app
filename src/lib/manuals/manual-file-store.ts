@@ -4,15 +4,7 @@ import { put, del } from '@vercel/blob';
 import { docxToPdf } from '@/lib/manuals/docxToPdf';
 import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 
-/**
- * Blob lifecycle for product-manual files, shared by the library upload route
- * (`/api/product-manuals/upload`) and the order paperwork routes
- * (`/api/orders/[id]/manuals`).
- *
- * Word docs (.doc/.docx) are converted to PDF via headless LibreOffice before
- * they touch Blob — the library only stores and previews PDFs, so the Word
- * source is transient.
- */
+/** Blob lifecycle for product-manual files, shared by the library upload route (`/api/product-manuals/upload`) and the order paperwork… */
 
 /** 50MB ceiling — operators dropping huge scans into the library is almost always a mistake. */
 export const MANUAL_FILE_MAX_BYTES = 50 * 1024 * 1024;

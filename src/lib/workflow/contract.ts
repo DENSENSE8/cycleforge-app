@@ -1,14 +1,4 @@
-/**
- * Workflow engine — core contract.
- *
- * These are the types every part of the node engine shares. The design goal is
- * that a "node" never re-implements business logic: each NodeDefinition.run is a
- * thin adapter over an existing src/lib/* module (receiving, tech, shipping…),
- * and the engine only decides ROUTING based on which output port fired.
- *
- * See docs/operations-studio/NODE_WORKFLOW_ARCHITECTURE.md §3 and
- * docs/operations-studio/NODE_WORKFLOW_IMPLEMENTATION_PLAN.md (Phase B).
- */
+/** Workflow engine — core contract. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -79,12 +69,6 @@ export interface WorkflowEvent {
 }
 
 // ─── Persistence boundary ────────────────────────────────────
-//
-// The engine talks to storage through this interface only, so advanceItem() can
-// be unit-tested with an in-memory fake. The real Drizzle implementation lives
-// in store.ts and passes organizationId explicitly on every write (the
-// neon-http client can't see the app.current_org GUC that orgIdCol() defaults
-// from).
 
 export interface ItemState {
   serialUnitId: number;

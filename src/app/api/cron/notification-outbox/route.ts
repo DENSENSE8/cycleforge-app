@@ -1,17 +1,4 @@
-/**
- * Cron: drain notification_outbox into staff_inbox_items.
- *
- * GET /api/cron/notification-outbox?batch=50&maxBatches=10
- *
- * The async half of the Home subscription pipeline (ops_events trigger →
- * outbox → worker → per-staff inbox). Loops bounded drain batches until the
- * queue is empty or maxBatches is hit, so a burst of receives can't run the
- * function past its duration budget.
- *
- * Auth: CRON_SECRET bearer — the same gate as every other
- * /api/cron route. Cron routes are session-less by design (route-permissions
- * exemption pattern for /api/cron/*).
- */
+/** Cron: drain notification_outbox into staff_inbox_items. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

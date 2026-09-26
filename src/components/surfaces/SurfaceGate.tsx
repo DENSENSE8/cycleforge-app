@@ -1,29 +1,13 @@
 'use client';
 
-/**
- * SurfaceGate — decides at render time whether an operator surface shows its
- * data-driven composition (SurfaceRenderer) or its hard-coded legacy tree
- * (`children`). Queries `/api/surfaces/:key/resolve`, which returns
- * `render:'composed'` only when an active `station_definitions` composition
- * exists AND the per-org `surface_composed_render` flag is on.
- *
- * Legacy is the safe default: while loading, on error, or when the flag/
- * composition is absent, `children` (the proven legacy tree) renders unchanged.
- * Wrapping a page in this gate is therefore a no-op until an org opts in.
- */
+/** SurfaceGate — decides at render time whether an operator surface shows its data-driven composition (SurfaceRenderer) or its hard-coded… */
 
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import type { SurfaceKey } from '@/lib/stations/surface-keys';
 
-// The composed branch is live but OFF the default paint: it needs a published
-// composition AND the per-org `surface_composed_render` flag, and it can never
-// render during SSR (the resolve query has no data there, so `children` wins).
-// Statically importing it pulled `StationSlot` + the whole block runtime into
-// the first-load chunk of all eleven gated surfaces. `ssr: false` is therefore
-// free here, and the fallback holds the renderer's own canvas so an org that
-// HAS opted in sees no flash of a different ground while the chunk lands.
+// The composed branch is live but OFF the default paint:
 const SurfaceRenderer = dynamic(
   () => import('./SurfaceRenderer').then((m) => m.SurfaceRenderer),
   {

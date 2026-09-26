@@ -1,14 +1,4 @@
-/**
- * Reveal-on-arm keycap face — the transient single-letter hint painted on a
- * target while its region is armed (nav-keys spec:
- * `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`).
- *
- * Kinetic Ledger flush chrome, accent-tinted so it reads as "press me" beside
- * the armed rail. It is NEVER a permanent per-row chip — it mounts only while
- * the region is armed and unmounts on disarm — and never a mono / slate
- * terminal cosplay. Micro role (smallest legal), tabular so single letters sit
- * on one baseline.
- */
+/** Reveal-on-arm keycap face — the transient single-letter hint painted on a target while its region is armed (nav-keys spec: */
 
 import { cn } from '@/utils/_cn';
 

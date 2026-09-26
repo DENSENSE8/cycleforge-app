@@ -1,21 +1,4 @@
-/**
- * Raw thermal-label command builders — TSPL, ZPL, and ESC/POS.
- *
- * Emits the printer's NATIVE language so the firmware renders text + the 2D code
- * itself (crisp, fast, and required for the browser-native print path in
- * `browserPrint.ts` where there is no driver/Chromium to rasterize HTML). Layout
- * adapts to the profile's paper size; tuned for 2"×1" but scales for larger
- * stock. ESC/POS targets 80mm receipt rolls and uses a QR code (DataMatrix
- * support is spotty on receipt firmware).
- *
- * Every language here encodes the SAME string as the HTML face and the
- * on-screen preview, because all of them read `resolveReceivingQrValue` →
- * `encodePrintMatrix`. That string is the absolute platform Digital Link when
- * the tenant slug is known and the bare `R-{id}` handle otherwise — this
- * comment used to say "the same `R-{id}` value", which stopped being true when
- * carton labels started minting URLs. The HRI printed under the code stays the
- * typeable handle either way.
- */
+/** Raw thermal-label command builders — TSPL, ZPL, and ESC/POS. */
 
 import type { ReceivingLabelPayload } from '@/lib/print/printReceivingLabel';
 import type { LabelLanguage, PaperSize } from '@/lib/print/browserPrint';
@@ -379,10 +362,7 @@ function zpl(f: LabelFields, size: PaperSize, copies: number): string {
   return `${L.join('\n')}\n`;
 }
 
-// ---------------------------------------------------------------------------
-// ESC/POS (80mm receipt). QR carries the same encoded value as every other
-// language — platform Digital Link when the slug is known, else `R-{id}`.
-// ---------------------------------------------------------------------------
+// --------------------------------------------------------------------------- ESC/POS (80mm receipt).
 const GS = '\x1d';
 const ESC = '\x1b';
 

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Support context perspective switcher — the house child-mode combobox
- * ({@link SearchableSelectField} `appearance="flush"`, the ticket claim
- * Create|Link face) under a Displays leaf / hub. Was a `TabDisplay` segment
- * until 2026-08-19; child modes are one control across every right-edge leaf,
- * and a flush select does not compete with the parent strip above it. Soft
- * `rounded-full` pills stay banned on Station Displays nested grammar.
- */
+/** Support context perspective switcher — the house child-mode combobox ({@link SearchableSelectField} `appearance="flush"`, the ticket… */
 
 import { SearchableSelectField } from '@/design-system/components';
 

@@ -1,13 +1,4 @@
-/**
- * Pack-ready outbound document ensure (JIT pack documents Phase 4).
- *
- * When an order becomes pack-ready (tech TESTED lane via publishOrderTested),
- * fetch missing shipping_label / packing_slip from marketplaces. Pack print
- * stays resolve+dispatch only — never buys postage here.
- *
- * Auto-purchase of ShipStation labels is intentionally OUT OF SCOPE: postage
- * is irreversible. Labels workbench remains the buy path.
- */
+/** Pack-ready outbound document ensure (JIT pack documents Phase 4). */
 
 import { after } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';

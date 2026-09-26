@@ -3,15 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { SkuPlatformMapping } from '@/components/inventory/SkuIdentity';
 
-/**
- * useSkuIdentity — fetches `{canonicalSku, productTitle, platforms}` for a
- * raw SKU value (which may be the internal SKU or a marketplace platform
- * SKU). Designed to feed the SkuIdentity component from any screen that
- * only knows the order's raw sku + source.
- *
- * Cached per (sku, accountSource) in-process so the same panel re-opens
- * don't re-fetch.
- */
+/** useSkuIdentity — fetches `{canonicalSku, productTitle, platforms}` for a raw SKU value (which may be the internal SKU or a marketplace… */
 
 export interface SkuIdentityResolution {
   resolved: boolean;

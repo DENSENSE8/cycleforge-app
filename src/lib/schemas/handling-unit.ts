@@ -15,12 +15,7 @@ const unitRefs = z
 
 // ─── POST /api/handling-units ───────────────────────────────────────────────
 
-/**
- * Mint a handling unit (box/tray). Code is auto-minted `H-{id}` server-side
- * unless an external tote `code` is supplied (Option C). Optional `units` seeds
- * the box at creation (re-sort-into-a-fresh-box flow). `idempotencyKey` lets a
- * retried mint replay the original response instead of creating a second box.
- */
+/** Mint a handling unit (box/tray). */
 export const HandlingUnitCreateBody = z
   .object({
     code: z.string().trim().min(1).max(64).nullable().optional(),
@@ -35,16 +30,7 @@ export type HandlingUnitCreateInput = z.infer<typeof HandlingUnitCreateBody>;
 
 // ─── POST /api/handling-units/bulk ──────────────────────────────────────────
 
-/**
- * Mint N boxes in one call (bulk tote mint → one label run). Codes are always
- * auto-minted `H-{id}` server-side — there is no `code` field, since a batch
- * cannot share one external tote barcode. `idempotencyKey` lets a retried
- * bulk mint replay the original response instead of minting a second batch.
- *
- * The ceiling is {@link MAX_TOTE_PRINT_RUN}, imported rather than retyped: the
- * phone's count step and this validator MUST agree, or `/m/print` offers a run
- * the server refuses.
- */
+/** Mint N boxes in one call (bulk tote mint → one label run). */
 export const HandlingUnitBulkCreateBody = z
   .object({
     count: z.number().int().min(1).max(MAX_TOTE_PRINT_RUN),

@@ -1,24 +1,10 @@
-/**
- * Ticket composer chrome — the channel toggle on the action bar (right of `+`)
- * and the Cc / attached-context rows above the draft.
- * REQ-CHAN-01/02/03, REQ-CC-01/02/04, REQ-PLUS-04 (chip).
- *
- *   node --import tsx --test src/components/composer/composer-ticket-inset.test.ts
- *
- * MOUNTED. The claim under test is that the channel is READABLE without opening
- * anything and that the audience row appears and disappears with it — state
- * across renders, not a string in a file. `.test.ts` rather than `.test.tsx`
- * because `run-unit-tests.mjs` collects `*.test.ts` only.
- */
+/** Ticket composer chrome — the channel toggle on the action bar (right of `+`) and the Cc / attached-context rows above the draft. */
 
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { act, createElement as h, type ReactElement } from 'react';
-// STATIC, not dynamic. tsx compiles this file to CJS, so a `await import(…)`
-// here would load @tanstack/react-query's ESM build while `src/**` loads its
-// CJS build — two module instances, two React contexts, and a provider the
-// component under test cannot see (the classic dual-package hazard).
+// STATIC, not dynamic.
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const dom = new JSDOM('<!doctype html><html><body></body></html>', {

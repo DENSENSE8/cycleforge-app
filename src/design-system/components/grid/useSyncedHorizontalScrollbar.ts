@@ -2,21 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
-/**
- * Bidirectional `scrollLeft` sync between a real h-scroll source (table body)
- * and a visible sticky X gutter. The body keeps `no-scrollbar` so Y stays clean;
- * the gutter is the always-reachable triage drag affordance.
- *
- * Feedback loops are gated with a re-entrancy flag — setting `scrollLeft`
- * fires `scroll` on the other element in every engine we care about.
- *
- * **Measure law:** the scrollport / header *band* border boxes stay viewport-wide
- * when only `--cf-col-*` grows (row `min-width` may still be `max(100%, rem)`).
- * Observe the wide header/row under `[data-grid-col-header]`, re-run when
- * {@link contentMinWidthRem} / {@link contentMinWidthPx} change, watch the
- * `[data-cf-grid]` style attribute for live drag-resize `setProperty`, and
- * floor width from the resolved `grid-template-columns` px sum.
- */
+/** Bidirectional `scrollLeft` sync between a real h-scroll source (table body) and a visible sticky X gutter. */
 export function useSyncedHorizontalScrollbar(
   sourceRef: RefObject<HTMLElement | null>,
   enabled: boolean,

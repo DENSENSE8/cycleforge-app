@@ -1,17 +1,4 @@
 // Single source of truth for the inbound receiving / testing lifecycle.
-//
-// Every status dot, badge, phase grouping, and progress ordering across the
-// receiving + testing UIs derives from this one map. Before this existed the
-// same `workflow_status` rendered three different colors in three different
-// files (rails vs. WORKFLOW_BADGE vs. local copies in PendingUnboxingQueue /
-// PoLinesSection). Add a stage here once and it shows up everywhere, the same.
-//
-// Pure module — no server/client-only imports — so it is safe to import from
-// client components AND server code (e.g. receive-line.ts uses the labels for
-// audit notes).
-//
-// The DB enum (`inbound_workflow_status_enum`) is the contract; keep the keys
-// below in lockstep with it. UI copy (label) may diverge from the enum name.
 
 export type WorkflowPhase = 'INBOUND' | 'RECEIVING' | 'TESTING' | 'TERMINAL';
 
@@ -36,21 +23,7 @@ export interface WorkflowStageMeta {
   description: string;
 }
 
-/**
- * Phase-grouped palette:
- *   • Receiving  → blue family   (sky → blue → indigo as it advances)
- *   • Testing    → amber/violet/teal (awaiting → in-test → passed)
- *   • Success    → emerald       (done, fully finalized)
- *   • Terminal   → rose/slate/purple for failed / scrap / RTV
- *
- * Badges are house pastel chips (`bg-*-50 text-*-700`) so every stage in a
- * ruled status column shares one language — never solid white-ink fills.
- * Dots stay saturated so the leading signal still reads at a glance.
- *
- * PASSED is teal (not emerald) so "tested/passed" reads visually distinct from
- * "received/done" (emerald-600 **dot**) in the rail — both hues are "positive"
- * but teal ≠ emerald at a glance, which is the signal operators need.
- */
+/** Phase-grouped palette: */
 export const WORKFLOW_STAGES: Record<string, WorkflowStageMeta> = {
   EXPECTED: {
     status: 'EXPECTED', order: 0, phase: 'INBOUND', label: 'Inbound',
@@ -146,17 +119,6 @@ export function isLaterStage(
 }
 
 // ── Coarse operator lifecycle (receiving redesign) ──────────────────────────
-//
-// The redesign's operator-facing receiving lifecycle is a COARSE 4-state view
-// (receiving_lines.receiving_line_status), projected from the fine-grained
-// inbound_workflow_status_enum above. The fine states stay authoritative for the
-// testing pipeline; this projection is what the Receiving/Unbox/History modes
-// show and filter on.
-//
-// PROBLEM is NOT a value here — it is an ORTHOGONAL exception dimension
-// (receiving_lines.exception_code / receiving_exceptions) layered on ANY state,
-// so a line can be SCANNED + PROBLEM. This is the SINGLE derive-SoT for
-// receiving_line_status; never inline this mapping (source-of-truth.md).
 
 export type ReceivingLineStatus = 'INCOMING' | 'SCANNED' | 'UNBOXED' | 'RECEIVED';
 

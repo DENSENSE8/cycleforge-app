@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * `useNavRegion` — a region opts into the leader-armed selection keyboard.
- *
- * The region supplies its live ordered targets + a commit fn; the hook resolves
- * ONE keymap (so the revealed hints and the store's letter-match agree), keeps
- * fresh refs the store reads at keystroke time, registers the region handle, and
- * returns `{ armed, keymap }` for the region to paint reveal-on-arm keycaps.
- *
- * Spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`.
- */
+/** `useNavRegion` — a region opts into the leader-armed selection keyboard. */
 
 import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import type { NavMode } from './nav-leader-machine';

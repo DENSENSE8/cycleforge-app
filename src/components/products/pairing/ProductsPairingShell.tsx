@@ -5,14 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { ProductHubPanel } from './ProductHubPanel';
 import type { PairingQueueItem } from './types';
 
-/**
- * /products?view=pairing main pane.
- *
- * The queue list now lives in the sidebar (ProductsSidebarPanel renders
- * PairingQueueList). This component owns only the right pane: it resolves
- * `?sku=` to a sku_catalog_id (best-effort via /pairing-queue) and mounts
- * the ProductHubPanel for it.
- */
+/** /products?view=pairing main pane. */
 export function ProductsPairingShell() {
   const searchParams = useSearchParams();
   const urlSku = searchParams.get('sku');

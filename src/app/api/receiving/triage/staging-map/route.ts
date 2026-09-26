@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/receiving/triage/staging-map — every carton with a shelf and/or
- * lane assigned (staged, whether or not triage is complete yet), for the
- * rail-row "Shelf · Lane" popover chip (A3, docs/receiving-triage-redesign-plan.md
- * §4). Same side-channel annotation pattern as `useTriageStagedCartons` / the B3
- * Zoho-sync exception dot — a read-only indexed lookup, never a blocking fetch.
- */
+/** GET /api/receiving/triage/staging-map — every carton with a shelf and/or lane assigned (staged, whether or not triage is complete yet),… */
 interface StagingMapRow {
   id: number;
   staging_location_id: number | null;

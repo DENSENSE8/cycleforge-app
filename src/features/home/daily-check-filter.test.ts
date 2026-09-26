@@ -1,13 +1,6 @@
 /**
  * Daily's find/refine contract.
- *
- *   npx tsx --test src/features/home/daily-check-filter.test.ts
- *
  * The regression this exists for (operator 2026-09-14): "when I check off
- * something, it should not disappear from the data table". The surface reads
- * its status straight off `?filter=`, so the absent param MUST resolve to the
- * list that keeps ticked rows — anything else and a tick unmounts the row it
- * just struck.
  */
 
 import assert from 'node:assert/strict';

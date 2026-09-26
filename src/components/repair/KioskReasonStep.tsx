@@ -1,36 +1,6 @@
 'use client';
 
-/**
- * KioskReasonStep — step 0 of the kiosk repair flow: the step header with its
- * Add CTA opposite, an inline entry for a new reason, and the reason pills —
- * for every unit at once, or unit by unit.
- *
- * Self-contained on purpose. The entry's open/draft state, the All/Per/All
- * issues view and the device-authed vocabulary hook
- * ({@link useKioskSkuReasons}) belong to THIS step, not to the pane that
- * happens to show it — `KioskRepairPane` already carries the cart lines, the
- * form data, the gates and two other steps.
- *
- * ## Reasons are a LINE fact (2026-09-25)
- *
- * Operator: reasons are "contextual — all units, or per unit, with a
- * switcher". Each unit's reasons live on ITS cart line
- * (`RepairPayload.repairReasons`), which is the row the counter writes as that
- * unit's `repair_service.issue`. This step reads them off the devices it is
- * handed and writes them back through ONE callback naming the lines:
- *   - **All devices** — one set, written to every unit (the default, and the
- *     only face a single-device visit shows);
- *   - **Per device** — a switcher of units grouped by SKU (Device & quote's
- *     grouping); each unit picks from its OWN SKU's vocabulary;
- *   - **All issues** — a read view of every unit with its reasons; tapping a
- *     unit opens it under Per device.
- * Linked repairs never arrive here: `repairDevicesFromLines` drops them.
- *
- * Callers: `KioskRepairPane` (step 0). Affected API:
- * `/api/kiosk/repair/issues` via the hook. Schemas: none.
- * User: "there should be an add button top right as a CTA button so you would
- * be able to add a reason for repair for that SKU specifically".
- */
+/** KioskReasonStep — step 0 of the kiosk repair flow: */
 
 import { useState } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -112,12 +82,7 @@ export function KioskReasonStep({
   // A single unit has nothing to choose between: it is always All devices.
   const face: ReasonView = multi ? view : 'all';
   const allSkus = new Set(units.map((u) => u.sku ?? null));
-  /*
-   * Whose vocabulary is on screen. Per device: the unit's own SKU. All
-   * devices: the SKU they share, else none — the endpoint then answers with
-   * the org's global reasons, which every SKU's list also carries, so a pick
-   * here is a label every unit knows.
-   */
+  /* Whose vocabulary is on screen. */
   const sourceSku =
     face === 'all'
       ? allSkus.size === 1
@@ -143,32 +108,14 @@ export function KioskReasonStep({
         [...visibleReasonBase(labels)],
       );
 
-  /**
-   * Switch views. Rule for Per device → All devices: ask nothing, and when
-   * the units disagree apply the set on screen to every unit
-   * ({@link adoptedReasons}). All devices → Per device writes nothing — every
-   * unit already carries the shared set — and All issues is read-only.
-   */
+  /** Switch views. */
   const choose = (next: ReasonView) => {
     if (next === 'all' && shared === null) onReasonsChange(allLineIds, adoptedReasons(units, active));
     setEntryOpen(false);
     setView(next);
   };
 
-  /**
-   * Add a reason for THIS SKU and pick it.
-   *
-   * Selecting it is the point: the operator typed it while answering "Reason
-   * for repair" for the device on the counter, so it is both a new vocabulary
-   * row for the SKU and this repair's answer. One tap on the pill undoes the
-   * selection; the row stays.
-   *
-   * Pill, selection and closing the entry all happen in ONE frame, before the
-   * POST — the paint is the feedback. Waiting for the server first left the
-   * pill on screen but unselected for the round trip, which reads as the tap
-   * having missed. A failure takes the selection back with it (the hook rolls
-   * back the pill itself and toasts).
-   */
+  /** Add a reason for THIS SKU and pick it. */
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const label = draft.trim();
@@ -185,11 +132,10 @@ export function KioskReasonStep({
 
   return (
     <>
-      {/* ONE main header per step, top-left, in the display role at bold weight
-          (operator 2026-09-14: "main header as a black font and text… like
-          'reason for repair', top left"), with the Add CTA opposite it inside
-          the same measure. `secondary`, not a second primary: the step's
-          primary key is Continue, on the footer. */}
+      {/*
+ * ONE main header per step, top-left, in the display role at bold weight
+ * (operator 2026-09-14: "main header as a black font and text… like
+ */}
       <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-5">
         <h2 className="min-w-0 text-left text-role-display font-bold text-text-default">
           {heading}
@@ -294,10 +240,7 @@ export function KioskReasonStep({
         ) : null}
 
         {face === 'issues' ? (
-          /* ALL ISSUES — every unit and what is wrong with it, the read view.
-             A card per unit in `KioskTicketStep`'s candidate anatomy (hairline
-             + row corner, title line, facts as meta chips); tapping one opens
-             that unit under Per device. */
+          /* ALL ISSUES — every unit and what is wrong with it, the read view. */
           <div className="flex flex-col gap-2 px-4" data-testid="kiosk-repair-reason-issues">
             {groups.flatMap((group) =>
               group.units.map((unit, i) => (

@@ -9,16 +9,7 @@ import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import type { DashboardData } from '@/features/operations/types';
 
-/**
- * OperationsGoalHero — the goal-first TOP section of the Operations page
- * (roadmap P3-ADM-01 acceptance A).
- *
- * It rolls the per-staff daily goals (org-scoped `staffProgress` from
- * /api/dashboard/operations) up into ONE floor-wide goal for today: today's
- * units done vs the sum of every active staffer's daily target. No new query
- * and no new polling — it derives purely from data the page already fetches
- * via useOperationsDashboardData (which polls 60s + Ably-patches).
- */
+/** OperationsGoalHero — the goal-first TOP section of the Operations page (roadmap P3-ADM-01 acceptance A). */
 
 interface OperationsGoalHeroProps {
   staffProgress: DashboardData['staffProgress'] | undefined;

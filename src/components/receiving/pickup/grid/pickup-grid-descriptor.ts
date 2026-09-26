@@ -1,11 +1,4 @@
-/**
- * Local Pickup grid surface descriptor — lifts the MOUNTED column model (a
- * `SlotLayout` materialization since the Wave-2 hand-model kill) into the
- * TanStack defs `LedgerGridSurface` mounts. Sortability, default direction
- * and locks all derive from the columns handed in — never a module constant.
- * Row ORDER stays with the house comparator in `PickupWorkspace` (state math
- * only — grouping is house `group-rows`, not TanStack).
- */
+/** Local Pickup grid surface descriptor — lifts the MOUNTED column model (a `SlotLayout` materialization since the Wave-2 hand-model kill)… */
 
 import {
   makeGridSurfaceDescriptor,

@@ -22,20 +22,7 @@ import { ClaimLinkFindStep } from './claim/components/ClaimLinkFindStep';
 import { ClaimActionFooter } from './claim/components/ClaimPhaseActions';
 import { cn } from '@/utils/_cn';
 
-/**
- * Claim wizard body — Create|Link mode combobox + stacked scroll sections +
- * sticky File / Link & send footer. Ticket is editable fields only (no
- * duplicate review preview). Backup note sits on the sticky footer (leading).
- * Dismiss via header X / Displays →| (no Cancel).
- *
- * Create and Link share Claim type · Subject · Body · Recipients. Link adds
- * the ticket picker above that stack. Mode is a body flush combobox (never a
- * leaf-header New·Link segment twin).
- *
- * No photo picker: attaching is the composer's job, and this panel mounts in
- * both the rail and the centre — a grid here rendered (and re-fetched) once per
- * surface.
- */
+/** Claim wizard body — Create|Link mode combobox + stacked scroll sections + sticky File / Link & send footer. */
 export function ReceivingClaimPanel({
   className,
   chrome = 'modal',

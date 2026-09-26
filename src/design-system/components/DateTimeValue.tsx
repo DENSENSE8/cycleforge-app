@@ -11,20 +11,7 @@ interface DateTimeValueProps {
   className?: string;
 }
 
-/**
- * Canonical date+time value for details-panel ledgers — the single reusable way
- * to render a timestamp so a column of them lines up perfectly.
- *
- * Why a component (not just a formatted string): `formatDateTimePST` yields
- * `MM/DD/YYYY h:mm:ss AM/PM`, where the hour is 1–2 digits so the string width
- * varies by a character. This renders a single fixed-width cell split into two
- * columns: the DATE pinned left (so a stacked column of dates all start at the
- * same x) and the TIME filling the rest, right-aligned (so the times sit to the
- * right with their AM/PM edges flush). Tabular figures keep digits equal width.
- *
- * Empty / invalid timestamps come from `formatDateTimePST` as `"—"` (legacy
- * `"N/A"` still maps to the honest-absence glyph).
- */
+/** Canonical date+time value for details-panel ledgers — the single reusable way to render a timestamp so a column of them lines up perfectly. */
 export function DateTimeValue({ value, fallback = '—', className = '' }: DateTimeValueProps) {
   // Subscribe so a 12h↔24h toggle re-renders the ledger instantly.
   useTimeFormat();

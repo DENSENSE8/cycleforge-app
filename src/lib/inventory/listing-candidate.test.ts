@@ -7,10 +7,7 @@ import {
 } from './listing-candidate';
 import { listingUrlIdentityKey, listingUrlItemId } from '@/lib/receiving/listing-links';
 
-// ── The shapes operators actually paste ──────────────────────────────────────
-// Plan Phase 0: "unit-test matrix for listing URL parsing on eBay/Amazon URLs
-// operators actually paste". Every row here is a real-world copy out of a
-// browser address bar, share sheet, or marketplace app.
+// ── The shapes operators actually paste ────────────────────────────────────── Plan Phase 0:
 
 const PASTED_LISTINGS: Array<{ url: string; itemNumber: string; platform: string }> = [
   // eBay — bare, with tracking query, with title slug, mobile host, ccTLD.
@@ -103,12 +100,7 @@ test('parseListingUrl refuses non-http schemes', () => {
   }
 });
 
-/**
- * The regression this whole strict path exists for. If `listingUrlItemId` ever
- * grows `listingUrlIdentityKey`'s last-segment fallback, a search page becomes
- * a resolvable "item number" and Resolve writes a fabricated id onto a real
- * order — silently. Keep them apart.
- */
+/** The regression this whole strict path exists for. */
 test('the strict item id NEVER inherits the chip parser\'s loose fallback', () => {
   const searchPage = 'https://www.ebay.com/sch/i.html?_nkw=widget';
   assert.equal(listingUrlIdentityKey(searchPage), 'ihtml'); // cosmetic: fine

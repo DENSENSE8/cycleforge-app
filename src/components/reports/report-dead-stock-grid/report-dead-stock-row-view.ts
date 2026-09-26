@@ -1,31 +1,4 @@
-/**
- * `DeadStockReportRow → CompoundRowView` — the dead-stock adapter.
- *
- * Pure, strings and enums, no JSX: "the moment a family can pass a node, the
- * fork walks back in wearing a view model." Every fact not named here is a
- * bound SLOT resolved through `report-dead-stock-resolve.ts`.
- *
- * ## What the compound row says about one dormant SKU
- *
- * - TITLE — the PRODUCT, linked to its catalog page (the engine's title href,
- *   never JSX inside a family cell). A row with no product title is named by
- *   the SKU it definitely has.
- * - IDS — the SKU. No tracking line: a dead-stock row has no carrier, and
- *   inventing one would paint a chip over a fact this feed does not have.
- * - STATE — HOW LONG it has been still. The word carries the `d` suffix; the
- *   FACT behind the header is the bare count, so the column sorts numerically
- *   and the search box matches what an operator types.
- * - DATES — WHEN it last moved, on the Hash line: the instant the count above
- *   is measured from. Leaving it null would paint a column of `--` under a
- *   live header.
- *
- * The retired `text-rose-600` on Days dormant is gone: the number is the fact
- * and the hue was decoration. Tone on this desk would have to mean "needs a
- * human", and every row on a dead-stock report is equally inert.
- *
- * There is no money, no deadline and no photo on a dead-stock row; all three
- * stay null and the shared cells paint the honest empty face.
- */
+/** `DeadStockReportRow → CompoundRowView` — the dead-stock adapter. */
 
 import { format } from 'date-fns';
 import type {
@@ -68,10 +41,8 @@ export function reportDeadStockCompoundView(row: DeadStockReportRow): CompoundRo
     // Nothing under the title: the layout binds no subtitle, and the stock
     // count is a track. A fallback note here would repeat a column.
     note: null,
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(row.sku, 'SKU'),
     orderId: null,
     tracking: null,

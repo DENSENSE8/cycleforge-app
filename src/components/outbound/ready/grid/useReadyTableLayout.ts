@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The Ready slot-layout hook — the Ready CONFIG on the shared
- * {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law, org
- * capture, Fields-picker data; see its docblock). The FOURTH family on the
- * engine and the first Wave-3 port — more proof that adoption is a config
- * object, not a hook fork.
- *
- * Ready paints the SHEET morph only: a stored `compound` layout would promise
- * a two-row item cell nothing draws — `paintMorph` coerces, the org write gate
- * (`slotMorphsFor('ready')`) refuses.
- */
+/** The Ready slot-layout hook — the Ready CONFIG on the shared {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law, org… */
 
 import {
   READY_FIELD_CATALOG,

@@ -1,29 +1,4 @@
-/**
- * Minimal MCP (Model Context Protocol) JSON-RPC 2.0 server over the assistant
- * read-tool registry (universal-feed plan Phase 5 — "MCP exposure of the tool
- * registry for power users"). This is the "second transport" the read-tool
- * registry was built for (see tools/index.ts header): it reuses
- * `listAssistantTools` (tools/list) and `runAssistantTool` (tools/call) with
- * ZERO tool rework — org + permissions come from the authenticated request via
- * the injected ctx, never from the MCP client.
- *
- * NOT read-only any more (2026-08-22). It was, and the original note here said
- * so; the tool-forge gateway added four entries to the same registry, three of
- * which write. What keeps that safe is NOT the transport — it is that every
- * entry declares its own permission and both `listAssistantTools` (tools/list)
- * and `runAssistantTool` (tools/call) filter on it. The /api/mcp route gate
- * (`assistant.chat`) decides who reaches the gateway; it decides nothing about
- * what they may do once here. A caller holding only `assistant.chat` sees the
- * read tools and neither sees nor can invoke the writers.
- *
- * The corollary matters more than the note: a new tool that omits a distinct
- * permission, or reuses `assistant.chat`, silently widens that route gate to
- * whatever the tool can do.
- *
- * Transport: Streamable-HTTP request/response — one JSON-RPC message (or batch)
- * per POST, answered with application/json. No SSE streaming (the read tools are
- * single-shot). Deps-injected so the dispatch unit-tests DB-free.
- */
+/** Minimal MCP (Model Context Protocol) JSON-RPC 2.0 server over the assistant read-tool registry (universal-feed plan Phase 5 — "MCP… */
 
 import { z } from 'zod';
 import type { AssistantToolCtx, AssistantToolRunResult } from '@/lib/assistant/tools/types';

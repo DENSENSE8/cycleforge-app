@@ -1,16 +1,4 @@
-/**
- * Marketplace order-number shapes that are unique enough to identify the
- * channel from the string alone — no listing URL, no `account_source`.
- *
- * Amazon SP-API documents `AmazonOrderId` as **3-7-7** (three digit groups,
- * all numeric). Prefixes vary (111 / 112 / 202 / 902 / …); only the grouping
- * is stable.
- *
- * eBay's seller/buyer-facing order number (2019+, Seller Hub / receipts) is
- * **2-5-5**. Distinct from Amazon by the first segment: 2 digits = eBay,
- * 3 digits = Amazon. Legacy eBay `itemId-transactionId` forms are not this
- * pattern and must not be painted as eBay.
- */
+/** Marketplace order-number shapes that are unique enough to identify the channel from the string alone — no listing URL, no `account_source`. */
 
 import {
   UNKNOWN_PLATFORM,

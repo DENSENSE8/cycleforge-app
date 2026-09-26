@@ -54,12 +54,7 @@ export interface ReceivingSpreadsheetProps {
   selectedIds: Set<number>;
   /** Row-body click. Opens the record on surfaces that split the two planes. */
   handleSelectRow: (row: ReceivingLineRow) => void;
-  /**
-   * Select-gutter click — bulk membership only. Present ONLY where the row body
-   * has been handed to the record plane (History). Omitted → the legacy
-   * single-gesture row: the click ticks the box and the gutter stays a painted
-   * span (Unbox workbench, Testing history, Pickup).
-   */
+  /** Select-gutter click — bulk membership only. */
   handleToggleRow?: (row: ReceivingLineRow) => void;
   /** Activity-axis stamp — drives the `date` cell + the column sort. */
   activityAxis?: ReceivingActivityAxis;
@@ -73,17 +68,7 @@ export interface ReceivingSpreadsheetProps {
   statusVocabulary?: 'fine' | 'coarse';
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
-  /**
-   * FULL canonical column list — `LedgerGridSurface` resolves visibility.
-   *
-   * The Unbox / History / Testing rails pass the MATERIALIZED compound model
-   * (`receivingCompoundColumnsFor`, wave 1.3); omitting it falls back to the
-   * definition's flat canonical list, which is what the `/test` history desk
-   * still mounts. Those are two different mounts of one definition, so the
-   * slot layout is threaded in by the caller rather than resolved here — a
-   * host that materialized unconditionally would swap the flat desk's model
-   * out from under it.
-   */
+  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
   columns?: readonly ReceivingGridColumn[];
   /**
    * Fields-picker DATA for the toolbar `+` popover, from the caller's slot
@@ -118,12 +103,7 @@ export interface ReceivingSpreadsheetProps {
   onControlledSortClear?: () => void;
   /** Enable Sheets header context menu (Unbox / compare). Default true. */
   enableColumnMenu?: boolean;
-  /**
-   * Select-gutter chrome. Unbox History / Incoming click-select paint
-   * {@link GridClickSelectFace} in the cell (not this chrome); default
-   * `'always'` keeps Recent / Queue / Docked History.
-   * Ignored when {@link clickSelect} is true.
-   */
+  /** Select-gutter chrome. */
   selectGutterChrome?: GridSelectGutterChrome;
   /**
    * Unbox History click-select: click toggles bulk; double-click
@@ -200,20 +180,13 @@ export function ReceivingSpreadsheet({
   // inventory provider (falls back to capability title while loading).
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
 
-  // Geometry + identity resolve from the `receiving.browse` DEFINITION; the two
-  // overrides below exist because Testing History genuinely mounts this same
-  // definition under its own prefs bucket. The header's column menu and the
-  // per-staff display/fill hooks need the resolved values locally, so read them
-  // once here rather than re-typing the defaults.
+  // Geometry + identity resolve from the `receiving.browse` DEFINITION; the two overrides below exist because Testing History genuinely…
   const { data: customDefs = [] } = useCustomFieldDefs('RECEIVING');
   const systemColumns = columns ?? RECEIVING_TABLE_BINDING.columns;
   const allColumns = mergeCustomFieldColumns(systemColumns, customDefs);
   const prefsTableId = tableId ?? RECEIVING_TABLE_BINDING.definition.tableId;
 
-  // No custom-field commit handler: every receiving descriptor declares
-  // `inCellEdit: false`, so nothing on this grid can originate a cell write.
-  // `commitCustomFieldValueClient` stays in the domain layer for whoever puts
-  // a real editor on the record plane.
+  // No custom-field commit handler:
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches

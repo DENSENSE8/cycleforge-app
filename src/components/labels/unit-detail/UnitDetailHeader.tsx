@@ -23,13 +23,7 @@ interface UnitDetailHeaderProps {
   activeAllocation: Allocation | null;
 }
 
-/**
- * 40px detail-pane header (paneHeaderRowClass). Left: compact identity
- * (SKU eyebrow + serial). Right: three linkage actions, each toggling an
- * anchored popover — Inventory (stock + bin + order), Compatibility (SKU
- * assembly graph), Similar (same-category catalog). One popover open at a
- * time; click-away / Escape close via useHeaderPopover.
- */
+/** 40px detail-pane header (paneHeaderRowClass). */
 export function UnitDetailHeader({
   unit,
   stock,

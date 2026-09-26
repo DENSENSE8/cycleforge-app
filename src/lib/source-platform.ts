@@ -1,36 +1,8 @@
-/**
- * Single source of truth for a `source_platform` / channel value → mark, tone,
- * and display label. Ops UI paints the **colored identity dot**
- * ({@link platformMetaBrandDot}) or a lettermark via {@link PlatformMark} —
- * never uppercase prose like "ECWID" as the channel face. {@link label} is for
- * tooltip / aria / select-option text / physical print only.
- *
- * Before this module the same platform read three different ways: the pill said
- * "AliExp" while the printed label said "AliExpress", the order-derived helper
- * returned a lowercase "ebay", and Ecwid drifted between "ECWID" and the
- * receiving repair-service face "ECWID-RS". Everything that turns a platform
- * value into a name or a color now derives from {@link SOURCE_PLATFORMS} so a
- * platform can never present two ways again.
- */
+/** Single source of truth for a `source_platform` / channel value → mark, tone, and display label. */
 
 import { platformPaintFromHex } from '@/lib/color-contrast';
 
-/**
- * The PINNED hue for a platform — the one place the sentence "eBay is yellow,
- * Amazon is orange" is written down.
- *
- * `text` / `border` / `dot` below stay explicit rather than being generated
- * from this, because their shades are tuned per platform for legibility
- * (eBay reads at 500/400, Amazon at 600/600) and a uniform ladder would
- * silently restyle half the registry. What this field buys is that the tuning
- * can no longer DISAGREE with the hue: `source-platform.test.ts` asserts every
- * class on a row names that row's hue, so a copy-paste that leaves an Amazon
- * row painting yellow fails the suite instead of shipping.
- *
- * `slate` and `neutral` are the deliberate non-brand hues — Square's quiet
- * slate, and Other/Unknown, which paint from semantic `text-text-*` /
- * `border-border-*` tokens rather than a colour ramp.
- */
+/** The PINNED hue for a platform — the one place the sentence "eBay is yellow, Amazon is orange" is written down. */
 export type PlatformHue =
   | 'yellow'
   | 'orange'
@@ -62,12 +34,7 @@ export interface SourcePlatformMeta {
   text: string;
   /** Tailwind border tone for the chip's underline accent. */
   border: string;
-  /**
-   * Tailwind fill for dense Sheets brand-identity micro-dots (order# column
-   * when glyphs are omitted). Kept explicit so neutrals (`text-text-*`) do not
-   * invent a broken `bg-text-*` class. Catalog {@link accentHex} still wins via
-   * {@link platformMetaBrandDot}.
-   */
+  /** Tailwind fill for dense Sheets brand-identity micro-dots (order# column when glyphs are omitted). */
   dot: string;
   /**
    * Optional org accent `#rrggbb` from `platforms.color_hex`. When set, marks
@@ -140,12 +107,7 @@ export function sourcePlatformLabel(value: string | null | undefined): string {
   return sourcePlatformMeta(value).label;
 }
 
-/**
- * The pinned brand hue for a platform value. Any surface that needs a colour
- * NAME (rather than a Tailwind class) reads it from here — a tone vocabulary
- * that hardcodes its own "amazon is orange" row is exactly the drift this
- * function exists to prevent.
- */
+/** The pinned brand hue for a platform value. */
 export function sourcePlatformHue(value: string | null | undefined): PlatformHue {
   return sourcePlatformMeta(value).hue;
 }
@@ -155,12 +117,7 @@ export function sourcePlatformMark(value: string | null | undefined): string {
   return sourcePlatformMeta(value).mark;
 }
 
-/**
- * Icon / mark ink from {@link SourcePlatformMeta} — one ladder for
- * {@link PlatformMark}, carton order `#`, and listing ExternalLink.
- * Catalog `accentHex` wins (via {@link platformPaintFromHex}); else Tailwind
- * {@link SourcePlatformMeta.text}. Empty result → caller keeps a neutral tone.
- */
+/** Icon / mark ink from {@link SourcePlatformMeta} — one ladder for {@link PlatformMark}, carton order `#`, and listing ExternalLink. */
 export function platformMetaIconTone(meta: SourcePlatformMeta): {
   className?: string;
   style?: { color: string };
@@ -175,12 +132,7 @@ export function platformMetaIconTone(meta: SourcePlatformMeta): {
   return {};
 }
 
-/**
- * Dense Sheets brand-identity micro-dot fill — order# column when `#` is
- * omitted. Catalog {@link SourcePlatformMeta.accentHex} wins (same ladder as
- * {@link platformMetaIconTone}); else registry {@link SourcePlatformMeta.dot}.
- * Not a lifecycle status dot (`GridStatusCellValue`).
- */
+/** Dense Sheets brand-identity micro-dot fill — order# column when `#` is omitted. */
 export function platformMetaBrandDot(meta: SourcePlatformMeta): {
   className?: string;
   style?: { backgroundColor: string };
@@ -195,12 +147,7 @@ export function platformMetaBrandDot(meta: SourcePlatformMeta): {
   return { className: UNKNOWN_PLATFORM.dot };
 }
 
-/**
- * Order / PO chip hover label — prefixes the platform display name when known
- * (`eBay 08-14924-82211`), mirroring {@link formatTrackingTooltipLabel}'s
- * carrier prefix. Pass the catalog-resolved label (from {@link usePlatformMeta}),
- * not a raw slug. Empty / Unknown → bare id.
- */
+/** Order / PO chip hover label — prefixes the platform display name when known (`eBay 08-14924-82211`), mirroring {@link… */
 export function formatPlatformTooltipLabel(
   orderId: string,
   platformLabel?: string | null,
@@ -217,13 +164,7 @@ export function formatPlatformTooltipLabel(
 
 const BY_LABEL = new Map(SOURCE_PLATFORMS.map((p) => [p.label.toLowerCase(), p]));
 
-/**
- * Resolve a *display label* (e.g. the order-derived channel label "Amazon",
- * "ebay", "FBA", "ECWID", "ECWID-RS") back to its canonical platform meta.
- * Order surfaces carry labels rather than stored `source_platform` values —
- * this is the one bridge so their tones/icons come from the same registry.
- * Unknown labels → {@link UNKNOWN_PLATFORM}.
- */
+/** Resolve a *display label* (e.g. */
 export function sourcePlatformMetaFromLabel(label: string | null | undefined): SourcePlatformMeta {
   const key = String(label ?? '').trim().toLowerCase();
   if (!key) return UNKNOWN_PLATFORM;

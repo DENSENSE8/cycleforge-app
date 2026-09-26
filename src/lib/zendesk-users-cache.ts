@@ -1,13 +1,4 @@
-/**
- * DB cache of Zendesk users (id → name/email/photo) so the support thread can
- * resolve comment authors WITHOUT pinging the Zendesk API on every render — the
- * cause of the "User #2526 → email" flicker.
- *
- * The comments route reads this (plus the in-proc agent roster) to attach author
- * identity server-side on first paint, and backfills misses in the background.
- * Org-scoped via tenantQuery / withTenantTransaction (organization_id auto-stamps
- * from the app.current_org GUC — see the migration).
- */
+/** DB cache of Zendesk users (id → name/email/photo) so the support thread can resolve comment authors WITHOUT pinging the Zendesk API on… */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

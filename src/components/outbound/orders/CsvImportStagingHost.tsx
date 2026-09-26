@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * To-Ship CSV import staging — session preview before `ingestCanonicalOrders`.
- *
- * House find-only chrome (`display/workbench-ops-queue.md` → Band 3):
- *
- * ```text
- * Band 1   shot.csv · 128 rows ………………………  [ Cancel ] [ Confirm 96 ready ]
- * Band 3   🔍 find ……………………………… ▽ refine        [ ▦ ] [ ▥ inspector ]
- *          ── hairline ──
- *          NonlinearTableHost over `orders-import.staging`
- * ```
- *
- * Band 1 carries identity plus ONE primary CTA and one quiet exit. Ready /
- * Action-required is a facet that narrows ROWS, so it rides IN the find field
- * (the table's one {@link DataTable} filter control), not as a chip band. `▦` is
- * portal-or-nothing — it mounts into the Band-3 controls slot. Everything else
- * (row fix · column mapping · batch facts · selection verbs) lives on the right
- * rail (`CsvImportStagingRail`).
- *
- * Live-queue bulk verbs stay on the selection-plane rail — this host never
- * mounts a page-bottom capsule.
- */
+/** To-Ship CSV import staging — session preview before `ingestCanonicalOrders`. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

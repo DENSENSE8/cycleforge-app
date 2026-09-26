@@ -13,13 +13,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 const ROUTE_REASON_CODES_POST = 'reason-codes.post';
 
-/**
- * GET /api/reason-codes?direction=out&category=shrinkage&flowContext=substitution
- * Returns active reason codes, optionally filtered by direction / ledger category
- * / Class-D flow_context. Delegates to getActiveReasonCodes (the single read SoT —
- * org scoping + filters live there, never inline). Used by ReasonCodePicker +
- * useSubstitutionReasons.
- */
+/** GET /api/reason-codes?direction=out&category=shrinkage&flowContext=substitution Returns active reason codes, optionally filtered by… */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -44,14 +38,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'sku_stock.view' });
 
-/**
- * POST /api/reason-codes — Create a reason code.
- *
- * Body: { code, label, category, direction?, requiresNote?, requiresPhoto?,
- *         sortOrder?, idempotencyKey? }
- * `code` is the natural unique key; a retried create with the same
- * Idempotency-Key replays the original 201, and a genuine duplicate is a 409.
- */
+/** POST /api/reason-codes — Create a reason code. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const raw = await request.json().catch(() => ({}));

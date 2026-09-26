@@ -40,14 +40,7 @@ interface BinRowDetailsSheetProps {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-/**
- * Reached from the stock numpad's "⋯ details" button. Lets the receiver:
- *  • rename the product title (writes sku_stock.display_name_override)
- *  • change the SKU (atomic transfer via /api/locations/[barcode]/swap)
- *  • adjust min/max thresholds
- *
- * The override is non-destructive — clearing it falls back to Ecwid/catalog.
- */
+/** Reached from the stock numpad's "⋯ details" button. */
 export function BinRowDetailsSheet({
   open,
   onClose,

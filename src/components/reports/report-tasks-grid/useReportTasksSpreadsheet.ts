@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * **Completed-tasks spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useReportTasksSpreadsheet({ rows, loading });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the tab's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a family RECORD — and nothing else. `/reports` mounts one such
- * hook per tab and never a component that swaps column sets.
- *
- * ## Why sort is local state and the FIND TEXT is not
- *
- * `/reports` owns two search params (`?tab=`, `?date=`) and nothing else. A
- * header click writing `?sort=` would round-trip a URL nothing else reads, so
- * the header sorts the page in hand.
- *
- * The find text is different in kind, because the page in hand is a WINDOW:
- * `GET /api/tasks?limit=` returns the desk's most recent finished work, not
- * every finished task. A substring pass here could therefore only ever find
- * tasks that already arrived, and it re-narrowed even those to the facts the
- * MOUNTED columns paint — a task found by its note or its ticket subject
- * vanished when neither column was on. So the text lives with the fetch
- * (`?q=`), and the engine is told the rows are already the answer.
- */
+/** **Completed-tasks spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

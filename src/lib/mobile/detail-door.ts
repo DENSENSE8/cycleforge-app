@@ -22,12 +22,7 @@ export interface DetailDoorSummary {
 }
 
 /**
- * The door to one exact job under a hub: `<base>/<id>`, e.g.
- * `detailDoor('/m/rs/42', 'photos', 'Photos', <Images />, { meta: '3 photos' })`
- * → `/m/rs/42/photos`. The door id IS the path segment, so a hub cannot grow a
- * door whose screen lives somewhere else. A disabled door keeps its row and
- * loses its href — an honest dead end beats a missing door.
- *
+ * The door to one exact job under a hub:
  * Mobile exoskeleton law (operator 2026-09-24): `src/lib/mobile/detail-hub-law.ts`.
  */
 export function detailDoor(

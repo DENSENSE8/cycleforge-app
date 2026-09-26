@@ -4,16 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ShippedOrderCompare } from '@/lib/receiving/returned-serial-link';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 
-/**
- * Data layer behind the "Order #" search lane in {@link UnfoundMatchStrip}.
- *
- * `search(orderNumber)` fires `GET /api/receiving/shipped-order-lookup`,
- * aborting any in-flight request first (latest-wins), and resolves to the
- * shipped order + serial-compare against the carton's received serial. Read-only
- * — this never mutates; the operator links (import-sales-order) or tickets from
- * the resolved display. Mirrors {@link useUnfoundRefetchActions} in shape so the
- * three Auto-match lanes stay symmetric.
- */
+/** Data layer behind the "Order #" search lane in {@link UnfoundMatchStrip}. */
 
 export type CompareStatus = 'idle' | 'loading' | 'found' | 'not-found' | 'error';
 

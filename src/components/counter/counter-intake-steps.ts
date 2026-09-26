@@ -1,10 +1,4 @@
-/**
- * Counter-intake step machine — the pure half of `CounterIntakeForm`.
- *
- * Kept DB-free and React-free so the step gating (what can advance, what a step
- * requires, whether a signature is owed) is unit-testable without mounting a
- * form. The component owns rendering; this owns the rules.
- */
+/** Counter-intake step machine — the pure half of `CounterIntakeForm`. */
 
 import type {
   CounterRetailLine,
@@ -63,14 +57,7 @@ export function phoneDigits(value: string, n = 10): string {
   return digits.length <= n ? digits : digits.slice(-n);
 }
 
-/**
- * A service line only counts once it names a real product.
- *
- * A picker mid-drill reports a PARTIAL selection with a blank model. Honoring
- * that as a service made the Continue gate pass on an empty visit and demanded a
- * signature for a product nobody had chosen yet, so the gate refuses a blank
- * service independently of whatever the component hands it.
- */
+/** A service line only counts once it names a real product. */
 export function activeServiceLine(draft: CounterDraft): CounterServiceLine | null {
   return draft.service?.productModel?.trim() ? draft.service : null;
 }
@@ -92,13 +79,7 @@ export function hasAnyLine(draft: CounterDraft): boolean {
   return draft.retailLines.some((l) => l.quantity > 0) || hasServiceLine(draft);
 }
 
-/**
- * Why a step cannot be left, or null when it can.
- *
- * Returns a REASON rather than a boolean so the UI can say what is missing
- * instead of just disabling a button — a dead Next with no explanation is the
- * single most common way a counter form stalls.
- */
+/** Why a step cannot be left, or null when it can. */
 export function blockingReason(step: CounterStep, draft: CounterDraft): string | null {
   switch (step) {
     case 'identity': {
@@ -138,8 +119,4 @@ export function prevStep(step: CounterStep): CounterStep {
   return COUNTER_STEPS[Math.max(i - 1, 0)];
 }
 
-// NOTE: there is deliberately no `nameIsRequired()` gate. The orchestrator
-// resolves identity on phone DIGITS and falls back to the name already on file,
-// so a returning customer must never be made to re-type it — and the form cannot
-// know whether a match exists. The server has the final say and returns a
-// validation error naming the field if it genuinely needs one.
+// NOTE: there is deliberately no `nameIsRequired()` gate.

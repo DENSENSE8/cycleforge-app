@@ -1,10 +1,4 @@
-/**
- * CSV/TSV inbound returns vocabulary — Amazon Manage Returns + desk CSV.
- *
- * Bound to the shared table-import seam via
- * {@link INBOUND_RETURNS_IMPORT_DESCRIPTOR}. Server ingest stays on
- * `POST /api/receiving/inbound/import-csv` through {@link deskRowFromCsvRecord}.
- */
+/** CSV/TSV inbound returns vocabulary — Amazon Manage Returns + desk CSV. */
 
 export { parseCsv } from '@/lib/tables/import/parse-csv';
 import {
@@ -85,14 +79,7 @@ function isCancelledStatus(status: string): boolean {
   return s === 'cancelled' || s === 'canceled';
 }
 
-/**
- * Ready vs Action required.
- *
- * - Cancelled return request → Action required (discard or fix status)
- * - Missing order id → Action required
- * - No product identity (sku / asin / title) → Action required
- * Tracking is optional for Ready (still preferred for Unbox carton attach).
- */
+/** Ready vs Action required. */
 export function classifyCsvInboundReturnsStagingRow(
   row: Record<string, string>,
   mapping: Record<string, string>,

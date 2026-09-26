@@ -1,10 +1,4 @@
-/**
- * Client transport choice for WMS execution commands. The `/__wms/attach`
- * socket exists only behind the local switchboard; everywhere else (Vercel)
- * commands go to `POST /api/wms/commands`, which runs the same kernel. Both
- * paths carry the same `commandId`, so switching transports mid-command
- * replays instead of double-writing.
- */
+/** Client transport choice for WMS execution commands. */
 export const WMS_COMMAND_HTTP_PATH = '/api/wms/commands';
 
 export type WmsCommandTransport = 'socket' | 'http';

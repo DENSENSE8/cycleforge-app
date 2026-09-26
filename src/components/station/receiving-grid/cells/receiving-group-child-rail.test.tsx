@@ -10,15 +10,7 @@ import type {
 
 /**
  * PROPAGATION, not a second implementation.
- *
  * The group-child rail (operator 2026-09-15) is mounted ONCE, in
- * `renderCompoundGridCell`, gated on `CompoundRowView.quietIdentity`. Unbox
- * reaches that mount through THIS dispatcher, which is the only place
- * their `quietIdentity` becomes a view field — so if the engine mark ever stops
- * reaching the station lanes, it breaks here first.
- *
- * Mounted markup rather than a source grep: the question is whether a ctx flag
- * survives `viewFor`, and reading either file cannot answer that.
  */
 const COL = {
   key: 'fulfillment',

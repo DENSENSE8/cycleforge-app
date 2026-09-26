@@ -6,16 +6,7 @@ import { unpairReceivingCarton } from '@/lib/receiving/unpair-po';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/receiving/:id/unpair
- *
- * The "Unlink / Undo pairing" action in Package Pairing — the explicit revert of
- * a wrong link. Fully drops the carton back to Unfound: strips the per-line
- * source-order linkage + PO and clears the carton header (source → 'unmatched',
- * platform → null). Sanctioned audited DOWNGRADE (mirror of the relink upgrade
- * override). House skeleton: guard → domain helper → map status → cache + realtime
- * → recordAudit.
- */
+/** POST /api/receiving/:id/unpair */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -1,24 +1,4 @@
-/**
- * recordEntitySignal — the single writer for entity_signals
- * (docs/todo/universal-feed-polymorphic-plan.md §2.3 / §6).
- *
- * One call = one structured "why" fact + its ops_events emission, written
- * atomically in one tenant transaction (or on the caller's in-flight client
- * when a chokepoint is already inside withTenantTransaction). Validation is
- * app-layer against src/lib/surfaces/registry.ts per the polymorphic contract:
- *   • signal_kind must be registered; entity_type must be registered AND
- *     allowed for that kind;
- *   • external-origin kinds (buyer_note, …) REQUIRE source_ref — idempotency
- *     rides `ON CONFLICT DO NOTHING` against ux_entity_signals_source_ref;
- *   • internal chokepoint kinds must NOT set source_ref — their idempotency
- *     rides the chokepoint's own clientEventId/event gating.
- *
- * Validation failures return `{ ok: false }` (never throw); DB errors
- * propagate — chokepoint call sites go through `emitEntitySignalSafe`, which
- * guarantees a signal failure can never fail the domain action.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** recordEntitySignal — the single writer for entity_signals (docs/todo/universal-feed-polymorphic-plan.md §2.3 / §6). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -105,10 +85,7 @@ async function writeSignal(
   const occurredAt =
     input.occurredAt instanceof Date ? input.occurredAt.toISOString() : (input.occurredAt ?? null);
 
-  // ON CONFLICT DO NOTHING pairs with ux_entity_signals_source_ref
-  // (organization_id, signal_kind, source_ref) WHERE source_ref IS NOT NULL —
-  // fresh path, heal sweep and backfills are all free no-ops on rows already
-  // emitted (plan §2.3). Internal signals (source_ref NULL) never conflict.
+  // ON CONFLICT DO NOTHING pairs with ux_entity_signals_source_ref (organization_id, signal_kind, source_ref) WHERE source_ref IS NOT NULL —…
   const inserted = await client.query(
     `INSERT INTO entity_signals (
        organization_id, entity_type, entity_id, signal_kind,
@@ -187,11 +164,7 @@ export async function recordEntitySignal(
   if (invalid) return { ok: false, error: invalid };
 
   if (input.client) {
-    // SAVEPOINT guard — a failed signal INSERT inside the CALLER's transaction
-    // would otherwise poison it (25P02): every later statement fails and the
-    // final COMMIT silently degrades to ROLLBACK, undoing the caller's own
-    // domain writes. Rolling back to the savepoint contains the failure so
-    // "a signal failure must never fail the domain action" holds even in-tx.
+    // SAVEPOINT guard — a failed signal INSERT inside the CALLER's transaction would otherwise poison it (25P02):
     const client = input.client;
     await client.query('SAVEPOINT entity_signal_emit');
     try {

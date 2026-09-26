@@ -74,14 +74,7 @@ type CartonIdentityState = {
   catalogTypeLabel: string | null;
 };
 
-/**
- * Owns the editable Zendesk ticket template. Fetches the server-rendered
- * preview (PO #, tracking, photo URLs, line summary) when the modal opens or
- * claim type changes. Claim-type flips patch only the claim segment of Subject
- * (never rewrite Platform/Type identity from a full preview). Platform/type
- * reclassify patches only the identity segment. "Reset to template" clears
- * touched flags and forces a full refetch.
- */
+/** Owns the editable Zendesk ticket template. */
 export function useClaimTemplate({
   open,
   active,
@@ -169,12 +162,7 @@ export function useClaimTemplate({
     };
   }, [open, receivingId, lineId]);
 
-  /**
-   * Re-render the WHOLE title from the parts the server shipped plus the
-   * in-panel classify state. One composer (`buildClaimSubject`), so a Platform
-   * or Type change moves the title immediately and cannot disagree with what
-   * the server would render for the same carton.
-   */
+  /** Re-render the WHOLE title from the parts the server shipped plus the in-panel classify state. */
   const renderSubjectFromState = useCallback(() => {
     if (subjectTouched.current) return;
     if (linkedTicketIdRef.current) return;

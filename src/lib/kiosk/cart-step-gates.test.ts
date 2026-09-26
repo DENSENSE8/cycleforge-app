@@ -1,14 +1,4 @@
-/**
- * cartStepGates — the kiosk cart's progress contract (PG6).
- *
- * The stepper's segments, its count and each step's Continue key all read this
- * one table, so what it must defend is: a satisfied unit counts wherever the
- * pointer is, un-satisfying it takes the segment back, warnings never gate, and
- * the gates stay derived from `collectKioskTriage` instead of growing a second
- * opinion about what a complete visit is.
- *
- *   npx tsx --test src/lib/kiosk/cart-step-gates.test.ts
- */
+/** cartStepGates — the kiosk cart's progress contract (PG6). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

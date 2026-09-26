@@ -2,67 +2,8 @@
 
 /**
  * FIND browse refine — ONE URL contract, TWO forms.
- *
- * This file stays the URL layer (parse `?etype=` / `?hstat=` / `?chan=` /
- * `?colsort=`, write them back). The faces live in `SearchRefinePills`, and
- * the three clusters are built once here and then arranged by measure.
- *
- * ## The desk form: one full-width band, three clusters, three jobs
- *
- * Seat: `SearchBrowseShell` mounts this directly above the results mount, edge
- * to edge. The clusters are the DS {@link Toolbar} `start` / `center` / `end`
- * slots, so the geometry is the primitive's, not a hand-rolled flex row:
- *
- *   • start  — entity scope (`?etype=`): NAVIGATION. A segmented
- *     {@link RefineTrack} of ghost faces with live per-type counts, because
- *     the options are mutually exclusive and one is always current.
- *   • center — status (`?hstat=`) and channel (`?chan=`): FILTERS. Free
- *     {@link RefinePill} bubbles — additive, individually removable.
- *   • end    — display sort (`?colsort=`): a CONTROL. A LABELLED track, plus
- *     the clear-all escape.
- *
- * They wore one identical pill face until 2026-09-12, which made an
- * eleven-scope row, a facet row and a sort pair read as one undifferentiated
- * wall.
- *
- * **Cluster separation is spacing + surface tone + GROUPING, not a rule.** The
- * band sits on `bg-surface-sunken` against the card-toned results mount; a
- * track is a `bg-surface-card` plate lifting off it and a filter is a ringed
- * bubble floating on it. There is no `border-border-hairline` on this surface,
  * deliberately (operator 2026-09-12, who overruled the pill-row refusal for
- * FIND browse — see `pinned.json`).
- *
- * ## The phone form: a COUNT TRIGGER and a sheet (2026-09-13)
- *
- * The band WRAPS by design — `SearchRefinePills` documents that
- * `overflow-x-auto` was removed because it cut pills off mid-word. That is
- * right on a desk and fatal in a hand: eleven scope faces plus a facet per
- * status plus a channel per marketplace plus a sort pair is four wrapped rows
- * of chrome standing between the query and the first result on a 390px screen.
- *
- * A scroll strip is not the fix and is not coming back — it hides filters the
- * operator has switched on, which is the failure the wrap was introduced to
- * end. The fix is a different FORM, which is what `SURFACE_LAW` R8 asks for:
- * the whole band collapses behind ONE control, and the control carries the
- * two numbers that were lost with it —
- *
- *   • the scope it is standing in, as its label;
- *   • how many refines are live, as a badge (`activeSearchRefineCount`);
- *   • how many rows survived, as the band's trailing fact, because the phone
- *     mount has no `TableStatusBar` foot to print "50 rows".
- *
- * Tapping it opens a {@link BottomSheet} holding the SAME three clusters,
- * stacked, where wrapping is free. Nothing is a phone-only control: one URL
- * contract, one set of faces, two arrangements.
- *
  * Page modes ride the TOP row (`DeskPageChrome`, operator 2026-08-31) — this
- * trigger sits above the rows, and there is no foot strip at either measure.
- *
- * **`SEARCH_SORT_PARAM` is deliberately `GRID_COLUMN_SORT_PARAM` (`?colsort=`)
- * with no `?coldir=` companion.** This is a two-option display sort
- * (relevance | date), not a spreadsheet column sort, so there is no direction
- * to carry — do not "fix" it by routing it through `useUrlColumnSort`, which
- * would start writing a `coldir` key nothing here reads.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -117,12 +58,7 @@ const REFINE_BAND_CLASS = 'min-h-9 w-full shrink-0 bg-surface-sunken py-1';
 export function SearchRefineControls({
   hits,
 }: {
-  /**
-   * The UNFILTERED settled hit set — the toolbar's ONE input. Scope counts,
-   * the status / channel facet lists and the surviving-row tally are all
-   * derived from it here, so there is a single source for every number and
-   * every pill either form paints.
-   */
+  /** The UNFILTERED settled hit set — the toolbar's ONE input. */
   hits: readonly AiSearchHit[];
 }) {
   const density = useFindDensity();
@@ -267,10 +203,7 @@ export function SearchRefineControls({
       </RefineCluster>
     );
 
-  // A CONTROL: the same plate as scope, but LABELLED — an unlabelled
-  // `Relevance` `Date` pair at the trailing edge reads as two more filters.
-  // The clear-all escape sits outside the plate, because it acts on the whole
-  // band and is not one of the sort's positions.
+  // A CONTROL: the same plate as scope, but LABELLED — an unlabelled `Relevance` `Date` pair at the trailing edge reads as two more filters.
   const sortCluster = (
     <RefineCluster label="Sort and display">
       <RefineTrack label="Result order" labelText="Sort">
@@ -303,11 +236,7 @@ export function SearchRefineControls({
     return (
       <Toolbar
         tone="transparent"
-        // WRAPS, never clips. The scope cluster alone is 11 pills; on a 1440px
-        // desk that starved the centre slot and the clusters' own
-        // `overflow-x-auto` then cut the status pills off mid-word. Every
-        // refine stays visible at any width, which is the point of one band.
-        // Height follows content, so the fixed h-9 becomes a floor.
+        // WRAPS, never clips.
         className={cn(REFINE_BAND_CLASS, 'flex-wrap gap-y-1')}
         start={scopeTrack}
         center={facetCluster}
@@ -381,12 +310,7 @@ export function SearchRefineControls({
         title="Refine results"
         scrollBody
       >
-        {/* Each cluster keeps the BAND's tone relationship: a sunken plate
-            under it, so a `bg-surface-card` track still lifts and a ringed
-            bubble still floats. Dropped straight onto the sheet's card white
-            the scope plate vanishes, and "one plate, one current position"
-            degrades to eleven loose pills — the exact wall the 2026-09-12
-            ruling broke up. */}
+        {/* Each cluster keeps the BAND's tone relationship: */}
         <div className="flex flex-col gap-3">
           {sheetSections.map(({ id, label, cluster }) =>
             cluster ? (

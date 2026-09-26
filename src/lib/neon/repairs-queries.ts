@@ -4,18 +4,7 @@ import { tapWorkflow } from '@/lib/workflow/tap';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Per-serial repair history (unit_repairs) + the failure modes each repair
- * resolves (repair_failure_resolutions). See
- * docs/condition-grading-repair-qc-plan.md §4.5 / 2026-06-07_unit_repairs.sql.
- *
- * Lifecycle uses the existing IN_REPAIR / REPAIR_DONE serial statuses and the
- * REPAIR_STARTED / REPAIR_COMPLETED inventory events. The status change is
- * routed through the guarded state machine (transition()) on the SAME pg
- * transaction, so the serial status and its inventory event are written
- * atomically. A rejected transition is non-fatal (drift-tolerant): the repair
- * row still commits and the *_event_id back-link is simply left null.
- */
+/** Per-serial repair history (unit_repairs) + the failure modes each repair resolves (repair_failure_resolutions). */
 
 export interface RepairPart {
   sku?: string;
@@ -52,10 +41,7 @@ const OPEN_STATUSES = new Set(['pending', 'in_progress']);
 const DONE_STATUSES = new Set(['completed', 'failed', 'scrapped']);
 
 export async function listUnitRepairs(serialUnitId: number, orgId?: OrgId): Promise<UnitRepairRow[]> {
-  // Tenant-scoped read: unit_repairs is tenant-owned (has organization_id). The
-  // rfr subquery (repair_failure_resolutions, tenant-owned) is org-aligned to ur;
-  // failure_modes is a global reference table (no organization_id) so its join
-  // stays bare. Staff joins are integer surrogate-PK (id) so they stay bare.
+  // Tenant-scoped read:
   if (orgId) {
     const r = await tenantQuery<UnitRepairRow>(
       orgId,
@@ -125,13 +111,7 @@ export async function openRepair(
 ): Promise<UnitRepairRow> {
   const status = params.status === 'pending' ? 'pending' : 'in_progress';
 
-  // Shared transactional body. Runs on a single client (which already owns its
-  // transaction): the raw-pool path opens/commits BEGIN itself; the tenant path
-  // runs inside withTenantTransaction (BEGIN + set_config('app.current_org') +
-  // COMMIT are handled by the wrapper). When orgId is present we add an explicit
-  // serial_units.organization_id predicate (cross-tenant miss → "unit not
-  // found"), org-derived child inserts already subquery from the parent, and the
-  // orgId is threaded into transition().
+  // Shared transactional body.
   const body = async (client: import('pg').PoolClient): Promise<number> => {
     const unit = await client.query<{ sku: string | null; current_status: string | null }>(
       orgId
@@ -167,11 +147,7 @@ export async function openRepair(
       );
     }
 
-    // Route the IN_REPAIR transition through the guarded state machine (atomic
-    // status + single REPAIR_STARTED event on the shared txn). DRIFT: if the
-    // guard rejects, do NOT throw — that would roll back the whole repair.
-    // Pass orgId (state-machine accepts an optional trailing orgId) so the unit
-    // read/write inside transition() is org-scoped on the same client.
+    // Route the IN_REPAIR transition through the guarded state machine (atomic status + single REPAIR_STARTED event on the shared txn).
     const t = await transition(
       {
         unitId: params.serialUnitId,
@@ -218,12 +194,7 @@ export async function openRepair(
   return row.rows[0];
 }
 
-/**
- * Update a repair. On a terminal status (completed/failed/scrapped) sets the
- * completion fields; on 'completed' it also resolves the unit's OPEN failure
- * tags whose mode this repair addresses, and moves the unit to REPAIR_DONE.
- * Emits REPAIR_COMPLETED on terminal transitions.
- */
+/** Update a repair. */
 export async function updateRepair(
   repairId: number,
   params: {
@@ -250,13 +221,7 @@ export async function updateRepair(
   // the wrapper, so the body returns this and the caller maps it to null.
   let notFound = false;
 
-  // Shared transactional body. Runs on a single client owning its own
-  // transaction (raw-pool path BEGIN/COMMITs itself; tenant path runs inside
-  // withTenantTransaction with set_config('app.current_org') already applied).
-  // When orgId is present: unit_repairs read/UPDATE carry an explicit
-  // organization_id predicate (cross-tenant miss → notFound → null = 404);
-  // unit_failure_tags has NO organization_id column so it is scoped via its
-  // org-bearing parent serial_units; transition() gets the threaded orgId.
+  // Shared transactional body.
   const body = async (client: import('pg').PoolClient): Promise<void> => {
     const cur = await client.query<{ serial_unit_id: number; status: string }>(
       orgId
@@ -300,9 +265,6 @@ export async function updateRepair(
 
     if (nextStatus === 'completed') {
       // Resolve the unit's OPEN tags this repair addresses; stamp the repair.
-      // unit_failure_tags has NO organization_id column → scope via its parent
-      // serial_units (su.organization_id) when orgId is present, and align the
-      // rfr subquery on org.
       const res = orgId
         ? await client.query(
             `UPDATE unit_failure_tags t
@@ -333,10 +295,7 @@ export async function updateRepair(
     }
 
     if (becameTerminal) {
-      // Route the REPAIR_DONE transition through the guarded state machine
-      // (atomic status + single REPAIR_COMPLETED event on the shared txn).
-      // DRIFT: if the guard rejects, do NOT throw — keep the repair completion.
-      // Thread orgId so transition()'s unit read/write is org-scoped.
+      // Route the REPAIR_DONE transition through the guarded state machine (atomic status + single REPAIR_COMPLETED event on the shared txn).
       const t = await transition(
         {
           unitId: serialUnitId,
@@ -382,10 +341,7 @@ export async function updateRepair(
   if (notFound) return null;
 
   if (becameTerminal && serialUnitId != null) {
-    // Workflow-engine tap (fire-and-forget — never throws). Only a repair
-    // that lands on 'completed' fires the repair node's `repaired` port
-    // (→ back to inspection for re-test); 'failed'/'scrapped' repairs leave
-    // the unit parked at the repair node until a disposition lane exists.
+    // Workflow-engine tap (fire-and-forget — never throws).
     if (params.status === 'completed') {
       await tapWorkflow({
         serialUnitId,

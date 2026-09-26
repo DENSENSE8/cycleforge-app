@@ -1,15 +1,4 @@
-/**
- * What every `/api/kiosk/carts…` route shares: reading the cart id off the
- * route, reading a snapshot body, and saying no the same way.
- *
- * `withKioskAuth` hands its handler the device context but not the route
- * params, so {@link withKioskCart} resolves `[id]` first and closes over it —
- * the device and org still come ONLY from the kiosk cookie.
- *
- * Callers: `carts/route.ts`, `carts/[id]/route.ts`, `carts/[id]/open`, `carts/[id]/done`.
- * Affected API: those routes. Schemas: `kiosk_carts`.
- * User 2026-09-24: "IDed for multiple devices".
- */
+/** What every `/api/kiosk/carts…` route shares: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

@@ -1,14 +1,4 @@
-/**
- * A Shipped-desk package's state face — the ledger row's spine / code and the
- * record's status strip read the SAME face, so row and record agree.
- *
- * The state is the derived outbound stage (`order-lifecycle.ts`,
- * `deriveOutboundState`); its word is the label registry's (`OUTBOUND_STATE_META`,
- * tenant-overridable), its colour the lifecycle registry's: packed reads
- * `LIFECYCLE.packed`, everything that has left the dock `LIFECYCLE.shipped`.
- * An OPEN unmatched pack scan outranks the carrier stage — it is the one thing
- * on this desk someone still has to act on.
- */
+/** A Shipped-desk package's state face — the ledger row's spine / code and the record's status strip read the SAME face, so row and record… */
 
 import { LIFECYCLE } from '@/design-system/tokens/lifecycle';
 import type { RecordStateFace } from '@/design-system/tokens/industrial-record';

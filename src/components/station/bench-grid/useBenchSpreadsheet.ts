@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * The Tech / Packer bench feed — one hook, two families.
- *
- * Wave C of the slot-table port (`docs/todo/prod-slot-table-SOT-HANDOFF.md`).
- * The benches were the last third display engine: `StationHistoryTable` →
- * `StationListTable` → a raw `LedgerGrid` painting the hand
- * `STATION_HISTORY_COLUMNS` array, outside `PRODUCT_TABLES` and
- * `REGISTERED_BINDINGS`. They now mount the ONE engine through
- * {@link useCompoundSpreadsheet}, exactly like every other compound family.
- *
- * `family` selects the registration (binding · columns · resolver · sort
- * vocabulary) as DATA. It is not a conditional hook: the caller owns the layout
- * hook for its own desk — `TechTable` calls `useTechTableLayout`, `PackerTable`
- * calls `usePackerTableLayout` — and hands the resolved layout in, so neither
- * desk pays for the other's prefs read and nothing here branches on hooks.
- *
- * The bench row is a `QueueRowRecord`: `record-to-queue-row.ts` maps a
- * `TechRecord` / `PackerRecord` into it, and the original record rides along so
- * the caller's row-open and copy recover the domain object without a refetch.
- */
+/** The Tech / Packer bench feed — one hook, two families. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -83,17 +64,7 @@ export interface UseBenchSpreadsheetOptions {
   emptyMessage: string;
   /** Present ⇒ the title hover carries "Open" and a row click reports it. */
   onOpenRow?: (row: QueueRowRecord) => void;
-  /**
-   * The find box, ANSWERED BY THE SERVER — owned by the desk, not by this hook.
-   *
-   * It used to be `useState('')` right here, and the engine filtered the
-   * mounted rows with it. Bench rows arrive WINDOWED (`/api/packerlogs`,
-   * `/api/tech/logs`), so that pass could only ever search the newest page: a
-   * pack or a test from earlier in the same week answered "no results" for a
-   * tracking number the operator was holding. The state now lives in the
-   * controller, where it can reach the fetch key — which is why `value` and
-   * `onChange` arrive from outside and `answeredBy` below is not negotiable.
-   */
+  /** The find box, ANSWERED BY THE SERVER — owned by the desk, not by this hook. */
   search: {
     value: string;
     onChange: (value: string) => void;

@@ -79,15 +79,7 @@ const STATUS_OPTIONS: Array<{ id: TrackingExceptionStatusFilter; label: string }
   { id: 'discarded', label: 'Discarded' },
 ];
 
-/**
- * Data host over the Tracking Exceptions Workbench spreadsheet — mounts
- * `NonlinearTableHost` + the tracking-exceptions table definition directly.
- *
- * Status tabs · search · reload · edit dialog stay here; the grid is the
- * display map only. A failed fetch earns the retryable error state rather than
- * an empty grid that would read as "no exceptions"
- * (`display/workbench.md` settled states).
- */
+/** Data host over the Tracking Exceptions Workbench spreadsheet — mounts `NonlinearTableHost` + the tracking-exceptions table definition… */
 export function TrackingExceptionsTable() {
   const [statusTab, setStatusTab] = useState<TrackingExceptionStatusFilter>('open');
   const [search, setSearch] = useState('');
@@ -214,11 +206,7 @@ export function TrackingExceptionsTable() {
           emptyMessage="No exceptions in this view."
           searchEmptyMessage="No exceptions match this search."
           scrollRef={scrollRef}
-          // ALREADY server-answered: `useTrackingExceptions` spends this text
-          // on `/api/tracking-exceptions?q=`, which matches in SQL across the
-          // whole queue rather than across the 200-row page it returns.
-          // Declaring it keeps the engine from ever adding a second, narrower
-          // client pass on top, and lights the field while the fetch runs.
+          // ALREADY server-answered:
           search={{
             value: search,
             onChange: setSearch,

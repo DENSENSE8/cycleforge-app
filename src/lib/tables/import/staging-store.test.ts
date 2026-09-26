@@ -23,10 +23,7 @@ const D = ORDER_IMPORT_DESCRIPTOR;
 const SURFACE = ORDER_IMPORT_SURFACE_ID;
 
 function seed() {
-  // Channel column present so these tests pin the STORE mechanics (filter /
-  // selection / re-classify in place) rather than the orders vocabulary's
-  // platform-acknowledgment rule, which has its own tests in
-  // csv-order-import.test.ts.
+  // Channel column present so these tests pin the STORE mechanics (filter / selection / re-classify in place) rather than the orders…
   const outcome = loadTableImportDraft(D, {
     fileName: 't.csv',
     headers: ['Order', 'SKU', 'Channel'],

@@ -77,12 +77,7 @@ export function ViewDropdown<T extends string>({
     }
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      // Cycle through other options or just keep current? 
-      // User says only show unselected in dropdown. 
-      // If pressing ArrowUp on the button, maybe we don't change value, just open?
-      // Standard dropdown behavior: up/down cycles through options.
-      // Since the dropdown is now "everything else", cycling might be confusing.
-      // Let's just open the dropdown for now on up/down.
+      // Cycle through other options or just keep current?
       setIsOpen(true);
     }
   };

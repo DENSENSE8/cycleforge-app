@@ -2,32 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 
-/**
- * `useAncestorScrollMargin` — the measurement half of the "multiple virtualized
- * lists share ONE scroll region" pattern (TanStack Virtual's window-scroller,
- * generalized to a bounded ancestor).
- *
- * A stacked (1-up) {@link import('@/components/board/SwimlaneBoard').SwimlaneBoard}
- * lane body does NOT own its own scroll container — it grows to content and the
- * BOARD's single scroll region owns the wheel (so a lane never traps the scroll).
- * That means each lane's `useVirtualizer` must window against the shared board
- * scroll element, and to position its rows it needs to know how far THIS lane's
- * inner list wrapper sits below the scroll region's content top — the
- * `scrollMargin`. Rows are then laid out `translateY(item.start - scrollMargin)`
- * and the virtualizer's `scrollMargin` option is set to the same value, so its
- * visible-range math accounts for the lanes stacked above.
- *
- * The margin is **scroll-invariant** (it is `innerTop - scrollTop_origin`, not a
- * function of the live scroll offset), so re-measuring on scroll is a cheap
- * no-op unless the geometry genuinely shifted — which happens when a sibling
- * lane above grows/collapses or an async row re-measures. We therefore recompute
- * on: scroll (rAF-throttled), resize of the scroll element / this list / the
- * scroll region's content wrapper (sibling growth), and window resize.
- *
- * When `enabled` is false it returns 0 and installs no listeners — the
- * self-scrolling body path (a lane that owns its own capped scroll container, or
- * the dense table) is byte-for-byte unaffected.
- */
+/** `useAncestorScrollMargin` — the measurement half of the "multiple virtualized lists share ONE scroll region" pattern (TanStack Virtual's… */
 export function useAncestorScrollMargin({
   enabled,
   scrollParentRef,

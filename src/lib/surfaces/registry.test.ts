@@ -1,15 +1,4 @@
-/**
- * Universal-surfaces kind-catalog guard tests — DB-free.
- *
- * Two jobs:
- *  1. Internal integrity (every def well-formed, cross-references valid).
- *  2. DB-mirror pinning: the registry's entity_type list must stay
- *     byte-identical with the `*_entity_type_chk` CHECK lists and the
- *     delete-trigger coverage in migrations 2026-07-03j/k/l — the same
- *     drift-guard idea as reason-codes.guard.test.ts.
- *
- * Run: npm run test:surfaces
- */
+/** Universal-surfaces kind-catalog guard tests — DB-free. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -101,21 +90,7 @@ test('trust model (plan §-2, locked): auto = view-layer OR reversible evidence 
     .filter(([, d]) => d.trust === 'auto')
     .map(([k]) => k)
     .sort();
-  // The locked auto-apply list. Widening it is a deliberate, reviewed decision
-  // — update this assertion in the same PR as the registry.
-  //
-  // WIDENED 2026-08-19 (receiving_photo.reassign): the day-one rule was
-  // "view-layer projections only". This is the first entry that writes real
-  // domain data, admitted on three properties, ALL of which are required:
-  //   1. REVERSIBLE — it captures an inverse (the reverse move) taken from the
-  //      photo's actual prior link, so revert restores the true previous home.
-  //   2. NON-DESTRUCTIVE — no pixels are deleted; only which record the photo
-  //      hangs off changes.
-  //   3. ALREADY OPERATOR-REACHABLE — the same move is one click in the carton
-  //      UI under receiving.upload_photo, so review would gate a chat path more
-  //      tightly than the hands-on path it mirrors.
-  // Anything that DELETES evidence, or that cannot state its own inverse, does
-  // NOT qualify and stays `review`.
+  // The locked auto-apply list.
   assert.deepEqual(autoKinds, [
     'entity_signal.insert',
     'feed_membership.set_state',

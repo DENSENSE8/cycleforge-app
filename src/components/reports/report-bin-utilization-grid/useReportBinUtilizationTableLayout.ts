@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * The bin-utilization slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell has nothing to paint into — `paintMorph` coerces, and
- * the org write gate (`slotMorphsFor('report-bin-utilization')`) refuses the
- * foreign morph.
- *
- * The Fields menu keys off `tableId`, so `/reports` gets the RIGHT picker per
- * tab for free: each of the three reports mounts its own family, so the popover
- * that opens over Bin Utilization lists bin facts and the one over Velocity
- * lists movement facts, with no per-tab branch anywhere. That is the whole
- * reason the three reports are three tableIds rather than one.
- */
+/** The bin-utilization slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   REPORT_BIN_UTILIZATION_FIELD_CATALOG,

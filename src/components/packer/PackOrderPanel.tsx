@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Live pack workspace overlay — Unbox-family Tier A:
- * StationScanPaneHost + StationPanelRoot; checklist (or UNIT peek) owns the
- * locked 720 centre; Photos · Timeline · Listings (scan/pack only — no Ticket ·
- * Support) live on StationDisplaysPushStack. Sibling to LineEditPanel /
- * TriagePanel; binds PackActiveOrderPane, not ReceivingLineRow. No sticky
- * terminal dock (Tier C).
- */
+/** Live pack workspace overlay — Unbox-family Tier A: */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Camera, ExternalLink, History, MapPin } from '@/components/Icons';
@@ -106,13 +99,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
    */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
-  /**
-   * The order's packing desk. Same writer as Ready-to-Pack
-   * (`order_pack_placements` via {@link usePackOrderPlacement}) and the same
-   * leaf — this station simply had no route to it, so a packer who needed to
-   * move an order to another bench had to leave the pack surface entirely.
-   * Displays-only by contract: a destination never sits in the work.
-   */
+  /** The order's packing desk. */
   const packOrderId =
     activeOrder.orderRowId != null && activeOrder.orderRowId > 0
       ? activeOrder.orderRowId

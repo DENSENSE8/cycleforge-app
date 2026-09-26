@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Link label — pair a ShipStation label with this order under a purpose.
- *
- * Opened from the Selected-order column's verb catalog (`link-label`, one
- * order). The list starts with this order's own ShipStation shipments and every
- * quarantined ShipStation label (e.g. a second live label on one order the
- * import could not place); typing a tracking # or ShipStation order # searches
- * the persisted ShipStation shipments, then ShipStation itself. Pick a label,
- * pick Outbound / Return / Replacement, Link: the label joins the order under
- * the SAME order number and name, logged on the order's timeline and notes.
- * Linked labels are listed (and unlinked) in the column's Label block.
- */
+/** Link label — pair a ShipStation label with this order under a purpose. */
 
 import { useMemo, useRef, useState } from 'react';
 import {

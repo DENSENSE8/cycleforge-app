@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * @domain-job Put the visit in front of the customer: pick which paired tablet
- * this counter session drives, from the desk header.
- *
- * The bridge underneath this button was finished months before the button was:
- * a tablet enrols to the ORG (Settings → Kiosk devices), mirrors whatever open
- * session is bound to its device id, and repaints within one poll. What was
- * missing was the act of BINDING — `/counter` opened every visit with
- * `kioskDeviceId: null`, so the fan-out had no channel, the tablet's
- * `GET /api/kiosk/session` answered "nothing", and the iPad sat on its own
- * local cart while the desk drove a session no one could see.
- *
- * **One CTA, both states.** With no visit open it starts one *on that tablet*
- * (create carries the device, so the customer's screen is live before the
- * first line exists). With a visit open it binds or hands the tablet back.
- * A separate "start visit" and "choose tablet" pair would have made the common
- * case two decisions, and the first one is never the interesting one.
- *
- * Chrome law: {@link DeskActionSlotRegistrar} `role="primary"` +
- * {@link DeskHeaderAction} — page-level, top-right of the desk header. Never a
- * corner of its own inside the workspace body.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5) ·
- * `docs/todo/kiosk-counter-consult-PLAN.md` (Phase 0).
- */
+/** @domain-job Put the visit in front of the customer: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';

@@ -41,13 +41,7 @@ const MAX_WIDTH_CLASS: Record<NonNullable<PaneHeaderProps['maxWidth']>, string> 
   '7xl': 'mx-auto w-full max-w-7xl',
 };
 
-/**
- * Matches utilities that grow the row past 44px or change its alignment in a
- * way that breaks sidebar alignment. Page headers must stay at 44px — callers
- * who need this kind of override are almost always rendering a detail-pane
- * header, in which case PaneHeader is correct but they should be aware they
- * are opting out of the page-header alignment contract.
- */
+/** Matches utilities that grow the row past 44px or change its alignment in a way that breaks sidebar alignment. */
 const ROW_HEIGHT_OVERRIDE_RE =
   /(?:^|\s)(?:py-|pt-|pb-|h-\d|min-h-)/;
 

@@ -45,10 +45,7 @@ const cursor = (args: Partial<Parameters<typeof resolveRecordCursor<Row>>[0]> = 
     ...args,
   });
 
-// ─── Absorbed from station-table-logic.test.ts ───────────────────────────────
-// `resolveDetailsNavigation` was the one pure stepper in the codebase and the
-// only one of five call sites that used it. These four cases are its contract,
-// carried over so the absorption is provably behaviour-preserving.
+// ─── Absorbed from station-table-logic.test.ts ─────────────────────────────── `resolveDetailsNavigation` was the one pure stepper in the…
 
 test('steps down to the next record', () => {
   assert.equal(cursor({ openId: 20 }).next?.id, 30);

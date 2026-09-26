@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * CompactOrderPeek — non-desk right-rail open for an order (global detail
- * stack / recents). Dense identity + a few facts + hand-off CTA to search
- * feedback.
- *
- * The full record stays on the shipping desks (`OrderRecordView` in the
- * outbound ledger; on Shipped, the package record `ShipmentRecordView`).
- * Search feedback is `/search?sel=order:…`.
- */
+/** CompactOrderPeek — non-desk right-rail open for an order (global detail stack / recents). */
 
 import { useRouter } from 'next/navigation';
 import { Search, Package } from '@/components/Icons';

@@ -64,11 +64,7 @@ describe('applyUnboxCartonOpened (the unbox-open chokepoint)', () => {
     );
     const carton = unboxed.find((r) => r.receiving_id === 42);
     assert.ok(carton, 'carton row on Unboxed');
-    // THE regression this test exists for: a tracking scan resolves onto the key
-    // the pending stub already holds, so the rail row is UPDATED, never removed
-    // and re-added. A `carton:42` here means the row changed React key mid-scan,
-    // which the rail's AnimatePresence renders as the operator's tracking number
-    // vanishing and coming back.
+    // THE regression this test exists for:
     assert.equal(carton.client_event_id, receivingRailShipmentKey(TRACKING));
     assert.equal(unboxed.length, 1, 'stub was upgraded, not duplicated');
 

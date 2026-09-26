@@ -1,13 +1,4 @@
-/**
- * Scan-station depth — a second Look axis beside Color (`station-skins.ts`).
- *
- * Color owns fills / bevel hue / ink. Depth owns relief: bevel width and ply
- * grain. Flat is the default and is the ABSENCE of `data-station-depth`, the
- * same way industrial is the absence of `data-station-skin`.
- *
- * design-mcp introspects this file as `ds_tokens({ axis: 'station-depth' })`.
- * Do not bake grain back onto a color row.
- */
+/** Scan-station depth — a second Look axis beside Color (`station-skins.ts`). */
 
 export type StationDepthName = 'flat' | 'mill' | 'deep';
 

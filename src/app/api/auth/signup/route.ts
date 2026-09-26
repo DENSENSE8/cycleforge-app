@@ -1,20 +1,4 @@
-/**
- * POST /api/auth/signup
- *
- * Self-service tenant provisioning. Creates an organization, the first
- * admin staff, hashes their PIN, opens a session, and (best-effort) sends
- * a welcome email + creates a Stripe customer for the 14-day trial.
- *
- * Public (no session required, no permission). Throttled by IP because
- * this is a free-tier creation endpoint and we don't want it spammed.
- *
- * Body:
- *   { companyName: string, slug?: string, fullName: string, email: string,
- *     pin: string (4-12 digits) }
- *
- * Response: sets the cf_sid session cookie and returns { orgId, slug, staffId,
- *           defaultHomePath: '/dashboard' }.
- */
+/** POST /api/auth/signup */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -114,13 +98,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     );
     orgId = orgRes.rows[0]!.id;
 
-    // 2. Global identity account for the owner (email-backed; null password —
-    // they sign in via PIN below or a future magic-link). Find-or-create by
-    // email so a human who already has an account (e.g. invited elsewhere)
-    // converges onto one cross-org identity rather than orphaning a duplicate
-    // — account_emails enforces a single account per email. Mirrors the
-    // invitation-accept flow (src/lib/identity/invitations.ts). Inside the tx so
-    // a failure rolls back the whole signup.
+    // 2. Global identity account for the owner (email-backed; null password — they sign in via PIN below or a future magic-link).
     const existingAccount = await getAccountByEmail(parsed.email, client);
     accountId = existingAccount
       ? existingAccount.id
@@ -168,11 +146,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       [staffId],
     );
 
-    // 5b. WS2.2 — admin-role self-heal. The wire above silently no-ops on a fresh
-    // DB whose global `roles` table was never seeded, leaving the admin with no
-    // permissions. ensureAdminRoleWired seeds the admin role row (idempotent) and
-    // retries the wire so the first admin ALWAYS ends up with the admin role.
-    // Runs on this transaction client → shares the signup commit/rollback.
+    // 5b. WS2.2 — admin-role self-heal.
     await ensureAdminRoleWired(staffId, client);
 
     await client.query('COMMIT');
@@ -187,12 +161,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     client.release();
   }
 
-  // 4. Mint the session for the new admin
-  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
-  // session must not silently promise indefinite persistence — it gets the
-  // normal device-kind window, and the user opts in by signing in with the box
-  // checked. Deliberate default, not an oversight (see the persistent flag in
-  // src/lib/auth/session.ts).
+  // 4. Mint the session for the new admin "Keep me signed in":
   const session = await createSession({
     staffId,
     deviceKind: 'personal',
@@ -215,23 +184,13 @@ export const POST = withAuth(async (req: NextRequest) => {
     after: { slug, name: parsed.companyName, plan: 'trial', adminStaffId: staffId, ownerAccountId: accountId },
   });
 
-  // 5. Side-effects (best-effort, must not break the signup)
-  // Seed the org's editable platform/account/type catalog so a fresh tenant isn't
-  // blank — `createOrganization` does this, but signup uses a direct INSERT above,
-  // so it was being skipped. Best-effort: a seed failure must not block signup.
+  // 5. Side-effects (best-effort, must not break the signup) Seed the org's editable platform/account/type catalog so a fresh tenant isn't…
   void seedOrgCatalog(orgId).catch((err) =>
     console.error('[signup] seedOrgCatalog failed for new org', orgId, err),
   );
-  // Template Platform Phase 1: signup NO LONGER silently activates a live
-  // workflow graph. A brand-new org has no active workflow until its owner
-  // chooses an ops SOP template at onboarding (the `workflow` step →
-  // /onboarding/template → POST /api/onboarding/template → installTemplateIntoOrg).
-  // seedDefaultWorkflowForOrg survives for dogfood/backfill scripts only.
+  // Template Platform Phase 1:
 
-  // WS6.3 — welcome email + email verification. The verification link reuses the
-  // F1 magic-link token store (email_login_tokens); clicking it confirms the email
-  // (sets account_emails.verified_at) and signs the owner in. Best-effort: a mint
-  // failure must not break signup and still sends the welcome email (sans link).
+  // WS6.3 — welcome email + email verification.
   void (async () => {
     let verifyLine = '';
     try {

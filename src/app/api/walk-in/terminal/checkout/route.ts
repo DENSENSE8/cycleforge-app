@@ -59,11 +59,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       },
     };
 
-    // Resolve the tenant's own Square connection (Nango token when connected,
-    // env fallback otherwise) rather than the env-global getSquareConfig().
-    // NOTE: /api/walk-in/sync still calls getSquareConfig() directly and needs
-    // the same treatment — it was left alone here only to keep this change
-    // inside its stated scope.
+    // Resolve the tenant's own Square connection (Nango token when connected, env fallback otherwise) rather than the env-global…
     const result = await squareFetchForOrg<{ checkout?: Record<string, unknown> }>(
       ctx.organizationId,
       '/terminals/checkouts',

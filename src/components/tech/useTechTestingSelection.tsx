@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Testing browse bulk selection for the tech dashboard. Thin wrapper over
- * {@link useReceivingLineRailSelection} (Unbox History SoT) — publishes Copy /
- * Print / Ticket / Assign into `rail-actions-store` so the right rail owns the
- * selection plane. No bottom ContextualSelectionBar.
- */
+/** Testing browse bulk selection for the tech dashboard. */
 
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

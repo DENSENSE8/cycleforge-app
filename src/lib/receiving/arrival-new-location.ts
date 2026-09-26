@@ -1,15 +1,4 @@
-/**
- * Arrival "new location" slot math — pure, DB-free.
- *
- * An operator standing at the door who needs a staging spot that does not exist
- * yet should not have to invent an address. These helpers read the locations
- * catalog already in hand and answer the two questions the Displays leaf asks:
- * which zone letter this room prints under, and which position is free next.
- *
- * Addresses stay in the ONE printed format (`locationCodeFlat` → `A0101101`),
- * because that is the only form `extractArrivalLocationBarcode` will decode —
- * a hand-typed barcode makes a row you can pick but never scan.
- */
+/** Arrival "new location" slot math — pure, DB-free. */
 
 import { parseLocationCodeFlat } from '@/lib/barcode-routing';
 import type { Location } from '@/lib/neon/location-queries';
@@ -79,13 +68,7 @@ export function occupiedPositions(
   return Array.from(taken).sort((a, b) => a - b);
 }
 
-/**
- * The next free position on that level, or null when the level is full.
- *
- * Fills gaps rather than appending past the end: a level whose slot 2 was
- * retired should reuse 2 before minting 4, because the physical shelf still
- * has that space.
- */
+/** The next free position on that level, or null when the level is full. */
 export function suggestNextPosition(
   locations: readonly AddressedLocation[],
   at: SlotAddress,

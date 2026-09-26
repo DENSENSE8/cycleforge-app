@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * **Packer-day spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useReportPackerDaySpreadsheet({ rows, loading });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * Sort and search are LOCAL state, like the sibling reports: this desk owns no
- * report search params beyond `?tab=` and `?date=`, and a `?sort=` round-trip
- * would make a header click re-render the whole desk for an ordering the
- * client already holds.
- */
+/** **Packer-day spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

@@ -5,9 +5,6 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 
 // Shipped state is now derived from station_activity_logs (SAL).
-// This endpoint updates status = 'shipped' for orders that have any SAL row
-// linked via shipment_id — SAL is the source of truth for station scans.
-// Admin-triggered reconciliation; gated to shipping role.
 export const POST = withAuth(async (_req, ctx) => {
   try {
     const result = await tenantQuery(

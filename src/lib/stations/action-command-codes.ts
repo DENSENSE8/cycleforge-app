@@ -1,29 +1,4 @@
-/**
- * Action command vocabulary — `CMD-*` stickers that WRITE, and the compound
- * `CMD-<VERB>-GO-<TARGET>` stickers that write and then move the operator.
- *
- * Third registry in the family, and the split is the whole safety model:
- *
- *   station-command-codes  arms a session mode on the current surface
- *   nav-command-codes      moves the operator, and CANNOT write
- *   action-command-codes   writes, and says so on its own face
- *
- * A navigation sticker that also changed status would be a status change nobody
- * named — the operator sees a page turn and has no way to know a unit moved
- * lifecycle underneath it. So the write lives on its own code, and a compound
- * spells out both halves (`CMD-PASS-GO-READY`): the sticker's face is the
- * disclosure.
- *
- * **The write itself is not implemented here.** `verdict` names a value that
- * `recordTestVerdict` — the QC verdict SoT — already knows how to apply, along
- * with the `tech_serial_numbers` row, the `testing_results` feed, the parent
- * line rollup and the workflow tap. Re-deriving a status here and calling
- * `transition()` raw would produce a unit whose state moved while none of that
- * happened, which is a worse outcome than not shipping the sticker.
- *
- * Client-safe: the `TestVerdict` import is type-only (erased at compile), so
- * nothing drags `@/lib/db`'s `server-only` graph into a station bundle.
- */
+/** Action command vocabulary — `CMD-*` stickers that WRITE, and the compound `CMD-<VERB>-GO-<TARGET>` stickers that write and then move the… */
 
 import type { TestVerdict } from '@/lib/tech/recordTestVerdict';
 import type { RegistryPermissionString } from '@/lib/auth/permission-registry';
@@ -105,12 +80,6 @@ export const ACTION_COMMAND_CODES: readonly ActionCommandDef[] = [
 ] as const;
 
 // A note on `CMD-FAIL-GO-REPAIR`, because the plan document said otherwise:
-// it lands the unit on ON_HOLD, not IN_REPAIR. `recordTestVerdict` maps
-// TESTING_FAILED → ON_HOLD, and hold is where a failed unit waits for someone
-// to decide between repair and scrap. The sticker moves the OPERATOR to the
-// Repair surface to make that call; inventing a second status path so the code
-// matched a sentence in a plan would have forked the verdict SoT to save a
-// documentation edit.
 
 const BY_SQUASHED = new Map(
   ACTION_COMMAND_CODES.map((c) => [

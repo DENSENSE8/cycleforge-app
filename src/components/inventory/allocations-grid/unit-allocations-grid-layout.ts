@@ -1,22 +1,4 @@
-/**
- * Unit-allocations column model — MATERIALIZED from a {@link SlotLayout} onto
- * the SHARED compound skeleton, never a hand array.
- *
- * It replaced five hand-written `<th>`/`<td>` pairs inside
- * `ByUnitView.tsx` — raw HTML, so not even a second table engine's column
- * type: no header sort, no Fields picker, no org binding and no empty state.
- *
- * The skeleton mounts WHOLE — no `.filter`. Two tracks say little on this feed
- * (`select` has no bulk verb, `thumb` has no photo fact) but cutting chrome
- * geometry off a mount requires a `COMPOUND_SKELETON_FILTER_DEBT` row, and
- * that list is documented shrink-only: "do not grow this list to paint fewer
- * columns". Chrome HEADERS are family data and are relabelled to this desk's
- * vocabulary instead; the geometry is the engine's.
- *
- * Shared with the per-SKU allocations mount (a later brief) by construction:
- * everything here reads the layout it is handed, so that desk materializes its
- * own bindings off the same catalog with no edit to this file.
- */
+/** Unit-allocations column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -88,14 +70,7 @@ export function unitAllocationsCompoundColumnsFor(
 export const UNIT_ALLOCATIONS_COMPOUND_COLUMNS: readonly UnitAllocationsGridColumn[] =
   unitAllocationsCompoundColumnsFor(UNIT_ALLOCATIONS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the three the chrome paints:
- * a labeled header with a dead click fails `SLOT_TABLE_PAINT_LAW.headerSort`.
- * Structural chrome is named by `isSlotTableChromeTrack`, never by a hand list
- * that could drift from the law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function unitAllocationsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

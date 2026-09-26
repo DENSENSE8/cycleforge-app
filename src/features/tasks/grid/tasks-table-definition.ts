@@ -1,17 +1,4 @@
-/**
- * `tasks.mine` — the task desk (`work_assignments`, `work_type = 'FOLLOW_UP'`)
- * table definition, capabilities and descriptor.
- *
- * Re-declares nothing: the columns come from the ENGINE
- * (`slotTableColumnsFor`) applied to {@link TASKS_FAMILY}, and sortability
- * from the same record. The family used to own a `tasks-grid-layout.ts` plus a
- * `useTasksTableLayout.ts` — 200 lines restating the engine's column law to
- * supply four strings — and both are deleted with the store swap.
- *
- * `recordPlane` names what a row click opens, so "click the line item → the
- * record" is a property of the REGISTERED definition rather than of one page's
- * click handler. Tasks open on Daily (`/`) through `DeskRecordPlane`.
- */
+/** `tasks.mine` — the task desk (`work_assignments`, `work_type = 'FOLLOW_UP'`) table definition, capabilities and descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -35,22 +22,7 @@ export const TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColum
   TASKS_PRODUCT_LAYOUT,
 );
 
-/**
- * The task desk is a QUEUE of handed-over work, and the capability bag says so.
- *
- * `multiSelect: true` — a task row is not a checkbox to tick. Marking work
- * done, re-prioritising it or handing it on are STATUS writes, and they arrive
- * in batches ("everything I finished this afternoon"), so the gutter is a
- * selection feeding the action strip rather than a one-row verb. This is the
- * one capability that flipped with the store swap: `staff_todos` was a
- * personal checklist where the tick WAS the verb; `work_assignments` is a
- * ledger of assignments where the verb is a transition.
- *
- * `inCellEdit: false` — the row is a pointer at a record. Re-wording a handoff
- * happens in the record, which is where the task's other facts
- * (record, ticket, history) already are. A cell editor here would be a second
- * write path competing with the record plane.
- */
+/** The task desk is a QUEUE of handed-over work, and the capability bag says so. */
 export const TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

@@ -1,30 +1,6 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Who is asking, and what has already happened to them.
- *
- * Backs the `RequesterDetailBand` at the head of the ticket thread. Everything
- * here is a fact that EXISTS — deliberately so.
- *
- * **There is no LTV and no return rate, and neither is invented.** The ruling
- * that produced this band asked for both; nothing in this schema derives
- * either, and a placeholder number on a customer record is worse than a missing
- * one (an agent quotes it to a customer). When they are genuinely wanted they
- * arrive as a reviewed aggregate with a stated query and cache, not as a `0`.
- *
- * Every fact resolves INDEPENDENTLY and degrades to `null` on failure — the
- * band renders `—` for that fact and keeps the rest. A helpdesk outage must not
- * take the customer's name off the screen. This is the same degrade-not-fail
- * discipline the ticket bundle already follows.
- *
- * The linked order / tracking / serials are NOT here: they arrive on the
- * `SupportContextBundle` the thread already fetches, and re-querying them would
- * be a second reader of one fact.
- *
- * This module is the PURE core — no DB, no network, no `server-only` — so it is
- * unit-testable the way the house tests every DI'd domain helper. The real
- * collaborators live in `requester-profile-deps.ts`; the route composes them.
- */
+/** Who is asking, and what has already happened to them. */
 
 export interface RequesterCustomer {
   id: number;

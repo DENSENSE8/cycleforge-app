@@ -1,11 +1,4 @@
-/**
- * Unfound catalog guards + resolver behaviour — wave 1.4's sixth family.
- *
- * The distinction this family makes explicit is the one the ticket question
- * raised on Warranty: an interactive cell whose subject is a ROW FACT
- * (`checked`) is bindable; a control whose subject is not a row property at all
- * (Push / Synced) is structural and stays out of the catalog.
- */
+/** Unfound catalog guards + resolver behaviour — wave 1.4's sixth family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The repair record's verbs for the desk's action strip (owner 2026-09-25:
- * record verbs live ONLY in the strip under the list's search bar, never in
- * the record header or its columns). {@link buildRepairVerbs} is the one
- * list; {@link RepairRecordStrip} arms the strip for the open repair and owns
- * the controller its verbs write through (`useRepairDetailsPanel` — the same
- * writes the rail body uses).
- *
- * Immediate verbs: print label, repair doc, Square checkout, start pickup,
- * copy ticket #, cancel repair (isolated, second press). Display verbs morph
- * the strip into a form: Status (every workbench status), Edit ticket #,
- * Link / unlink. Repair is not a task entity (`TaskEntityType` = order ·
- * receiving · support_ticket), so there are no task verbs.
- */
+/** The repair record's verbs for the desk's action strip (owner 2026-09-25: */
 
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';

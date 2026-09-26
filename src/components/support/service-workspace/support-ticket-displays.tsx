@@ -1,47 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets — the ticket's DISPLAYS, and they live on the right edge.
- *
- *   centre → the customer conversation + the composer that commits it
- *   right  → Connections · Conversations · Timeline · Assist, one at a time
- *
- * ## Why the strip moved off the middle (2026-08-02)
- *
- * The thread used to mount a `SectionTabsSlider` in its own body, so reaching
- * the linkage, the team thread or the history meant **swapping the conversation
- * out** — on the one surface whose entire job is reading and answering that
- * conversation. That is the branch's own ranking rule read backwards
- * (`workbench-service.md` → *the middle is the work; the right side is the
- * extras*), and Unbox had already answered it: its workbench body is the
- * procedure and every other display lives in the right-edge Displays column
- * (`display/station-workbench.md`). Support now wears the same shape, down to
- * the switcher's `density="icon"` — a flat icon row where only the selected
- * display names itself, because a switcher inside a ~420px column must not
- * out-shout the display it switches.
- *
- * ## Conversations is here, and that is a deliberate correction
- *
- * `workbench-service.md` placed the internal team thread in the middle, on the
- * grounds that "a second composer in the rail would be two writers over one
- * thread". The premise does not hold: the team thread and the customer ticket
- * are two DIFFERENT threads with two different audiences, so their composers
- * write to different stores — the thing the rule guards against never occurs.
- * What the old placement did cost was real: the customer conversation had to
- * leave the screen to write an internal note about it.
- *
- * Each display owns its own controls. Conversations keeps its inline composer
- * rather than reaching for the bottom dock, because the dock is **ticket-terminal**
- * — a click on the right edge re-labelling the button at the bottom is the
- * cross-region action-at-a-distance the station law bans.
- *
- * ## Updates is absent on purpose
- *
- * The old rail's "Updates" tab rendered `SupportContextHub onlySegment="activity"`,
- * which is `bundle.timeline` — the exact array Timeline's Activity spine already
- * shows. Two homes for one fact; Timeline is the superset (Units · Tracking ·
- * Activity), so it keeps the job.
- */
+/** Support · Tickets — the ticket's DISPLAYS, and they live on the right edge. */
 
 import { useMemo } from 'react';
 import { Clock, Link2, MessageSquare, Sparkles } from '@/components/Icons';
@@ -58,14 +17,7 @@ import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportAssistDisplay } from './SupportAssistDisplay';
 
-/**
- * The rail's displays for one ticket.
- *
- * A hook, not a builder, because the Timeline display needs the SupportContext
- * bundle and the rail is mounted from `SupportTicketsWorkspace` — which cannot
- * call it conditionally. `anchor: null` (no open ticket) yields an empty list
- * and the underlying query stays disabled, so the hook is free at rest.
- */
+/** The rail's displays for one ticket. */
 export function useSupportTicketDisplays(
   anchor: SupportContextAnchor | null,
   /**
@@ -91,9 +43,6 @@ export function useSupportTicketDisplays(
   const { data: bundle } = useSupportContext(enabledAnchor, anchor != null);
 
   // Assignment demoted here from the chat header's field band (2026-08-02).
-  // *Who owns this* is context for the conversation, not the conversation — the
-  // branch's ranking rule — and it was costing a permanent dropdown row on the
-  // reading surface. Same cached bundle the thread reads, so no second fetch.
   const anchorTicketId = Number(anchor?.ticket ?? NaN);
   const providerTicketId =
     bundle?.ticket?.providerTicketId ?? (Number.isFinite(anchorTicketId) ? anchorTicketId : null);

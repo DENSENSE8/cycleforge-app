@@ -20,12 +20,7 @@ export interface UseManualsTree {
   filesHere: ManualRow[];
 }
 
-/**
- * Derives the folder tree and the current view (sorted subfolders + files, or
- * the fuzzy search results) from the flat manual rows. Pure memoized
- * computation — re-runs only when the rows, the breadcrumb path, or the
- * debounced query change.
- */
+/** Derives the folder tree and the current view (sorted subfolders + files, or the fuzzy search results) from the flat manual rows. */
 export function useManualsTree(
   manuals: ManualRow[],
   currentPath: string[],

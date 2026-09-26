@@ -1,10 +1,4 @@
-/**
- * decision.node — the registered NodeDefinition (Track 1, Stage 1). Proves the
- * thin adapter reads its config rule-table, emits the chosen port from item
- * facts (input or upstream context), and PARKS when nothing matches and there's
- * no default. The pure matcher is covered exhaustively in decision-eval.test.ts;
- * this checks the node wiring (config-read, facts-gather, park semantics).
- */
+/** decision.node — the registered NodeDefinition (Track 1, Stage 1). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

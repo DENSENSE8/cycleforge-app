@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Ticket-side Ecwid / operational order link action.
- *
- * Opposite of order→ticket create: the ticket is fixed and the operator pastes
- * an Ecwid (or other platform) order #. Resolves via `/api/orders/lookup/:orderId`
- * then POSTs the existing link waist with `{ type: 'order', orderId }` — which
- * anchors on SHIPMENT when present, else ORDER for no-STN walk-in / phone orders.
- */
+/** Ticket-side Ecwid / operational order link action. */
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

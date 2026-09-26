@@ -1,17 +1,4 @@
-/**
- * Org override for Unbox capture-step order (dogfood right-rail DnD).
- *
- * Stored as a JSON **string** in the Settings Registry (`SettingValue` is
- * string | number | boolean). Shape:
- *
- *   { found?: string[]; unfound?: string[]; return?: string[] }
- *
- * Empty / missing → code defaults from `UNBOX_FLOWS`. Sanitize drops unknown
- * keys and never invents steps outside the allowed set for a resolve.
- *
- * Kept free of `@/lib/stations/procedure` imports so the resolver can depend
- * on this module without a cycle.
- */
+/** Org override for Unbox capture-step order (dogfood right-rail DnD). */
 
 type UnboxFlowCaptureOrderFlowId = 'found' | 'unfound' | 'return';
 

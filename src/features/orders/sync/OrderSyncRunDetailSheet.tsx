@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Which rows — the run's per-row record, one tap from the result.
- *
- * "1 needs a fix" is a number an operator cannot act on. This is the answer to
- * the question it provokes, grouped by what to DO about each row: fixable
- * groups first, then what landed.
- *
- * ## Why a BottomSheet
- *
- * It is the house detail surface for a row on a phone (SURFACE_LAW §5: lists on
- * phone are cards plus this sheet) and it is legitimate desk chrome too, so one
- * component serves the run on both surfaces. It is deliberately NOT the
- * right-rail panel the deleted `OrderSyncDialog` used: that panel was a
- * desk-only occupant with a select-over-select header, and on a phone a rail is
- * not a surface.
- *
- * Grouping and tone come from {@link buildSyncRunDetail}, which is pure and
- * tested — this file only paints.
- */
+/** Which rows — the run's per-row record, one tap from the result. */
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import { microBadge } from '@/design-system/tokens/typography/presets';

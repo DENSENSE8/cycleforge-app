@@ -1,11 +1,4 @@
-/**
- * Staff-day column model — MATERIALIZED from a {@link SlotLayout} onto the
- * shared compound skeleton, exactly as its two report siblings are.
- *
- * No column literal is written here: `materializeTracks` resolves the layout
- * against the skeleton's chrome tracks, so a Fields-menu change re-materializes
- * through the same path and can never fork from the guard below.
- */
+/** Staff-day column model — MATERIALIZED from a {@link SlotLayout} onto the shared compound skeleton, exactly as its two report siblings are. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
@@ -63,11 +56,7 @@ export function reportStaffDayCompoundColumnsFor(
     // whole report exists to answer.
     if (t.key === 'dates') return { ...t, label: 'Checked at', gridLabel: 'Checked at' };
     if (t.key === 'state') {
-      // `slotDisplayType: 'date'` with NO `fieldId`, the same trick the
-      // dead-stock state pill pulls with `number`: the engine types the sort
-      // comparator from it (an instant sorts chronologically, not lexically)
-      // while the cell itself paints `view.stateLabel` — the WORD — never a
-      // resolved slot.
+      // `slotDisplayType:
       return {
         ...t,
         label: 'Checked',

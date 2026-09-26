@@ -1,22 +1,4 @@
-/**
- * END-TO-END PROOF: a staff member asks the MCP Gateway for a tool that
- * already exists, and is denied with the duplicate's id.
- *
- * Run: npx tsx --test src/lib/tool-forge/gateway-denial.test.ts
- *
- * Everything on the path is the REAL implementation:
- *   handleMcpMessage      (src/lib/mcp/tool-server.ts)      — JSON-RPC dispatch
- *     → runAssistantTool  (src/lib/assistant/tools/index.ts) — the chokepoint
- *       → searchToolRegistryTool                             — the gateway tool
- *         → searchToolRegistry (dedupe.ts)                    — the measurement
- *           → triageBuildRequest (triage.ts)                  — the rule
- *
- * Only the two things that leave the process are stubbed: Postgres and the
- * embedding provider. Postgres is where the cosine is actually computed in
- * production (`1 - (embedding <=> $1::vector)`), so the fake returns rows
- * carrying a similarity exactly as the real query does — the arithmetic under
- * test is the gate's, not the driver's.
- */
+/** END-TO-END PROOF: */
 
 // Side-effect FIRST: the registry import below transitively loads the Neon
 // client, which validates DATABASE_URL's format at module load. No connection

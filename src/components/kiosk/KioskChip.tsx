@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * KioskChip — the TOUCH tier of the house chip family.
- *
- * The desk tier is `badge` (`@/components/ui/badge`): a square
- * (`rounded-none`), 18px-tall, bordered chip built for dense grid rows. It is
- * the right chip for a desk and the wrong one for a counter tablet, where a
- * chip is something a customer's thumb lands on and the whole surface reads
- * rounded. Rather than fork `badge` with a radius override at every call site —
- * or keep hand-composing `KIOSK_PILL` + a tone token, which is what
- * `ReasonSelector` was doing — the kiosk tier is ONE component.
- *
- * Two faces, one vocabulary:
- *   - `row`  — full-width selectable pill (reason pills, option stacks). Touch
- *              height, left-aligned, `aria-pressed` when it is a choice.
- *   - `meta` — inline fact chip on a card (line type, qty, state).
- *
- * `onClick` decides the element: a chip that does something is a `<button>`, a
- * chip that states a fact is a `<span>`. That is why there is no `as` prop.
- *
- * Callers: `ReasonSelector` (pills), `KioskCartLineCard`. Affected API: none.
- * Schemas: none.
- * User: "a mobile-like chip display component with a rounded corner radius and
- * kind of pills and buttons … throughout the kiosk v2" (Phase 2).
- */
+/** KioskChip — the TOUCH tier of the house chip family. */
 
 import type { ReactNode } from 'react';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -37,20 +14,7 @@ import {
 } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
-/**
- * Chip tone. `issue` is the amber "you picked a problem" wash the repair
- * reasons use; `accent` is the neutral selected wash categories use.
- *
- * `thumb` is the SELECTED SEGMENT OF A TRACK, and it exists because `accent`
- * cannot do that job: `surface-accent` on the `surface-sunken` trough of a
- * segmented control computes rgb(240,244,251) on rgb(241,245,249) — one point
- * of luminance, so the selected side was invisible and only its Check said
- * which way the control was set (measured on the kiosk ticket slider,
- * 2026-09-15). A thumb is a RAISED face: card-white with a hairline, the
- * standard segmented-control idiom. Grown here rather than overridden with a
- * `bg-` class at the call site — the same rule `AGENTS.md` states for Button
- * fills, and the reason this component exists.
- */
+/** Chip tone. `issue` is the amber "you picked a problem" wash the repair reasons use; `accent` is the neutral selected wash categories use. */
 export type KioskChipTone =
   | 'idle'
   | 'accent'
@@ -150,16 +114,7 @@ export function KioskChip({
     );
   }
 
-  /*
-   * ds-raw-button: a CHIP is not an ops CTA.
-   *
-   * `Button` carries its own size ladder (h-8/9/10), variant fills and radius
-   * prop — mounting it here would mean fighting all three with class
-   * overrides to get a touch-tall pill wearing a tone wash. The desk tier of
-   * this family (`badge`) is a raw `<span>`/Slot for the same reason, and
-   * `KIOSK_PILL` already carries the sanctioned escape in its own class
-   * string. Focus, disabled and pressed states are explicit below.
-   */
+  /* ds-raw-button: */
   return (
     <button
       type="button"

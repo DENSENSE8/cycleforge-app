@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * The `/counter` desk client: one session, one version, one in-flight write.
- *
- * Every mutation route already answers with the **new snapshot** (P2), so this
- * hook needs no realtime transport to stay correct — it renders whatever the
- * last server answer said. P4 adds the Ably subscription on top; until then a
- * poll keeps a second desk's edits visible, which is also the exact degrade
- * path D7 requires when the channel is down. Building the poll first means the
- * fallback is the thing that has been exercised all along, rather than a branch
- * nobody runs until the day Ably breaks.
- *
- * **Writes are serialized.** `expectedVersion` comes from the snapshot in hand,
- * so two overlapping writes would send the same version and the second would
- * always lose. Queueing them behind one in-flight promise turns a guaranteed
- * 409 into a correct sequence — the conflict path stays for the case it is
- * actually for: another *device* editing the same cart.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5, ahead of P4).
- */
+/** The `/counter` desk client: */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
@@ -36,15 +18,7 @@ import { getKioskBridgeChannelName, safeChannelName } from '@/lib/realtime/chann
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import type { KioskLinePayload, KioskLineType } from '@/lib/kiosk/cart-line';
 
-/**
- * Poll cadence.
- *
- * Two speeds, because the poll plays two different roles. With no channel
- * attached it IS the transport, so it runs at 3s. With the bridge live it is
- * only a safety net against a dropped publish, so it drops to 30s — frequent
- * enough that a missed event is measured in seconds, rare enough that ten
- * counters do not hammer the API for nothing.
- */
+/** Poll cadence. */
 const POLL_MS_DEGRADED = 3_000;
 const POLL_MS_LIVE = 30_000;
 
@@ -68,14 +42,7 @@ interface MutationResult {
   json: { snapshot?: CounterSessionSnapshot; transaction?: CounterTransactionResult; error?: string };
 }
 
-/**
- * One request. `requestStepUp` is threaded through rather than captured so the
- * four money verbs (create is not one; submit, checkout and price are) can
- * clear a `403 STEPUP_REQUIRED` and retry, while the free verbs pay nothing for
- * the capability. Without this the desk's Pay button would 403 silently and
- * read as "that did not go through" — a PIN prompt is the whole difference
- * between a stuck counter and a charged card.
- */
+/** One request. `requestStepUp` is threaded through rather than captured so the four money verbs (create is not one; submit, checkout and… */
 async function call(
   path: string,
   method: string,
@@ -95,13 +62,7 @@ async function call(
   return { ok: res.ok, status: res.status, json } as const;
 }
 
-/**
- * Open a visit. Not part of the hook: there is no session to hook onto yet.
- *
- * The `clientEventId` is minted here and is what makes a double-tap on "Start
- * visit" one session instead of two — the same idempotency contract the submit
- * path uses, applied at the other end of the visit.
- */
+/** Open a visit. */
 export async function createCounterSession(
   kioskDeviceId?: number | null,
 ): Promise<{ sessionId: number } | { error: string }> {
@@ -208,16 +169,7 @@ export function useCounterSession(sessionId: number | null) {
     return () => clearInterval(timer);
   }, [sessionId, refresh, state.live]);
 
-  /**
-   * `stepUp` is opt-in per verb, not global: only the routes that actually
-   * declare `stepUp: true` should be able to raise a PIN prompt. Threading it
-   * per call keeps a stray 403 on, say, a quantity nudge from popping a PIN
-   * sheet the operator has no reason to expect.
-   *
-   * Returns the parsed body so the caller can read what the route answered
-   * with beyond the snapshot — submit carries the `transaction`, and that is
-   * the only place the counter transaction id and the RS numbers ever appear.
-   */
+  /** `stepUp` is opt-in per verb, not global: */
   const mutate = useCallback(
     (path: string, method: string, body: MutationBody = {}, stepUp = false) => {
       const run = async (): Promise<MutationResult> => {
@@ -251,11 +203,6 @@ export function useCounterSession(sessionId: number | null) {
   );
 
   // ── The bridge (D2) ───────────────────────────────────────────────────────
-  //
-  // Keyed by DEVICE, so a session with no bound tablet has no channel and no
-  // second screen to sync with — the poll simply stays at its degraded cadence.
-  // The desk's Ably token grants only devices it holds a live lease on (P3), so
-  // subscribing to a counter it does not hold fails at the token, not here.
   const deviceId = state.snapshot?.kioskDeviceId ?? null;
   const channel = useMemo(
     () =>
@@ -313,14 +260,7 @@ export function useCounterSession(sessionId: number | null) {
       (takeover?: boolean) => mutate(`/api/counter/session/${id}/claim`, 'POST', { takeover }),
       [id, mutate],
     ),
-    /**
-     * Put this visit on a tablet, or hand the tablet back with `null`.
-     *
-     * Not step-up gated: choosing which screen the customer reads moves no
-     * money, and a PIN between a staffer and the iPad in front of them would
-     * be a prompt nobody can explain. The refusals that matter here are
-     * `DEVICE_BUSY` (another open visit holds it) and the version race.
-     */
+    /** Put this visit on a tablet, or hand the tablet back with `null`. */
     bindDevice: useCallback(
       (kioskDeviceId: number | null) =>
         mutate(`/api/counter/session/${id}/device`, 'POST', { kioskDeviceId }),
@@ -374,18 +314,8 @@ export function useCounterSession(sessionId: number | null) {
     ),
 
     // ── The money verbs ──────────────────────────────────────────────────────
-    //
-    // All three routes existed, permission-gated and unit-tested, with no
-    // client caller — the desk could stage a cart and never finish it. Each
-    // declares `stepUp: true` server-side, so each passes `true` here.
 
-    /**
-     * Override a line price. Its own route, not the general line PATCH: the
-     * PATCH schema deliberately omits `unitAmountCents`, because a step-up gate
-     * you can bypass by omitting a field is not a gate. The desk's discount
-     * button pointed at the PATCH and was silently stripped by Zod, which
-     * surfaced as "That line is already gone."
-     */
+    /** Override a line price. */
     setLinePrice: useCallback(
       (lineUuid: string, unitAmountCents: number, reason?: string) =>
         mutate(
@@ -397,12 +327,7 @@ export function useCounterSession(sessionId: number | null) {
       [id, mutate],
     ),
 
-    /**
-     * Finish the visit: write the transaction, the repairs and the staged
-     * order. Answers with the `transaction` — the only place the counter
-     * transaction id and the RS numbers are ever handed to the client, so the
-     * caller must keep what it returns or lose the receipt.
-     */
+    /** Finish the visit: */
     submit: useCallback(
       () => mutate(`/api/counter/session/${id}/submit`, 'POST', {}, true),
       [id, mutate],

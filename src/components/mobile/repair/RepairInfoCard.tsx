@@ -5,11 +5,8 @@ import { repairStatusBadgeClass, repairStatusOperatorLabel } from '@/lib/repair-
 import { repairDeviceName } from '@/lib/repair/repair-device-name';
 
 /**
+ * The hub's summary card (operator 2026-09-24:
  * The hub's summary card (operator 2026-09-24: "simple when you first see it",
- * then click in for depth). A read-only preview — device, issue, customer and
- * phone, serial, with the status bottom-right — and the whole card opens the
- * details screen (`href`), which owns every fact in full and the only edit.
- * The layout is the shared {@link DetailSummaryCard}; this maps a repair onto it.
  */
 export function RepairInfoCard({
   href,

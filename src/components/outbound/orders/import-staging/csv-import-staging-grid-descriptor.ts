@@ -1,9 +1,4 @@
-/**
- * CSV import staging grid surface descriptor — lifts
- * {@link CSV_IMPORT_STAGING_GRID_COLUMNS} into the TanStack defs
- * `LedgerGridSurface` mounts. Row ORDER stays with the host comparator (state
- * math only); the rows themselves are a session draft, never a query.
- */
+/** CSV import staging grid surface descriptor — lifts {@link CSV_IMPORT_STAGING_GRID_COLUMNS} into the TanStack defs `LedgerGridSurface`… */
 
 import {
   makeGridSurfaceDescriptor,
@@ -17,17 +12,7 @@ import {
   type CsvImportStagingGridColumn,
 } from './csv-import-staging-grid-layout';
 
-/**
- * Import staging — a triage queue whose whole job is picking N rows to commit.
- *
- * `multiSelect: true` is the load-bearing flag: Confirm acts on the selection ∩
- * Ready. `inCellEdit: false` — a value is corrected on the rail's Row leaf (all
- * six fields at once, with the missing-field reason) or by re-mapping the source
- * column; the cell shows what was parsed and does not pretend to accept a value.
- * `rowTriageFlags: false`: the `status` track already carries this surface's one
- * state, and a staff row colour beside it would be a second story about the same
- * row.
- */
+/** Import staging — a triage queue whose whole job is picking N rows to commit. */
 export const CSV_IMPORT_STAGING_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

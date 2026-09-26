@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * `/settings` landing — grouped card grid (2026-09-06 rail removal; simplified
- * same-day after the Impeccable critique). The Personal sections collapse into
- * one "Your setup" card linking the `/settings/me` scroll page; the org
- * sections group into category clusters. Permission gating is the registry's
- * `requires`.
- */
+/** `/settings` landing — grouped card grid (2026-09-06 rail removal; simplified same-day after the Impeccable critique). */
 
 import Link from 'next/link';
 import { useMemo } from 'react';
@@ -110,10 +104,7 @@ export function SettingsLanding() {
       {CATEGORY_ORDER.map((category) => {
         const sections = visibleOrg.filter((s) => SETTINGS_SECTION_CATEGORY[s.id] === category);
         if (sections.length === 0) return null;
-        // Every category wears its header, single-section ones included
-        // (2026-09-07 audit: the headerless rendering camouflaged "Apps &
-        // integrations" inside the Workspace cluster — scanning for the
-        // category anchor found nothing).
+        // Every category wears its header, single-section ones included (2026-09-07 audit:
         return (
           <section key={category} className="space-y-3">
             <CategoryHeading label={SETTINGS_CATEGORY_LABELS[category]} />

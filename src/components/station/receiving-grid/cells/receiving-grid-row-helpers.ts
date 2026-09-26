@@ -42,15 +42,7 @@ export function receivingStageTooltip(
   return parts.join(' · ');
 }
 
-/**
- * History-mode status-chip tooltip.
- *
- * - **Fine** (Testing History): DONE (Received) is bare; UNBOXED uses the shared
- *   sync tip SoT; other stages keep the stage tip.
- * - **Coarse** (Unbox / Receiving History): Received (incl. testing terminals) is
- *   bare; UNBOXED keeps the sync tip; never surface stage tips that name FAILED /
- *   AWAITING_TEST / etc.
- */
+/** History-mode status-chip tooltip. */
 export function receivingHistoryStatusTooltip({
   workflowStatus,
   inventoryProviderLabel,

@@ -4,13 +4,7 @@ import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 
 type Row = Record<string, unknown>;
 
-/**
- * Fake Queryable that routes each SQL text to a canned result and records
- * every call. Routing is by substring so the assertions double as a guard on
- * WHICH tables the SQL reads — the 2026-07 regression was this module still
- * selecting zoho_purchaseorder_id from receiving_line after the Wave-3
- * inversion moved line Zoho identity into receiving_line_zoho.
- */
+/** Fake Queryable that routes each SQL text to a canned result and records every call. */
 function fakeDb(routes: Array<{ match: string; rows: Row[] }>) {
   const calls: Array<{ text: string; params: unknown[] }> = [];
   return {

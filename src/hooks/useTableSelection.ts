@@ -3,20 +3,7 @@
 import { useEffect, useState } from 'react';
 import { onSelectionTotal, selectionEventName } from '@/lib/selection/table-selection';
 
-/**
- * Collect the current selection for a table `scope`.
- *
- * Generalized from {@link useFbaBoardSelection}: instead of a hard-coded FBA
- * event, it listens on `selection:{scope}` (see table-selection.ts) so any
- * table can feed a shared `<SelectionActionBar>`.
- *
- *   const rows = useTableSelection<Order>('orders');
- *   <SelectionActionBar scope="orders" rows={rows} actions={…} />
- *
- * @param scope    Unique key shared by the table and its action bar.
- * @param getKey   Optional row → stable key for de-duping. Defaults to the row
- *                 itself (reference identity).
- */
+/** Collect the current selection for a table `scope`. */
 export function useTableSelection<T>(
   scope: string,
   getKey?: (row: T) => string | number,
@@ -43,12 +30,7 @@ export function useTableSelection<T>(
   return rows;
 }
 
-/**
- * Track the count of currently-selectable (visible) rows a table publishes via
- * `emitSelectionTotal(scope, …)`. Lets a rail `RailSelectionBand` know when
- * everything is selected so its select-all control can reflect that. Defaults to `0` until
- * the table broadcasts.
- */
+/** Track the count of currently-selectable (visible) rows a table publishes via `emitSelectionTotal(scope, …)`. */
 export function useTableSelectionTotal(scope: string): number {
   const [total, setTotal] = useState(0);
 

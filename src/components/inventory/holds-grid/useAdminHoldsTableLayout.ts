@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The Holds desk slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open a `subtitle:N` track
- * the compound item cell paints inline (the hold reason under the serial) —
- * `paintMorph` coerces, and the org write gate (`slotMorphsFor('admin-holds')`)
- * refuses the foreign morph.
- */
+/** The Holds desk slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   ADMINHOLDS_FIELD_CATALOG,

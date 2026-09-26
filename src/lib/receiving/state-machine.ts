@@ -1,36 +1,4 @@
-/**
- * Receiving-line state machine — the guarded chokepoint for
- * `receiving_line.workflow_status`.
- *
- * Mirrors the serial-unit `transition()` (src/lib/inventory/state-machine.ts):
- * every receiving-line status change should route through `transitionReceivingLine()`
- * so that, atomically and in one place:
- *   1. The lifecycle write is guarded (a disallowed edge is logged, and in
- *      `strict` mode rejected with 409 — see the permissive default below).
- *   2. `workflow_status`, the coarse `receiving_line_status`, the matching
- *      lifecycle timestamp (scanned_at / unboxed_at / received_at) and
- *      `received_by` all move together with one UPDATE.
- *   3. An `inventory_events` row is emitted (anchored on `receiving_line_id`,
- *      `serial_unit_id` NULL — the line lifecycle happens before serialization),
- *      with `client_event_id` idempotency (UNIQUE) so a retry is a no-op.
- *
- * It does NOT call `recordAudit` — that is the route's job (house pattern: lib
- * does the domain write + the inventory_events spine; the route audits). It does
- * NOT tap the node engine: the engine is serial-unit-bound, and a receiving_line
- * is not an engine item (enrolling it is the deferred "full engine enrollment"
- * option). The inventory_events spine IS the receiving-line observability (the
- * History timeline + studio activity read it); the existing serial-unit
- * `unit_received` tap still fires where units are created (receive step).
- *
- * GUARD POLICY — permissive by default. The legacy raw-UPDATE sites allow loose
- * transitions (re-receive bounce-backs, reconcile rewinds). Until the real edge
- * graph is confirmed from production, an unmodeled edge is LOGGED, not rejected,
- * so re-pointing a site through here can never break flows that work today. Pass
- * `strict: true` to 409 on a disallowed edge. `expectedFrom` is always enforced
- * (409) when the caller supplies it (optimistic-concurrency).
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** Receiving-line state machine — the guarded chokepoint for `receiving_line.workflow_status`. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -46,10 +14,7 @@ import {
 } from '@/lib/receiving/workflow-stages';
 import type { InboundWorkflowStatus } from '@/lib/drizzle/schema';
 
-// ─── Transition allow-list (inbound_workflow_status_enum) ────────────────────
-// Forward lifecycle + the rewinds/branches the receiving + testing flows really
-// perform. Advisory while the guard is permissive (used for logging + the future
-// strict mode). ON-identity (from === to) is always allowed (idempotent no-op).
+// ─── Transition allow-list (inbound_workflow_status_enum) ──────────────────── Forward lifecycle + the rewinds/branches the receiving +…
 const INBOUND_TRANSITIONS: Readonly<Record<string, ReadonlySet<string>>> = {
   EXPECTED:      new Set(['ARRIVED', 'MATCHED', 'UNBOXED', 'DONE']),
   ARRIVED:       new Set(['MATCHED', 'UNBOXED', 'DONE', 'EXPECTED']),
@@ -101,12 +66,7 @@ export interface ReceivingLineTransitionInput {
   exceptionCode?: string | null;
   /** When true, a disallowed edge returns 409 instead of log-and-proceed. */
   strict?: boolean;
-  /**
-   * When true, do the guarded workflow_status UPDATE (+ coarse/timestamps) but do
-   * NOT emit an inventory_event — the caller owns event emission (e.g. a route that
-   * emits ONE combined line+serial event). Keeps the single-event timeline intact
-   * when folding a legacy raw-UPDATE writer onto this chokepoint. `eventId` is -1.
-   */
+  /** When true, do the guarded workflow_status UPDATE (+ coarse/timestamps) but do NOT emit an inventory_event — the caller owns event… */
   skipEvent?: boolean;
 }
 
@@ -130,29 +90,12 @@ export interface ReceivingLineTransitionDeps {
 
 const defaultDeps: ReceivingLineTransitionDeps = { recordEvent: recordInventoryEvent };
 
-/**
- * Atomically transition a receiving line and emit one inventory_event.
- *
- * Execution modes mirror serial `transition()`, and like it there are exactly
- * two — `orgId` is required, so there is no third:
- *   - db OMITTED  → runs inside withTenantTransaction (owns BEGIN/GUC/COMMIT).
- *   - db PROVIDED → executor pattern; GUC is set on the caller's client; the
- *                   caller owns the transaction.
- */
+/** Atomically transition a receiving line and emit one inventory_event. */
 export async function transitionReceivingLine(
   input: ReceivingLineTransitionInput,
   /** Pass `undefined` to let this function own the transaction. */
   db: Pick<PoolClient, 'query'> | undefined,
-  /**
-   * Tenant scope — REQUIRED, and deliberately un-defaulted, for the same reason
-   * as serial `transition()`. An org-less call did not read unscoped and find
-   * nothing: it locked and UPDATEd `receiving_line` with no `organization_id`
-   * predicate — so another tenant's line advanced its workflow_status, its
-   * stage clocks and its exception_code — and then stamped the
-   * `inventory_events` row `orgId ?? DOGFOOD_ORG_ID`, filing the audit trail
-   * under the dogfood tenant. `inventory_events` is FORCE-RLS but with a
-   * dogfood-fallback column default, so nothing failed loudly.
-   */
+  /** Tenant scope — REQUIRED, and deliberately un-defaulted, for the same reason as serial `transition()`. */
   orgId: OrgId,
   deps: ReceivingLineTransitionDeps = defaultDeps,
 ): Promise<ReceivingLineTransitionResult> {

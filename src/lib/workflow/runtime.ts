@@ -1,15 +1,4 @@
-/**
- * Workflow engine — node runtime.
- *
- * Runs a single node: times it, catches failures, and returns a normalized
- * outcome plus the RunRecord for the observability log. Persistence and routing
- * are the caller's job (advance.ts) — this stays a pure function of the node +
- * context so it's easy to test.
- *
- * A node that throws is not a crash: it resolves to the reserved `error` output
- * port so a workflow can route failures explicitly (an edge from `error` → a
- * triage node), and the error text is captured on the run record.
- */
+/** Workflow engine — node runtime. */
 
 import type { NodeDefinition, NodeContext, NodeResult, RunRecord } from './contract';
 

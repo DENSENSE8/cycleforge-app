@@ -6,38 +6,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Local NAS file server — the app reads the NAS folder straight off the SMB
- * mount and re-exposes it to the browser, so no separate file-server container
- * or Cloudflare tunnel is needed. This is the "just like localhost, but served
- * on the LAN" path: run the app (dev OR a production build) on any machine that
- * has the NAS share mounted, and every browser that opens that machine over http
- * gets the picker — same-origin, so no CORS and no mixed-content issues.
- *
- * It re-exposes the folder in the exact shape the browser-side client
- * (`src/lib/nas-photos.ts`) expects:
- *   • a directory  → nginx `autoindex_format json`-compatible array:
- *       [{ name, type: 'file'|'directory', size, mtime }]
- *   • a file       → the raw image bytes with an image/* content-type
- *
- * Point the app at it (relative URL → works on any host/port over http):
- *   NEXT_PUBLIC_NAS_PHOTOS_BASE_URL=/api/nas-dev
- *   NAS_DEV_ROOT="/Volumes/USAV Media/Puchasing photos/2026"  # the mount on THIS host
- *
- * Enablement (safe by default):
- *   • dev (`next dev`)            → always on (uses NAS_DEV_ROOT or the default).
- *   • production build            → on ONLY when NAS_DEV_ROOT is set, so a LAN
- *     (`next start`/Vercel)         box opts in by setting it; Vercel (where it's
- *                                   unset and the path doesn't exist) returns 404.
- *   • always behind the app's session auth gate + a path-traversal guard, and it
- *     only ever exposes the one configured folder.
- *
- * To serve the whole office: run on a mounted LAN machine, e.g.
- *   NAS_DEV_ROOT="/Volumes/USAV Media/Puchasing photos/2026" \
- *   NEXT_PUBLIC_NAS_PHOTOS_BASE_URL=/api/nas-dev npm run build
- *   npx next start -H 0.0.0.0 -p 3000      # staff open http://<this-ip>:3000
- * (or `npx next dev -H 0.0.0.0` for a quick, no-build LAN test).
- */
+/** Local NAS file server — the app reads the NAS folder straight off the SMB mount and re-exposes it to the browser, so no separate… */
 
 // The folder the host has mounted (SMB share "USAV Media"). Set NAS_DEV_ROOT to
 // THIS machine's mount path — it differs per OS (macOS: /Volumes/...,
@@ -130,20 +99,12 @@ export async function GET(
   const ext = extname(target).toLowerCase();
   const buf = await readFile(/* turbopackIgnore: true */ target);
 
-  // Optional on-the-fly thumbnail (?thumb=<px>): a small EXIF-rotated webp so
-  // the picker's row previews load in KB instead of pulling multi-MB originals.
-  // sharp ships with Next 16's image optimizer; if it's unavailable or the file
-  // isn't a raster image we fall through to the original bytes. Cacheable so
-  // re-opening the picker doesn't regenerate.
+  // Optional on-the-fly thumbnail (?thumb=<px>):
   const thumbRaw = req.nextUrl.searchParams.get('thumb');
   if (thumbRaw && IMAGE_RE.test(target)) {
     const size = Math.min(512, Math.max(48, Number(thumbRaw) || 160));
     try {
-      // Keep this a genuine runtime import. A type assertion such as
-      // `import('sharp' as string)` still leaves a literal specifier after
-      // TypeScript erases the assertion, causing webpack to inspect Sharp's
-      // platform-specific optional WASM/native packages during Vercel builds.
-      // `webpackIgnore` leaves resolution to Node at request time.
+      // Keep this a genuine runtime import.
       type SharpChain = {
         rotate(): SharpChain;
         resize(w: number, h: number, o: { fit: string }): SharpChain;
@@ -174,16 +135,7 @@ export async function GET(
   });
 }
 
-/**
- * Write one captured photo to the mounted NAS folder (the local-dev equivalent
- * of a WebDAV PUT against the real NAS). Same enable gate + path-traversal guard
- * as GET, and restricted to image files so this can't be turned into a general
- * file drop. Parent folders (e.g. PO_123/) are created on demand.
- *
- * This mirrors the production write path so the mobile capture flow is testable
- * end-to-end locally: the browser PUTs same-origin to /api/nas-dev/<path>, and
- * the file lands on the SMB mount.
- */
+/** Write one captured photo to the mounted NAS folder (the local-dev equivalent of a WebDAV PUT against the real NAS). */
 export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> },

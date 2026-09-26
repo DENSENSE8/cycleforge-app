@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * URL ⇄ state for the Operations sidebar's mode switcher.
- *
- * Keeps `?mode=` as the single source of truth so a refresh / deep-link is
- * preserved and the right pane can react to the same param. On a mode switch we
- * clear the mode-scoped params (search, selection, range…) so each mode opens
- * clean. Mirrors `useReceivingMode`.
- */
+/** URL ⇄ state for the Operations sidebar's mode switcher. */
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -32,10 +25,7 @@ export function useOperationsMode(): OperationsModeState {
 
   const updateMode = useCallback(
     (next: OperationsMode) => {
-      // CONSTRUCT the target. This replaced a 26-key denylist — six modes'
-      // filters, the Journey focus set and the Signals timeline — that a mode
-      // switch had to delete one by one. `live` is the default and carries no
-      // `mode`.
+      // CONSTRUCT the target.
       const spec = routeParamsFor('/operations')!;
       const staff = searchParams.get('staff') ?? searchParams.get('staffId');
       router.replace(buildRouteUrl(spec, { mode: next === 'live' ? null : next, staff }));

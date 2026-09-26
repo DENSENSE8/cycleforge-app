@@ -7,13 +7,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyClaimBulkDeleteBody } from '@/lib/schemas/warranty';
 
-/**
- * POST /api/warranty/claims/bulk/restore — bulk reverse of the bulk soft-delete.
- *
- * Un-tombstones up to 200 claims by id (one set-based UPDATE). Unknown /
- * already-live ids come back in `results` as ok:false rather than failing the
- * batch. Reuses the bulk-delete `ids` body. Idempotent. Gated by WARRANTY_LOGGER.
- */
+/** POST /api/warranty/claims/bulk/restore — bulk reverse of the bulk soft-delete. */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
 
@@ -33,10 +27,7 @@ export const POST = withAuth(async (request, ctx) => {
     route: 'POST /api/warranty/claims/bulk/restore',
     bodyKey: parsed.data.idempotencyKey ?? null,
     produce: async () => {
-      // Org-ownership pre-check: only restore claims that belong to the caller's
-      // org. getClaimTicketRef can't be used (it filters deleted_at IS NULL, but
-      // restore targets soft-deleted claims). Cross-tenant ids are bucketed as
-      // not-found, identical in shape to the mutation's own notFound result.
+      // Org-ownership pre-check:
       const ownedIds: number[] = [];
       const foreignIds: number[] = [];
       for (const id of parsed.data.ids) {

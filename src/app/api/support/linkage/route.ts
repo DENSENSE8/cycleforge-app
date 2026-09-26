@@ -12,13 +12,7 @@ const Query = z.object({
   serial: z.string().trim().min(1).max(128).optional(),
 });
 
-/**
- * GET /api/support/linkage?order=&tracking=&serial=
- *
- * Support-scoped closed-loop preview for New ticket create. Wraps
- * {@link resolveOrderLinkage} under `integrations.zendesk` so the tickets board
- * does not need `packing.view` (kept on `/api/order-linkage`).
- */
+/** GET /api/support/linkage?order=&tracking=&serial= */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const context = 'GET /api/support/linkage';
   try {

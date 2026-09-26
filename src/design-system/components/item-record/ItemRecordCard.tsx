@@ -8,19 +8,7 @@ import { ItemRecordFactList } from './ItemRecordFactList';
 import { ItemRecordRow } from './ItemRecordRow';
 import type { ItemRecord } from './item-record-types';
 
-/**
- * The shared item surface: a flat list of item rows, each followed by its
- * reference facts.
- *
- * This is the SoT face for "what is this item" anywhere in the app. One item
- * or twenty, a purchase order or a sales order — the caller maps its records
- * onto {@link ItemRecord} and gets the same ledger the scan stations paint in
- * the middle context display.
- *
- * Flat by construction: rows carry a hairline floor and no card radius, so the
- * card sits inside whatever block host owns the padding. Nothing here fetches,
- * mutates, or knows a route.
- */
+/** The shared item surface: */
 export function ItemRecordCard({
   items,
   activeId,

@@ -13,13 +13,7 @@ import type { ActiveShipment } from '@/lib/fba/types';
 import { parseShipment } from './active-shipments-shared';
 import { refreshDomain } from '@/lib/refresh/bus';
 
-/**
- * Owns the FBA active-shipments rail: fetching active + recently-shipped
- * shipments (transformed into bundle-aware {@link ActiveShipment}s, only those
- * with tracking + items), the open-shipment-editor event + editor-active
- * broadcast, the refresh-event subscription, expand toggling, and the
- * changed-broadcast. Returns a controller bag the thin shell renders from.
- */
+/** Owns the FBA active-shipments rail: */
 export function useFbaActiveShipments() {
   const [shipments, setShipments] = useState<ActiveShipment[]>([]);
   const [recentShipped, setRecentShipped] = useState<ActiveShipment[]>([]);

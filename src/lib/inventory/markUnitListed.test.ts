@@ -1,11 +1,4 @@
-/**
- * DB-free unit tests for markUnitListed() — exercises the helper through injected
- * fakes (no Postgres). Mirrors the applyTransition.test.ts pattern: a fakes()
- * factory captures every collaborator call so we assert on both the return value
- * and what got threaded into the deps.
- *
- *   node --import tsx --test src/lib/inventory/markUnitListed.test.ts
- */
+/** DB-free unit tests for markUnitListed() — exercises the helper through injected fakes (no Postgres). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

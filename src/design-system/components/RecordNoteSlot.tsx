@@ -10,14 +10,6 @@ import { cn } from '@/utils/_cn';
 /**
  * The buyer-note slot on an industrial record's band 1, beside the state code
  * — the left-side priority anchor (owner 2026-09-24). Shared by the desk
- * ledger and the phone record so both wear one face.
- *
- * Rigid on every record: a noted order fills it with the amber `NOTE` badge.
- * An un-noted one keeps the same width — blank by default, or the grey
- * `+ NOTE` face (`empty="add"`) where the host opens an inline editor from it
- * (the desk ledger). The badge carries no text of the note — the row is not
- * where it is read; the evidence column / sheet leads with it, and packing is
- * held until it is acknowledged.
  */
 export function RecordNoteSlot({ note, empty = 'blank' }: { note: string | null; empty?: 'blank' | 'add' }) {
   return (
@@ -37,13 +29,7 @@ export function RecordNoteSlot({ note, empty = 'blank' }: { note: string | null;
   );
 }
 
-/**
- * The full buyer note at the TOP of an opened record (desk evidence column,
- * phone evidence sheet) — under the state strip, above the photo, so it is
- * read before the item is pulled. Left-anchored like the row badge: a 4px
- * warn-ink bar on the left edge, the `NOTE` badge, then the text in the warn
- * ink. Renders nothing when the order carries no buyer note.
- */
+/** The full buyer note at the TOP of an opened record (desk evidence column, phone evidence sheet) — under the state strip, above the… */
 export function BuyerNoteBlock({ note, className }: { note: string | null; className?: string }) {
   if (!note) return null;
   return (

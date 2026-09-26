@@ -134,15 +134,7 @@ function TemporaryChip() {
   );
 }
 
-/**
- * Pick the exact part a repair tech removed or installed: search the Zoho
- * catalog and the floor's temporary parts, scan a label, fall back to the typed
- * name with no SKU, or mint a temporary (`TMP-…`) part for something the
- * system has never seen. The Zoho item name is the title — never re-titled.
- *
- * Catalog access is `sku_stock.view`, minting is `sku_stock.adjust`; a role
- * without them still leaves with the typed name, and is told why.
- */
+/** Pick the exact part a repair tech removed or installed: */
 export function RepairPartField({
   label,
   repairId,

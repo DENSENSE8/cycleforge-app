@@ -20,15 +20,7 @@ export interface HandlerResult {
   skipped?: boolean;
 }
 
-/**
- * Webhook dispatch table. Each handler runs *after* signature verification
- * and dedupe — so handlers can assume the event is real, in-order enough
- * for our purposes, and being processed exactly once.
- *
- * Handlers should be idempotent: Zoho may re-deliver the same event after
- * a non-2xx retry. Our dedupe table catches most of those, but a handler
- * that runs partially and then fails must be safe to re-run.
- */
+/** Webhook dispatch table. */
 export async function dispatchWebhookEvent(
   event: NormalizedZohoEvent,
   orgId: OrgId,
@@ -77,13 +69,7 @@ async function handlePurchaseOrderDeleted(
   if (!event.objectId) {
     return { action: 'po.delete.skipped', skipped: true, detail: { reason: 'no object id' } };
   }
-  // Soft-detach: mark every line that referenced this PO so we don't keep
-  // matching scans against a deleted Zoho record. We don't drop the local row
-  // because warehouse scans / serials may still live there. The zoho facts
-  // (sync_source / synced_at) now live on receiving_line_zoho — which is also
-  // where the PO identity is keyed — while the operator-owned notes append stays
-  // on the spine. One transaction so the detach + note commit atomically;
-  // org-scoped so a deletion in one tenant's Zoho never touches another's lines.
+  // Soft-detach: mark every line that referenced this PO so we don't keep matching scans against a deleted Zoho record.
   const rowsDetached = await withTenantTransaction(orgId, async (client) => {
     const rows = await client.query<{ receiving_line_id: number }>(
       `SELECT receiving_line_id

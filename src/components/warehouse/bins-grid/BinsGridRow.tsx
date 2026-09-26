@@ -13,15 +13,7 @@ import {
   type BinsGridColumn,
 } from './bins-grid-layout';
 
-/**
- * One warehouse bin — CSS-grid columns matching the MOUNTED model (a
- * `SlotLayout` materialization since the wave 1.4 hand-model kill).
- *
- * Airtable skin: left checkbox toggles bulk membership (stops propagation); the
- * row body opens the bin flyout at the record plane.
- *
- * Desktop cells live under `./cells/`; edit a column there, not here.
- */
+/** One warehouse bin — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill). */
 export const BinsGridRow = memo(function BinsGridRow({
   row,
   isChecked,

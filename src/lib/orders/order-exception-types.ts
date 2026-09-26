@@ -1,15 +1,4 @@
-/**
- * Order-exception vocabulary — the PURE half of `order-exceptions.ts`.
- *
- * Dependency-free on purpose (types + constants + one pure derivation, and
- * `release-gates` which is itself pure). The query half reaches
- * `@/lib/tenancy/db` → `@/lib/db` → `server-only`, so a client component that
- * imported the blocker labels from there would pull the Neon driver into the
- * browser bundle and fail the build outright.
- *
- * Bundle-altitude split: the SHAPE travels everywhere, the IO stays on the
- * server.
- */
+/** Order-exception vocabulary — the PURE half of `order-exceptions.ts`. */
 
 import type { EvaluatedReleaseGates } from './release-gates';
 
@@ -129,10 +118,8 @@ export function deriveOrderExceptionBlockers(facts: {
   skuCatalogId?: number | null;
 }): OrderExceptionBlocker[] {
   const blockers: OrderExceptionBlocker[] = [];
+  // Pairing is the one the operator is here to clear.
   // Pairing is the one the operator is here to clear. Since the 2026-08-31
-  // flow ruling (R-FLOW-1) it corresponds to release gate G4; R-FLOW-7
-  // (2026-09-01) narrowed this *queue* to pairing only — G2/G3 paperwork is
-  // To-ship, not an exception blocker.
   if (facts.skuCatalogId == null) blockers.push('unpaired');
   if (!present(facts.itemNumber)) blockers.push('no_item_number');
   return blockers;
@@ -188,13 +175,7 @@ function exceptionItemKey(itemNumber: string | null | undefined): string {
   return (itemNumber ?? '').trim().toLowerCase();
 }
 
-/**
- * Recents rail grain: one row per item number. Pairing is pair-once, so five
- * orders of B0D6X2MFSZ are one walk item. Orders with no item number stay
- * uncollapsed — each is its own pairing problem. When `selectedId` is a
- * sibling of a kept row, that sibling is the representative so the rail
- * highlight stays on the open record.
- */
+/** Recents rail grain: */
 export function collapseExceptionRailByItem<
   T extends Pick<OrderExceptionRow, 'id' | 'itemNumber' | 'blockers' | 'siblingUnpairedCount'>,
 >(rows: readonly T[], selectedId: number | null = null): T[] {

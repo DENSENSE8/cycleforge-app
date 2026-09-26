@@ -1,61 +1,4 @@
-/**
- * Kiosk HISTORY — the device-authed book behind the tablet's History face.
- *
- * Callers: GET /api/kiosk/visit.
- * Affected API: /api/kiosk/visit (device principal, `withKioskAuth`).
- * Data schemas: counter_transactions ⋈ customers ⋈ repair_service ⋈
- *   counter_transaction_lines, UNION repair_service ⋈ customers. Read-only.
- * User: "a scrollable left list of recent visits … search by phone, ticket
- *   number or last four" — and, 2026-09-23: *"if I were to create a repair
- *   service it must show up in the history tab … it must display the real
- *   information similar from the repair service table."*
- *
- * ## Two spines, because a repair is not always a visit
- *
- * A counter visit (`counter_transactions`) is one spine. It is NOT the whole
- * book: 85 of this org's 107 `repair_service` rows carry no
- * `counter_transaction_id` at all — they were checked in from an Ecwid order,
- * an inbound shipment or the desk, never through a tablet cart. A history that
- * reads only the transaction table answers "what did THIS counter ring up",
- * which is not the question the operator asks it ("find me that repair").
- *
- * So the reader unions the transaction spine with the standalone repairs and
- * orders the two together. Each row names which book it came from (`source`)
- * and carries a `key` — `visit:19` / `repair:4799` — because the two id spaces
- * collide and a rail keyed on a bare number would paint one row for two records.
- *
- * ## The facts are the repair table's facts
- *
- * Every row carries what `/repair` prints: ticket, product title, serial, the
- * REPAIR status (`Pending Repair`, not the transaction's `staged`), customer,
- * price and date. The rail is the repair table with a tablet's column budget,
- * not a receipt stub.
- *
- * ## Why this is not `listCounterSalesAsSaleRows`
- *
- * That reader answers the SALES BOARD's question — it projects a visit into a
- * `SaleRow` so the desk can union it with provider orders, and it deliberately
- * DROPS every visit whose staged Square order already appears there. Reusing it
- * would hide exactly the rows the History face exists to reprint.
- *
- * ## Keyset, never OFFSET
- *
- * `(created_at, source, id)` descending — the source discriminator is part of
- * the key because the union's two id spaces are independent. A counter writes
- * rows while the operator is scrolling, and OFFSET pagination silently repeats
- * or skips a row when that happens; on a reprint surface that is a wrong
- * receipt in a customer's hand. The cursor is opaque to the client
- * (`<iso>|<source>|<id>`), parsed back here — plus a `|relaxed` marker when
- * the page it was cut from came from the near-name pass below.
- *
- * ## One typo is not a different customer
- *
- * A strict query runs first and wins whenever it matches anything. Only when
- * it matches NOTHING, and only when the operator typed something with letters
- * in it, does a second pass re-run with a trigram predicate over the customer
- * name. Identifiers — phone, ticket, id — are never relaxed, and the page
- * reports `relaxed` so the rail can say out loud that these are near matches.
- */
+/** Kiosk HISTORY — the device-authed book behind the tablet's History face. */
 
 import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -124,14 +67,7 @@ export interface KioskVisitPage {
 export const KIOSK_VISIT_PAGE_MAX = 50;
 export const KIOSK_VISIT_PAGE_DEFAULT = 25;
 
-/**
- * Which rows the rail is showing. The counter's own vocabulary: a row is either
- * a REPAIR (it IS a `repair_service` row, or a visit that produced one) or a
- * SALE (a visit that sold something) — and `mixed` visits answer to both,
- * because a customer who bought a cable while dropping off a radio is on both
- * lists the operator looks at. A standalone repair is never a sale: there is no
- * transaction under it to ring up.
- */
+/** Which rows the rail is showing. */
 export type KioskVisitKindFilter = 'all' | 'sales' | 'repair';
 
 export function parseKioskVisitKind(raw: unknown): KioskVisitKindFilter {
@@ -186,18 +122,7 @@ export function parseKioskVisitSearch(raw: string | null | undefined): KioskVisi
   return { digits, ticket, numeric, name };
 }
 
-/**
- * The part of a search that a near-name pass is allowed to widen — and only
- * that part.
- *
- * `name` alone is not the answer: `RS-1042` carries letters too, and it is an
- * IDENTIFIER. Relaxing an identifier is the defect this exists to prevent —
- * `RS-1042` fuzzily reaching ticket `RS-1043` hands a counter the wrong
- * person's device, and a near-miss phone number is the same failure. A query
- * that parsed as a number (`RS-1042`, `1042`) is therefore never relaxable,
- * no matter what letters it wears; the digit and ticket axes have no relaxed
- * form at all.
- */
+/** The part of a search that a near-name pass is allowed to widen — and only that part. */
 export function relaxableNameTerm(search: KioskVisitSearch | null): string | null {
   if (!search || search.numeric != null) return null;
   return search.name?.trim() || null;
@@ -209,12 +134,7 @@ export interface KioskVisitCursor {
   createdAt: string;
   source: KioskHistorySource;
   id: number;
-  /**
-   * This cursor was cut from a RELAXED page. It rides in the cursor because
-   * page 2 must read the SAME row set page 1 did: without it the next page
-   * re-runs the strict query, and keyset paging over a row set that changed
-   * shape between pages drops or repeats rows at the seam.
-   */
+  /** This cursor was cut from a RELAXED page. */
   relaxed: boolean;
 }
 
@@ -283,44 +203,15 @@ function rowKind(devices: number, retail: number): KioskVisitRow['kind'] {
   return 'empty';
 }
 
-/**
- * `repair_service.price` is free TEXT (`'168.00'`, `''`, occasionally a range).
- * Read the first money-shaped token rather than casting the column: a single
- * hand-typed `168-200` must not 500 the whole rail.
- *
- * NULL, never zero, when the ticket carries no quote. `$0.00` is a claim — it
- * says the shop agreed to do this repair for nothing — and 40-odd inbound
- * shipments in this org have simply not been quoted yet. The rail prints an em
- * dash for null and a real figure for zero.
- */
+/** `repair_service.price` is free TEXT (`'168.00'`, `''`, occasionally a range). */
 const REPAIR_PRICE_CENTS = `ROUND(
   (substring(COALESCE(rs.price, '') from '[0-9]+(?:\\.[0-9]+)?'))::numeric * 100
 )::bigint`;
 
-/**
- * Near-name relaxation threshold — `word_similarity(typed, name)` — pinned per
- * transaction rather than inherited from `pg_trgm.word_similarity_threshold`,
- * which is a SERVER setting (this database runs it at 0.6). A search rule that
- * changes when somebody tunes a database is not a rule.
- *
- * 0.3, measured against this org's book (96 customers, 2026-09-23). A
- * transposed pair inside a FULL name still scores ≥ 0.6, but inside a single
- * token — how an operator actually mistypes a surname — it lands near 0.35:
- * of 140 generated single-token typos, 0.4 found 25 and 0.3 found 106. The
- * cost is breadth, not noise — the worst single query pulled 9 of 96
- * customers, on a search that had already returned ZERO, every row of it
- * labelled as a near match.
- */
+/** Near-name relaxation threshold — `word_similarity(typed, name)` — pinned per transaction rather than inherited from… */
 const NAME_SIMILARITY_THRESHOLD = 0.3;
 
-/**
- * Verbatim the expressions `idx_customers_name_trgm` and
- * `idx_customers_fullname_trgm` are built on
- * (`src/lib/migrations/2026-09-23_customers_shipstation_identity_search.sql:42`).
- * Spelled any other way — a `LOWER()`, a different COALESCE order — the GIN
- * indexes stop being usable and the relaxed pass becomes a trigram scan of
- * every customer the org has.
- */
+/** Verbatim the expressions `idx_customers_name_trgm` and `idx_customers_fullname_trgm` are built on… */
 const CUSTOMER_NAME_TRGM = [
   `COALESCE(NULLIF(btrim(c.customer_name), ''), c.display_name, '')`,
   `NULLIF(btrim(COALESCE(c.first_name, '') || ' ' || COALESCE(c.last_name, '')), '')`,
@@ -334,12 +225,7 @@ interface HistoryQuerySql {
   params: unknown[];
 }
 
-/**
- * Compose ONE page of the union. `relaxNames` swaps only the customer-name
- * probes for the trigram predicate; every other axis, and the walk-in scoping,
- * is composed identically in both modes, so a relaxed page can never widen
- * past what a strict page was allowed to see.
- */
+/** Compose ONE page of the union. */
 function buildKioskHistoryQuery(args: {
   orgId: OrgId;
   limit: number;
@@ -354,18 +240,8 @@ function buildKioskHistoryQuery(args: {
   const params: unknown[] = [orgId];
 
   const visitWhere: string[] = ['ct.organization_id = $1'];
-  // A standalone repair is one with no transaction under it. The visit spine
-  // already carries the rest — reading them in both halves would double-paint.
-  //
+  // A standalone repair is one with no transaction under it.
   // INBOUND SHIPMENTS ARE NOT COUNTER WORK (operator 2026-09-23: History "must
-  // only be scoped to walk ins"). `intake_channel = 'shipment'` is a unit that
-  // arrived in a box and is worked in receiving; it never stood at this
-  // counter, and 17 of 85 repairs in the book are that. They are excluded from
-  // BOTH the list and its search, so the rail's count, its keyset pages and its
-  // "nothing matches that search" all agree with each other. `pickup` (carried
-  // in at the counter, priced from a catalog `-RS` SKU — not an online order;
-  // see the search-UX handoff §3.11) and a null channel (hand-entered at the
-  // desk) are both walk-ins and stay.
   const repairWhere: string[] = [
     'rs.organization_id = $1',
     'rs.counter_transaction_id IS NULL',
@@ -376,11 +252,7 @@ function buildKioskHistoryQuery(args: {
     params.push(cursor.createdAt, cursor.source, cursor.id);
   }
 
-  // REPAIR is "this row is, or produced, a `repair_service` row"; SALES is a
-  // transaction that sold something (or took no device at all). A mixed visit
-  // is a repair visit that also sold something, so it appears under BOTH —
-  // hiding a drop-off from Sales because a cable rode along is how an operator
-  // loses the paper they are holding.
+  // REPAIR is "this row is, or produced, a `repair_service` row"; SALES is a transaction that sold something (or took no device at all).
   const HAS_DEVICE = `EXISTS (
       SELECT 1 FROM repair_service rsk
        WHERE rsk.organization_id = ct.organization_id
@@ -433,10 +305,7 @@ function buildKioskHistoryQuery(args: {
               AND LTRIM(UPPER(TRIM(COALESCE(rst.ticket_number, ''))), '#') LIKE UPPER(${t}) || '%'
          )`,
       );
-      // `parseKioskVisitSearch` strips a typed `#`, and the book stores tickets
-      // BOTH ways (`RS-4798` from intake, `#9998` hand-typed at the desk). Strip
-      // it on the column too, or the half of the book that wears one is
-      // unfindable by the number printed on its own paper.
+      // `parseKioskVisitSearch` strips a typed `#`, and the book stores tickets BOTH ways (`RS-4798` from intake, `#9998` hand-typed at the desk).
       repairProbes.push(
         `LTRIM(UPPER(TRIM(COALESCE(rs.ticket_number, ''))), '#') LIKE UPPER(${t}) || '%'`,
       );
@@ -448,11 +317,7 @@ function buildKioskHistoryQuery(args: {
       // `counter_transactions.id` is bigint, so any typed number is a legal
       // probe against it.
       visitProbes.push(`ct.id = ${n}::bigint`);
-      // `repair_service.id` is int4. A ten-digit phone typed into this box is
-      // a perfectly good number and NOT a possible repair id, and casting it
-      // raised 22003 — `integer out of range` — which 500s the WHOLE rail
-      // rather than simply not matching. A value that cannot be a repair id is
-      // not asked about.
+      // `repair_service.id` is int4.
       if (search.numeric <= INT4_MAX) {
         visitProbes.push(
           `EXISTS (
@@ -468,10 +333,7 @@ function buildKioskHistoryQuery(args: {
 
     if (search.name) {
       if (relaxNames) {
-        // The NEAR-NAME pass. `$q <% expr` is `word_similarity(typed, name) >
-        // threshold` — asymmetric on purpose, so a typed surname still scores
-        // against the full name it sits inside. The expressions are the two the
-        // trigram indexes are built on, verbatim.
+        // The NEAR-NAME pass.
         params.push(search.name);
         const q = `$${params.length}`;
         const nearName = CUSTOMER_NAME_TRGM.map((expr) => `${q} <% ${expr}`);
@@ -568,15 +430,7 @@ function buildKioskHistoryQuery(args: {
       ) ln ON true
      WHERE ${visitWhere.join('\n       AND ')}`;
 
-  // The standalone repairs. `contact_info` is the pre-customers intake string
-  // ("Name, phone") every Ecwid-sourced ticket still carries, so it is the
-  // fallback identity rather than painting "Walk-in" over a name we hold.
-  //
-  // The fallback is POSITION-FREE, matching `@/lib/repair/contact-info` (the
-  // TS rule every other surface reads). `split_part(…, 2)` assumed the writer's
-  // `[name, phone, email].filter(Boolean)` always produced a phone in slot 2,
-  // so a buyer with no phone put their EMAIL in the rail's phone column — which
-  // is also what the search predicate matches against.
+  // The standalone repairs.
   const repairSpine = `
     SELECT 'repair'::text                 AS source,
            rs.id                          AS id,
@@ -634,14 +488,7 @@ function buildKioskHistoryQuery(args: {
   };
 }
 
-/**
- * Run one composed page. The relaxed pass pins the trigram threshold with a
- * transaction-local `set_config` — the same scope the org GUC uses one line
- * above it in `withTenantConnection` — so the `<%` operator stays index-usable
- * AND still means {@link NAME_SIMILARITY_THRESHOLD} on a server whose own
- * `pg_trgm.word_similarity_threshold` has been tuned (this one sits at 0.6,
- * which would silently lose half of the typos this path exists to catch).
- */
+/** Run one composed page. */
 async function runHistoryPage(
   orgId: OrgId,
   query: HistoryQuerySql,
@@ -669,21 +516,7 @@ export async function listKioskVisits(
   const search = parseKioskVisitSearch(options.q);
   const kind = parseKioskVisitKind(options.kind);
 
-  /**
-   * STRICT FIRST, ALWAYS. Relaxation is a fallback over an EMPTY result, never
-   * a widened primary query: as long as the typed text matches something
-   * exactly, the operator sees exactly that and nothing near it.
-   *
-   * Only the NAME axis is ever relaxed. Phone, ticket and id are identifiers:
-   * `714-271-2864` and `714-271-2846` are two different people, and a counter
-   * that hands over the near-miss hands over the wrong customer's radio.
-   *
-   * This is also not the name-MERGING that law 1 of the kiosk-history handoff
-   * (§3) forbids. That law is about WRITES — never fusing two customer records
-   * because their names look alike. Nothing here writes, links or dedupes: the
-   * rows stay as distinct as the book made them, and this only widens which of
-   * them are DISPLAYED, under a label saying so.
-   */
+  /** STRICT FIRST, ALWAYS. */
   const relaxableTerm = relaxableNameTerm(search);
   // A relaxed cursor resumes the relaxed set directly — re-running the strict
   // query for page 2 would read a different row set than page 1 was cut from.

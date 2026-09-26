@@ -1,32 +1,4 @@
-/**
- * POST /api/webhooks/usps — USPS Tracking 3.2 webhook receiver.
- *
- * USPS pushes near-real-time tracking events here for numbers we subscribed via
- * usps-subscription.ts. Mirrors /api/webhooks/fedex exactly:
- *   • read the raw body once (so HMAC hashes the exact bytes USPS signed)
- *   • authenticate (HMAC-SHA256 signature, or shared-secret echo, or bearer)
- *   • split a multi-notification payload into single results
- *   • parse via the shared parseUSPSTrackingPayload (same parser as polling)
- *   • idempotent upsert through upsertTrackingEvents (ON CONFLICT DO NOTHING),
- *     so at-least-once duplicate deliveries are absorbed
- *   • respond 2xx fast
- *
- * Sample USPS notification payload (follows the modernized Tracking response;
- * confirm exact field names against the dev portal):
- *   {
- *     "trackingNumber": "9400100000000000000000",
- *     "statusCategory": "In Transit",
- *     "trackSummary": { "event": "Arrived at USPS Facility", "eventCode": "10",
- *                       "eventCity": "ATLANTA", "eventState": "GA",
- *                       "eventDate": "March 9, 2025", "eventTime": "8:00 am" },
- *     "trackDetail": [ { ...older events... } ]
- *   }
- * A single bare event or a `trackingEvents[]` array are also tolerated — see
- * parseUSPSTrackingPayload.
- *
- * ⚠️ USPS's exact callback auth scheme is unconfirmed (portal is JS-rendered).
- * We accept three mechanisms and override via env; confirm during sandbox test.
- */
+/** POST /api/webhooks/usps — USPS Tracking 3.2 webhook receiver. */
 
 import { createHmac } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -47,12 +19,7 @@ const SECRET_HEADERS = [
   'x-usps-credential',
 ].filter(Boolean) as string[];
 
-/**
- * Verify the request against USPS_WEBHOOK_SECRET. Tries, in order: HMAC-SHA256
- * (base64) over the raw body, a shared-secret header echo, the secret embedded
- * in the parsed body, then a static bearer (for replay/testing). Permissive
- * when no secret is set outside production so local replay keeps working.
- */
+/** Verify the request against USPS_WEBHOOK_SECRET. */
 function isAuthorized(req: NextRequest, rawBody: string, parsed: any): boolean {
   const secret =
     process.env.USPS_WEBHOOK_SECRET ||
@@ -131,10 +98,7 @@ export async function POST(req: NextRequest) {
     const result = parseUSPSTrackingPayload(note);
     if (!result?.trackingNumberNormalized) continue;
 
-    // Session-less callback: derive the owning org from the tracking number.
-    // FAIL-CLOSED — an unresolved number skips just this event (never write
-    // under a guessed org) while the response stays 2xx so USPS doesn't
-    // hammer retries for the whole batch.
+    // Session-less callback:
     const orgId = await resolveWebhookOrgByTracking(result.trackingNumberNormalized);
     if (!orgId) {
       console.warn('[webhook-org] unresolved tracking — skipping event', {

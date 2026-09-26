@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Getting-Started checklist — the read-time activation checklist
- * (onboarding-foundational-plan §4/§7, O2).
- *
- * Renders the plan-filtered step catalog (`src/lib/onboarding/steps.ts`) against
- * the org's live activation stats (GET /api/onboarding/stats). Steps complete
- * because the underlying data exists — never because someone clicked "done" —
- * so the card self-heals and self-dismisses at 100% (renders null).
- *
- * Dismissal: "Skip for now" persists `onboardingDismissed: true` into the
- * staffer's server-backed prefs bag (`staff_preferences` via
- * useStaffPreferences — the same cross-device mechanism the boards use).
- * Skipping hides the card but never deletes the underlying truth.
- *
- * Composed in the Unshipped sidebar. Owns the multi-step activation ladder. Gated behind `dashboard.view`.
- */
+/** Getting-Started checklist — the read-time activation checklist (onboarding-foundational-plan §4/§7, O2). */
 
 import Link from 'next/link';
 import { useOnboardingStats } from '@/hooks/useOnboardingStats';

@@ -4,33 +4,14 @@ import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { tenantQuery, transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * After a shipment tracking status is updated (webhook or sync job), notify all
- * clients so the UI live-updates like the carrier's own website.
- *
- * Two audiences:
- *   1. **Always** — a `shipment.changed` event so the receiving/incoming carrier
- *      panels refresh, regardless of whether the shipment is tied to an order.
- *      (Inbound third-party tracking numbers usually have no order linkage.)
- *   2. **Order-linked only** — an `order.changed` event + cache invalidation so
- *      the dashboard/shipped views refresh.
- */
+/** After a shipment tracking status is updated (webhook or sync job), notify all clients so the UI live-updates like the carrier's own website. */
 export async function publishShipmentStatusChange(
   shipmentId: number,
   source: string,
   trackingNumber?: string | null,
   orgId?: OrgId
 ): Promise<void> {
-  // TRANSITIONAL: carrier webhooks / sync jobs have no session. Until inbound
-  // shipping_tracking_numbers carries organization_id (Phase B), these single-
-  // tenant integration paths stamp the USAV org. Then derive it from the
-  // shipment / linked order's organization_id instead.
-  //
-  // Tenant-aware: when a caller threads `orgId`, the orders lookup runs through
-  // the tenant-scoped pool with an explicit `organization_id` predicate and the
-  // realtime fan-out is scoped to that tenant. When omitted, behavior is
-  // byte-identical to the pre-migration path (raw pool + USAV fallback) so the
-  // many un-migrated callers keep compiling and behaving as today.
+  // TRANSITIONAL:
   const publishOrgId = orgId ?? transitionalDogfoodOrgId();
 
   // (1) Shipment-level event first — never gated on order linkage, so a bad

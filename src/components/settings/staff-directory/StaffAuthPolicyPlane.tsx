@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Sign-in policy plane for /settings/staff — the Center-Lock L2 record form
- * (law Q5) that replaced the retired `AuthPolicyCell`, a live two-control
- * editor living inside a table cell.
- *
- * ## Why this is a plane and not an in-cell editor
- *
- * `CompoundRowAction` carries a FIXED payload and no family in this repo sets
- * `capabilities.inCellEdit` — there is no in-cell editor on a compound row, and
- * minting one would be an engine change. A write whose payload needs a
- * parameter is therefore a verb that opens a plane. The table stays mounted
- * underneath, so an admin can still read the roster they are changing.
- *
- * It also fixes something the cell had wrong: the `<select>` and the checkbox
- * were two independent POSTs, each followed by a refetch, so flipping both in
- * quick succession raced. This submits ONE payload with both fields.
- *
- * Callers: StaffTable. The submit handler (and the `STEP_UP_REQUIRED` toast —
- * see `staff-auth-policy-outcome.ts`) belongs to the mount; this plane only
- * collects the two values.
- */
+/** Sign-in policy plane for /settings/staff — the Center-Lock L2 record form (law Q5) that replaced the retired `AuthPolicyCell`, a live… */
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives/Button';

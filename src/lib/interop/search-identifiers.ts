@@ -1,20 +1,4 @@
-/**
- * Standards identifiers for a `SearchHit`. Pure and client-safe.
- *
- * ## This is not a second search engine, and must not become one
- *
- * `hybridSearch` / `GET /api/global-search` remain the cross-entity
- * search — an AGENTS.md hard law that the word "interop" does not relax. The
- * interop projection IS the agent-legible graph; the only thing missing was a
- * way to name a record in terms a partner's system also understands. So this
- * decorates the hit the existing engine already returned, and there is
- * deliberately no lookup, no index, and no query surface here.
- *
- * The dependency direction is likewise deliberate: `SearchHitIdentifiers`
- * lives in `@/lib/search/search-hit` and this module imports it, never the
- * reverse. A `search-hit.ts` that imported interop would pull the CBV
- * vocabulary into every bundle that renders a search row.
- */
+/** Standards identifiers for a `SearchHit`. */
 
 import type { SearchHit, SearchHitEntityType, SearchHitIdentifiers } from '@/lib/search/search-hit';
 import {
@@ -44,21 +28,11 @@ const KIND_BY_ENTITY: Record<SearchHitEntityType, InternalEntityKind> = {
   // partner resolving it as an order number would be resolving a lie.
   warranty: 'claim',
   ticket: 'ticket',
-  // A bin is a PLACE, not a trade item or a logistic unit. `location` already
-  // existed in the internal kind vocabulary (gs1-keys.ts:500) for exactly this
-  // — GS1 would name it a GLN, which is licensed per physical party and is not
-  // something this app can mint, so the internal URN is the honest key.
+  // A bin is a PLACE, not a trade item or a logistic unit.
   location: 'location',
 };
 
-/**
- * Build the identifiers block for a hit.
- *
- * `internal` is always produced. `gs1` appears only when the caller supplies
- * the facts a real key needs — a GTIN for a SKU, a GTIN AND a serial for a
- * unit. Nothing is inferred: a `unit` hit with no GTIN gets no `gs1`, because
- * a serial alone is not an SGTIN.
- */
+/** Build the identifiers block for a hit. */
 export function searchHitIdentifiers(
   hit: Pick<SearchHit, 'id' | 'entityType'>,
   facts?: { gtin?: string | null; serial?: string | null },

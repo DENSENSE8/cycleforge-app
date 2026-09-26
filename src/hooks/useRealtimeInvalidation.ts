@@ -29,12 +29,7 @@ function invalidateOutboundQueues(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['outbound-search', 'labels-count'] });
 }
 
-/**
- * The dashboard caches an order-row mutation has to refresh. `order.changed`
- * (including the `pick.scan` / `packing-logs` publishes), `order.assignments`
- * and `queue.assignments` all invalidate exactly this set — one copy so the
- * three subscribers can't drift apart.
- */
+/** The dashboard caches an order-row mutation has to refresh. */
 function invalidateOrderDashboards(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'pending'] });
   queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'unshipped'] });
@@ -82,16 +77,7 @@ interface UseRealtimeInvalidationOptions {
   repair?: boolean;
   receiving?: boolean;
   walkIn?: boolean;
-  /**
-   * Register a connection listener that invalidates *all* dashboard caches
-   * when the Ably realtime client reconnects after a disconnect (e.g. laptop
-   * sleep, network blip). Events published while disconnected are lost, so a
-   * broad invalidate is the safe recovery.
-   *
-   * Set `true` on the top-level dashboard page; channel-scoped consumers
-   * (e.g. a mobile receiving list) typically don't need this — their parent
-   * dashboard handles it.
-   */
+  /** Register a connection listener that invalidates *all* dashboard caches when the Ably realtime client reconnects after a disconnect (e.g. */
   reconnect?: boolean;
 }
 
@@ -126,11 +112,7 @@ export function useRealtimeInvalidation({
       if (source === 'orders.delete' || source === 'shipping.scan-out') {
         optimisticallyRemoveOrderRows(queryClient, orderIds);
       }
-      // `orders.add` fires after the durable write. The originating desk also
-      // patches its own cache from the POST response, but every other browser
-      // must refetch its active queue or it will only see the badge/count move.
-      // Import batches publish one event for the whole batch, so this is one
-      // refresh per commit rather than one request per order.
+      // `orders.add` fires after the durable write.
       if (source === 'orders.add') {
         invalidateOrderDashboards(queryClient);
         return;
@@ -167,11 +149,7 @@ export function useRealtimeInvalidation({
     ordersChannel,
     'order.tested',
     () => {
-      // Phase 3: the Unshipped rows are patched IN PLACE by the sibling
-      // subscription below (has_tech_scan → the row moves pending → tested
-      // lane), so do NOT broad-invalidate the row list here — a tech scan on an
-      // idle dashboard causes 0 full /api/orders refetch. Just refresh the
-      // cheap counts.
+      // Phase 3: the Unshipped rows are patched IN PLACE by the sibling subscription below (has_tech_scan → the row moves pending → tested…
       invalidateUnshippedCounts(queryClient);
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
@@ -182,23 +160,7 @@ export function useRealtimeInvalidation({
     frameCoalesce,
   );
 
-  // …and the in-place half, as its OWN subscription. Two reasons it is not
-  // folded into the handler above:
-  //
-  //  1. **Coalescing.** The invalidate half is last-wins-per-frame, which is
-  //     right for "refetch something". This half reads `orderId` off the
-  //     payload, so a coalesced burst would patch the last scan and silently
-  //     drop every other bench's.
-  //  2. **Ownership.** The patch used to live only inside `UnshippedTable`.
-  //     Every other reader of the unshipped cache — the compare panes
-  //     (`OrdersPaneTable`) and the drill host (`OrdersDrillHost`) — queries it
-  //     without mounting that table, so on those surfaces a bench scan changed
-  //     nothing until an unrelated event happened to invalidate. The desk hook
-  //     is mounted once per surface; the patch belongs at that altitude.
-  //
-  // Downstream, `GridStatusCellValue` runs the live-change pulse off the label
-  // this patch produces — so this subscription is what makes a scan at the
-  // bench visible as motion on someone else's board.
+  // …and the in-place half, as its OWN subscription.
   useAblyChannel(
     ordersChannel,
     'order.tested',
@@ -231,22 +193,12 @@ export function useRealtimeInvalidation({
     stationChannel,
     'receiving-log.changed',
     () => {
-      // The Ably echo of a LOCAL scan/receive arrives just after this client
-      // already ran invalidateReceivingFeeds optimistically. Skip re-invalidating
-      // the two overlapping desktop-rail roots in that window so one scan doesn't
-      // refetch the rails twice (the flicker). Events from OTHER clients carry no
-      // recent local stamp and still refresh fully. The remaining keys below have
-      // no desktop-rail observers (mobile / serials / pending), so invalidating
-      // them here either way is a harmless no-op.
+      // The Ably echo of a LOCAL scan/receive arrives just after this client already ran invalidateReceivingFeeds optimistically.
       const localCovered = receivingFeedsRecentlyInvalidatedLocally();
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-pending-unboxing'] });
       if (!localCovered) queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
-      // 'receiving-logs' is intentionally omitted: ReceivingLogs handles it
-      // surgically via its own useAblyChannel (insert→insertIntoCache,
-      // delete→removeFromCache). Invalidating here races with the refetch
-      // and can overwrite the cache with stale data, causing new entries
-      // to flash and disappear.
+      // 'receiving-logs' is intentionally omitted:
       queryClient.invalidateQueries({ queryKey: ['receiving-lines'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-with-serials'] });
       queryClient.invalidateQueries({ queryKey: ['receiving-line-serials'] });
@@ -275,10 +227,7 @@ export function useRealtimeInvalidation({
     frameCoalesce,
   );
 
-  // Carrier tracking status changed (webhook push or sync poll). Keeps the
-  // incoming list, its summary tiles, and any open details panel live with the
-  // carrier's real-world state — the receiving-side equivalent of the
-  // order.changed dashboard refresh above.
+  // Carrier tracking status changed (webhook push or sync poll).
   useAblyChannel(
     stationChannel,
     'shipment.changed',
@@ -314,11 +263,7 @@ export function useRealtimeInvalidation({
     frameCoalesce,
   );
 
-  // ─── Reconnect listener ────────────────────────────────────────────────
-  // Events published while the realtime client is disconnected are lost, so
-  // when the connection recovers we invalidate broadly. Hooks must run
-  // unconditionally — the `reconnect` flag gates the effect body, not the
-  // hook call itself.
+  // ─── Reconnect listener ──────────────────────────────────────────────── Events published while the realtime client is disconnected are…
   const { getClient } = useAblyClient();
   const wasDisconnectedRef = useRef(false);
 

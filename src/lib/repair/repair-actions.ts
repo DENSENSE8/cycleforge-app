@@ -1,11 +1,4 @@
-/**
- * Repair bench-action vocabulary shared by the API (`/api/repair/actions`),
- * the mobile action sheet, and the action timeline — one set of words for the
- * six stored `action_type` values, so the sheet and the timeline cannot drift.
- *
- * `created_at` is stamped server-side on insert; there is deliberately no
- * client-supplied work-date field anywhere in this vocabulary.
- */
+/** Repair bench-action vocabulary shared by the API (`/api/repair/actions`), the mobile action sheet, and the action timeline — one set of… */
 import type { RepairActionType } from '@/lib/repair-action-type-tone';
 import { isProvisionalSku } from '@/lib/inventory/provisional-sku';
 
@@ -71,13 +64,7 @@ export interface RepairActionRecord {
   ticket_post_attempted_at: string | null;
 }
 
-/**
- * Whether an action may take its installed part out of stock: a replacement
- * from new stock with a real catalog SKU. A temporary `TMP-` part has no
- * stock to draw from, and donor / customer parts never came from the shelf.
- * The sheet uses this to offer the toggle; the API re-checks it before the
- * ledger write.
- */
+/** Whether an action may take its installed part out of stock: */
 export function canConsumeStock(input: {
   actionType: string;
   donorSource: RepairDonorSource | null;

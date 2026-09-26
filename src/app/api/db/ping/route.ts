@@ -2,15 +2,7 @@ import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/db/ping
- *
- * Lightweight DB health-check. Issues a trivial query and returns:
- *   { ok: true, db_time, latency_ms }  on success (200)
- *   { ok: false, error, latency_ms }   on failure (503)
- *
- * Useful for smoke-testing the DATABASE_URL from localhost:3000.
- */
+/** GET /api/db/ping */
 export const GET = withAuth(async () => {
   const startedAt = Date.now();
   try {

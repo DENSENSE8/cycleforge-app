@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * AgentStepTimeline — agent-transparency stepper for the AI chat
- * (docs/todo/ai-chat-ux-plan.md §6.4, Tier A).
- *
- * While an answer streams it renders the SSE `step` labels as a small live
- * timeline with an elapsed timer; when no real steps have arrived yet it
- * synthesizes a heuristic label from elapsed time so the wait never reads as
- * a dead spinner. Once the run finishes it collapses to a one-line disclosure
- * ("Worked Ns · M steps") that can be re-expanded.
- */
+/** AgentStepTimeline — agent-transparency stepper for the AI chat (docs/todo/ai-chat-ux-plan.md §6.4, Tier A). */
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';

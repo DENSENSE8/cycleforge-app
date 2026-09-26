@@ -1,13 +1,4 @@
-/**
- * GET  /api/admin/roles  — list every role with member count
- * POST /api/admin/roles  — create a new (non-system) role
- *
- * Body for POST: { key, label, color?, position?, permissions?: string[] }
- *
- * Both endpoints are gated by `admin.manage_roles`. After a create, the
- * server-side role cache is invalidated so the change shows up on the next
- * permission resolve.
- */
+/** GET /api/admin/roles — list every role with member count POST /api/admin/roles — create a new (non-system) role */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

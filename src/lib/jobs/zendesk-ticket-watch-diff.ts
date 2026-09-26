@@ -1,10 +1,4 @@
-/**
- * Pure helpers for the Zendesk ticket-watch poller.
- *
- * Diff is subject + status only (v1) — comment-only updates without a status/
- * subject change do not notify. That keeps the job migration-free and matches
- * "simple to start."
- */
+/** Pure helpers for the Zendesk ticket-watch poller. */
 
 interface TicketWatchCache {
   subject: string | null;

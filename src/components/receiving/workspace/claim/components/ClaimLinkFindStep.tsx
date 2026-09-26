@@ -1,15 +1,7 @@
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 import { ClaimTicketPicker } from './ClaimTicketPicker';
 
-/**
- * Link — Find. Search and select an existing Zendesk ticket. Link & send CTA
- * lives in the sticky footer (posts the shared template body). TicketPicker
- * owns sheet-band gutters; helper copy is a flush hairline row (no nested card).
- *
- * When the carton has tracking, {@link useReceivingClaimController} seeds the
- * picker so results open as "Suggested from tracking" without typing.
- * Photos · Subject · Claim type · Body · Recipients mount below this step.
- */
+/** Link — Find. Search and select an existing Zendesk ticket. */
 export function ClaimLinkFindStep({ c }: { c: ReceivingClaimController }) {
   return (
     <div className="space-y-0">

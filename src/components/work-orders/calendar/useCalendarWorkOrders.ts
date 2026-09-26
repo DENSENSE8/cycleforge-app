@@ -4,12 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-/**
- * Loads work-order assignments whose deadline falls within [from, to) from the
- * windowed calendar endpoint (GET /api/work-orders/calendar). Returns the raw
- * rows; day-bucketing is the grid's concern. Refetch is exposed so an assign
- * action can pull fresh data after a PATCH.
- */
+/** Loads work-order assignments whose deadline falls within [from, to) from the windowed calendar endpoint (GET /api/work-orders/calendar). */
 export function useCalendarWorkOrders(from: Date, to: Date) {
   const [rows, setRows] = useState<WorkOrderRow[]>([]);
   const [loading, setLoading] = useState(true);

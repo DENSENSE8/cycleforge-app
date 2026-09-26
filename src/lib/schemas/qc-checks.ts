@@ -1,15 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validation for the QC checklist endpoints (qc_check_templates authoring +
- * tech_verifications execution). Single source of truth shared by:
- *   - /api/sku-catalog/[id]/qc-checks        (catalog authoring CRUD)
- *   - /api/receiving-lines/[id]/qc-checks    (tech inline authoring CRUD)
- *   - /api/serial-units/[id]/checklist       (per-unit execution)
- *   - /api/serial-units/[id]/checklist/bulk  (bulk settle)
- *
- * See docs/qc-crud-endpoints-plan.md.
- */
+/** Validation for the QC checklist endpoints (qc_check_templates authoring + tech_verifications execution). */
 
 const trimmed = z.string().trim();
 

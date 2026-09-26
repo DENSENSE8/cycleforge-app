@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The order record's self-contained sections — each one fetches or reads what
- * it paints, so {@link OrderRecordView} only composes them per desk mode:
- * the Label block (status, print, and — where the mode needs them — every
- * label with its purpose), the Customer block, and the Shipment block
- * (scanned out, carrier, tracking status) for Shipped. Verbs are not here —
- * they live in the list's action strip (`OrderRecordActionStrip`).
- */
+/** The order record's self-contained sections — each one fetches or reads what it paints, so {@link OrderRecordView} only composes them per… */
 
 import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -52,15 +45,7 @@ const LABEL_STATUS_FACE: Readonly<Record<OrderLabelStatus, { label: string; tone
   voided: { label: 'Voided', tone: 'text-mode-muted', tip: 'The last label was voided and nothing has replaced it.' },
 };
 
-/**
- * The order's labels: the outbound status (what To-ship needs) and the bar
- * that prints the order's stored label and slip — the same documents and
- * `printDocument` call the Labels walk's success card prints. With `entries`
- * (modes that need the second stories), EVERY label on the order — outbound,
- * return, replacement; bought here, imported from ShipStation, or paired with
- * Link label — each with its purpose, cost, tracking, ticket links and
- * Print · Ticket · Unlink (`OrderLabelEntries`).
- */
+/** The order's labels: */
 export function OrderLabelsSection({ orderId, orderRef, entries }: { orderId: number; orderRef: string; entries: boolean }) {
   const summaryQuery = useOrderLabelSummary(orderId);
   const documentsQuery = useOrderDocuments(orderId);
@@ -159,12 +144,7 @@ export function orderBuyer(record: ShippedOrder): { customer: CustomerRecord; so
   return null;
 }
 
-/**
- * The buyer as one collapsible section: name (or the source) in the header,
- * then email, phone, the full ship-to, and the bill-to only when it is a
- * different address. Same readers as `CustomerDetailsTab`, in the record's
- * industrial face.
- */
+/** The buyer as one collapsible section: */
 export function OrderCustomerSection({ customer, source }: { customer: CustomerRecord; source?: string }) {
   const [copied, setCopied] = useState(false);
   const name = customerFullName(customer);

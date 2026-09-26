@@ -1,16 +1,4 @@
-/**
- * Tailwind classes for the logged-in operator's dynamic accent fill.
- *
- * Source chain (staff toggle ON, default):
- *   `staff.color_hex` → {@link getStaffThemeById} → ThemeSync `theme-*` on
- *   `<html>` → `--ds-color-accent-*` CSS vars → these utilities.
- *
- * Source chain (staff toggle OFF):
- *   `staff_preferences.accentHex` → {@link themeFromHex} → same `theme-*` path.
- *
- * Same fill as dashboard `TabSwitch` `solidTone="accent"` and
- * `useStationTheme({ staffId: self }).colors.bg`.
- */
+/** Tailwind classes for the logged-in operator's dynamic accent fill. */
 import {
   getStaffThemeById,
   themeFromHex,

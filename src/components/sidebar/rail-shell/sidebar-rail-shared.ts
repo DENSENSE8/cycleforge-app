@@ -18,16 +18,7 @@ export function railActivitySortMs(iso: string | null | undefined): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/**
- * Merge a `receiving-line-updated` (or feed `updateEvent`) patch into a rail row.
- *
- * Rails own their age/sort axis via `getActivityAt`. Workspace by-id refreshes
- * (esp. Testing-style full-row dumps reused for Unbox serial hydration) often
- * omit or null that stamp — spreading them verbatim blanks the age label and
- * can reshuffle. When a patch would clear the feed's axis, restore any
- * nullified keys from the existing row (same invariant as RQ `mergeRailRows`
- * freezing `unbox_opened_at`). Non-axis fields (serials, title, …) still apply.
- */
+/** Merge a `receiving-line-updated` (or feed `updateEvent`) patch into a rail row. */
 export function mergeRailUpdatePatch<TRow>(
   existing: TRow,
   updated: Partial<TRow>,
@@ -91,13 +82,7 @@ export interface SidebarRailShellProps<TRow> {
    * whole carton/log is removed and all its lines should vanish from the rail.
    */
   deleteGroupEvent?: string;
-  /**
-   * Undo channel for {@link deleteEvent} ({ id }). A delete/dismiss is sticky —
-   * the engine suppresses the id for the rail's lifetime so an in-flight
-   * refetch cannot resurrect it — which is correct for a real delete and wrong
-   * for a REVERSIBLE one. This event clears that suppression, so an Undo's
-   * refetch is allowed to bring the row back.
-   */
+  /** Undo channel for {@link deleteEvent} ({ id }). */
   restoreEvent?: string;
   /** Undo channel for {@link deleteGroupEvent} (detail = group id). */
   restoreGroupEvent?: string;
@@ -113,14 +98,7 @@ export interface SidebarRailShellProps<TRow> {
    * touched its data. SoT: `@/lib/refresh/domains`.
    */
   refreshDomains?: readonly RefreshDomain[];
-  /**
-   * Client-side subtractive DISPLAY filter — row ids hidden for THIS viewer
-   * (e.g. the staffer's rail-dismiss set). Applied AFTER fetch, so it is
-   * deliberately NOT part of the queryKey: loading it or changing it re-filters
-   * the already-fetched rows in place, instead of changing the queryKey and
-   * blanking the whole list to a skeleton on every load / dismiss. Empty (the
-   * default) = no filtering.
-   */
+  /** Client-side subtractive DISPLAY filter — row ids hidden for THIS viewer (e.g. */
   excludedIds?: ReadonlySet<number>;
   /**
    * Client-side keep filter — rows that return false are hidden as a pure
@@ -128,15 +106,7 @@ export interface SidebarRailShellProps<TRow> {
    * so toggling facets re-filters in place). Unset = keep every row.
    */
   includeRow?: (row: TRow) => boolean;
-  /**
-   * Opt-in cold-reload continuity. Returns the viewer's last-known rows for this
-   * rail (or null) — on mount the rail seeds from it so a reload paints quickly
-   * instead of waiting the full (heavy) authoritative query, then reconciles
-   * over it. Seed-only; never the source of truth. Backed by Upstash via
-   * `/api/receiving/rail-snapshot` (see `rail-snapshot-client.ts`). Memoize it —
-   * the seed effect keys on its identity. Snapshot-enabled rails keep settled
-   * chrome instead of showing the pulse skeleton while the seed resolves.
-   */
+  /** Opt-in cold-reload continuity. */
   loadSnapshot?: () => Promise<TRow[] | null>;
   /**
    * Persist the rows the rail just rendered as the next reload's seed. Called
@@ -144,34 +114,15 @@ export interface SidebarRailShellProps<TRow> {
    * write. Pair with {@link loadSnapshot}; unset = no persistence.
    */
   persistSnapshot?: (rows: TRow[]) => void;
-  /**
-   * When set, a CustomEvent<'prev' | 'next'> on this name steps the selection to
-   * the adjacent rendered row and fires `onSelect` — the wiring behind a detail
-   * pane's up/down header chevrons when there's no separate table to drive
-   * navigation (Unbox/Triage/Testing workspace header → this rail).
-   */
+  /** When set, a CustomEvent<'prev' | 'next'> on this name steps the selection to the adjacent rendered row and fires `onSelect` — the wiring… */
   navigateEvent?: string;
 
   selectedId: number | null;
   selectedRow?: TRow | null;
-  /**
-   * Optimistic row pinned at the very top until its real row lands in the feed —
-   * e.g. the triage "importing" stub (title = the scanned tracking #), rendered
-   * through the SAME row component, then replaced by the resolved row. Deduped by
-   * id so it never doubles a row already present.
-   */
+  /** Optimistic row pinned at the very top until its real row lands in the feed — e.g. */
   leadingRow?: TRow | null;
   limit?: number;
-  /**
-   * When true (default), a selected row that falls outside the top-N window is
-   * hoisted to `rows[0]` (pinned lead) so the active line stays visible. Set
-   * FALSE for feeds that must hold a STRICT sort order (e.g. the unbox rail,
-   * which must always read top→bottom by `unboxed_at`): the hoist there made a
-   * just-received carton shoot to the top and then drop back down as the
-   * authoritative refetch settled it into its real `unboxed_at` slot — a
-   * jarring bounce. With the pin off, the row simply stays in its sorted
-   * position (a freshly-unboxed carton is at the top by `unboxed_at` anyway).
-   */
+  /** When true (default), a selected row that falls outside the top-N window is hoisted to `rows[0]` (pinned lead) so the active line stays… */
   pinSelectedLead?: boolean;
   /**
    * When true, keep the fetcher/SQL order — do not re-sort by `getActivityAt`.
@@ -200,21 +151,9 @@ export interface SidebarRailShellProps<TRow> {
    * opt in explicitly.
    */
   staggerReveal?: boolean;
-  /**
-   * Stagger entrance axis.
-   *   - `sidebar` (default) — visible y settle; safe in scrolling sidebar rails.
-   *   - `rise` — taller y settle for full-width workbench cards.
-   *   - `slide` — visible, clipped-safe horizontal settle for sidebar rails.
-   */
+  /** Stagger entrance axis. */
   staggerRevealMotion?: 'slide' | 'rise' | 'sidebar';
-  /**
-   * Horizontal inset for the list host.
-   *   - `gutter` (shell default) — symmetric SIDEBAR_GUTTER.
-   *   - `scanDock` — flush list (`SIDEBAR_RAIL_INSET_X` = px-0) so selection
-   *     washes edge-to-edge; content column pad nests inside each RailRow
-   *     (SIDEBAR_RAIL_INSET_LEFT + SIDEBAR_SCAN_DOCK_LEADING_ROW). Recent rails
-   *     default this via SidebarRecentRailBase.
-   */
+  /** Horizontal inset for the list host. */
   railInset?: 'scanDock' | 'gutter';
 
   /** Dev/observability: stamp a paint mark once the rail leaves skeleton state. */
@@ -239,23 +178,11 @@ export interface SidebarRailShellProps<TRow> {
    * when the row has no typed {@link getCollapsePinFacts} chips. Optional.
    */
   getCollapsePinMeta?: (row: TRow) => string | null | undefined;
-  /**
-   * Copyable identity chips for the parked-pin peek card. Feeds WITHOUT a
-   * `renderPopover` (Pack · Shipping · Labels · Pickup …) publish these so the
-   * strip peek is the same copy-and-paste card the Receiving rail shows —
-   * never a text-only tooltip.
-   */
+  /** Copyable identity chips for the parked-pin peek card. */
   getCollapsePinFacts?: (row: TRow) => RailPeekFact[] | null | undefined;
 
   getId: (row: TRow) => number;
-  /**
-   * Durable RENDER identity, preferred over {@link getId} for the React `key` AND
-   * the {@link leadingRow} dedup. Lets an optimistic row (the triage "importing"
-   * stub) reconcile to its resolved row IN PLACE — same key → React UPDATE, not
-   * unmount+remount — even though its server `id` changes on resolve. Return a
-   * client-minted id (e.g. `client_event_id`) that survives the stub→real swap;
-   * fall back to a stringified `id` for ordinary rows. Defaults to `getId`.
-   */
+  /** Durable RENDER identity, preferred over {@link getId} for the React `key` AND the {@link leadingRow} dedup. */
   getReconcileId?: (row: TRow) => string | number;
   /** Grouping key (e.g. receiving_id). Return null for no grouping. */
   getGroupId?: (row: TRow) => number | null;
@@ -272,19 +199,8 @@ export interface SidebarRailShellProps<TRow> {
     row: TRow,
     ctx: { groupSize: number; openWorkspace: () => void; dismiss: () => void },
   ) => ReactNode;
-  /**
-   * Per-row overflow (⋮) menu. Resolved per row so a rail never offers a verb
-   * its rows cannot perform — a Recently-searched row has no carton to delete,
-   * a Triage stub has no label to print. Unset (or returning `[]`) paints no
-   * trigger, which is why every rail that has not opted in is unchanged.
-   * Accessible name uses {@link getCollapsePinLabel} / {@link getStatusDotLabel}.
-   */
+  /** Per-row overflow (⋮) menu. */
   rowActions?: RailRowActionsResolver<TRow>;
-  /**
-   * Opt this rail into the leader-armed selection keyboard as a nav-keys region
-   * (typically `'left'`). Off by default — a rail without this prop registers no
-   * region and paints no keycaps. When set, `⌘; → <region key>` reveals a letter
-   * per visible row; pressing it runs the same `onSelect`.
-   */
+  /** Opt this rail into the leader-armed selection keyboard as a nav-keys region (typically `'left'`). */
   navRegionId?: NavRegionId;
 }

@@ -4,13 +4,7 @@ import { useEffect, useState } from 'react';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { postUnitVerb, UnitRefSheet } from './UnitSheetParts';
 
-/**
- * The unit's own verbs — Pair with order, Move to bin. Each sheet owns its
- * one existing write and hands the server's answer back as the page's
- * acknowledgement; failures stay in the sheet next to the field that caused
- * them. `initialValue` is the scan-context prefill (the previous scan was an
- * order or a bin), re-seeded each time the sheet opens.
- */
+/** The unit's own verbs — Pair with order, Move to bin. */
 
 interface UnitVerbSheetProps {
   open: boolean;

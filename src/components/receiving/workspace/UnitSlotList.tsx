@@ -84,19 +84,9 @@ interface Props {
     index: number,
     pairing?: { expanded: boolean; onExpandedChange: (next: boolean) => void },
   ) => ReactNode;
-  /**
-   * When true, the selected row's expanded meta (condition/verdict pills) is
-   * shown immediately instead of collapsing to a text badge until hover / serial
-   * focus. Use where picking the grade is the point of the row (Unbox), not an
-   * afterthought to scanning.
-   */
+  /** When true, the selected row's expanded meta (condition/verdict pills) is shown immediately instead of collapsing to a text badge until… */
   alwaysShowExpandedMeta?: boolean;
-  /**
-   * Render the expanded (active) row to match the single-qty SerialCard layout:
-   * drop the `n/N` counter and show the condition meta inline (no pending badge,
-   * no hover-collapse). Used by the multi-qty same-SKU receiving display so the
-   * active unit reads identically to a single-qty line.
-   */
+  /** Render the expanded (active) row to match the single-qty SerialCard layout: */
   singleRowExpanded?: boolean;
   /** Compact node on the right of a collapsed row (e.g. condition badge / verdict glyph). */
   renderCollapsedMeta?: (serial: UnitLike | null, index: number) => ReactNode;
@@ -148,14 +138,7 @@ function synthesizeLinkedSerial(unit: UnitSlotView): UnitLike | null {
   };
 }
 
-/**
- * Selectable per-unit list for multi-quantity lines. One unit is expanded
- * (the selected one) and shows its serial entry + an optional meta slot
- * (condition pills for receiving). Every other unit collapses to a single
- * clickable line — `n/N` + condition + serial (see collapsed rows).
- * Expanded body is condition pills + scan input only (no duplicate title row).
- * Selecting a unit is what drives the workspace's print preview + print target.
- */
+/** Selectable per-unit list for multi-quantity lines. */
 export function UnitSlotList({
   total,
   saved,
@@ -256,12 +239,7 @@ export function UnitSlotList({
   const isCapped =
     maxVisible != null && maxVisible > 0 && allRows.length > maxVisible;
 
-  // All-expanded (single-row) mode: every unit shows its own open serial input.
-  // A committed scan hands focus straight to the next row's input *immediately*
-  // (the write is queued and processed in the background by useLineSerials), so
-  // a multi-unit lot is scanned top-to-bottom in one fast pass without waiting
-  // on the network. Inputs stay enabled during submit (see ExpandedRow) so the
-  // newly-focused field actually accepts the next scan.
+  // All-expanded (single-row) mode:
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const focusRow = (index: number) => {
     const el = inputRefs.current[index];
@@ -667,11 +645,7 @@ function ExpandedRow({
         )}
         {meta ? (
           joined ? (
-            // PO accordion / Units flush: joined bar. Collapsed Tags face is
-            // min-w-11; expanded ConditionPills must grow past that lock —
-            // a fixed w-11 clipped the grade row so clicks never opened it.
-            // Flush expand pairing: pills own the full bar (photo + serial hide).
-            // Condition sits leftmost; item camera follows when collapsed.
+            // PO accordion / Units flush:
             <div
               className={cn(
                 "flex h-11 items-stretch [&>*]:h-full",

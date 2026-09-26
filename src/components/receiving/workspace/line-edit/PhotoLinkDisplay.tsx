@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Photos Displays → **Link** drill — the exact-linkage attach surface.
- *
- * Lives in the right rail under the Photos index (`?photoAction=link`), sibling
- * of Move / Send / Compare. Dock Link (Arrival · carton bench · item strip) and
- * the Photos Actions "Link a photo" row all open this leaf — never a popover.
- *
- * Top selectors answer *what am I linking, and as what*:
- *   - **Link to** — carton step (Shipping label · The box · Packing material)
- *     or a PO item on this carton. Defaults from the open handoff.
- *   - **Link as** — item aspects only (hidden when Link to is a carton step).
- *
- * Below, the shared {@link PhotoAttachGrid}: select carton photos → one Check
- * commits by target kind (claim-stage / aspect / reassign).
- */
+/** Photos Displays → **Link** drill — the exact-linkage attach surface. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

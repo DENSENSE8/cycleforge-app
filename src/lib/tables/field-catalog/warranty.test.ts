@@ -1,11 +1,4 @@
-/**
- * Warranty catalog guards + resolver behaviour — wave 1.4's third family.
- *
- * The guard that matters most here answers the question the port raises: the
- * ticket CONTROL is structural and must stay out of the catalog, while the
- * linked-ticket FACT is bindable. Removing a row action and making its subject
- * bindable are opposite operations, and only the second one happened.
- */
+/** Warranty catalog guards + resolver behaviour — wave 1.4's third family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

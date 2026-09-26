@@ -1,17 +1,4 @@
-/**
- * Phase 0 resolver — find an already-MATERIALIZED carton row (`receiving_id`
- * set) among the receiving-feed rows that matches the scanned value: PO number
- * in order mode, tracking number in tracking mode, support-ticket # in ticket
- * mode (`zendesk_ticket` display, e.g. `#9575`), and the matching identities in
- * `auto` (ticket only when the scan looks like a ticket id). Among multiple
- * lines of the same carton, prefer an OPEN line so the workspace lands on
- * something actionable. Returns `null` on no confident match (the caller falls
- * through to the next rung). EXPECTED-only incoming lines (`receiving_id` null)
- * never match here — they still need the lookup-po adopt/stamp pass.
- *
- * Pure + dependency-injected: the only input beyond the scan is `readCachedRows`
- * (a snapshot of the feed caches), so this runs DB/React-free in unit tests.
- */
+/** Phase 0 resolver — find an already-MATERIALIZED carton row (`receiving_id` set) among the receiving-feed rows that matches the scanned… */
 
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import type { CachedCartonDeps, CachedCartonResolution, ScanInput } from '../types';

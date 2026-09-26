@@ -10,14 +10,7 @@ import {
   type UnitsGridColumn,
 } from './units-grid-layout';
 
-/**
- * One serialized unit — CSS-grid columns matching the MOUNTED model (a
- * `SlotLayout` materialization since the wave 1.4 hand-model kill; there is no
- * static column list to default to any more).
- *
- * Browse-only (no bulk gutter): the row body opens the unit at the record plane.
- * Desktop cells live under `./cells/`; edit a column there, not here.
- */
+/** One serialized unit — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill;… */
 export const UnitsGridRow = memo(function UnitsGridRow({
   row,
   onOpen,

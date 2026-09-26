@@ -1,12 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/check-zoho-received
- *
- * Manual Incoming tool: paste tracking numbers → classify each as received
- * in Zoho vs not received (mirror-first, live Zoho fallback). Read-only.
- *
- * Body: { trackings: string | string[] }
- * Gated `receiving.view` to match Incoming toolbar siblings.
- */
+/** POST /api/receiving-lines/incoming/check-zoho-received */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

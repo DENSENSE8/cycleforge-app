@@ -1,29 +1,4 @@
-/**
- * GET /api/receiving-lines/incoming/summary
- *
- * Stat-tile aggregate for the Incoming pill on the receiving page. One
- * query. Tile counts are **distinct Zoho PO ids** — a 5-line PO that's
- * delivered counts as 1 box, not 5 lines (operators think in POs/boxes).
- *
- * Each bucket mirrors the predicate the main `/api/receiving-lines?view=incoming`
- * SELECT uses for its `delivery_state` CASE so chip counts and rendered rows
- * stay in sync.
- *
- * Response shape:
- * {
- *   issued: number,              // distinct POs with workflow=EXPECTED + qty_received=0
- *   delivered_unopened: number,  // + carrier delivered AND no operator scan logged yet
- *   arriving_today: number,      // + carrier=OUT_FOR_DELIVERY
- *   stalled: number,             // alive shipment with carrier exception OR no scan in >72h
- *   in_transit: number,          // + carrier=IN_TRANSIT/ACCEPTED/LABEL_CREATED
- *   pending_carrier: number,     // tracking# registered, carrier sync returned no status yet
- *   awaiting_tracking: number,   // no tracking# registered at all
- *   expected_today: number,      // joined zoho_po_mirror.expected_delivery_date = today (PST)
- * }
- *
- * Polled by IncomingWorkspaceHeader attention filters every 30s via React Query.
- * No write side.
- */
+/** GET /api/receiving-lines/incoming/summary */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -68,10 +43,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       expected_today: number;
     }>(
       orgId,
-      // Wave-2 reader cutover: the line's zoho cluster reads from
-      // receiving_line_zoho `rz` (1:1 on receiving_line_id; a row exists for
-      // every line with ANY zoho field), matching the build-sql incoming
-      // facets so these tile counts can't drift from the rendered rows.
+      // Wave-2 reader cutover:
       `SELECT
          COUNT(DISTINCT rz.zoho_purchaseorder_id)::int AS issued,
          COUNT(DISTINCT rz.zoho_purchaseorder_id) FILTER (
@@ -155,17 +127,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
       expected_today: 0,
     };
 
-    // `delivered_unopened` is shipment-anchored, not PO-line-anchored: the
-    // packages that matter (carrier-delivered, no dock scan yet) are mostly
-    // shipments registered from a PO reference# that never got a receiving row,
-    // so the PO-line FILTER above misses them and always reads ~0. The canonical
-    // count lives in one helper (Phase B) shared with the list endpoint and the
-    // main delivery_state, so the tile count, the list length, and the row
-    // badges agree by construction. Threaded orgId → the helper takes its
-    // GUC-wrapped tenant branch (the `pool` arg is ignored there, kept only to
-    // satisfy the required positional), pinning the org-bearing aliases
-    // (receiving_carton/receiving_scans) inside the shared predicates so the tile no
-    // longer counts other tenants' delivered-unscanned boxes.
+    // `delivered_unopened` is shipment-anchored, not PO-line-anchored:
     row.delivered_unopened = await getDeliveredUnscannedCount(pool, undefined, orgId);
     const delivered_not_unboxed = await getDeliveredNotUnboxedCount(orgId);
     // Claims-attention sub-band of the hunt queue (>48h since delivered, still unscanned).
@@ -176,10 +138,7 @@ export const GET = withAuth(async (_request: NextRequest, ctx) => {
     // so the response shape and the legacy Zoho-only tiles are unchanged.
     let ebay_pending = 0;
     let ebay_incoming = 0;
-    // `universal_incoming` gates the eBay purchasing-source search filter + KPI
-    // on the incoming workbench: when the org has the eBay purchasing account
-    // wired in, Band-3 offers All / Zoho / eBay (`?inbound=`); otherwise it
-    // stays Zoho-only (no confusing always-empty eBay option).
+    // `universal_incoming` gates the eBay purchasing-source search filter + KPI on the incoming workbench:
     const universal_incoming = await isIncomingUniversal(orgId);
     if (universal_incoming) {
       const er = await tenantQuery<{ ebay_pending: number; ebay_incoming: number }>(

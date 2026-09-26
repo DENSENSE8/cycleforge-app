@@ -1,13 +1,4 @@
-/**
- * The kiosk command vocabulary and the org's opening-command choice.
- *
- * What these defend is the operator's report: *"Whenever I go to the kiosk
- * page, it defaults to sales. It must default to repair service … but this must
- * be a selection within settings."* So two things must hold — the fallback is
- * repair, and an org that chooses something else gets what it chose.
- *
- *   npx tsx --test src/lib/kiosk/commands.test.ts
- */
+/** The kiosk command vocabulary and the org's opening-command choice. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,12 +16,7 @@ test('the fallback is REPAIR — the counter’s most common job', () => {
   assert.ok(isKioskCommandId(KIOSK_FALLBACK_COMMAND));
 });
 
-/**
- * Every command must be a value `counter_sessions.active_command`'s CHECK
- * admits (migrations/2026-08-20a_counter_sessions.sql:135). A command outside
- * it is a session row the column would reject. The CHECK is allowed to be
- * WIDER — it still admits the retired `buyback` / `pickup`.
- */
+/** Every command must be a value `counter_sessions.active_command`'s CHECK admits (migrations/2026-08-20a_counter_sessions.sql:135). */
 test('every command is one the session column admits', () => {
   const admitted = ['retail', 'repair', 'buyback', 'pickup'];
   for (const command of KIOSK_COMMAND_IDS) {
@@ -50,20 +36,7 @@ test('unrecognised input coerces instead of throwing', () => {
   assert.equal(parseKioskCommandId('pickup'), KIOSK_FALLBACK_COMMAND);
 });
 
-/**
- * `sales` is the TILE id and `retail` is the COMMAND id — the rename that made
- * the operator's report read oddly ("defaults to sales" is `activeCommand:
- * 'retail'`). The chooser must offer command ids, or a saved setting would
- * never match a pane.
- *
- * The liveness assertion is the LOAD-BEARING one. `getKioskDefaultCommand`
- * validates the vocabulary but not liveness (it cannot import `services.ts`
- * without dragging JSX into every server module that reads org settings), so a
- * command flipped to `status: 'wip'` while orgs still store it as their default
- * would open a pane that renders nothing. This converts that runtime hazard
- * into a build failure: retire a command and you are forced here, to deal with
- * the stored defaults pointing at it.
- */
+/** `sales` is the TILE id and `retail` is the COMMAND id — the rename that made the operator's report read oddly ("defaults to sales" is… */
 test('every command in the vocabulary is a LIVE, choosable command', () => {
   const options = kioskCommandOptions();
   for (const option of options) {

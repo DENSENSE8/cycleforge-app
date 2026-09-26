@@ -7,17 +7,7 @@ import type { ScanHandlerContext } from './types';
 export async function handleSerialScan(input: string, ctx: ScanHandlerContext): Promise<void> {
   const contextOrder = ctx.reopenScanContextOrder();
 
-  /**
-   * The serial as it should be STORED.
-   *
-   * `detectStationScanType` routes a printed unit label here as SERIAL, and a
-   * printed label carries a GS1 Digital Link / `(01)…(21)…` / `U-{serial}` —
-   * never the bare serial. Writing `input` verbatim persisted the whole label.
-   *
-   * The asymmetry this closes: `onUnitLabelScanned` below is handed the RAW
-   * value on purpose (its host gates on `scannedUnitKey`), so the photo path
-   * already decoded correctly while the write path beside it did not.
-   */
+  /** The serial as it should be STORED. */
   const scanned = unwrapScannedSerial(input);
 
   if (!contextOrder) {
@@ -100,10 +90,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
     return;
   }
 
-  // ── Partial serial resolution ────────────────────────────────────────────────
-  // classifyInput returns serial_partial for ≤10-char inputs. Try to expand the
-  // partial by suffix-matching it against already-scanned serials on this order.
-  // Exactly one match → use the full canonical serial. Zero or multiple → passthrough.
+  // ── Partial serial resolution ──────────────────────────────────────────────── classifyInput returns serial_partial for ≤10-char inputs.
   const { type: scanKind } = classifyInput(scanned);
   let finalSerial = scanned.toUpperCase();
   if (scanKind === 'serial_partial' && contextOrder.serialNumbers.length > 0) {

@@ -15,12 +15,7 @@ import { FbaPlanPreviewList } from './station-input/FbaPlanPreviewList';
 
 export type { StationFbaInputProps };
 
-/**
- * FBA station scan bar — same chrome as testing / packing sidebars:
- * {@link ThemedStationScanBar} (staff border + inset focus) when in the sidebar
- * band; no plan/select mode chips when the page locks `scanMode`; no paste chip
- * in the sidebar band (clipboard-over-focus ring was the right-rail glitch).
- */
+/** FBA station scan bar — same chrome as testing / packing sidebars: */
 export default function StationFbaInput(props: StationFbaInputProps) {
   const {
     showLabels = true,

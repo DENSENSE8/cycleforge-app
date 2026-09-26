@@ -5,13 +5,7 @@ import { findPackerLogForOrder } from '@/lib/packer/find-packer-log-for-order';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Resolve the existing (already pack-completed) packer_log for an order so the
- * mobile pack flow can attach in-flow photos to it. Read-only — never creates a
- * pack record.
- *
- *   GET ?orderRowId=N → { packerLogId: number | null }
- */
+/** Resolve the existing (already pack-completed) packer_log for an order so the mobile pack flow can attach in-flow photos to it. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orderRowId = Number(new URL(req.url).searchParams.get('orderRowId'));

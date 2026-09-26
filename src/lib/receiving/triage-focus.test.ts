@@ -35,11 +35,7 @@ describe('resolveTriageFocus', () => {
 });
 
 describe('pairing answered vocabulary', () => {
-  // The triage metrics route counts the COMPLEMENT of this set as
-  // "saved without pairing". Before 2026-08-02 it hand-typed `<> 'MATCHED'`,
-  // so WAIVED — which `isTriagePaired` has counted as done since C6 — would
-  // have been filed as a step the operator skipped. One vocabulary, two
-  // readers; a second copy is how they drift.
+  // The triage metrics route counts the COMPLEMENT of this set as "saved without pairing".
   it('WAIVED is an answer, not a skipped step', () => {
     assert.equal(isPairingAnswered('WAIVED'), true);
     assert.equal(isPairingAnswered('MATCHED'), true);

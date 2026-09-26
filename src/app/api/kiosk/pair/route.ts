@@ -1,22 +1,4 @@
-/**
- * POST /api/kiosk/pair
- *
- * A tablet exchanges its one-time pairing code (from /api/kiosk/enroll) for a
- * long-lived device token, and receives it as the httpOnly `cf_kiosk` cookie.
- * No human login — after this the device authenticates as itself via
- * `withKioskAuth`. Single-use + time-limited: a replayed or expired code
- * matches nothing.
- *
- * Public by design (`allowAnonymous`) — the pairing CODE is the capability, the
- * same shape as /api/auth/enroll consuming an enrollment token. The org is read
- * from the matched device row, never trusted from the request alone. On a kiosk
- * host (`{slug}.kiosk.app…`) the host slug's org must match the enroll row
- * (defense in depth); mismatch → same 404 as a bad code.
- *
- * Dogfood path mode (`kioskPathDogfoodActive`): pairing is allowed on the staff
- * host (`/kiosk/v2`). When subdomain DNS (J7b) is live and path dogfood flips
- * off, require a tenant kiosk host again in production.
- */
+/** POST /api/kiosk/pair */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

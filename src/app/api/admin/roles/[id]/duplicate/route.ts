@@ -1,12 +1,4 @@
-/**
- * POST /api/admin/roles/[id]/duplicate
- *
- * Body: { key: string, label?: string }
- *
- * Copies the source role's permissions/color into a fresh non-system role
- * with a new unique key. Common workflow: tweak Packer to suit a specific
- * shift without affecting the canonical Packer role.
- */
+/** POST /api/admin/roles/[id]/duplicate */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

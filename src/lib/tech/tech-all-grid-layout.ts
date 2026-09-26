@@ -1,18 +1,4 @@
-/**
- * Tech All triage spreadsheet columns — MATERIALIZED from a {@link SlotLayout},
- * never a hand array. Shared by Testing / Shipping / Unbox All tabs via
- * {@link TechAllTriageTable}.
- *
- * The static `TECH_ALL_GRID_COLUMNS` died with wave 1.4 of the seller-table
- * program. The row is already a normalization across four stores; a private
- * All-only column file on top of it was a second one, and a frozen layout no
- * organization could capture.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `select` gutter
- * and the frozen, flexing `identity` track (title over its quiet second line;
- * `tech-all.item` is the identity FACT). Everything after it is a catalog fact
- * an org/staffer binds.
- */
+/** Tech All triage spreadsheet columns — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -124,14 +110,7 @@ export function techAllGridFrozenLeft(
   return gridFrozenLeft(columns, key);
 }
 
-/**
- * First-activation direction.
- *
- * `tech-all.urgency` is a RANK, not a magnitude — lower means do it first — so
- * it opens ASCENDING where every other number in the house opens descending.
- * The exception rides the FACT rather than a track key, so rebinding urgency
- * into a different slot carries it.
- */
+/** First-activation direction. */
 export function defaultDirForTechAllColumn(
   columns: readonly TechAllGridColumn[],
   key: string,

@@ -4,13 +4,7 @@ import { CatalogManagerList } from '@/components/receiving/workspace/line-edit/C
 import { PlatformAccountsManager } from '@/components/receiving/workspace/line-edit/PlatformAccountsManager';
 import { ShipStationStoreLinks } from '@/components/settings/ShipStationStoreLinks';
 
-/**
- * Settings → Platforms & Types. Full-page home for the org platform / storefront
- * account / receiving-type catalog (the same lists the label editor's pencil
- * manages, surfaced as a dedicated settings area, plus accounts + type bindings
- * which the compact popover omits). Gated by `admin.manage_features` via the
- * settings sidebar registry; the write endpoints enforce the same permission.
- */
+/** Settings → Platforms & Types. */
 export function CatalogSection() {
   return (
     <div className="space-y-6">

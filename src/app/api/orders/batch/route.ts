@@ -1,10 +1,4 @@
-/**
- * Batch order lookup for the AI chat: given a list of order_id strings (parsed
- * out of an assistant answer), return compact display rows so the chat can show
- * real, interactive order rows with live status instead of run-on prose.
- *
- * POST { orderIds: string[] }  ->  { orders: AiOrderRow[] }
- */
+/** Batch order lookup for the AI chat: */
 import { NextRequest, NextResponse } from 'next/server';
 import { shippingShippedHref } from '@/lib/shipping/shipped-desk';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -26,13 +20,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (ids.length === 0) return NextResponse.json({ orders: [] });
 
-  // orders is tenant-owned and o.order_id is a marketplace string key that
-  // collides across tenants — it MUST be org-scoped. Integer surrogate-PK joins
-  // (stn.id = o.shipment_id, ts.id/ps.id = staff PKs) are safe bare;
-  // shipping_tracking_numbers has no organization_id column (NEEDS-COL) and is
-  // reached only through the org-scoped orders row. The tech_serial_numbers /
-  // packer_logs LATERAL subqueries join on the integer shipment_id surrogate FK
-  // (safe bare) and get an explicit org filter as defence-in-depth.
+  // orders is tenant-owned and o.order_id is a marketplace string key that collides across tenants — it MUST be org-scoped.
   const { rows } = await tenantQuery(
     ctx.organizationId,
     `

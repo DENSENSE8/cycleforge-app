@@ -1,15 +1,4 @@
-/**
- * The five outbound desk-sidebar numbers in one read — `GET /api/orders/desk-counts`.
- *
- * Each number is the SAME membership rule as the list its view opens:
- * - `exceptions`   → `listOrderExceptions` actionable scope (`/shipping/exceptions`)
- * - `po`           → `/api/orders?blockedOnly=true&pair=po` (`/shipping/shortage?pair=po`)
- * - `pick`         → `/api/orders?inWarehouse=true&queue=pick` (`/shipping/orders?queue=pick`)
- * - `triage`       → `/api/orders?inWarehouse=true` (`/shipping/orders`)
- * - `shippedToday` → PACK-station activity since the org's local midnight —
- *   the feed the Shipped desk lists (same rule as queue-counts' `shippedToday`),
- *   in `organizations.settings.timezone` when it names a real zone, else UTC.
- */
+/** The five outbound desk-sidebar numbers in one read — `GET /api/orders/desk-counts`. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

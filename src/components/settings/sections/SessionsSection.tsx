@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * /settings/sessions — admin view of active staff sessions with one-click
- * revoke.
- *
- * Off the second table engine 2026-09-11 (Wave D). The list is the slot
- * `DataTable` (`auth-sessions` PRODUCT_TABLES peer): header sort, the Fields
- * picker and org-bindable columns arrive from the engine, none of which the
- * five hand-written column objects it replaced could ever grow. That history
- * lives in `sessions/auth-sessions-grid-layout.ts`.
- *
- * Revoke is a ROW VERB (`auth-sessions-verbs.ts`) confirmed on a stage-overlay
- * plane — never an actions column, never `window.confirm`.
- */
+/** /settings/sessions — admin view of active staff sessions with one-click revoke. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { DataTable } from '@/components/tables/DataTable';

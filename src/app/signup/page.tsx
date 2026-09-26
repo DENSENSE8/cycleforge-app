@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * /signup — public account creation.
- *
- * One-screen flow: company name, your full name, email, PIN. On submit we
- * call /api/auth/signup which creates the org, the first admin staff,
- * hashes the PIN, and mints a session cookie. We then land them at
- * `/` (My Day).
- *
- * Visual language mirrors /signin (same dotted background, same rounded
- * pill toggles, same scale). A returning user lands here by mistake
- * sometimes — the bottom link sends them back to /signin.
- */
+/** /signup — public account creation. */
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';

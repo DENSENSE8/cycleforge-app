@@ -14,12 +14,7 @@ export type {
   WorkOrderAssignmentCardProps,
 } from './work-order-assignment/work-order-assignment-shared';
 
-/**
- * Carousel assignment card — thin composition shell. The full state machine
- * (drafts + localStorage persistence, resume-to-next, debounced autosave,
- * confirm→advance, keyboard nav) lives in {@link useWorkOrderAssignmentCard};
- * pure helpers + types live in `./work-order-assignment/`.
- */
+/** Carousel assignment card — thin composition shell. */
 export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
   const { technicianOptions, packerOptions, onClose, staffContext } = props;
   const c = useWorkOrderAssignmentCard(props);

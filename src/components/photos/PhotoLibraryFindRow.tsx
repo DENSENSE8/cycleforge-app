@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Media Library card find row — SearchField + filter + views + display controls
- * + fullscreen.
- *
- * Not named `PhotoLibraryToolbar`: that was the selection-swap band the batch
- * rail replaced. Same shape as {@link DataTable}'s toolbar — and the same search
- * law: the box is SESSION-LOCAL {@link DataTableSearch} data owned by the page,
- * never URL state. Typing used to `patch({ poFinder })`, which soft-navigated
- * and refetched the library on every keystroke; the find-bar now narrows the
- * painted rows through `filterPhotosByQuery`. Filters / views / tabs still write
- * the URL through `patch` / `applyView` — a filter is a filter, a find is not.
- */
+/** Media Library card find row — SearchField + filter + views + display controls + fullscreen. */
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

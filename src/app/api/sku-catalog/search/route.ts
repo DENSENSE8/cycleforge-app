@@ -22,10 +22,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       | 'zoho_catalog';
     const limit = Math.min(Math.max(Number(searchParams.get('limit') || 20), 1), 100);
 
-    // Reference catalog search → org-scoped cache. Busted on any sku-catalog write
-    // (skuCatalog, org-scoped). The QC-picker view (hasQc) additionally rides the
-    // qcChecks tag so adding/removing a checklist re-filters it immediately; the
-    // short rollup TTL also caps staleness of the Zoho `items` mirror modes.
+    // Reference catalog search → org-scoped cache.
     const orgId = ctx.organizationId;
     const cacheKey = createCacheLookupKey({ q, category, ecwidOnly, hasQc, excludeSkuSuffix, searchField, limit });
     const tags = hasQc ? [CACHE_TAGS.skuCatalog, CACHE_TAGS.qcChecks] : [CACHE_TAGS.skuCatalog];
@@ -48,10 +45,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           return searchFromPlatform(q, searchField, excludeSkuSuffix, limit, orgId);
         }
 
-        // `zoho_catalog`: title + SKU sourced from the Zoho `items` mirror (Zoho SKU
-        // + Zoho name + zoho_item_id) — the Zoho product display is the source of
-        // truth. Used by the labels product picker and by Local Pickup (which must
-        // reference real Zoho items when creating a Zoho PO).
+        // `zoho_catalog`:
         if (searchField === 'zoho_catalog') {
           return searchFromZohoCatalog(q, excludeSkuSuffix, limit, orgId);
         }
@@ -158,30 +152,7 @@ async function searchFromPlatform(
   };
 }
 
-/**
- * Zoho-only catalog search sourced straight from the Zoho `items` mirror —
- * the authoritative Zoho Inventory table (synced from /api/v1/items). Returns
- * the Zoho SKU, Zoho name, and `zoho_item_id` so Local Pickup can create a Zoho
- * PO that references real Zoho items (not Ecwid listings). Matches on Zoho SKU
- * OR name; only active items with a SKU appear. Results are tagged with a
- * `zoho` platform chip so there's no Ecwid ambiguity.
- *
- * This reads the LOCAL mirror only. It never calls Zoho — a picker that blocks
- * on a third-party round trip is a picker an operator abandons, and the mirror
- * is already the row the rest of the app pairs against.
- *
- * ## The join is the hard link, not the SKU string
- *
- * `sku_catalog.provider_item_id` is the declared inventory-provider linkage
- * (2026-07-22): "Join items on provider_item_id = zoho_item_id — never on SKU
- * string", because `items` and `sku_catalog` are independent numbering schemes
- * and two rows sharing a SKU string are routinely DIFFERENT products. So a
- * stamped catalog row matches ONLY its linked Zoho item; the SKU-string join
- * survives strictly as the fallback for rows sync has not stamped yet
- * (`provider_item_id IS NULL`), which is what the guarded backfill leaves
- * behind. Rows already linked in the database therefore win over a coincidence
- * of characters.
- */
+/** Zoho-only catalog search sourced straight from the Zoho `items` mirror — the authoritative Zoho Inventory table (synced from /api/v1/items). */
 async function searchFromZohoCatalog(
   q: string,
   excludeSkuSuffix: string,
@@ -285,24 +256,10 @@ async function searchFromZohoCatalog(
   };
 }
 
-/**
- * SKUs that have at least one QC check step directly linked
- * (qc_check_templates.sku_catalog_id = sc.id). Category-scoped templates
- * (sku_catalog_id IS NULL) are intentionally excluded — "linked to the SKU"
- * means a direct link. Image/title prefer the ECWID platform row, matching
- * the rest of the catalog search.
- */
+/** SKUs that have at least one QC check step directly linked (qc_check_templates.sku_catalog_id = sc.id). */
 async function searchSkusWithQcChecks(q: string, limit: number, orgId?: OrgId) {
   const params: unknown[] = [];
-  // No is_active filter here: a SKU that has a checklist should always be
-  // manageable from the QC view, even if it's been retired from sale. The
-  // EXISTS clause already keeps this to the small, deliberately-curated set of
-  // SKUs that have QC steps linked.
-  //
-  // Draft steps count too (no status='published' filter): this is an *authoring*
-  // discovery filter — a SKU with only draft steps is still "being built" and
-  // must surface here. Add `AND qc.status='published'` behind a flag only if a
-  // "has published QC" filter is ever needed for the execution side. (plan §6)
+  // No is_active filter here:
   const filterClauses: string[] = [
     'EXISTS (SELECT 1 FROM qc_check_templates qc WHERE qc.sku_catalog_id = sc.id)',
   ];

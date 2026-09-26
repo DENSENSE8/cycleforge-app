@@ -1,10 +1,4 @@
-/**
- * Shared mapping for `/api/receiving/triage/done` rows → the synthetic stub
- * `ReceivingLineRow` the Done-tab rail renders. Mirrors `unfound-stub.ts`'s
- * `toStubRow` pattern exactly — one place that produces the stub shape so the
- * Done list and the "Staged" badge (which reads the same endpoint) can never
- * disagree on what a staged carton looks like.
- */
+/** Shared mapping for `/api/receiving/triage/done` rows → the synthetic stub `ReceivingLineRow` the Done-tab rail renders. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 

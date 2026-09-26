@@ -1,25 +1,11 @@
-/**
- * Master-plan Y.Doc factory (ALP-1.3) — the CRDT shape contract.
- *
- * ONE `Y.Doc` per plane (web client, sync daemon, tests) holding a single
- * `Y.Text('content')` with the raw master-plan MDX string. Nothing else lives
- * in the doc — the file `master-plan.mdx` is the local SoT and Neon never
- * stores the live CRDT blob (locked decision, master plan §-2).
- */
+/** Master-plan Y.Doc factory (ALP-1.3) — the CRDT shape contract. */
 
 import * as Y from 'yjs';
 
 /** The one Y.Text key. Every plane MUST read/write through this constant. */
 export const MASTER_PLAN_YTEXT_KEY = 'content';
 
-/**
- * Fixed clientID used ONLY for empty-doc seeding. Because the seed update is
- * generated from a fresh doc with this constant clientID, two peers that race
- * to bootstrap the same starter string produce byte-identical updates, and
- * applying the same update twice is a Yjs no-op — the race is idempotent by
- * construction. (Race policy: seeders MUST fetch the seed string from the same
- * canonical source — the starter MDX — before calling createSeedUpdate.)
- */
+/** Fixed clientID used ONLY for empty-doc seeding. */
 export const MASTER_PLAN_SEED_CLIENT_ID = 0x00c0ffee;
 
 /** Transaction origin used when applying a bootstrap seed update. */
@@ -59,13 +45,7 @@ export function createSeedUpdate(mdx: string): Uint8Array {
   return update;
 }
 
-/**
- * Minimal-diff replace: applies `next` to the doc as a single
- * delete+insert of only the changed middle span (common prefix/suffix kept).
- * Used by the daemon's upstream path (file save → doc) and the plan-agent's
- * mutate tool, so concurrent remote edits outside the changed span survive.
- * Pass an `origin` so provider echo suppression can identify the source.
- */
+/** Minimal-diff replace: */
 export function applyMasterPlanReplace(doc: Y.Doc, next: string, origin?: unknown): boolean {
   const text = getMasterPlanText(doc);
   const prev = text.toString();
@@ -74,10 +54,7 @@ export function applyMasterPlanReplace(doc: Y.Doc, next: string, origin?: unknow
   let start = 0;
   const maxStart = Math.min(prev.length, next.length);
   while (start < maxStart && prev.charCodeAt(start) === next.charCodeAt(start)) start += 1;
-  // Don't cut between a surrogate pair (an emoji / astral char is 2 UTF-16
-  // units): if the boundary landed on a low surrogate, back up one so the
-  // whole code point stays intact — a split pair corrupts to U+FFFD and
-  // permanently diverges peers.
+  // Don't cut between a surrogate pair (an emoji / astral char is 2 UTF-16 units):
   if (start > 0 && isLowSurrogate(prev.charCodeAt(start))) start -= 1;
 
   let endPrev = prev.length;

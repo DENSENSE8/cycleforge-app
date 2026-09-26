@@ -1,20 +1,4 @@
-/**
- * Bulk-allocate column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced `candidateColumns`, a page-local `AdminTableColumn[]` literal
- * carrying JSX (a `<Link>`, a tri-coloured `<span>`, and a `<form>` around a
- * tooltipped `<Button>`): a second table engine's column type, with no header
- * sort, no Fields picker and no org binding, because that engine never grew
- * them.
- *
- * The skeleton mounts WHOLE — no `.filter`. A candidate row has no photo, so
- * the gutter paints the typed placeholder exactly as `part-compatibility` and
- * `kiosk-slot-events` already do; filtering `thumb` off the mount would need a
- * new `COMPOUND_SKELETON_FILTER_DEBT` row and that list is documented
- * shrink-only. Chrome headers are family DATA and may be relabelled
- * (Order id · SKU · Ordered · Allocatable); a geometry cut is not.
- */
+/** Bulk-allocate column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -84,20 +68,7 @@ export function adminBulkAllocateCompoundColumnsFor(
 export const ADMIN_BULK_ALLOCATE_COMPOUND_COLUMNS: readonly AdminBulkAllocateGridColumn[] =
   adminBulkAllocateCompoundColumnsFor(ADMIN_BULK_ALLOCATE_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers here — the header-sort law. The four chrome
- * tracks this family paints facts into (`fulfillment` = the order id, `item` =
- * the SKU, `dates` = the order stamp, `state` = the allocatable pill) map to
- * the catalog field behind them, so the header sorts the thing the operator is
- * looking at. Structural chrome is named by {@link isSlotTableChromeTrack}
- * rather than by a hand list here, so a track added to that vocabulary cannot
- * start offering a sort on this desk.
- *
- * Sorting by `state` is the reason this desk exists: it puts every `Ready` row
- * together, which is the whole point of a page whose one verb is per-row.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function adminBulkAllocateSortFactFor(col: {
   key: string;
   fieldId?: string;

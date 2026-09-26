@@ -1,13 +1,4 @@
-/**
- * The counter scale is a SIBLING of the ops ladder, not a replacement.
- *
- * Two failure modes this pins:
- *  1. Someone "fixes" the kiosk back to flush by pointing it at `cornerClass()`
- *     — the counter face silently becomes ops chrome again.
- *  2. Someone rounds the ops ladder to make the kiosk work — every desk surface
- *     in the product re-rounds at once. `radius.test.ts` guards that side; this
- *     test guards that the two scales stay DIFFERENT and both keep existing.
- */
+/** The counter scale is a SIBLING of the ops ladder, not a replacement. */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { cornerClass, type CornerRole } from '@/design-system/tokens/radius';

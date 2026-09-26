@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Block palette — the registry-driven "what can I add here" list. Renders
- * every registered block compatible with the target slot, grouped by
- * category, with the permissions it implies as chips. Click-to-add is the
- * canonical keyboard-safe path (drag is sugar to layer on later); adding
- * never creates a blank block — the caller opens the Config Sheet
- * immediately.
- */
+/** Block palette — the registry-driven "what can I add here" list. */
 
 import { useMemo, useState } from 'react';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';

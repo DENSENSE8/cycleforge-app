@@ -1,10 +1,4 @@
-/**
- * CF-03 / CF-04 reconciliation reads for the Operations Reconciliation Monitor.
- *
- * Surfaces suspected serial↔order smear (legacy TSN rows still shipment-only on
- * multi-order cartons) and open unmatched-tracking exceptions. Read-only;
- * org scope via tenantQuery GUC.
- */
+/** CF-03 / CF-04 reconciliation reads for the Operations Reconciliation Monitor. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 

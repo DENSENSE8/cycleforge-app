@@ -16,19 +16,7 @@ import { toast } from '@/lib/toast';
 
 type FnskuVerb = 'reprint' | 'scan';
 
-/**
- * `/m/fnsku/[fnsku]` — a scanned Amazon FBA unit label (FNSKU `X00…`) as a
- * full-screen record on {@link DetailHubScreen}. The packer scans the unit
- * from the top-right Scan; `/m/scan` lands the FNSKU here with an X back to
- * the scan loop.
- *
- * The card is the org's FBA catalog row (title, ASIN · SKU, condition) and
- * opens `/info`. Under it, how many labels (1–99). The one door picks the
- * printer (the staff print bridge). The dock's Reprint sends the label and
- * the count there; that computer prints that many Code 128 FNSKU stickers
- * and ledgers them (`printFnskuStationJob`). With no printer able to take
- * it, Reprint opens the picker instead.
- */
+/** `/m/fnsku/[fnsku]` — a scanned Amazon FBA unit label (FNSKU `X00…`) as a full-screen record on {@link DetailHubScreen}. */
 function FnskuHubInner() {
   const router = useRouter();
   const rec = useFnskuRecord();

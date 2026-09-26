@@ -20,15 +20,7 @@ import {
   type AuthSessionsGridColumn,
 } from './auth-sessions-grid-layout';
 
-/**
- * Revoke runs from the ROW MENU (and its trailing face). The retired display
- * carried it in an actions COLUMN — a per-family cell of JSX, and the reason
- * this desk could not mount the shared row.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries; an
- * admin auditing who is signed in copies the list far more often than they
- * revoke, and selection is what feeds that.
- */
+/** Revoke runs from the ROW MENU (and its trailing face). */
 export const AUTHSESSIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

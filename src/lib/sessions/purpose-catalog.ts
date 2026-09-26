@@ -1,25 +1,4 @@
-/**
- * System purpose seeds — DATA, not a vocabulary.
- *
- * L1 of the session stack (docs/warehouse-os HANDOFF-sessions + the purpose
- * catalog pass). These rows are copied into `work_session_purposes` per org.
- * An operator adding "Staff assist" or "Beat the Amazon buy box" does NOT
- * come here; they create a row at session-start with no deploy (K12).
- *
- * DEPENDENCY-FREE ON PURPOSE — same contract as ./types.ts. The closed L0
- * sets (`SESSION_KINDS`, `SCAN_SESSION_TYPES`) live next door; this file
- * only names the starter catalog so the migration, `seedOrgCatalog`, and
- * `ensureSystemPurposes` cannot drift.
- *
- * Industry shape this list follows (used-goods / reverse-logistics LMS):
- * scan benches are the direct-labor minority; the rest is indirect / VAS /
- * counter work that otherwise vanishes from the timesheet — front desk,
- * kiosk check-in, repair, product triage (marketplace price compare),
- * training, exception. Takt Virtual Kiosk, ReverseLogix VAS, Recirca
- * intake→resale: same split. Adding a SCANNING bench still requires
- * SURFACE_REGISTRY + SCAN_SESSION_TYPES. Adding "I helped at the desk"
- * must not.
- */
+/** System purpose seeds — DATA, not a vocabulary. */
 
 import { SCAN_SESSION_TYPES, type SessionKind } from './types';
 

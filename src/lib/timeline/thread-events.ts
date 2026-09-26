@@ -1,12 +1,6 @@
 import type { TimelineItem, TimelineTone } from './types';
 
-/**
- * One thread message row (`thread_messages`, migration
- * 2026-07-14_entity_threads.sql), as returned by the thread/journey queries.
- * Kept structurally local so the adapter never imports the server-only
- * domain module (`src/lib/threads/threads.ts`) — same discipline as
- * `WarrantyEventRow`.
- */
+/** One thread message row (`thread_messages`, migration 2026-07-14_entity_threads.sql), as returned by the thread/journey queries. */
 export interface ThreadMessageTimelineRow {
   id: number;
   visibility: string; // 'internal' | 'public'
@@ -29,12 +23,7 @@ function preview(body: string): string {
   return flat.length > PREVIEW_MAX ? `${flat.slice(0, PREVIEW_MAX - 1)}…` : flat;
 }
 
-/**
- * Map conversation-thread messages → {@link TimelineItem}s for the shared
- * `EventTimeline` (D4 — the merged history gains message rows; no second
- * timeline component). A row reads "Note — Riley · <body preview>"; the
- * interactive chat surface is the separate `ThreadPanel`, never this.
- */
+/** Map conversation-thread messages → {@link TimelineItem}s for the shared `EventTimeline` (D4 — the merged history gains message rows; no… */
 export function threadMessagesToTimeline(rows: ThreadMessageTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
     const mapped = VISIBILITY_MAP[r.visibility] ?? VISIBILITY_MAP.internal;

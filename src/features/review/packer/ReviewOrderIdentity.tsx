@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Review · Packing adapter for the station entity-context header SoT
- * (`CartonContextCard` via `@/components/station/entity-context`).
- *
- * Maps a pack-review queue row onto the Unbox one-row face (order# · tracking ·
- * classify). Sibling of PackOrderIdentity. Classify is read-only; no pack-review
- * photos cell. Pair host with `placement="flow"` +
- * `reserveIdentityClearance={false}`.
- */
+/** Review · Packing adapter for the station entity-context header SoT (`CartonContextCard` via `@/components/station/entity-context`). */
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';

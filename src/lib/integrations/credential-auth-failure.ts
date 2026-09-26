@@ -1,20 +1,4 @@
-/**
- * Pure classifiers: is this error the stored credential's fault, or the
- * provider having a bad minute? Kept free of DB / server-only imports so unit
- * tests can run without Neon.
- *
- * WHY TWO CLASSIFIERS (2026-09-15 incident): Zoho throttles token minting to
- * 10 access tokens per refresh token per 10 minutes. When we crossed it, the
- * mint threw `Zoho token refresh failed: 400 (Access Denied): You have made
- * too many requests continuously.` — which matched `token refresh`, flipped
- * `organization_integrations.status` to `error`, and took the whole Zoho
- * integration offline for 25 hours. Nothing clears that status but a human
- * re-running OAuth. The refresh token was valid the entire time.
- *
- * Rule: a TRANSIENT failure never poisons the vault. `isCredentialAuthFailure`
- * is therefore false for anything `isTransientCredentialFailure` claims — the
- * transient check has precedence, deliberately.
- */
+/** Pure classifiers: */
 
 /**
  * True when the failure is a provider-side throttle, timeout, or 5xx blip: the
@@ -51,13 +35,7 @@ export function isTransientCredentialFailure(err: unknown): boolean {
   );
 }
 
-/**
- * True when an error means the stored credential itself is unusable (revoked
- * refresh token, mint failure, hard 401) — NOT a resource/business miss like
- * "Purchase Order does not exist.", and NOT a transient throttle. Only these
- * should flip the vault row to `status=error`, because only these need a human
- * to reconnect.
- */
+/** True when an error means the stored credential itself is unusable (revoked refresh token, mint failure, hard 401) — NOT a… */
 export function isCredentialAuthFailure(err: unknown): boolean {
   const message = (err instanceof Error ? err.message : String(err)).toLowerCase();
   if (!message) return false;

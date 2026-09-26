@@ -1,25 +1,8 @@
 'use client';
 
 /**
- * Drawer/rail bottom bar — staff colour + initials bubble at the far left,
- * name with the signed-in email under it, no hairline: separation from the
- * nav list above is a soft
- * drop shadow (elevation token). The row is EDGE-TO-EDGE — no side padding on
- * the button, the bubble sits flush left — and the whole bar is the door to
- * `/m/settings`.
- *
- * Callers: `MobileSidebarDrawer`. Affected API: none.
- * User (2026-09-14): "remove the hairline at the bottom of the mobile nav and
- * just a drop shadow and just the staffs name only use shadCN UI for this" ·
- * "just the bottom bar first" · "keep the staff color and initial bubble on
- * the most left and the button must be edge to edge no padding on the edges
- * for just the bottom".
- * The bar is ONE door, not a toolbar: avatar + name + email, full-bleed, to
- * `/m/settings`. It carried trailing Switch-staff / Log-out squares for a
+ * Drawer/rail bottom bar — staff colour + initials bubble at the far left, name with the signed-in email under it, no hairline:
  * while; the operator pulled them (2026-09-23: *"it must display at the
- * bottom of settings, not a logout button and a switch staff button at the
- * bottom of the sidebar on mobile"*). Both shift-change verbs live at the
- * foot of `/m/settings` (`MobileSettingsList`) — one place, not two.
  */
 
 import Link from 'next/link';
@@ -51,12 +34,7 @@ export function MobileAccountFooter({
         className,
       )}
     >
-      {/* shadcn ghost chrome (not an ops CTA — the DS Button law is untouched);
-          asChild merges the row onto the anchor so the whole bar is the door.
-          The BUTTON is edge-to-edge (px-0: full-bleed tap + hover fill); the
-          CONTENT carries the inset (px-3 on the inner wrapper) — the standard
-          full-bleed-row pattern: interactive surface spans the bar, content
-          starts inset. */}
+      {/* shadcn ghost chrome (not an ops CTA — the DS Button law is untouched); asChild merges the row onto the anchor so the whole bar is the door. */}
       <Button
         asChild
         variant="ghost"

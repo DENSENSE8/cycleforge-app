@@ -4,32 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 
-/**
- * POST /api/tech/test-result
- *
- * Phase 3 of the inventory v2 plan. Records an explicit tech-station test
- * outcome for a single serialized unit. Three actions:
- *
- *   action='start'  →  TEST_START event, unit → IN_TEST
- *   action='pass'   →  TEST_PASS event,  unit → GRADED
- *                       (also records serial_unit_condition_history if a
- *                        new condition_grade differs from the current one)
- *   action='fail'   →  TEST_FAIL event,  unit → IN_REPAIR
- *
- * Body shape:
- *   {
- *     serial_unit_id?: number,
- *     serial_number?: string,        // fallback if id not known
- *     action: 'start' | 'pass' | 'fail',
- *     condition_grade?: 'BRAND_NEW' | 'USED_A' | 'USED_B' | 'USED_C' | 'PARTS',
- *     notes?: string,
- *     client_event_id?: string       // UUID, idempotent retries
- *   }
- *
- * Single transaction. Always on.
- *
- * Requires permission `tech.test_result` (verified by withAuth).
- */
+/** POST /api/tech/test-result */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const serialUnitIdRaw = Number(body?.serial_unit_id);
@@ -58,11 +33,7 @@ export const POST = withAuth(async (request, ctx) => {
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
   const orgId = ctx.organizationId;
 
-  // RESET — clear a wrong test verdict. Reverts the unit's status (GRADED/
-  // IN_REPAIR → IN_TEST so it can be re-tested; IN_TEST → RECEIVED to un-start)
-  // and restores the condition_grade the PASS changed (reading the prior grade
-  // off the most recent condition-history entry), appending a revert entry. The
-  // status move goes through the state machine (new reset back-edges).
+  // RESET — clear a wrong test verdict.
   if (action === 'reset') {
     try {
       const result = await withTenantTransaction(orgId, async (client) => {
@@ -85,12 +56,7 @@ export const POST = withAuth(async (request, ctx) => {
         }
         const target = cur === 'IN_TEST' ? 'RECEIVED' : 'IN_TEST';
 
-        // Only a PASS verdict (which lands the unit in GRADED) ever changes the
-        // condition_grade; a FAIL (IN_REPAIR) never writes a condition-history
-        // row. So restore the grade ONLY when clearing a GRADED verdict — and
-        // only when the latest history row is the one that set the current grade.
-        // Touching the grade on a FAIL reset would wrongly roll back an unrelated
-        // earlier grading whose new_grade happens to equal the current grade.
+        // Only a PASS verdict (which lands the unit in GRADED) ever changes the condition_grade; a FAIL (IN_REPAIR) never writes a…
         let restoredGrade: string | null = null;
         if (cur === 'GRADED') {
           const histQ = await client.query<{ prev_grade: string | null; new_grade: string | null }>(

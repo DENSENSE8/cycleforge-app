@@ -41,12 +41,7 @@ interface Props {
    * this *replaces an input field* (single-qty SerialCard).
    */
   fullWidth?: boolean;
-  /**
-   * Drop the committed-state clear (✕) affordance — for when the PARENT owns the
-   * on/off toggle (e.g. the SerialCard trailing green-check), so the chip is just
-   * the "No serial · {reason}" label + reason picker and there's exactly one
-   * undo control. Offer state is unaffected.
-   */
+  /** Drop the committed-state clear (✕) affordance — for when the PARENT owns the on/off toggle (e.g. */
   hideClear?: boolean;
 }
 
@@ -107,17 +102,7 @@ const ChevronGlyph = ({ className = '' }: { className?: string }) => (
   </svg>
 );
 
-/**
- * Explicit "no serial number" waiver for a receive line. The serial input and
- * this control are mutually exclusive: capturing a serial clears the waiver
- * (handled in the controller). Activating it records an auditable reason code
- * (the `serial_absent_reason` Class-D vocabulary) rather than a silent blank — so
- * a cable received with no serial is a first-class fact, not missing data.
- *
- * Committed display: dense CopyChip anatomy (reason icon + quiet label) so
- * the token matches SKU/condition height in the PO meta row and SerialCard slot.
- * Click opens the reason picker; HoverTooltip carries the hint.
- */
+/** Explicit "no serial number" waiver for a receive line. */
 export function NoSerialControl({
   absent,
   reason,
@@ -159,13 +144,7 @@ export function NoSerialControl({
         ? 'No serial number for all units (same SKU, no serials available)'
         : 'Mark this item as having no serial number — cables, accessories, bulk parts';
 
-    // The 'check' variant stands in the multi-qty unit list's TRAILING ACTION
-    // column, directly above the per-row add buttons — so it is the same green
-    // check the single-qty row shows, at the same height as those buttons. It
-    // was a short dashed grey token, which sat out of line with the column and
-    // read as disabled chrome rather than the primary way to say "these have no
-    // serials". The 'pill' variant keeps the quiet token: it rides in a dense
-    // meta row, where an h-11 button would blow out the row.
+    // The 'check' variant stands in the multi-qty unit list's TRAILING ACTION column, directly above the per-row add buttons — so it is the…
     if (variant === 'check') {
       return (
         <NoSerialOfferCheck

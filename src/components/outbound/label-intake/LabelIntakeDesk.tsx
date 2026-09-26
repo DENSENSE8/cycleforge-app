@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Label intake — the desk the global `+` opens (`/search?entry=label`).
- *
- * One triage-mode surface, no hops: type the order number in a fixed-width
- * field and it pairs to its order (or stays a reference-only number), then the
- * same column carries everything a return / replacement label needs — ship-to,
- * parcel, rates, buy — while the evidence column lists every label already
- * recorded under that number. Built for this job; it composes no shipping
- * panel. Data: `label-intake-client.ts`; server: `src/lib/shipping/label-intake.ts`.
- */
+/** Label intake — the desk the global `+` opens (`/search?entry=label`). */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

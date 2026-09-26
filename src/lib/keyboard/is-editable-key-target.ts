@@ -1,12 +1,4 @@
-/**
- * Editable-focus predicate — SoT for wedge-safe / Esc / chord handlers.
- *
- * Station Displays Esc, desk inspector Esc, workbench park chords, and armed
- * cursor lists must share this helper so “typing in a field” cannot drift into
- * a mode-error twin. Handlers stay forked per shell; only the predicate is shared.
- *
- * @see source-of-truth.md → Scan vs desk right-edge (C2) · Contextual keyboard
- */
+/** Editable-focus predicate — SoT for wedge-safe / Esc / chord handlers. */
 
 export function isEditableKeyTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;

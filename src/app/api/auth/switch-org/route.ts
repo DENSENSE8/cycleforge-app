@@ -1,23 +1,4 @@
-/**
- * POST /api/auth/switch-org
- *
- * Body: { organizationId: string }
- *
- * Switches the active workspace for the CURRENTLY signed-in account. Unlike
- * /api/auth/switch (which re-authenticates as a different staff via PIN), this
- * is the same human changing org context — so no credential is required. The
- * authorization gate is membership ownership: the account must have an active
- * membership in the target org (findSwitchTarget), otherwise 403.
- *
- * Mechanism (see docs/identity-layer-plan.md): switching means pointing the
- * session at the account's STAFF PROFILE row in the target org. A fresh session
- * is minted for that staff id (which carries the new organization_id), the old
- * session is revoked, and the cookie is overwritten. The client then hard-
- * reloads so all React Query caches, Ably subscriptions, and the RLS GUC reset
- * cleanly to the new tenant.
- *
- * Audit: `signin.switch_org` (legacy audit log) + auth_events('switch_org').
- */
+/** POST /api/auth/switch-org */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -84,10 +65,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'NOT_A_MEMBER' }, { status: 403 });
     }
 
-    // Mint a session for the target-org profile (inherits its organization_id),
-    // reusing the current device kind/label so session policy is unchanged.
-    // "Keep me signed in" rides along too — switching workspaces is a re-mint
-    // on the same device, not a fresh sign-in decision.
+    // Mint a session for the target-org profile (inherits its organization_id), reusing the current device kind/label so session policy is…
     const session = await createSession({
       staffId: target.staffId,
       deviceKind: prev.deviceKind,

@@ -12,16 +12,7 @@ import {
 } from './my-day-tasks';
 import type { MyDayFeed, MyDayInterrupt } from './my-day-types';
 
-/**
- * Read-model tests for the Today spreadsheet's two derived facets: the chrome
- * search predicate and the KPI band's due horizon.
- *
- * The horizon half MUST pass under `TZ=UTC` — it compares CIVIL DAYS in the
- * warehouse zone, and a host-local comparison would put an operator outside
- * America/Los_Angeles on a different day than the floor
- * (`source-of-truth.md` → Dates & times). The deadlines below are chosen so the
- * UTC day and the Pacific day genuinely differ.
- */
+/** Read-model tests for the Today spreadsheet's two derived facets: */
 
 function workOrder(over: Partial<WorkOrderRow> & { id: string }): WorkOrderRow {
   return {
@@ -193,17 +184,7 @@ test('myDayTasksFromFeed keeps the feed ranking: do next → assigned → interr
   );
 });
 
-/**
- * Regression — found on the dogfood feed 2026-08-01 as a React duplicate-key
- * error (`task:REPAIR:3`).
- *
- * `aggregateMyDayFeed` derives `doNext` and `assigned` from ONE set:
- * `topWorkOrderForStaff` ranks the staffer's actionable rows and returns the
- * first, and `assigned` is that same predicate unfiltered. So the top row is
- * always in both, and a naive concat rendered it twice, with lane and
- * due-horizon counts inflated to match. Every fixture feed gave `doNext` a
- * unique id, which is exactly why no test caught it.
- */
+/** Regression — found on the dogfood feed 2026-08-01 as a React duplicate-key error (`task:REPAIR:3`). */
 test('a doNext row that is ALSO in assigned appears once, in the do_next lane', () => {
   const shared = workOrder({ id: 'REPAIR:3', title: 'Repair the deck' });
   const feed: MyDayFeed = {

@@ -64,15 +64,7 @@ async function searchLibrary(query: string): Promise<LibraryManual[]> {
   return (body.manuals ?? []).map((manual) => ({ ...manual, id: Number(manual.id) }));
 }
 
-/**
- * Every paper for one order — label, slip, paired manuals, kit inserts — with
- * a preview, Open / Print per paper, and a library search that pairs a manual
- * to the order's item number. `pack` adds the bench print-bundle verbs (the
- * same `POST /documents/print` the desk pack station uses; never re-buys).
- *
- * Role `dock-verb` (`mobile-sheet-roles.ts`): opened by a Paperwork verb from
- * the pick screen, the pack job, the pack camera or a pack history entry.
- */
+/** Every paper for one order — label, slip, paired manuals, kit inserts — with a preview, Open / Print per paper, and a library search that… */
 export function MobileOrderPaperworkSheet({
   open,
   onClose,

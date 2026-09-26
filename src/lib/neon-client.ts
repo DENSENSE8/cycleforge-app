@@ -1,27 +1,4 @@
-/**
- * Enhanced Neon DB client — server-side only.
- *
- * Provides:
- *   - `pool`         pg.Pool instance (connection-pooled, PST timezone set)
- *   - `query<T>`     Type-safe tagged-template helper (parameterised, injection-safe)
- *   - `queryRaw<T>`  Plain string + params helper for dynamic SQL
- *   - `queryOne<T>`  Returns first row or null
- *   - `queryCount`   Returns COUNT(*) as a number
- *   - `transaction`  BEGIN/COMMIT/ROLLBACK wrapper with automatic cleanup
- *
- * Usage:
- *   import { query, transaction, queryOne } from '@/lib/neon-client';
- *
- *   const orders = await query<Order>`SELECT * FROM orders WHERE id = ${id}`;
- *
- *   await transaction(async (client) => {
- *     await client.query('UPDATE orders SET status = $1 WHERE id = $2', ['done', id]);
- *     await client.query('INSERT INTO station_activity_logs (order_id) VALUES ($1)', [id]);
- *   });
- *
- * Environment:
- *   DATABASE_URL must be set. Never import this in client components.
- */
+/** Enhanced Neon DB client — server-side only. */
 
 import { Pool, type PoolClient, type QueryResultRow } from 'pg';
 
@@ -65,15 +42,7 @@ pool.on('error', (err) => {
 
 // ─── Tagged-template query helper ─────────────────────────────────────────────
 
-/**
- * Executes a parameterised SQL query via the connection pool.
- * Use tagged-template syntax for automatic parameter binding.
- *
- * @example
- * const rows = await query<Order>`
- *   SELECT * FROM orders WHERE id = ${orderId} AND status = ${'open'}
- * `;
- */
+/** Executes a parameterised SQL query via the connection pool. */
 export async function query<T extends QueryResultRow = QueryResultRow>(
   strings: TemplateStringsArray,
   ...values: unknown[]
@@ -92,13 +61,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   }
 }
 
-/**
- * Executes a query from a plain string + params array.
- * Prefer the tagged-template `query` above; use this for dynamic SQL.
- *
- * @example
- * const rows = await queryRaw<Order>('SELECT * FROM orders WHERE id = $1', [orderId]);
- */
+/** Executes a query from a plain string + params array. */
 export async function queryRaw<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params: unknown[] = [],
@@ -114,17 +77,7 @@ export async function queryRaw<T extends QueryResultRow = QueryResultRow>(
 
 // ─── Transaction helper ────────────────────────────────────────────────────────
 
-/**
- * Runs `fn` inside a database transaction.
- * Automatically COMMITs on success and ROLLBACKs on any thrown error.
- *
- * @example
- * const result = await transaction(async (client) => {
- *   await client.query('UPDATE orders SET status = $1 WHERE id = $2', ['done', id]);
- *   await client.query('INSERT INTO station_activity_logs (order_id) VALUES ($1)', [id]);
- *   return { success: true };
- * });
- */
+/** Runs `fn` inside a database transaction. */
 export async function transaction<T>(
   fn: (client: PoolClient) => Promise<T>,
 ): Promise<T> {

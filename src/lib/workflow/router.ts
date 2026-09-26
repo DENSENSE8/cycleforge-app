@@ -1,14 +1,4 @@
-/**
- * Workflow engine — edge router.
- *
- * Conditional routing is pure data: given the output port a node fired, find
- * the edge whose (sourceNode, sourcePort) matches and return its targetNode.
- * The "if inspection fails -> repair" rule is just an edge from the inspection
- * node's `fail` port to the repair node — no branching code.
- *
- * `selectNextTarget` is pure (in-memory edges) so it's trivially unit-testable;
- * the DB-backed lookup lives in the Drizzle store (store.ts).
- */
+/** Workflow engine — edge router. */
 
 export interface WorkflowEdgeLike {
   sourceNode: string;
@@ -16,13 +6,7 @@ export interface WorkflowEdgeLike {
   targetNode: string;
 }
 
-/**
- * Resolve the next node for (sourceNode, sourcePort) from an in-memory edge set.
- * Returns null when no edge matches (-> the item has reached a terminal node).
- *
- * If multiple edges share the same (sourceNode, sourcePort) the first wins; the
- * canvas should prevent fan-out from a single port, but we stay deterministic.
- */
+/** Resolve the next node for (sourceNode, sourcePort) from an in-memory edge set. */
 export function selectNextTarget(
   edges: readonly WorkflowEdgeLike[],
   sourceNode: string,
@@ -42,17 +26,7 @@ export interface PortFanOut {
   targets: string[];
 }
 
-/**
- * Ambiguity guard for first-match-wins routing.
- *
- * `selectNextTarget` is deterministic (first matching edge wins) but SILENT
- * about ambiguity: if an operator wires two edges off the same output port,
- * runtime quietly takes the first and the second never fires. This finds those
- * fan-outs so the Studio can flag them — it does NOT change routing (the runtime
- * still first-match-wins); it only makes the ambiguity visible.
- *
- * Pure (in-memory edges), so the diagnostics linter and tests share it.
- */
+/** Ambiguity guard for first-match-wins routing. */
 export function findPortFanOuts(edges: readonly WorkflowEdgeLike[]): PortFanOut[] {
   const byPort = new Map<string, PortFanOut>();
   for (const e of edges) {

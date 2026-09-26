@@ -1,9 +1,4 @@
 // Single source of truth for inventory velocity-tier (A/B/C/D) tones.
-//
-// Nested meta: `bg` (solid dot/segment fill) + `ring` (pastel chip bg) + label.
-// Single surface today (features/operations/VelocityAndDeadStock). Values
-// preserved verbatim; hues: A=success, B=warning, C=orange (slow), D=danger
-// (dead). src/lib is in Tailwind's content globs.
 
 export type VelocityTier = 'A' | 'B' | 'C' | 'D';
 

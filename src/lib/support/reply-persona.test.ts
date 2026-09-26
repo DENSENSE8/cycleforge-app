@@ -26,12 +26,7 @@ test('the system prompt opens with the resolved clause', () => {
   assert.match(prompt, /Never invent model numbers/);
 });
 
-/**
- * The regression this file exists for: a hardcoded brand in shared
- * multi-tenant code. A second tenant on that prompt got a model claiming to
- * work for a company they have no relationship with. Shrink-only — a vendor
- * name must never come back into the drafting path.
- */
+/** The regression this file exists for: */
 test('no vendor brand is hardcoded anywhere in the drafting path', () => {
   for (const file of ['./src/lib/support/suggest-reply.ts', './src/lib/support/reply-persona.ts']) {
     const src = readFileSync(file, 'utf8');

@@ -13,16 +13,7 @@ const SERIAL_MATCH_VALUES: readonly SerialCompareOutcome[] = [
   'no_shipped_serial',
 ];
 
-/**
- * POST /api/receiving/log-serial
- * Body: { serial_number, receiving_id?, order_number?, shipped_serial?, serial_match?, condition_grade? }
- *
- * Log a received serial that had NO platform/order match into the system for
- * investigation — the no-dead-end counterpart to the Order # compare. Find-or-
- * creates the serial_units row (canonical serial registry) and records a NOTE +
- * signal capturing the order it was compared against and the match verdict, so
- * the unmatched serial is tracked rather than dropped. No stock/quantity change.
- */
+/** POST /api/receiving/log-serial Body: */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json().catch(() => ({}));

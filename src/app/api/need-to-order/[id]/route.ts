@@ -12,10 +12,7 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await req.json();
 
-    // Tenant isolation: thread the caller's org so updateNeedToOrderRequest
-    // does its existence-check + UPDATE under `WHERE id=$1 AND organization_id=$2`.
-    // A request owned by another tenant yields no row → throws 'Not found' →
-    // mapped to a 404 below (org-ownership 404, never 403).
+    // Tenant isolation:
     await updateNeedToOrderRequest(
       id,
       {
@@ -49,11 +46,7 @@ export async function DELETE(
     const gate = await requireRoutePerm(req, 'replenish.create_po');
     if (gate.denied) return gate.denied;
     const { id } = await context.params;
-    // Tenant isolation: thread the caller's org so the cancel transition
-    // selects/UPDATEs replenishment_requests under `id=$1 AND organization_id=$2`
-    // and stamps replenishment_status_log.organization_id (parent-derived).
-    // A request owned by another tenant yields no row → throws 'not found' →
-    // mapped to a 404 below (org-ownership 404, never 403).
+    // Tenant isolation:
     await cancelNeedToOrderRequest(id, 'staff', gate.ctx.organizationId);
     return NextResponse.json({ success: true });
   } catch (error: any) {

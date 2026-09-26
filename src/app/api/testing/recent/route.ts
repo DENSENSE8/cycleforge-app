@@ -2,20 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/testing/recent
- *
- * Recently-Tested feed, sourced from the `testing_results` log written by
- * /api/serial-units/[id]/test. One row per verdict click. Serial number, SKU,
- * and condition are JOINed from serial_units (single source of truth), not
- * stored on testing_results.
- *
- * Query params:
- *   limit   — rows to return (default 50, max 200)
- *   tester  — filter to a single staff id
- *   sku     — filter to a single SKU (exact, matched against serial_units.sku)
- *   verdict — PASS | TEST_AGAIN | TESTING_FAILED
- */
+/** GET /api/testing/recent */
 export const GET = withAuth(async (request, ctx) => {
   const { searchParams } = new URL(request.url);
   const limit = Math.max(1, Math.min(200, Number(searchParams.get('limit') || 50)));

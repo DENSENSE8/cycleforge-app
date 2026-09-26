@@ -1,24 +1,6 @@
-/**
- * Work-session vocabulary — the shell's root discriminator.
- *
- * DEPENDENCY-FREE ON PURPOSE. `SURFACE_REGISTRY` (src/lib/stations/
- * surface-keys.ts) imports from here, and that module is read by client
- * bundles. Nothing in this file may reach `@/lib/db`, `tenancy/db`, or any
- * other server-only graph (build-gotchas.md → bundle altitude). The domain
- * writer lives next door in `work-sessions.ts`, which does.
- *
- * Table: `work_sessions` (src/lib/migrations/2026-08-22b_work_sessions.sql).
- * Spec: docs/warehouse-os/02-target-architecture.md §2.
- */
+/** Work-session vocabulary — the shell's root discriminator. */
 
-/**
- * A session is one of exactly two kinds. This two-value discriminator replaces
- * the seven competing "what kind of surface is this" vocabularies, and it is
- * the whole scan-ownership model:
- *
- *   'scan' → carries a scanType. EXACTLY ONE armed per org, app-wide.
- *   'task' → carries none.       N may be open at once.
- */
+/** A session is one of exactly two kinds. */
 export const SESSION_KINDS = ['scan', 'task'] as const;
 export type SessionKind = (typeof SESSION_KINDS)[number];
 
@@ -41,16 +23,7 @@ export function isScanSessionType(value: unknown): value is ScanSessionType {
   return typeof value === 'string' && (SCAN_SESSION_TYPES as readonly string[]).includes(value);
 }
 
-/**
- * What a surface declares about the session it starts. REQUIRED on every
- * `SurfaceDefinition` with **no default**: the closed `Record<SurfaceKey, …>`
- * then makes the compiler enumerate every surface that has not answered, so a
- * new surface cannot inherit "task" (or "scan") by omission.
- *
- * The union shape is what keeps `scanType` honest — a task binding has no slot
- * to put one in, which is the type-level twin of the DB's
- * `work_sessions_scan_type_chk` iff.
- */
+/** What a surface declares about the session it starts. */
 export type SurfaceSessionBinding =
   | { kind: 'scan'; scanType: ScanSessionType }
   | { kind: 'task' };
@@ -113,15 +86,7 @@ export interface WorkSessionPurpose {
   archivedAt: string | null;
 }
 
-/**
- * Uniform domain result — mapped straight onto HTTP by the route layer.
- *
- * THE FAILURE VARIANT CARRIES WHAT THE LOSER NEEDS TO RECONCILE. A bare 409
- * tells a client it lost without telling it to what, so the only recovery is a
- * guess or a full refetch — and on a floor network a guess is how two devices
- * end up ping-ponging the same session. Both extras are optional because they
- * are meaningful for exactly one error each.
- */
+/** Uniform domain result — mapped straight onto HTTP by the route layer. */
 export type SessionResult<T> =
   | ({ ok: true; status: 200 } & T)
   | {
@@ -130,40 +95,15 @@ export type SessionResult<T> =
       error: string;
       /** On VERSION_CONFLICT: the version the row actually holds right now. */
       currentVersion?: number;
-      /**
-       * On ARM_RACE_LOST: the session that actually owns the wedge. Two devices
-       * arming at once is normal, and the loser's next question is always
-       * "then who has it" — answering it here is what keeps a lost race a
-       * routine outcome instead of a 500.
-       */
+      /** On ARM_RACE_LOST: */
       armedSessionId?: number;
     };
 
-/**
- * The session audit vocabulary lives in `@/lib/audit-logs`
- * (`AUDIT_ENTITY.WORK_SESSION`, `AUDIT_ACTION.WORK_SESSION_*`) with every other
- * audit constant — dashboards key off those maps, so a second home for the same
- * values is a drift surface. It is NOT re-exported here: this module is
- * dependency-free by contract (see the file docblock) and its client consumers
- * have no business reaching the audit vocabulary.
- */
+/** The session audit vocabulary lives in `@/lib/audit-logs` (`AUDIT_ENTITY.WORK_SESSION`, `AUDIT_ACTION.WORK_SESSION_*`) with every other… */
 
 // ── work_session_intervals ──────────────────────────────────────────────────
 
-/**
- * `work_session_intervals.kind`. Mirrors work_session_intervals_kind_chk
- * (src/lib/migrations/2026-08-23e_work_session_intervals.sql).
- *
- * The two kinds TILE a session's wall clock: at any instant between
- * `started_at` and `ended_at` the session is in exactly one of them. That is
- * why 'active' rows are written explicitly rather than inferred as "the holes
- * between parks" — an active row is what carries the `staffId` of whoever
- * worked that particular stretch.
- *
- * NOT the same fact as `SessionStatus`. `status` is where the session is NOW;
- * these are where it has BEEN. An open session still has parked intervals from
- * an hour ago.
- */
+/** `work_session_intervals.kind`. */
 export const SESSION_INTERVAL_KINDS = ['active', 'parked'] as const;
 export type SessionIntervalKind = (typeof SESSION_INTERVAL_KINDS)[number];
 

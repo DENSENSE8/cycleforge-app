@@ -1,12 +1,4 @@
-/**
- * Unit tests for the claim-window presentation kind (Phase 5 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md).
- *
- * The point of this module is that ONE threshold drives both the escalation cron
- * and the grid chip, so the tests pin the shared boundary and the civil-date math.
- *
- * Run: `npx tsx --test src/lib/receiving/claim-window.test.ts`
- */
+/** Unit tests for the claim-window presentation kind (Phase 5 of docs/todo/ebay-delivered-not-unboxed-PLAN.md). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

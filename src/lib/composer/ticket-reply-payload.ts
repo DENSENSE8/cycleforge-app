@@ -1,16 +1,4 @@
-/**
- * The ONE builder for a Zendesk comment posted from a composer.
- *
- * Two hosts send ticket comments — the Support console chat composer and the
- * Unbox station Ticket composer — and before 2026-08-30 each carried its own
- * copy of the signature rule and only one of them knew about CCs. A reply that
- * is public from the station and public from the console must reach Zendesk as
- * the same payload; that is what this module is for.
- *
- * Photo attach (`photoIds` / `attachmentPreviews`) rides the same shape, so a
- * host that stages photos passes them through here rather than assembling a
- * second variant of the mutation vars.
- */
+/** The ONE builder for a Zendesk comment posted from a composer. */
 
 import { markdownToHtml } from '@/lib/support/markdown';
 import { resolveComposerCcPayload } from './ticket-cc';

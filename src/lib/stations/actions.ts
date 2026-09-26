@@ -1,10 +1,4 @@
-/**
- * Action registry — named, permission-gated mutations the station builder can
- * bind to block rows. Actions are thin descriptors over EXISTING API routes:
- * no business logic, no fetch wrappers with side decisions — the route
- * already owns validation, auth, idempotency and audit. The builder only
- * SELECTS among them; it never grants permissions.
- */
+/** Action registry — named, permission-gated mutations the station builder can bind to block rows. */
 
 import type { ActionDefinition, ActionMeta, DataSourceDefinition } from './contract';
 
@@ -74,12 +68,7 @@ const markEmailDone: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Mark a sourcing-queue row as actively being worked — wraps PATCH
- * /api/sourcing/alerts (id+status in the body; this route keys the id off the
- * body, not the path). Resolve/dismiss stay out of the station builder because
- * they're reason-required; "start sourcing" is the safe done-action.
- */
+/** Mark a sourcing-queue row as actively being worked — wraps PATCH /api/sourcing/alerts (id+status in the body; this route keys the id off… */
 const startSourcing: ActionDefinition = {
   id: 'sourcing.start_sourcing',
   label: 'Start sourcing',
@@ -92,14 +81,7 @@ const startSourcing: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Attach a carrier tracking number to a PO. Fires a custom window event
- * (`station:attach-tracking`) carrying the row's `po_id` + `po_number` so the
- * IncomingAttachTrackingPopover can pick it up and open pre-filled for this PO.
- *
- * The popover handles validation, the actual POST to /api/receiving/po/:id/attach-box,
- * and cache invalidation — the action descriptor only advertises the intent.
- */
+/** Attach a carrier tracking number to a PO. */
 const attachTracking: ActionDefinition = {
   id: 'incoming.attach_tracking',
   label: 'Attach tracking',
@@ -113,13 +95,7 @@ const attachTracking: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Link an eBay (or other non-Zoho) Incoming line to its Zoho PO — wraps
- * POST /api/receiving/inbound/link (Universal Incoming §7.2, §9.4). Like
- * attach-tracking, the target PO isn't on the row, so this fires a window event
- * (`station:link-zoho-po`) carrying the row's `id` + `po_number`/`po_id` so a PO
- * picker can open and the picked PO POSTs the merge. Descriptor-only here.
- */
+/** Link an eBay (or other non-Zoho) Incoming line to its Zoho PO — wraps POST /api/receiving/inbound/link (Universal Incoming §7.2, §9.4). */
 const linkZohoPo: ActionDefinition = {
   id: 'incoming.link_zoho_po',
   label: 'Link Zoho PO',
@@ -133,12 +109,7 @@ const linkZohoPo: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Re-pull the Incoming feed from its upstream sources (Zoho + eBay) for the
- * bound org — wraps POST /api/receiving-lines/incoming/refresh (§9.4). A
- * source-level refresh (no row target); the route re-syncs and the feed
- * invalidates.
- */
+/** Re-pull the Incoming feed from its upstream sources (Zoho + eBay) for the bound org — wraps POST /api/receiving-lines/incoming/refresh… */
 const refreshInbound: ActionDefinition = {
   id: 'incoming.refresh_inbound',
   label: 'Refresh from sources',
@@ -152,12 +123,7 @@ const refreshInbound: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Manually import an eBay buyer purchase onto the Incoming spine — wraps the
- * Phase 2 bridge route POST /api/receiving/inbound/import-ebay (§9.4). Fires a
- * window event (`station:import-ebay-order`) so a form opens for the order#,
- * account, tracking, and SKU. Descriptor-only here.
- */
+/** Manually import an eBay buyer purchase onto the Incoming spine — wraps the Phase 2 bridge route POST /api/receiving/inbound/import-ebay… */
 const importEbayOrder: ActionDefinition = {
   id: 'incoming.import_ebay_order',
   label: 'Import eBay order',
@@ -169,15 +135,7 @@ const importEbayOrder: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Rate-shop an order row via the ShipStation v2 engine. Like attach-tracking,
- * this needs UI (a rate list to pick from), so the descriptor advertises the
- * intent and a rate-shop sheet owns the flow: it POSTs the order-anchored
- * /api/shipping/order-rates ({ orderId }) — or /api/shipping/rates with an explicit
- * spec when there is no order — renders the RateQuoteResult, and hands the
- * picked rateId to `shipstation.buy_label`. Body omitted → descriptor-only
- * (window event `station:rate-shop` with { orderId }).
- */
+/** Rate-shop an order row via the ShipStation v2 engine. */
 const shipstationRateShop: ActionDefinition = {
   id: 'shipstation.rate_shop',
   label: 'Rate shop',
@@ -190,14 +148,7 @@ const shipstationRateShop: ActionDefinition = {
   confirm: 'none',
 };
 
-/**
- * Buy the picked rate — IRREVERSIBLE (charges the carrier account). The
- * rate-shop sheet supplies the rateId + a clientEventId idempotency key and
- * POSTs the order-anchored /api/shipping/order-labels/purchase ({ orderId, rateId,
- * clientEventId }) — or the generic /api/shipping/labels when there is no
- * order. Descriptor-only (same `station:rate-shop` sheet completes the
- * purchase); `confirm: 'soft'` because money moves.
- */
+/** Buy the picked rate — IRREVERSIBLE (charges the carrier account). */
 const shipstationBuyLabel: ActionDefinition = {
   id: 'shipstation.buy_label',
   label: 'Buy label',

@@ -20,11 +20,7 @@ export type QueueRowRecord = ShippedOrder & Record<string, unknown>;
 /** Which surface owns this table — drives status dots and tracking affordances. */
 export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
 
-/** Sort order for the date-banded / column-sorted queue.
- *  - `deadline` (default): bands by ship-by; most-overdue first within a day.
- *  - `newest`: bands by created date, most-recently-added first.
- *  - `priority`: retired synonym of `deadline`. URL parse maps it to deadline.
- *  - Column sorts (`title`…`tracking`): flat global order (see queue-row-compare). */
+/** Sort order for the date-banded / column-sorted queue. */
 export type OrdersQueueSort = QueueDisplaySort;
 
 /** Treat empty / whitespace / legacy `'1'` sentinel as missing. */

@@ -1,15 +1,4 @@
-/**
- * Thread cross-entity links — curated "this thread also concerns entity X"
- * connections (migration 2026-07-15_thread_crud_connections.sql). Modeled on
- * photo_entity_links. entity_type = the 7 canonical anchors + 'SKU'
- * (entity_id = sku_catalog.id, NEVER the SKU string — items-vs-sku_catalog trap).
- *
- * Derivable dots (order→tracking/serial) resolve read-side (resolve-thread-
- * connections.ts); THIS table is for manual / non-derivable links only.
- *
- * Parent existence is validated app-side here (polymorphic contract point 6),
- * never a DB trigger. Deps-injected so it unit-tests DB-free.
- */
+/** Thread cross-entity links — curated "this thread also concerns entity X" connections (migration 2026-07-15_thread_crud_connections.sql). */
 
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

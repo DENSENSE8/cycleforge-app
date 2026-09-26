@@ -1,14 +1,4 @@
-/**
- * DB-free unit tests for the AI provider demotion cache.
- *
- * The TTL and the timeout budgets are load-bearing numbers, not taste: both are
- * sized against the measured local-model behaviour on `prometheus` (~14s cold
- * MLX load, 60m idle unload — docs/todo/ai-provider-consolidation-HANDOFF.md).
- * Pin them so a future "tidy up the magic numbers" pass has to argue with a
- * test rather than silently turn local-first back into cloud-first.
- *
- * Run: node --import tsx --test src/lib/ai/provider-health.test.ts
- */
+/** DB-free unit tests for the AI provider demotion cache. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {

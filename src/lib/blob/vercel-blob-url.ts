@@ -1,11 +1,4 @@
-/**
- * Vercel Blob URL recognition — shared by upload/rename paths and the
- * same-origin preview proxies.
- *
- * Store hostnames have been both `*.public.blob.vercel-storage.com` and
- * `*.blob.vercel-storage.com`. Treat the whole suffix as ours so a store
- * rename cannot silently disable preview.
- */
+/** Vercel Blob URL recognition — shared by upload/rename paths and the same-origin preview proxies. */
 
 export function isVercelBlobHostname(host: string): boolean {
   const h = host.toLowerCase();

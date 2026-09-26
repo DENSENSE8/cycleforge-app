@@ -12,16 +12,7 @@ import { isAmazonRegion, DEFAULT_MARKETPLACE_ID } from '@/lib/amazon/constants';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-/**
- * POST /api/amazon/connect
- *
- * Bootstrap path (USAV / self-authorization): paste a refresh token obtained by
- * self-authorizing a private SP-API app. Verifies the connection works (LWA
- * exchange + getMarketplaceParticipations) BEFORE persisting, then stores the
- * per-seller creds in the vault + an amazon_accounts row. The public OAuth flow
- * (/api/amazon/oauth/*) is the multi-tenant path; this unblocks dogfooding while
- * the published Appstore app is in review.
- */
+/** POST /api/amazon/connect */
 const Body = z.object({
   refreshToken: z.string().trim().min(10),
   accountName: z.string().trim().min(1).max(80).optional(),

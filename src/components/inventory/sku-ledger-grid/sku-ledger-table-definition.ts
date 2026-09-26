@@ -1,11 +1,4 @@
-/**
- * `sku-ledger.sku` — the per-SKU stock-ledger table definition, capabilities
- * and surface descriptor.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`SKU_LEDGER_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `sku-ledger.sku` — the per-SKU stock-ledger table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -22,13 +15,7 @@ import {
   type SkuLedgerGridColumn,
 } from './sku-ledger-grid-layout';
 
-/**
- * A READ pane over an APPEND-ONLY store. `sku_stock_ledger` is authoritative
- * for SKU quantities (`sku_stock` is trigger-maintained from `SUM(delta)`), so
- * an entry is never edited or deleted — a correction is a new movement, written
- * by the station that counted it. There is no verb here and `multiSelect` stays
- * off: the gutter checkbox would be a control with no verb behind it.
- */
+/** A READ pane over an APPEND-ONLY store. */
 export const SKU_LEDGER_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -37,12 +24,7 @@ export const SKU_LEDGER_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeSkuLedgerGridDescriptor(
   columns: readonly SkuLedgerGridColumn[],
 ): GridSurfaceDescriptor<SkuLedgerTableRow, SkuLedgerGridColumn> {
@@ -85,17 +67,7 @@ export const SKU_LEDGER_TABLE_BINDING: TableSurfaceBinding<
   definition: SKU_LEDGER_TABLE_DEFINITION,
   columns: SKU_LEDGER_COMPOUND_COLUMNS,
   makeDescriptor: makeSkuLedgerGridDescriptor,
-  /**
-   * HONEST ABSENCE, ruled rather than defaulted. The retired table linked
-   * nowhere — every ref was plain mono text — and a ledger ENTRY has no record
-   * of its own to open: it is an immutable line whose every fact is already on
-   * the row. Its three refs point at three DIFFERENT documents (an order, a
-   * receiving line, a unit), so "open the row" has no single answer here; the
-   * unit reach-through that the allocations pane above it offers is a
-   * one-to-one row → record relationship this one does not have.
-   *
-   * It becomes `navigate` the day a movement has one canonical destination.
-   */
+  /** HONEST ABSENCE, ruled rather than defaulted. */
   recordPlane: {
     kind: 'none',
     reason:

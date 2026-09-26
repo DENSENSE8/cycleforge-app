@@ -143,10 +143,7 @@ export async function findOrderByTrackingKey(
   const normalizedLast8 = /^\d{8}$/.test(trackingLast8) ? trackingLast8 : null;
   if (!trackingKey18) return null;
 
-  // Tenant-aware path: scope the org-bearing `orders` table to the caller's org.
-  // Tracking ownership is `orders.shipment_id` OR `shipment_links` — packer_logs
-  // are not required. STN has no reliable org column, so the org-scoped order
-  // row is the tenant guard.
+  // Tenant-aware path:
   if (orgId) {
     const ownsStn = sqlOrderOwnsShipment('o', 'stn.id');
     // Prefer exact STN normalized join (same as packing / receiving).
@@ -510,10 +507,7 @@ export async function syncOrderExceptionsToOrders(
       continue;
     }
 
-    // Use the shared matcher so we pick up exact-canonical + last-8 fallback and the
-    // independent shipment_id lookup. Catches cases where the exception's
-    // tracking was stored slightly differently than the inbound sheet/Ecwid
-    // row (e.g. FedEx GS1 gun read vs short human STN).
+    // Use the shared matcher so we pick up exact-canonical + last-8 fallback and the independent shipment_id lookup.
     const order = await findOrderByTrackingKey(canonical, pool, orgId);
     if (!order) {
       const detail = {
@@ -537,9 +531,6 @@ export async function syncOrderExceptionsToOrders(
     progress({ type: 'exception', kind: 'resolved', row: detail });
 
     // Update status only — shipped state is derived from shipping_tracking_numbers.
-    // Tenant-aware path scopes the orders UPDATE + the packer_logs EXISTS probe
-    // to the caller's org (both tables carry organization_id). The stn join is
-    // integer surrogate-PK (stn.id = pl.shipment_id) so it stays bare.
     if (orgId) {
       await tenantQuery(
         orgId,

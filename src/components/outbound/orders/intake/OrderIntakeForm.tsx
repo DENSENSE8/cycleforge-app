@@ -2,33 +2,7 @@
 
 /**
  * **Order Intake & Acknowledgment** form body — shadcn-lane chrome.
- *
- * Plans: `docs/todo/order-intake-acknowledgment-PLAN.md` (acknowledgment) on
- * top of `docs/todo/non-scan-desk-chrome-caged-release-PLAN.md` (cage).
  * Operator override (2026-08-30, in chat): the intake session is a CENTERED
- * OVERLAY, not a right-rail leaf, and its chrome is built from the shadcn
- * `ui/*` primitives (`ui/input`, `ui/label`, `ui/checkbox`, `ui/badge`,
- * `ui/button`, the Popover+Command combobox) rather than the design-system
- * primitives. This file is the form BODY; `OrderIntakeOverlay` is the centered
- * host, and the CSV staging row inspector mounts this same body — one schema,
- * two densities, one field list (`CanonicalOrderIntake`).
- *
- * What did NOT move an inch (domain locks):
- *   - create path `POST /api/orders/add` (+ set-item-number, cage) via
- *     `useOrderTriage`;
- *   - gates render `evaluateReleaseGates` results, never re-derive;
- *   - label buying COMPOSES `BuyLabelSection` (rate-shop + purchase + void);
- *   - platform inference is `inferMarketplaceFromOrderId` via
- *     `intakePlatformState` — the regex lives in one place;
- *   - condition is the canonical `ConditionPills` control, staff pick is
- *     `StaffButtonGrid` → `saveWorkOrder`, the platform mark is `PlatformMark`
- *     (domain vocabulary controls, not chrome);
- *   - every locked `data-testid` (`order-intake-form` + the
- *     `order-triage-form` alias, `triage-*`, `intake-*`).
- *
- * Six sections, one scroll: Identity → Links → Documents → Shipping →
- * Assignment → Review. The jump rail keeps Release ≤3 interactions from form
- * open. `scrollIntoView({ block: 'start' })` only — no geometry tweens.
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -188,12 +162,7 @@ export function OrderIntakeForm({
     onDraftChange?.(draft);
   }, [draft, boundOrderId, onDraftChange]);
 
-  // Once bound, initialize the parcel inputs from the stored order — the DB is
-  // the SoT the rate-shop reads. Keyed on the id so a background gate refetch
-  // never clobbers half-typed digits, and SKIPPED entirely once the operator
-  // has typed into any parcel field: the first record fetch resolving MID-TYPE
-  // must not blank digits the operator already entered (the stored snapshot
-  // is older than their fingers by definition).
+  // Once bound, initialize the parcel inputs from the stored order — the DB is the SoT the rate-shop reads.
   const parcelSyncedForId = useRef<number | null>(null);
   const parcelTouched = useRef(false);
   useEffect(() => {
@@ -412,22 +381,7 @@ export function OrderIntakeForm({
     [packerId, persistAssignment, techId],
   );
 
-  /**
-   * Released is a terminal state for this form: the order is live work now and
-   * the operator's next move is the queue, not this panel.
-   *
-   * In an EFFECT, not in render. `onReleased` closes the overlay, which writes
-   * the URL — a router call during render is a state update during render, and
-   * the ref-guard trick only hides the warning, not the re-entrancy.
-   *
-   * TRANSITION-ONLY: "released" must be an event witnessed in this session,
-   * never a state the record LOADED with. A `?triage=<id>` deep link (or the
-   * duplicate "Open it" button) can bind to an order released long ago; firing
-   * `onReleased` on that first load would silently self-close the session the
-   * operator just asked for. So the first record seeds a baseline, and only a
-   * not-released → released flip after that baseline closes the host — the
-   * already-released view stays open and shows its own "Released" state.
-   */
+  /** Released is a terminal state for this form: */
   const releaseBaseline = useRef<'unseeded' | 'released' | 'not-released'>('unseeded');
   useEffect(() => {
     // Rebinding to a different order restarts the observation.
@@ -514,15 +468,7 @@ export function OrderIntakeForm({
                 />
                 <dl className="divide-y divide-border-hairline border-y border-border-hairline">
                   <IdentityRow label="Order number" value={record?.orderNumber} mono />
-                  {/*
-                    Item number and SKU sit ADJACENT on purpose. They are two
-                    different keys — a marketplace listing id vs the internal
-                    catalog key — but a single-identifier channel (Ecwid) writes
-                    one value into both, so the pair reads as confirmation when
-                    they match and as a question when they do not. `pairedWith`
-                    marks the disagreement instead of leaving the operator to
-                    diff two mono strings by eye.
-                  */}
+                  {/* Item number and SKU sit ADJACENT on purpose. */}
                   <IdentityRow
                     label="Item number"
                     value={record?.itemNumber}

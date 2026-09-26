@@ -7,15 +7,7 @@ import { listPhotosForEntity } from '@/lib/photos/service';
 import { resolveCurrentReceivingLineIds } from '@/lib/neon/serial-units-queries';
 import { resolveSkuIdentityTitle } from '@/lib/sku/sku-identity-law';
 
-/**
- * GET /api/serial-units/:id
- * Returns one serial_units row (the unit's lifecycle state) plus a recent
- * timeline of inventory_events for that unit — used by the mobile /m/u/:id page.
- *
- * Accepts a numeric serial_units.id, a serial_number string, OR a minted
- * unit_uid ({SKU}-{YYWW}-{SEQ6}) in the URL segment — the last is what a
- * scanned products-label QR carries. Resolved in that order.
- */
+/** GET /api/serial-units/:id Returns one serial_units row (the unit's lifecycle state) plus a recent timeline of inventory_events for that… */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -33,10 +25,7 @@ export async function GET(
       );
     }
 
-    // Phase 3: origin_source / origin_receiving_line_id come from the
-    // reconstruction view (single-row lookups below, so the join is cheap).
-    // origin_source is the semantic label ('tsn' where the column held
-    // 'legacy_tsn_backfill') — display-only, accepted.
+    // Phase 3: origin_source / origin_receiving_line_id come from the reconstruction view (single-row lookups below, so the join is cheap).
     const SELECT_COLS = `su.id, su.serial_number, su.normalized_serial, su.sku, su.sku_catalog_id,
                 su.unit_uid,
                 su.zoho_item_id, su.current_status::text AS current_status,
@@ -75,11 +64,7 @@ export async function GET(
       unit = r.rows[0] ?? null;
     }
 
-    // Print fallback (opt-in via ?orPrint=1): products labels are often
-    // unit-id labels that never registered a serial_units row, so the three
-    // lookups above miss. Synthesize a read-only unit from the most recent
-    // LABEL_PRINTED log for this unit_id, enriched with catalog + stock, so
-    // the Recent/History detail pane can still show SKU, condition, location.
+    // Print fallback (opt-in via ?orPrint=1):
     if (!unit && request.nextUrl.searchParams.get('orPrint') === '1') {
       const printView = await buildPrintFallback(raw, orgId);
       if (printView) return NextResponse.json(printView);
@@ -97,13 +82,7 @@ export async function GET(
       limit: 50,
     }, orgId);
 
-    // The line this unit is CURRENTLY on — origin_receiving_line_id freezes to
-    // the FIRST-ever receiving line (upsertSerialUnit COALESCEs it) and never
-    // advances when a unit ships, returns, and is re-received under a
-    // different PO/carton. Exposed alongside the raw column (never replacing
-    // it — some callers legitimately want the immutable origin) so "jump to
-    // this unit's PO" style lookups can read the field that's actually kept
-    // current.
+    // The line this unit is CURRENTLY on — origin_receiving_line_id freezes to the FIRST-ever receiving line (upsertSerialUnit COALESCEs it)…
     const currentLineMap = await resolveCurrentReceivingLineIds([Number(unit.id)], orgId);
     const currentReceivingLineId = currentLineMap.get(Number(unit.id)) ?? null;
 
@@ -124,10 +103,7 @@ export async function GET(
       receivedByName = r.rows[0]?.name ?? null;
     }
 
-    // Optional rich detail — events timeline (full, oldest-first), condition
-    // history, allocations, and tsn cross-refs. Mirrors the legacy
-    // /inventory?unit=<ref> page so the inventory shell can render
-    // the same view without bouncing through admin SSR.
+    // Optional rich detail — events timeline (full, oldest-first), condition history, allocations, and tsn cross-refs.
     const includeFull = request.nextUrl.searchParams.get('include') === 'full';
     let fullDetail: {
       events_full: unknown[];
@@ -207,10 +183,7 @@ export async function GET(
           )
           .then((r) => r.rows)
           .catch(() => [] as unknown[]),
-        // Resolve the denormalized `current_location` string back to its full
-        // bin row (room / zone / type) so the detail pane can show a rich
-        // location card instead of a bare code. NULL when the unit isn't
-        // stocked or the string doesn't match a known bin.
+        // Resolve the denormalized `current_location` string back to its full bin row (room / zone / type) so the detail pane can show a rich…
         locationName
           ? tenantQuery(
                 orgId,
@@ -343,10 +316,7 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
       )
       .then((r) => r.rows[0] ?? null)
       .catch(() => null),
-    // Authoritative QR→unit link: the LABELED inventory_event the print wrote
-    // carries the serial_unit_id it labeled (its scan_token is the QR payload
-    // and payload.unit_id is this unit id). This resolves even when the label
-    // was a reprint whose minted unit_id differs from the unit's own unit_uid.
+    // Authoritative QR→unit link:
     tenantQuery<{ serial_unit_id: number | null }>(
         orgId,
         `SELECT serial_unit_id
@@ -468,12 +438,7 @@ async function buildPrintFallback(unitId: string, orgId: OrgId) {
   };
 }
 
-/**
- * The unit's product title under the SKU identity law: the active Zoho item
- * name governs, then the catalog row the unit is bound to (by id, never by a
- * SKU-string guess), then the stock row's title. One round trip; `null` when
- * none carries a title so the phone can say so instead of painting the SKU.
- */
+/** The unit's product title under the SKU identity law: */
 async function resolveUnitTitle(
   orgId: OrgId,
   ref: { zohoItemId: string | null; skuCatalogId: number | null; sku: string | null },

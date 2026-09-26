@@ -1,20 +1,6 @@
 /**
  * Who a pick belongs to — the pure half of picker assignment.
- *
  * Operator 2026-09-25: "if the product is picked by the staff then auto assign
- * the same SKU to future picks, auto select back up pickers as well" and
- * "display all unassigned with skip, pass to other picker".
- *
- * Precedence, per order:
- *   1. `assigned` — the order's TEST assignee (a pass, or a Take from the
- *      board). A human decision outranks the automatic one.
- *   2. `sku`      — the owner of its SKU in `sku_staff_pairings`, written by
- *      that picker's first confirmed pick of the SKU (`confirmPick`).
- *   3. `backup`   — the primary above is out today (`listStaffOutOnDate`): the
- *      first auto-selected backup who is in gets it.
- *   4. nobody     — unassigned; every picker may be fed it.
- *
- * Pure: the feed and the board read rows, resolve here, then sort.
  */
 
 import type { PickOwner, PickStaffRef } from './directed-pick';

@@ -8,15 +8,7 @@ export type MonitorListBlockProps = {
   className?: string;
   /** Optional header row above the divide-y list. */
   header?: ReactNode;
-  /**
-   * `card` (default) draws the Monitor rollup's own shell. `flush` draws none —
-   * for a host that already owns a surface (the header find dropdown, the
-   * `/search` browse body), where the card is a card-inside-a-card.
-   *
-   * A named variant, not a `className` un-paint: `/search` was passing
-   * `rounded-none border-0 bg-transparent` to cancel three classes this
-   * component had just set, which is exactly the override the DS bans.
-   */
+  /** `card` (default) draws the Monitor rollup's own shell. */
   chrome?: 'card' | 'flush';
 };
 

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Controller for the Data-Wipe Station. Owns scan → resolve → method → verdict
- * state; the view (`DataWipeStation`) is presentational.
- *
- * Act-and-clear: the next scan replaces the standing card / outcome. Do not
- * start a dwell timer that hides finished work behind the operator.
- */
+/** Controller for the Data-Wipe Station. */
 
 import {
   useCallback,
@@ -18,10 +12,7 @@ import {
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { refreshDomains } from '@/lib/refresh/bus';
-// Type-only — the SoT enum lives in a server module (`'server-only'`). Importing
-// the value would pull that graph into the client bundle; the string-literal
-// union below is the client-side twin and stays in lockstep via the exhaustiveness
-// check on `WIPE_METHOD_META` in the view.
+// Type-only — the SoT enum lives in a server module (`'server-only'`).
 import type { WipeMethod } from '@/lib/tech/recordDataWipe';
 
 export interface ResolvedWipeUnit {
@@ -103,10 +94,7 @@ export function useDataWipeController() {
     setTimeout(() => inputRef.current?.focus(), 0);
   }, []);
 
-  // Focus-watchdog: re-grab the scan bar when the tab regains visibility —
-  // modals / tab-aways steal focus, the classic wedge failure mode (station.md
-  // §3). The global focus-scan hotkey (StationScanBar `hotkey`, default Insert)
-  // covers the manual case.
+  // Focus-watchdog:
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === 'visible') inputRef.current?.focus();

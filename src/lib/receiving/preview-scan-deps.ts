@@ -1,10 +1,4 @@
-/**
- * Server bindings for {@link previewUnboxScan}.
- *
- * Split from the core so the resolution ladder unit-tests with zero network:
- * `tenantQuery` pulls in `@/lib/db`, which carries `server-only` and a Neon
- * driver. Same seam as `reply-persona-deps.ts` / `analyze-core.ts`.
- */
+/** Server bindings for {@link previewUnboxScan}. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';

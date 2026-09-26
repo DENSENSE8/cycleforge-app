@@ -7,18 +7,7 @@ import type { ReceivingClaimController } from '../hooks/useReceivingClaimControl
 import { ClaimTemplateEditor } from './ClaimTemplateEditor';
 import { ClaimRecipientsField } from './ClaimRecipientsField';
 
-/**
- * Ticket details — Claim, then Subject, then Body · recipients.
- *
- * Platform and Type were editable here until 2026-08-30 (operator ruling). They
- * are carton CLASSIFICATION, not claim content: the workspace's Classify row
- * owns those writes (`useReceivingLineCore` → `useSourcePlatform` /
- * `useReceivingType`, plus the mobile Arrival flows), and a second editor for
- * them inside the claim form meant an operator could re-classify a carton while
- * filing a claim about it — two paths to one field, on a form whose job is the
- * claim. The subject still carries the carton's identity; it is seeded from the
- * template rather than patched from a select that is no longer here.
- */
+/** Ticket details — Claim, then Subject, then Body · recipients. */
 export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
   const claimTypeOptions = useMemo(
     () =>

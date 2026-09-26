@@ -1,22 +1,4 @@
-/**
- * Thin Stripe REST client.
- *
- * We deliberately avoid the `stripe` Node SDK so we don't pull in a 1MB
- * dependency for the four endpoints we actually call:
- *   - POST  /v1/customers
- *   - POST  /v1/checkout/sessions
- *   - POST  /v1/billing_portal/sessions
- *   - POST  /v1/webhook_endpoints   (optional, only for bootstrap script)
- *
- * Webhook signature verification is done by hand below — Stripe documents
- * the v1 scheme as HMAC-SHA256 over `<timestamp>.<raw body>` keyed by the
- * webhook signing secret.
- *
- * Credentials are read from the per-tenant integrations vault when an orgId
- * is provided, falling back to the platform STRIPE_* env vars otherwise.
- * Platform creds are used for the public signup flow (before a tenant
- * exists) and for billing actions.
- */
+/** Thin Stripe REST client. */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getIntegrationCredentials, type StripeCredentials } from '../integrations/credentials';
@@ -57,11 +39,7 @@ async function stripeRequest<T>(
     headers: {
       Authorization: `Bearer ${creds.secretKey}`,
       'Content-Type': 'application/x-www-form-urlencoded',
-      // Pin the API version so a freshly-created live account doesn't default
-      // to a newer version that moves current_period_start/end off the
-      // subscription root (2025-03-31+ relocated them onto items.data[]).
-      // The webhook reads them from the root, so an unpinned account would
-      // persist NULL periods and the billing page would render "—".
+      // Pin the API version so a freshly-created live account doesn't default to a newer version that moves current_period_start/end off the…
       'Stripe-Version': '2024-06-20',
       // Idempotency-Key is per-request; callers should set it via the
       // body.idempotency_key key when retries matter (we add it
@@ -78,12 +56,7 @@ async function stripeRequest<T>(
 
 // ─── Public helpers ────────────────────────────────────────────────────────
 
-/**
- * Report one AI-usage meter event (Stripe Billing Meters). `value` is the
- * BILLED amount in integer cents; `eventName` must match the Meter's
- * event_name configured in the Stripe dashboard. Platform credentials only —
- * AI margin billing is platform revenue, never a tenant's own Stripe.
- */
+/** Report one AI-usage meter event (Stripe Billing Meters). */
 export async function reportAiUsageMeterEvent(input: {
   eventName: string;
   stripeCustomerId: string;
@@ -165,15 +138,7 @@ export async function createBillingPortalSession(input: CreatePortalSessionInput
 
 // ─── Webhook signature verification ────────────────────────────────────────
 
-/**
- * Verify a Stripe webhook signature header.
- *
- * Signature scheme: `t=<unix>,v1=<hex hmac sha256 of `${t}.${rawBody}`>`
- * https://stripe.com/docs/webhooks/signatures
- *
- * Tolerance defaults to 5 minutes — rejects replays where Stripe's clock
- * and ours differ by more than that.
- */
+/** Verify a Stripe webhook signature header. */
 export function verifyStripeSignature(args: {
   rawBody: string;
   signatureHeader: string | null;

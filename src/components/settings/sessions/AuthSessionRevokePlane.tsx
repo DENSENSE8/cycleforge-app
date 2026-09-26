@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Revoke confirm plane for /settings/sessions — stage-overlay over the table
- * (recordPlane: stage-overlay). The table stays mounted underneath, so an
- * admin can still read the row they are about to kill.
- *
- * Callers: SessionsSection. Replaces the desk's bare `window.confirm`, which
- * named neither the staffer nor the device and could not say what revoking
- * actually does.
- */
+/** Revoke confirm plane for /settings/sessions — stage-overlay over the table (recordPlane: */
 
 import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';

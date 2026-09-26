@@ -5,18 +5,7 @@ import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
 import { workflowDefinitions, workflowNodes } from '@/lib/drizzle/schema';
 import { getNode, hasNode } from '@/lib/workflow';
 
-/**
- * GET /api/catalog/workflow-nodes
- *
- * Flat list of the org's workflow-graph nodes, each enriched with the engine
- * registry's human label. Feeds the catalog type editor's "drive a custom flow"
- * picker (Phase 5) — binding a `types.workflow_node_id` to a node so that flow
- * routes items through a custom node-graph (the "own repair-service flow").
- *
- * Read-only; grouped by the definition the node lives in so the picker can show
- * "<definition> · <node label>". Same registry-driven enrichment as
- * /api/studio/graph so new node types appear without touching this route.
- */
+/** GET /api/catalog/workflow-nodes */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

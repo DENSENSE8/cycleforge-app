@@ -7,13 +7,7 @@ export default function MobileShellLayout({ children }: { children: React.ReactN
   return (
     <>
       <RedesignedMobileShell>{children}</RedesignedMobileShell>
-      {/*
-        Capture-upload status — the completion/failure SoT for background photo
-        uploads (Station law: a card, not a toast). Mounted here rather than in
-        `m/layout.tsx` because every capture studio's `returnHref` lands in this
-        group, while the sibling `(immersive)` group IS the fullscreen camera —
-        a dock over a live viewfinder would cover the frame being composed.
-      */}
+      {/* Capture-upload status — the completion/failure SoT for background photo uploads (Station law: */}
       <CaptureUploadDock />
     </>
   );

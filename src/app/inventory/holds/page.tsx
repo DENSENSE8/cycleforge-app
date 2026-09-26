@@ -17,59 +17,10 @@ export const dynamic = 'force-dynamic';
 
 /**
  * /inventory/holds
- *
- * Operations tool for Phase 7's quarantine workflow.
- *
- *   - Hold form (top): enter a serial_unit_id or normalized serial,
- *     a reason; submits to holdUnit().
- *   - Held-units table: every serial_units row where current_status =
- *     'ON_HOLD', as the slot `DataTable` (`admin-holds` PRODUCT_TABLES peer)
- *     mounted in `HeldUnitsTable`. Release is a ROW VERB that opens
- *     `HoldReleasePlane`, whose form posts releaseAction() below.
- *
- * Off `AdminTable` 2026-09-12 (Wave D). The seven hand-written column objects
- * are gone — one of them a `<form>` carrying a `<select>` and a raw green
- * button that released a quarantined unit with no confirmation. Header sort,
- * the Fields picker and org-bindable columns arrive from the engine, none of
- * which that engine could ever grow. Where each retired cell's fact landed
- * lives in `@/lib/tables/field-catalog/admin-holds`.
- *
- * Both server actions use the same code path as
- * /api/serial-units/[id]/{hold,release}.
- *
- * Permission gate: `admin.view` at render time, and `sku_stock.adjust` inside
- * EACH server action. A server action is its own POST entrypoint — the page's
- * render-time guard does not gate it, so "the action enforces it implicitly by
- * being in this admin-only page" (what this docblock claimed until 2026-08-21)
- * was never true. `sku_stock.adjust` is the permission the twin routes
- * /api/serial-units/[id]/{hold,release} enforce, and `hold.ts` names the
- * permission gate a caller responsibility.
- *
- * Tenant scoping: the held-units read and both server actions' ref lookups go
- * through `tenantQuery(orgId, …)` with an explicit `organization_id` predicate,
- * and `orgId` comes from the auth ctx (`requirePermission` →
- * `user.organizationId`) — never from the form body. Nothing an operator types
- * here is org-bearing: a unit id, a normalized serial and a status enum all
- * collide across tenants, so a bare owner-pool read listed every tenant's held
- * units and let an admin in org A hold or release a unit in org B (RLS does not
  * bite on the owner pool). Live until 2026-08-21.
- *
- * Note the actions resolve the ref to an org-owned `serial_units.id` BEFORE
- * calling `holdUnit` / `releaseUnit` — those helpers take no orgId of their own
- * (a tracked follow-up in `src/lib/inventory/hold.ts`), so this page's ownership
- * check is what keeps the write inside the caller's tenant.
  */
 
-/**
- * The units in quarantine, newest hold first.
- *
- * The row shape is `@/lib/inventory/held-unit-row` — it crosses the RSC
- * boundary into `HeldUnitsTable`, so `held_at` stops being a `Date` and the two
- * facts nothing paints (`condition_grade`, the unit's own `notes`) stop here.
- * `held_by_staff_id` is the one column this port added: the lateral already
- * joined `staff` on it, and a PERSON fact needs the id to draw an avatar rather
- * than the retired cell's `name ?? 'system'` string.
- */
+/** The units in quarantine, newest hold first. */
 async function loadHeldUnits(orgId: OrgId): Promise<HeldUnitRow[]> {
   try {
     const r = await tenantQuery<HeldUnitQueryRow>(
@@ -105,12 +56,7 @@ async function loadHeldUnits(orgId: OrgId): Promise<HeldUnitRow[]> {
   }
 }
 
-/**
- * Resolve a "unit id or serial" operator ref to a serial_units.id the CALLER'S
- * ORG owns, or 0. Both branches carry the org predicate: the numeric branch
- * matters just as much as the serial one, since a raw id typed into the form
- * (or posted straight at the server action) is otherwise a cross-tenant handle.
- */
+/** Resolve a "unit id or serial" operator ref to a serial_units.id the CALLER'S ORG owns, or 0. */
 async function resolveOwnedUnitId(refRaw: string, orgId: OrgId): Promise<number> {
   const numeric = Number(refRaw);
   const byId = Number.isInteger(numeric) && numeric > 0;
@@ -169,10 +115,7 @@ async function releaseAction(formData: FormData): Promise<void> {
 
   const user = await requirePermission('sku_stock.adjust', { enforce: true });
 
-  // The id arrives from the form, so re-check ownership before the write. The
-  // org is threaded into releaseUnit() as well, so the unit lock and the
-  // RELEASED_HOLD event are both scoped — this pre-check is defence in depth,
-  // not the only boundary any more.
+  // The id arrives from the form, so re-check ownership before the write.
   const serialUnitId = await resolveOwnedUnitId(String(id), user.organizationId);
   if (serialUnitId <= 0) return;
 

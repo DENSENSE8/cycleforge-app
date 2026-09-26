@@ -1,10 +1,4 @@
-/**
- * Map workplace timeline *data* onto FIND stream events.
- *
- * Callers: SearchOrderDossier / SearchUnitDossier / SearchReceivingDossier /
- * SearchGenericDossier. Does not import EventTimeline or OrderTimelineSection.
- * User: Phase 2 — timeline as the document on FIND.
- */
+/** Map workplace timeline *data* onto FIND stream events. */
 
 import { photoStageLabel, stageFromPhotoType, type PhotoEvidenceStage } from '@/lib/photos/stages';
 import type { ReceivingPhotoRow } from '@/hooks/useReceivingPhotos';
@@ -152,22 +146,7 @@ export function findEventsFromTimelineRows(rows: readonly TimelineEventRow[]): F
   );
 }
 
-/**
- * Conversation messages → `note` faces.
- *
- * `thread_messages` (via `entity_threads`) is the one note spine that spans
- * every anchor — ORDER, SERIAL_UNIT, RECEIVING, REPAIR, WARRANTY_CLAIM. The
- * order timeline route has always fetched it (`OrderTimelinePayload.threadMessages`)
- * and `presentOrderFindEvents` dropped it on the floor, so the `note` kind
- * only ever appeared for the two `inventory_events` types in {@link NOTE_TYPES}
- * — i.e. almost never. Reading what is already on the wire costs no fetch.
- *
- * Visibility is the NOUN (an internal note and a customer-facing reply are not
- * the same fact), mirroring `threadMessagesToTimeline`'s map so the workplace
- * timeline and FIND never disagree about what a row is called. The body is a
- * preview: FIND confirms a record, it does not render a conversation, and the
- * interactive surface stays `ThreadPanel`. No composer, no write.
- */
+/** Conversation messages → `note` faces. */
 const THREAD_NOTE_NOUN: Record<string, string> = {
   internal: 'Note',
   public: 'Reply',
@@ -197,15 +176,7 @@ export function findEventsFromThreadMessages(
   return events;
 }
 
-/**
- * `order_notes` rows → `note` faces.
- *
- * The other note spine. `orders.notes` is one free-text column and was all the
- * stream ever saw; everything staff typed into the notes trail lived in this
- * TABLE and reached no face. Body is the note verbatim (trimmed) — an
- * operational note is short by nature, and truncating the one sentence that
- * explains a hold defeats the point.
- */
+/** `order_notes` rows → `note` faces. */
 export function findEventsFromOrderNotes(
   rows: readonly OrderNoteTimelineRow[],
 ): FindEvent[] {
@@ -227,18 +198,7 @@ export function findEventsFromOrderNotes(
   return events;
 }
 
-/**
- * `entity_signals` → `exception` faces.
- *
- * The "why" spine. Until now the stream could paint a held or failed row with
- * no reason attached, because the reason lives here and nothing read it. The
- * reason code is the TITLE (that is the word the floor uses) and the free-text
- * note is the body.
- *
- * `resolved` is deliberately left undefined: `entity_signals` records that
- * something was observed, not that it was cleared, and FIND must never imply a
- * resolution it cannot prove. Clearing stays a handoff.
- */
+/** `entity_signals` → `exception` faces. */
 export function findEventsFromSignals(
   rows: readonly EntitySignalTimelineRow[],
 ): FindEvent[] {
@@ -250,11 +210,7 @@ export function findEventsFromSignals(
     const kindLabel = String(row.signalKind ?? '').trim();
     const title = reason ? prettyType(reason) : kindLabel ? prettyType(kindLabel) : 'Signal';
     const note = String(row.notes ?? '').replace(/\s+/g, ' ').trim();
-    // `severity` is DELIBERATELY not painted. The column is a SMALLINT that
-    // 2026-07-03l_entity_signals.sql:59 calls "optional 0..n weighting;
-    // app-defined", and no legend for it exists anywhere in the repo — so
-    // "Severity 3" would be a number the floor cannot read. The reason code
-    // and the note already carry the meaning. Paint it when a legend exists.
+    // `severity` is DELIBERATELY not painted.
     events.push({
       id: `signal:${row.id}`,
       kind: 'exception',
@@ -416,13 +372,7 @@ export function findEventsFromUnitPhotos(rows: readonly UnitPhotoRow[]): FindEve
   ];
 }
 
-/**
- * Carton photos (`GET /api/receiving-photos`, the house carton read) grouped by
- * evidence stage — one evidence event per stage at the newest capture, thumbs
- * newest-first. Unclassified rows fold into one "Photos" event. In org-1 every
- * entity-linked photo sits on a RECEIVING row, so without this the carton
- * dossier never shows evidence.
- */
+/** Carton photos (`GET /api/receiving-photos`, the house carton read) grouped by evidence stage — one evidence event per stage at the… */
 export function findEventsFromReceivingPhotos(rows: readonly ReceivingPhotoRow[]): FindEvent[] {
   const byStage = new Map<PhotoEvidenceStage | 'unclassified', ReceivingPhotoRow[]>();
   for (const row of rows) {
@@ -501,21 +451,8 @@ export function findEventsFromPickSessions(
 }
 
 /**
+ * The operator's definition of a HOP (2026-09-12):
  * The operator's definition of a HOP (2026-09-12): the unit SHIPPED and came
- * back under the SAME order id. `payload.lifecycle` is already order-scoped,
- * so "same order id" is satisfied by construction — what this adds is the
- * ORDERING, because a RETURNED with no prior SHIPPED is an inbound return,
- * not a round trip, and must not light the Hops chip.
- *
- * Returns the ids of the RETURNED rows that close a round trip, so the caller
- * re-kinds exactly those rows (`exception` → `hop`) instead of minting a
- * duplicate face for an event already on the stream.
- *
- * KNOWN LIMIT, stated rather than faked: the operator's wording also requires
- * "the exact same product being unboxed". The unbox leg lives on the
- * RECEIVING spine and is not present in `OrderTimelinePayload`, so this
- * detects ship→return only. A return that was never unboxed will still count.
- * Closing that needs the carton spine joined into this payload.
  */
 function roundTripReturnIds(
   rows: ReadonlyArray<Pick<InventoryTimelineRow, 'id' | 'occurred_at' | 'event_type'>>,
@@ -577,10 +514,7 @@ export function presentOrderFindEvents(
           },
         ] satisfies FindEvent[])
       : [];
-  // A RETURNED that closes a ship→return loop is the operator's HOP, not a
-  // generic exception. Re-kind in place so the row keeps its stamp, actor and
-  // body and simply changes face — minting a second event would double-count
-  // the return in the outline.
+  // A RETURNED that closes a ship→return loop is the operator's HOP, not a generic exception.
   const roundTrips = roundTripReturnIds(payload.lifecycle);
   const lifecycle = findEventsFromInventory(payload.lifecycle).map((event) =>
     roundTrips.has(event.id)

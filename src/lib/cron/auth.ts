@@ -1,10 +1,4 @@
-/**
- * Cron auth + base-URL helpers.
- *
- * Lifted out of the old src/lib/qstash.ts when QStash was removed. Every cron
- * route guards with {@link isAuthorizedCronRequest}; Vercel injects
- * `Authorization: Bearer ${CRON_SECRET}` on each scheduled invocation.
- */
+/** Cron auth + base-URL helpers. */
 
 import { NextResponse } from 'next/server';
 
@@ -23,13 +17,7 @@ export function getAppBaseUrl(): string {
   return normalized;
 }
 
-/**
- * Vercel cron requests carry `Authorization: Bearer ${CRON_SECRET}`.
- * `x-vercel-cron` is metadata, not authentication: callers can forge it.
- *
- * NOTE: an empty/unset CRON_SECRET makes the Bearer path fail closed — set it
- * in the Vercel project env and redeploy (env changes only apply on redeploy).
- */
+/** Vercel cron requests carry `Authorization: */
 export function isAuthorizedCronRequest(headers: Headers): boolean {
   const secret = process.env.CRON_SECRET?.trim();
   if (!secret) return false;

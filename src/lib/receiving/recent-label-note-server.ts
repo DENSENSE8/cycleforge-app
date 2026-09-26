@@ -1,27 +1,4 @@
-/**
- * Server-only: the label face the bench WROTE most recently.
- *
- * SoT for Unbox notes-composer **Recent**:
- *   1. Two candidate sources, ACROSS THE ORG, both skipping the open carton:
- *      lines whose face was written most recently (`face_noted_at`), and the
- *      newest scanned cartons (the legacy source, which still answers for every
- *      row written before the face clock existed)
- *   2. Rank them on ONE axis — `COALESCE(face_noted_at, scanned_at)` — so a
- *      note typed today always outranks an older one, whatever the carton's
- *      scan time
- *   3. Within the winning carton, the freshest face wins — see
- *      {@link pickRecentFaceRow}
- *
- * Face text itself resolves through {@link pickLabelFaceNote}: `notes` (the
- * Unbox dock draft that drives the sticker center and gets stamped onto
- * `label_note` at carton print) before the older `label_note`.
- *
- * Table SoT: physical spine is `receiving_line` (singular). The legacy
- * plural compat view omits `label_note` — querying it for face text
- * throws and Recent paints nothing.
- *
- * Never device-local storage / MRU phrase bank.
- */
+/** Server-only: the label face the bench WROTE most recently. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -31,40 +8,9 @@ import {
   type RecentFaceRow,
 } from './recent-label-note';
 
-/**
- * WHY THE WALK IS ORG-WIDE, not "prefer my own scans" (ruled 2026-08-19):
- *
- * Recent repeats the phrase THIS BENCH just put on a sticker, and the bench is
- * shared — one operator scans cartons in at the dock, another unboxes and
- * labels them. Scoping the walk to `scanned_by = me` therefore answered with
- * the newest carton *I* scanned, which on a dogfood bench was **nine days
- * old**: the operator clicked Recent expecting yesterday's phrase and got a
- * sentence from the week before, then saved it onto the carton in hand.
- *
- * The old shape hid it — the org-wide walk existed only as a FALLBACK for an
- * operator with no scans at all, so a stale personal answer always won over a
- * fresh bench one. Staleness is the failure mode that costs a wrong sticker;
- * another operator's phrase from an hour ago never is.
- */
+/** WHY THE WALK IS ORG-WIDE, not "prefer my own scans" (ruled 2026-08-19): */
 
-/**
- * WHY THERE IS A SECOND CANDIDATE SOURCE (ruled 2026-08-19):
- *
- * The scan walk alone answers "the newest carton that has a note", which is not
- * the same question as "the note written most recently". An operator who works
- * cartons out of Recent / Queue instead of scanning each one in could type a
- * phrase and never see it again — a carton scanned last week sits far down a
- * walk ordered by scan time, however fresh its note is.
- *
- * `receiving_line.face_noted_at` (2026-08-19a) is the honest clock: it moves
- * only when the face text actually CHANGES, so it cannot be confused with
- * `updated_at`, which bumps on every condition / serial / qty patch and would
- * resurface an ancient sentence the moment someone grades an old carton.
- *
- * It is a SECOND source rather than a replacement because the column was never
- * backfilled — a pre-2026-08-19 row has no honest value to carry, so it keeps
- * ranking by its carton's scan time and nothing regresses for it.
- */
+/** WHY THERE IS A SECOND CANDIDATE SOURCE (ruled 2026-08-19): */
 
 /**
  * Enough rows to cover every line on the newest few scanned cartons. Scans are
@@ -72,12 +18,7 @@ import {
  */
 const CANDIDATE_LIMIT = 40;
 
-/**
- * How many recently-written faces to consider. Small on purpose: this is the
- * top of a partial index (`idx_receiving_line_face_noted_at`), and Recent only
- * ever shows one phrase — the rest exist so the carton-level pick below has its
- * siblings to choose from.
- */
+/** How many recently-written faces to consider. */
 const NOTED_FACE_LIMIT = 20;
 
 /**
@@ -87,14 +28,7 @@ const NOTED_FACE_LIMIT = 20;
  */
 const SCAN_WALK_LIMIT = 200;
 
-/**
- * Face note on the newest scanned tracking carton that has a non-empty
- * label/notes line. `excludeLineId` skips the open carton's tracking so
- * Recent never echoes the line you're already on.
- *
- * Walks scans (not “last scan then hope”) — a blank last carton yields the
- * prior scanned carton that does have a face note.
- */
+/** Face note on the newest scanned tracking carton that has a non-empty label/notes line. */
 export async function fetchMostRecentProcessedLabelNote(
   orgId: OrgId,
   opts: {

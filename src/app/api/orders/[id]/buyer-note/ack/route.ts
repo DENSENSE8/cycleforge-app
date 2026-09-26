@@ -6,21 +6,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { acknowledgeBuyerNote } from '@/lib/orders/buyer-note-interlock';
 
-/**
- * POST /api/orders/[id]/buyer-note/ack
- *
- * The operator read this order's marketplace buyer note — record it (who,
- * when, which text) so the pack / label interlock releases. The note hash is
- * taken from the row, never the body: a client cannot acknowledge words it
- * was not shown. Idempotent per (order, note, staffer). See
- * `src/lib/orders/buyer-note-interlock.ts`.
- *
- * Permission: packing.complete_order OR shipping.buy_label — the two verbs the
- * interlock holds. withAuth's single `permission` option cannot express an OR,
- * so the pair is enforced in-handler (403 + auth_audit), the sanctioned
- * pattern of `/api/orders/[id]/substitute`; the manifest records this file as
- * authed-no-permission, pinned in route-permission-manifest.test.ts.
- */
+/** POST /api/orders/[id]/buyer-note/ack */
 const ACK_PERMISSIONS = ['packing.complete_order', 'shipping.buy_label'] as const;
 
 export const POST = withAuth(async (request, ctx) => {

@@ -1,9 +1,6 @@
 /**
+ * Bench log → helpdesk ticket (operator 2026-09-24:
  * Bench log → helpdesk ticket (operator 2026-09-24: "auto update ticket from
- * the repair log"). Each new bench entry on a repair whose ticket link is
- * `linked` is posted to that ticket after the entry commits. Pure rules only:
- * the note text, who may be posted, and what the timeline says about it. The
- * I/O lives in `repair-action-ticket-post.ts`.
  */
 import type { RepairTicketLink } from '@/lib/repair/ticket-link';
 import { REPAIR_DONOR_SOURCE_COPY, repairActionLabel, type RepairActionRecord } from '@/lib/repair/repair-actions';
@@ -33,12 +30,7 @@ export type TicketPostEligibility =
   | { ok: true; ticketId: number }
   | { ok: false; reason: 'not-linked' | 'posted' | 'in-flight' };
 
-/**
- * May this entry be posted now? Only to a `linked` ticket, never twice (a
- * `posted` status or a stored comment id ends it), and never while another
- * attempt is still inside its window. The claim UPDATE in
- * `repair-action-ticket-post.ts` enforces the same rule atomically.
- */
+/** May this entry be posted now? */
 export function ticketPostEligibility(
   link: RepairTicketLink | null,
   post: TicketPostFacts,

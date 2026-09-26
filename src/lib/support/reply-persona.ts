@@ -1,17 +1,4 @@
-/**
- * Tenant framing for the support-reply drafter.
- *
- * `SUPPORT_SYSTEM_PROMPT` used to name ONE vendor's brand — "a senior
- * customer-support agent for a <vendor> audio reseller", with the grounding
- * block citing that vendor's service documents. This is shared multi-tenant
- * code: the dogfood tenant is not the product, so a second tenant on it got a
- * model impersonating a brand they do not sell — the same class of defect as a
- * hardcoded vendor sentence in operator copy, but pointed at a customer.
- *
- * The framing is now RESOLVED per org, exactly like a runtime provider label,
- * and its fallback is generic rather than anyone's brand. This module is pure so
- * the prompt shape is testable without a DB; `reply-persona-deps.ts` reads it.
- */
+/** Tenant framing for the support-reply drafter. */
 
 export interface SupportReplyPersona {
   /** The tenant's own business name. Never another company's. */

@@ -1,40 +1,4 @@
-/**
- * Bulk purchase-receive backfill — the ONE path that pushes locally-received
- * lines into the inventory provider.
- *
- * ## Why this exists
- *
- * Until 2026-09-23 the push rode the `mark-received-po` request tail: one
- * `GET /purchaseorders/{id}` + one `POST /purchasereceives` per receive, with
- * the station composer parked on "Syncing to inventory…" until an Ably verdict
- * landed. The transport makes that indefensible — `zoho/httpClient.ts` enforces
- * 80 req/min, a 750 ms floor between dispatches, and a 55 s timeout on
- * `/purchasereceives`. A twelve-line carton spent ~18 s in forced spacing alone,
- * for work the operator cannot act on and does not need to watch.
- *
- * `createPurchaseReceive` has always accepted N lines per PO in one POST, so
- * the fix is not a new Zoho capability — it is grouping. One receive per PO
- * per run instead of one per line collapses that same carton to two calls.
- *
- * ## The worklist is DERIVED, never a queue table
- *
- * "Locally DONE + Zoho-linked + no `zoho_purchase_receive_id` yet" IS the
- * backlog. That means no outbox to dual-write, no rows to leak when a run dies
- * mid-flight, and `pending → 0` doubles as the progress readout the Backfill
- * button renders. A crashed run self-heals on the next tick because nothing was
- * ever checked out.
- *
- * The only state a derived worklist cannot hold is retry state, so
- * `receiving_line_zoho` carries `zoho_receive_attempts` /
- * `_attempted_at` / `_error` (2026-09-23c). They exist for one reason: a PO
- * Zoho permanently refuses must not be retried on every tick ahead of the POs
- * behind it. Same lesson as `order_ingest_queue.attempts`.
- *
- * ## Callers
- *   - `GET /api/cron/zoho/receive-backfill` — the scheduled drain (all orgs).
- *   - `POST /api/zoho/receive-backfill`     — the operator's Backfill button.
- * Both run the same function; the button is a cadence override, not a fork.
- */
+/** Bulk purchase-receive backfill — the ONE path that pushes locally-received lines into the inventory provider. */
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getInventoryProvider } from '@/lib/integrations/inventory';
@@ -50,16 +14,7 @@ import { formatPSTTimestamp } from '@/utils/date';
 /** Attempts after which a line stops being claimed and waits for a human. */
 export const MAX_RECEIVE_ATTEMPTS = 6;
 
-/**
- * Backoff step. A failed line waits `attempts × this` before it is claimed
- * again — a linear ladder (2, 4, 6, … minutes) that reaches the ceiling below
- * in about 40 minutes.
- *
- * Short and linear on purpose: the two failures this drain actually sees are
- * "Zoho is throttling" (clears in a minute) and "this PO line has no catalog
- * item_id" (never clears without a human). An exponential ladder would only
- * punish the first, and the attempt ceiling already retires the second.
- */
+/** Backoff step. */
 const BACKOFF_STEP_MINUTES = 2;
 
 export interface PendingReceiveLine {
@@ -147,19 +102,7 @@ const defaultDeps: BackfillDeps = {
   now: formatPSTTimestamp,
 };
 
-/**
- * The pending-push predicate, shared by the count, the claim and the mirror
- * settle so the number the operator watches and the rows the drain works can
- * never disagree.
- *
- * `rl.workflow_status = 'DONE'` is the local receive: the floor committed the
- * units, the ledger moved, and only the provider acknowledgement is missing.
- *
- * Both Zoho columns must be NULL. `zoho_purchase_receive_id` means WE minted a
- * receive; `zoho_receive_settled_at` is the weaker claim that the provider is
- * at or ahead of us — which is how a PO Zoho reports already-received leaves
- * the queue even though there is no receive id to write (2026-09-23d).
- */
+/** The pending-push predicate, shared by the count, the claim and the mirror settle so the number the operator watches and the rows the… */
 const PENDING_PREDICATE = `
         rl.organization_id = $1
     AND rl.workflow_status = 'DONE'
@@ -212,13 +155,7 @@ export async function getReceiveBacklog(
   };
 }
 
-/**
- * Claim the next PO groups to push.
- *
- * Ordered by PO so a group is never split across runs, and filtered on the
- * backoff clock + attempt ceiling so a permanently-refused PO drops out of
- * rotation instead of holding the head of the queue.
- */
+/** Claim the next PO groups to push. */
 export async function listPendingReceiveGroups(
   orgId: OrgId,
   opts: { maxGroups?: number } = {},
@@ -287,14 +224,7 @@ export async function listPendingReceiveGroups(
   return [...byPo.values()];
 }
 
-/**
- * Remaining quantity per PO line: ordered − already warehouse-received.
- *
- * Moved here verbatim from `mark-received-po` when the push left the request
- * tail. PO `quantity_received` is the *invoiced* count, not the warehouse one,
- * so the pending math has to read the provider's receive totals or it will
- * re-post quantities Zoho already holds.
- */
+/** Remaining quantity per PO line: */
 async function pendingLineItems(
   inventory: InventoryProvider,
   poDetail: { purchaseorder?: { line_items?: unknown[] } },
@@ -365,17 +295,7 @@ function isAlreadyReceived(message: string): boolean {
   );
 }
 
-/**
- * The credential is gone, not the work.
- *
- * `getInventoryProvider` hands back an adapter without touching credentials —
- * the vault read happens inside the first call. So a revoked or expired
- * connection surfaces HERE, past the null-provider guard, and the naive
- * reading is "this PO failed". It is not: nothing was attempted, and treating
- * it as a failure drives EVERY pending line to the attempt ceiling within one
- * backoff ladder (~40 min) while an operator is re-authorizing. The lines
- * would then stay parked after the reconnect, needing a manual counter reset.
- */
+/** The credential is gone, not the work. */
 function isNotConnected(err: unknown): boolean {
   if (err instanceof ZohoNotConnectedError) return true;
   const message = err instanceof Error ? err.message : String(err);
@@ -387,16 +307,7 @@ function isTerminalPoStatus(status: unknown): boolean {
   return s === 'received' || s === 'billed' || s === 'closed';
 }
 
-/**
- * Take a line out of the backlog.
- *
- * `zoho_receive_settled_at` is what ends the claim — NOT the receive id, which
- * several legitimate provider paths never hand back (`markasreceived` on a
- * billed PO, the "already created a receive" response, a PO Zoho reports
- * terminal before we call). Keying the predicate on the id alone left exactly
- * those lines cycling through the queue until they retired at the attempt
- * ceiling as if they had failed.
- */
+/** Take a line out of the backlog. */
 async function stampSettled(
   orgId: OrgId,
   lineIds: number[],
@@ -421,21 +332,7 @@ async function stampSettled(
   );
 }
 
-/**
- * Settle every pending line whose PO the local mirror ALREADY reports terminal,
- * in one statement and zero provider calls.
- *
- * This is not an optimization at the margin. On the first live run 1561 of 1566
- * pending POs were already `received` in `zoho_po_mirror` — lines the floor
- * received months ago whose local row simply never recorded the acknowledgement.
- * Confirming that over the wire would have been ~20 minutes of rate-limited
- * round-trips to learn what `zoho.po_sync` writes into this table every 15
- * minutes anyway.
- *
- * Safe against a stale mirror in the only direction that matters: a lagging
- * mirror reports the OLDER status, which routes the PO to the live path. It
- * cannot invent a terminal status for a PO that is still open.
- */
+/** Settle every pending line whose PO the local mirror ALREADY reports terminal, in one statement and zero provider calls. */
 async function settleAgainstMirror(
   orgId: OrgId,
   deps: BackfillDeps,
@@ -482,15 +379,7 @@ async function stampFailure(
   );
 }
 
-/**
- * Push one PO's pending lines as a single purchase receive.
- *
- * A `noop` is as final as a `posted`: both mean the provider now reflects the
- * local receive, so both stamp the lines out of the backlog. Collapsing them
- * into "success" would be wrong in the other direction — the cron summary keeps
- * them apart so a run that posted nothing because everything was already
- * received does not read as a run that posted nothing because Zoho was down.
- */
+/** Push one PO's pending lines as a single purchase receive. */
 async function pushGroup(
   orgId: OrgId,
   inventory: InventoryProvider,
@@ -579,14 +468,7 @@ async function pushGroup(
   }
 }
 
-/**
- * Drain the backlog for one org.
- *
- * Groups are pushed sequentially on purpose: `zoho/httpClient.ts` already
- * serializes behind a 750 ms floor and an 8-deep concurrency gate, so fanning
- * out here would only move the queue from Zoho's limiter into ours while making
- * the per-group failure isolation harder to reason about.
- */
+/** Drain the backlog for one org. */
 export async function runZohoReceiveBackfill(
   orgId: OrgId,
   opts: { maxGroups?: number } = {},

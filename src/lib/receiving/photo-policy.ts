@@ -1,47 +1,4 @@
-/**
- * Receiving photo-policy evaluator — the completion-insurance SoT for the
- * `receiving.photoPolicy` org setting (WS-PHOTO Plan 5,
- * docs/todo/photo-evidence-policy-claims-insurance-plan.md).
- *
- * Pure and DB-free by design: the caller assembles **already-typed** evidence
- * counts (stage matrix: `src/lib/receiving/photo-intent.ts`) and this module
- * only judges them, so the same verdict powers both the server gate
- * (mark-received 409) and the client preflight without drift.
- *
- * Caller contract (what the counts must mean):
- *
- * - `cartonPhotoCounts.package` — ARRIVAL PACKAGE shots on the carton:
- *   `entity_type='RECEIVING'` AND photo_type in
- *   (`receiving_package` | legacy `receiving` | ''), i.e. exactly
- *   `receivingPhotoIntentSql('package')`. Never a blob "any photo on carton"
- *   count — `sqlPoLevelPhotoCount` alone is entity-only and over-counts.
- * - `cartonPhotoCounts.unboxCarton` — `entity_type='RECEIVING'` AND
- *   photo_type = `receiving_unbox_carton` (`receivingPhotoIntentSql('unbox_carton')`).
- * - `linePhotoCounts[].itemCount` — `entity_type='RECEIVING_LINE'` for that
- *   line (entity-only IS the item rule per the identity law;
- *   `sqlLinePhotoCount` already matches).
- * - `linePhotoCounts` holds **only non-cancelled lines**. The evaluator judges
- *   exactly what it is given — a cancelled line must be filtered out by the
- *   caller or it will (wrongly) block receive.
- *
- * Policy semantics (three exclusive tiers — NOT cumulative):
- *
- * - `optional`          → always ok.
- * - `require_one`       → ≥1 arrival package photo on the carton. Unbox-carton
- *                         and item shots do NOT satisfy it (the insurance value
- *                         is the box as it arrived, before it was opened).
- * - `require_per_item`  → every supplied line has ≥1 item photo. It does not
- *                         additionally demand a package shot.
- *
- * Defensive posture: a non-finite or negative count is treated as zero
- * (unproven evidence is no evidence). An unknown policy value — the settings
- * accessor casts stored JSON unvalidated — degrades to `optional`
- * (degrade-not-block, mirroring `getReceivingPhotoPolicy`'s default) rather
- * than freezing the receive bench on a corrupt org setting.
- *
- * Blockers are operator-readable strings for the amber receive-disabled reason
- * (mirror of `combinedReviewDisabledReason`); `ok === (blockers.length === 0)`.
- */
+/** Receiving photo-policy evaluator — the completion-insurance SoT for the `receiving.photoPolicy` org setting (WS-PHOTO Plan 5,… */
 
 import type { ReceivingPhotoPolicy } from '@/lib/settings/accessors';
 import { receivingStageFromPhotoType } from '@/lib/receiving/photo-intent';
@@ -117,14 +74,7 @@ interface ReceivingPhotoStageCounts {
   itemCountsByLineId: ReadonlyMap<number, number>;
 }
 
-/**
- * Client-side twin of the gate's SQL count assembly: bucket the carton's
- * receiving-photos list rows into evaluator-ready stage counts. Line-linked
- * rows are item evidence regardless of stamp; carton rows bucket by
- * `receivingStageFromPhotoType` (mis-stamped `receiving_item`-on-carton rows
- * land in NO bucket — never counted as arrival evidence). Shared by the unbox
- * receive preflight and the per-line readiness chrome so counts can't drift.
- */
+/** Client-side twin of the gate's SQL count assembly: */
 export function deriveReceivingPhotoStageCounts(
   rows: readonly ReceivingPhotoStageCountRow[] | null | undefined,
 ): ReceivingPhotoStageCounts {

@@ -1,14 +1,6 @@
 import { CONFIG_KEY, DEFAULT_CONFIG, type PrinterConfig } from './types';
 
-/**
- * The stored config carries only layout counts.
- *
- * Configs written before 2026-08-02 also contain a `gln` — often
- * `0614141000005`, GS1's documentation GLN, which used to be this printer's
- * default. `loadConfig` does not read that key, so the stale value is inert:
- * it stays in localStorage as dead JSON and can never reach a label. The GLN a
- * label prints now comes from the org (`useOrgGs1`), which is the only copy.
- */
+/** The stored config carries only layout counts. */
 
 export function clampMax(v: unknown, fallback: number): number {
   const n = typeof v === 'number' ? v : parseInt(String(v ?? ''), 10);

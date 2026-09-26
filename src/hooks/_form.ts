@@ -41,18 +41,7 @@ interface UseAutoSaveFormReturn<T> {
   clearDraft: () => void;
 }
 
-/**
- * Auto-saves form state to localStorage on every change (synchronous) and
- * debounces an async DB write. Restores the draft on mount.
- *
- * @example
- * const { values, setField, handleSubmit, isSaving } = useAutoSaveForm({
- *   storageKey: STORAGE_KEYS.repairEditDraft(repairId),
- *   initialValues: { notes: '', status: 'pending' },
- *   onSave: (v) => updateRepairDraft(repairId, v),
- *   onSubmit: (v) => submitRepair(repairId, v),
- * });
- */
+/** Auto-saves form state to localStorage on every change (synchronous) and debounces an async DB write. */
 export function useAutoSaveForm<T extends Record<string, unknown>>({
   storageKey,
   initialValues,
@@ -164,14 +153,7 @@ export function useAutoSaveForm<T extends Record<string, unknown>>({
 
 // ─── useUnsavedWarning ────────────────────────────────────────────────────────
 
-/**
- * Shows a native browser "unsaved changes" dialog when the user tries to
- * close/navigate away from a page with a dirty form.
- *
- * @example
- * const { isDirty } = useAutoSaveForm({ ... });
- * useUnsavedWarning(isDirty);
- */
+/** Shows a native browser "unsaved changes" dialog when the user tries to close/navigate away from a page with a dirty form. */
 export function useUnsavedWarning(isDirty: boolean): void {
   useEffect(() => {
     if (!isDirty) return;

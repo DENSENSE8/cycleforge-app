@@ -5,18 +5,7 @@ import { canConsumeStock, type RepairActionRecord } from '@/lib/repair/repair-ac
 import { planBinReturn, planBinTake, REPAIR_STOCK_TAKE_QTY, stockBinLabel } from '@/lib/repair/repair-stock-take';
 import type { RepairActionCreateInput } from '@/lib/schemas/repair-actions';
 
-/**
- * Bench log queries (`repair_actions`) behind
- * `/api/repair/actions`. Every statement is scoped by `organization_id`
- * explicitly — RLS is inert under the owner role, so the WHERE is the
- * boundary, not the GUC.
- *
- * Stock: a replacement from new stock takes its part out of ONE bin. The same
- * transaction as the action insert lowers that bin's `bin_contents` count and
- * writes the ledger delta (`writeLedgerDelta`), and refuses when the bin
- * holds less than the take — a bin never goes negative. Deleting the action
- * puts both back.
- */
+/** Bench log queries (`repair_actions`) behind `/api/repair/actions`. */
 
 /** Ledger `reason` literals for a part installed into a customer repair (and its undo). */
 export const REPAIR_LEDGER_REASON = {
@@ -82,14 +71,7 @@ class CreateRejected extends Error {
   }
 }
 
-/**
- * Insert one bench-log entry. Server-stamped `created_at`, `staff_id` from the
- * session, `organization_id` from the auth context; the optional session
- * link and the bin + ledger stock take land in the same transaction or not at
- * all. `ticketPostTicketId` (the repair's `linked` Zendesk ticket, or null)
- * queues the entry for the after-commit ticket note (`ticket_post_status =
- * 'pending'`).
- */
+/** Insert one bench-log entry. */
 export async function createRepairAction(
   orgId: OrgId,
   staffId: number,
@@ -237,13 +219,7 @@ export async function loadRepairActionForMutation(
   return r.rows[0] ?? null;
 }
 
-/**
- * Soft-delete an action. When it had taken its part out of stock, the same
- * transaction writes the reversing ledger delta AND puts the part back in the
- * bin it came from, so shelf and books come back together exactly once (the
- * `deleted_at IS NULL` guard makes a replayed DELETE a no-op). Entries logged
- * before bins were recorded reverse the ledger only.
- */
+/** Soft-delete an action. */
 export async function softDeleteRepairAction(
   orgId: OrgId,
   staffId: number,

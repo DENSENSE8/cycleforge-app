@@ -80,13 +80,7 @@ function normalizeAddress(address: Record<string, unknown> | null | undefined) {
 }
 
 export class OrderSyncService {
-  /**
-   * Ingest an order received from an external channel (eBay, Ecwid, Square, …).
-   *
-   * Tenant scoping is caller-owned: authenticated routes pass
-   * `ctx.organizationId`, while session-less jobs pass the organization ID
-   * stamped on their work item. There is no implicit tenant fallback here.
-   */
+  /** Ingest an order received from an external channel (eBay, Ecwid, Square, …). */
   async ingestExternalOrder(orgId: string, rawOrder: ChannelOrder) {
     // Bind the supplied tenant for every zohoClient call this ingest makes
     // (find/create contact, create/confirm sales order) — the client resolves

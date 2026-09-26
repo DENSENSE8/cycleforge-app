@@ -86,10 +86,7 @@ test('unreachable-node: an island node errors', () => {
       ],
     }),
   );
-  // …yet island has no inbound edge, making it an entry candidate. A true
-  // island is one with an inbound edge from another unreachable node only —
-  // simplest case: give it an inbound from itself? Instead test the real
-  // shape: a node whose only inbound comes from another orphan.
+  // …yet island has no inbound edge, making it an entry candidate.
   assert.equal(diags.filter((d) => d.rule === 'unreachable-node').length, 0);
 
   const diags2 = runDiagnostics(

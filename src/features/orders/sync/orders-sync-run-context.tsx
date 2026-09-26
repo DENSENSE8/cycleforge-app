@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The seam that lets the order table step aside for a run.
- *
- * `OutboundOrdersDesk` owns `useOrdersSync` (one hook, one run — calling it
- * twice would start two imports), but the surface that has to yield the stage
- * is `DashboardOrdersView`, two levels down. This publishes the active run to
- * it, exactly as `DeskStageContext` publishes fullscreen state to a table.
- *
- * It carries BOTH the live run and the scripted demo behind one shape on
- * purpose: the run view must not be able to tell them apart (operator
- * 2026-09-15 — the real button "would display exactly the same").
- */
+/** The seam that lets the order table step aside for a run. */
 
 import { createContext, useContext, type ReactNode } from 'react';
 import type { SyncRunDetail } from '@/lib/orders-sync/run-detail';

@@ -1,12 +1,4 @@
-/**
- * PATCH /api/admin/staff/reorder
- *
- * Body: { order: number[] }  — staff ids in the desired top-down order.
- *                              First id gets sort_order=1, next=2, etc.
- *
- * Mirrors the roles reorder pattern at /api/admin/roles/reorder.
- * Permission: admin.manage_staff. Audit event: staff.reordered.
- */
+/** PATCH /api/admin/staff/reorder */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

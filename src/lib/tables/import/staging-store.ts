@@ -1,19 +1,4 @@
-/**
- * Table import staging drafts — ONE store, keyed by table surface.
- *
- * Session-only, not a durable `pending_imports` quarantine. A draft is cleared
- * on confirm / discard / cancel; `?import=csv` is the paint flag and this store
- * holds the rows.
- *
- * **Keyed by `descriptor.surfaceId`**, not a module singleton: two families may
- * legitimately hold a draft at once (an operator staging cartons on History and
- * orders on To-Ship), and a singleton would let one file silently replace the
- * other's work.
- *
- * The store keeps RAW records and derives every view through the descriptor on
- * read. That is what makes an in-cell edit re-classify the row in place — there
- * is no second, stale copy of the triage state to keep in sync.
- */
+/** Table import staging drafts — ONE store, keyed by table surface. */
 
 import { useSyncExternalStore } from 'react';
 import { parseCsv } from '@/lib/tables/import/parse-csv';
@@ -240,13 +225,7 @@ export function summarizeTableImportDraft<TField extends string, TRowView>(
   return { total: d.rows.length, ready, actionRequired: d.rows.length - ready };
 }
 
-/**
- * What Confirm acts on right now.
- *
- * Selection NARROWS; it is not a precondition. A clean file should import
- * without an operator select-all first, and the CTA must name the set it will
- * actually write so the label can never disagree with the action.
- */
+/** What Confirm acts on right now. */
 export function tableImportConfirmTargets<TField extends string, TRowView>(
   descriptor: TableImportDescriptor<TField, TRowView>,
   d: TableImportDraft,

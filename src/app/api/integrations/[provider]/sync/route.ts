@@ -1,23 +1,6 @@
 /**
  * POST /api/integrations/[provider]/sync — "Sync now" for the caller's org.
- *
- * Runs the connector's wired sync() (connection-driven ingestion). Replaces the
- * ad-hoc transfer-orders / backfill buttons with a per-connection action.
- * 400 when the provider has no sync capability; 403 without the provider's
- * manage permission.
- *
- * ## Two response shapes, one code path
- *
- * `Accept: application/x-ndjson` streams the run: every `phase` (with its
- * count) and every per-row `detail` the job emits goes out as one JSON line,
- * terminated by a `result` line carrying the same {@link SyncOutcome} the JSON
- * form returns. That stream is what makes an operator-driven import measurable
- * — "214 rows read → 51 tracking → 12 updated → 35 inserted" instead of a
  * spinner that stops (operator 2026-09-15).
- *
- * Anything else gets the single JSON object, byte-identical to before: the
- * Settings › Integrations "Sync now" button and the cron fan-out do not render
- * a ledger and must not pay for a stream.
  */
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -41,11 +24,7 @@ export const POST = withAuth(async (req, ctx) => {
     return NextResponse.json({ error: 'FORBIDDEN', permission: perm }, { status: 403 });
   }
 
-  // Soft plan ceiling: button-driven "Sync now" is an order-ingestion entry, so
-  // it checks maxMonthlyOrders before pulling more. Dormant until
-  // PLAN_FEATURE_ENFORCED; dogfood org exempt; fail-open (see plan-ceilings.ts).
-  // Webhook/cron ingestion paths are deliberately NOT gated (never block
-  // mid-stream).
+  // Soft plan ceiling:
   if (await wouldExceedPlanCeiling(ctx.organizationId, 'maxMonthlyOrders')) {
     return NextResponse.json(planLimitResponseBody('maxMonthlyOrders'), { status: 403 });
   }
@@ -56,10 +35,7 @@ export const POST = withAuth(async (req, ctx) => {
     return NextResponse.json(outcome, { status: outcome.ok ? 200 : 502 });
   }
 
-  // Streaming caller (the desk / `/m` run surfaces): every phase + per-row
-  // detail goes out as it happens, then the same outcome as a `result` line.
-  // The response is 200 even for a failed run — the failure rides the outcome,
-  // and a stream cannot retroactively change its status code.
+  // Streaming caller (the desk / `/m` run surfaces):
   const stream = createNdjsonStream();
   void (async () => {
     try {

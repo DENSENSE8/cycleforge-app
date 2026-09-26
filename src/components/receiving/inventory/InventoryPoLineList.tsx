@@ -33,12 +33,7 @@ const COARSE_FACE: Record<string, string> = {
   RECEIVED: 'Received',
 };
 
-/**
- * Trust face for a PO line — prefer vendor PO receipt (same plane as
- * Information's RECEIVED chip) when local qty still shows received. After
- * Unreceive, qty is 0 while Zoho status may lag until Refresh — prefer local
- * workflow so Lines do not contradict the dock.
- */
+/** Trust face for a PO line — prefer vendor PO receipt (same plane as Information's RECEIVED chip) when local qty still shows received. */
 function lineTrustStatusLabel(
   workflowStatus: string | null | undefined,
   poStatus: string | null | undefined,

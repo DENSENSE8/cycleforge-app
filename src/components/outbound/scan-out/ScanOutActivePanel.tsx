@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Scan-out focused carton — Pack / Ready-to-Pack station anatomy (no desk fork):
- *
- *   StationScanPaneHost
- *     └ StationPanelRoot
- *         ├ StationContextBar → ShippingEntityContextHeader → CartonContextCard
- *         └ StationWorkbench (ops centre only — no second identity dump)
- *     └ StationDisplaysPushStack (Timeline · Listings)
- *
- * Gun + notes stay in the page-bottom OmnichannelComposerDock.
- */
+/** Scan-out focused carton — Pack / Ready-to-Pack station anatomy (no desk fork): */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ExternalLink, History, Check, AlertTriangle } from '@/components/Icons';

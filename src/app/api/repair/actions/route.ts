@@ -40,22 +40,7 @@ export const GET = withAuth(
   { permission: 'repair.view' },
 );
 
-/**
- * POST /api/repair/actions
- *
- * Body (`RepairActionCreateBody`): { repairId, actionType, partName?, oldSku?,
- * newSku?, oldSerial?, newSerial?, durationMin?, notes?, sessionId?,
- * donorSource?, donorRef?, componentRef?, componentValue?, componentQty?,
- * consumeStock?, stockLocationId? }
- *
- * staff_id, organization_id and created_at come from the session / server —
- * never the body. Taking the part from stock needs the bin (`stockLocationId`)
- * and is refused with 409 when that bin holds less than the take.
- *
- * On a repair whose helpdesk link is `linked`, the entry is queued
- * (`ticket_post_status = 'pending'`) and posted to the ticket as a note after
- * the response — a helpdesk failure is recorded on the entry, never on the save.
- */
+/** POST /api/repair/actions */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const raw = await req.json().catch(() => ({}));

@@ -1,41 +1,6 @@
 'use client';
 
-/**
- * To-ship Add-orders rail — the Unbox right-rail recipe, exactly.
- *
- * | Unbox Displays | here |
- * |---|---|
- * | single push column | `DetailStackRailRegistrar` → the one `RightRailHost` slot |
- * | top chrome band | the shell's own band (host paints maximize + the singleton close) |
- * | Root Index → leaf | `DeskInspectorIndexShell` |
- * | `Filter displays…` find row + ↑↓/Enter | `indexFilter` |
- * | Esc = leaf → index | owned by the index shell |
- *
- * Compose `DeskInspectorIndexShell` — never a page-local index twin, and never
- * `StationDisplaysPushStack` on a desk rail.
- *
- * **The auto-close (fixed 2026-08-20) was never about the host.** `open` derives
- * from `?ingest=true` / `?new=true`, and `useSurfaceParamHygiene` (mounted in
- * `src/app/shipping/layout.tsx`) drops any param the route spec does not
- * declare. `ingest` was undeclared in `ORDERS_ROUTE_PARAMS`, so the chrome Add
- * wrote it and the next hygiene pass stripped it — the rail closed itself
- * before the operator could type. Any new ingest param must be declared there.
- *
- * Hand entry is one leaf (Add order manually). Replacement and platform
- * catalog entry were removed from this index — they were a second mode
- * control under the same ingest rail. The TRIAGE leaf moved out on
- * 2026-08-30 (operator override): the acknowledgment intake is now the
- * centered `OrderIntakeOverlay`, opened by the desk's Add / `?triage=`, so
- * this rail carries only the secondary ingest methods.
- *
- * 2026-09-15: the `sync` leaf is GONE. Order import is its own measured run
- * surface now — the desk's Sync CTA (`OrderSyncRunView` over the table) and
- * `/m/orders/sync` on the phone. This leaf was a second door onto the same job
- * with its OWN `useOrdersSync()` instance, so an operator could start a second
- * concurrent import from here and watch it in a rail-shaped panel that
- * reported different numbers. The `backfill` leaf (`AwaitingEbayPanel`) stays
- * for eBay token refresh and the duplicate check — it imports nothing.
- */
+/** To-ship Add-orders rail — the Unbox right-rail recipe, exactly. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { FileText, Plus, RefreshCw } from '@/components/Icons';

@@ -1,11 +1,4 @@
-/**
- * Scan-station skin application — the runtime half. Skins live in
- * `design-system/themes/station-skins.ts` (injected by app/layout.tsx);
- * this module only flips `data-station-skin` and mirrors the choice to
- * localStorage for no-flash reloads.
- *
- * Industrial is the default and is the ABSENCE of the attribute.
- */
+/** Scan-station skin application — the runtime half. */
 
 import {
   DEFAULT_STATION_SKIN,

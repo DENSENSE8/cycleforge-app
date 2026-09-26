@@ -1,13 +1,4 @@
-/**
- * DB-free unit tests for AI-assisted order-import column mapping.
- *
- * The tests that matter here are the REFUSALS. A mapping suggestion that looks
- * plausible and is wrong imports the wrong data silently, so the guarantees —
- * deterministic wins, only real headers, never auto-applied — are pinned
- * harder than the happy path.
- *
- * Run: node --test --require ./scripts/register-server-only-shim.cjs --import tsx src/lib/orders/ai-column-mapping.test.ts
- */
+/** DB-free unit tests for AI-assisted order-import column mapping. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { proposeColumnMapping } from './ai-column-mapping';

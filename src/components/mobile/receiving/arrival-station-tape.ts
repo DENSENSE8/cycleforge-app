@@ -1,29 +1,4 @@
-/**
- * Arrival's own tape vocabulary — the station-specific half of the mobile
- * station tape.
- *
- * The generic half (the entry shape, the collapse, the cap) lives in
- * `@/components/mobile/station/station-tape`, exactly as it does for scan-out.
- * What is here is only what "a box turned up at the door" means: which outcomes
- * exist, what each one says, and how loud.
- *
- * ## Four outcomes, and the operator acts differently on each
- *
- * `arrived` is the job: a tracking number nobody has scanned before, now
- * recorded as an incoming package. `known` is the one that stops work — this
- * box is already in the system, so a second arrival row for it would double-count
- * a carton and send two people to unbox one box. `refused` is the wrong label
- * (a SKU, a bin, one of our own unit stickers) and `err` is the door's wifi.
- *
- * ## Why a refusal is not a failure of the scan
- *
- * The station refuses BEFORE it writes, which is the whole point of arrival's
- * contextual dispatch: minting a carton for a product label creates a phantom
- * box that somebody has to find and delete. The row says which label it was and
- * what to scan instead.
- *
- * Pure module: no React, no storage. Unit-tested in `arrival-station-tape.test.ts`.
- */
+/** Arrival's own tape vocabulary — the station-specific half of the mobile station tape. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { IntakeClass } from '@/design-system/tokens/intake';
@@ -37,13 +12,7 @@ import {
 /** What the door decided about one scan. */
 export type ArrivalScanStatus = 'arrived' | 'known' | 'refused' | 'err';
 
-/**
- * What each outcome says, and how loud.
- *
- * `known` is amber, not green. It is a real fact — the box IS in the system —
- * but arriving something twice is the error this station exists to prevent, so
- * it must not read like a clean intake.
- */
+/** What each outcome says, and how loud. */
 export const ARRIVAL_TAPE_LABEL: StationTapeLabel<ArrivalScanStatus> = {
   arrived: { verb: 'Arrived', tone: 'ok' },
   known: { verb: 'Already arrived', tone: 'warn' },
@@ -51,14 +20,7 @@ export const ARRIVAL_TAPE_LABEL: StationTapeLabel<ArrivalScanStatus> = {
   err: { verb: 'Scan failed', tone: 'bad' },
 };
 
-/**
- * Namespace for this station's tape identity: one row per CARTON.
- *
- * Read back with `stationDedupeId`. A second read of the same box collapses onto
- * the row it already made — which is what makes the shift count on this station
- * trustworthy, because a carton counted twice is a carton somebody goes looking
- * for.
- */
+/** Namespace for this station's tape identity: */
 export const ARRIVAL_DEDUPE_KIND = 'carton';
 
 /** What the station knows once one scan has settled. */
@@ -80,14 +42,7 @@ export interface SettledArrival {
   imageUrl: string | null;
   /** The server's own words — a reason, a refusal, or what was logged. */
   message: string | null;
-  /**
-   * True when the request never reached the server (offline, DNS, 5xx).
-   *
-   * Load-bearing, and the reason arrival has no outbox: nothing was recorded, so
-   * the box is still un-arrived and the operator has to scan it again. Saying
-   * "queued" here — scan-out's answer, where the package genuinely left — would
-   * tell them a carton is logged when it is not.
-   */
+  /** True when the request never reached the server (offline, DNS, 5xx). */
   transportFailed?: boolean;
 }
 
@@ -96,20 +51,7 @@ const trimmed = (value: unknown): string | null => {
   return s ? s : null;
 };
 
-/**
- * The INTAKE class a carton's server facts name — the arrival-triage answer to
- * "is it a return? a repair? a ticket?" — or null when the facts name a class
- * outside that set.
- *
- * `carton_intake_type` is the fact: it is what the classify flow's Type step
- * writes. The line's `receiving_type` is NOT read — it defaults to `'PO'` on
- * every line, so it answers "never classified" and "classified as PO" alike.
- *
- * The type wins over a ticket link: a return that also has a ticket is still a
- * return, and the ticket is context. Only an untyped carton is a ticket
- * package. A Zoho-matched PO carton, or one typed PO / trade-in / pick-up, is
- * not a triage question and gets no class.
- */
+/** The INTAKE class a carton's server facts name — the arrival-triage answer to "is it a return? */
 export function arrivalIntakeClass(
   row: Pick<ReceivingLineRow, 'carton_intake_type' | 'zendesk_ticket' | 'zoho_purchaseorder_id'>,
 ): IntakeClass | null {
@@ -122,17 +64,7 @@ export function arrivalIntakeClass(
   return 'unclassified';
 }
 
-/**
- * Turn one settled scan into a tape entry.
- *
- * `now` is injectable so the test does not race the clock.
- *
- * Every live row is stamped at the SCAN, not at some earlier server time. That
- * is the honest reading here: on a re-scan of a known carton the door event is
- * happening now — what was earlier is the arrival it already has, and the row
- * says so in words rather than back-dating the stamp to a time this scan did not
- * happen at.
- */
+/** Turn one settled scan into a tape entry. */
 export function arrivalTapeEntry(
   settled: SettledArrival,
   now: number = Date.now(),
@@ -144,10 +76,7 @@ export function arrivalTapeEntry(
     id: `arrival-${settled.seq}`,
     tone: label.tone,
     verb: label.verb,
-    // A named product when the carton resolved to one. When it did not, the row
-    // says what HAPPENED instead of falling through to the host's "New arrival"
-    // placeholder — a refused unit label headed "New arrival" states the exact
-    // opposite of the outcome, and a red row cannot undo a green sentence.
+    // A named product when the carton resolved to one.
     title: trimmed(settled.title) ?? (settled.status === 'arrived' ? null : label.verb),
     identifier: trimmed(settled.tracking) ?? trimmed(settled.scanned),
     recordId: trimmed(settled.recordId),
@@ -172,18 +101,7 @@ export function arrivalTapeEntry(
   };
 }
 
-/**
- * Collapse the line-level receiving feed into one tape row per CARTON, newest
- * first — the tape's seed of what already came through the door.
- *
- * The feed is line-level: a five-line PO is five rows of one box, so a tape fed
- * from it row-for-row would report five arrivals for one delivery and make the
- * door's own count unusable.
- *
- * Pure, and separate from the hook that fetches it, because the collapse and the
- * time it sorts on are what decide whether the door reads its own history
- * correctly.
- */
+/** Collapse the line-level receiving feed into one tape row per CARTON, newest first — the tape's seed of what already came through the door. */
 export function arrivalHistoryEntries(rows: readonly ReceivingLineRow[]): StationTapeEntry[] {
   const byCarton = new Map<number, StationTapeEntry>();
 

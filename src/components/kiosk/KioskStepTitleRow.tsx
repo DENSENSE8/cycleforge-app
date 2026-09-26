@@ -1,21 +1,8 @@
 /**
- * KioskStepTitleRow — a checkout step's ONE bold display header, top-left, with
- * the running `N · $total` on the same row at the right edge.
- *
- * The list rule for money: right-aligned, in the money token. `qty · total`
- * with no "items" word — the count is black, only the money is green
+ * KioskStepTitleRow — a checkout step's ONE bold display header, top-left, with the running `N · $total` on the same row at the right edge.
  * (operator 2026-09-24). The repair flow wears the cart's row exactly
  * (operator 2026-09-24: "Device & quote … must be displayed at the top exactly
- * like the cart display"), so it is one component, not two copies.
- *
- * Body content, NOT a band: `KioskPaneForm` owns the pane's one header (the
- * step band); this row sits inside the scroll body under it.
- *
- * `meta` rides in the title in soft ink — the Cart step's `#42`, the cart's
- * Recent-carts id, so the operator juggling customers can see which cart is
  * open without leaving it (operator 2026-09-24: "IDed for multiple devices").
- *
- * Callers: `KioskCartLedger`, `KioskRepairPane`. Affected API: none.
  */
 
 import { formatCartCents } from '@/lib/kiosk/cart-card-view';

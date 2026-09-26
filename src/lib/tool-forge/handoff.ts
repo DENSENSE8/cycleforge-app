@@ -1,34 +1,4 @@
-/**
- * commit_to_git — hand a validated tool change to code review.
- *
- * ─── WHAT THIS DELIBERATELY DOES NOT DO ────────────────────────────────────
- * It does not branch, commit, or push. AGENTS.md is unambiguous: "Never create
- * a git branch. Always work on main… The operator manages commits." An agent
- * that pushes reverses a standing decision, so this takes the route the repo
- * already uses for machine-authored changes: file a labelled GitHub Issue,
- * which .github/workflows/claude-fix-issue.yml picks up to produce a commit and
- * a PR a human merges. Same destination, and the human stays where the operator
- * put them.
- *
- * The requested branch_name is recorded on the request and included in the
- * issue body as a HINT for the downstream action. It is never executed here.
- *
- * ─── WHY THIS IS SINGLE-TENANT, ON PURPOSE ─────────────────────────────────
- * DENSENSE8/cycleforge-app belongs to ONE tenant — the org that owns this
- * codebase. Mirroring another tenant's request into it would publish their
- * prompt and generated code into a repo they do not own, and would create an
- * issue no other tenant's flow can ever close. src/app/api/user-issues/route.ts
- * already learned this and gates its mirror on FORGE_ORG_ID; the same gate is
- * applied here rather than rediscovered later. Every other tenant gets the full
- * request record in their own Neon rows and a clear refusal from this step.
- *
- * ─── ALSO WORTH KNOWING ────────────────────────────────────────────────────
- * A merged PR does not deploy. vercel.json sets git.deploymentEnabled:false;
- * production ships only from the ci.yml deploy job, and only when the diff
- * touches scripts/vercel-should-build.mjs's allowlist. So this returns
- * 'handed_off', never 'deployed' — a success message keyed to the push would be
- * reporting something that did not happen.
- */
+/** commit_to_git — hand a validated tool change to code review. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 

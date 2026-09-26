@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Sibling-line navigation for the receiving sidebar: lazily fetch the full
- * sibling-line list for the selected carton (so up/down nav + the progress pill
- * work after a row-click), derive index/progress, and move prev/next.
- *
- * Navigation is PO-scoped via {@link filterLinesByPoGroup} so mixed-PO cartons
- * (one receiving_id, multiple Zoho POs) never let prev/next step into a foreign
- * PO's lines.
- *
- * Prefers the shared `['receiving-siblings', id]` cache (seeded by Tier-A
- * hydrate / usePoLinesData) so row-click does not fire a duplicate
- * `include=serials` GET — serials reconcile stays on usePoLinesData's parallel
- * query.
- *
- * Extracted from ReceivingSidebarPanel. The selection STATE stays in the panel
- * (many event handlers mutate it); this hook owns only the derived nav logic +
- * the lazy prefetch + the arrow-key bridge, taking the state and setters as
- * inputs.
- */
+/** Sibling-line navigation for the receiving sidebar: */
 
 import { useCallback, useEffect, useMemo, type Dispatch, type SetStateAction } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,10 +55,7 @@ export function useReceivingLineNavigation({
     return filterLinesByPoGroup(scanMatchedRows, selectedLine);
   }, [selectedLine, scanMatchedRows]);
 
-  // When the user row-clicks a line in the dashboard table, scanMatchedRows
-  // is empty — which would disable the up/down nav. Populate it lazily from
-  // the shared siblings cache when warm; otherwise fetch METADATA only (no
-  // include=serials — that reconcile lives on usePoLinesData).
+  // When the user row-clicks a line in the dashboard table, scanMatchedRows is empty — which would disable the up/down nav.
   useEffect(() => {
     const receivingId = selectedLine?.receiving_id;
     if (!receivingId || !selectedLine) return;
@@ -126,11 +105,7 @@ export function useReceivingLineNavigation({
     return () => { cancelled = true; };
   }, [selectedLine, scanMatchedRows, setScanMatchedRows, setSelectedLine, queryClient]);
 
-  // Navigation + progress derived from the PO-scoped sibling list. Counter
-  // sums *units* across every matched line (received vs expected) so the pill
-  // mirrors the table row's quantityText (e.g. 0/5) instead of a line count
-  // (0/1). A line with workflow_status=DONE is treated as fully received even
-  // if quantity_received lags behind the expectation.
+  // Navigation + progress derived from the PO-scoped sibling list.
   const { currentIndex, canPrev, canNext, progressReceived, progressTotal } = useMemo(() => {
     if (!selectedLine || navRows.length === 0) {
       return { currentIndex: -1, canPrev: false, canNext: false, progressReceived: 0, progressTotal: 0 };
@@ -155,11 +130,7 @@ export function useReceivingLineNavigation({
     };
   }, [selectedLine, navRows]);
 
-  // Prev/next flips the local selectedLine and fires the dedicated
-  // receiving-highlight-line event so the dashboard table's blue row
-  // indicator follows along. We avoid dispatching receiving-select-line
-  // because that handler wipes scanMatchedRows (row-click semantics) and
-  // would break subsequent nav.
+  // Prev/next flips the local selectedLine and fires the dedicated receiving-highlight-line event so the dashboard table's blue row…
   const goPrevLine = useCallback(() => {
     if (currentIndex <= 0) return;
     const target = navRows[currentIndex - 1];

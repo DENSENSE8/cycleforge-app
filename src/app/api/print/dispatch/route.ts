@@ -9,22 +9,7 @@ import {
 } from '@/lib/print/zpl-templates';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * POST /api/print/dispatch
- *
- * Body shape (discriminated by `class`):
- *   { class: 'carton',  profileId?, payload: CartonLabelInput }
- *   { class: 'product', profileId?, payload: ProductLabelInput }
- *   { class: 'bin',     profileId?, payload: BinLabelInput }
- *   { class: 'unit',    profileId?, payload: UnitLabelInput }  // Phase 1: Tier-3 GS1 unit labels
- *
- * Resolves a printer profile (explicit profileId → default-for-class →
- * any active profile of the vendor) and sends ZPL via the matching driver.
- *
- * PrintNode wiring is gated on PRINTNODE_API_KEY. When the env var is
- * absent we return `{ success: true, dispatched: false, zpl }` so the
- * caller can fall back to the existing browser popup printer.
- */
+/** POST /api/print/dispatch */
 
 type LabelClass = 'carton' | 'product' | 'bin' | 'unit';
 

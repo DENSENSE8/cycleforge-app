@@ -1,9 +1,4 @@
-/**
- * Pack verification outcome vocabulary + state machine — the CLIENT-SAFE SoT
- * (no server-only imports) shared by the server writer
- * (recordPackVerificationEvent), the mobile capture flow, and the Review
- * station UI. Plan: docs/todo/packer-review-station-plan.md Phase 3.
- */
+/** Pack verification outcome vocabulary + state machine — the CLIENT-SAFE SoT (no server-only imports) shared by the server writer… */
 
 /** The append-only outcome vocabulary — pinned byte-for-byte against the DB
  *  CHECK (`pack_verification_events_outcome_chk`) in pack-verification.test.ts. */
@@ -59,13 +54,7 @@ export function packOutcomeMeta(outcome: string): { label: string; tone: PackOut
     : { label: outcome, tone: 'muted' };
 }
 
-/**
- * The outcome state machine (plan §3c). Given the current latest outcome for a
- * packer_log (or null when none exists yet), is `next` a legal insert?
- *   • capture outcomes  — legal from {none} ∪ capture (packer (re)captures until review),
- *   • review outcomes   — legal only when latest is VERIFIED or any ERROR_*,
- *   • EOD outcomes      — legal only when latest is REVIEW_APPROVED.
- */
+/** The outcome state machine (plan §3c). */
 export function canTransitionPackVerification(
   latest: PackVerificationOutcome | null,
   next: PackVerificationOutcome,

@@ -16,17 +16,7 @@ import pool from '@/lib/db';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-/**
- * Paperwork for one order (To-ship paperwork walk + its item-number view):
- * manuals, packing lists, any `product_manuals` row.
- *   GET  → every row resolved for the order — pinned to the order, its item
- *          number or its SKU — in precedence order (order > item # > SKU).
- *   POST → multipart `file` (+ displayName, type, pairTo): upload + pin a new
- *          row; JSON `{ manualId, pairTo? }`: pin an existing library row.
- *          `pairTo` = order | item_number | sku (default: item number, else
- *          SKU, else order).
- * Domain logic: lib/manuals/order-manuals + lib/manuals/paperwork-pairing.
- */
+/** Paperwork for one order (To-ship paperwork walk + its item-number view): */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

@@ -1,14 +1,4 @@
-/**
- * The per-SKU page's row mappers, against the families they feed: what each
- * ported section paints has to come out of the REGISTERED resolvers, not out of
- * a second column list.
- *
- * The mappers are the page's only hand-written display code, and they carry two
- * contracts a type cannot state: `pg` hands back `Date` objects where every
- * resolver reads an ISO STRING (a `Date` that slipped through crashes the first
- * `.slice`), and a column the loader selects but nothing paints must STOP at
- * this boundary rather than crossing into the client bundle.
- */
+/** The per-SKU page's row mappers, against the families they feed: */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

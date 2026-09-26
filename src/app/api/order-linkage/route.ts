@@ -12,12 +12,7 @@ const Query = z.object({
   serial: z.string().trim().min(1).max(128).optional(),
 });
 
-/**
- * GET /api/order-linkage?order=&tracking=&serial=
- * Closed-loop linkage for a single order resolved from any one identifier:
- * { order, tracking[], serial[], tickets[] }. Read-only; renders the linkage +
- * linked Zendesk tickets on the packing and receiving surfaces.
- */
+/** GET /api/order-linkage?order=&tracking=&serial= Closed-loop linkage for a single order resolved from any one identifier: */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const context = 'GET /api/order-linkage';
   try {

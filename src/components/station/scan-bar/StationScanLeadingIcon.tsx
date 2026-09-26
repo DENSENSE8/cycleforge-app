@@ -32,13 +32,7 @@ const COPY: Record<
   },
 };
 
-/**
- * Left icon = Preview | Scan stance. Type lives on the right rail, not here.
- *
- * SECONDARY fields only (`hotkey={false}`): a bare click-to-toggle glyph.
- * Primary station bars render {@link ScanHotkeyControl} in this slot instead —
- * one dropdown carrying Scan · Preview · focus · Edit hotkey.
- */
+/** Left icon = Preview | Scan stance. */
 export function StationScanLeadingIcon({
   stance,
   onToggle,

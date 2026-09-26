@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Detail stack layout tokens + shared aside surface classes.
- * SoT: `@/design-system/shells/detail-stack`.
- * Push columns snap instantly in `RightRailHost`; overlay backdrop / presence
- * still live there so `AnimatePresence` can own direct `motion.*` children.
- */
+/** Detail stack layout tokens + shared aside surface classes. */
 
 export {
   DETAIL_STACK_LAYOUT,

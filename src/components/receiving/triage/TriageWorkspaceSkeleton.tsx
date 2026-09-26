@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Right-pane skeleton loader for the **Triage** surface — triage's own skeleton,
- * never the unbox display. Thin domain wrapper over {@link StationWorkspaceSkeleton}
- * that composes the shared Station Workbench column tokens so the loading state
- * aligns to the same 720px identity/body column as the loaded carton — never a
- * local `max-w-3xl` recipe.
- */
+/** Right-pane skeleton loader for the **Triage** surface — triage's own skeleton, never the unbox display. */
 
 import {
   StationWorkspaceSkeleton,

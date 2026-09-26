@@ -1,30 +1,4 @@
-/**
- * eBay ↔ Zoho purchase deduplication — one Incoming spine row when an eBay buyer
- * purchase and a later Zoho PO are the same real-world order.
- *
- * Plan: docs/incoming-universal-purchase-orders-plan.md §4.
- *
- * `mergeEbayLinesIntoZohoPo` is called at the END of the Zoho receiving sync
- * (§5.4). By then both the eBay-originated Incoming line (from the eBay bridge /
- * sync) and the Zoho sync's own spine row may exist for one physical shipment.
- * This collapses them:
- *
- *   - MATCH an eBay-primary EXPECTED line to the Zoho PO by a STRONG signal —
- *     tracking (last-8) or the eBay order id appearing in the PO#/reference/notes
- *     (order#). Fuzzy SKU/qty matching is deliberately NOT auto-merged (§4.1).
- *   - AUGMENT the eBay line with a SECONDARY zoho link + equivalence edge + the
- *     zoho identity on its receiving_line_zoho facts row (W3 writer inversion —
- *     the spine zoho columns are dead), so it reconciles/receives against Zoho.
- *   - Only in the UNAMBIGUOUS case (exactly one matched eBay line AND exactly one
- *     zoho-only spine row the sync just created) DELETE the loser spine row and
- *     copy its Zoho identity onto the eBay winner (so the next Zoho sync updates
- *     the winner in place instead of re-creating the duplicate). Ambiguous cases
- *     augment + log for review, never delete.
- *   - Idempotency guards (§4.4): only touch EXPECTED/ARRIVED, quantity_received=0
- *     lines; the link upsert + equivalence are idempotent.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** eBay ↔ Zoho purchase deduplication — one Incoming spine row when an eBay buyer purchase and a later Zoho PO are the same real-world order. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -112,12 +86,7 @@ interface ZohoSignalRow {
   zoho_purchaseorder_number: string | null;
 }
 
-/**
- * Collapse eBay-originated Incoming lines into a just-synced Zoho PO. Idempotent
- * and non-destructive except in the single unambiguous case. Never throws for a
- * no-match (returns a zero result). Loads the PO's own tracking/reference/notes
- * signals from the spine when the caller doesn't supply them.
- */
+/** Collapse eBay-originated Incoming lines into a just-synced Zoho PO. */
 export async function mergeEbayLinesIntoZohoPo(
   orgId: OrgId,
   input: ZohoPoSignals,
@@ -128,9 +97,6 @@ export async function mergeEbayLinesIntoZohoPo(
 
   return deps.withTx(orgId, async (client) => {
     // Fill in the PO's own match signals from the spine if not supplied.
-    // Tracking is canonical on receiving_carton.shipment_id → shipping_tracking_numbers
-    // (receiving_line.zoho_reference_number was dropped 2026-04-15). Narrow
-    // receiving_line_zoho.zoho_reference_number is a secondary fallback.
     let signals: ZohoPoSignals = { ...input, zohoPurchaseOrderId };
     if (signals.tracking == null || signals.referenceNumber == null || signals.notes == null) {
       const sig = await client.query<ZohoSignalRow>(
@@ -227,11 +193,7 @@ export async function mergeEbayLinesIntoZohoPo(
       const loser = canDeleteLoser ? losers[0] : null;
       const zohoLineItemId = loser?.zoho_line_item_id ?? null;
 
-      // 1. Delete the loser FIRST (W3 writer inversion): its receiving_line_zoho
-      //    row holds the same (org, zoho_purchaseorder_id, zoho_line_item_id)
-      //    natural key the winner is about to adopt, so it must be gone before
-      //    the winner's rz upsert or ux_receiving_line_zoho_org_po_line collides.
-      //    The FK cascade removes the loser's rz/rlt facts rows + links.
+      // 1. Delete the loser FIRST (W3 writer inversion):
       if (loser) {
         await client.query(
           `DELETE FROM receiving_line WHERE id = $1 AND organization_id = $2`,
@@ -239,11 +201,7 @@ export async function mergeEbayLinesIntoZohoPo(
         );
       }
 
-      // 2. Copy the Zoho identity onto the eBay winner's receiving_line_zoho facts
-      //    row (stable across future syncs). The spine zoho columns are dead (W3);
-      //    inline upsert (not narrow.ts) because this site needs COALESCE-once on
-      //    zoho_line_item_id / zoho_item_id and must maintain the derived
-      //    zoho_purchaseorder_number_norm (GENERATED on the old spine column).
+      // 2. Copy the Zoho identity onto the eBay winner's receiving_line_zoho facts row (stable across future syncs).
       await client.query(
         `INSERT INTO receiving_line_zoho (
            receiving_line_id, organization_id,

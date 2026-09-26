@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * @domain-job Station Displays → Locations → **New** — mint a scannable
- *   address, print its sticker, and (where the storage allows it) put the open
- *   entity straight on it.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse the Inventory location editor — this is the
- *   create MODE of {@link StationLocationsDisplay}, not a leaf or a dialog of
- *   its own, and it must hand the operator back to that list on commit.
- *
- * Closes the loop the placement work opened: the dock lets you scan a shelf,
- * this makes the shelf you are about to scan.
- *
- * **Why it lives inside the Locations list.** Creating a place is the RARE half
- * of the job — an operator reprints a scuffed label far more often than they
- * invent a shelf — so browsing and printing own the leaf and creation is one
- * mode within it. Creating a place at all is a TOOL, not a beat of the carton's
- * procedure, which is why the whole leaf sits on the right edge rather than in
- * the dock (`display/station-workbench.md` → centre is ops-flow only).
- *
- * **It composes, it does not fork.** The address is minted by the same waist the
- * bin label printer uses — `POST /api/locations/register` via
- * {@link registerLocations} — so the row lands in `locations` with the canonical
- * flat barcode (`A0101101`), idempotently, reactivating a soft-deleted row
- * rather than duplicating it. The sticker is the shared 2×1 {@link printLocationLabelsJob}
- * face (same HTML as Unbox / {@link LabelFacePreview}). The encoded barcode is
- * still the flat location code `extractArrivalLocationBarcode` decodes.
- *
- * Placement then runs through the port's writer — at Arrival
- * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
- * rule are inherited. Where a minted BIN cannot hold the open entity
- * (`canPlaceMinted: false` — Ready to Pack places on DESK/STAGING rows only),
- * the leaf offers mint + print and does NOT paint a Create & place that the
- * placement API would bounce.
- */
+/** @domain-job Station Displays → Locations → **New** — mint a scannable address, print its sticker, and (where the storage allows it) put… */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Printer } from '@/components/Icons';

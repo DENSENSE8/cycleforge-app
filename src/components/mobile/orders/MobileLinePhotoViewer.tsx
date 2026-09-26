@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Phone record photo lane → every photo of this item # + SKU
- * ({@link fetchLinePhotos}, the desk ledger's fetcher) in the phone viewer
- * Unbox uses on mobile ({@link MobileSwipePhotoViewer}, `PhotoPeekFan`).
- * Mount while open; fetched on press, never on paint.
- */
+/** Phone record photo lane → every photo of this item # + SKU ({@link fetchLinePhotos}, the desk ledger's fetcher) in the phone viewer… */
 
 import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

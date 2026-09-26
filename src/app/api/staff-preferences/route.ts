@@ -1,16 +1,4 @@
-/**
- * /api/staff-preferences — the logged-in staffer's own UI preferences.
- *
- * Like /api/staff-todos, no special permission: every authenticated staffer
- * reads and writes only their OWN prefs; staffId + org always come from the
- * verified session, never the request body.
- *
- *   GET  → { prefs: StaffPreferences }
- *   PUT  { focusScanHotkey?: 'Insert' | 'ScrollLock' | 'F1'..'F12' | null } → { prefs }
- *
- * First consumer: the configurable focus-scan hotkey shared by every
- * StationScanBar across the app.
- */
+/** /api/staff-preferences — the logged-in staffer's own UI preferences. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -40,10 +28,7 @@ export const GET = withAuth(async (_req, ctx) => {
     getStaffPreferences(ctx.staffId, ctx.organizationId),
     getOrganization(ctx.organizationId as OrgId),
   ]);
-  // Effective NON-STAFF default for the Unbox Band-1 Inbound pin: role → org →
-  // []. The chrome layers the staff override on top (staff → this → []) so a
-  // fresh staffer inherits the org/role template without a personal pin click.
-  // See resolveUnboxPinnedTabs + useUnboxDefaultPins (Gemini D9).
+  // Effective NON-STAFF default for the Unbox Band-1 Inbound pin:
   const orgSettings = (org?.settings ?? {}) as OrgSettings;
   const unboxDefaultPins = resolveUnboxPinnedTabs({
     roleDefault: getReceivingUnboxRoleDefaultPins(orgSettings, ctx.role),

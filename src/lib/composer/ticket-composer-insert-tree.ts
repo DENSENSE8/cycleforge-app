@@ -1,28 +1,6 @@
 /**
  * The Ticket-mode `+` tree.
- *
- *   Browse library
- *   Upload file
- *
- * FLAT, and it has no panel title. `+` on a ticket composer means one thing —
- * put a photo on this message — and a header over two rows is a label for a
- * question nobody asked.
- *
- * It briefly also offered “This item” and “What happened” (structured product /
- * timeline sentences folded into the draft). Both were **removed at the
  * operator's instruction on 2026-08-30**: they attached chips the operator did
- * not want above the field, and each one cost a fetch (`/api/support/context`
- * + the shipped-order lookup) on every ticket line just to populate a menu.
- * `buildWhatHappenedFacts` and its test are still in this directory if that
- * feature comes back — do not re-wire it here without being asked.
- *
- * Flat rather than a `Photos ›` submenu on purpose: one row that drills into
- * two rows costs the operator an interaction and buys nothing. The stack in
- * {@link ComposerDrillMenu} is still there for the day a third photo source
- * makes a submenu worth its tap.
- *
- * Nothing here knows about React — {@link ComposerDrillMenu} renders it, and
- * icons are handed in by the host so this module stays free of JSX.
  */
 
 import type { ComposerDrillNode } from '@/components/composer/ComposerDrillMenu';

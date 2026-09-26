@@ -12,12 +12,7 @@ function unitIdFromPath(pathname: string): number {
   return Number(segments[segments.length - 2]);
 }
 
-/**
- * GET /api/serial-units/[id]/quality — the unit's quality snapshot for the
- * detail pane: a freshly recomputed score + risk, the current grade, all
- * failure tags, and repair history. The score recompute is self-healing, so
- * this read always reflects the latest grade/failures/repairs.
- */
+/** GET /api/serial-units/[id]/quality — the unit's quality snapshot for the detail pane: */
 export const GET = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   const serialUnitId = unitIdFromPath(request.nextUrl.pathname);

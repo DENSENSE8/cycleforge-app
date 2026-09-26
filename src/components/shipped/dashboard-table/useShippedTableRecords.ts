@@ -22,36 +22,11 @@ import {
 import type { ShippedTableFilters } from './useShippedTableFilters';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
-// Spine-first render (immediate paint): when enabled, the week/all-time queries
-// fetch the SPINE (cheap columns) so rows paint instantly, and the display-only
-// deferred fields (ship-by deadline, tester, photos) are hydrated in a second
-// pass and merged in. Client-readable env flag; OFF ⇒ phase 'full' + the
-// hydration query disabled ⇒ byte-identical to the pre-spine behavior.
+// Spine-first render (immediate paint):
 const SPINE_FIRST = process.env.NEXT_PUBLIC_SHIPPED_SPINE_FIRST === 'true';
 const SHIPPED_PHASE: 'spine' | 'full' = SPINE_FIRST ? 'spine' : 'full';
 
-/**
- * Fetches the shipped records (week buckets or all-time), runs the type +
- * carrier/status/exception/outbound filter pipeline, and attaches the derived
- * outbound state. Also wires the dashboard refresh events to query invalidation.
- *
- * ## The find is the SERVER's answer, not a pass over the page
- *
- * `normalizedSearch` rides the fetch key (`/api/packerlogs?q=`). It has to: this
- * feed is a WINDOW — each week bucket asks for the newest `SHIPPED_WEEK_PAGE_SIZE`
- * scans and nothing more. Narrowing that page in memory made the desk answer
- * "no shipped orders found" for a scan that merely sat below the ceiling, which
- * is the desk asserting an absence it was never shown. The route keeps the week
- * bounds and drops only the page bound when `q` is present, so the reply is
- * every match INSIDE the operator's period.
- *
- * Everything after the fetch still runs: type, carrier, status, exceptions and
- * `?ostatus` are FACETS over whatever came back, and the week clip below still
- * trims the route's ±1-day timezone padding. Only the free-text pass moved.
- *
- * Returns the raw `query` (for loading/fetching flags) alongside the fully
- * filtered, derived records that the grouping + view consume.
- */
+/** Fetches the shipped records (week buckets or all-time), runs the type + carrier/status/exception/outbound filter pipeline, and attaches… */
 export function useShippedTableRecords(filters: ShippedTableFilters) {
   const {
     effectiveWeekStart,
@@ -70,23 +45,10 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
 
   const queryClient = useQueryClient();
 
-  // Bucketed week cache: the visible window is fetched as canonical Mon–Sun week
-  // buckets (stable, reused keys) so scrubbing a date range reads from cache and
-  // only a never-seen week hits the DB; past weeks are immutable. The
-  // carrier/status/exception filters fetch ALL-TIME (empty window) which can't be
-  // week-bucketed, so that mode stays a single query.
+  // Bucketed week cache:
   const allTimeMode = !effectiveWeekStart || !effectiveWeekEnd;
 
-  /*
-   * "Load more" paging: each step raises the per-week (and all-time) row ceiling
-   * by one page. Reset to page 1 whenever the window / filters change so a new
-   * view never inherits a stale expanded ceiling.
-   *
-   * `normalizedSearch` is in that reset list because a search REPLACES the page
-   * it was typed over: the searched fetch drops the page bound entirely, so a
-   * multiplier grown on the unsearched week would survive into the cleared
-   * search and silently re-ask for pages nobody pressed for.
-   */
+  /* "Load more" paging: */
   const [pageMultiplier, setPageMultiplier] = useState(1);
   const fetchLimit = pageMultiplier * SHIPPED_WEEK_PAGE_SIZE;
   useEffect(() => {
@@ -138,16 +100,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     isFetching: allTimeMode ? allTimeQuery.isFetching : weekBuckets.isFetching,
   };
 
-  // Warm the cache on idle so the common period presets (this/last week)
-  // resolve INSTANTLY instead of cold-fetching on click. Prefetch shares the
-  // week-query factory, so a warmed week is the exact entry the bucket query
-  // later reads — past weeks fetch at most once per session.
-  //
-  // Scope: only the 2 most-recent weeks (this/last). The `/api/packerlogs`
-  // query is lateral-heavy (~12 correlated subqueries per row), so each warmed
-  // week is a real DB/Neon cost; warming 9 weeks on every dashboard mount was
-  // ~7 extra cold queries a user rarely scrolls back to. Older weeks still warm
-  // lazily on first navigation (and then cache at staleTime: Infinity).
+  // Warm the cache on idle so the common period presets (this/last week) resolve INSTANTLY instead of cold-fetching on click.
   useEffect(() => {
     const warm = () => {
       for (const { weekStart, weekEnd } of getRecentWeekBuckets(2)) {
@@ -188,13 +141,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
 
   const fetchedRecords = allTimeMode ? allTimeQuery.data ?? [] : weekBuckets.rows;
 
-  // Clip the merged rows to the ACTIVE window — the selected week OR explicit
-  // calendar range (both surface as effectiveWeekStart/End). The packerlogs week
-  // query pads its scan window by ±1–2 days for timezone safety, so without this
-  // clip the previous/next day leaks into a week view (the pill says "Jun 22–26"
-  // but Jun 27–29 rows bleed in). Clipping by packed day hides everything outside
-  // the selected period. All-time / carrier-filter mode (empty window) is left
-  // unclipped on purpose — it is intentionally not date-scoped.
+  // Clip the merged rows to the ACTIVE window — the selected week OR explicit calendar range (both surface as effectiveWeekStart/End).
   const rawRecords = useMemo(() => {
     if (!effectiveWeekStart || !effectiveWeekEnd) return fetchedRecords;
     return fetchedRecords.filter((r) => {
@@ -252,12 +199,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     [records],
   );
 
-  // Spine-first hydration: the deferred fields (ship-by deadline, tester, photos)
-  // are omitted by the spine fetch so rows paint immediately; fetch them for the
-  // visible rows and overlay them. None of these fields feed the filter/derive
-  // pipeline (carrier status + outbound derive stay in the spine), so merging
-  // last is safe. Fully inert when SPINE_FIRST is off: the query is disabled and
-  // the merge returns derivedRecords unchanged.
+  // Spine-first hydration:
   const salIds = useMemo(
     () =>
       SPINE_FIRST
@@ -287,18 +229,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   const searchMeta = null;
   const isResolvingSearch = false;
 
-  /*
-   * Truncation surfacing: a week/all-time fetch that filled its ceiling has more
-   * rows on the server. Expose it + a loader so the table can offer an explicit
-   * "Load more" instead of silently dropping the older tail.
-   *
-   * A SEARCH retires the pager. `/api/packerlogs?q=` answers without a page
-   * bound, so the rows on screen are already every match in the window — but
-   * `length >= fetchLimit` cannot tell that apart from a filled page, and would
-   * offer "Load more" over a complete set. Worse, pressing it re-fetches the
-   * SEARCHED window at a doubled ceiling the route ignores: a pager advertising
-   * pages of a row set that no longer exists.
-   */
+  /* Truncation surfacing: */
   const isTruncated = normalizedSearch
     ? false
     : allTimeMode

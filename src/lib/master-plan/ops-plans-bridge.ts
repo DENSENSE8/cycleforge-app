@@ -1,24 +1,4 @@
-/**
- * Master plan → ops-plans projection (the **sole** agentic → plan-DB connection).
- *
- * Staff view plans through the ops-plans domain (ops_plans / ops_plan_phases /
- * ops_plan_tasks + /api/ops-plans + Operations ▸ Plans). This module
- * projects the agentic-loop master plan (CRDT MDX) into that domain so the
- * plan shows up in the same tables, inbox, and progress rollups as every
- * other plan — WITHOUT making Neon the CRDT store: the MDX stays the source
- * of truth and this projection is derived, idempotent, and re-runnable.
- *
- * Forge ingest (`cycle_forge_runs`), user-issues, and vendor integrations do
- * **not** write these tables — keep them adjacent.
- *
- * Mapping:
- *   plan   ← one ops_plan with the stable title below (station-agnostic)
- *   phase  ← each MDX `##` section that contains tickets (station ADMIN)
- *   task   ← each <TicketStatus/>; identity = client_event_id
- *            `master-plan:{ticketId}` (partial unique per org)
- *   status ← pending→open · in-progress→in_progress · deployed→done;
- *            tickets REMOVED from the MDX cancel their projected task.
- */
+/** Master plan → ops-plans projection (the **sole** agentic → plan-DB connection). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

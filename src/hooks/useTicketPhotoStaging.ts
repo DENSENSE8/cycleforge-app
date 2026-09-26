@@ -5,13 +5,7 @@ import { captureTimeFromFile } from '@/lib/photos/capture-time';
 import { uploadPhotoClient, linkPhotoClient } from '@/lib/photos/upload-client';
 import { toast } from '@/lib/toast';
 
-/**
- * Staged photos for a support ticket. Dropping / picking a file uploads it to
- * GCS immediately (linked to the ZENDESK_TICKET entity) so it's persisted "under
- * that ticket" the moment it lands, then it rides along as an attachment on the
- * next reply/note (the composer sends `photoIds`). The blob `previewUrl` shows
- * instantly while the upload is in flight.
- */
+/** Staged photos for a support ticket. */
 export interface StagedPhoto {
   tempId: string;
   name: string;

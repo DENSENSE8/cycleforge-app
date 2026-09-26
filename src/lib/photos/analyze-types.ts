@@ -1,12 +1,4 @@
-/**
- * The shape every photo-analysis provider must produce. Kept in its own module so
- * both the providers (hermes / gcp-vision / local-vision / catalog) and the
- * orchestrator (analyze.ts) import it without a circular dependency.
- *
- * This is what lands in `photo_analysis.metadata` (jsonb) and is what SQL search
- * over photos reads — so the shape is identical regardless of which engine ran;
- * only `photo_analysis.model` records which one it was.
- */
+/** The shape every photo-analysis provider must produce. */
 export interface PhotoAnalysisMetadata {
   /** OCR snippets read off the photo (label text, PO numbers, etc.). */
   ocr_text: string[];

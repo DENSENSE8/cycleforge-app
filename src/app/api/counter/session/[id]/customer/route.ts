@@ -1,12 +1,4 @@
-/**
- * PATCH /api/counter/session/{id}/customer — set the visit's identity.
- *
- * One of the two verbs BOTH doors hold (the tablet's twin is
- * `/api/kiosk/session/customer`). Deterministic identity only, per the parent
- * plan's D7: a phone number unlocks create-or-match at submit. There is no
- * search here and there must never be one — the device principal is
- * unattended-capable, so a searchable customer list is a list a stranger reads.
- */
+/** PATCH /api/counter/session/{id}/customer — set the visit's identity. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

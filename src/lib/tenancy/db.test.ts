@@ -1,14 +1,4 @@
-/**
- * Tenant isolation smoke test.
- *
- * Proves the core invariant: setting `app.current_org` to org A returns
- * only org A's rows from a tenant-scoped query, and a different setting
- * returns the other tenant's rows. If this ever regresses, every
- * subsequent dashboard query is potentially cross-tenant.
- *
- * Skips when DATABASE_URL is unavailable (CI without a DB still passes).
- * Cleans up after itself.
- */
+/** Tenant isolation smoke test. */
 
 import { test } from 'node:test';
 import { strictEqual, ok } from 'node:assert';

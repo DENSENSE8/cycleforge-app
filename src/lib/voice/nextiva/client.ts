@@ -1,13 +1,4 @@
-/**
- * Thin Nextiva REST client — the ONE seam where the provider's HTTP surface
- * lives. The exact base URL, auth header, and endpoint paths are confirmed in
- * the Phase 0 spike (docs/nextiva-voice-support-mode-plan.md §9); until then the
- * methods throw `NextivaNotConfiguredError` when no API key is present, which
- * the routes translate into a graceful 501 (the UI shows "connect Nextiva").
- *
- * Everything reads creds from the vault (getIntegrationCredentials) — never env
- * directly, never tokens to the browser.
- */
+/** Thin Nextiva REST client — the ONE seam where the provider's HTTP surface lives. */
 
 import {
   getIntegrationCredentials,
@@ -70,11 +61,8 @@ export async function originateCall(orgId: OrgId, input: OriginateCallInput): Pr
 }
 
 /**
- * Fetch a voicemail recording's bytes, authenticated server-side. Returned to
- * the browser only via the same-origin /api/voicemails/[id]/recording proxy.
- *
+ * Fetch a voicemail recording's bytes, authenticated server-side.
  * TODO(spike §9.3): confirm whether `recordingUrl` is directly fetchable with
- * the API key (as assumed here) or requires a separate media endpoint.
  */
 export async function fetchRecording(
   orgId: OrgId,

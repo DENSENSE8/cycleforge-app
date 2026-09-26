@@ -1,20 +1,6 @@
 /**
  * POST /api/kiosk/price-approval
- *
- * The counter tablet's PIN step-up for a line's money verbs — Square's "Price
- * adjustment", "Keypad" (custom amount) and "Comp". Device-authed
- * (`withKioskAuth`); the PERSON is proven by `resolveKioskStepUp` against
- * `walk_in.adjust_price`, never by the device.
- *
- * Answers a signed approval (`lib/kiosk/price-approval`) naming exactly what
- * was authorized. The tablet has no server session mid-cart, so the approval
- * rides the cart line and `/api/kiosk/intake` verifies it at submit, where the
- * adjustment is persisted and audited against the visit it belongs to — so
- * this route writes nothing itself. Removing a line needs no approval at all
  * (operator 2026-09-24: "no need for PIN to remove — dogfood must move fast").
- *
- * Callers: `KioskCartLineEditor`.
- * Schemas: none (read-only step-up).
  */
 
 import { NextRequest, NextResponse } from 'next/server';

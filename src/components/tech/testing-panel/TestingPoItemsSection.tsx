@@ -18,38 +18,13 @@ interface Props {
   headerRight?: React.ReactNode;
   /** Hide the "PO items · N" header — parent tab row owns the pencil. */
   suppressHeader?: boolean;
-  /**
-   * Open the right-edge Units Display for a line (serials-cell / edit click).
-   * The per-unit verdict list is an Action Display, not a centre `activeRowSlot`
-   * — the centre PO line stays a pure ledger row (title · meta · serials
-   * preview), matching Unbox. See TestingPanel `openUnits`.
-   */
+  /** Open the right-edge Units Display for a line (serials-cell / edit click). */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
-  /**
-   * The Items band's line-collapse controller ({@link useLineCollapse}), shared
-   * so "Collapse all" reaches the lines and not just the band — the same wiring
-   * Unbox has. On the MATCHED lane Testing's centre rows are a pure ledger with
-   * no capture body, so they paint no toggle; on the unfound / return lane,
-   * where Testing does mount capture under a line, they collapse like Unbox.
-   */
+  /** The Items band's line-collapse controller ({@link useLineCollapse}), shared so "Collapse all" reaches the lines and not just the band —… */
   lineCollapse?: LineCollapseController;
 }
 
-/**
- * PO-items block for the testing workspace — {@link PoItemsSection}, the same
- * one Unbox and `/search` render, with Testing's controller in the slots. It is
- * a **pure ledger row** here: the per-unit verdict surface
- * ({@link TestingLineSlot}) no longer mounts under the row in the centre; the
- * serials cell opens the right-edge Units Display via {@link onViewAllUnits}
- * (Unbox parity). Composed inside {@link TestingPoUnboxingSection} in embedded
- * mode so the wrapper owns the card chrome and the single package-pairing pencil
- * (no CartonAddPopover modal).
- *
- * This file used to route the matched / unfound lanes itself and skipped the
- * lineless-real-PO probe the other two stations did — so a real PO carton whose
- * lines had not landed yet was a dead end here and workable everywhere else.
- * The shared section owns that decision now.
- */
+/** PO-items block for the testing workspace — {@link PoItemsSection}, the same one Unbox and `/search` render, with Testing's controller in… */
 export function TestingPoItemsSection({
   row,
   staffId,
@@ -61,10 +36,7 @@ export function TestingPoItemsSection({
   lineCollapse,
 }: Props) {
   if (row.receiving_id == null) {
-    // Not linked to a carton yet — no longer a dead end. A REAL line (positive
-    // id) can still take a serial (the scan-serial route attaches by
-    // receiving_line_id), so render a standalone entry; a synthetic stub
-    // (negative id) has no line to attach to, so teach the next step instead.
+    // Not linked to a carton yet — no longer a dead end.
     if (row.id > 0) {
       return (
         <div className="space-y-2">

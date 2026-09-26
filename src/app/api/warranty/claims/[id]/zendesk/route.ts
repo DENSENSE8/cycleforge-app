@@ -19,13 +19,7 @@ import { pairTicketShipmentIfKnown } from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/warranty/claims/[id]/zendesk
- *
- * Live status of the claim's linked Zendesk ticket (null when no ticket has
- * been created yet). Read-time fetch — Zendesk stays the source of truth for
- * the conversation, we only persist the id mapping. Gated by WARRANTY_LOGGER.
- */
+/** GET /api/warranty/claims/[id]/zendesk */
 export const GET = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);
@@ -62,17 +56,7 @@ export const GET = withAuth(async (request, ctx) => {
   }
 }, { permission: 'warranty.view', feature: 'repair' });
 
-/**
- * POST /api/warranty/claims/[id]/zendesk
- *
- * Creates a Zendesk ticket from the claim and links it (zendesk_ticket_id +
- * ticket_links row, external_id = warranty_claim:<id>). The first comment is
- * internal so creating the ticket never emails the customer. When Zendesk is
- * unreachable the template subject/body come back as a copyable draft
- * (receiving-claim precedent). 409 when a ticket is already linked. Idempotent
- * via `Idempotency-Key` header or `idempotencyKey` body field. Gated by
- * WARRANTY_LOGGER.
- */
+/** POST /api/warranty/claims/[id]/zendesk */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);

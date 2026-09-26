@@ -12,22 +12,7 @@ import {
   type FlowEdgeRef,
 } from '@/lib/studio/flow-metrics';
 
-/**
- * GET /api/studio/flow?v=<definitionId>&window=<days>
- *
- * The Flow² lens feed — TREND/THROUGHPUT over a definition (vs /live's
- * point-in-time occupancy):
- *   - time-in-node median/p90 per node_type (lag() over each unit's runs)
- *   - output-port distribution + fail-rate per node_type
- *   - WIP trend per node from the daily workflow_node_stats snapshots
- *   - a ranked bottleneck list
- *
- * Tenancy: the definition is resolved org-scoped (parent-verification, same as
- * /live); workflow_runs is additionally filtered by organization_id (it carries
- * the column). nodes/edges inherit tenant scope via the org-verified definition.
- * Read via fetch-on-lens-activation (no polling — Studio law #4); the data
- * changes at most daily (snapshot cron) so there is nothing to poll.
- */
+/** GET /api/studio/flow?v=<definitionId>&window=<days> */
 export const dynamic = 'force-dynamic';
 
 type Row = Record<string, unknown>;
@@ -49,10 +34,7 @@ export const GET = withAuth(
     try {
       const org = ctx.organizationId;
 
-      // GUC-scoped (RLS-ready): workflow_runs + workflow_node_stats are
-      // FORCE-slated, so every read runs on a GUC-bearing tenant connection.
-      // workflow_nodes/edges (no org column) are parent-verified via the
-      // org-scoped definition; running them on the same connection is harmless.
+      // GUC-scoped (RLS-ready):
       const result = await withTenantDrizzle(org, async (tx) => {
         const [definition] = await tx
           .select({ id: workflowDefinitions.id })

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The Warranty slot-layout hook — the Warranty CONFIG on the shared
- * {@link useSlotTableLayout} engine. The thirteenth family on the engine.
- *
- * Warranty paints the SHEET morph only: a stored `compound` layout would
- * promise a two-row item cell nothing draws — `paintMorph` coerces, the org
- * write gate (`slotMorphsFor('warranty')`) refuses.
- */
+/** The Warranty slot-layout hook — the Warranty CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   WARRANTY_FIELD_CATALOG,

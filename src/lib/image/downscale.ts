@@ -1,15 +1,4 @@
-/**
- * Client-side image downscaler for receiving photos.
- *
- * Receiving photos are kept for years as evidence/audit material, so we
- * downscale to ~720p before upload — the longest side is clamped to 1280 px
- * (which is the 16:9 "720p" width and also the right ceiling for 9:16 portrait
- * captures from phones). JPEG at q=0.82 typically yields 80–180 KB per shot
- * versus 3–6 MB straight from a modern phone camera.
- *
- * Runs only in the browser. Falls back to the original blob if anything
- * goes wrong so a downscale failure never blocks a receiver from uploading.
- */
+/** Client-side image downscaler for receiving photos. */
 
 export const DOWNSCALE_LONG_EDGE = 1280;
 export const DOWNSCALE_JPEG_QUALITY = 0.82;

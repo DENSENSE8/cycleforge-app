@@ -1,15 +1,4 @@
-/**
- * POST /api/admin/org/delete
- *
- * Soft-deletes the caller's organization. The actual purge runs out-of-band
- * (cron job, not implemented here) — this endpoint just flips status to
- * 'deleted' and stamps deleted_at. All sessions for the org are revoked
- * immediately so the admin who triggered it gets signed out.
- *
- * Satisfies GDPR Article 17 / CCPA right to delete. Step-up + admin.view
- * required, plus the request must carry `{ confirm: "<slug>" }` to
- * guarantee intent (matches the Stripe "type the org name" pattern).
- */
+/** POST /api/admin/org/delete */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

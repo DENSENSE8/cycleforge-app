@@ -1,36 +1,4 @@
-/**
- * GET /api/cron/shipping/sync-due
- *
- * Vercel-cron-triggered shipping sync. Polls non-terminal shipments in
- * `shipping_tracking_numbers` and updates their carrier status (UPS, FedEx,
- * USPS) so the receiving Incoming UI reflects real-world delivery state.
- *
- * Lives here instead of the legacy `/api/qstash/shipping/sync-due` path so
- * the route name matches what actually invokes it — vercel.json `crons:`
- * entries hit this directly, no QStash queue in the loop.
- *
- * Auth: `Authorization: Bearer ${CRON_SECRET}` (Vercel injects this header
- * automatically on every cron invocation when the env var is set). Manual
- * invocations need to pass the same header.
- *
- * Query params:
- *   - limit       — max shipments to sync this run (default 50, hard cap 200)
- *   - concurrency — parallel carrier calls (default 5, cap 10)
- *   - carriers    — comma-separated UPS,FEDEX,USPS; defaults to all
- *
- * Run cadence (per vercel.json — staggered so the two schedules never share a
- * tick; both hold the same `shipping.sync_due` advisory lock):
- *   - 7,22,37,52 * * * *: limit=150 concurrency=8 (rolling sweep, all carriers)
- *   - 30 3 * * 2-6: limit=200 concurrency=8 carriers=UPS,FEDEX (nightly deep refresh)
- *
- * Tenancy (Phase D category B — global carrier-poll sweep): carrier tracking
- * reads (UPS/USPS/FedEx) are global, not per-org-credentialed, and each polled
- * shipment carries its own org via its parent (shipping_tracking_numbers is an
- * org-less surrogate-keyed spine). So this stays a single global due-poll on the
- * owner pool. Phase E follow-up: to be FORCE-safe, GUC-scope the due-shipment
- * selection per org and shard the limit/concurrency budget across orgs (a naive
- * per-org loop multiplies wall-clock by org count and blows maxDuration).
- */
+/** GET /api/cron/shipping/sync-due */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

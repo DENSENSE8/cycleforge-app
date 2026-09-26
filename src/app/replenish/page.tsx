@@ -1,11 +1,6 @@
 import { redirect } from 'next/navigation';
 
-/**
- * Replenish moved into the inventory page as a section toggle.
- * `/replenish` now permanently redirects to `/inventory?section=replenish`,
- * mapping the legacy params onto the namespaced ones the inventory route uses.
- * The old `incoming` tab is gone — incoming POs live on `/receiving?mode=incoming`.
- */
+/** Replenish moved into the inventory page as a section toggle. */
 export default async function ReplenishRedirect({
   searchParams,
 }: {

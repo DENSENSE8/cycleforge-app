@@ -1,11 +1,4 @@
-/**
- * Warehouse Labels / Bays label-builder layout pin.
- *
- * Callers: StepPills (bin+rack), Bin/Rack builders, LabelPrintWorkspace.
- * No data schemas. Adds LABEL_BUILDER_STEP path chips (distinct from TabSwitch).
- * User: "tabs and the pills are from different tokens" / "Reset button must
- * have an outline" / improve legibility and navigation.
- */
+/** Warehouse Labels / Bays label-builder layout pin. */
 
 import { cornerClass } from '@/design-system/tokens/radius';
 

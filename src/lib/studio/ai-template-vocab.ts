@@ -1,32 +1,4 @@
-/**
- * ai-template-vocab — the CLOSED vocabulary an AI intake assistant may use when
- * it drafts or recommends an ops-SOP template (Template Platform Phase 5).
- *
- * The hard invariant of the whole platform: a template may only REFERENCE
- * registered engine node types (listNodeMeta) and registered operator surfaces
- * (SURFACE_KEYS) — new capabilities require a platform PR, never an AI draft.
- * validateTemplatePackage already enforces this at import time; this module is
- * the OTHER half of the guarantee:
- *
- *   1. getAiTemplateVocabulary() — the exact palette to hand the model as its
- *      ONLY allowed node/surface vocabulary (so it is constrained at generation
- *      time, not just rejected after).
- *   2. constrainDraftToVocabulary() — a DEFENSE-IN-DEPTH pass that drops any
- *      off-palette node the model hallucinated anyway (and the edges/seeds that
- *      referenced it), returning the sanitized graph + a report of what was
- *      dropped. Whatever survives is still re-checked by validateTemplatePackage
- *      before it can be persisted/imported — this pass just means the model can
- *      never smuggle an unknown type past the draft stage.
- *
- * An AI-drafted graph is NEVER auto-activated: it terminates in the Phase-3
- * import path (importTemplatePackage → installTemplateIntoOrg activate:'never'),
- * so it always lands a draft the owner reviews + publishes. This module never
- * activates anything; it only shapes + sanitizes the proposed graph.
- *
- * Pure: registry readers are passed in (getNodeMeta / getSurfaces) or default to
- * the real registries, and the constrain pass takes injected predicates — so it
- * unit-tests with no registry bootstrap.
- */
+/** ai-template-vocab — the CLOSED vocabulary an AI intake assistant may use when it drafts or recommends an ops-SOP template (Template… */
 
 import type { NodeMeta } from '@/lib/workflow/contract';
 import { listNodeMeta } from '@/lib/workflow';
@@ -106,18 +78,7 @@ export interface ConstrainResult {
   clean: boolean;
 }
 
-/**
- * Defense-in-depth: strip any node whose type is not a registered engine node,
- * then drop every edge that referenced a removed (or missing) node. The result
- * is a graph that only names registered node types — which validateTemplatePackage
- * will still re-verify before anything is persisted. This never mutates the input.
- *
- * NOTE: this sanitizes the GRAPH (node/edge topology). Explicit surface seeds are
- * validated separately by validateTemplatePackage against isSurfaceKey; the
- * isSurfaceKey dep is accepted here so callers can share one deps object, but the
- * Phase-3 install derives surfaces from node TYPES, so graph sanitation is what
- * gates a draft.
- */
+/** Defense-in-depth: */
 export function constrainDraftToVocabulary(graph: TemplateGraph, deps: ConstrainDeps): ConstrainResult {
   const droppedNodes: Array<{ id: string; type: string }> = [];
   const keptNodes = graph.nodes.filter((n) => {

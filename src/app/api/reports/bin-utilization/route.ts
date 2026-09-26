@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-// `mv_bin_utilization` is a cross-tenant materialized view (it has no
-// organization_id column). Re-scope it the same way the velocity/dead-stock
-// reports do: join the org-bearing base table (`locations`, keyed by
-// bin_id = locations.id) and filter on the caller's org. Wrapped in withAuth
-// so it can no longer be reached unauthenticated.
-//
-// `?q=` is the report's find text. This warehouse has more bins than the
-// report's 500-row page, so a browser-side filter over the loaded page could
-// not reach the emptiest bins at all — the rows are ordered by fill, and the
-// bin an operator goes looking for is usually the one that fell off the end.
-// The columns are the facts a bin row paints: its room (the title), its
-// scannable handle (`barcode ?? bin_name`), and both halves of that coalesce.
+// `mv_bin_utilization` is a cross-tenant materialized view (it has no organization_id column).
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

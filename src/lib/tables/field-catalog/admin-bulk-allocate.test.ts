@@ -1,25 +1,4 @@
-/**
- * Bulk-allocate catalog guards, materialization, adapter and verb behaviour —
- * the family that replaced `/inventory/bulk-allocate`'s seven
- * hand-written `AdminTableColumn` objects.
- *
- * Four assertions here are load-bearing beyond the usual shape checks:
- *
- * - the DERIVED-FACT rule. `qty` and `eligible` are computed
- *   (`candidateQty` / `candidateStateWord`), so neither may carry a `paths`
- *   entry: there is no row column to name, and `quantity_str` in particular is
- *   the raw TEXT the retired page already knew was not the fact.
- * - the INELIGIBLE ROW offers no ENABLED verb. The retired cell disabled its
- *   `<Button>`; a port that silently left the verb live would let one click
- *   allocate an order there is no stock for.
- * - the SHORTFALL SENTENCE survives. It was the disabled button's tooltip and
- *   it is the only text that says HOW short the SKU is.
- * - the WRITE GATE. The action's `orders.view` `requirePermission` and its
- *   `revalidatePath` are the two lines a client-island port could quietly
- *   drop; the action lives in an RSC `page.tsx` that cannot be imported here
- *   (JSX, `next/cache`, server-only), so this is a source TRIPWIRE rather
- *   than a call-through.
- */
+/** Bulk-allocate catalog guards, materialization, adapter and verb behaviour — the family that replaced `/inventory/bulk-allocate`'s seven… */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

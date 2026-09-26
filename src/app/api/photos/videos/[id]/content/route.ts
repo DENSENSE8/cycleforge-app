@@ -11,16 +11,7 @@ const TTL = Number(process.env.PHOTOS_SIGNED_URL_TTL_SECONDS || 3600);
 // cached redirect never replays an expired signature.
 const REDIRECT_CACHE = `private, max-age=${Math.max(60, Math.floor(TTL / 2))}`;
 
-/**
- * GET /api/photos/videos/{id}/content — play a ready entity video.
- *
- * Gated like `GET /api/photos/{id}/content` for signed-in staff: any session
- * in the video's org (photo content serves org staff even without
- * `photos.view`), scoped by `organization_id`; no anonymous branch. Answers a
- * 302 to a short-lived V4 signed GCS read URL so the browser streams straight
- * from the bucket with range requests (seek, inline play) and no bytes pass
- * through the function.
- */
+/** GET /api/photos/videos/{id}/content — play a ready entity video. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const parts = req.nextUrl.pathname.split('/').filter(Boolean);

@@ -1,34 +1,4 @@
-/**
- * decision-eval-zen — GoRules ZEN-backed evaluator behind the `decision` node
- * (UNIFIED-ENGINE-MASTER-PLAN §1.6, Stage 2; gated by isDecisionEngineZen()).
- *
- * Stage 1 (decision-eval.ts) ships a hand-rolled first-match-wins matcher. Stage 2
- * swaps the matching ENGINE — not the node, the editor, the config shape, or the
- * result — for the GoRules ZEN engine. This module mirrors evaluateDecision()'s
- * call shape (rules, defaultPort, facts) and result (a port id, or null → park),
- * differing only in being async, because the WASM engine initializes lazily.
- *
- * WHICH ZEN BUILD THIS IS (load-bearing):
- *   `@gorules/zen-engine-wasm` (the browser/WASM build) is, per its own README,
- *   EXPRESSION-ONLY — it exports evaluateExpression()/evaluateUnaryExpression() and
- *   has NO ZenEngine / createDecision / JDM-decision-graph evaluator. That full
- *   decision-graph runtime lives only in the native napi `@gorules/zen-engine`,
- *   which §1.6 deliberately avoids (native binding). So we compile the rule table
- *   to an equivalent ZEN EXPRESSION — a first-match-wins ternary chain of equality
- *   tests — and evaluate that, instead of synthesizing a JDM decision-table graph.
- *   The routing semantics and result are identical to the in-house evaluator
- *   (proven across the in-house scenarios in decision-eval-zen.test.ts).
- *
- * ROBUSTNESS CONTRACT (keeps §1.6's "no-op until enabled" promise):
- *   • The WASM module is dynamically imported + initialized LAZILY on first real
- *     use — importing this file never touches WASM (so it is smoke-import safe and
- *     never runs at import time).
- *   • Load / init / evaluate are fully guarded: any failure logs once and falls
- *     back to the in-house evaluateDecision(), so an unavailable or finicky WASM
- *     runtime degrades to byte-identical Stage-1 behavior instead of 500-ing a
- *     route. The flag being OFF means this module's WASM path is never entered.
- *   • Pure + stateless apart from the cached engine handle: no DB, no side effects.
- */
+/** decision-eval-zen — GoRules ZEN-backed evaluator behind the `decision` node (UNIFIED-ENGINE-MASTER-PLAN §1.6, Stage 2; gated by… */
 
 import { evaluateDecision, type DecisionFacts, type DecisionRule } from './decision-eval';
 
@@ -38,13 +8,7 @@ const WHEN_KEYS = ['grade', 'channel', 'disposition'] as const;
 /** The one primitive we use from the expression-only WASM build. */
 type ZenEvaluateExpression = (expression: string, context: unknown) => unknown;
 
-/**
- * Optional pre-authored override. Because the WASM build is expression-only, a
- * stored "decision doc" here is a ready-to-run ZEN EXPRESSION string (the form a
- * future Studio editor would persist) — used verbatim instead of synthesizing one
- * from the rule table. A full JDM decision-table graph would need the native
- * engine and is intentionally out of scope for this build.
- */
+/** Optional pre-authored override. */
 export interface DecisionZenOptions {
   expression?: string;
 }
@@ -56,20 +20,13 @@ async function loadZen(): Promise<ZenEvaluateExpression | null> {
   if (zenLoad) return zenLoad;
   zenLoad = (async (): Promise<ZenEvaluateExpression | null> => {
     try {
-      // Genuine runtime imports — Turbopack's WASM loader expects a split
-      // zen_engine_wasm_bg.js + .wasm pair this package does not ship (it uses
-      // zen_engine_wasm.js + zen_engine_wasm_bg.wasm). Obfuscated specifiers +
-      // webpackIgnore keep resolution in Node (same pattern as sharp in nas-dev).
+      // Genuine runtime imports — Turbopack's WASM loader expects a split zen_engine_wasm_bg.js + .wasm pair this package does not ship (it uses…
       const zenPkg = ['@gorules/', 'zen-engine-wasm'].join('');
       const mod = (await import(/* webpackIgnore: true */ zenPkg)) as unknown as {
         default: (init: { module_or_path: BufferSource }) => Promise<unknown>;
         evaluateExpression?: ZenEvaluateExpression;
       };
-      // wasm-pack --target web build: every export is inert until the module is
-      // instantiated with the .wasm bytes — and the exports (isReady/evaluate*)
-      // actually THROW if called pre-init — so we must NOT probe before init. Under
-      // Node there is no fetch step, so read the bytes from the package's own dist
-      // dir and instantiate exactly once (this whole loader is cached by zenLoad).
+      // wasm-pack --target web build:
       const { createRequire } = await import('node:module');
       const { readFile } = await import('node:fs/promises');
       const { join, dirname } = await import('node:path');
@@ -107,12 +64,7 @@ function zenString(value: string): string {
   return JSON.stringify(value);
 }
 
-/**
- * One rule's `when` → a ZEN boolean. Mirrors decision-eval's ruleMatches exactly:
- * every PRESENT key must equal the corresponding fact (compared as strings); an
- * empty `when` is the always-true catch-all. Wrapped in parens so it composes
- * unambiguously with the surrounding ternary.
- */
+/** One rule's `when` → a ZEN boolean. */
 function compileCondition(when: DecisionRule['when']): string {
   const clauses: string[] = [];
   for (const key of WHEN_KEYS) {
@@ -123,13 +75,7 @@ function compileCondition(when: DecisionRule['when']): string {
   return clauses.length ? `(${clauses.join(' and ')})` : 'true';
 }
 
-/**
- * Compile the whole table to a first-match-wins ternary chain:
- *   (c1) ? "p1" : (c2) ? "p2" : … : <default>
- * Right-associative ternary makes the earliest matching rule win, exactly like the
- * in-house loop. The default literal mirrors `defaultPort ?? null` (including the
- * empty-string edge: a '' default evaluates to '', not null).
- */
+/** Compile the whole table to a first-match-wins ternary chain: */
 export function compileDecisionTableToZen(
   rules: readonly DecisionRule[],
   defaultPort: string | null | undefined,
@@ -160,12 +106,7 @@ function toPort(result: unknown): string | null {
   return typeof result === 'string' ? result : String(result);
 }
 
-/**
- * ZEN-backed twin of evaluateDecision(). Same inputs + result (a port id, or null
- * → the node parks). Async only because the WASM engine initializes lazily. On any
- * ZEN load/eval failure it transparently falls back to the in-house evaluator, so
- * the caller always gets a correct route.
- */
+/** ZEN-backed twin of evaluateDecision(). */
 export async function evaluateDecisionZen(
   rules: readonly DecisionRule[],
   defaultPort: string | null | undefined,

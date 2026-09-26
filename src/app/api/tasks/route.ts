@@ -15,26 +15,7 @@ import { urgencyEntityTypes } from '@/lib/urgency/urgency-targets';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/tasks — throw a task at a colleague.
- *
- * Creates a `FOLLOW_UP` work_assignment pointing at a record, and (when marked
- * urgent) promotes that record through the cross-entity urgency SoT so it also
- * surfaces in the Urgent lanes everyone already watches.
- *
- * WHY NOT `POST /api/assignments`
- *   That route does find-active-and-update, because a bench runs one entity at
- *   a time. A thrown task is exempt from `ux_work_assignments_active_entity`
- *   (2026-08-08b) precisely so two people can be handed the same record for
- *   different reasons — routing through the upsert would silently hijack an
- *   existing task instead of creating a second. Same table, genuinely different
- * job: a sibling, not a fork.
- *
- * PERMISSION — `work_orders.claim`, the same gate `POST /api/assignments`
- *   already uses, and one every floor role holds (scripts/seed-roles.mjs).
- *   Throwing a task is an everyday floor action; gating it harder would send
- *   operators back to paper, which is the problem this replaces.
- */
+/** POST /api/tasks — throw a task at a colleague. */
 
 const BodySchema = z.object({
   /** Both omitted = a standalone task with no record behind it. */
@@ -168,27 +149,7 @@ export const POST = withAuth(
   { permission: 'work_orders.claim' },
 );
 
-/**
- * GET /api/tasks — the task desk's read.
- *
- * Defaults are the working list: `lane=open`, `assignee=me`. `assignee=all`
- * is the explicit team read (the reports tab's done-lane roll-up) — it is
- * opt-in rather than the default because the desk an operator opens is THEIR
- * desk, and a screen that opens on everyone's work is a screen nobody acts on.
- *
- * `?q=` is the find text of whichever surface is reading (the completed-tasks
- * report today). It is answered in SQL by `listTaskDeskRows` rather than in the
- * browser, because the page the client holds is a WINDOW: a substring pass over
- * it can only ever find tasks that already arrived, and it re-narrows the
- * answer to the facts the mounted columns happen to paint.
- *
- * `?assignedBy=me` narrows to tasks the caller THREW (`assigned_by_staff_id`);
- * combined with `assignee=all` it is "what I handed off". Only `me` is
- * accepted — the thrower filter reads the caller's own ledger, not a colleague's.
- *
- * No `recordAudit`: reads are covered by the route-level access log, and an
- * audit row per desk refresh would bury the writes it exists to surface.
- */
+/** GET /api/tasks — the task desk's read. */
 const QuerySchema = z.object({
   lane: z.enum(['open', 'done', 'all']).optional(),
   assignee: z.union([z.literal('me'), z.literal('all'), z.string().regex(/^\d+$/)]).optional(),

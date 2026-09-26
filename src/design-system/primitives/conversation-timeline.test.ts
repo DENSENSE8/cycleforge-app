@@ -5,14 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ConversationMessageCard } from './ConversationMessageCard';
 import { CONVERSATION_MARK_BOX, CONVERSATION_STREAM } from './conversation-chrome';
 
-/**
- * The rendered thread — a connected activity timeline (GitHub / Jira / Linear),
- * not a stack of bubbles.
- *
- * The token tests next door pin the class strings. These pin the STRUCTURE the
- * tokens only imply: that a caller who knows nothing about a spine still gets
- * one, threaded behind its own mark, at one x for every row.
- */
+/** The rendered thread — a connected activity timeline (GitHub / Jira / Linear), not a stack of bubbles. */
 const mark = (label: string) =>
   React.createElement(
     'div',

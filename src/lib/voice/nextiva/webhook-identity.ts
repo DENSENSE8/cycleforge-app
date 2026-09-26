@@ -1,13 +1,4 @@
-/**
- * Per-tenant Nextiva webhook identity — mirrors the Zoho Wave-3 model
- * (src/lib/zoho/webhooks/zoho-webhook-credentials.ts).
- *
- * Each org that connects Nextiva gets an opaque `webhookToken` (in the
- * per-tenant URL /api/integrations/nextiva/webhook/{token}, mirrored to the
- * indexed organization_integrations.webhook_token column) and its OWN HMAC
- * `webhookSigningSecret` (encrypted in the payload) so a forged delivery can't
- * cross tenants.
- */
+/** Per-tenant Nextiva webhook identity — mirrors the Zoho Wave-3 model (src/lib/zoho/webhooks/zoho-webhook-credentials.ts). */
 
 import { randomBytes } from 'node:crypto';
 import pool from '@/lib/db';

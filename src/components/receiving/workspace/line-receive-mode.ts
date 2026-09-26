@@ -1,10 +1,4 @@
-/**
- * SoT for multi-qty Unbox line display modes.
- *
- * Industry WMS split: quantity roll-up for identical non-serialized commodities
- * vs unit-track when each physical unit needs identity (serial / per-unit grade).
- * Caps are UI-only — `ensureLineUnits` still materialises one DB row per expected unit.
- */
+/** SoT for multi-qty Unbox line display modes. */
 
 /** Hard cap on unit DOM rows rendered in the accordion (unit-track mode). */
 export const UNIT_ROW_DISPLAY_CAP = 12;
@@ -33,14 +27,7 @@ export function resolveLineReceiveMode(input: LineReceiveModeInput): LineReceive
   return 'unitTrack';
 }
 
-/**
- * Which body an Unbox PO line's under-row capture entry mounts.
- *
- * `capture-*` are the always-accessible row (condition full width + Serial /
- * Photos junction segments that open Displays). Every editable Unbox line
- * mounts this face — not only the active line. The other two are the legacy
- * non-Unbox lanes — Units Displays explosion and Testing / Arrival.
- */
+/** Which body an Unbox PO line's under-row capture entry mounts. */
 type CaptureEntryMode =
   | 'capture-unit'
   | 'capture-rollup'
@@ -68,13 +55,7 @@ interface CaptureEntryInput {
   forceUnitMode?: boolean;
 }
 
-/**
- * THE gate for the Unbox capture row — call sites pass facts, never a derived
- * `progressive` boolean.
- *
- * Surfaces used to fork `dockOwnsCapture && isActiveLine` themselves; capture
- * now mounts on every editable Unbox line. Keep the answer here.
- */
+/** THE gate for the Unbox capture row — call sites pass facts, never a derived `progressive` boolean. */
 export function resolveCaptureEntry(input: CaptureEntryInput): CaptureEntryMode {
   const captures =
     input.dockOwnsCapture &&

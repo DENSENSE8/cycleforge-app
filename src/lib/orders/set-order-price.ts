@@ -1,45 +1,4 @@
-/**
- * Write side of an order line's SOLD price (`orders.sale_amount`).
- *
- * ## Why this exists
- *
- * Three price facts, three homes, and this module owns exactly one of them:
- * the price a line ACTUALLY SOLD FOR. The asking price per platform lives on
- * `platform_listings.listing_price_cents`; the price of one serial unit lives
- * on `serial_unit_listings.listing_price_cents`. Collapsing them into a single
- * "price" would let a repriced listing overwrite historical revenue and lie
- * about both, so a correction typed by an operator lands here and nowhere else.
- *
- * ## The load-bearing decision: `orders` is LINE-grained
- *
- * `orders.order_id` is the MARKETPLACE order number and it REPEATS — one row
- * per line. Live data (org USAV, 2026-09-15) has 277 order numbers spanning
- * two or more rows. So "set the price for order 12-3456" is not a well-formed
- * instruction, and the two tempting fixes are both data corruption:
- *
- *   - writing the amount onto every line multiplies that order's revenue by
- *     its line count in every report that SUMs `sale_amount`;
- *   - dividing it across the lines invents a per-line split the operator
- *     never stated (lines are not equal-priced, and qty runs up to 20).
- *
- * So an order number that fans out to more than one line is REFUSED (409) and
- * the candidate lines come back for the caller to choose from. The numeric
- * `orders.id` — one line, no ambiguity — is the form a table row edit sends.
- *
- * ## Money is integers in, decimal string out
- *
- * Callers speak cents (integers, exact). `sale_amount` is NUMERIC(12,2), so
- * the write is a decimal STRING built by integer arithmetic. Sending a float
- * would push binary rounding into a column that exists precisely to avoid it.
- *
- * `null` clears the price back to unknown, which is meaningfully different
- * from 0: a mistyped price must be erasable, and a genuinely free replacement
- * order really did sell for 0. Hence 0 is accepted only when explicitly sent
- * and never substituted for an unparseable input.
- *
- * Collaborators are injected (real impls by default) so the semantics above
- * unit-test DB-free — see set-order-price.test.ts.
- */
+/** Write side of an order line's SOLD price (`orders.sale_amount`). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 

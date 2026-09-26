@@ -1,24 +1,4 @@
-/**
- * Staff-directory slot resolvers — pure. One function is the WHOLE vocabulary
- * the engine reads: the slot cells, the header-sort comparator and the search
- * index all go through it, so a fact can never be searchable as one string and
- * sortable as another.
- *
- * Three rules this family leans on:
- *
- * - The teammate resolves to a PERSON value, not a name string. The face
- *   (`StaffAvatar`) is what carries the staffer's colour and photo, which is
- *   how the retired `color_hex` dot survives without a colour column.
- * - A BOOLEAN's negative case is a CLAIM, never absence: `No PIN`,
- *   `Not required`, `Inactive`. The retired cells said two of these with an
- *   em-dash and a checkbox, which a reader cannot scan and a comparator cannot
- *   order. (Same ruling as `part-compatibility.oem`.)
- * - `last_login` resolves to the ABSOLUTE INSTANT, never to the
- *   `toLocaleString` face the retired `fmtLogin` printed: `compareGridValues`
- *   needs the instant to order by, and the compact civil face is the row
- *   adapter's job. `Never` is likewise a FACE, not a stored fact — a row with
- *   no login resolves to null text so it sorts as missing.
- */
+/** Staff-directory slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

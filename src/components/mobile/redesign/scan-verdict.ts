@@ -1,27 +1,8 @@
-/**
- * Mobile scan verdict — the pure map from a {@link LookupPoResolution} to the
- * one-glance outcome a door operator reads off a phone at arm's length.
- *
- * Why this exists: `/m/scan` used to `fetch('/api/receiving/lookup-po')` inline
- * and throw the whole response away — the operator scanned a carton and got no
- * answer at all, just a rail that silently refetched behind the fold. Every fact
- * the verdict needs was already on the wire (`matched`, `po_ids`, `lines`,
- * `unbox_verdict`, `error`); nothing here queries anything new.
- *
- * React/DOM/network-free on purpose, so the branch table is unit-testable —
- * see `scan-verdict.test.ts`. The banner ({@link MobileScanVerdictBanner}) and
- * the audio/haptic cue ({@link useScanFeedback}) both read from ONE verdict, so
- * what the operator hears can never disagree with what they see.
- */
+/** Mobile scan verdict — the pure map from a {@link LookupPoResolution} to the one-glance outcome a door operator reads off a phone at… */
 
 import type { LookupPoData, LookupPoResolution } from '@/lib/receiving/scan';
 
-/**
- * Outcome class. `expedited` is a MATCH whose carton holds SKUs a customer
- * order is already waiting on (`unbox_verdict: 'expedited'` server-side) — the
- * one case where the door operator's next move changes, so it earns its own
- * face rather than hiding inside `matched`.
- */
+/** Outcome class. */
 export type MobileScanTone = 'matched' | 'expedited' | 'unfound' | 'miss' | 'error';
 
 export interface MobileScanVerdict {
@@ -147,12 +128,7 @@ export function buildScanVerdict(
   };
 }
 
-/**
- * The throw path. `resolveViaLookupPo` throws on a hard `!success` response and
- * `fetch` throws when the phone drops off the network mid-aisle — both must
- * still reach the operator as a verdict, because a silent failure is the one
- * outcome that gets a carton lost.
- */
+/** The throw path. */
 export function scanFailureVerdict(scanned: string, error: unknown): MobileScanVerdict {
   const message = error instanceof Error ? error.message : '';
   return {

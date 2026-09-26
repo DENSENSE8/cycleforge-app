@@ -33,12 +33,7 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** Hide the default top-right close control. */
     hideClose?: boolean;
-    /**
-     * Classes for the scrim — a different z band (`z-takeover` for a dialog that
-     * must clear a detail slide-over), a blur, or a heavier ink. Exists so a
-     * modal with non-default stacking composes this SoT instead of hand-rolling
-     * its own `fixed inset-0` scrim, which is how the shells drifted.
-     */
+    /** Classes for the scrim — a different z band (`z-takeover` for a dialog that must clear a detail slide-over), a blur, or a heavier ink. */
     overlayClassName?: string;
   }
 >(({ className, children, hideClose = false, overlayClassName, ...props }, ref) => (

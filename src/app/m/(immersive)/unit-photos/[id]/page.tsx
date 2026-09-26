@@ -4,17 +4,7 @@ import { Suspense } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { MobileUnitPhotoStudio } from '@/components/mobile/photos/MobileUnitPhotoStudio';
 
-/**
- * Immersive (fullscreen) SERIAL_UNIT testing-photo capture surface — the phone
- * lands here from the packer testing-label scan (`unit_photo_request`). The
- * `[id]` segment is the numeric serial_units.id the desktop resolved.
- *
- * Lives at `/m/unit-photos/[id]` (NOT `/m/u/[id]/photos`) because `/m/u/[id]`
- * is owned by the (shell) unit-detail route — two route groups can't both own
- * the `u/[id]` segment. This keeps the camera in the (immersive) group,
- * matching the receiving capture UX.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
- */
+/** Immersive (fullscreen) SERIAL_UNIT testing-photo capture surface — the phone lands here from the packer testing-label scan… */
 function UnitPhotoPageInner() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();

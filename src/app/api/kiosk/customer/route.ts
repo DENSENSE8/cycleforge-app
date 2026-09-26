@@ -1,17 +1,4 @@
-/**
- * GET /api/kiosk/customer?phone=5551234567 — "is this phone on file?"
- *
- * Callers: `useKioskCustomerMatch` (Contact information step, cart + repair).
- * Affected API: this route (device cookie, `withKioskAuth`). Read-only.
- * Data schemas: customers, through `findCounterCustomerByPhoneDigits` — the
- *   SAME match submit resolves identity with, so the name the staffer sees is
- *   the customer the visit will attach to.
- * User: "typing a phone number looks up an existing customer" (2026-09-24).
- *
- * Answers the NAME only. The tablet faces the customer; email and address on
- * file stay on file (submit keeps them) rather than painting on the glass for
- * whoever typed the number.
- */
+/** GET /api/kiosk/customer?phone=5551234567 — "is this phone on file?" */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

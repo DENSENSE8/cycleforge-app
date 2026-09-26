@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Main pane for /sourcing?mode=compatibility — a flat audit table of
- * model ↔ part compatibility edges, optionally filtered to one model via
- * ?boseModelId. Per-model editing lives in the Bose Models section; this view
- * is the cross-cutting "what's linked to what" table.
- *
- * Off the second table engine 2026-09-12 (Wave D). The list is the slot
- * `DataTable` (`part-compatibility` PRODUCT_TABLES peer): header sort, the
- * Fields picker and org-bindable columns arrive from the engine, none of which
- * the six hand-written column objects it replaced could ever grow. That
- * history — including why the PART is the row and how the merged `OEM <fit>`
- * pill was split into two facts — lives in
- * `@/lib/tables/field-catalog/part-compatibility`.
- *
- * Remove is a ROW VERB (`part-compatibility-verbs.ts`) confirmed on a
- * stage-overlay plane. It used to be a trailing cell of `<Button>` JSX with no
- * confirm at all.
- */
+/** Main pane for /sourcing?mode=compatibility — a flat audit table of model ↔ part compatibility edges, optionally filtered to one model… */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -73,18 +56,7 @@ export function CompatibilityManagementTab() {
     [],
   );
 
-  /**
-   * The desk's TWO settled-empty states, preserved.
-   *
-   * `DataTable` derives its "no matches" face from whether the operator has
-   * NARROWED the list (search text or an active facet). `?boseModelId` is not
-   * that — it selects the FEED — so a filtered-and-empty list is still a
-   * SETTLED empty and takes `emptyMessage`. Hence the message branches on the
-   * param, which is what the retired mount spelled as
-   * `isSearching={Boolean(boseModelId)}`; the first-run teaching box stays
-   * unfiltered-only; and `searchEmptyMessage` covers the genuinely new case
-   * the old table had no search box to reach.
-   */
+  /** The desk's TWO settled-empty states, preserved. */
   const emptyMessage = boseModelId
     ? 'No compatibility edges for this model.'
     : 'Link parts to models in the Bose Models section, then audit them here.';

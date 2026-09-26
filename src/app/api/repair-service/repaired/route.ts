@@ -5,21 +5,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/repair-service/repaired
- *
- * Marks a repair work_assignment as DONE and captures the tech's
- * description of what was repaired in work_assignments.repair_outcome.
- *
- * Body:
- * {
- *   repairId: number,
- *   assignmentId?: number | null,
- *   repairedPart: string,
- *   completedByTechId?: number | null,
- *   assignedTechId?: number | null
- * }
- */
+/** POST /api/repair-service/repaired */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
 

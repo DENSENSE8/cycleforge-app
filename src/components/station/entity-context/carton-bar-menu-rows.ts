@@ -4,19 +4,7 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
 
-/**
- * Verbs for the carton bar's LISTING cell, declared once.
- *
- * The bar has two ways to reach the same action set — the cell's own hover menu
- * when it fits on the strip, and a row in the `⋯` overflow when it does not.
- * Those were two hand-written lists: the cell offered Open · Copy · Edit while
- * the overflow offered Open · Edit, so an operator on a narrow bench silently
- * lost Copy and read a different label for the same verb. Responsive spillover
- * must change WHERE a verb lives, never WHICH verbs exist.
- *
- * `qualify` names the cell in the overflow ("Open eBay"), where the row has no
- * neighbouring face to say what it acts on.
- */
+/** Verbs for the carton bar's LISTING cell, declared once. */
 export function listingMenuRows({
   label,
   ariaLabel,

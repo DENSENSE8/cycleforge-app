@@ -1,13 +1,4 @@
-/**
- * PATCH /api/admin/roles/[id]/mobile-defaults
- *
- * Body:
- *   { config: MobileDisplayConfigInput | null }
- *
- * REPLACE semantics for the JSONB column. Pass `null` (or `{}`) to clear
- * the role's defaults — staff in the role fall back to the system default
- * (bottom nav disabled).
- */
+/** PATCH /api/admin/roles/[id]/mobile-defaults */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

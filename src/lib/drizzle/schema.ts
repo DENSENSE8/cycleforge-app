@@ -35,12 +35,7 @@ export const ebayAccounts = pgTable('ebay_accounts', {
   orgRoleIdx: index('idx_ebay_accounts_org_role').on(table.organizationId, table.accountRole),
 }));
 
-// ─── Platform / Account / Type catalog ──────────────────────────────────────
-// Org-scoped, CRUD-able replacement for the hardcoded SOURCE_PLATFORMS /
-// RECEIVING_TYPE_OPTS lists. See docs/platform-account-type-catalog-plan.md and
-// migrations 2026-06-13g (tables), 2026-06-14b (RLS), 2026-06-14f (type_id FK +
-// account seed). The raw query layer lives in src/lib/neon/catalog-queries.ts;
-// these definitions exist so the rest of the app can join type-safely.
+// ─── Platform / Account / Type catalog ────────────────────────────────────── Org-scoped, CRUD-able replacement for the hardcoded…
 
 /** CHANNEL — was SOURCE_PLATFORMS in src/lib/source-platform.ts. */
 export const platforms = pgTable('platforms', {
@@ -119,25 +114,7 @@ export const types = pgTable('types', {
   orgIdx: index('idx_types_org').on(table.organizationId),
 }));
 
-/**
- * Org presentation overrides for the manual priority ladder.
- *
- * **Rows are a skin, never the ladder.** The four rungs live in
- * `src/lib/receiving/priority-override.ts` and their numeric `tier` (0..3) is a
- * storage contract: it is what `receiving.priority_tier` holds and what
- * `RECEIVING_PRIORITY_RANK_SQL` sorts on via
- * `COALESCE(priority_tier, <platform CASE>)`. So unlike {@link platforms} and
- * {@link types} — where a row IS the thing and an org may add or retire them —
- * an org here may only rename a rung and repaint it. There is no slug, no
- * `is_active`, and no `sort_order`: `tier` is the identity AND the order, a
- * missing row means "this rung is unmodified", and add / delete / reorder are
- * deliberately not expressible. Widening this table is how the receiving queue
- * silently mis-sorts.
- *
- * `color_hex` is the same optional org accent as its siblings: set → the pill
- * dot derives paint through `src/lib/color-contrast.ts`; null → the built-in
- * tier tone.
- */
+/** Org presentation overrides for the manual priority ladder. */
 export const priorityTiers = pgTable('priority_tiers', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -201,12 +178,6 @@ export type AmazonAccountRow = typeof amazonAccounts.$inferSelect;
 export type NewAmazonAccountRow = typeof amazonAccounts.$inferInsert;
 
 // Staff table
-//
-// Columns added across two migrations:
-//   2026-05-14_sso_foundation.sql  → ssoSubject, ssoProvider, lastLoginAt
-//   2026-05-17_auth_system.sql     → pinHash, pinSetAt, pinFailedCount,
-//                                    pinLockedUntil, employeeCode, status
-//   2026-05-18_staff_permission_overrides.sql → permissionsAdded, permissionsRemoved
 export const staff = pgTable('staff', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -243,12 +214,7 @@ export const staff = pgTable('staff', {
   // in this org is `memberships`. Nullable until backfill completes.
   accountId: uuid('account_id').references(() => accounts.id),
   membershipId: uuid('membership_id').references(() => memberships.id),
-  // Profile photo (2026-08-01e_staff_avatar_photo.sql). A photos.id, never a
-  // raw storage URL — bytes stay behind /api/photos/{id}/content. NULL ⇒ every
-  // surface renders colour + initials via <StaffAvatar>.
-  // The FK → photos(id) ON DELETE SET NULL lives in SQL only: `photos` already
-  // references `staff`, so declaring the reverse here would make the two table
-  // consts circular initializers and collapse both to `any` under TS.
+  // Profile photo (2026-08-01e_staff_avatar_photo.sql).
   avatarPhotoId: bigint('avatar_photo_id', { mode: 'number' }),
 });
 
@@ -517,12 +483,7 @@ export const conditionGradeEnum = pgEnum('condition_grade_enum', [
   'PARTS',
 ]);
 
-/**
- * serial_status_enum — per-unit lifecycle states (see serial_units.current_status).
- * Values 1-9 are the original 2026-04-10 set; values 10-19 are the Phase 0
- * expansion added by 2026-05-17_inventory_v2_phase0.sql for the full refurb +
- * allocation state machine described in context/inventory_system_upgrade_plan.md.
- */
+/** serial_status_enum — per-unit lifecycle states (see serial_units.current_status). */
 export const serialStatusEnum = pgEnum('serial_status_enum', [
   // Original (2026-04-10)
   'UNKNOWN',
@@ -580,13 +541,7 @@ export const workTypeEnum = pgEnum('work_type_enum', [
   'QA',
   'RECEIVE',
   'STOCK_REPLENISH',
-  /**
-   * The ad-hoc *throwable task* (2026-08-08a) — "please look at this", handed
-   * between operators. Deliberately not a station: the six above name a bench
-   * an entity is run through, and ad-hoc work has none. Exempt from
-   * `ux_work_assignments_active_entity` so two people can be handed the same
-   * record for different reasons.
-   */
+  /** The ad-hoc *throwable task* (2026-08-08a) — "please look at this", handed between operators. */
   'FOLLOW_UP',
 ]);
 
@@ -744,15 +699,7 @@ export const itemLocationStock = pgTable('item_location_stock', {
   itemLocationUnique: uniqueIndex('ux_item_location_stock_item_location').on(table.itemId, table.locationId),
 }));
 
-/**
- * part_links — SaaS-owned part→parent pairing for the inventory parts graph
- * (2026-06-28g). Keyed on the logical part (base+color+condition, from
- * parsePartSku().logicalKey) and the Zoho `items` scheme (parent_item_id FK),
- * never the sku string (items/sku_catalog are independent numbering schemes
- * that collide on the same string —).
- * status='confirmed' → parent_item_id NOT NULL (many parents allowed).
- * status='not_a_part' → parent_item_id NULL (at most one row per child).
- */
+/** part_links — SaaS-owned part→parent pairing for the inventory parts graph (2026-06-28g). */
 export const partLinks = pgTable('part_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -989,10 +936,6 @@ export const itemAdjustments = pgTable('item_adjustments', {
 });
 
 // Idempotency + audit ledger for the shipped-order → Zoho fulfillment sync.
-// See src/lib/migrations/2026-06-02_zoho_fulfillment_sync.sql and
-// src/lib/zoho/fulfillment-sync.ts. One row per internal order keyed by
-// reference_number (= orders.order_id). Records every Zoho artifact created so
-// the push sync stays idempotent and leaves a durable audit trail.
 export const zohoFulfillmentSync = pgTable('zoho_fulfillment_sync', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: uuid('organization_id'),
@@ -1042,31 +985,8 @@ export const entityNotes = pgTable('entity_notes', {
   lookupIdx: index('entity_notes_lookup').on(table.entityType, table.entityId),
 }));
 
-/**
- * Internal operational annotations on an order ("box arrived damaged").
- *
- * A dedicated child table rather than a row in {@link entityNotes}, because that
- * table keys on `entity_id UUID` while `orders.id` is `SERIAL` — a polymorphic
- * table cannot span two primary-key types (migration 2026-07-28_order_notes.sql,
- * decision D10).
- *
- * BOUNDARY: ops annotations only. The customer/support CONVERSATION lives in
- * Entity Threads (`ThreadPanel entityType="ORDER"`), which is already mounted on
- * the order record. Do not let the same note become writable in both.
- */
-/**
- * Operator-set triage tag that tints an order's row in the outbound queue.
- *
- * ORG-WIDE by construction: the natural key is (organization_id, order_id) with
- * no staff column, so the next shift sees what this shift flagged.
- * `setByStaffId` is attribution, not identity.
- *
- * `flag` is CHECK-constrained in the DDL (`order_flags_flag_chk`) to the ids in
- * `src/lib/orders/order-row-flags.ts` — Drizzle has no first-class
- * "text with an enumerated CHECK", so the vocabulary lives there and both are
- * extended in the same change. Migrations `2026-07-31_order_flags.sql` and
- * `2026-09-17_order_flags_discrepancy.sql`.
- */
+/** Internal operational annotations on an order ("box arrived damaged"). */
+/** Operator-set triage tag that tints an order's row in the outbound queue. */
 export const orderFlags = pgTable('order_flags', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: orgIdCol(),
@@ -1100,10 +1020,7 @@ export const orderNotes = pgTable('order_notes', {
   ),
 }));
 
-// Orders table - Updated schema (serial tracking moved to tech_serial_numbers)
-// Packing completion tracking moved to packer_logs table (packed_by); photos in photos table
-// Staff assignment (tester/packer) moved to work_assignments (entity_type='ORDER', entity_id=orders.id)
-// BEFORE DELETE trigger trg_cancel_wa_on_order_delete auto-cancels related work_assignments
+// Orders table - Updated schema (serial tracking moved to tech_serial_numbers) Packing completion tracking moved to packer_logs table…
 export const orders = pgTable('orders', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
@@ -1152,12 +1069,7 @@ export const orders = pgTable('orders', {
   skuCatalogId: integer('sku_catalog_id'),
   /** Amazon fulfillment channel: 'AFN' (FBA, read-only) | 'MFN' (we ship). Null for non-Amazon. */
   fulfillmentChannel: text('fulfillment_channel'),
-  /**
-   * Catalog flow type (org `types` row). Additive FK from the platform/type
-   * catalog (2026-06-14f); the order's channel still derives from
-   * `account_source` (denormalized cache) — type_id is the normalized link
-   * that reaches account → platform → integration.
-   */
+  /** Catalog flow type (org `types` row). */
   typeId: bigint('type_id', { mode: 'number' }),
 });
 
@@ -1165,10 +1077,7 @@ export const orders = pgTable('orders', {
 // (owner_type='ORDER', OUTBOUND). orders.shipment_id stays as the primary cache.
 // See migration 2026-06-28q_drop_legacy_shipment_link_tables.sql.
 
-// Packer logs - audit trail for all packer scans (orders, SKU, FNSKU, FBA, etc.)
-// Photos are stored in the photos table (entity_type='PACKER_LOG', entity_id=packer_logs.id)
-// shipment_id links ORDERS-type scans to shipping_tracking_numbers (carrier tracking)
-// scan_ref stores non-carrier raw inputs (SKU, FNSKU, garbage scans)
+// Packer logs - audit trail for all packer scans (orders, SKU, FNSKU, FBA, etc.) Photos are stored in the photos table…
 export const packerLogs = pgTable('packer_logs', {
   organizationId: orgIdCol(),
   id: serial('id').primaryKey(),
@@ -1191,10 +1100,7 @@ export const packerLogs = pgTable('packer_logs', {
 // Fact tables still own specialized writes; this table records operator activity.
 export const stationActivityLogs = pgTable('station_activity_logs', {
   id: serial('id').primaryKey(),
-  // Tenant scope. The DB column was added NOT NULL (FK→organizations, indexed,
-  // RLS-armed) by 2026-05-23_org_id_on_business_tables.sql; this reflects it so
-  // typed queries can select/filter it. Default = the tenant GUC set by
-  // withTenantConnection.
+  // Tenant scope.
   organizationId: orgIdCol(),
   station: varchar('station', { length: 20 }).notNull(),
   activityType: varchar('activity_type', { length: 30 }).notNull(),
@@ -1213,11 +1119,7 @@ export const stationActivityLogs = pgTable('station_activity_logs', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-// Photo bytes/metadata row. The polymorphic entity_type/entity_id/url columns
-// that used to live here were dropped 2026-06-21 (Phase E) once
-// photo_entity_links took over as the polymorphic hub — see photoEntityLinks
-// below. Cascade delete on parent-delete now runs through that table's rows,
-// not these columns.
+// Photo bytes/metadata row.
 export const photos = pgTable('photos', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1225,43 +1127,15 @@ export const photos = pgTable('photos', {
   photoType: text('photo_type'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-  /**
-   * Device-reported capture instant (2026-07-29b) — the camera shutter wall
-   * clock on the mobile photo studios, or File.lastModified on the desktop
-   * paths. NOT server-attested: it comes from the operator's device, so a
-   * drifted tablet clock yields a wrong-but-plausible value. `createdAt` stays
-   * the server-insert instant and the only attested time. NULL is correct and
-   * expected for desktop/legacy uploads and every pre-2026-07-29b row — a
-   * fabricated capture time would be worse than none in a carrier dispute.
-   */
+  /** Device-reported capture instant (2026-07-29b) — the camera shutter wall clock on the mobile photo studios, or File.lastModified on the… */
   clientCapturedAt: timestamp('client_captured_at', { withTimezone: true }),
-  /**
-   * What this shot SHOWS, within its stage (2026-08-01b). Orthogonal to
-   * photo_type, which encodes entity legality — see
-   * src/lib/photos/photo-aspects.ts, the vocabulary SoT.
-   *
-   * CHECK (photo_aspect IS NULL OR photo_aspect IN (
-   *   'shipping_label','box_exterior','box_interior','packing_material',
-   *   'included','serial','front','back','side','bottom'))
-   *
-   * NULL is legal and is what every pre-2026-08-01b row carries: it means
-   * *unclassified evidence*, never *missing evidence*. Deliberately not
-   * backfilled — inferring an aspect from photo_type would manufacture an
-   * evidence claim no operator made.
-   */
+  /** What this shot SHOWS, within its stage (2026-08-01b). */
   photoAspect: text('photo_aspect'),
   deletedFromBlobAt: timestamp('deleted_from_blob_at', { withTimezone: true }),
   poRef: text('po_ref'),
 });
 
-/**
- * photo_entity_links — the polymorphic hub for every photo↔entity relationship
- * (2026-06-18). Superseded photos.entity_type/entity_id/url (dropped 2026-06-21,
- * Phase E). link_role is a second discriminator axis: 'primary' | 'claim_evidence'
- * | 'insurance_share'. Cascade delete on the entity side runs through
- * fn_delete_photos_on_parent_delete(), which now reads this table instead of
- * the old photos columns.
- */
+/** photo_entity_links — the polymorphic hub for every photo↔entity relationship (2026-06-18). */
 export const photoEntityLinks = pgTable('photo_entity_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   photoId: bigint('photo_id', { mode: 'number' }).notNull().references(() => photos.id, { onDelete: 'cascade' }),
@@ -1276,11 +1150,8 @@ export const photoEntityLinks = pgTable('photo_entity_links', {
   uniqueLink: uniqueIndex('ux_photo_entity_links_unique').on(table.photoId, table.entityType, table.entityId, table.linkRole),
 }));
 
-// Receiving table - work_assignments linked via entity_type='RECEIVING', entity_id=receiving.id
-// BEFORE DELETE trigger trg_cancel_wa_on_receiving_delete auto-cancels related work_assignments
-// Base table renamed to receiving_carton (2026-07-05d); the `receiving` VIEW
+// Receiving table - work_assignments linked via entity_type='RECEIVING', entity_id=receiving.id BEFORE DELETE trigger…
 // (security_invoker compat shim) still serves legacy raw SQL. JS export name kept
-// as `receiving` so importers are unchanged; the model targets the real table.
 export const receiving = pgTable('receiving_carton', {
   id: serial('id').primaryKey(),
   // receiving_tracking_number dropped — tracking lives in shipping_tracking_numbers
@@ -1358,17 +1229,7 @@ export const receiving = pgTable('receiving_carton', {
 // (owner_type='RECEIVING', INBOUND); received_at/received_by map to
 // linked_at/linked_by. See 2026-06-28q_drop_legacy_shipment_link_tables.sql.
 
-/**
- * shipment_links — UNIFIED polymorphic owner↔tracking linkage (inbound + outbound).
- *
- * One row per (owner, shipment), supporting many-trackings-per-owner for BOTH
- * flows. Subsumes receiving_shipments (owner_type='RECEIVING', INBOUND) +
- * order_shipment_links (owner_type='ORDER', OUTBOUND) against the single STN
- * master. The is_primary row mirrors the denormalized receiving.shipment_id /
- * orders.shipment_id caches (which stay). owner_id has NO FK (polymorphic, like
- * photos/work_assignments); shipment_id FKs STN ON DELETE CASCADE. Migration
- * 2026-06-24_shipment_links.sql (RLS armed, not forced until Phase 4 writers).
- */
+/** shipment_links — UNIFIED polymorphic owner↔tracking linkage (inbound + outbound). */
 export const shipmentLinks = pgTable('shipment_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1392,15 +1253,7 @@ export const shipmentLinks = pgTable('shipment_links', {
   shipmentIdx: index('idx_shipment_links_shipment').on(table.shipmentId),
 }));
 
-/**
- * Platform-agnostic support ticket registry (migration 2026-07-01f_support_tickets.sql).
- *
- * Operators see `id` as the ticket number (#42). Provider-native ids (Zendesk
- * today; Freshdesk/internal later) live in `external_ticket_id`; `provider` is a
- * CHECK'd discriminator ('zendesk' | 'internal') — modeled as plain text here
- * (Drizzle has no first-class enumerated-CHECK column). ticket_links.support_ticket_id
- * FKs this ON DELETE CASCADE.
- */
+/** Platform-agnostic support ticket registry (migration 2026-07-01f_support_tickets.sql). */
 export const supportTickets = pgTable('support_tickets', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1419,33 +1272,7 @@ export const supportTickets = pgTable('support_tickets', {
   orgIdx: index('idx_support_tickets_org').on(table.organizationId, table.id),
 }));
 
-/**
- * Universal support-ticket ↔ internal-entity map (migration 2026-06-01_ticket_links.sql).
- *
- * MANY rows per ticket, exactly ONE flagged `is_primary` — the same shape
- * shipment_links uses for its owners (2026-07-16_ticket_links_many_links.sql).
- * `pickTicketLinkAnchor` (src/lib/support/tickets.ts) resolves the PRIMARY row
- * only, via the line > carton > shipment ladder; non-primary rows are additional
- * references (e.g. the extra STNs on one ticket).
- *
- * `entity_type` is deliberately UNCONSTRAINED free text — eleven values reach it
- * from live writers, including a lowercase 'voicemail' outlier and anything
- * `entity_threads` permits, because threads/escalate.ts passes thread.entityType
- * straight through to linkTicket(). Constraining it is its own lane; see the
- * 2026-07-16 migration header.
- *
- * `entity_id` is polymorphic and therefore has NO FK (like photos /
- * work_assignments / shipment_links.owner_id); the SHIPMENT arm is cleaned up by
- * trg_delete_ticket_links_on_stn_delete. `support_ticket_id` FKs support_tickets
- * ON DELETE CASCADE in the DB — declared here as a plain bigint because
- * support_tickets is not (yet) modeled in this file.
- *
- * NOTE: the DB also still carries the pre-many legacy
- * UNIQUE (organization_id, zendesk_ticket_id) and the non-org-led
- * idx_ticket_links_entity (entity_type, entity_id). Both are intentionally NOT
- * modeled here — they are superseded by ticketPrimaryUx / orgEntityIdx and are
- * dropped by the follow-up migration once every writer sets is_primary.
- */
+/** Universal support-ticket ↔ internal-entity map (migration 2026-06-01_ticket_links.sql). */
 export const ticketLinks = pgTable('ticket_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1500,20 +1327,7 @@ export const localPickupItems = pgTable('local_pickup_items', {
   partsStatusIdx: index('local_pickup_items_parts_status_idx').on(table.partsStatus),
 }));
 
-/**
- * receiving_lines — one row per expected inbound SKU/line item.
- *
- * Lifecycle model:
- *   EXPECTED   — Zoho PO sync created the row; receiving_id is NULL.
- *   ARRIVED    — Physical package scanned at dock (receiving row created, not yet linked).
- *   MATCHED    — receiving_id set; this line linked to its physical package.
- *   UNBOXED    — Item extracted from box; qty/condition captured.
- *   AWAITING_TEST → IN_TEST → PASSED | FAILED → RTV | SCRAP | DONE.
- *
- * The receiving table is the package/container event.
- * receiving_lines is the authoritative operational unit.
- * Every tech-facing action resolves to one or more receiving_lines rows.
- */
+/** receiving_lines — one row per expected inbound SKU/line item. */
 // Base table renamed to receiving_line (2026-07-05d); the `receiving_lines` VIEW
 // (security_invoker compat shim) still serves legacy raw SQL. JS export name kept
 // as `receivingLines` so importers are unchanged; the model targets the real table.
@@ -1545,14 +1359,7 @@ export const receivingLines = pgTable('receiving_line', {
   /** Printed label face center text (carton face center / As Listed disclosure).
    *  Split out of `notes` 2026-07-31 so an item note need not print. */
   labelNote: text('label_note'),
-  /**
-   * When the sticker FACE TEXT (`notes` / `label_note`) last CHANGED. 2026-08-19a.
-   *
-   * Not `updatedAt`, which bumps on every condition / serial / qty patch —
-   * ranking Unbox notes-composer Recent on that resurfaces an old sentence the
-   * moment someone grades an old carton. Null on rows written before the column
-   * (never backfilled: there is no honest historical value).
-   */
+  /** When the sticker FACE TEXT (`notes` / `label_note`) last CHANGED. */
   faceNotedAt: timestamp('face_noted_at', { withTimezone: true }),
   /** Filed Zendesk ticket # for a line-level claim, stored as "#<id>". */
   zendeskTicket: text('zendesk_ticket'),
@@ -1578,10 +1385,7 @@ export const receivingLines = pgTable('receiving_line', {
   receivedDoneAt: timestamp('received_done_at', { withTimezone: true }),
   sourceSystem: text('source_system'),
   sourceOrderId: text('source_order_id'),
-  // ── Universal Incoming Phase 1 (2026-07-01l): transition cache of the primary
-  //    inbound_purchase_order_links row. Links table is the identity SoT; these
-  //    denormalized columns keep existing Incoming readers green until cutover,
-  //    then get dropped. ───────────────────────────────────────────────────────
+  // ── Universal Incoming Phase 1 (2026-07-01l):
   /** Primary source badge/filter. CHECK (NULL | 'zoho' | 'ebay' | 'amazon' | 'manual'). */
   inboundSourceType: text('inbound_source_type'),
   /** Primary external line id (source_order_id already exists above). */
@@ -1608,27 +1412,7 @@ export const receivingLines = pgTable('receiving_line', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * receiving_listing_links — N labeled listing links per inbound carton
- * (2026-08-10f). A Goodwill lot is four auctions in one box, and the buyer
- * names each link so the unboxer can tell which physical item is which; the
- * scalar `receiving_carton.listing_url` / `receiving_line.listing_url` hold one
- * url and no name, so links two through four only ever survived as free text in
- * `zoho_notes`.
- *
- * TWO real FKs rather than a polymorphic entity_type/entity_id: both parents
- * are known at write time, so both get enforced delete integrity.
- * `receivingLineId` NULL = not yet bound to a line; binding is a recorded act
- * (`boundBy` / `boundAt`), never inferred.
- *
- * INBOUND only. Sell-side listings live in `skuPlatformIds`; no outbound table
- * has a listing url at all. `source` is CHECK-constrained to the two DURABLE
- * tiers ('manual' | 'sync_notes') — 'catalog' and 'derived' stay computed at
- * read time in collectCartonListingLinks.
- *
- * EXPAND ONLY so far: no reader, no writer, and the scalar columns are
- * untouched. Backfill → resolver flip → writers → DROP are later steps.
- */
+/** receiving_listing_links — N labeled listing links per inbound carton (2026-08-10f). */
 export const receivingListingLinks = pgTable('receiving_listing_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1648,13 +1432,7 @@ export const receivingListingLinks = pgTable('receiving_listing_links', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * receiving_exceptions — line-level exception/claim domain (decomposed from the
- * receiving god-table: return_reason/support_notes/zendesk_ticket/exception_code
- * move to the LINE so multi-line cartons attribute per line). Written by the
- * guarded transitionReceivingLine() chokepoint + manual-advance (Phase 2/3).
- * Migration 2026-06-24_receiving_exceptions.sql (RLS armed, not forced yet).
- */
+/** receiving_exceptions — line-level exception/claim domain (decomposed from the receiving god-table: */
 export const receivingExceptions = pgTable('receiving_exceptions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1675,10 +1453,7 @@ export const receivingExceptions = pgTable('receiving_exceptions', {
   orgReceivingIdx: index('idx_receiving_exceptions_org_receiving').on(table.organizationId, table.receivingId),
 }));
 
-// ─── Receiving polymorphic refactor — Layer 2 (typed facts) ─────────────────
-// Additive side-tables that the one-street columns on receiving_lines move into
-// during the per-street cutover. See docs/todo/polymorphic-tables-database-refactor-plan.md §4
-// and migration 2026-06-29c_receiving_line_facts_tables.sql (RLS armed, not forced).
+// ─── Receiving polymorphic refactor — Layer 2 (typed facts) ───────────────── Additive side-tables that the one-street columns on…
 
 /** Zoho-PO-origin line facts (the Zoho cluster + unit_price). 1:1 with the line. */
 export const receivingLineZoho = pgTable('receiving_line_zoho', {
@@ -1718,55 +1493,17 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   dispositionAudit: jsonb('disposition_audit').notNull().default([]),
   /** When the operator explicitly picked condition_grade (distinct from the DB default). Moved from receiving_lines (2026-07-05c). */
   conditionSetAt: timestamp('condition_set_at', { withTimezone: true }),
-  /**
-   * The grading ACT, and the gate for the Condition procedure step
-   * (2026-08-01c). `conditionGrade` is NOT NULL with a default, so it exists on
-   * a carton nobody has touched and can never be a gate.
-   *
-   * Distinct from `conditionSetAt` on purpose: that one is COALESCE-once (first
-   * explicit set wins, survives every later edit), so it cannot be cleared and
-   * cannot answer "is this step satisfied right now". A reopen sets THIS column
-   * back to NULL and leaves `conditionSetAt` alone. Never backfilled.
-   */
+  /** The grading ACT, and the gate for the Condition procedure step (2026-08-01c). */
   conditionGradedAt: timestamp('condition_graded_at', { withTimezone: true }),
   conditionGradedBy: integer('condition_graded_by').references(() => staff.id, { onDelete: 'set null' }),
-  /**
-   * The operator confirmed they read this line's printed label face — the gate
-   * for the Label procedure step (2026-08-02). Same shape and justification as
-   * `receiving_unbox.contents_confirmed_at`: reading a label leaves no evidence
-   * behind, so the acknowledgement is the only fact there is.
-   *
-   * Distinct from `labelPrintedAt`, which is the COMMIT act the terminal dock
-   * owns; gating a capture step on it would invert the phase order. Distinct
-   * from `receiving_line.label_note`, which answers "was the face customised"
-   * and is null on every carton whose default face was already right. A reopen
-   * sets this back to NULL. Never backfilled.
-   */
+  /** The operator confirmed they read this line's printed label face — the gate for the Label procedure step (2026-08-02). */
   labelPreviewedAt: timestamp('label_previewed_at', { withTimezone: true }),
   labelPreviewedBy: integer('label_previewed_by').references(() => staff.id, { onDelete: 'set null' }),
-  /**
-   * Denormalized serial projection — a jsonb array of
-   * `{ id, serial_number, condition_grade }` for the serials whose CURRENT
-   * receiving line is this line. Fast-default for first-frame serial display;
-   * maintained by refreshLineSerialProjection, reconciled by the authoritative
-   * `?include=serials` path. Migration 2026-07-13. (Drizzle has no first-class
-   * "jsonb array of a typed shape" — the element shape is the display subset of
-   * the LineSerial type in src/lib/receiving/serial-projection.ts.)
-   */
+  /** Denormalized serial projection — a jsonb array of `{ id, serial_number, condition_grade }` for the serials whose CURRENT receiving line… */
   serialProjection: jsonb('serial_projection').notNull().default([]),
-  /**
-   * Operator waived the serial for this line (no serial available — cable / bulk
-   * part / return with none). Completes the Unbox stepper's Serial step alongside
-   * a captured serial. Migration 2026-07-14. Writer: POST
-   * /api/receiving/lines/[id]/serial-absent.
-   */
+  /** Operator waived the serial for this line (no serial available — cable / bulk part / return with none). */
   serialAbsent: boolean('serial_absent').notNull().default(false),
-  /**
-   * Class-D `serial_absent_reason` vocabulary code for the waiver
-   * (NOT_SERIALIZED / UNREADABLE / MISSING_LABEL / BULK / org-custom). NULL when
-   * `serialAbsent` is false. App-layer validated (org-customizable), so no DB
-   * CHECK — mirrors `returnReason` on receiving_line_return.
-   */
+  /** Class-D `serial_absent_reason` vocabulary code for the waiver (NOT_SERIALIZED / UNREADABLE / MISSING_LABEL / BULK / org-custom). */
   serialAbsentReason: text('serial_absent_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -1775,16 +1512,7 @@ export const receivingLineTesting = pgTable('receiving_line_testing', {
   orgTechIdx: index('idx_receiving_line_testing_org_tech').on(table.organizationId, table.assignedTechId),
 }));
 
-/**
- * One row per expected physical unit on a receiving line (migration
- * 2026-07-29c). Durable id for per-unit serial_absent / condition_grade /
- * serial_unit_id — the line-level waiver on receiving_line_testing.serial_absent
- * stays and keeps its whole-line meaning. `ordinal` is display order only
- * (renumbered when serials shift); never use it as identity. Plan:
- * docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md. Tenant-from-birth via
- * enforce_tenant_isolation in the birth migration. Phase 0: model only —
- * no reader/writer yet.
- */
+/** One row per expected physical unit on a receiving line (migration 2026-07-29c). */
 export const receivingLineUnit = pgTable('receiving_line_unit', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1859,12 +1587,7 @@ export const receivingLinePutaway = pgTable('receiving_line_putaway', {
   ),
 }));
 
-/**
- * Long-tail / org-custom receiving-line typed facts: (line_id, fact_kind, payload).
- * fact_kind is validated by src/lib/receiving/facts/registry.ts at write time (code
- * registry, not a DB CHECK) so a new kind needs no migration — same governance as
- * workflow_nodes.type → configSchema.
- */
+/** Long-tail / org-custom receiving-line typed facts: */
 export const receivingLineFacts = pgTable('receiving_line_facts', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -1879,11 +1602,7 @@ export const receivingLineFacts = pgTable('receiving_line_facts', {
   lineIdx: index('idx_receiving_line_facts_line').on(table.receivingLineId),
 }));
 
-// ─── Receiving polymorphic refactor — carton-grain street ops (step 3b) ──────
-// Triage and Unbox are INDEPENDENT operator streets on one carton. Their state
-// leaves the wide `receiving` spine into these 1:1 side-tables. Interim shadow of
-// the receiving.* triage/unbox columns; kept live by the trg_sync_receiving_street
-// dual-write trigger. RLS armed (not forced). Migration 2026-07-05c; plan §4.2(a).
+// ─── Receiving polymorphic refactor — carton-grain street ops (step 3b) ────── Triage and Unbox are INDEPENDENT operator streets on one…
 
 /** Carton-grain TRIAGE street ops (door received, staging, pairing, save-for-unbox). 1:1 with receiving. */
 export const receivingTriage = pgTable('receiving_triage', {
@@ -1919,12 +1638,7 @@ export const receivingUnbox = pgTable('receiving_unbox', {
   /** Operator "Unboxed" action (NOT scan-owned). */
   unboxedAt: timestamp('unboxed_at', { withTimezone: true }),
   unboxedBy: integer('unboxed_by').references(() => staff.id, { onDelete: 'set null' }),
-  /**
-   * An operator confirmed the carton contents against the line list
-   * (2026-08-01c) — the gate for the Contents procedure step, and the fact
-   * nothing in the schema recorded before. Cleared by a reopen; never
-   * backfilled, because a stamp asserts a person did something at a time.
-   */
+  /** An operator confirmed the carton contents against the line list (2026-08-01c) — the gate for the Contents procedure step, and the fact… */
   contentsConfirmedAt: timestamp('contents_confirmed_at', { withTimezone: true }),
   contentsConfirmedBy: integer('contents_confirmed_by').references(() => staff.id, { onDelete: 'set null' }),
   /** CHECK: triage_first | unbox_only | unknown. Mirrors receiving.unbox_only_intake / received_at. */
@@ -1935,20 +1649,9 @@ export const receivingUnbox = pgTable('receiving_unbox', {
   intakePathIdx: index('idx_receiving_unbox_intake_path').on(table.organizationId, table.intakePath).where(sql`intake_path = 'unbox_only'`),
 }));
 
-// ─── Universal Incoming — polymorphic purchase identity ─────────────────────
-// receiving_lines is the ONE Incoming spine; external purchase identity lives in
-// these polymorphic side-tables so Zoho, eBay buyer purchases, and future
-// channels share one queue and one dedup model. See
-// docs/incoming-universal-purchase-orders-plan.md §3 and migrations
-// 2026-07-01k (tables) / 2026-07-01l (spine cache) / 2026-07-01m (backfill).
-// source_type discriminator CHECK: ('zoho' | 'ebay' | 'amazon' | 'manual').
+// ─── Universal Incoming — polymorphic purchase identity ───────────────────── receiving_lines is the ONE Incoming spine; external…
 
-/**
- * Polymorphic purchase-identity SoT: (receiving_line, source_type,
- * source_order_id, source_line_item_id). A merged eBay+Zoho purchase is multiple
- * link rows on ONE receiving_line (ebay is_primary + zoho secondary), never two
- * spine rows. FORCE-RLS tenant-from-birth (2026-07-01k).
- */
+/** Polymorphic purchase-identity SoT: */
 export const inboundPurchaseOrderLinks = pgTable('inbound_purchase_order_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -2054,68 +1757,17 @@ export const inboundPurchaseMergeLog = pgTable('inbound_purchase_merge_log', {
   orgWinnerIdx: index('idx_inbound_purchase_merge_log_org_winner').on(table.organizationId, table.winnerLineId),
 }));
 
-/**
- * work_assignments — unified assignment queue for orders, receiving, repairs, FBA.
- *
- * Also the row behind a *throwable task* since 2026-08-08 (work_type
- * 'FOLLOW_UP') — see `assigneeStaffId` and the uniqueness note below.
- *
- * Join integrity (entity_type + entity_id):
- *   PostgreSQL does not support polymorphic FKs, so integrity is enforced by:
- *   1. BEFORE DELETE triggers that auto-CANCEL any active assignment whose
- *      entity_id matches the deleted row's id
- *      (fn_cancel_work_assignments_on_entity_delete, dispatching on TG_ARGV[0]).
- *      Arms: ORDER, RECEIVING, REPAIR, FBA_SHIPMENT, SKU_STOCK, and
- *      SUPPORT_TICKET (2026-08-08b). Since 2026-08-08b it cancels 'OPEN' too —
- *      that status was added after the function was written, so an OPEN row on
- *      a deleted parent used to leak forever.
- *      CAVEAT: the RECEIVING arm was created ON `receiving`, the table that has
- *      since become `receiving_carton`, so it is likely orphaned. Verify before
- *      relying on it.
- *   2. Partial composite indexes for fast lateral joins:
- *        idx_wa_order_entity_active    — WHERE entity_type='ORDER'
- *        idx_wa_receiving_entity_active — WHERE entity_type='RECEIVING'
- *   3. ux_work_assignments_active_entity — unique so only one OPEN/ASSIGNED/
- *      IN_PROGRESS row exists per (organization_id, entity_type, entity_id,
- *      work_type). Org-led since 2026-08-08b, and 'FOLLOW_UP' is EXEMPT: one
- *      active row per bench is right for a station and wrong for ad-hoc work,
- *      where two people must be able to be handed the same record for
- *      different reasons.
- */
+/** work_assignments — unified assignment queue for orders, receiving, repairs, FBA. */
 export const workAssignments = pgTable('work_assignments', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
   entityType: workEntityTypeEnum('entity_type').notNull(),
-  /**
-   * id of the referenced orders, receiving_carton, repair_service, … row.
-   * BIGINT since 2026-08-08b — support_tickets.id is BIGSERIAL, and
-   * polymorphic-tables.md wants BIGINT by default so a future non-INTEGER
-   * parent never forces a second rewrite.
-   */
+  /** id of the referenced orders, receiving_carton, repair_service, … row. */
   entityId: bigint('entity_id', { mode: 'number' }).notNull(),
   workType: workTypeEnum('work_type').notNull(),
-  /**
-   * Canonical single assignee (2026-08-08b) — restores the name this table was
-   * born with, before 2026-03-05 renamed it to `assigned_tech_id` and added a
-   * packer slot beside it.
-   *
-   * EXPAND phase: for station rows this is DERIVED from the two slots below by
-   * `fn_sync_work_assignment_assignee()`, which mirrors them exactly (including
-   * NULL). For `FOLLOW_UP` rows it is authoritative and the slots stay null.
-   * Read this; write the slots for station work until the contract migration
-   * drops them.
-   */
+  /** Canonical single assignee (2026-08-08b) — restores the name this table was born with, before 2026-03-05 renamed it to `assigned_tech_id`… */
   assigneeStaffId: integer('assignee_staff_id').references(() => staff.id, { onDelete: 'set null' }),
-  /**
-   * Who handed this work over (2026-08-08d). NULL = not recorded — every row
-   * created before that date, deliberately never backfilled.
-   *
-   * The only non-recipient staff column on the table. Without it "what did I
-   * hand off" is unwritable: every other read here filters by assignee, and the
-   * two places the thrower survived (the audit row, and
-   * `staff_inbox_items.actor_staff_id`) are respectively append-only and lossy
-   * — the inbox row is skipped for entity kinds that are not inbox-anchorable.
-   */
+  /** Who handed this work over (2026-08-08d). */
   assignedByStaffId: integer('assigned_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   /** Tech assignee (TEST, QA, REPAIR, RECEIVE work types) */
   assignedTechId: integer('assigned_tech_id').references(() => staff.id, { onDelete: 'set null' }),
@@ -2609,11 +2261,7 @@ export type NewPipelineTask = typeof pipelineTasks.$inferInsert;
 export type PipelineCycle = typeof pipelineCycles.$inferSelect;
 export type NewPipelineCycle = typeof pipelineCycles.$inferInsert;
 
-// ─── Cycle Forge (multi-agent dev-loop run history) ──────────────────────────
-// One row per forge run (a /forge invocation from Hermes/Telegram); child rows
-// per stage (architect → build → sync → verify). Mirrors the pipeline_cycles /
-// pipeline_tasks pairing. Fed by POST /api/forge/ingest, read by /api/forge/runs
-// and rendered on /forge via the cycleForgeStepsToTimeline adapter.
+// ─── Cycle Forge (multi-agent dev-loop run history) ────────────────────────── One row per forge run (a /forge invocation from…
 
 export const cycleForgeRuns = pgTable('cycle_forge_runs', {
   organizationId: orgIdCol(),
@@ -2655,32 +2303,13 @@ export type NewCycleForgeRunStep = typeof cycleForgeRunSteps.$inferInsert;
 export const skuCatalog = pgTable('sku_catalog', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
-  /**
-   * Unique PER ORG (`sku_catalog_org_sku_key`, added 2026-06-28j), NOT globally.
-   *
-   * The legacy global `sku_catalog_sku_key UNIQUE (sku)` still coexists on the
-   * live table until the `.gated` phase-2 drop
-   * (2026-06-14_sku_catalog_composite_unique.sql.gated) lands, so BOTH
-   * constraints are real today. Modeled as the per-org composite because that is
-   * the one upserts arbitrate on and the one that survives the drop — a bare
-   * `.unique()` here claimed the global constraint was the SKU's identity, which
-   * is wrong the moment there is a second tenant.
-   */
+  /** Unique PER ORG (`sku_catalog_org_sku_key`, added 2026-06-28j), NOT globally. */
   sku: text('sku').notNull(),
   productTitle: text('product_title').notNull(),
   category: text('category'),
   upc: text('upc'),
   ean: text('ean'),
-  /**
-   * GS1 Global Trade Item Number — encodes Digital Link QRs (/01/{gtin}).
-   * Added 2026-05-14.
-   *
-   * Unique PER ORG (`idx_sku_catalog_org_gtin`, 2026-08-02c), not globally: a
-   * GTIN names the PRODUCT, so two tenants selling the same item hold the same
-   * digits. May also hold an internally-minted restricted-circulation number
-   * (`02…`) from `getOrCreateInternalGtin`; `isRestrictedCirculationGtin()` is
-   * what tells that apart from a licensed key.
-   */
+  /** GS1 Global Trade Item Number — encodes Digital Link QRs (/01/{gtin}). */
   gtin: text('gtin'),
   imageUrl: text('image_url'),
   isActive: boolean('is_active').notNull().default(true),
@@ -2777,12 +2406,7 @@ export const skuPlatformIds = pgTable('sku_platform_ids', {
   accountName: text('account_name'),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  // 2026-07-04: model reconciled to the live 18 columns (was 8). The pairing +
-  // presentation columns below were added by later migrations. This model is
-  // read-for-types only (the table is accessed via raw SQL in the pairing route
-  // + picking sessions), so this is a documentation-accuracy fix, not a behavior
-  // change. sku_platform_ids is the LIVE per-channel SKU→external-id mapping home
-  // (platform_listings is separate scaffolding — see its comment).
+  // 2026-07-04: model reconciled to the live 18 columns (was 8).
   displayName: text('display_name'),
   imageUrl: text('image_url'),
   organizationId: orgIdCol(),
@@ -2795,15 +2419,7 @@ export const skuPlatformIds = pgTable('sku_platform_ids', {
   doNotSuggestUntil: timestamp('do_not_suggest_until', { withTimezone: true }),
 });
 
-/**
- * platform_listings — first-class per-channel listing (ported from USAV_ERP's
- * `platform_listing`). Unlike sku_platform_ids (a thin id mapping), this carries
- * channel price/qty/condition + its own outbound sync state + a sync_hash for
- * idempotent skip. `skuCatalogId` is nullable so an UNRESOLVED listing (matched
- * to a channel but not yet to a catalog SKU) is persisted, not dropped.
- * org-scoped (organization_id, GUC default, RLS armed). See migration
- * 2026-06-17_platform_listings.sql + src/lib/inventory/platform-listings.ts.
- */
+/** platform_listings — first-class per-channel listing (ported from USAV_ERP's `platform_listing`). */
 export const platformListings = pgTable('platform_listings', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -2811,10 +2427,6 @@ export const platformListings = pgTable('platform_listings', {
   platform: text('platform').notNull(),
   accountName: text('account_name'),
   // Catalog FK (2026-07-03r) — deliberate FORWARD-PREP, not dead code.
-  // platform_listings is intentional scaffolding for a planned listings feature
-  // (currently 0 rows / 0 writers by design); this FK is the normalized channel
-  // link that feature will populate at write time (resolve platform_account_id;
-  // platform/accountName remain the read-through cache). Do NOT drop as "unused".
   platformAccountId: bigint('platform_account_id', { mode: 'number' }).references(() => platformAccounts.id, { onDelete: 'set null' }),
   externalRefId: text('external_ref_id'),
   merchantSku: text('merchant_sku'),
@@ -2848,25 +2460,7 @@ export const platformListings = pgTable('platform_listings', {
 export type PlatformListing = typeof platformListings.$inferSelect;
 export type NewPlatformListing = typeof platformListings.$inferInsert;
 
-/**
- * The provider category TREE (2026-07-29e) — its own table, not columns on
- * platformListings.
- *
- * A category node is a distinct entity with identity, a parent link, a name and
- * a path, so it does not belong on a listing. The decisive argument is EMPTY
- * BRANCHES: the picker has to render a category that currently holds zero
- * products, and a listing-shaped store cannot represent one — there is no
- * listing row to hang it off. Storing the tree per-listing would also duplicate
- * every node once per product in it.
- *
- * `depth` and `fullPath` are denormalized on write: both are pure functions of
- * the parent chain, and precomputing turns every breadcrumb render from a
- * recursive walk into a column read. The writer owns keeping them true.
- *
- * Repair-ROOT membership is deliberately NOT stored — root resolution reads
- * ECWID_REPAIR_CATEGORY_IDS (or name-matches) at read time, so re-pointing the
- * root stays a config change instead of a re-sync.
- */
+/** The provider category TREE (2026-07-29e) — its own table, not columns on platformListings. */
 export const platformCatalogCategories = pgTable('platform_catalog_categories', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -2906,24 +2500,13 @@ export const skuKitParts = pgTable('sku_kit_parts', {
   requiredFor: text('required_for').array(),
   isCritical: boolean('is_critical').notNull().default(true),
   sortOrder: integer('sort_order').notNull().default(0),
-  // Reference document — the paper this part puts in the box
-  // (2026-08-01d_kit_part_reference_document.sql). `documentUrl` is a directly
-  // fetchable Blob url, never an /api/documents/:id/content path: packing.*
-  // does not imply orders.view. `documentMime` is CHECK-constrained to
-  // 'pdf' | 'image' | 'unknown' (DocumentPreviewMimeHint), and a title or mime
-  // without a url is rejected by sku_kit_parts_document_url_required_chk.
+  // Reference document — the paper this part puts in the box (2026-08-01d_kit_part_reference_document.sql).
   documentUrl: text('document_url'),
   documentTitle: text('document_title'),
   documentMime: text('document_mime'),
 });
 
-/**
- * pending_skus — to-do queue of SKUs seen in operations but not yet in
- * sku_catalog (need creating in Zoho, the SoT). `sku_catalog_id` stays NULL
- * while PENDING and is auto-stamped by trg_resolve_pending_sku when the matching
- * catalog row is created. See migration 2026-06-06b_pending_skus.sql +
- * src/lib/inventory/pending-skus.ts. status ∈ PENDING|CREATED|IGNORED|DUPLICATE.
- */
+/** pending_skus — to-do queue of SKUs seen in operations but not yet in sku_catalog (need creating in Zoho, the SoT). */
 export const pendingSkus = pgTable('pending_skus', {
   id: serial('id').primaryKey(),
   normalizedSku: text('normalized_sku').notNull().unique(),
@@ -2943,12 +2526,7 @@ export const pendingSkus = pgTable('pending_skus', {
 export type PendingSku = typeof pendingSkus.$inferSelect;
 export type NewPendingSku = typeof pendingSkus.$inferInsert;
 
-/**
- * order_catalog_link_chores — Review · Catalog link steward queue.
- * Enqueued only when Google Sheets transfer-orders imports an order whose Item
- * Number misses sku_catalog / sku_platform_ids. Not a scan of historical orphans.
- * See migration 2026-07-24_order_catalog_link_chores.sql.
- */
+/** order_catalog_link_chores — Review · Catalog link steward queue. */
 export const orderCatalogLinkChores = pgTable('order_catalog_link_chores', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -2976,14 +2554,7 @@ export const orderCatalogLinkChores = pgTable('order_catalog_link_chores', {
 export type OrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferSelect;
 export type NewOrderCatalogLinkChore = typeof orderCatalogLinkChores.$inferInsert;
 
-/**
- * order_import_exceptions — Review · Missing item number queue.
- * Enqueued only when Google Sheets transfer-orders drops a row for a blank
- * Item Number (the row has a real order id + tracking, but never becomes an
- * `orders` row). `raw_row` + `col_indices` let a resolve action splice the
- * supplied Item Number into the original cell and re-run the same ingest
- * path. See migration 2026-07-30c_order_import_exceptions.sql.
- */
+/** order_import_exceptions — Review · Missing item number queue. */
 export const orderImportExceptions = pgTable('order_import_exceptions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3191,23 +2762,9 @@ export const techVerifications = pgTable('tech_verifications', {
   failedModeId: integer('failed_mode_id').references(() => failureModes.id, { onDelete: 'set null' }),
 });
 
-// ──────────────────────────────────────────────
-// AI Chat Sessions & Messages
-// ──────────────────────────────────────────────
-// Inventory v2 — Drizzle declarations for tables previously created via raw
-// SQL migration (Apr–May 2026) plus Phase 0 additions from
-// context/inventory_system_upgrade_plan.md. These were accessed via raw SQL
-// before; declaring them here unlocks typed reads/writes across the codebase.
-// Zero behavior change in this commit.
-// ──────────────────────────────────────────────
+// ────────────────────────────────────────────── AI Chat Sessions & Messages ────────────────────────────────────────────── Inventory v2 —…
 
-/**
- * locations — bin-addressable warehouse map (post 2026-04-09 bin upgrade).
- * The room/row/col triple plus zone_letter encodes each bin; barcode is the
- * scannable surface. NOT to be confused with zoho_locations (Zoho warehouse
- * mirror) which still lives separately above.
- * `location_kind` (2026-08-09) types ROOM / DESK / STAGING / BIN / … hierarchy.
- */
+/** locations — bin-addressable warehouse map (post 2026-04-09 bin upgrade). */
 export const locations = pgTable('locations', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
@@ -3288,12 +2845,7 @@ export const orderPackPlacementEvents = pgTable('order_pack_placement_events', {
   ),
 }));
 
-/**
- * unit_pack_placements — current packing-station / staging place for a loose
- * serialized unit staged at Ready-to-Pack (Phase 2 sibling of
- * order_pack_placements). WIP staging, NOT stock putaway. One row per unit.
- * Migration 2026-08-09c.
- */
+/** unit_pack_placements — current packing-station / staging place for a loose serialized unit staged at Ready-to-Pack (Phase 2 sibling of… */
 export const unitPackPlacements = pgTable('unit_pack_placements', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3365,21 +2917,11 @@ export const locationTransfers = pgTable('location_transfers', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * serial_units — per-unit aggregate root (2026-04-10).
- * Stores cradle-to-grave lifecycle state for every physical serialized unit.
- * Relaxed: most columns nullable so legacy / batch-imported serials are
- * first-class. New writes should always upsert by normalized_serial.
- */
+/** serial_units — per-unit aggregate root (2026-04-10). */
 export const serialUnits = pgTable('serial_units', {
   id: serial('id').primaryKey(),
   serialNumber: text('serial_number').notNull(),
-  /**
-   * Per-org natural key. The unique is PER-TENANT — ux_serial_units_org_normalized_serial
-   * on (organization_id, normalized_serial), 2026-06-19 — NOT a global unique, because a
-   * serial string only identifies a unit within one tenant's inventory. (Index lives in
-   * SQL migrations, this table's source of truth; not re-expressed here.)
-   */
+  /** Per-org natural key. */
   normalizedSerial: text('normalized_serial').notNull(),
   sku: text('sku'),
   skuCatalogId: integer('sku_catalog_id').references(() => skuCatalog.id, { onDelete: 'set null' }),
@@ -3410,15 +2952,7 @@ export const serialUnits = pgTable('serial_units', {
   // which are the source of truth for this table — not expressed here.
 });
 
-/**
- * label_print_jobs — immutable per-print ledger (serial↔label pairing plan §5.1,
- * migration 2026-07-06a). One row per PHYSICAL label print; reprints append a
- * new row (isReprint=true) pointing at the same unitUid — identity is never
- * re-minted. `jobType` is a CHECK-constrained discriminator:
- * 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION'. `manifestId`'s FK to
- * label_manifests is added in Phase 3 (the table doesn't exist yet). RLS +
- * org-default installed by enforce_tenant_isolation() in the migration.
- */
+/** label_print_jobs — immutable per-print ledger (serial↔label pairing plan §5.1, migration 2026-07-06a). */
 export const labelPrintJobs = pgTable('label_print_jobs', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: uuid('organization_id').notNull(),
@@ -3466,13 +3000,7 @@ export const documentPrintJobs = pgTable('document_print_jobs', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * label_manifests — "one label, many serials" preboxed-kit grouping (serial↔
- * label pairing plan §5.2, migration 2026-07-06b). status: OPEN|SEALED|DISSOLVED;
- * manifest_type: PREBOX|KIT|MASTER_CARTON (both CHECK-constrained). manifest_uid
- * is KIT-{SKU_SHORT}-{YYWW}-{SEQ6}. RLS + org-default installed by
- * enforce_tenant_isolation().
- */
+/** label_manifests — "one label, many serials" preboxed-kit grouping (serial↔ label pairing plan §5.2, migration 2026-07-06b). */
 export const labelManifests = pgTable('label_manifests', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: uuid('organization_id').notNull(),
@@ -3516,22 +3044,7 @@ export const labelManifestSequences = pgTable('label_manifest_sequences', {
   nextSeq: integer('next_seq').notNull().default(0),
 });
 
-/**
- * serial_unit_provenance — typed origin spine for serial_units (Phase 1 of the
- * schema-wide polymorphic refactor; migration 2026-07-01n). Collapses the
- * denormalized origin_source / origin_receiving_line_id / origin_tsn_id /
- * origin_sku_id family onto the polymorphic reference contract: an
- * `origin_type` discriminator (named CHECK) + a BIGINT `origin_id`. `origin_id`
- * is nullable for text-only origins (MANUAL/LEGACY, or a source with no row id).
- *
- * origin_type ∈ RECEIVING_LINE | TECH_SERIAL | SKU_IMPORT | RETURN | FBA |
- *   MANUAL | LEGACY  (CHECK: serial_unit_provenance_origin_type_chk;
- *   RETURN/FBA reserved for the FBA-fold + returns work, Tier-1 #7).
- *
- * Additive/Phase-1: nothing reads this yet; serial_units.origin_* stay the live
- * source until a later reader-migration phase. Tenant-from-birth (FORCE RLS via
- * enforce_tenant_isolation in the birth migration).
- */
+/** serial_unit_provenance — typed origin spine for serial_units (Phase 1 of the schema-wide polymorphic refactor; migration 2026-07-01n). */
 export const serialUnitProvenance = pgTable('serial_unit_provenance', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3558,15 +3071,7 @@ export const serialUnitProvenance = pgTable('serial_unit_provenance', {
 export type SerialUnitProvenance = typeof serialUnitProvenance.$inferSelect;
 export type NewSerialUnitProvenance = typeof serialUnitProvenance.$inferInsert;
 
-/**
- * sku_stock_ledger — authoritative signed-delta ledger for SKU quantities.
- * Marked authoritative 2026-04-15: sku_stock.stock / .boxed_stock are now
- * trigger-maintained from SUM(delta) per (sku, dimension). All writes go here;
- * direct mutations on sku_stock are forbidden.
- *
- * dimension ∈ ('WAREHOUSE','BOXED').
- * reason: TEXT free-form; typed via reason_codes.reason_code_id since 2026-05-14.
- */
+/** sku_stock_ledger — authoritative signed-delta ledger for SKU quantities. */
 export const skuStockLedger = pgTable('sku_stock_ledger', {
   id: serial('id').primaryKey(),
   sku: text('sku').notNull(),
@@ -3586,19 +3091,7 @@ export const skuStockLedger = pgTable('sku_stock_ledger', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * inventory_events — unified lifecycle / audit timeline (2026-05-13).
- * Sibling to sku_stock_ledger: ledger holds quantity deltas, events hold the
- * lifecycle context (status changes, putaway, move, test, etc.). They join
- * on inventory_events.stock_ledger_id when an event also moved quantity.
- *
- * event_type ∈ RECEIVED | TEST_START | TEST_PASS | TEST_FAIL | PUTAWAY |
- *              MOVED | PICKED | PACKED | SHIPPED | ADJUSTED | RETURNED |
- *              SCRAPPED | LISTED | NOTE
- * Phase 0 adds: ALLOCATED | RELEASED | TRIAGED | REPAIR_STARTED |
- *               REPAIR_COMPLETED | GRADED | LABELED | STAGED | HELD |
- *               RELEASED_HOLD
- */
+/** inventory_events — unified lifecycle / audit timeline (2026-05-13). */
 export const inventoryEvents = pgTable('inventory_events', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
@@ -3619,12 +3112,7 @@ export const inventoryEvents = pgTable('inventory_events', {
   clientEventId: text('client_event_id').unique(),
   notes: text('notes'),
   payload: jsonb('payload').notNull().default(sql`'{}'::jsonb`),
-  /**
-   * Per-tenant scope. Added to the live table by 2026-05-23_org_id_on_business_tables.sql
-   * (column + RLS); declared here so the Drizzle model matches the DB and the
-   * column isn't silently dropped by `db:push`. Defaults from the GUC so raw-SQL
-   * callers that don't pass orgId still tenant-stamp via `app.current_org`.
-   */
+  /** Per-tenant scope. */
   organizationId: orgIdCol(),
   /** Optional multi-warehouse scope (2026-05-14_multi_warehouse.sql). */
   warehouseId: integer('warehouse_id'),
@@ -3652,14 +3140,7 @@ export const reasonCodes = pgTable('reason_codes', {
   sortOrder: integer('sort_order').notNull().default(100),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   organizationId: orgIdCol(),
-  /**
-   * Multi-vocabulary discriminator (2026-06-28): which subsystem this row's
-   * `code` vocabulary belongs to — inventory_event | substitution | short_pick |
-   * receiving_exception | repair_failure | verdict_detail | warranty_denial |
-   * inventory_adjust | lifecycle_unshipped | lifecycle_outbound |
-   * serial_absent_reason | station_command. See reason_codes_flow_context_chk
-   * for the live list.
-   */
+  /** Multi-vocabulary discriminator (2026-06-28): */
   flowContext: text('flow_context').notNull().default('inventory_event'),
   /** Which UI surfaces may offer this code; label-vocabulary-layer (2026-06-28d). */
   appliesTo: jsonb('applies_to'),
@@ -3671,22 +3152,7 @@ export const reasonCodes = pgTable('reason_codes', {
   orgFlowCodeUx: uniqueIndex('reason_codes_org_flow_code_key').on(table.organizationId, table.flowContext, table.code),
 }));
 
-/**
- * station_command_aliases — tenant-authored scan strings that resolve to a
- * BUILT-IN command (2026-08-20c).
- *
- * An alias is a second NAME for a command that already exists in code, never a
- * new behaviour: the registries in `src/lib/stations/*-command-codes.ts` are
- * PR-reviewed on purpose, because a scan that moves an operator or writes a
- * verdict must not be creatable from an admin form. `targetCode` is therefore
- * NOT a foreign key — the thing it points at is a code registry, not a table —
- * and its membership is validated by the write route on every save.
- *
- * `code` is constrained to the `CMD-` namespace in the DB
- * (`station_command_aliases_code_chk`). That is a safety control: the scan
- * classifier claims that namespace wholesale so a command can never be read as
- * a serial, and an alias outside it would break the guarantee both ways.
- */
+/** station_command_aliases — tenant-authored scan strings that resolve to a BUILT-IN command (2026-08-20c). */
 export const stationCommandAliases = pgTable('station_command_aliases', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3722,12 +3188,7 @@ export const printerProfiles = pgTable('printer_profiles', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * stock_alerts — daily-cron-generated bin signals (2026-05-14).
- * alert_type ∈ LOW_STOCK | NEVER_COUNTED | STALE_COUNT. One open alert per
- * (sku, bin_id, alert_type); closed alerts (resolved_at IS NOT NULL) stay
- * for history.
- */
+/** stock_alerts — daily-cron-generated bin signals (2026-05-14). */
 export const stockAlerts = pgTable('stock_alerts', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   sku: text('sku').notNull(),
@@ -3838,12 +3299,7 @@ export const unitFailureTags = pgTable('unit_failure_tags', {
   resolvedRepairId: integer('resolved_repair_id').references(() => unitRepairs.id, { onDelete: 'set null' }),
 });
 
-/**
- * unit_repairs — per-serial repair records (Phase 3). Opened then
- * completed/failed/scrapped; carries parts/cost/labor and cross-links the
- * REPAIR_STARTED / REPAIR_COMPLETED events. `repair_service_id` bridges the
- * legacy intake table. See 2026-06-07_unit_repairs.sql.
- */
+/** unit_repairs — per-serial repair records (Phase 3). */
 export const unitRepairs = pgTable('unit_repairs', {
   id: serial('id').primaryKey(),
   serialUnitId: integer('serial_unit_id').notNull().references(() => serialUnits.id, { onDelete: 'cascade' }),
@@ -3887,18 +3343,7 @@ export const unitQualityScores = pgTable('unit_quality_scores', {
   computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/**
- * testing_results — append-only log of per-unit testing verdicts (2026-05-29).
- * Powers the "Recently Tested" feed: one row per verdict click. References the
- * serial unit by id ONLY — serial number / SKU / condition are JOINed from
- * serial_units (single source of truth, written by the receiving pipeline),
- * never duplicated here. Authoritative current state lives on
- * serial_units.current_status; this is history, keyed by created_at.
- *
- * verdict ∈ PASS | TEST_AGAIN | TESTING_FAILED (CHECK constraint)
- * Writer: src/app/api/serial-units/[id]/test/route.ts
- * Org-recent index: 2026-07-17c_testing_results_org_recent.sql
- */
+/** testing_results — append-only log of per-unit testing verdicts (2026-05-29). */
 export const testingResults = pgTable('testing_results', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -3925,13 +3370,7 @@ export const testingResults = pgTable('testing_results', {
   unitIdx: index('idx_testing_results_unit').on(table.serialUnitId, table.createdAt.desc()),
 }));
 
-/**
- * order_unit_allocations — reservation of a specific serialized unit to an
- * order line. Enforces "one live allocation per unit" via DEFERRABLE UNIQUE
- * on serial_unit_id WHERE state != 'RELEASED'. Released rows stay for history.
- *
- * state ∈ ALLOCATED | PICKED | PACKED | SHIPPED | RELEASED
- */
+/** order_unit_allocations — reservation of a specific serialized unit to an order line. */
 export const orderUnitAllocations = pgTable('order_unit_allocations', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'restrict' }),
@@ -4065,17 +3504,7 @@ export type NewFbaShipmentItemUnit = typeof fbaShipmentItemUnits.$inferInsert;
 export type UnitIdSequence = typeof unitIdSequences.$inferSelect;
 export type NewUnitIdSequence = typeof unitIdSequences.$inferInsert;
 
-// ─── Multi-tenancy (2026-05-22_organizations_tenancy.sql,
-//                    2026-05-23_org_id_on_business_tables.sql) ─────────────
-//
-// Every business table carries `organization_id`. The column has a Postgres
-// DEFAULT that reads from the `app.current_org` GUC, set by
-// withTenantConnection — so application inserts don't have to specify the
-// org explicitly, and queries that bypass the GUC fail loudly with a NOT
-// NULL violation.
-//
-// The Drizzle helper below mirrors that column shape so $inferInsert treats
-// `organizationId` as optional (the DB default fills it in).
+// ─── Multi-tenancy (2026-05-22_organizations_tenancy.sql, 2026-05-23_org_id_on_business_tables.sql) ─────────────
 
 // Tenant root. Every business table gets `organization_id` referencing this
 // in the next migration. USAV is org #1 with a fixed UUID
@@ -4106,15 +3535,7 @@ export const organizations = pgTable('organizations', {
 export type Organization = typeof organizations.$inferSelect;
 export type NewOrganization = typeof organizations.$inferInsert;
 
-/**
- * organization_integrations — per-tenant OAuth/API credential store (2026-05-22).
- * Accessed today only via raw pool.query in src/lib/integrations/credentials.ts
- * (this model exists so type-level readers/reviewers aren't blind to the live
- * shape; it is not wired into that module's queries). `provider` is validated
- * at the app layer only (the `IntegrationProvider` union in credentials.ts,
- * currently 15 values) — there is no DB CHECK/enum. Secrets stay opaque in
- * `payloadEncrypted`; queryable status lives in real columns.
- */
+/** organization_integrations — per-tenant OAuth/API credential store (2026-05-22). */
 export const organizationIntegrations = pgTable('organization_integrations', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4147,10 +3568,7 @@ export const organizationIntegrations = pgTable('organization_integrations', {
   webhookTokenUx: uniqueIndex('ux_org_integrations_webhook_token').on(table.webhookToken).where(sql`webhook_token IS NOT NULL`),
 }));
 
-// ─── Identity layer (2026-06-20e_identity_layer_phase1.sql) ──────────────────
-// GLOBAL, tenant-agnostic tables. They are read at login, before any
-// app.current_org GUC exists, so they intentionally carry NO tenant_isolation
-// policy. See docs/identity-layer-plan.md.
+// ─── Identity layer (2026-06-20e_identity_layer_phase1.sql) ────────────────── GLOBAL, tenant-agnostic tables.
 
 // The human / global login identity.
 export const accounts = pgTable('accounts', {
@@ -4327,13 +3745,7 @@ export const ragDocumentChunks = pgTable('rag_document_chunks', {
   docIdx: index('idx_rag_document_chunks_document_id').on(table.documentId),
 }));
 
-/**
- * 768-dim variant of pgVector for the AI-search index (EMBEDDING_DIMS in
- * src/lib/ai/provider.ts). Deliberately separate from the 1536-dim `pgVector`
- * above so rag_document_chunks is untouched — the two embedding schemes are
- * independent (RAG = Gemini 1536; entity search = text-embedding-3-small /
- * nomic-embed-text @ 768).
- */
+/** 768-dim variant of pgVector for the AI-search index (EMBEDDING_DIMS in src/lib/ai/provider.ts). */
 export const pgVector768 = customType<{ data: number[] }>({
   dataType() {
     return 'vector(768)';
@@ -4349,18 +3761,7 @@ export const pgVector768 = customType<{ data: number[] }>({
   }
 });
 
-/**
- * entity_search_docs — the hybrid AI-search index for the P0 CommandBar
- * entities (migration 2026-07-03d, per).
- * entity_type CHECK (entity_search_docs_entity_type_chk):
- *   'ORDER' | 'SERIAL_UNIT' | 'RECEIVING' | 'SKU' | 'REPAIR' | 'FBA_SHIPMENT'
- * Written ONLY by the search-outbox worker (src/lib/search/search-outbox-worker.ts);
- * freshness flows from parent-table triggers → entity_search_outbox → worker.
- * embedding is nullable by design: keyword search works before the async embed
- * lands. Tenant-from-birth (FORCE RLS via enforce_tenant_isolation in the
- * birth migration). SQL indexes (org-led natural unique, trgm GIN, HNSW
- * cosine) live in the migration, the schema source of truth.
- */
+/** entity_search_docs — the hybrid AI-search index for the P0 CommandBar entities (migration 2026-07-03d, per). */
 export const entitySearchDocs = pgTable('entity_search_docs', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4396,13 +3797,7 @@ export const entitySearchDocs = pgTable('entity_search_docs', {
 export type EntitySearchDoc = typeof entitySearchDocs.$inferSelect;
 export type NewEntitySearchDoc = typeof entitySearchDocs.$inferInsert;
 
-/**
- * entity_search_outbox — freshness queue behind entity_search_docs (same
- * migration). Parent-table triggers (fn_enqueue_entity_search_outbox) insert
- * one pending row per changed entity, deduped by the partial unique
- * ux_entity_search_outbox_pending (organization_id, entity_type, entity_id)
- * WHERE processed_at IS NULL. entity_type CHECK mirrors entity_search_docs.
- */
+/** entity_search_outbox — freshness queue behind entity_search_docs (same migration). */
 export const entitySearchOutbox = pgTable('entity_search_outbox', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4420,17 +3815,7 @@ export const entitySearchOutbox = pgTable('entity_search_outbox', {
 
 export type EntitySearchOutboxRow = typeof entitySearchOutbox.$inferSelect;
 
-/**
- * ai_usage_events — per-org AI usage metering (migration 2026-07-04b): one
- * row per billable AI call. CHECKs: capability IN ('chat','embed')
- * (ai_usage_events_capability_chk); context IN
- * ('query_embed','doc_embed','ask_ai') (ai_usage_events_context_chk).
- * cost_microcents = estimated PROVIDER cost (1e-8 USD, integer math; NULL =
- * unknown model rate); the billed price applies the per-org margin at read
- * time (getAiUsageMarginPercent). stripe_reported_at set by the env-gated
- * meter reporter (src/lib/billing/ai-meter-reporter.ts). Tenant-from-birth
- * (FORCE RLS in the birth migration).
- */
+/** ai_usage_events — per-org AI usage metering (migration 2026-07-04b): */
 export const aiUsageEvents = pgTable('ai_usage_events', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4452,13 +3837,6 @@ export const aiUsageEvents = pgTable('ai_usage_events', {
 export type AiUsageEvent = typeof aiUsageEvents.$inferSelect;
 
 // ─── Workflow graph layer ─────────────────────────────────────
-//
-// Node-based "Operations" engine (see docs/operations-studio/NODE_WORKFLOW_ARCHITECTURE.md and
-// docs/operations-studio/NODE_WORKFLOW_IMPLEMENTATION_PLAN.md). These tables hold the GRAPH
-// definition (which node connects to which, with conditional routing) and a
-// pointer into the existing item state machine (serial_units +
-// station_activity_logs). They add no behavior on their own — the engine in
-// src/lib/workflow reads/writes them; domain logic stays in src/lib/*.
 
 // workflow_definitions — one named, versioned graph per org. Only one row per
 // (org, name) is is_active; publishing a new version flips the flag.
@@ -4521,10 +3899,6 @@ export const workflowEdges = pgTable('workflow_edges', {
 }));
 
 // workflow_templates — system-owned graph blueprints (Studio ST6 / Phase E4).
-// DELIBERATELY GLOBAL / cross-tenant: no organization_id, not RLS-enforced —
-// these are shared default flows a tenant CLONES into its own
-// workflow_definitions (re-minted ids, org-stamped) as an editable draft. The
-// `graph` JSONB is the same { nodes, edges } shape the studio canvas paints.
 export const workflowTemplates = pgTable('workflow_templates', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   slug: text('slug').notNull(),
@@ -4538,11 +3912,7 @@ export const workflowTemplates = pgTable('workflow_templates', {
   // 2026-06-28m). Added to the model in universal-feed Phase 5 so the template
   // catalog can mark/order the recommended vertical.
   isDefault: boolean('is_default').notNull().default(false),
-  // Template Platform Phase 4 curation (migration 2026-07-11c). Non-system rows
-  // (imported packages, org submissions) move through a moderation lifecycle;
-  // system rows are public/approved by construction.
-  //   visibility:    'private' | 'org' | 'public'  (named CHECK)
-  //   reviewStatus:  'draft' | 'submitted' | 'approved' | 'rejected'  (named CHECK)
+  // Template Platform Phase 4 curation (migration 2026-07-11c).
   visibility: text('visibility').notNull().default('private'),
   reviewStatus: text('review_status').notNull().default('draft'),
   // The org that submitted this row for review — the ONLY org linkage on this
@@ -4601,11 +3971,7 @@ export const workflowRuns = pgTable('workflow_runs', {
   orgCreatedIdx: index('idx_workflow_runs_org_created').on(table.organizationId, table.createdAt),
 }));
 
-// workflow_tap_outbox — intended-tap outbox (2026-07-09b migration). One row
-// per tapWorkflow attempt when WORKFLOW_TAP_OUTBOX is on: PENDING before
-// advance(), LANDED on a durable outcome (moved/done/blocked), FAILED on a
-// permanent non-apply. Re-driven by /api/cron/workflow/tap-reconcile.
-// `status` has a named CHECK in the migration: PENDING | LANDED | FAILED.
+// workflow_tap_outbox — intended-tap outbox (2026-07-09b migration).
 export const workflowTapOutbox = pgTable('workflow_tap_outbox', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4630,10 +3996,7 @@ export const workflowTapOutbox = pgTable('workflow_tap_outbox', {
   // Drizzle models the full-column shape only.
 }));
 
-// workflow_node_stats — daily per-node queue-depth snapshots for the Studio
-// Flow² lens (queue growth / age trends that a point-in-time query can't
-// recover). Written by /api/cron/workflow-node-stats; idempotent per
-// (definition, node, day). Time-in-node medians come from workflow_runs.
+// workflow_node_stats — daily per-node queue-depth snapshots for the Studio Flow² lens (queue growth / age trends that a point-in-time…
 export const workflowNodeStats = pgTable('workflow_node_stats', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
@@ -4660,13 +4023,7 @@ export const workflowNodeStats = pgTable('workflow_node_stats', {
   orgDateIdx: index('idx_workflow_node_stats_org_date').on(table.organizationId, table.snapshotDate),
 }));
 
-// station_definitions — layer 2 of the Operations Studio: one row per
-// (page, mode) station composition, e.g. ('receiving', 'incoming'). `config`
-// holds the ordered slots → block instances → source/action bindings (see
-// docs/operations-studio/station-builder-ui-plan.md §2.4). Blocks/sources/
-// actions are CODE (src/lib/stations registries); this table is the DATA.
-// Versioning + is_active publish semantics copy workflow_definitions exactly:
-// only one row per (org, page, mode) is active; publishing flips the flag.
+// station_definitions — layer 2 of the Operations Studio:
 export const stationDefinitions = pgTable('station_definitions', {
   id: serial('id').primaryKey(),
   organizationId: orgIdCol(),
@@ -4827,15 +4184,7 @@ export type WarrantyRepairAttempt = typeof warrantyRepairAttempts.$inferSelect;
 export type WarrantyQuote = typeof warrantyQuotes.$inferSelect;
 
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Universal feed / AI-first linkage family (Phase 0 of
-// docs/todo/universal-feed-polymorphic-plan.md; migrations 2026-07-03j..o).
-// All second-axis vocabularies (feed_key, signal_kind, linkage_type,
-// mutation_kind, node_surface.role, target_kind) are validated by the app
-// registry in src/lib/surfaces/registry.ts — the runtime SoT the AI reads.
-// entity_type has a DB CHECK: RECEIVING | RECEIVING_LINE | SERIAL_UNIT |
-// ORDER | FBA_SHIPMENT | REPAIR | WARRANTY_CLAIM.
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════ Universal feed / AI-first linkage family (Phase 0 of…
 
 /** Postgres tsvector (read-only projection of a GENERATED ALWAYS column). */
 export const pgTsVector = customType<{ data: string }>({
@@ -4844,13 +4193,7 @@ export const pgTsVector = customType<{ data: string }>({
   },
 });
 
-/**
- * feed_memberships — universal rail/feed working set (plan §2.1). Projection
- * of the domain masters; rebuildable. One row per (feed_key, entity); display
- * fields denormalized for rail speed. state CHECK: active | needs_match |
- * done. tone CHECK mirrors TimelineTone. Parent-delete integrity via
- * fn_delete_feed_memberships_on_parent_delete() triggers on all 7 parents.
- */
+/** feed_memberships — universal rail/feed working set (plan §2.1). */
 export const feedMemberships = pgTable('feed_memberships', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4902,15 +4245,7 @@ export const staffRailExclusions = pgTable('staff_rail_exclusions', {
   entityIdx: index('idx_staff_rail_exclusions_org_entity').on(table.organizationId, table.entityType, table.entityId),
 }));
 
-/**
- * entity_signals — structured "why" facts, the AI's primary read substrate
- * (plan §2.3). Append-only; every insert also emits an ops_event via
- * recordEntitySignal. source_ref = idempotency key for mirror-derived signals
- * (partial unique (org, signal_kind, source_ref) WHERE source_ref IS NOT NULL);
- * NULL for internal chokepoint emitters. notes_tsv is DB-GENERATED
- * (to_tsvector('simple', notes || ' ' || reason_code)) — never write it.
- * Parent-delete integrity via fn_delete_entity_signals_on_parent_delete().
- */
+/** entity_signals — structured "why" facts, the AI's primary read substrate (plan §2.3). */
 export const entitySignals = pgTable('entity_signals', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4941,15 +4276,7 @@ export const entitySignals = pgTable('entity_signals', {
   notesTsvIdx: index('idx_entity_signals_notes_tsv').using('gin', table.notesTsv),
 }));
 
-/**
- * pack_verification_events — append-only packer verification / review outcomes
- * (plan: packer-review-station-plan.md Phase 3). One row = one OUTCOME about a
- * packer_log; latest-wins per (org, entity_type, entity_id). Replaces the
- * sketch's orders.verify_status / orders.packing_metadata (no ALTER on
- * orders/packer_logs). Written only by recordPackVerificationEvent, which also
- * emits an ops_event. Parent-delete integrity via
- * fn_delete_pack_verification_events_on_parent_delete(). Tenant-scoped from birth.
- */
+/** pack_verification_events — append-only packer verification / review outcomes (plan: */
 export const packVerificationEvents = pgTable('pack_verification_events', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -4983,20 +4310,7 @@ export const packVerificationEvents = pgTable('pack_verification_events', {
 export type PackVerificationEvent = typeof packVerificationEvents.$inferSelect;
 export type NewPackVerificationEvent = typeof packVerificationEvents.$inferInsert;
 
-/**
- * ops_events — polymorphic append-only ops event log ("SAL-style"), the
- * long-term event spine (born 2026-06-30). Two orthogonal discriminator axes:
- *   • entity_type / entity_id — WHAT business object (deploy-time-fixed;
- *     CHECK ops_events_entity_type_chk added 2026-07-06 — its 9 values are the
- *     SoT `OPS_EVENT_ENTITY_TYPES` in src/lib/ops-events.ts, pinned by
- *     ops-events.test.ts).
- *   • workflow_node_id — WHERE in the tenant's own Studio flow (workflow_nodes.id).
- *     FK-FREE by design (added 2026-07-06): workflow_nodes rows are replaced
- *     wholesale on every graph save, so a real FK would null this on ordinary
- *     edits — same rationale as entity_signals.node_id / station_definitions.
- * Writers: recordOpsEvent (src/lib/ops-events.ts) + recordEntitySignal's
- * emission. Idempotent on client_event_id.
- */
+/** ops_events — polymorphic append-only ops event log ("SAL-style"), the long-term event spine (born 2026-06-30). */
 export const opsEvents = pgTable('ops_events', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5016,15 +4330,7 @@ export const opsEvents = pgTable('ops_events', {
   nodeTimeIdx: index('idx_ops_events_org_node_time').on(table.organizationId, table.workflowNodeId, table.occurredAt.desc()).where(sql`workflow_node_id IS NOT NULL`),
 }));
 
-/**
- * entity_threads — ticket-optional conversation anchored to a canonical
- * entity (migration 2026-07-14_entity_threads.sql;
- * docs/todo/entity-threads-conversation-plan.md). One thread per
- * (org, entity_type, entity_id) in v1. support_ticket_id is the later
- * Zendesk/internal attach seam (D6) — soft-typed here because
- * support_tickets is not yet modeled in Drizzle (real FK ON DELETE SET NULL
- * in the migration). Writers: src/lib/threads/ only.
- */
+/** entity_threads — ticket-optional conversation anchored to a canonical entity (migration 2026-07-14_entity_threads.sql;… */
 export const entityThreads = pgTable('entity_threads', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5093,12 +4399,7 @@ export const threadAssignments = pgTable('thread_assignments', {
   staffIdx: index('idx_thread_assignments_staff').on(table.organizationId, table.assignedStaffId),
 }));
 
-/**
- * thread_links — curated cross-entity connections for a thread ("also concerns
- * entity X"). Modeled on photo_entity_links. entity_type CHECK = the 7 canonical
- * anchors + 'SKU' (entity_id = sku_catalog.id, NEVER the SKU string). Manual /
- * non-derivable links only — order→tracking/serial resolve read-side.
- */
+/** thread_links — curated cross-entity connections for a thread ("also concerns entity X"). */
 export const threadLinks = pgTable('thread_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5137,12 +4438,7 @@ export const nodeSurfaces = pgTable('node_surfaces', {
   feedIdx: index('idx_node_surfaces_org_feed').on(table.organizationId, table.feedKey),
 }));
 
-/**
- * insight_links — seeded + anonymized benchmark rows (plan §2.5).
- * DELIBERATE TENANCY EXCEPTION: organization_id is NULLABLE (NULL = global
- * seeded row readable by every org) with hand-written RLS — see migration
- * 2026-07-03n header. Do NOT use orgIdCol() here.
- */
+/** insight_links — seeded + anonymized benchmark rows (plan §2.5). */
 export const insightLinks = pgTable('insight_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   /** NULL = global/seeded benchmark row. GUC default auto-stamps tenant-path writes. */
@@ -5162,12 +4458,7 @@ export const insightLinks = pgTable('insight_links', {
   subjectIdx: index('idx_insight_links_subject').on(table.subjectKind, table.subjectRef, table.linkageType),
 }));
 
-/**
- * agent_mutations — AI proposal / apply / learning trail (plan §2.6).
- * status CHECK: proposed | under_review | approved | applied | rejected |
- * reverted. mutation_kind validated by src/lib/surfaces/registry.ts (the §8
- * trust-class spec). Every apply runs through applyAgentMutation.
- */
+/** agent_mutations — AI proposal / apply / learning trail (plan §2.6). */
 export const agentMutations = pgTable('agent_mutations', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5307,15 +4598,7 @@ export type OpsPlanPhase = typeof opsPlanPhases.$inferSelect;
 export type OpsPlanTask = typeof opsPlanTasks.$inferSelect;
 export type OpsPlanTaskLink = typeof opsPlanTaskLinks.$inferSelect;
 
-// ─── Beta intake funnel (pre-tenant, PLATFORM-GLOBAL) ────────────────────────
-// 2026-07-09e_beta_applications.sql — the $50 refundable beta application
-// pipeline (docs/todo/beta-intake-funnel-plan.md §5). INTENTIONALLY ORG-LESS:
-// rows are created from the public marketing site BEFORE any organization
-// exists (same ratified posture as beta_waitlist — see the migration header +
-// docs/tenancy/needs-col-classification.md). Do NOT add orgIdCol() here.
-// CHECK-constrained text discriminators (modeled per polymorphic-tables.md #8):
-//   tier   IN ('waitlist', 'application')                      — beta_applications_tier_chk
-//   status IN ('RECEIVED','UNDER_REVIEW','ACCEPTED','REFUNDED','REJECTED') — beta_applications_status_chk
+// ─── Beta intake funnel (pre-tenant, PLATFORM-GLOBAL) ──────────────────────── 2026-07-09e_beta_applications.sql — the $50 refundable…
 export const betaApplications = pgTable('beta_applications', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull(),
@@ -5336,14 +4619,7 @@ export const betaApplications = pgTable('beta_applications', {
 export type BetaApplication = typeof betaApplications.$inferSelect;
 export type NewBetaApplication = typeof betaApplications.$inferInsert;
 
-// ─── User-reported issues (agentic loop ALP-5.1) ─────────────────────────────
-// 2026-07-11_user_reported_issues.sql — primary record of the in-app
-// issue→fix→toast loop (FeedbackWidget dual-writes here + GitHub). RLS
-// tenant-from-birth via enforce_tenant_isolation(). CHECK-constrained text
-// discriminators (modeled per polymorphic-tables.md #8):
-//   issue_type IN ('bug','suggestion','question')        — user_reported_issues_issue_type_chk
-//   status     IN ('pending','in-progress','deployed')   — user_reported_issues_status_chk
-//     (mirrors the master-plan TicketStatus enum — locked vocabulary)
+// ─── User-reported issues (agentic loop ALP-5.1) ───────────────────────────── 2026-07-11_user_reported_issues.sql — primary record of…
 export const userReportedIssues = pgTable('user_reported_issues', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5373,12 +4649,7 @@ export const userReportedIssues = pgTable('user_reported_issues', {
 export type UserReportedIssue = typeof userReportedIssues.$inferSelect;
 export type NewUserReportedIssue = typeof userReportedIssues.$inferInsert;
 
-// kiosk_devices — enrolled customer-facing tablet as an org-scoped device
-// principal (/kiosk). Pre-auth identity table: token/code lookups run on the
-// owner pool by hash (mirrors staff_sessions.sid), so the hash indexes are
-// global partial-unique; management keys lead with organization_id. Only
-// hashes are stored — never the raw pairing code or device token.
-// Migration: 2026-07-17_kiosk_devices.sql
+// kiosk_devices — enrolled customer-facing tablet as an org-scoped device principal (/kiosk).
 export const kioskDevices = pgTable('kiosk_devices', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5391,10 +4662,7 @@ export const kioskDevices = pgTable('kiosk_devices', {
   enrolledByStaffId: integer('enrolled_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
-  /** Square Terminal paired to this counter lane (SQ3). NULL = no stand here
-   *  (cash / payment link) — resolveTerminalDeviceId treats that as a decision
-   *  and refuses, rather than falling back to the deployment env var. Not a FK:
-   *  the id is Square's, for a device this database has no row for. */
+  /** Square Terminal paired to this counter lane (SQ3). */
   squareTerminalDeviceId: text('square_terminal_device_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -5408,12 +4676,7 @@ export const kioskDevices = pgTable('kiosk_devices', {
 export type KioskDevice = typeof kioskDevices.$inferSelect;
 export type NewKioskDevice = typeof kioskDevices.$inferInsert;
 
-// desktop_devices — enrolled Tauri desktop principal. Deliberately separate
-// from kiosk_devices: a desktop may watch a user-chosen folder and request a
-// named print, while a kiosk is an unattended customer-facing tablet. Composite
-// tenant FKs and CHECK constraints live in the birth migration because several
-// referenced legacy tables do not expose composite keys in this Drizzle model.
-// Migration: 2026-09-18_v1_label_ingestions.sql.
+// desktop_devices — enrolled Tauri desktop principal.
 export const desktopDevices = pgTable('desktop_devices', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5452,10 +4715,7 @@ export const desktopDevices = pgTable('desktop_devices', {
 export type DesktopDevice = typeof desktopDevices.$inferSelect;
 export type NewDesktopDevice = typeof desktopDevices.$inferInsert;
 
-// label_ingestions — immutable source-file ledger for the V1 outbound label
-// pipeline. Resolution evidence is exact-only. The application transition that
-// writes shipmentId/documentId also moves every eligible serial unit from
-// PACKED to LABELED in the same PostgreSQL transaction.
+// label_ingestions — immutable source-file ledger for the V1 outbound label pipeline.
 export const labelIngestions = pgTable('label_ingestions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5558,10 +4818,7 @@ export const labelIngestionOrders = pgTable('label_ingestion_orders', {
 export type LabelIngestionOrder = typeof labelIngestionOrders.$inferSelect;
 export type NewLabelIngestionOrder = typeof labelIngestionOrders.$inferInsert;
 
-// search_recents — per-staff "most recently searched" history (Dashboard Search
-// mode). MRU by (org, staff, scope, lower(query)); newest-first, capped in the
-// domain helper. Tenant-scoped from birth. See
-// src/lib/migrations/2026-07-17b_search_recents.sql.
+// search_recents — per-staff "most recently searched" history (Dashboard Search mode).
 export const searchRecents = pgTable('search_recents', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5582,20 +4839,7 @@ export const searchRecents = pgTable('search_recents', {
 export type SearchRecentRow = typeof searchRecents.$inferSelect;
 export type NewSearchRecentRow = typeof searchRecents.$inferInsert;
 
-/**
- * staff_subscriptions — per-staff subscription registry behind the Home Inbox
- * (migration 2026-07-28c). ONE discriminated table for three kinds:
- *   'entity' many-to-one (N staff watch carton 4412) ·
- *   'rule'   one-to-many (a predicate: SKU + event keys) ·
- *   'sla'    fires on an ABSENCE (armed by sla_event_key, disarmed by
- *            sla_resolve_event_key, breaches after sla_breach_after) — evaluated
- *            by a cron walker, never by the event tap.
- * Predicates are REAL COLUMNS so the fan-out worker resolves recipients with one
- * indexed join; `matchExtra` is variant config only and is never filtered on.
- * `state` is three-valued on purpose: a boolean cannot distinguish "never
- * subscribed" from "explicitly muted", so auto-subscribe would resurrect a muted
- * row. Parent-delete integrity = the 7-trigger family in the birth migration.
- */
+/** staff_subscriptions — per-staff subscription registry behind the Home Inbox (migration 2026-07-28c). */
 export const staffSubscriptions = pgTable('staff_subscriptions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5606,10 +4850,7 @@ export const staffSubscriptions = pgTable('staff_subscriptions', {
   state: text('state').notNull().default('subscribed'),
   /** CHECK staff_subscriptions_reason_chk: manual | acted | assigned | mentioned | rule | sla */
   reason: text('reason').notNull().default('manual'),
-  /** CHECK staff_subscriptions_entity_type_chk (kind='entity' only): the
-   *  parent-backed subset of OPS_EVENT_ENTITY_TYPES — receiving |
-   *  receiving_line | serial_unit | order | fba_shipment | repair |
-   *  warranty_claim. 'shipment'/'other'/'ops_plan_task' are documented gaps. */
+  /** CHECK staff_subscriptions_entity_type_chk (kind='entity' only): */
   entityType: text('entity_type'),
   entityId: bigint('entity_id', { mode: 'number' }),
   /** kind='rule': exact event keys — wildcards are expanded at write time. */
@@ -5660,16 +4901,7 @@ export const staffSubscriptions = pgTable('staff_subscriptions', {
 export type StaffSubscription = typeof staffSubscriptions.$inferSelect;
 export type NewStaffSubscription = typeof staffSubscriptions.$inferInsert;
 
-/**
- * notification_outbox — one row per ops_event, drained by a cron worker into
- * staff_inbox_items (migration 2026-07-28d). Mirrors entity_search_outbox +
- * its 2026-07-04a claim window so this repo has ONE outbox pattern.
- * The enqueue trigger is deliberately DUMB (every ops_event lands here); the
- * WORKER decides notifiability from the code SoT, so a DB-side "notifiable"
- * list can never silently drift from the event vocabulary.
- * `opsEventId` is FK-free by design — ops_events is append-only, and a FK would
- * make this table a blocker on any future retention prune there.
- */
+/** notification_outbox — one row per ops_event, drained by a cron worker into staff_inbox_items (migration 2026-07-28d). */
 export const notificationOutbox = pgTable('notification_outbox', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5698,17 +4930,7 @@ export const notificationOutbox = pgTable('notification_outbox', {
 export type NotificationOutboxRow = typeof notificationOutbox.$inferSelect;
 export type NewNotificationOutboxRow = typeof notificationOutbox.$inferInsert;
 
-/**
- * staff_inbox_items — the per-recipient ledger the Home Inbox renders
- * (migration 2026-07-28d). Deliberately NOT staff_messages: that is the human
- * DM store (sender_id NOT NULL, prerendered body, no entity anchor, no dedupe
- * key). ActivityStreams-flavored: store the structured reference, render at
- * READ time so a row never goes stale when the entity changes.
- * Two distinct keys: `dedupKey` is idempotency (org-led unique — a global
- * unique would let one tenant's row swallow another's notification);
- * `collapseKey` is fatigue control, keyed on the CARTON not the line so a
- * 200-line PO receive yields one row per watcher, not 200.
- */
+/** staff_inbox_items — the per-recipient ledger the Home Inbox renders (migration 2026-07-28d). */
 export const staffInboxItems = pgTable('staff_inbox_items', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5755,19 +4977,6 @@ export type StaffInboxItem = typeof staffInboxItems.$inferSelect;
 export type NewStaffInboxItem = typeof staffInboxItems.$inferInsert;
 
 // ─── Counter transactions (kiosk unified Sales + Repair) ─────────────────────
-//
-// Birth migration: 2026-07-29d_counter_transactions.sql.
-//
-// The header for ONE counter visit, joining an optional square_transactions
-// receipt (a financial snapshot) to an optional repair_service work record (a
-// long-lived state machine). Never one mixed-line order — see
-// docs/todo/kiosk-counter-transaction-PLAN.md §1 D1.
-//
-// The `counter_transaction_id` columns this migration adds to repair_service and
-// square_transactions are intentionally NOT modeled on those existing pgTable
-// blocks here: this file is edited concurrently by other lanes, so the counter
-// work stays in one appended region. Add them to those blocks when a Drizzle
-// query actually needs them.
 export const counterTransactions = pgTable('counter_transactions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5805,22 +5014,12 @@ export const counterTransactions = pgTable('counter_transactions', {
 export type CounterTransaction = typeof counterTransactions.$inferSelect;
 export type NewCounterTransaction = typeof counterTransactions.$inferInsert;
 
-// ─── Counter session (the shared desk↔iPad cart) ────────────────────────────
-// Migration: 2026-08-20a_counter_sessions.sql
-// Plan: docs/todo/kiosk-desk-session-channel-PLAN.md
-//
-// The DRAFT that precedes counterTransactions, not a second one of it: a
-// session is edited constantly while the customer stands there, then hands off
-// exactly once via counterTransactionId. See the migration header for why the
-// two are separate tables.
+// ─── Counter session (the shared desk↔iPad cart) ──────────────────────────── Migration:
 
 export const counterSessions = pgTable('counter_sessions', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
-  /** Live ROUTING — which paired tablet is bound right now. Unlike
-   *  counterTransactions.kioskDeviceId (an audit fact with no FK, so it
-   *  outlives revocation), this one is a FK: a device that is gone should
-   *  release its binding rather than pin a dead session open. */
+  /** Live ROUTING — which paired tablet is bound right now. */
   kioskDeviceId: bigint('kiosk_device_id', { mode: 'number' }),
   /** The lease (plan D4) — heartbeat-renewed, expiring, so a closed laptop
    *  releases the counter instead of holding it. */
@@ -5833,14 +5032,7 @@ export const counterSessions = pgTable('counter_sessions', {
   /** Monotonic, +1 per accepted mutation. Clients apply an event only at
    *  version + 1 (plan D3); a mismatch refetches the snapshot. */
   version: integer('version').notNull().default(0),
-  /** CHECK counter_sessions_active_command_chk: retail | repair | buyback |
-   *  pickup — which pane is on screen. Vocabulary SoT is `KIOSK_COMMAND_IDS`
-   *  in `@/lib/kiosk/commands`, a SUBSET of the CHECK since buyback/pickup
-   *  were deleted 2026-09-23; reads go through `parseKioskCommandId`
-   *  (`commands.test.ts` pins the subset). The column DEFAULT is legacy: opening a
-   *  session passes `active_command` explicitly from the org's choice
-   *  (`OrgSettings.kiosk.defaultCommand` → `getKioskDefaultCommand`), because
-   *  a column default cannot express a per-tenant preference. */
+  /** CHECK counter_sessions_active_command_chk: */
   activeCommand: text('active_command').notNull().default('retail'),
   /** CHECK counter_sessions_face_chk: staff | customer. */
   face: text('face').notNull().default('staff'),
@@ -5854,13 +5046,7 @@ export const counterSessions = pgTable('counter_sessions', {
   clientEventId: uuid('client_event_id').notNull(),
   counterTransactionId: bigint('counter_transaction_id', { mode: 'number' }),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
-  /** CHECK counter_sessions_payment_state_chk: idle | awaiting_card | approved
-   *  | declined | canceled. Mirrored by COUNTER_PAYMENT_STATES in
-   *  src/lib/counter/session-events.ts — keep the two in lockstep.
-   *
-   *  `approved` is the TERMINAL's answer, not the money's: a device approval
-   *  and a settled payment arrive on two different webhooks, and only the
-   *  second moves counterTransactions.status (SQ1). */
+  /** CHECK counter_sessions_payment_state_chk: */
   paymentState: text('payment_state').notNull().default('idle'),
   /** Live Square Terminal checkout — the join key for `terminal.checkout.updated`. */
   terminalCheckoutId: text('terminal_checkout_id'),
@@ -5896,10 +5082,7 @@ export const counterSessionLines = pgTable('counter_session_lines', {
    *  is staged through to the ledger, so an optimistic echo and the server row
    *  are provably the same line rather than two. */
   lineUuid: uuid('line_uuid').notNull(),
-  /** CHECK counter_session_lines_type_chk: RETAIL | REPAIR | BUYBACK — exactly
-   *  KIOSK_LINE_TYPES (src/lib/kiosk/cart-line.ts). PICKUP is a COMMAND, not a
-   *  line type; persisting a pane selection as a chargeable row is the bug this
-   *  CHECK prevents. */
+  /** CHECK counter_session_lines_type_chk: */
   type: text('type').notNull(),
   title: text('title').notNull(),
   quantity: integer('quantity').notNull().default(1),
@@ -5928,14 +5111,6 @@ export type CounterSessionLine = typeof counterSessionLines.$inferSelect;
 export type NewCounterSessionLine = typeof counterSessionLines.$inferInsert;
 
 // ─── Helpdesk work outbox ───────────────────────────────────────────────────
-//
-// Birth migration: 2026-07-29d_counter_transactions.sql. Shape follows
-// entity_search_outbox (2026-07-03d): claim → attempts → dead-letter past a cap.
-//
-// Exists because submit-repair-intake.ts wraps its ticket call in a
-// log-and-continue catch, so a helpdesk outage produced a repair with
-// ticket_number = NULL, no retry, and no reconciliation surface. Not blocking
-// the counter is correct; having no compensating mechanism is not.
 export const ticketWorkOutbox = pgTable('ticket_work_outbox', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -5979,11 +5154,6 @@ export type TicketWorkOutboxRow = typeof ticketWorkOutbox.$inferSelect;
 export type NewTicketWorkOutboxRow = typeof ticketWorkOutbox.$inferInsert;
 
 // ─── Polymorphic saved views ────────────────────────────────────────────────
-//
-// Birth migration: 2026-07-29g_saved_views.sql. Unifies operations_saved_views,
-// media_library_saved_views, and the former localStorage useSavedViews hook.
-// Discriminator CHECK (`saved_views_surface_chk`) must stay in lockstep with
-// SAVED_VIEW_SURFACES in src/lib/saved-views/surfaces.ts.
 export const savedViews = pgTable('saved_views', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6017,16 +5187,7 @@ export const savedViews = pgTable('saved_views', {
 export type SavedViewsRow = typeof savedViews.$inferSelect;
 export type NewSavedViewsRow = typeof savedViews.$inferInsert;
 
-// ─── View monitors (watch-a-view: queue-threshold alerts + digests) ──────────
-//
-// Birth migration: 2026-08-10_view_monitors.sql. Cron-evaluated, edge-triggered
-// alerts on a watched saved view / queue, delivered through the existing
-// notification_outbox → staff_inbox_items → Ably pipeline (or thrown as a task).
-// Decision B: monitor_surface/monitor_params are a SNAPSHOT of the watched view;
-// source_view_id is informational only (ON DELETE SET NULL) and is NEVER joined
-// to resolve a value, so a renamed/deleted personal view never breaks the watch.
-// The three CHECK constraints (threshold_type / action_type / monitor_state)
-// must stay in lockstep with the vocabularies in src/lib/monitors/*.
+// ─── View monitors (watch-a-view:
 export const viewMonitors = pgTable('view_monitors', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6066,22 +5227,6 @@ export type ViewMonitorRow = typeof viewMonitors.$inferSelect;
 export type NewViewMonitorRow = typeof viewMonitors.$inferInsert;
 
 // ─── Kiosk attract slides (front-desk screensaver reel) ─────────────────────
-//
-// Birth migration: 2026-08-10e_kiosk_attract_slides.sql. An ordered, curated
-// reel for the idle customer tablet (`/kiosk/v2` → AttractLoop), superseding the
-// single-URL scalar `organizations.settings.brand.attractMediaUrl` (which stays
-// readable until the carousel UI ships).
-//
-// NOT a photos(id) FK, and the migration header states why at length: the
-// polymorphic hub is BIGINT-keyed while orgs are UUID, uploadPhoto() requires an
-// (entityType, entityId) pair this asset has no candidate for, and the kiosk
-// host holds a device token rather than a staff session so session-gated photo
-// content is unreachable there. Brand chrome on public Blob — deliberately
-// outside the evidence platform.
-//
-// media_kind carries the CHECK because the renderer branches on it; content_type
-// is informational and its allowlist lives in src/lib/kiosk/attract-media.ts
-// (ATTRACT_ALLOWED_MIME) so there is exactly one copy of that vocabulary.
 export const kioskAttractSlides = pgTable('kiosk_attract_slides', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6240,13 +5385,7 @@ export const dailyCheckItemLinks = pgTable('daily_check_item_links', {
 export type DailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferSelect;
 export type NewDailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferInsert;
 
-/**
- * The records a thrown task names beyond its anchor (2026-09-25b): extra
- * orders, tracking numbers and helpdesk tickets. Discriminator CHECK
- * (`work_assignment_links_entity_type_chk`) and the orders / support_tickets
- * parent-delete triggers live in the migration; the label is always derived
- * server-side (`src/lib/tasks/task-links-db.ts`), so the natural key dedupes.
- */
+/** The records a thrown task names beyond its anchor (2026-09-25b): */
 export const workAssignmentLinks = pgTable('work_assignment_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6270,13 +5409,7 @@ export const workAssignmentLinks = pgTable('work_assignment_links', {
 export type WorkAssignmentLinkRow = typeof workAssignmentLinks.$inferSelect;
 export type NewWorkAssignmentLinkRow = typeof workAssignmentLinks.$inferInsert;
 
-/**
- * Markdown documents on a thrown task (2026-09-25c). `upload` stores the text
- * in `content`; `repo` stores only `repo_path` (a plan file read live from
- * disk by `src/lib/tasks/plan-files.ts`). The source discriminator CHECK
- * (`work_assignment_documents_source_chk`) and the partial repo-path UNIQUE
- * live in the migration.
- */
+/** Markdown documents on a thrown task (2026-09-25c). */
 export const workAssignmentDocuments = pgTable('work_assignment_documents', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6301,13 +5434,7 @@ export const workAssignmentDocuments = pgTable('work_assignment_documents', {
 export type WorkAssignmentDocumentRow = typeof workAssignmentDocuments.$inferSelect;
 export type NewWorkAssignmentDocumentRow = typeof workAssignmentDocuments.$inferInsert;
 
-/**
- * Photos / videos attached to a thrown task by URL (2026-09-25d): YouTube,
- * Vimeo, Loom, Drive, or a direct https image / video file. `kind`,
- * `provider`, `url`, `embed_url` and `thumbnail_url` are always
- * `parseMediaLink`'s answer (`src/lib/tasks/media-links.ts`); the kind /
- * provider / length CHECKs live in the migration.
- */
+/** Photos / videos attached to a thrown task by URL (2026-09-25d): */
 export const workAssignmentMediaLinks = pgTable('work_assignment_media_links', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6333,22 +5460,9 @@ export const workAssignmentMediaLinks = pgTable('work_assignment_media_links', {
 export type WorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferSelect;
 export type NewWorkAssignmentMediaLinkRow = typeof workAssignmentMediaLinks.$inferInsert;
 
-// ─── Tool Forge: the self-evolving capability pipeline (2026-08-22c) ─────────
-// Three tables, one rule: a request that duplicates an existing tool cannot be
-// approved. That rule is enforced by CHECK constraints in the birth migration
-// (build_requests_duplicate_is_denied, approval_reviews_duplicate_must_deny),
-// not only by src/lib/tool-forge/triage.ts — so no code path, agent-authored or
-// otherwise, can record a contradictory outcome.
+// ─── Tool Forge:
 
-/**
- * The capabilities an org already has. `description` is the corpus a new
- * build_request's prompt is semantically matched against, so it reads as a
- * statement of what the tool does, not how it does it.
- *
- * embedding is the 768-dim entity_search_docs space (NOT the 1536-dim
- * rag_document_chunks space). NULL = not embedded yet, which the triage path
- * treats as unmeasurable (deny), never as "no match" (approve).
- */
+/** The capabilities an org already has. */
 export const toolRegistry = pgTable('tool_registry', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6370,14 +5484,7 @@ export const toolRegistry = pgTable('tool_registry', {
   orgStatusIdx: index('idx_tool_registry_org_status').on(t.organizationId, t.status),
 }));
 
-/**
- * One staff request for a new capability, and where it stands.
- *
- * `duplicateToolId` is only writable on a row whose status is 'denied'
- * (CHECK build_requests_duplicate_is_denied). `similarity` is the MEASURED
- * cosine in [0,1]; NULL means the dedupe search could not run and is never
- * interchangeable with 0.
- */
+/** One staff request for a new capability, and where it stands. */
 export const buildRequests = pgTable('build_requests', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6403,12 +5510,7 @@ export const buildRequests = pgTable('build_requests', {
   orgRequesterIdx: index('idx_build_requests_org_requester').on(t.organizationId, t.requestedByStaffId, t.createdAt),
 }));
 
-/**
- * Append-only triage ledger, one row per decision on a build_request.
- * reason_code 'duplicate_tool' is structurally forced to be a denial carrying
- * its duplicate pointer; 'could_not_measure' likewise (fail closed);
- * 'manual_override' requires decided_by 'human' with a staff id.
- */
+/** Append-only triage ledger, one row per decision on a build_request. */
 export const approvalReviews = pgTable('approval_reviews', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: orgIdCol(),
@@ -6499,14 +5601,7 @@ export type NewAutomationRun = typeof automationRuns.$inferInsert;
 
 // ─── SKU → picker ownership (2026-09-14b_sku_staff_pairings.sql) ────────────
 
-/**
- * One owning picker per item number, so pick work routes to the person who
- * knows that rack. The UNIQUE (organization_id, sku) is the whole point: a
- * second owner would make "whose list is this row on?" ambiguous.
- *
- * An unpaired sku is legal — its allocations land in the UNPAIRED bucket that
- * any picker may claim, which is why there is no backfill requirement here.
- */
+/** One owning picker per item number, so pick work routes to the person who knows that rack. */
 export const skuStaffPairings = pgTable('sku_staff_pairings', {
   id: uuid('id').primaryKey().defaultRandom(),
   organizationId: orgIdCol(),

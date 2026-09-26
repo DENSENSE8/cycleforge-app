@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Cross-tree bridge for To Ship View topics — sheet layout / refine chrome lives
- * in the pushing right inspector while grid-owned ▦ / lane-owned date controls
- * stay under {@link DashboardOrdersView}. Staff composes directly in the View
- * cluster, matching Unbox History.
- *
- * Provider mounts on {@link OutboundOrdersDesk} so the collection + every order
- * rail occupant share one controls portal target + KPI collapse + View-only
- * shell state.
- */
+/** Cross-tree bridge for To Ship View topics — sheet layout / refine chrome lives in the pushing right inspector while grid-owned ▦ /… */
 
 import {
   createContext,

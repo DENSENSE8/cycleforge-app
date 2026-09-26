@@ -1,11 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/marketplace-refresh
- *
- * Operator-triggered pull of marketplace buyer purchases (eBay today; Amazon when
- * inbound lands) into the Incoming spine. Mirrors the cron at
- * /api/cron/ebay/purchase-sync but is gated by receiving.view for the Incoming
- * sidebar "Marketplace" sync button.
- */
+/** POST /api/receiving-lines/incoming/marketplace-refresh */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

@@ -16,35 +16,7 @@ import { CycleCountLinesTable } from './CycleCountLinesTable';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/cycle-counts/[id]
- *
- * Per-campaign detail. Lists every `cycle_count_lines` row on the slot
- * `DataTable` (`cycle-count-lines` PRODUCT_TABLES peer, off `AdminTable`
- * 2026-09-12 / Wave D): header sort, the Fields picker and org-bindable
- * columns arrive from the engine, none of which the seven hand-written column
- * objects it replaced could ever grow. That history — including why the count
- * input and the Approve / Reject buttons left the grid — lives in
- * `@/lib/tables/field-catalog/cycle-count-lines`.
- *
- * Three server actions stay HERE and unchanged; the client island calls them
- * by reference, so every `getCurrentUser()` gate and every `revalidatePath`
- * still runs on the server:
- *   - `submitCountAction` — a row verb that opens `CycleCountLinePlane`
- *     (a `DeskStageOverlay`), because a write whose payload needs a parameter
- *     has no lawful home on a compound row (`inCellEdit` stays false).
- *   - `approveAction` / `rejectAction` — two row verbs on the trailing face,
- *     offered only while the line is `counted`/`pending_review` and the
- *     campaign is open. The raw solid-green Approve `<button>` is gone.
- *
- * Header actions:
- *   - Close campaign (auto-approves remaining 'counted' lines)
- *
- * Filter pill row: all | pending | counted | pending_review | approved |
- * rejected. It stays a SERVER concern — the pills carry per-status counts from
- * `loadStatusCounts` and the filter is a SQL predicate in `loadLines`, not a
- * client narrow.
- */
+/** /inventory/cycle-counts/[id] */
 
 type StatusFilter = 'all' | 'pending' | 'counted' | 'pending_review' | 'approved' | 'rejected';
 
@@ -57,17 +29,7 @@ interface CampaignRow {
   closed_at: Date | null;
 }
 
-/**
- * The desk's SQL row. `counted_by` / `approved_by` (the staff ids behind the
- * two joined names) are selected so the wire row can carry a real PERSON
- * fact — the retired Action cell printed a bare name, and the compound person
- * face draws its avatar from the id and the absence honestly when the join
- * found nothing.
- *
- * `notes` is selected and painted by NOTHING — there was never a notes cell,
- * tooltip or row expansion. It stays unpainted and does not cross the client
- * boundary; see the catalog docblock.
- */
+/** The desk's SQL row. */
 interface LineRow {
   id: number;
   bin_id: number;
@@ -268,28 +230,7 @@ export default async function CycleCountDetailPage({
   const isOpen = campaign.status === 'open';
   const byStatus = new Map(statusCounts.map((s) => [s.status, s.count]));
   const totalLines = statusCounts.reduce((sum, s) => sum + s.count, 0);
-  /**
-   * The wire row for the client island.
-   *
-   * Three fields are CAMPAIGN facts threaded onto each line, and each one
-   * exists because something downstream cannot reach page state:
-   *
-   * - `varianceTol` / `overTolerance` — the retired Δ cell picked one of three
-   *   text colours by comparing `|variance|` against
-   *   `campaign.variance_tol × expected_qty`. The row adapter is
-   *   `row → CompoundRowView` and closes over nothing, so the comparison
-   *   happens HERE (one shared `isCycleCountLineOverTolerance`) and travels on
-   *   the line. The adapter then says it in the state pill's word rather than
-   *   colouring a number — tone is not a fact.
-   * - `campaignOpen` — a row verb's precondition is a predicate over ROW
-   *   state, never over the mount (`VERBS_BIND_TO_FIELDS`). The retired cells
-   *   read `isOpen` from this scope; the line now answers for itself, and on a
-   *   closed campaign the three verbs are ABSENT rather than disabled.
-   *
-   * `notes` does not cross: it is selected by `loadLines` and painted by
-   * nothing. `created_at`-style `Date` objects become ISO strings because the
-   * wire row is plain and serializable by contract.
-   */
+  /** The wire row for the client island. */
   const lineRows: CycleCountLineRow[] = lines.map((l) => ({
     id: l.id,
     campaignId: campaign.id,
@@ -386,14 +327,7 @@ export default async function CycleCountDetailPage({
               the admin decision.
             </p>
           </header>
-          {/*
-            The desk's TWO settled empty states, preserved. The retired
-            `isSearching={filter !== 'all'}` prop picked between them; they are
-            now the two props the engine already distinguishes — `emptyMessage`
-            for a feed the SERVER narrowed to nothing (`?status=`), and
-            `searchEmptyMessage` for the client search box over rows already in
-            memory.
-          */}
+          {/* The desk's TWO settled empty states, preserved. */}
           <CycleCountLinesTable
             rows={lineRows}
             submitCount={submitCountAction}

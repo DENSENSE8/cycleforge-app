@@ -2,18 +2,7 @@
 
 /**
  * One thing on a mobile station's tape — ONE simple row (owner 2026-09-26):
- *
- *   spine │ ▣ │ CODE · title ····················· OUTCOME
- *
- * The spine and the outcome word carry the tone; the thumbnail is a 48px
- * confirmation of the box, flush to the row's edges. Nothing else is crammed
- * in: order, tracking, who, when, the server's words and the verbs all live
- * in {@link MobileStationEntrySheet}, one tap away, so every fact is always
- * reachable without the row having to hold it.
- *
  * `focus` is the thing that just happened (2px ink outline, BRIEF §4/§5);
- * `history` is everything behind it. The row is one real `<button>`, with no
- * focusable descendants.
  */
 
 import { memo, useState } from 'react';

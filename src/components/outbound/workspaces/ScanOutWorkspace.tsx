@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * `/shipping/scan-out` — floor scan station (Pack shell, Unbox composer).
- *
- * White work surface only (`bg-surface-card`) — no canvas gray. CartonContextCard
- * header with ◁ on focus. Floor mouth is {@link StationComposerHost} (same as
- * Unbox): mode faces off, below-outline row + bottom-right context ring on.
- */
+/** `/shipping/scan-out` — floor scan station (Pack shell, Unbox composer). */
 
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

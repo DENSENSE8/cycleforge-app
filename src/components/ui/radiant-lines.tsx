@@ -77,12 +77,7 @@ function createStars(count: number, colors: string[]): Star[] {
   return stars
 }
 
-/**
- * Hyperspace starfield — colored streaks radiate from the center.
- * Transparent canvas over `bg-background` (shadcn theme). Warp speed follows
- * scroll velocity (down → inward, up → outward). `displacement` scales how
- * far each star travels (and how long the filled heads' streaks get).
- */
+/** Hyperspace starfield — colored streaks radiate from the center. */
 export function createRadiantLines(
   canvas: HTMLCanvasElement,
   initial: RadiantLinesOptions = {}

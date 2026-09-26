@@ -10,12 +10,7 @@ import { unitTimelinePhotosKey, unitTimelinePhotosQuery } from '@/lib/timeline/j
 import type { UnitTimelinePhotoRowSource } from '@/lib/timeline/unit-photos-events';
 import { Camera } from '@/components/Icons';
 
-/**
- * Pack / testing workspace peek for a SERIAL_UNIT's photos — prefers one stage
- * bucket, falls back to all timeline photos so prepack packs still show
- * testing/inbound context. Shares the canonical unit-timeline-photos query
- * (one cache entry per unit with the journey/timeline surfaces).
- */
+/** Pack / testing workspace peek for a SERIAL_UNIT's photos — prefers one stage bucket, falls back to all timeline photos so prepack packs… */
 export const UnitPackPhotoPeek = memo(function UnitPackPhotoPeek({
   serialUnitId,
   preferSource = 'packing',

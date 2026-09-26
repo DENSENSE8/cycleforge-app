@@ -1,22 +1,6 @@
 /**
  * GET / PATCH /api/kiosk/visit/{id} — one visit, whole, for the History face.
- *
- * Callers: KioskHistoryPane detail pane + its Edit action.
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `loadCounterVisit` (money + lines + devices) and
- *   `loadVisitProvenance` (drop-off / pick-up, technician, parts, signatures).
- * User: "selecting a row shows the receipt, who repaired it, the parts and
- *   both signatures — and lets me fix a typo."
- * GET is device-authed with no sign-in: this tablet can already render this
- * visit's receipt (`/receipt`), so the read grants nothing new. The FACE is
- * what asks who you are — History is never reachable from the attract/customer
- * face (`kiosk-pos-modernization-HANDOFF.md` Phase 4).
- *
- * PATCH is the opposite: a write is attributed to a PERSON, so it carries the
- * `staffId` the tablet signed in as — PINLESS, the same shape the desk's staff
  * switcher uses (operator 2026-09-22). Identity, not authorization: money is
- * not editable here at all, and every field outside the allowlist is a 403
- * rather than a silent strip.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -111,11 +95,8 @@ export const PATCH = withKioskAuth(async (req: NextRequest, ctx) => {
   }
 
   const orgId = ctx.organizationId as OrgId;
+  // PINLESS (operator 2026-09-22).
   // PINLESS (operator 2026-09-22). The tablet SIGNED IN as this staffer the
-  // same way the desk's switcher does, so the id is an identity claim the
-  // audit row is attributed to — not a proof, and never a money gate. All we
-  // enforce is that the claimed staffer is real, active, and in THIS device's
-  // org, so a reprint can never be pinned on another tenant's account.
   const staffId = await resolveKioskStaffActor(orgId, parsed.data.staffId);
   if (staffId == null) {
     return NextResponse.json({ error: 'UNKNOWN_STAFF' }, { status: 403, headers: NO_STORE });

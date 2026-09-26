@@ -4,43 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 import { createDemandAlert, type CreateDemandAlertInput } from '@/lib/neon/sourcing-queries';
 
-/**
- * Sourcing demand collectors — sourcing-hub plan §3.2.
- *
- * Each collector reads one "we need to buy/find this" signal and maps it to
- * demand rows. Every row is opened through the SAME writer the manual
- * "Source this" path uses (`createDemandAlert` → sourcing_alerts with the
- * live partial-unique indexes), so there is exactly one insert path and every
- * re-run is an idempotent no-op:
- *
- *   - SKU-backed rows dedupe on uniq_sourcing_alert_live (sku_id, alert_type).
- *   - Ref-backed rows dedupe on uniq_sourcing_alert_live_demand
- *     (demand_ref_type, demand_ref_id, alert_type)  (2026-06-13d).
- *
- * Collectors (all org-scoped reads under the tenant GUC + explicit predicates):
- *   (a) missing-parts on pickup orders  → alert_type 'missing_part'
- *   (b) open repair / warranty part needs → 'repair_part' / 'warranty_part'
- *   (c) pending SKUs (unknown SKU blocking work) → 'demand_no_stock'
- *       (demand_source 'pending_sku' — the applied alert_type CHECK has no
- *       'pending_sku' value yet; widening it is a follow-up migration)
- *   (d) replenishment need calc (FBA/Zoho shortfall) → 'fba_replenish'
- *
- * ⚠ SKU-identity caveat (source-of-truth.md / audit F23–F26 debt class): the
- * source tables here (local_pickup_order_items, repair_service,
- * warranty_claims, replenishment_requests) carry only a raw `sku` string — no
- * `sku_catalog_id` FK exists on any of them — so catalog resolution below is a
- * per-org `sc.sku = <src>.sku` string match. `replenishment_requests.sku`
- * originates from the orders/items (Zoho) scheme, which the SoT warns can
- * collide with `sku_catalog` numbering. Consequence is bounded: alerts land in
- * a human-reviewed sourcing queue, and non-matching rows fall back to
- * free-text `search_query`. The real fix is adding `sku_catalog_id` FKs to the
- * source tables (schema wave) — tracked with the F23–F26 join cleanups.
- *
- * Size guard: each run caps demand rows per org (DEMAND_CAP_PER_ORG). Rows
- * beyond the cap are DROPPED AND COUNTED (`dropped_over_cap`, warn-logged) —
- * never silently truncated. Collector failures are isolated per collector and
- * per org; a bad signal source never blocks the others.
- */
+/** Sourcing demand collectors — sourcing-hub plan §3.2. */
 
 // ─── Row + result shapes ─────────────────────────────────────────────────────
 
@@ -235,10 +199,7 @@ export async function collectWarrantyPartsDemand(
   }));
 }
 
-// ─── (c) Pending SKUs (unknown SKU repeatedly blocking work) ─────────────────
-// pending_skus is a global (un-orged) steward queue; the demand-ref unique
-// index keeps the queue row single across sweeps regardless of which org's
-// pass lands it first.
+// ─── (c) Pending SKUs (unknown SKU repeatedly blocking work) ───────────────── pending_skus is a global (un-orged) steward queue; the…
 
 interface PendingSkuRow extends QueryResultRow {
   ref_id: number;
@@ -280,11 +241,7 @@ export async function collectPendingSkuDemand(
   }));
 }
 
-// ─── (d) Replenishment need calc (FBA/Zoho shortfall) ───────────────────────
-// replenishment_requests is the existing replenishment-need reader output
-// (quantity_needed vs Zoho availability). Only rows that resolve to a catalog
-// SKU are emitted — their id is a UUID, so the (sku_id, alert_type) live index
-// is the idempotency key and un-resolvable rows have none.
+// ─── (d) Replenishment need calc (FBA/Zoho shortfall) ─────────────────────── replenishment_requests is the existing replenishment-need…
 
 interface FbaReplenishRow extends QueryResultRow {
   sku_id: number;

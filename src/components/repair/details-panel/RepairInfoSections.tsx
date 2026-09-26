@@ -4,15 +4,7 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { formatPhoneNumber } from '@/utils/phone';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
 
-/**
- * Read-only customer summary block for the repair overview tab.
- *
- * Reads the shared buyer rule (`@/lib/repair/contact-info`) — the joined
- * `customers` row first, `contact_info` only as an index-free fallback. The
- * positional `parts[1]` / `parts[2]` this replaced rendered the EMAIL through
- * `formatPhoneNumber` in the phone slot and left the email slot blank on any
- * repair whose buyer had no phone.
- */
+/** Read-only customer summary block for the repair overview tab. */
 export function RepairCustomerSection({ repair }: { repair: RSRecord }) {
   const { name, phone, email } = resolveRepairContact(repair);
 

@@ -1,16 +1,4 @@
-/**
- * Unbox focused-carton URL SoT — `?openReceivingId=` (+ optional `?lineId=`).
- *
- * Mirrors dashboard `?openOrderId=`: write on workspace open, clear on close,
- * so a hard refresh reopens the edit overlay instead of the browse crossfade.
- * Share / inbox still use `?recvId=` via `openInUnboxHref`; this helper strips
- * stray `recvId` when syncing so one session SoT wins.
- *
- * **Station-first (2026-08-11):** bare `/unbox` lands the scan bench (MRU carton
- * or empty station). Workbench tables only mount when `?unboxdesk=1` is set
- * (Back to list). Opening a carton clears desk so cold land / resume stay
- * station-primary.
- */
+/** Unbox focused-carton URL SoT — `?openReceivingId=` (+ optional `?lineId=`). */
 
 /** Desk mode — workbench tables. Absent = station (scan bench). */
 const UNBOX_DESK_PARAM = 'unboxdesk';
@@ -68,15 +56,7 @@ export function isUnboxDesk(
   return raw === '1' || raw === 'true';
 }
 
-/**
- * Station-first cold land: auto-open Unboxed MRU when Unbox has no focused
- * carton and the operator has not entered desk (Back to list).
- *
- * `deskHeld` is the same intent as `?unboxdesk=1` when the URL was written
- * with `history.replaceState` (no Next `searchParams` subscription). Without
- * it, Back to list clears the overlay and the MRU seed paints the carton
- * back in the same render.
- */
+/** Station-first cold land: */
 export function shouldAutoOpenUnboxMru(
   isUnboxSurface: boolean,
   searchParams: Pick<URLSearchParams, 'get'>,
@@ -90,18 +70,7 @@ export function shouldAutoOpenUnboxMru(
   return true;
 }
 
-/**
- * Whether the `?openReceivingId=` deep-link restore should run for this surface.
- *
- * `openReceivingId` is the Unbox surface's focused-carton URL SoT — written only
- * on `/unbox` (see `applyUnboxOpenReceivingParams` / the workspace-pane write
- * side), and every search / deep-link href targets `/unbox?openReceivingId=`. A
- * stale value that rides a mode switch onto Incoming/Triage/etc. must NOT trigger
- * a restore: the restore's `dispatchSelectLine` is caught by the Incoming
- * overlays listener and pops the details panel on load (the click-to-open
- * regression). Gating the READ on `isUnboxSurface` keeps it symmetric with the
- * Unbox-only WRITE side, so no other surface restores from a param it never wrote.
- */
+/** Whether the `?openReceivingId=` deep-link restore should run for this surface. */
 export function shouldRestoreOpenReceiving(
   isUnboxSurface: boolean,
   openReceivingId: string | null,

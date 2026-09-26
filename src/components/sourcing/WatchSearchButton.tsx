@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * "Watch" — save a standing (recurring) sourcing search from wherever a query is
- * in hand (a Scout part row, a product). Creates a sourcing_searches row the
- * scour watcher re-runs on a cadence to auto-fill the watchlist. The recurring
- * complement to SourceThisButton's one-off demand.
- *
- * POSTs to /api/sourcing/saved-searches. Not idempotent server-side for free
- * text, so we disable after success to avoid accidental duplicates.
- */
+/** "Watch" — save a standing (recurring) sourcing search from wherever a query is in hand (a Scout part row, a product). */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';

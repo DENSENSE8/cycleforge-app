@@ -2,21 +2,7 @@
 
 /**
  * Add-a-checklist-item composer, docked BELOW the Daily list.
- *
- * Outside the list on purpose: a composer is not a row. Rendering it as one
- * would put a text input inside a virtualized list whose rows recycle, and it
- * would have to answer every column the model declares — a blank Status, a
- * blank Team — which reads as a real task that nobody has done yet.
- *
  * ONE LINE (operator 2026-09-23): *"just a simple text entry and add button
- * on the right side … no left-side selector, just a fixed width in the
- * middle."* The subject switch, the details disclosure, the glyph palette,
- * the cadence switch, the owner picker and the link fields are all gone from
- * this surface. A new row is a recurring, whole-shift, unlinked check — the
- * shift default — and the rare paths (a one-off for one person, a ticket
- * link) live in the item's edit sheet after it exists, not in the moment of
- * writing one sentence down. Title + validation still come from
- * `lib/daily-checks/composer`, the one vocabulary both mounts share.
  */
 
 import type { Ref } from 'react';

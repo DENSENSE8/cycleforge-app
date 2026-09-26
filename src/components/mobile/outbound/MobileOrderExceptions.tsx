@@ -2,12 +2,7 @@
 
 /**
  * Mobile projection of the canonical order-exceptions queue.
- *
- * The server query and blocker vocabulary are the same ones mounted by the
  * desktop DataTable. Only presentation differs: BRIEF §4 triage rows
- * ({@link TriageRow}) — `HLD` leads (a caged order is on hold), then what it
- * is, then order # and blocker. Inspect opens the order record (a full screen
- * with an X back here); the ink decision opens the pairing task.
  */
 
 import { useEffect, useMemo, useState } from 'react';

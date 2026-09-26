@@ -14,19 +14,7 @@ import { printStationCommandLabel } from '@/lib/print/printStationCommandLabel';
 import { listAliasTargets, validateAlias } from '@/lib/stations/command-alias-validate';
 import { cn } from '@/utils/_cn';
 
-/**
- * Custom codes — a tenant's own scan strings for commands that already exist.
- *
- * An alias is a second NAME, never a new behaviour. The command registries are
- * code and PR-reviewed on purpose: a scan that moves an operator between
- * surfaces or writes a verdict must not be creatable from an admin form. So
- * this editor can say "the sticker at bench 3 says BENCH-3 and means Quality
- * Control" and it can say nothing else — the target picker only offers built-in
- * commands, and the server re-checks that on every write.
- *
- * The row is the book's row: name and target on the left, the matrix on the
- * right, so a custom code and a built-in one read identically on the page.
- */
+/** Custom codes — a tenant's own scan strings for commands that already exist. */
 
 interface AliasRow {
   id: number;
@@ -220,10 +208,7 @@ export function CommandAliasEditor() {
                           void (async () => {
                             const confirmed = await requestConfirm({
                               title: `Retire ${alias.code}?`,
-                              // Retire, not delete: stickers already printed
-                              // carry this code, and an operator scanning one
-                              // deserves a reason rather than a generic
-                              // unknown-command nack.
+                              // Retire, not delete:
                               description:
                                 'Stickers already printed will stop working. The code is kept so it can be recognised as retired.',
                               confirmLabel: 'Retire',

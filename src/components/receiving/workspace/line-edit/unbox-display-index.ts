@@ -1,10 +1,4 @@
-/**
- * Unbox Displays Root Index — domain row builder (no React).
- *
- * Returns the station-wide {@link DisplayIndexRow} shape. UI lives in
- * `@/components/station/displays` ({@link StationDisplayIndexList}).
- * Checklist is a Displays leaf (no floor % ring).
- */
+/** Unbox Displays Root Index — domain row builder (no React). */
 
 import type { DisplayIndexGroup, DisplayIndexRow } from '@/components/station/displays';
 import {

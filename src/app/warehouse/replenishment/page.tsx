@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * /warehouse/replenishment — pick-face restock task queue.
- *
- * Surfaces every open `replenishment_tasks` row (REQUESTED + IN_PROGRESS).
- * Supervisors triage at the desktop; floor staff can claim/complete from
- * the same page on mobile.
- */
+/** /warehouse/replenishment — pick-face restock task queue. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { replenishmentStatusBadgeClass } from '@/lib/replenishment-status';

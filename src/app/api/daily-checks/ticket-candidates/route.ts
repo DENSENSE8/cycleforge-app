@@ -7,28 +7,7 @@ import { getTicket, listTickets, searchTickets, type ZendeskTicket } from '@/lib
 
 export const runtime = 'nodejs';
 
-/**
- * GET /api/daily-checks/ticket-candidates?query= — anchor-free ticket lookup for
- * the Daily chip slider.
- *
- * Exists because the universal link waist (`/api/support/tickets/link`) REQUIRES
- * an entity anchor (receiving / tracking / shipment / order) before it will
- * answer. A daily-check item is not in that union and must not be forced into
- * it — widening the anchor enum to satisfy a read-only picker would let a
- * checklist row re-anchor a ticket on POST. So this route reads candidates and
- * nothing else: no link rows, no hidden-linked accounting, no audit.
- *
- * Query classification is the SHARED {@link resolveTicketLinkQueryKind}, not a
- * local regex: a 12-digit FedEx number pasted into the phone filter must reach
- * searchTickets, never getTicket(trackingDigits).
- *
- * Helpdesk not connected answers `200 { tickets: [], notConfigured: true }`
- * rather than the desk surfaces' 503. On a phone the picker is one control
- * inside a checklist sheet; a 503 there paints a red failure the operator has no
- * way to act on, so the absence of a helpdesk is reported as a quiet fact.
- *
- * Payload is `{ id, subject, status }` only — this feeds a chip, not a console.
- */
+/** GET /api/daily-checks/ticket-candidates?query= — anchor-free ticket lookup for the Daily chip slider. */
 
 const PER_PAGE = 20;
 

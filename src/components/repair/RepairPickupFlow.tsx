@@ -2,29 +2,7 @@
 
 /**
  * RepairPickupFlow — the desk pickup sign-off, wearing the kiosk v2 face.
- *
  * Operator 2026-09-24: *"desk sign off via the kiosk v2 components"*. The desk
- * used to hand-roll its own header bar, label/input row, fixed-height pad and a
- * `window.prompt` for the decline reason. It is now the kiosk step path,
- * composed from the kiosk's own pieces and nothing bespoke:
- *
- *   [ Who is collecting ]  KioskEntryField (seeded from the customer contact)
- *   [ Sign             ]   SignaturePad, kiosk mount (aspect law, fullscreen)
- *     └ or [ Why no signature ] KioskChip rows + KioskEntryField multiline
- *   [ Review & submit  ]   the PAPERWORK itself (RepairPaperworkCanvas +
- *                          RepairServiceForm `sections="full"`), pickup ink live
- *   → receipt              the printed receipt, to photograph
- *
- * All inside {@link KioskPaneForm} (step band + scroll body + action floor).
- *
- * ONE write: {@link submitRepairPickup}, fed only by {@link pickupSignoffInput},
- * which refuses a body with no signer, or with both / neither of a signature
- * and a decline reason.
- *
- * Callers: `RepairRecordStrip` (the desk strip's Start pickup) and
- * `RepairDetailsPanel` (rail body) — Start Pickup, portalled over the desk.
- * Affected API: POST `/api/repair-service/pickup`; GET
- * `/api/repair-service/document/[id]` (the drop-off ink on the review sheet).
  */
 
 import { useMemo, useState } from 'react';

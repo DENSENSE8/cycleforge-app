@@ -8,32 +8,7 @@ import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { setOrderPrice } from '@/lib/orders/set-order-price';
 
-/**
- * The sold price of an order line (`orders.sale_amount`).
- *
- *   PUT — set or clear it (`{ orderId | orderNumber, priceCents, currency? }`)
- *         (orders.set_price)
- *
- * PUT, matching `orders/[id]/flag` rather than the POST of
- * `orders/set-item-number`: this is an idempotent replacement of ONE field with
- * the value in the body, and `priceCents: null` clears it — set and clear are
- * the same operator gesture (retype the cell, or empty it), so giving the
- * client two verbs to keep in sync for one edit would buy nothing. POST would
- * also imply "create a price resource", and there is no such resource; the
- * price is a column on a line that already exists.
- *
- * Gated on `orders.set_price`, not the blanket `orders.create`: this is FINANCE
- * data. Restating what an order sold for moves every revenue report, so it is
- * separately grantable, and the audit row carries the old AND new value so a
- * mistyped correction is recoverable.
- *
- * Org comes from the SESSION (`gate.ctx.organizationId`) — never the body — so
- * a caller cannot reprice another tenant's book by naming its id.
- *
- * A marketplace order number that spans several lines comes back 409 with the
- * candidate lines; see set-order-price.ts for why fanning one amount across
- * them (or dividing it) would corrupt the data instead.
- */
+/** The sold price of an order line (`orders.sale_amount`). */
 
 const OrderPriceBody = z
   .object({

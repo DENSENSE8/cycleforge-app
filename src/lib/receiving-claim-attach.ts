@@ -3,14 +3,7 @@ import { readPhotoBytesById } from '@/lib/photos/read-bytes';
 import { getReceivingPhotosByIds } from '@/lib/photos/queries/receiving-list';
 import type { HelpdeskProvider } from '@/lib/integrations/helpdesk';
 
-/**
- * Upload a carton's selected receiving photos to the helpdesk as real file
- * attachments (not links), scoped to `receivingId`'s own photos for safety.
- * Shared by both the "file a new claim" route (POST /api/receiving/zendesk-claim)
- * and the "update a linked ticket" route (POST /api/receiving/zendesk-claim/thread)
- * so a photo picked in either flow lands on the ticket the same way. Best-effort
- * per file — one unreadable photo never blocks the rest.
- */
+/** Upload a carton's selected receiving photos to the helpdesk as real file attachments (not links), scoped to `receivingId`'s own photos… */
 export async function uploadClaimPhotosToHelpdesk(opts: {
   helpdesk: Pick<HelpdeskProvider, 'uploadAttachment'>;
   organizationId: string;

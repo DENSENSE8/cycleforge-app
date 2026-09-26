@@ -1,24 +1,8 @@
 'use client';
 
 /**
- * AgendaKindFilter — the KIND control of the one task list: a DROPDOWN of
+ * AgendaKindFilter — the KIND control of the one task list:
  * checkmark rows (operator 2026-09-23). SELECTION lives here; ARRANGEMENT
- * does not — dragging is on the BAND TITLES in the list itself ({@link
- * AgendaBandHeader}), per the operator's follow-up: *"just have the drag and
- * drop to the left of the title itself, not in the dropdown component."*
- *
- * The toolbar row shows ONE compact trigger (`Kinds · 2/3`) opening:
- *
- *      [✓]  Daily checklist
- *      [ ]  Task
- *      [✓]  Ticket
- *
- * CHECKMARK on the left = that kind is showing. Multi-select: any
- * combination, floor of one — the last showing kind refuses to uncheck, so
- * the list can narrow but never empty.
- *
- * MOBILE-FIRST by address: the desk's Daily toolbar mounts THIS file; there
- * is no desk twin. Selection persists per device.
  */
 
 import { useEffect, useRef, useState } from 'react';

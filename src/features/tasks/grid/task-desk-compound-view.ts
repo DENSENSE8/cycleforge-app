@@ -1,17 +1,4 @@
-/**
- * Task desk row → {@link CompoundRowView}. Pure; no React, no hooks.
- *
- * The `tasks` family's adapter into the single compound renderer. Where a task
- * has no equivalent fact the mapping says so with `null` rather than inventing
- * one — an assigned task has no photo and, unless it is about an order, no
- * order handle either. That difference is DATA; the layout around it is
- * identical to every other table's, which is the whole point.
- *
- * Replaced `staff-task-compound-view.ts` with the store swap (R-A,
- * 2026-09-22). The facts it mapped — kind, station, cycle reset — do not exist
- * on `work_assignments`, and the ones the operator asked for (assignee,
- * assigner, deadline, priority) did not exist on `staff_todos`.
- */
+/** Task desk row → {@link CompoundRowView}. */
 
 import type {
   CompoundRowView,
@@ -31,14 +18,7 @@ function daysPast(deadlineMs: number, nowMs: number): number {
   return Math.floor((nowMs - deadlineMs) / 86_400_000);
 }
 
-/**
- * Lifecycle → the compound row's three-tone vocabulary.
- *
- * `alert` is earned here, and only here: an open task past its deadline is
- * precisely "needs a human", which is what the tone means on every other
- * family. An open task that is merely open is not — a grid where every
- * unfinished row shouts has no signal left for the row that genuinely does.
- */
+/** Lifecycle → the compound row's three-tone vocabulary. */
 function taskStateTone(row: TaskDeskRow, nowMs: number): CompoundStateTone {
   if (row.status === 'DONE') return 'done';
   if (row.status === 'CANCELED') return 'neutral';
@@ -46,13 +26,7 @@ function taskStateTone(row: TaskDeskRow, nowMs: number): CompoundStateTone {
   return 'neutral';
 }
 
-/**
- * The handoff line: who owes this, and who handed it over.
- *
- * `assigned_by_staff_id` is NULL on every row written before 2026-08-08d and
- * was deliberately never backfilled, so the "from" half is omitted rather than
- * printed as "from —" on historical rows.
- */
+/** The handoff line: */
 function handoffNote(row: TaskDeskRow): string | null {
   const to = row.assignee?.name?.trim();
   const from = row.assignedBy?.name?.trim();
@@ -92,10 +66,8 @@ export function taskDeskCompoundView(
     // The TITLE column's second line is what somebody wrote about this row;
     // for a handoff that is who it went to and who sent it.
     note: handoffNote(row),
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(row.id, 'Task id'),
     orderId,
     tracking: null,

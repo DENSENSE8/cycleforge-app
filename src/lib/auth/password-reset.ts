@@ -1,14 +1,4 @@
-/**
- * Account-based password reset tokens.
- *
- * One-time, expiring, HASHED tokens over the GLOBAL `accounts` identity (reset is
- * cross-org). The raw token lives only in the emailed URL; we persist sha256, so
- * a leaked DB row can't be replayed. Mirrors the email_login_tokens posture but
- * in a DEDICATED table (`password_reset_tokens`) — a reset token authorizes only
- * a password change, never a session mint.
- *
- * Storage: migration 2026-07-11b_password_reset_tokens.sql (UNAPPLIED).
- */
+/** Account-based password reset tokens. */
 
 import { randomBytes, createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';
@@ -46,12 +36,7 @@ export async function mintPasswordResetToken(
   return { token, expiresAt: r.rows[0]!.expires_at };
 }
 
-/**
- * Atomically claim a reset token: marks it used and returns the owning account
- * id, but ONLY if it is unexpired and unused. A concurrent replay gets null (the
- * UPDATE … WHERE used_at IS NULL matches zero rows the second time). Returns null
- * for unknown/expired/already-used tokens — callers must not distinguish.
- */
+/** Atomically claim a reset token: */
 export async function claimPasswordResetToken(
   token: string,
   db: Executor = dbPool,

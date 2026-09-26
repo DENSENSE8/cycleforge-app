@@ -6,13 +6,7 @@ import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { ShippingSkuSerialRows } from './ShippingSkuSerialRows';
 
-/**
- * Ready-to-Pack centre ops-flow — SKU/serial pairing rows only.
- * Captured Units · Condition · Timeline · Listings are Displays push bodies on
- * {@link ActiveOrderWorkspace} (scan-station Displays SoT — no centre tab strip).
- *
- * Mounts in the `tabs` slot of `ActiveOrderWorkspace`'s `StationWorkbench`.
- */
+/** Ready-to-Pack centre ops-flow — SKU/serial pairing rows only. */
 export function ShippingScanWorkspace({
   activeOrder,
   previewOrder,

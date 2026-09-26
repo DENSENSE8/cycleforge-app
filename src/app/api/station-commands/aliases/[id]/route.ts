@@ -6,14 +6,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { validateAlias } from '@/lib/stations/command-alias-validate';
 
-/**
- * PATCH|DELETE /api/station-commands/aliases/[id]
- *
- * Edit or retire one tenant alias. DELETE is a SOFT retire (`is_active=false`),
- * not a row removal: stickers already printed and books already bound carry the
- * code, and an operator scanning one deserves "this code was retired" rather
- * than the generic unknown-command nack. The row is what lets us say that.
- */
+/** PATCH|DELETE /api/station-commands/aliases/[id] */
 
 interface AliasRow {
   id: number;

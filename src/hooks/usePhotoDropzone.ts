@@ -10,32 +10,7 @@ import {
   type DragEvent,
 } from 'react';
 
-/**
- * Generic image dropzone — drag-drop, click-to-pick, OR **paste**. Shared by the
- * Zendesk claim modal, the support chat composer and the support ticket surface
- * so all three get identical "get an image in here" behaviour. Filters to
- * image/* and ignores internal app drags (which set their own dataTransfer
- * types, not `Files`).
- *
- * Usage:
- *   const dz = usePhotoDropzone((files) => addFiles(files));
- *   <div {...dz.rootProps}> … </div>          // drag + element-scoped paste
- *   <button onClick={dz.openPicker}>Add photos</button>
- *   <input {...dz.inputProps} />
- *
- * Paste comes in two scopes and the caller picks one:
- *
- * - **Element** — `rootProps.onPaste`, which catches a paste bubbling out of any
- *   focused child (the composer's textarea included).
- * - **Document** — `{ documentPaste: true }`, for a surface where the operator
- *   should be able to paste an image with nothing in particular focused. Only
- *   one surface should claim this at a time.
- *
- * **A text paste is a text paste.** Nothing is intercepted and nothing is
- * `preventDefault`ed unless the clipboard actually carries an image file — an
- * operator pasting an order number into the composer must never have it
- * swallowed by a photo handler.
- */
+/** Generic image dropzone — drag-drop, click-to-pick, OR **paste**. */
 export interface UsePhotoDropzone {
   isDragging: boolean;
   rootProps: {
@@ -60,14 +35,7 @@ export interface UsePhotoDropzone {
 const isFileDrag = (e: DragEvent): boolean =>
   Array.from(e.dataTransfer?.types ?? []).includes('Files');
 
-/**
- * Image files on a clipboard, or `[]`.
- *
- * Reads `items` rather than `files` because a screenshot pasted from the OS
- * clipboard arrives as a `DataTransferItem` of kind `file` with no entry in
- * `clipboardData.files` in some browsers. An empty result is the signal to stand
- * down entirely and let the default text paste happen.
- */
+/** Image files on a clipboard, or `[]`. */
 function imageFilesFromClipboard(data: DataTransfer | null): File[] {
   if (!data) return [];
   const out: File[] = [];
@@ -91,12 +59,7 @@ export function usePhotoDropzone(
      * stage the same screenshot twice.
      */
     documentPaste?: boolean;
-    /**
-     * Set `false` when a HOST above this dropzone owns paste for the whole
-     * surface. One gesture must have one meaning: on `/support` a pasted image
-     * stages *and* asks for a draft, so the thread body must not quietly stage
-     * it as a plain attachment when the cursor happens to be inside it.
-     */
+    /** Set `false` when a HOST above this dropzone owns paste for the whole surface. */
     paste?: boolean;
   } = {},
 ): UsePhotoDropzone {

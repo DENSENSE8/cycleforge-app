@@ -1,49 +1,6 @@
 'use client';
 
-/**
- * SearchResultsSurface — the `/search` find stage's results body.
- *
- * Controlled: the host owns the query (URL state); the surface owns retrieval
- * and hands the settled rows to the ONE table engine. Client refine
- * (`etype`/`hstat`/`chan`) + display ranking over the top-50.
- *
- * ## Two MOUNTS of one family, chosen by measure
- *
- * This was a hand-rolled `<ul>` of result links. That is no longer legal: a
- * display surface is a mount of the one engine at a read-only TIER, and
- * "read-only" buys no exemption from sort, selection or the family's verbs.
- *
- * At `comfortable` the mount is the `search-hits` DataTable
- * (`@/components/search/hits-grid`): a field catalog, a resolver, a
- * `row → CompoundRowView` adapter and a registry line. Zero components. Six
- * entity types collapse at the ADAPTER, which is invariant 1. Everything the
- * old list could not do — a column edge, click-to-sort headers, a Fields
- * picker, an org binding, a filter funnel, a row count — the mount gets
- * because every other desk in the product already has it.
- *
- * At `compact` the mount is a list of {@link SearchResultRow} — THE one search
- * row, the same renderer ⌘K and every rail already paint. Not a fork of the
- * engine and not a second table: a different MOUNT of the same family, chosen
- * by the route, exactly as `/m/work` paints `MobileToShipRow` cards while the
- * To-ship desk mounts the `orders` DataTable.
- *
- * ### Why not a phone LAYOUT TIER of `search-hits`
- *
- * A tier can unbind `status:N` / `subtitle:N` slots, and that is all it can
- * do. The seven CHROME tracks (`select` · `fulfillment` · `thumb` · `item` ·
- * `dates` · `state` · `_fill`) belong to `compoundColumnsFor`, whose refusal
- * of a per-mount width override is invariant 3 verbatim — "the door through
- * which a layout difference walks back in" — and stripping them at the mount
- * is `COMPOUND_SKELETON_FILTER_DEBT`. So the `minmax()` floor, the 1040px
- * track sum and the horizontal scroll all survive the tier, and the chrome row
- * (filter · sort · rows · fields · zoom) plus the column-header row still
- * spend ~90px above the first result on a 390px screen. `SURFACE_LAW` §5 names
- * the outcome directly: a full `DataTable` is not a phone list SoT.
- *
- * Loading paints nothing here — hosts publish pending via
- * `setGlobalSearchPending` so the header paints `SearchPendingBar`. Never
- * invent body “Opening…” holds or height-fill with skeleton rows.
- */
+/** SearchResultsSurface — the `/search` find stage's results body. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from '@/components/Icons';
@@ -107,14 +64,7 @@ interface FetchState {
   forKey: string;
 }
 
-/**
- * The `comfortable` mount — the `search-hits` DataTable.
- *
- * Its own component so `useSearchHitsSpreadsheet` (which resolves the org's
- * slot layout, materializes tracks and builds a row view per hit) does not run
- * on a phone that is not going to paint a grid. A hook cannot be called
- * conditionally; a mount can.
- */
+/** The `comfortable` mount — the `search-hits` DataTable. */
 function SearchHitsTableMount({
   hits,
   loading,
@@ -133,19 +83,7 @@ function SearchHitsTableMount({
   return <DataTable {...sheet} totalCount={totalCount} />;
 }
 
-/**
- * The `compact` mount — a flush list of THE one search row.
- *
- * `role="listbox"` with the rows as DIRECT children, because
- * `SearchResultRow` puts `role="option"` on its own anchor: an `li` wrapper
- * between them breaks the listbox contract, which is why there is no `ul`
- * here even though this is a list.
- *
- * The separator is the row edge (`divide-y`), which is what the flush stage
- * trades its gutters and its shadow FOR. `showJourneyAction={false}` matches
- * the other list host (`CommandBar`): a per-row secondary icon is exactly the
- * chrome `SURFACE_LAW` R8 collapses on a phone.
- */
+/** The `compact` mount — a flush list of THE one search row. */
 function SearchHitsPhoneList({
   hits,
   loading,

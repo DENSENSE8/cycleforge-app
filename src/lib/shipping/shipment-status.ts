@@ -1,10 +1,4 @@
-/**
- * Carrier shipment status vocabulary + the stalled-shipment rule.
- *
- * Rescued out of `@/components/shipping/ShipmentStatusBadge` (Warehouse-OS):
- * the badge paints it, but `shipped-records` and the shipped URL params decide
- * with it, so the rule cannot live in a `'use client'` component.
- */
+/** Carrier shipment status vocabulary + the stalled-shipment rule. */
 
 export type ShipmentStatusCategory =
   | 'LABEL_CREATED'

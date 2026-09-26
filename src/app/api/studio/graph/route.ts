@@ -15,19 +15,7 @@ import { listConnections } from '@/lib/integrations/connectors/connections';
 import { STATIONS } from '@/components/admin/workflow/operations-catalog';
 import type { StudioGraphResponse } from '@/components/studio/studio-types';
 
-/**
- * GET /api/studio/graph?v=<definitionId>
- *
- * The Operations Studio canvas feed: one workflow definition (the org's
- * active one by default, or ?v= for a specific version) with its nodes and
- * edges, each node enriched with the engine registry's palette metadata
- * (label / icon / category / output ports via listNodeMeta-style lookup).
- * Also returns the org's definition list so the Studio's version switcher
- * can populate without a second request.
- *
- * Read-only — ST1 of the Studio plan. Editing (draft/publish) lives in
- * /api/studio/definitions/* behind studio.manage.
- */
+/** GET /api/studio/graph?v=<definitionId> */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(
@@ -133,10 +121,7 @@ export const GET = withAuth(
             )
         : [];
 
-      // Org integration connections feed the v2 integration rules
-      // (integration-disconnected / integration-sync-stale). Best-effort: a
-      // failed fetch degrades to undefined — the rules stay quiet and the
-      // graph never 500s over a diagnostics enrichment.
+      // Org integration connections feed the v2 integration rules (integration-disconnected / integration-sync-stale).
       let connections: DiagnosticsConnection[] | undefined;
       try {
         connections = (await listConnections(ctx.organizationId)).map((c) => ({

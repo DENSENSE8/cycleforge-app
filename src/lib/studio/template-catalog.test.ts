@@ -1,11 +1,4 @@
-/**
- * DB-free tests for the applyTemplateToOrg thin wrapper (Template Platform
- * Phase 2A). It only maps the legacy boolean `activate` onto the installer's
- * policy and re-shapes the result, so the tests inject a fake installer and
- * assert the mapping — the clone/seed/activate mechanics are covered by
- * install-template.test.ts.
- *   npx tsx --test src/lib/studio/template-catalog.test.ts
- */
+/** DB-free tests for the applyTemplateToOrg thin wrapper (Template Platform Phase 2A). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

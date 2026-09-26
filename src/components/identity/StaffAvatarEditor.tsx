@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Clickable staff mark — name, color and photo without opening Settings.
- *
- * Composes the ONE upload waist (`POST`/`DELETE /api/staff/[id]/avatar`), the
- * self-service color route (`PATCH /api/staff/[id]/color`) and the name route
- * (`PATCH /api/staff/[id]/name`). Optimistic cache patches
- * ({@link setStaffAvatarPhotoId} / {@link setStaffColorHex}) flip every
- * on-screen mark before `/api/staff` refetches.
- *
- * Mounted from the MasterNav spine footer; Settings → Appearance still owns
- * the long-form copy, but operators should not have to leave the spine to
- * change their face.
- *
- * ## The header is the name, and the name is editable in place
- *
- * The header carries the staff name alone — no "Photo & colour" subtitle. That
- * line restated what the two section headings below it already said, and a
- * popover this small cannot afford a row that carries no fact. Clicking the name
- * turns it into an input: a rename is a one-field edit, so sending the operator
- * to Settings for it costs more than the edit is worth.
- *
- * Commit is Enter or blur; Escape reverts. A blur commit is safe here ONLY
- * because the route no-ops an unchanged name — otherwise every dismissal of the
- * popover would write, and the audit trail would fill with renames nobody made.
- */
+/** Clickable staff mark — name, color and photo without opening Settings. */
 
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -244,13 +220,7 @@ export function StaffAvatarEditor({
                   )}
                 />
               ) : (
-                // Row, not a single button: the pencil is a dedicated,
-                // discoverable affordance — a `HoverTooltip`-labelled icon,
-                // not a hover-only cue the name text alone would have been.
-                // Both halves open the same edit; the name reads at
-                // `role-title` — prominent against the COLOR/PHOTO section
-                // eyebrows below it, but not display-scale hero type this
-                // 220px card's actual jobs (color, photo) don't call for.
+                // Row, not a single button:
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
@@ -317,12 +287,7 @@ export function StaffAvatarEditor({
                 if (file) void commitPhoto('upload', file);
               }}
             />
-            {/* One control. The trailing "Remove" button was dropped
-                2026-08-02 — clearing a photo is a rare, reversible act that
-                Settings → Appearance still owns, and a second button here made
-                the row read as a choice when the common action is "set one".
-                `commitPhoto('clear')` and the DELETE route are untouched, so
-                restoring it is a markup change, not a rebuild. */}
+            {/* One control. The trailing "Remove" button was dropped 2026-08-02 — clearing a photo is a rare, reversible act that Settings → Appearance… */}
             <Button
               type="button"
               size="sm"

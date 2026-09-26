@@ -1,24 +1,4 @@
-/**
- * Closed-loop linkage resolver — given ANY one of {order#, tracking#, serial#},
- * return the composed loop for a single operational order:
- *   order  ↔  tracking[] (multi-shipment)  ↔  serial[]  ↔  linked support tickets.
- * A registered tracking with no ORDER still returns its truthful partial loop
- * (tracking + linked tickets), rather than erasing known graph edges.
- *
- * This is the thin wrapper the linkage SoT modules never had (each half existed
- * independently). It COMPOSES the canonical sources — it does not re-derive them:
- *   - order ↔ tracking : `shipment_links` via {@link listLinksForOwner}
- *     (owner_type='ORDER'), the multi-tracking SoT.
- *   - order ↔ serial   : `order_unit_allocations` (inventory-v2), with a
- *     `tech_serial_numbers` fallback for pre-v2 / FBA / tech ships.
- *   - ticket bridge     : `ticket_links.entity_type='SHIPMENT'` (= STN id) — the
- *     existing tracking↔ticket bridge (see zendesk-links.ts#linkTicketToShipment);
- *     plus direct `entity_type='ORDER'` anchors for no-STN walk-in / phone orders.
- *
- * The live linkage graph runs on the operational `orders` table (integer PK),
- * NOT `sales_orders` (the UUID Zoho mirror, a separate island). Everything here
- * is org-scoped through `tenantQuery` (GUC + RLS backstop).
- */
+/** Closed-loop linkage resolver — given ANY one of {order#, tracking#, serial#}, return the composed loop for a single operational order: */
 import { type OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { listLinksForOwner } from '@/lib/shipping/shipment-links';

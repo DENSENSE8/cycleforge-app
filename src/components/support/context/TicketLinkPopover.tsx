@@ -37,19 +37,7 @@ function anchorToParams(linkable: SupportContextLinkable): URLSearchParams {
   return sp;
 }
 
-/**
- * GET url for link candidates. A **receiving** anchor goes through the
- * receiving-gated twin of the link waist, not `/api/support/tickets/link`.
- *
- * Both routes call the SAME `listCandidatesForAnchor` / `linkTicketToAnchor`
- * helpers (`src/lib/support/ticket-link.ts`) — they differ only in the
- * permission they demand: `integrations.zendesk`, which is ADMIN_ONLY in the
- * seeded role matrix (`scripts/seed-roles.mjs`), vs `receiving.mark_received`,
- * which the `receiver` role holds. The receiving route exists precisely "so
- * floor operators can claim without the broader Zendesk console permission" —
- * so pointing a receiving anchor at the support route 403s exactly the operator
- * the unfound "Find ticket by tracking" lane was built for.
- */
+/** GET url for link candidates. */
 function candidatesUrl(linkable: SupportContextLinkable, query: string): string {
   if (linkable.anchorType === 'receiving') {
     const sp = new URLSearchParams();
@@ -116,12 +104,7 @@ export function TicketLinkPopover({
   open: boolean;
   onClose: () => void;
   onLinked?: (ticketNumber: string) => void;
-  /**
-   * Seed the search box (and the first candidates fetch) with a known
-   * identifier — the Unbox unfound lane passes the carton's tracking number so
-   * the operator sees matching helpdesk tickets without typing. The box stays
-   * editable; closing resets back to this seed, not to empty.
-   */
+  /** Seed the search box (and the first candidates fetch) with a known identifier — the Unbox unfound lane passes the carton's tracking… */
   initialQuery?: string;
   /** Eyebrow label — the shared strip surfaces a scoped variant. */
   title?: string;
@@ -190,11 +173,7 @@ export function TicketLinkPopover({
   const rows = candidates.data?.tickets ?? [];
   const hiddenLinked = candidates.data?.hiddenLinked ?? 0;
 
-  // A HOST-SEEDED query is a search term, never something the operator typed as
-  // an id — and `initialQuery` is a carrier tracking number, which for FedEx is
-  // 12 digits and therefore parses as one. Untouched, it rendered "Press Enter
-  // to link #382803670296" over an enabled button that could only ever 404.
-  // The id path switches back on the moment the operator edits the box.
+  // A HOST-SEEDED query is a search term, never something the operator typed as an id — and `initialQuery` is a carrier tracking number,…
   const seed = initialQuery.trim();
   const isUntouchedSeed = seed.length > 0 && query.trim() === seed;
   const parsedId = isUntouchedSeed ? null : parseTicketIdQuery(query);
@@ -298,10 +277,7 @@ export function TicketLinkPopover({
         )}
       </div>
 
-      {/* A tracking-number search whose only match is anchored to ANOTHER item
-          would otherwise render as "no tickets found" — the one conclusion the
-          operator must not draw. Anchor mode hides those rows (picking one would
-          re-anchor it), so name the count instead of swallowing it. */}
+      {/* A tracking-number search whose only match is anchored to ANOTHER item would otherwise render as "no tickets found" — the one conclusion… */}
       {hiddenLinked > 0 && rows.length > 0 ? (
         <p className="mb-2 text-role-micro text-text-faint">
           {hiddenLinked} more match{hiddenLinked === 1 ? '' : 'es'} already linked to another item

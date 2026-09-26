@@ -1,17 +1,4 @@
-/**
- * Inventory-provider sync tip — shared by History grid chips, sidebar rails,
- * mobile rows, and station identity lifecycle chips.
- *
- * Two local facts can still be waiting on the provider:
- *   - Fine / coarse `UNBOXED` — floor unbox is done, local receive has not
- *     committed DONE yet.
- *   - Coarse `RECEIVED` with a still-open provider PO — local receive DID
- *     commit; the staff face is Received; the tip is the only place the
- *     pending provider write shows. Never demote the badge back to Unboxed.
- *
- * Never hardcode a vendor product name — pass the connected provider label
- * from `useCapabilityProviderLabel('inventory')`.
- */
+/** Inventory-provider sync tip — shared by History grid chips, sidebar rails, mobile rows, and station identity lifecycle chips. */
 
 import type { ReceivingLineStatus } from '@/lib/receiving/workflow-stages';
 

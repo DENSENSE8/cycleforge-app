@@ -1,45 +1,6 @@
 'use client';
 
-/**
- * Release plane for /inventory/holds — stage-overlay over the table
- * (Center-Lock L2, law Q5). The table stays mounted underneath, so an operator
- * can still read the unit they are about to put back on the floor.
- *
- * Callers: `HeldUnitsTable`, from the `release` row verb
- * (`admin-holds-verbs.ts`).
- *
- * ## Why a plane and not a cell
- *
- * The retired desk's seventh column WAS this form: a `<select
- * name="forceStatus">` beside a raw solid-green `<button>` annotated
- * `ds-raw-button`, submitting `releaseAction` with no confirmation at all. A
- * write whose payload takes a PARAMETER is a verb that opens a plane —
- * `CompoundRowAction` carries a fixed payload, and no family in this repo sets
- * `capabilities.inCellEdit`, so there is no in-cell editor on a compound row to
- * put a `<select>` into. The green button is gone; both controls are
- * `@/design-system/primitives` `Button`.
- *
- * ## Why the `<form>` is the footer
- *
- * The write stays a SERVER ACTION. `releaseAction` re-gates
- * `sku_stock.adjust`, re-resolves the unit against the caller's org and
- * `revalidatePath`s the desk — none of which a client fetch to a new endpoint
- * would inherit, and a second entrypoint for a write that already has one is
- * the fork this port exists to remove. So the RSC page hands the action down as
- * a prop and this form posts to it.
- *
- * It is the footer rather than the body because the submit button must live
- * INSIDE the form that carries the override control: the overlay's `footer` is
- * a sibling of `children`, so a submit in one and a `<select>` in the other
- * could only be joined by `form="id"` — and a button outside its form cannot
- * read {@link useFormStatus}, which is what stops a double release while the
- * action is in flight.
- *
- * The plane asks ONE question, the one the retired cell asked: which lifecycle
- * state this unit goes back to. `releaseAction` also reads a `reason`, and the
- * retired cell never sent one — a release-reason input would be a new feature,
- * so it is not invented here.
- */
+/** Release plane for /inventory/holds — stage-overlay over the table (Center-Lock L2, law Q5). */
 
 import { useFormStatus } from 'react-dom';
 import { Button } from '@/design-system/primitives/Button';
@@ -57,12 +18,7 @@ export interface HoldReleasePlaneProps {
   action: (formData: FormData) => void | Promise<void>;
 }
 
-/**
- * The form's own controls — a child of the `<form>` so it can read the
- * submission's pending state. A release is not idempotent from the operator's
- * side (the second submit finds nothing on hold and returns silently), but a
- * live button after a click reads as a failed one.
- */
+/** The form's own controls — a child of the `<form>` so it can read the submission's pending state. */
 function HoldReleaseControls({ onClose }: { onClose: () => void }) {
   const { pending } = useFormStatus();
   return (

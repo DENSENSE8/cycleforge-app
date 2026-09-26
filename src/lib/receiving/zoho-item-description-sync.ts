@@ -48,12 +48,7 @@ function findZohoLineItemIdFromPoLines(
   return null;
 }
 
-/**
- * Push a per-line item description edit to the linked Zoho PO line item.
- * When `baseLastModifiedZoho` is set, refuse overwrite if Zoho's live stamp
- * differs (same block-if-stale contract as PO header notes).
- * Never throws — failures are returned in the result for the route to map.
- */
+/** Push a per-line item description edit to the linked Zoho PO line item. */
 export async function syncItemDescriptionToZohoPo(params: {
   zohoPoId: string | null | undefined;
   zohoLineItemId: string | null | undefined;

@@ -1,10 +1,4 @@
-/**
- * Registry validation for station configs — the server-side gate that keeps
- * `station_definitions.config` honest: every block/source/action id must be
- * registered, and a block may only sit in a slot it declared. Structural
- * validation (shapes/types) is the Zod layer in src/lib/schemas/stations.ts;
- * this is the semantic layer.
- */
+/** Registry validation for station configs — the server-side gate that keeps `station_definitions.config` honest: */
 
 import type { SlotId, StationConfig } from './contract';
 import { getBlock } from './blocks/registry';

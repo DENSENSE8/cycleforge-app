@@ -10,27 +10,7 @@ import { findRecords } from '@/lib/search/find-records';
 import { parseSearchByScope, SEARCH_BY_SCOPES } from '@/lib/search/search-by';
 import { recordSearchQuery, type SearchSurface } from '@/lib/search/query-log';
 
-/**
- * Cross-entity find — the engine behind the ⌘K palette and `/search`.
- *
- * GET /api/global-search?q=…&limit=20&axis=serial&surface=palette
- *
- * WHY THIS IS NO LONGER A `createCrudHandler`
- *   That helper builds a fixed `{ rows, count, query, tab }` payload, and this
- *   route now has to tell the client two things it has no slot for: whether the
- *   result set was BROADENED to find anything (`relaxed`) and which query
- *   actually produced it (`effectiveQuery`). Showing relaxed rows as if they
- *   were exact matches is the failure mode that makes an operator trust a
- *   result they should have questioned, so the metadata is not optional. The
- *   Upstash cache the helper provided is kept verbatim below — it was the only
- *   other thing this route used it for.
- *
- * RETRIEVAL
- *   `findRecords` runs the broad parent-table fan-out, fills the remaining
- *   slots from the pg_trgm/pgvector doc index, and climbs a relaxation ladder
- *   only when a free-text query found nothing at all. Identifier and
- *   axis-scoped queries are answered exactly and never widened.
- */
+/** Cross-entity find — the engine behind the ⌘K palette and `/search`. */
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 50;

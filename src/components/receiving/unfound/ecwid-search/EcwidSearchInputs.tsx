@@ -59,11 +59,7 @@ export function EcwidSearchInputs({
   );
 
   if (popoverMode === 'search' && !manualTitleMode) {
-    // `flush` IS the Displays leaf. There the field carried `hideUnderline`
-    // (no chrome of its own) inside a `pt-0` wrapper (no inset of its own), so
-    // it sat on the column edge with no top/bottom air while the result rows
-    // below it are inset — the same defect `PoLinkTab` had. Both now wear the
-    // one header. Card hosts keep their nested-card pad.
+    // `flush` IS the Displays leaf.
     return flush ? (
       <StationDisplaySearchHeader
         value={c.query}
@@ -121,10 +117,7 @@ export function EcwidSearchInputs({
   }
 
   if (popoverMode === 'repair_service') {
-    // Flush = Displays leaf: one header component, same inset + hairline as the
-    // order search above and as the result rows below, with the scope chip as
-    // its trailing control. Card hosts keep `SearchField`'s chrome face, which
-    // is what that variant was built for (2026-08-24).
+    // Flush = Displays leaf:
     return flush ? (
       <StationDisplaySearchHeader
         value={c.repairFilter}
@@ -135,11 +128,7 @@ export function EcwidSearchInputs({
       />
     ) : (
       <div className={`flex items-center gap-1.5 ${pad}`}>
-        {/* Same SoT search bar as every rail footer AND workbench chrome
-            header (TechRailSearchBar — "Filter queue…" on Unbox, "Filter
-            lines…" on the recent rails, etc.) — never a raw SearchBar hand-
-            rolled with its own border/variant. `variant="chrome"` is the
-            flush-sunken face this component is built for. */}
+        {/* Same SoT search bar as every rail footer AND workbench chrome header (TechRailSearchBar — "Filter queue…" on Unbox, "Filter lines…" on… */}
         <SearchField
           value={c.repairFilter}
           onChange={c.setRepairFilter}

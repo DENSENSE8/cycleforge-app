@@ -12,12 +12,7 @@ export interface SyncNoteListingLink {
   title: string | null;
 }
 
-/**
- * Sync-note hrefs go through the same normalizer as pasted and catalog ones —
- * this is the `sync_notes` tier of `collectCartonListingLinks`, so a local copy
- * meant the resolver normalized one of its four inputs differently from the
- * other three.
- */
+/** Sync-note hrefs go through the same normalizer as pasted and catalog ones — this is the `sync_notes` tier of… */
 const normalizeHref = normalizeListingHref;
 
 function trimTrailingPunctuation(url: string): string {

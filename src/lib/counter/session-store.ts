@@ -1,39 +1,4 @@
-/**
- * Counter session store — the ONE domain module both doors call.
- *
- * `/api/counter/session/**` mounts two auth wrappers over this module:
- * `withAuth` for the desk and `withKioskAuth` for the tablet. They answer two
- * different questions and must not be confused:
- *
- *   - the ROUTE answers "does this staffer hold `walk_in.intake`?"
- *   - THIS MODULE answers "may a device principal do this at all?" (plan D5)
- *
- * Putting D5 in the routes would mean re-deciding it in nine files, and the
- * tenth would get it wrong. Every mutation here takes an `actor`, and a
- * `kiosk` actor is refused for every line write — add, update, void, price —
- * leaving the tablet four verbs: set customer, sign, confirm, and consult stance.
- *
- * ### Concurrency is the version predicate, not a lock
- *
- * Every mutation ends in
- *   `UPDATE counter_sessions SET version = version + 1 WHERE … AND version = $expected`
- * inside the same transaction as the write it accompanies. A concurrent
- * mutation has already moved `version`, so the conditional update matches zero
- * rows and this caller gets `VERSION_CONFLICT` **with the current snapshot** —
- * which is also what makes the read-then-write above it safe without
- * `FOR UPDATE`. The client re-renders from the returned snapshot rather than
- * retrying blind (plan D3).
- *
- * A successful mutation returns the `CounterSessionEvent` it produced, so the
- * caller publishes exactly what a subscriber can apply at `version + 1`
- * (`applySessionEvent`) instead of forcing everyone to refetch.
- *
- * `Deps` is injectable (defaulting to the real DB-backed impls) so the whole
- * verb set is unit-tested with zero DB — the house pattern from
- * `backend-patterns.md`.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P2 · D1 · D3 · D4 · D5 · D6 · D8).
- */
+/** Counter session store — the ONE domain module both doors call. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -184,11 +149,8 @@ export interface CounterSessionDeps {
       kioskDeviceId: number | null;
       claimedByStaffId: number;
       /**
-       * Which pane the session opens on. Passed EXPLICITLY rather than left to
-       * `counter_sessions.active_command`'s `DEFAULT 'retail'`: the opening
-       * command is a per-org choice (`OrgSettings.kiosk.defaultCommand`), and a
+       * Which pane the session opens on.
        * column default cannot express one. Operator 2026-09-15 — the counter
-       * must open on repair unless the org says otherwise.
        */
       activeCommand: KioskCommandId;
     },
@@ -202,34 +164,15 @@ export interface CounterSessionDeps {
   ): Promise<number | null>;
   patchHeader(tx: CounterSessionTx, orgId: OrgId, sessionId: number, patch: HeaderPatch): Promise<void>;
   insertLine(tx: CounterSessionTx, orgId: OrgId, sessionId: number, line: NewLineInput): Promise<void>;
-  /**
-   * Device ids this staffer currently holds a LIVE lease on.
-   *
-   * Feeds the desk's Ably grant, so an expired lease must not appear here — a
-   * staffer who walked away should stop receiving that counter's traffic when
-   * their next token is minted, without anyone having to revoke anything.
-   */
+  /** Device ids this staffer currently holds a LIVE lease on. */
   listClaimedDeviceIds(tx: CounterSessionTx, orgId: OrgId, staffId: number): Promise<number[]>;
-  /**
-   * The OPEN session bound to this device, if any.
-   *
-   * `ux_counter_sessions_open_device` makes this at most one row, which is what
-   * lets the tablet ask "what am I showing?" without being told a session id it
-   * has no way to learn — and without a list endpoint a stranger could walk.
-   */
+  /** The OPEN session bound to this device, if any. */
   findOpenSessionIdForDevice(
     tx: CounterSessionTx,
     orgId: OrgId,
     deviceId: number,
   ): Promise<number | null>;
-  /**
-   * The idempotency anchor minted when the session opened (P1).
-   *
-   * Read from the row rather than passed in, so a retried submit — from either
-   * device, or from a client that reloaded — reuses the SAME anchor and
-   * `ux_counter_transactions_client_event` turns the replay into a no-op
-   * instead of a second charge.
-   */
+  /** The idempotency anchor minted when the session opened (P1). */
   readClientEventId(tx: CounterSessionTx, orgId: OrgId, sessionId: number): Promise<string | null>;
   /** COMPOSED, never re-implemented — this is the one path that writes money. */
   submitTransaction: typeof submitCounterTransaction;
@@ -257,36 +200,12 @@ export interface CounterSessionDeps {
 
 // ── Guards ──────────────────────────────────────────────────────────────────
 
-/**
- * D5, revised 2026-08-20: the counter is a form TWO PEOPLE fill at once.
- *
- * The first cut made the tablet read-only. That was wrong for the actual job:
- * a customer walks in, and staff and customer fill the visit out together —
- * the customer entering their own details and device symptoms on the tablet
- * while staff price and correct on the desktop. A read-only tablet turns that
- * into dictation.
- *
- * So the boundary moved from WHO to WHAT. The tablet may create and correct
- * lines and identity. It may not touch **money or finality**:
- *
- *   price override · discount · void · claim/release · park · submit
- *
- * That is the line worth defending, because it is the one an unattended device
- * makes dangerous: the device principal outlives the customer standing there,
- * so anything it can do, a stranger can do after they leave. Editing a serial
- * number costs a correction; zeroing a price is an open till.
- */
+/** D5, revised 2026-08-20: */
 function refuseDeviceWrite(actor: CounterSessionActor): CounterSessionError | null {
   return actor.kind === 'kiosk' ? 'DEVICE_FORBIDDEN' : null;
 }
 
-/**
- * Money fields, refused for a device principal at the DOMAIN, not the route.
- *
- * Returns the refusal when a kiosk actor's patch touches an amount. The kiosk
- * routes also omit the field from their schema, which is belt; this is braces —
- * and it is the one that survives someone adding a new kiosk route later.
- */
+/** Money fields, refused for a device principal at the DOMAIN, not the route. */
 function refuseDeviceMoneyEdit(
   actor: CounterSessionActor,
   patch: { unitAmountCents?: number },
@@ -300,13 +219,7 @@ function refuseClosed(snapshot: CounterSessionSnapshot): CounterSessionError | n
   return snapshot.status === 'open' ? null : 'SESSION_CLOSED';
 }
 
-/**
- * Is this desk the lease holder?
- *
- * An expired lease is NOT the holder — otherwise a closed laptop would keep
- * the counter forever and the next staffer would have to wait out a human,
- * not a timeout.
- */
+/** Is this desk the lease holder? */
 export function holdsLease(
   snapshot: CounterSessionSnapshot,
   staffId: number,
@@ -341,17 +254,7 @@ interface MutateArgs<T> {
   allowClosed?: boolean;
 }
 
-/**
- * Thrown to ROLL BACK a mutation whose version bump lost the race.
- *
- * This is not stylistic. `withTenantTransaction` commits when its callback
- * RETURNS and rolls back only when it THROWS — so returning a refusal after the
- * line insert had already run committed the line and reported failure. The
- * caller saw `VERSION_CONFLICT`, re-rendered from the snapshot in the response…
- * and the cart it re-rendered contained the line it had just been told was not
- * written. Caught by the P6 two-device spec, which is exactly the class of bug a
- * unit test with an in-memory fake cannot see.
- */
+/** Thrown to ROLL BACK a mutation whose version bump lost the race. */
 class CounterSessionConflict extends Error {
   constructor() {
     super('counter session version conflict');
@@ -418,12 +321,7 @@ export async function createSession(
   args: {
     clientEventId: string;
     kioskDeviceId?: number | null;
-    /**
-     * The org's opening command (`getKioskDefaultCommand`). Resolved by the
-     * route, which holds the org, rather than read behind this function —
-     * `CounterSessionDeps` is the whole I/O surface here and a settings read
-     * hidden inside it would be a second, untestable one.
-     */
+    /** The org's opening command (`getKioskDefaultCommand`). */
     activeCommand?: KioskCommandId;
   },
   deps: CounterSessionDeps = defaultDeps,
@@ -464,14 +362,7 @@ export async function getSession(
   return deps.runInTransaction(orgId, (tx) => deps.readSnapshot(tx, orgId, sessionId));
 }
 
-/**
- * What this tablet is currently showing.
- *
- * Device-scoped by construction: the caller passes its own `deviceId` from the
- * verified device principal, never a session id from the request. A device that
- * is not bound to an open session sees `null` and falls back to its standalone
- * local cart (plan D7).
- */
+/** What this tablet is currently showing. */
 export async function getSessionForDevice(
   orgId: OrgId,
   deviceId: number,
@@ -576,27 +467,7 @@ export async function releaseSession(
   });
 }
 
-/**
- * Put this visit on a tablet — or take it off one (`kioskDeviceId: null`).
- *
- * This is the verb the whole desk↔iPad bridge was missing. A tablet enrols to
- * the ORG, never to a desk, so nothing about pairing tells the tablet which
- * visit to show; `getSessionForDevice` answers "what am I showing?" by looking
- * for the open session BOUND to that device, and until this ran the only way to
- * set that binding was at `createSession` time. A desk that had already opened
- * a visit could never hand it to a tablet, and `session-fanout` short-circuits
- * on a null device, so such a visit published nothing to anyone.
- *
- * **One tablet, one open visit.** `ux_counter_sessions_open_device` enforces it
- * in the schema; the pre-check here turns the constraint violation into
- * `DEVICE_BUSY`, which the desk can say out loud ("that iPad is on another
- * visit") instead of a 500. The check runs in the `write` step rather than
- * `guard` because it needs the transaction — and being inside it is what makes
- * the read-then-write atomic against a second desk binding the same iPad.
- *
- * Desk-only, like every other header verb (D5): a tablet naming its own
- * session would be a session-enumeration surface on an unattended device.
- */
+/** Put this visit on a tablet — or take it off one (`kioskDeviceId: */
 export async function bindSessionDevice(
   orgId: OrgId,
   actor: CounterSessionActor,
@@ -632,13 +503,7 @@ export async function bindSessionDevice(
   });
 }
 
-/**
- * Work · Show · Verify. Does not touch lines, identity, or command.
- *
- * Allowed from desk **and** kiosk: the iPad chrome and a flipped tablet both
- * need to publish the stance so the other screen converges. Money stays
- * staff-only; this is not money.
- */
+/** Work · Show · Verify. */
 export async function setConsultStance(
   orgId: OrgId,
   actor: CounterSessionActor,
@@ -843,12 +708,7 @@ export async function setCustomer(
   });
 }
 
-/**
- * Sign a repair line. **Kiosk-only in practice and by intent** — a signature
- * captured on the staff desktop is a signature the customer did not give.
- * The desk is refused here, which is the one place this module's asymmetry
- * runs the other way.
- */
+/** Sign a repair line. */
 export async function signLine(
   orgId: OrgId,
   actor: CounterSessionActor,
@@ -927,32 +787,14 @@ export async function setSessionStatus(
   });
 }
 
-/**
- * The staged-cart gate. Lives in `./submit-blocker` so the DESK can call it
- * too — this module imports `pg`, which puts anything defined here out of a
- * client component's reach. Re-exported rather than moved-and-forgotten so
- * every existing server caller keeps working and there is still one answer to
- * "can this be submitted".
- */
+/** The staged-cart gate. */
 export { submitBlocker, type CounterSubmitBlocker } from './submit-blocker';
 
 export interface SubmitSessionOutcome {
   transaction: CounterTransactionResult;
 }
 
-/**
- * Finish the visit: hand the staged cart to the transaction orchestrator.
- *
- * **Composes `submitCounterTransaction`; it does not re-implement it.** That
- * function owns customer create-or-match, the repair intake, provider order
- * staging, the ticket outbox and every partial-failure rule — all of which are
- * already tested. Mapping is `mapKioskCartToCounterParts`, the same mapper the
- * kiosk's own submit uses, so a visit finished from the desk and one finished
- * from the tablet produce the same two records.
- *
- * The session's own `client_event_id` is the anchor, so a double-submit from
- * two devices is one transaction (D8).
- */
+/** Finish the visit: */
 export async function submitSession(
   orgId: OrgId,
   actor: CounterSessionActor,
@@ -1024,18 +866,7 @@ export async function submitSession(
 
 // ── Card present (SQ2) ──────────────────────────────────────────────────────
 
-/**
- * Send the staged order to the Square Terminal and put both faces into the
- * "present card" state.
- *
- * **Sequenced AFTER submit, deliberately.** The kiosk stages an order and never
- * charges (plan D4), so the Square order — the thing a Terminal checkout
- * collects for — does not exist until `submitSession` has run. Asking the stand
- * for a card before that would mean inventing a second, unstaged order and
- * charging for something no record describes.
- *
- * Desk-only: a device principal must not be able to summon a card prompt.
- */
+/** Send the staged order to the Square Terminal and put both faces into the "present card" state. */
 export async function startTerminalCheckout(
   orgId: OrgId,
   actor: CounterSessionActor,
@@ -1094,17 +925,7 @@ export async function startTerminalCheckout(
   });
 }
 
-/**
- * Land a Terminal outcome on the session it belongs to.
- *
- * Called by the webhook, which knows a checkout id and nothing else — so the
- * session is resolved from that, never from a request body.
- *
- * `approved` here is the DEVICE's answer. The money's answer arrives separately
- * on `payment.completed` and settles `counter_transactions.status` (SQ1); this
- * never touches that. A visit that reads "approved" but not yet "paid" is not a
- * bug, it is the two facts arriving in their own time.
- */
+/** Land a Terminal outcome on the session it belongs to. */
 export async function resolveTerminalCheckout(
   orgId: OrgId,
   args: { checkoutId: string; paymentState: CounterPaymentState },

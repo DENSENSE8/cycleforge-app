@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Tiny client context so any component (sidebar chips, page banners) can
- * trigger the FAB's SwitchStaffSheet without prop-drilling.
- *
- *   const { openSwitcher } = useStaffSwitcher();
- *   <button onClick={openSwitcher}>Switch ↗</button>
- *
- * The provider is mounted in the root layout; QuickAccessButton opens the sheet.
- */
+/** Tiny client context so any component (sidebar chips, page banners) can trigger the FAB's SwitchStaffSheet without prop-drilling. */
 
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 

@@ -29,36 +29,12 @@ const RECEIVING_SOFT_JOIN = `
                      AND r.organization_id = rl.organization_id))
 `;
 
-/**
- * The shipments backing the Incoming receiving table — the tracking#s an
- * operator actually sees, NOT every active shipment. A shipment is in-scope
- * when it's attached to a still-incoming PO line (EXPECTED, nothing received,
- * PO not Zoho-received/closed), reached via the same soft receiving join the
- * row endpoint uses. Excludes terminal / dead (≥5 errors) / non-UPS·USPS·FedEx.
- *
- * Ordered to poll the most time-sensitive first (out-for-delivery, never
- * polled), then by `next_check_at`. Returns up to `cap + 1` so the caller can
- * detect a capped sweep.
- *
- * Single source of truth shared by the operator "Tracking" button
- * (/api/receiving-lines/incoming/refresh) and the incoming-tracking cron.
- *
- * When Universal Incoming is on (or always for eBay-source cartons), eBay-linked
- * STNs are included alongside Zoho PO lines.
- */
+/** The shipments backing the Incoming receiving table — the tracking#s an operator actually sees, NOT every active shipment. */
 export async function selectIncomingShipmentIds(
   cap: number,
   orgId?: OrgId,
 ): Promise<IncomingShipmentRef[]> {
-  // Tenant-scoped path: route through tenantQuery + GUC and add explicit
-  // org predicates on the org-bearing parents (`rl`, `r`). The two
-  // org-less tables here are reached only via those scoped parents:
-  //   - zoho_po_mirror (NEEDS-COL): LEFT JOIN purely to read mirror.status,
-  //     anchored on the org-filtered `rl` row;
-  //   - shipping_tracking_numbers (NEEDS-COL): integer surrogate-PK join
-  //     `stn.id = r.shipment_id` off the org-filtered `r` LATERAL.
-  // So no mirror/stn org column exists to filter on (both listed in
-  // needsColTables); GUC-wrapping + parent predicates is the scoping.
+  // Tenant-scoped path:
   if (orgId) {
     const universal = await isIncomingUniversal(orgId);
     const lineScope = universal

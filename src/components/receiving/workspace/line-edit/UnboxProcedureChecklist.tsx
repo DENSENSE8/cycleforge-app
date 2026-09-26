@@ -1,42 +1,6 @@
 'use client';
 
-/**
- * The Unbox checklist — the live "where am I" display, on the right edge.
- *
- * Mounted as the `checklist` display in the right-edge Displays push column.
- * Open from the Displays Root Index — never a floor % ring. It is the station's
- * live "where am I": the operator's first question on every carton is what is
- * left on it.
- *
- * ## It is a second VIEW, not a second derivation
- *
- * The centre renders the same procedure as work cards
- * ({@link UnboxProcedureDeck}). Both read {@link useUnboxProcedureSteps}, so
- * there is exactly one answer to "is this step done" and the two cannot drift.
- * The rule this replaced ("exactly ONE procedure surface in Unbox") was aimed at
- * a real hazard and named the wrong thing: the danger was two derivations, not
- * two views. Two views on opposite edges answering different questions — *what
- * now* versus *where am I* — is what a bench actually needs, and it is why this
- * display came back.
- *
- * ## Live is the requirement, not a nicety
- *
- * At a scan station the operator's hands are on the product, not the mouse. This
- * is what tells them the scan landed — including a shot taken on the PHONE,
- * which is the case a focus-refetch would never show while they are looking at
- * the box. The realtime subscription lives in the shared hook so both surfaces
- * get it, and neither can be the stale one.
- *
- * ## What it replaced, and why
- *
- * Until 2026-08-01 this tab was a hand-ticked, org-editable list: a GLOBAL
- * `checklist_templates` definition managers edited through `/api/checklists`,
- * with the tick state per line in `localStorage`. It asked the operator to
- * re-state, by hand, facts the carton already knows — a box was ticked because
- * someone remembered to tick it, not because the photo existed. Steps derive
- * from the carton's own evidence now, so a step is done when the WORK is done.
- * Nothing is ticked by hand, so nothing can be ticked falsely.
- */
+/** The Unbox checklist — the live "where am I" display, on the right edge. */
 
 import { ProcedureChecklist } from '@/design-system/components/procedure';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
@@ -52,13 +16,7 @@ type UnboxProcedureChecklistProps = {
   maxVisibleRows?: number;
 };
 
-/**
- * Placeholder at the real geometry while the photo counts hydrate.
- *
- * The vocabulary resolves synchronously from the row, so the row COUNT is known
- * before any state is — reserve exactly that many rows rather than collapsing to
- * a spinner and pushing the column's content down on settle.
- */
+/** Placeholder at the real geometry while the photo counts hydrate. */
 function ProcedureSkeleton({ rows }: { rows: number }) {
   return (
     <div className="flex flex-col divide-y divide-border-hairline" aria-hidden>
@@ -111,10 +69,7 @@ export function UnboxProcedureChecklist({
       {/* Gate on settled evidence: un-hydrated zeros read as "nothing shot",
           which would mark the wrong step active for a beat and then jump. */}
       {settled ? (
-        // Clicking a row moves the CENTRE's pointer to that step — the checklist
-        // is the map, the cards are the work, and the map is how you navigate.
-        // Drag-handle reorder writes org SOP for this named flow so deck + rail
-        // stay on one resolver override.
+        // Clicking a row moves the CENTRE's pointer to that step — the checklist is the map, the cards are the work, and the map is how you navigate.
         <ProcedureChecklist
           steps={steps}
           activeKey={activeKey}

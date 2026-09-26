@@ -8,22 +8,6 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { resolveShipmentOrgId } from './resolve-shipment-org';
 
 // ─── Tenancy note ─────────────────────────────────────────────────────────────
-//
-// `shipping_tracking_numbers` and `shipment_tracking_events` are both classified
-// `tenant-owned-NEEDS-COL` in docs/tenancy/org-id-coverage.generated.md — neither
-// carries an `organization_id` column, and within this module there is no
-// org-bearing parent table to JOIN against (the tracking-number ↔ order linkage
-// lives in `order_shipment_links`, not reachable from these raw lookups). Per the
-// tenant-isolation pattern rule (6), these helpers can therefore only be
-// GUC-wrapped when an orgId is threaded through: we route through
-// withTenantConnection / withTenantTransaction (which set `app.current_org` via
-// SET LOCAL) so the GUC is in place for RLS once the columns exist, but we cannot
-// add explicit `organization_id = $n` predicates or stamps yet. Until the columns
-// land, the GUC-wrapped path runs byte-identical SQL to the raw-pool path; the
-// only difference is the executor (tenant pool + transaction-scoped GUC). When
-// orgId is omitted, behavior is byte-identical to the original raw-pool path so
-// the many un-migrated callers keep compiling and behaving as today.
-// → NEEDS-COL: shipping_tracking_numbers, shipment_tracking_events.
 
 // ─── Upsert shipment master record ───────────────────────────────────────────
 
@@ -34,15 +18,7 @@ export async function upsertShipment(params: {
   sourceSystem?: string | null;
   carrierAccountRef?: string | null;
 }, orgId?: OrgId): Promise<ShipmentRow> {
-  // shipping_tracking_numbers.organization_id exists (2026-06-14, NULLABLE) but is
-  // a GLOBAL natural key on tracking_number_normalized — one row per physical
-  // package that orders/receiving/fba all link to. We do NOT re-scope the unique
-  // per-org (that needs a product decision + every session-less writer threaded;
-  // see 2026-06-14_org_id_phase_b_needs_col_2.sql). What we CAN do safely, and
-  // what unblocks an eventual per-org re-scope + FORCE RLS, is stamp the column:
-  // when orgId is threaded we set it explicitly on INSERT and HEAL it on conflict
-  // (COALESCE keeps a non-null existing value, fills a NULL one). Omitted orgId →
-  // byte-identical raw-pool path so un-migrated session-less callers are unchanged.
+  // shipping_tracking_numbers.organization_id exists (2026-06-14, NULLABLE) but is a GLOBAL natural key on tracking_number_normalized — one…
   if (orgId) {
     const sql = `INSERT INTO shipping_tracking_numbers
            (tracking_number_raw, tracking_number_normalized, carrier, source_system, carrier_account_ref, next_check_at, organization_id)
@@ -110,14 +86,7 @@ export async function healShipmentOrganizationId(
   );
 }
 
-/**
- * Heal-by-tracking for the ON CONFLICT collision case: a tenant-role INSERT
- * whose unique key collides with a legacy NULL-org row that the pre-check
- * SELECT could not see (FORCE RLS) fails the DO UPDATE branch with 42501.
- * Resolves + stamps the invisible row on the owner pool (BYPASSRLS) in one
- * statement. Returns the healed row id, or null when no invisible row holds
- * this tracking (the 42501 then means something else — rethrow).
- */
+/** Heal-by-tracking for the ON CONFLICT collision case: */
 export async function healShipmentOrganizationIdByTracking(
   trackingNormalized: string,
   orgId: OrgId,
@@ -159,14 +128,7 @@ export async function getShipmentByTracking(
   trackingNumberNormalized: string,
   orgId?: OrgId,
 ): Promise<ShipmentRow | null> {
-  // shipping_tracking_numbers.organization_id now exists (NULLABLE during the
-  // Phase-B transition). When an orgId is threaded, scope the match to that org
-  // so two tenants that happen to share a tracking number can never resolve to
-  // each other's row — the match stays UNIQUE per org. We also still accept an
-  // as-yet-unstamped (NULL-org) row so the transition is seamless, and prefer an
-  // exact-org match over a NULL-org one (ORDER BY + LIMIT 1) for determinism.
-  // The returned row carries organization_id so callers can pin their downstream
-  // writes to the row's real owner. Omitted orgId → byte-identical raw-pool path.
+  // shipping_tracking_numbers.organization_id now exists (NULLABLE during the Phase-B transition).
   if (orgId) {
     const sql = `SELECT * FROM shipping_tracking_numbers
        WHERE tracking_number_normalized = $1
@@ -276,10 +238,7 @@ export async function upsertTrackingEvents(
 ): Promise<number> {
   if (events.length === 0) return 0;
 
-  // shipment_tracking_events.organization_id is derived from its PARENT tracking
-  // row (an event definitionally belongs to its STN's org) — so every write is
-  // correctly org-stamped even on the session-less carrier-sync path, with no
-  // webhook org-resolution needed. This is what lets the table be FORCEd.
+  // shipment_tracking_events.organization_id is derived from its PARENT tracking row (an event definitionally belongs to its STN's org) — so…
   const run = async (client: PoolClient): Promise<number> => {
     let inserted = 0;
     for (const ev of events) {
@@ -350,15 +309,7 @@ export async function updateShipmentSummary(
   const run = async (client: PoolClient): Promise<void> => {
     const status = result.latestStatusCategory;
 
-    // ─── A1: derive milestones from the append-only event log, not the
-    // latest snapshot. Callers (poll + every webhook) upsert events *before*
-    // calling this, so the log is authoritative and immune to out-of-order /
-    // late-arriving events that leave `latest_status_category` on an in-transit
-    // value even though a DELIVERED scan exists. Each milestone is the carrier's
-    // own scan instant for that category (first for label / accepted / in
-    // transit / delivered, latest for out-for-delivery / exception) — never the
-    // time this sync happened to run. `now()` survives only as the fallback
-    // when the snapshot shows a status the log has no timed event for.
+    // ─── A1: derive milestones from the append-only event log, not the latest snapshot.
     const logAgg = await client.query<{
       has_delivered: boolean | null;
       first_delivered_at: string | null;
@@ -391,13 +342,7 @@ export async function updateShipmentSummary(
     const deliveredNow = deliveredFromLog || status === 'DELIVERED' || result.deliveredAt != null;
     // Terminal is sticky: delivered (now or previously) or a fresh RETURNED.
     const isTerminal = deliveredNow || status === 'RETURNED';
-    // A5 coherence: `latest_status_category` is what every desk FILTERS and
-    // PAINTS on, so it has to agree with the delivered truth A1 just derived.
-    // Writing the snapshot verbatim left 29 delivered packages categorized
-    // OUT_FOR_DELIVERY forever — terminal (so the stall rule skipped them),
-    // absent from the Delivered lane, and painting "Out for delivery" a month
-    // after the doorstep scan. RETURNED is its own terminal outcome and keeps
-    // its own word.
+    // A5 coherence:
     const storedStatus = deliveredNow && status !== 'RETURNED' ? 'DELIVERED' : status;
     const nextCheck = isTerminal ? null : computeNextCheckAt(status, 0);
 
@@ -528,12 +473,7 @@ export async function updateShipmentError(
   carrier?: CarrierCode | string | null,
   orgId?: OrgId,
 ): Promise<void> {
-  // C1/C2: an auth/access-control rejection (USPS 403 IP-Agreement gate, or a
-  // carrier that keeps returning 401/403) is not a transient error — polling
-  // can't fix it. Record a distinct `tracking_blocked_reason` so the UI can
-  // show TRACKING_UNAVAILABLE instead of leaving the shipment silently stuck
-  // pre-delivered, and push next_check_at ~24h out so we stop burning the
-  // (e.g. USPS 60/hr) quota re-failing until access clears.
+  // C1/C2: an auth/access-control rejection (USPS 403 IP-Agreement gate, or a carrier that keeps returning 401/403) is not a transient error…
   const isAccessBlocked = errorCode === 'ACCESS_CONTROL' || errorCode === 'AUTH_ERROR';
   const blockedReason = isAccessBlocked
     ? `${(carrier ?? 'CARRIER')}_ACCESS_CONTROL`
@@ -568,12 +508,6 @@ export async function updateShipmentError(
 }
 
 // ─── Carrier webhook subscription state ──────────────────────────────────────
-//
-// Carriers push near-real-time track events only for tracking numbers
-// associated to our webhook project / destination. These helpers feed the
-// subscribe-<carrier> crons, which associate pending shipments and (for FedEx's
-// async model) reconcile the resulting jobs to COMPLETED. Carrier-agnostic:
-// pass 'FEDEX' or 'UPS'.
 
 export interface PendingSubscriptionRow {
   id: number;
@@ -652,13 +586,7 @@ export async function markSubscriptionResult(
   }
 }
 
-/**
- * Active shipments whose subscription COMPLETED but is older than `ttlDays` —
- * i.e. due for renewal. Carriers expire subscriptions (USPS in particular), so
- * re-subscribing before TTL keeps push alive. Returns [] when ttlDays <= 0
- * (renewal disabled). Not index-backed (COMPLETED rows are excluded from the
- * pending index), but the carrier + is_terminal + LIMIT keep it bounded.
- */
+/** Active shipments whose subscription COMPLETED but is older than `ttlDays` — i.e. */
 export async function getShipmentsForSubscriptionRenewal(
   carrier: CarrierCode,
   ttlDays: number,

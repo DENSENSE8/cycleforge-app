@@ -1,13 +1,4 @@
-/**
- * POST /api/receiving/[id]/acknowledge-unbox
- *
- * Set-once "Unboxed" acknowledgement for a CARTON that has no receiving_line
- * rows yet (an unmatched / lineless carton — "PO ITEMS · 0"). The line-scoped
- * condition PATCH routes stamp the milestone via a line's receiving_id, but a
- * lineless carton has no line to hang that on, so its "operator opened & graded
- * it" acknowledgement comes through here. Idempotent: `acknowledgeUnbox` →
- * `upsertReceivingUnbox` is COALESCE-once, so repeated calls never re-stamp.
- */
+/** POST /api/receiving/[id]/acknowledge-unbox */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

@@ -1,18 +1,4 @@
-/**
- * POST /api/admin/staff/invite  (SOFT-DEPRECATED)
- *
- * Legacy PIN-enrollment invite: creates a pending staff row + enrollment token,
- * emails a link to set a PIN (/m/enroll/[token]). Superseded by the identity
- * invitation flow (`/api/org/invitations` → `/api/auth/invitation/accept`),
- * which provisions an account + membership and defaults the new member to the
- * password path (org-login-gate wave 6.3). New admin "Invite" UI should call the
- * identity flow; this endpoint stays only for backward compatibility and logs a
- * deprecation warning on every call.
- *
- * Body: { name, role, email }
- *
- * Gated by admin.manage_staff and tenant-scoped via ctx.organizationId.
- */
+/** POST /api/admin/staff/invite (SOFT-DEPRECATED) */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -73,10 +59,7 @@ export const POST = withAuth(async (req, ctx) => {
     );
     const id = staffRes.rows[0]!.id;
 
-    // Assign the matching role in `staff_roles` — effective permissions are
-    // resolved from this junction, not the `staff.role` column. Without it the
-    // invited staff would enroll into an account with zero permissions and 403
-    // on every gated route.
+    // Assign the matching role in `staff_roles` — effective permissions are resolved from this junction, not the `staff.role` column.
     await client.query(
       `INSERT INTO staff_roles (staff_id, role_id, granted_at, granted_by)
        SELECT $1, r.id, NOW(), $3 FROM roles r WHERE r.key = $2

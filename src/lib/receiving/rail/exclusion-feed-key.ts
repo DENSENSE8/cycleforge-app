@@ -1,15 +1,4 @@
-/**
- * Maps a receiving rail (feed id + cache scope) to the staff_rail_exclusions
- * `feed_key` its dismiss/read-filter uses (universal-feed plan Phase 4).
- *
- * The two scan surfaces map 1:1 to the two receiving feed_keys. The `scanned`
- * feed backs the triage Prioritize rail (scope='triage'); the unbox Queue is the
- * separate `unboxQueue` feed. So `scanned` maps to triage under 'triage' scope,
- * and its else-branch is a defensive default (receiving_unbox). Feeds that never
- * host a dismiss return null.
- *
- * Pure — unit-tested without the client.
- */
+/** Maps a receiving rail (feed id + cache scope) to the staff_rail_exclusions `feed_key` its dismiss/read-filter uses (universal-feed plan… */
 
 import type { ReceivingRailFeedId } from './feeds';
 import type { ReceivingRailFeedKey } from '@/lib/receiving/rail-exclusions';

@@ -1,22 +1,4 @@
-/**
- * The **task desk** store — the read path for thrown `FOLLOW_UP` tasks, plus
- * the single-row patch that re-reads through it.
- *
- * Callers: GET /api/tasks, PATCH /api/tasks/[id], and (through those) the
- * desk, the `/m` face and the reports tab.
- *
- * ## Why the patch lives beside the reader
- * A PATCH must answer with the SAME row shape the list paints, or the desk
- * has two view models of one table and they drift the first time a join is
- * added. So the update re-reads through {@link listTaskDeskRows} on its own
- * transaction connection: one SELECT, one mapper, one shape.
- *
- * ## Tenancy
- * Every statement runs through the GUC wrappers in `@/lib/tenancy/db`, and
- * `orgId` comes from the route's auth context — never from a body or query
- * string. The deps seam exists so the unit tests run DB-free (house pattern,
- * see `src/lib/user-issues/issues.ts`).
- */
+/** The **task desk** store — the read path for thrown `FOLLOW_UP` tasks, plus the single-row patch that re-reads through it. */
 
 import { TASK_ASSIGNEES_MAX, TASK_STAFF_ID_MAX } from './create-task-core';
 import {
@@ -115,15 +97,7 @@ interface TaskDeskSqlRow {
   doc_count: unknown;
 }
 
-/**
- * ONE statement. The lead and thrower `staff` joins retain the legacy faces;
- * an org-scoped LATERAL aggregates members without multiplying assignment
- * rows. The `support_tickets` join reads paired ticket local caches. Other
- * LATERALs enrich links, photo count + cover, ready videos, media links and
- * documents — each scoped to this assignment and its organization.
- * A photo / video attached by URL counts beside the uploaded ones, so the
- * row's PHOTO n / VIDEO n is every photo / video the task carries.
- */
+/** ONE statement. */
 const TASK_DESK_SQL = `
   SELECT wa.id,
          wa.entity_type::text        AS entity_type,
@@ -303,12 +277,7 @@ function linkFaces(value: unknown): TaskLinkFace[] {
   return faces;
 }
 
-/**
- * A staffer with no readable `staff` row (deleted mid-org-move, or a row that
- * outlived its tenant) still has an id, and the desk must not silently drop
- * the "who". The placeholder is deliberately machine-looking so it reads as
- * the anomaly it is rather than as a person's name.
- */
+/** A staffer with no readable `staff` row (deleted mid-org-move, or a row that outlived its tenant) still has an id, and the desk must not… */
 function person(id: unknown, name: unknown): TaskDeskPerson | null {
   const staffId = toIntOrNull(id);
   if (staffId == null) return null;
@@ -342,12 +311,7 @@ function ticket(row: TaskDeskSqlRow): TaskDeskTicket | null {
   };
 }
 
-/**
- * `null` when the stored `work_entity_type_enum` label is not in the task
- * vocabulary. Such a row is dropped rather than emitted with a guessed
- * `entityType`: the desk's "open the record" href is derived from it, and a
- * wrong href is worse than an absent row.
- */
+/** `null` when the stored `work_entity_type_enum` label is not in the task vocabulary. */
 function mapRow(raw: Record<string, unknown>): TaskDeskWireRow | null {
   const row = raw as unknown as TaskDeskSqlRow;
   // NULL anchor = a standalone task (2026-09-25f). A NON-null label outside
@@ -418,10 +382,7 @@ export async function listTaskDeskRows(
   const { atMost, above } = priorityBounds(opts.urgency ?? null);
   const q = opts.q?.trim() || null;
 
-  // A SEARCH IS NOT A PAGE. `limit` is the display window a caller asked for;
-  // honouring it while `q` narrows would answer "no match" for a task sitting
-  // one row past the bound — a bounded search is the same lie one layer down.
-  // A searching read opens to the desk's ceiling instead.
+  // A SEARCH IS NOT A PAGE.
   const result = await deps.query(orgId, TASK_DESK_SQL, [
     orgId,
     taskEntityEnum('support_ticket'),
@@ -480,14 +441,7 @@ export type PatchTaskDeskResult =
     }
   | { ok: false; reason: 'not_found' | 'illegal_transition' | 'invalid_assignee'; detail?: string };
 
-/**
- * CANCELED is terminal and everything else is reversible.
- *
- * A withdrawn task is not re-driven — the operator throws a new one, so the
- * record of what was abandoned stays honest. Every other status can be walked
- * back (including DONE → IN_PROGRESS, the "that wasn't finished" case), which
- * is why this is one rule rather than a 5×5 table nobody can keep true.
- */
+/** CANCELED is terminal and everything else is reversible. */
 export function isTaskDeskTransitionAllowed(from: TaskDeskStatus, to: TaskDeskStatus): boolean {
   return from !== 'CANCELED' || to === 'CANCELED';
 }
@@ -536,13 +490,7 @@ function patchAssignments(
   return set;
 }
 
-/**
- * Tenant-scoped single-row patch, on a connection the caller already scoped
- * (see `patchTaskDeskRow` in `list-tasks-db.ts`). Reads the current status
- * under `FOR UPDATE` so a concurrent cancel cannot be overwritten, then
- * re-reads the joined row through {@link listTaskDeskRows} on that same
- * connection — one SELECT, one mapper, one row shape.
- */
+/** Tenant-scoped single-row patch, on a connection the caller already scoped (see `patchTaskDeskRow` in `list-tasks-db.ts`). */
 export async function patchTaskDeskRowInTx(
   orgId: OrgId,
   taskId: number,

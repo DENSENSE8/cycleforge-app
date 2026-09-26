@@ -10,20 +10,7 @@ import type { RefreshDomain } from '@/lib/refresh/domains';
 /** Stable empty tuple so a feed without domains keeps a constant subscription key. */
 const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 
-/**
- * Behavior half of the capture stack — the windowing, bottom-anchored
- * auto-scroll, and fresh-row pulse that {@link CaptureStack} renders against.
- * Bottom-anchoring lives across both files; they move and change as one unit.
- *
- * Two layers:
- *   - useCaptureStackWindow(rows) → pure view: window to last N, order, scroll, pulse.
- *   - useCaptureStackQuery(opts)  → TanStack Query + realtime wiring (data feeds).
- *
- * Scan/Receive feed local component state straight into useCaptureStackWindow;
- * the query-backed feeds (Receiving, Packing, Picks) pull through
- * useCaptureStackQuery first. Promoted verbatim from
- * `components/mobile/feed/useMobileFeed` in capture-stack Phase 1.
- */
+/** Behavior half of the capture stack — the windowing, bottom-anchored auto-scroll, and fresh-row pulse that {@link CaptureStack} renders… */
 
 type FeedId = string | number;
 
@@ -130,13 +117,7 @@ export interface CaptureStackQueryOptions<T> {
   queryFn: () => Promise<T[]>;
   /** ms before a cached result is considered stale (default 20s — snappy tab switches). */
   staleTime?: number;
-  /**
-   * Forwarded to TanStack Query. Default (undefined → `true`) refetches on mount
-   * only when stale. Pass `'always'` for feeds whose capture flow navigates to a
-   * separate route and back — the realtime push fires while this list is
-   * unmounted, so a guaranteed remount refetch is the reconciliation path
-   * (e.g. /m/receiving's photo `×N` badge).
-   */
+  /** Forwarded to TanStack Query. */
   refetchOnMount?: boolean | 'always';
   enabled?: boolean;
   realtime?: {
@@ -162,12 +143,7 @@ export interface CaptureStackQuery<T> {
   refetch: () => void;
 }
 
-/**
- * Query-backed feed source: TanStack Query (cached, so back-navigation is
- * instant) plus the realtime fan-in each feed needs. Returns a plain array.
- * Surfaces `isError` so a failed fetch is never painted as an honest empty
- * queue (H1 premium-parity Phase B).
- */
+/** Query-backed feed source: */
 export function useCaptureStackQuery<T>(opts: CaptureStackQueryOptions<T>): CaptureStackQuery<T> {
   const { queryKey, queryFn, staleTime = 20_000, refetchOnMount, enabled = true, realtime } = opts;
   const queryClient = useQueryClient();

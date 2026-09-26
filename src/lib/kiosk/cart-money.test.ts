@@ -1,12 +1,6 @@
 /**
  * cartMoneySplit — when a walk-in visit's money is due.
- *
  * Operator 2026-09-15: *"a repair service on drop off never takes money off, it
- * just prints out a receipt."* What this defends is that rule and its two
- * consequences: a service-only visit offers no Pay key at all, and a MIXED
- * visit stays one staged header with two stated numbers.
- *
- *   npx tsx --test src/lib/kiosk/cart-money.test.ts
  */
 
 import test from 'node:test';

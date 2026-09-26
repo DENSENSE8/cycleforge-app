@@ -1,15 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-// ─── Tenancy note ────────────────────────────────────────────────────────────
-// `suppliers` is tenant-owned with `organization_id NOT NULL` + RLS FORCE + a
-// tenant_isolation policy (live catalog, docs/tenancy/org-id-coverage.generated.md).
-// Every statement runs via `tenantQuery`/`withTenantTransaction` so it executes
-// under the per-request `app.current_org` GUC — RLS is the primary enforcement.
-// The by-id read/update/delete ALSO carry an explicit `organization_id = $org`
-// predicate (defense-in-depth) so a cross-org id is a no-op even if a future
-// caller runs on the BYPASSRLS owner pool. INSERTs auto-stamp org from the GUC
-// (loud-fail default). Callers must thread the request's orgId.
+// ─── Tenancy note ──────────────────────────────────────────────────────────── `suppliers` is tenant-owned with `organization_id NOT…
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -72,12 +64,7 @@ export interface SupplierWithStatsRow extends SupplierRow {
   last_ordered_at: string | null;
 }
 
-/**
- * Supplier list enriched with their sourcing activity — candidate count, number
- * of acquisitions, total spend (acquisition + shipping), and last order date.
- * Powers the read-only Suppliers rollup in the sourcing hub. Aggregates are
- * computed in two grouped sub-selects (no per-row N+1).
- */
+/** Supplier list enriched with their sourcing activity — candidate count, number of acquisitions, total spend (acquisition + shipping), and… */
 export async function getSupplierListWithStats(params: {
   q?: string;
   type?: string | null;
@@ -188,12 +175,7 @@ export async function createSupplier(params: {
   return result.rows[0];
 }
 
-/**
- * Find-or-create a supplier for an eBay seller. The partial unique index on
- * ebay_seller_id (WHERE NOT NULL) makes this safe under concurrent imports:
- * the INSERT ... ON CONFLICT reactivates / returns the existing seller row.
- * Returns { supplier, created }.
- */
+/** Find-or-create a supplier for an eBay seller. */
 export async function upsertEbaySupplier(params: {
   ebaySellerId: string;
   name?: string | null;

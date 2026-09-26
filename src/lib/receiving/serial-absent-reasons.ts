@@ -1,22 +1,8 @@
-/**
- * Built-in display registry + bootstrap fallback for the `serial_absent_reason`
- * Class-D vocabulary — *why* a received unit was committed with no serial number.
- *
- * The per-org source of truth is `reason_codes` (flow_context =
- * 'serial_absent_reason'); see the seed migration + `seedOrgCatalog`. This module
- * carries the display metadata (labels + operator hints) and is the fallback the
- * picker renders until that vocabulary is seeded — exactly the merge pattern used
- * by `mergeSubstitutionReasons` (src/lib/fulfillment/substitution-reasons.ts).
- */
+/** Built-in display registry + bootstrap fallback for the `serial_absent_reason` Class-D vocabulary — *why* a received unit was committed… */
 
 export const SERIAL_ABSENT_REASON_FLOW = 'serial_absent_reason' as const;
 
-/**
- * `routine` = an expected, non-alarming reason a unit class simply has no serial
- * (cables, bulk). `anomaly` = a serial *should* exist but is unusable, which is
- * worth flagging. The picker derives its tone from this so color carries meaning:
- * routine reads calm/neutral, anomaly reads as a caution.
- */
+/** `routine` = an expected, non-alarming reason a unit class simply has no serial (cables, bulk). */
 export type SerialAbsentSeverity = 'routine' | 'anomaly';
 
 export interface SerialAbsentReasonMeta {

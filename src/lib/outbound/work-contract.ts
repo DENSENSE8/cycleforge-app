@@ -2,13 +2,7 @@ import { z } from 'zod';
 
 export const MAX_OUTBOUND_WORK_PAGE_SIZE = 100;
 
-/**
- * §3 saved work views. Membership is a server rule: `work-projection.ts`
- * computes each row's memberships once in SQL, filters the page by the
- * requested view and returns the same memberships on the row. A client that
- * recomputed membership would be a second authority over lifecycle state,
- * which §2.1 forbids.
- */
+/** §3 saved work views. */
 export const OUTBOUND_SAVED_VIEW_IDS = ['all', 'triage', 'ready', 'pending', 'at-risk', 'ship-now', 'exceptions', 'completed'] as const;
 export const outboundSavedViewIdSchema = z.enum(OUTBOUND_SAVED_VIEW_IDS);
 export type OutboundSavedViewId = z.infer<typeof outboundSavedViewIdSchema>;
@@ -65,12 +59,7 @@ export const OUTBOUND_FULFILLMENT_ROUTES = ['PICK', 'QC'] as const;
 export const outboundFulfillmentRouteSchema = z.enum(OUTBOUND_FULFILLMENT_ROUTES);
 export type OutboundFulfillmentRoute = z.infer<typeof outboundFulfillmentRouteSchema>;
 
-/**
- * The server-produced next permitted action (§3). `command` is non-null only
- * for a mutation this V1 already authorizes; the server re-checks eligibility
- * when it is invoked. Every other kind is a read/routing intent, never a
- * client-side lifecycle decision.
- */
+/** The server-produced next permitted action (§3). */
 export const OUTBOUND_NEXT_ACTION_KINDS = ['START_PICK', 'CONTINUE_FULFILLMENT', 'APPLY_LABEL', 'RESOLVE_EXCEPTION', 'VIEW_RECEIPT'] as const;
 export const outboundNextActionKindSchema = z.enum(OUTBOUND_NEXT_ACTION_KINDS);
 export type OutboundNextActionKind = z.infer<typeof outboundNextActionKindSchema>;
@@ -127,12 +116,7 @@ export const outboundWorkItemSchema = z.object({
   }).strict(),
   /** Units of this SKU in the org: `ready` = STOCKED or TESTED, `received` = RECEIVED (not yet tested). */
   stock: z.object({ ready: z.number().int(), received: z.number().int() }).strict(),
-  /**
-   * The order's ONE live shipping label (either/or: a ShipStation purchase or
-   * a hand-bought marketplace label upload). `live` = a shipping_label
-   * document or a linked shipment exists; the acknowledge command refuses
-   * without one. Same definition as `readLiveOrderLabel`.
-   */
+  /** The order's ONE live shipping label (either/or: */
   shippingLabel: z.object({
     live: z.boolean(),
     documentId: z.number().int().nullable(),
@@ -141,23 +125,12 @@ export const outboundWorkItemSchema = z.object({
     carrier: z.string().nullable(),
     shipstationLabelId: z.string().nullable(),
   }).strict(),
-  /**
-   * Server-derived DISPLAY revision: the latest of the order's own timestamps
-   * and of its allocated units. It is deliberately NOT an optimistic-
-   * concurrency token — a timestamp collides at its own resolution and cannot
-   * see a column outside that set. §2.3's `expectedRowVersions` needs a real
-   * version column or event sequence before bulk commands rely on it (V1.3).
-   */
+  /** Server-derived DISPLAY revision: */
   // `.describe()` (not just the doc-comment): z.toJSONSchema drops JS comments,
   // and a client reading only the published component must still be told this
   // value is not safe to send back as an expected version.
   rowVersion: z.string().describe('Display revision: the latest of the order and allocated-unit timestamps. NOT an optimistic-concurrency token — do not use it as an expected row version.'),
-  /**
-   * §2.3 optimistic-concurrency token: a server-computed SHA-256 digest of
-   * the material state this record was read in. Send it back with a command
-   * and the server refuses the entity if the state moved underneath the
-   * operator. Unlike `rowVersion` above, this IS safe to send back.
-   */
+  /** §2.3 optimistic-concurrency token: */
   fingerprint: z.string().regex(/^[0-9a-f]{64}$/).describe('Send this back as the expected fingerprint when invoking a command on this record. Digest (scheme outbound-work/v2) of the material state of the whole LOGICAL ORDER SET this record belongs to: warehouse stage, label state, latest ingestion id and row version, shipment, the set membership, and every active allocation with its unit status. A digest issued under a different scheme version is never accepted, so refresh after a server upgrade rather than replaying a stored token.'),
   /**
    * The already-authorized commands for this record. `nextAction.command` is
@@ -181,14 +154,7 @@ export const outboundWorkPageSchema = z.object({
 }).strict();
 export type OutboundWorkPage = z.infer<typeof outboundWorkPageSchema>;
 
-/**
- * Published response components, generated from the schemas above by Zod's
- * own JSON Schema emitter. Generating them is what keeps the published
- * contract and the runtime contract from drifting: a field added to
- * `outboundWorkItemSchema` appears here and in `OutboundWorkItem` at once.
- * The emitter's `$schema` key is dropped: an OpenAPI component carries the
- * document's dialect, not its own.
- */
+/** Published response components, generated from the schemas above by Zod's own JSON Schema emitter. */
 export function buildOutboundWorkComponents(): Record<string, unknown> {
   const { $schema: _itemDialect, ...item } = z.toJSONSchema(outboundWorkItemSchema, { target: 'draft-2020-12' });
   const { $schema: _pageDialect, ...page } = z.toJSONSchema(outboundWorkPageSchema, { target: 'draft-2020-12' });

@@ -2,27 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/product-manuals/rename-folder
- *
- * Folders are derived from the `folder_path` string on each row — there's no
- * folders table. So renaming or moving a folder = rewriting that prefix on
- * every row inside it (and its descendants).
- *
- * Body: { oldPath: 'Sound/Touch', newPath: 'Audio/Touch' }
- *
- * Two batched updates in a transaction:
- *   1. exact-match rows (`folder_path = oldPath`) → set to newPath
- *   2. descendant rows (`folder_path LIKE oldPath || '/%'`) → replace the
- *      prefix, preserve the rest of the path
- *
- * Why a single SQL helper instead of pulling rows + rewriting in JS: the
- * library can have thousands of files in a deep folder and we don't want
- * to round-trip each row. Both UPDATEs are parameterized so caller-supplied
- * paths can't break out of the query.
- *
- * Returns the number of rows touched so the UI can show a toast.
- */
+/** POST /api/product-manuals/rename-folder */
 export const POST = withAuth(
   async (request, ctx) => {
     const orgId = ctx.organizationId;
@@ -55,14 +35,7 @@ export const POST = withAuth(
     }
 
     try {
-      // product_manuals has NO organization_id column and NO RLS policy, so a
-      // bare GUC wrap provides ZERO isolation — folder_path strings are not
-      // org-namespaced, so org A renaming 'Sound/Touch' would rewrite EVERY
-      // tenant's matching rows. Scope both UPDATEs through the org-bearing
-      // sku_catalog parent (sku_catalog_id → sku_catalog.organization_id).
-      // NEEDS-COL: NULL-parent (unpaired) manuals are unattributable to any
-      // org and are intentionally excluded until product_manuals gains its
-      // own organization_id column.
+      // product_manuals has NO organization_id column and NO RLS policy, so a bare GUC wrap provides ZERO isolation — folder_path strings are…
       const { exact, descendants } = await withTenantTransaction(orgId, async (client) => {
         const exact = await client.query(
           `UPDATE product_manuals

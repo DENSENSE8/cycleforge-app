@@ -1,20 +1,4 @@
-/**
- * Shared "link an existing Zendesk ticket" candidate resolution.
- *
- * Every surface that links an EXISTING ticket to an internal entity (receiving
- * carton/line, warranty claim, …) needs the same three behaviours:
- *   • no query        → most recent tickets (newest first)
- *   • "#1234" / short bare id → direct id lookup (the manual-entry path)
- *   • carrier tracking / anything else → Zendesk search
- * …and the same "hide tickets already linked to a DIFFERENT entity" rule, with
- * a ticket linked to THIS entity flagged `linkedToThis` so the UI shows it as
- * done. Centralising it here keeps the receiving and warranty link routes from
- * drifting into parallel implementations (the manual-id path must behave
- * identically to a list pick on every surface).
- *
- * Id vs search is {@link resolveTicketLinkQueryKind} — 12-digit FedEx must not
- * call getTicket.
- */
+/** Shared "link an existing Zendesk ticket" candidate resolution. */
 import pool from '@/lib/db';
 import {
   getTicket,
@@ -45,16 +29,7 @@ export interface TicketLinkCandidate {
   anchoredElsewhere?: { type: string; id: number } | null;
 }
 
-/**
- * `anchor` — picking the ONE entity a ticket is about. Tickets anchored to a
- * different entity are hidden, because choosing one would re-anchor it.
- *
- * `reference` — attaching an ADDITIONAL entity (e.g. a second STN) to a ticket
- * that keeps its existing anchor. Nothing is hidden: a ticket already anchored to
- * a carton is a perfectly valid target for another shipment. Applying the anchor
- * rule here would hide exactly the tickets the operator is looking for, and the
- * "already linked to other items" copy would be a lie.
- */
+/** `anchor` — picking the ONE entity a ticket is about. */
 export type TicketLinkCandidateMode = 'anchor' | 'reference';
 
 export async function listTicketLinkCandidates(args: {
@@ -85,10 +60,7 @@ export async function listTicketLinkCandidates(args: {
   const ids = tickets.map((t) => t.id);
   const linkByTicket = new Map<number, { type: string; id: number }>();
   if (ids.length > 0) {
-    // `AND is_primary`: linkByTicket is a ticket → ONE entity map, but
-    // ticket_links is many-per-ticket now. Without the filter, a ticket holding
-    // extra reference rows (e.g. additional STNs) would set the map repeatedly
-    // and an arbitrary row would win, mislabelling which entity "owns" it.
+    // `AND is_primary`:
     const links = await pool.query<{ zendesk_ticket_id: string; entity_type: string; entity_id: string }>(
       `SELECT zendesk_ticket_id, entity_type, entity_id FROM ticket_links
         WHERE organization_id = $1 AND zendesk_ticket_id = ANY($2::bigint[]) AND is_primary`,

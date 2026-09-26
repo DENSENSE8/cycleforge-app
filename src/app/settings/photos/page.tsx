@@ -1,13 +1,7 @@
 import { StationNasFoldersTab } from '@/components/admin/StationNasFoldersTab';
 import { requirePermission } from '@/lib/auth/page-guard';
 
-/**
- * `/settings/photos` — Photos & NAS (ex-Admin › Receiving Photos; admin
- * dissolution). Per-device/org config: NAS endpoint, workflow storage folders,
- * station picker defaults, photos platform. The `?mode=` panel param rides
- * unchanged from the admin deep links via the redirect table in
- * `src/app/admin/page.tsx`.
- */
+/** `/settings/photos` — Photos & NAS (ex-Admin › Receiving Photos; admin dissolution). */
 export default async function PhotosSettingsPage({
   searchParams,
 }: {

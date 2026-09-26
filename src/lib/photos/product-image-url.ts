@@ -1,27 +1,6 @@
 /**
  * What a product LOOKS LIKE — one rule, Zoho first.
- *
  * Zoho Inventory is the SoT for a unit's photo (operator 2026-09-05). `items`
- * is the local Zoho mirror keyed by SKU; when its row carries an
- * `image_document_id` the bytes are already cached in `zoho_item_images` and
- * `/api/zoho/items/[id]/image` serves them tenant-scoped. `sku_catalog.image_url`
- * is the FALLBACK for SKUs Zoho has never seen — a catalog stock photo, not the
- * unit.
- *
- * This lived twice as a private function inside `/api/shipped/scan-out`, and
- * the Inventory › Stock feed needed the same answer. Two readers of one stated
- * rule is what an exported name is for: a third copy is how a desk ends up
- * showing the catalog stock photo where the station beside it shows the unit.
- *
- * NOT the same rule as `/api/get-title-by-sku`, which resolves across THREE
- * providers (Zoho ∪ Ecwid ∪ catalog) with a deliberate Zoho-wins-exclusively
- * precedence — that is a provider arbitration, and collapsing it into this
- * would change which image an Ecwid-only SKU shows.
- *
- * The LAST tier is the SKU's listing-gallery cover (`listing_photos`, see
- * `listing-photos.ts`). Marketplace media acquired by
- * `marketplace-media-backfill.ts` lands there, so an Amazon/eBay picture can
- * only paint a product that neither Zoho nor the catalog has a photo for.
  */
 import { photoContentUrl } from './display-url';
 

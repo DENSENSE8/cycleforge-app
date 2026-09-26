@@ -1,22 +1,4 @@
-/**
- * POST /api/beta/waitlist
- *
- * Lightweight, PUBLIC beta-waitlist capture for the marketing site
- * (CycleForge). No auth, no $50 deposit, no Stripe — just an email + a
- * "wants the video preview" interest flag. Upserts on lower(email) so a
- * repeat submit refreshes company/utm/wants_video instead of erroring.
- *
- * Cross-origin: the marketing site lives on a different origin, so this
- * route answers CORS preflight (OPTIONS) and stamps CORS headers on the
- * POST response. Allowed origin = MARKETING_ORIGIN (default
- * https://cycleforge.com) + http://localhost:3001 in dev.
- *
- * Body: { email, companyName?, source?, wantsVideo?, utm? }
- * Response: { ok: true }   (429 on rate limit, 400 on bad input)
- *
- * IP-throttled (~5 / 10 min) — mirrors /api/auth/signup. Public/pre-auth, so
- * IP-only via checkRateLimitAsync.
- */
+/** POST /api/beta/waitlist */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

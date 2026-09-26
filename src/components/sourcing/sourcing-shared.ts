@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Shared helpers for the dashboard Sourcing hub (Queue / Scout / Watchlist).
- * Mode is URL-driven (?mode=) so the sidebar and the right pane stay in sync.
- *
- * Hub IA (sourcing-hub-integration-plan.md §7):
- *   - Queue  (default, bare URL) — the prioritized demand list (alerts ++).
- *   - Scout  (?mode=scout)       — resolve a product/model → compatible parts → scour.
- *   - Watchlist (?mode=watchlist) — saved candidates across channels.
- * Legacy keys (`alerts` → queue, `lookup` → scout) are aliased so old links work.
- */
+/** Shared helpers for the dashboard Sourcing hub (Queue / Scout / Watchlist). */
 
 export type SourcingMode =
   | 'queue' | 'scout' | 'watchlist' | 'searches' | 'suppliers' | 'analytics'

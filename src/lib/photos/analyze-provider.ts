@@ -1,20 +1,4 @@
-/**
- * Per-org photo-analysis provider resolution (pure, DB-free).
- *
- * The provider that runs when a photo is enriched into `photo_analysis` is a
- * PER-ORG choice (`organizations.settings.photoAnalysis.provider`), so a tenant
- * with its own RTX 5070 Ti vision box keeps every photo on-prem while another
- * tenant can opt into cloud GCP Vision or the text-only Hermes inference.
- *
- * Resolution precedence (most specific wins):
- *   1. the org's explicit setting        (the owner picked it in the UI)
- *   2. the PHOTOS_ANALYZE_PROVIDER env    (deployment-wide default)
- *   3. 'local-vision'                     (the LOCAL-FIRST product default)
- *
- * Keeping this pure (it takes the already-parsed settings + raw env strings, not
- * a DB handle or process.env) is what lets analyze.ts stay unit-testable with
- * zero database.
- */
+/** Per-org photo-analysis provider resolution (pure, DB-free). */
 
 import type { PhotoAnalysisSettings } from '@/lib/tenancy/settings';
 

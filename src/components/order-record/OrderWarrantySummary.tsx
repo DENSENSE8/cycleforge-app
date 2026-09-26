@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * OrderWarrantySummary — order-scoped warranty card (coverage + claims + log).
- *
- * Compact (default) sits on the search facts rail and does not reprint order # /
- * customer / serial already on the record. Pane is the exclusive order-tab
- * density: clock facts + uncapped claims. Compose this — never a page-local twin.
- */
+/** OrderWarrantySummary — order-scoped warranty card (coverage + claims + log). */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';

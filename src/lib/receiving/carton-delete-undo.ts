@@ -1,10 +1,4 @@
-/**
- * Delayed carton hard-delete with an undo window (Gmail send-undo).
- *
- * `receiving_carton` DELETE is irreversible on the server, so the HTTP
- * commit waits {@link CARTON_DELETE_UNDO_MS}. Optimistic rail hide happens
- * immediately; Undo cancels the timer and restores the snapshot.
- */
+/** Delayed carton hard-delete with an undo window (Gmail send-undo). */
 
 export const CARTON_DELETE_UNDO_MS = 10_000;
 

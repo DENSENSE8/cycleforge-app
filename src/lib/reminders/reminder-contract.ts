@@ -1,30 +1,4 @@
-/**
- * **Reminders** — the one contract a task's "remind me" and a checklist item's
- * due time reach the phone apps through (SwiftUI iOS, native Android).
- *
- * ## Why a FEED and not a push today
- *
- * The native apps schedule LOCAL notifications (`UNUserNotificationCenter` on
- * iOS, `AlarmManager` + `NotificationManager` on Android) from this feed: the
- * reminder rings at its instant even with no signal on the warehouse floor,
- * and no APNs / FCM credential has to exist for it to work. A client re-reads
- * `GET /api/v1/reminders` on launch, on foreground and on the realtime inbox
- * nudge, then REPLACES every pending notification it scheduled whose `id` is
- * no longer in the feed — so a ticked checklist item or a finished task stops
- * ringing on the next sync.
- *
- * The same resolver (`listStaffReminders`) is what a server-side APNs / FCM
- * sender reads later; the feed is its contract, not a second model.
- *
- * ## Stable ids
- *
- * `task:<work_assignments.id>` and `checklist:<daily_check_items.id>:<YYYY-MM-DD>`.
- * A recurring checklist item rings once per civil day, so the day is part of
- * its identity; a task rings once, so its id alone is.
- *
- * Pure: zod + types only, so the route, the OpenAPI doc and the desk UI read
- * one declaration.
- */
+/** **Reminders** — the one contract a task's "remind me" and a checklist item's due time reach the phone apps through (SwiftUI iOS, native… */
 
 import { z } from 'zod';
 

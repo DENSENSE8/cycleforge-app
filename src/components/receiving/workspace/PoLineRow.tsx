@@ -60,12 +60,7 @@ interface Props {
    * first when inactive. Omit on surfaces without a Displays host.
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
-  /**
-   * Unbox dual loci: condition / serial meta click → focus that step in the
-   * dock (and select the line so the under-row mouse editor shows). When the
-   * serial handler is set it outranks {@link onViewAllUnits} for the serials
-   * cell.
-   */
+  /** Unbox dual loci: */
   onEditConditionInDock?: (line: ReceivingLineRow) => void;
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
   /**
@@ -74,20 +69,7 @@ interface Props {
    * / honest empty serial. Defaults true.
    */
   unitsChrome?: boolean;
-  /**
-   * Per-line capture body. Omit (the default) and the capture body is
-   * always mounted — which is what Testing / Arrival / the unmatched surface
-   * still want. Given, a collapsed line paints only its identity face and
-   * UNMOUNTS the body; state belongs to the list, not to this row, so it comes
-   * in from the host's {@link useLineCollapse}.
-   *
-   * Selecting the line expands capture. There is no per-row chevron —
-   * "Collapse all" on the Items band is the close.
-   *
-   * `onExpand` is separate from `onToggle` on purpose: selecting a line, or a
-   * scan landing on it, ASKS for the capture bar — it must never close a line
-   * that already has one.
-   */
+  /** Per-line capture body. */
   collapse?: {
     expanded: boolean;
     onToggle: () => void;
@@ -95,25 +77,7 @@ interface Props {
   } | null;
 }
 
-/**
- * One PO-item row — a thin adapter over the shared item face.
- *
- * The geometry, the five-track ledger and the last-8 identifier rule all live
- * in `design-system/components/item-record` now; this file is what makes that
- * face a RECEIVING row. It maps `ReceivingLineRow` onto the neutral
- * {@link ItemRecord} shape and supplies the behaviours the shared row has no
- * business knowing: arming the `po-line:` scan sink, dispatching
- * `receiving-select-line`, the scan-acknowledgement pulse, the unlink ⋮ menu
- * and the dock-focus handoffs.
- *
- * Note the shape of the cell affordances. The shared row does not take chip
- * NODES; it takes `{label, onClick}` and renders its own faces. That is
- * deliberate: a node slot would let this file paint a full SKU where /search
- * paints a last-8, and the ledger would stop being one ledger. Behaviour comes
- * from here, the face never does.
- *
- * Purely presentational — mutations up.
- */
+/** One PO-item row — a thin adapter over the shared item face. */
 export function PoLineRow({
   line,
   isActive,
@@ -180,12 +144,7 @@ export function PoLineRow({
     setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
   };
 
-  /**
-   * A door scan brings the WHOLE carton in, so a read-only (triage) row reads
-   * `1/1` — counted equals expected. That used to be a separate `ScannedBadge`
-   * component; it is the same claim expressed in the neutral shape, so the
-   * shared qty badge renders it without a second component to keep in sync.
-   */
+  /** A door scan brings the WHOLE carton in, so a read-only (triage) row reads `1/1` — counted equals expected. */
   const item: ItemRecord = {
     id: line.id,
     title: receivingWorkspaceLineTitle(line),
@@ -253,10 +212,7 @@ export function PoLineRow({
                 setActiveSinkId(`po-line:${line.id}`);
                 if (!isActive) dispatchSelectLine(line);
                 collapse?.onExpand();
-                // A FILLED serial edits in Units Displays for THIS line
-                // (promotes the sibling + opens the leaf). Never the
-                // controller-bound dock. A fresh line (no serial yet) arms the
-                // in-row/dock capture instead.
+                // A FILLED serial edits in Units Displays for THIS line (promotes the sibling + opens the leaf).
                 if (serialNumbers.length > 0 && onViewAllUnits) {
                   onViewAllUnits(line);
                   return;
@@ -289,15 +245,7 @@ export function PoLineRow({
           ) : null}
         </AnimatePresence>
       }
-      // Capture body is independent of row selectability. Found Unbox lines
-      // nest condition/serial here; the unfound empty stub is read-only on the
-      // face (no line to switch) but still mounts the same under-row capture
-      // so the row's floor hairline sits below both — not between them.
-      // Arrival (`unitsChrome={false}`) never mounts unit editors.
-      //
-      // Expanding the PO item (row select) opens this editor. There is no
-      // second chevron on the line — Collapse all on the Items band is the
-      // way back.
+      // Capture body is independent of row selectability.
       body={
         unitsChrome &&
         activeRowSlot &&

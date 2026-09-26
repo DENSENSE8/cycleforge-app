@@ -7,17 +7,7 @@ import {
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * GET /api/cycle-counts/campaigns?status=open
- *   List campaigns with progress counters.
- *
- * POST /api/cycle-counts/campaigns
- *   Create a new campaign + snapshot current bin_contents into cycle_count_lines.
- *   Body: { name, scope?, varianceTol?, staffId }
- *   scope.binIds?: number[]      — only count these bin ids
- *   scope.rooms?: string[]       — only count bins in these rooms
- *   scope.minAgeDays?: number    — only count rows not counted in N days
- */
+/** GET /api/cycle-counts/campaigns?status=open List campaigns with progress counters. */
 
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {

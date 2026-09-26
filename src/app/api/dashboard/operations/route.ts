@@ -19,32 +19,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       45,
       [CACHE_TAGS.orders, CACHE_TAGS.techLogs],
       async () => {
-    // $1 carries the tenant org id into every subquery below. The `created_at`
-    // column referenced in todayFilter belongs to station_activity_logs in
-    // every subquery that uses it, so adding the org predicate alongside it
-    // scopes those reads to this tenant. `yesterdayFilter` is gone with the
-    // deltas it fed (2026-09-16).
+    // $1 carries the tenant org id into every subquery below.
     const todayFilter = `(timezone('America/Los_Angeles', created_at))::date = (timezone('America/Los_Angeles', now()))::date`;
 
-    // ── Summary KPIs (today, PST — no comparison window) ─────────────────
-    // shipping_tracking_numbers has no organization_id column (NEEDS-COL); it
-    // is scoped via its parent `orders` row (joined on the integer surrogate
-    // PK stn.id = o.shipment_id) plus the GUC-wrapped tenantQuery connection.
-    /*
-     * NO `*_yesterday` columns and no `computeDelta` — both deleted 2026-09-16.
-     *
-     * The old delta divided TODAY-SO-FAR by ALL OF YESTERDAY, so at 9 AM every
-     * tile read structurally down ~70% and by evening it drifted back up: the
-     * chips measured the clock, not the floor. Operator: *"I cannot trust any
-     * of the information within the display."* Three of the six deltas were
-     * hardcoded `0` on top of that — a placeholder that rendered as a
-     * measurement.
-     *
-     * A comparable window (today-so-far vs same-time-yesterday) is a real
-     * feature and a bigger job than a chip. Until someone builds it, the tiles
-     * state their window in words (`PRIMARY_KPI_CARDS[].meta`) and claim no
-     * trend.
-     */
+    // ── Summary KPIs (today, PST — no comparison window) ───────────────── shipping_tracking_numbers has no organization_id column…
+    /* NO `*_yesterday` columns and no `computeDelta` — both deleted 2026-09-16. */
     const summaryQuery = `
       WITH pending_orders AS (
         SELECT o.id, o.is_out_of_stock

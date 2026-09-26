@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Resolve an unmatched pack scan — the open `orders_exceptions` row on a
- * package. Two decisions, one dialog:
- *
- * - **Link to an order** — search order lines (order #, tracking #, title)
- *   through the existing orders feed, pick the line this box belongs to.
- * - **Close** — no order will claim it (test scan, duplicate, re-label); a
- *   reason is required and lands on the exception row.
- *
- * Both post `POST /api/shipments/[id]/resolve-exception` through
- * {@link useResolveShipmentException}, which swaps the record in place and
- * refreshes the outbound feed. One `clientEventId` per intended decision, so a
- * double press or a retry replays instead of writing twice.
- */
+/** Resolve an unmatched pack scan — the open `orders_exceptions` row on a package. */
 
 import { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

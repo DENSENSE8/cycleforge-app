@@ -1,18 +1,4 @@
-/**
- * Webhook → org resolution (Wave 3).
- *
- * Resolution strategy:
- *
- *   1. PER-TENANT TOKEN. The delivery arrives at
- *      /api/zoho/webhooks/{token}. The token maps O(1) to exactly one org via
- *      the unique organization_integrations.webhook_token index, and yields that
- *      org's OWN signing secret. Fully authenticated and unambiguous.
- *
- * The envelope's Zoho organization_id is NEVER used to *resolve* the tenant — it
- * is optional and sits OUTSIDE the HMAC, so it can't be trusted for routing. It
- * is used only as a post-verification *cross-check* (assertEventFromOrgZohoAccount)
- * to satisfy "validate the webhook is from an allowed Zoho account for that org".
- */
+/** Webhook → org resolution (Wave 3). */
 
 import {
   getIntegrationCredentials,
@@ -67,14 +53,7 @@ export async function resolveOrgFromWebhook(params: {
   return { ok: true, orgId, signingSecret, source: 'token' };
 }
 
-/**
- * Cross-check that a verified event actually came from the Zoho account this org
- * connected. Defense-in-depth on top of the per-org HMAC: even with a valid
- * signature, reject an event whose envelope Zoho organization_id doesn't match
- * the org's stored Zoho orgId. When the envelope omits organization_id (Zoho
- * frequently does on Workflow-Rule webhooks) we cannot check, so we allow it —
- * the HMAC already proved authenticity.
- */
+/** Cross-check that a verified event actually came from the Zoho account this org connected. */
 export async function assertEventFromOrgZohoAccount(
   orgId: OrgId,
   event: NormalizedZohoEvent,

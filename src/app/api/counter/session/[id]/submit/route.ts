@@ -1,23 +1,4 @@
-/**
- * POST /api/counter/session/{id}/submit — finish the visit.
- *
- * The one route here that charges money, so it carries the full set:
- * `walk_in.take_payment`, a fresh PIN step-up, and an audit row naming the
- * transaction it produced.
- *
- * It COMPOSES `submitCounterTransaction` through the domain module — customer
- * create-or-match, the repair intake, provider order staging and the ticket
- * outbox all already live there, tested. The session contributes two things
- * that function cannot know: the staged cart, and the `client_event_id` minted
- * when the visit opened, which is what makes a double-submit from two devices
- * one transaction instead of two charges (D8).
- *
- * Refusals are 422, not 400: an empty cart, a missing phone or an unsigned
- * repair is a well-formed, authorized request against a visit that is not
- * finishable yet.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P8 · D1 · D8).
- */
+/** POST /api/counter/session/{id}/submit — finish the visit. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

@@ -1,18 +1,6 @@
 import pool from '@/lib/db';
 
-/**
- * Wraps a cron/job body so every invocation is persisted to `cron_runs`.
- *
- * - Inserts a `running` row up front.
- * - On success: `status='success'`, `duration_ms`, and the fn's returned object
- *   as the `summary` jsonb (the per-job counts — what it polled/processed).
- * - On throw: `status='failed'` + `error`, then re-throws so the route still
- *   surfaces a 500.
- *
- * Logging failures are swallowed — observability must never break the job.
- * This is the single choke point every cron route funnels through; the matching
- * display registry lives in {@link file://./registry.ts}.
- */
+/** Wraps a cron/job body so every invocation is persisted to `cron_runs`. */
 export async function withCronRun<T>(
   job: string,
   fn: () => Promise<T>,

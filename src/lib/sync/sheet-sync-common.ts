@@ -56,11 +56,7 @@ export async function hasOrderByTracking(
   const trackingLast8 = getTrackingLast8(tracking);
 
   if (orgId) {
-    // Executor pattern: set the org GUC on the caller-provided client + scope
-    // the read to this tenant. `orders` carries organization_id; the
-    // orders↔shipping_tracking_numbers join is on the integer surrogate PK
-    // (stn.id = o.shipment_id), so it's safe bare (shipping_tracking_numbers
-    // has no org_id column — NEEDS-COL — and is scoped via its parent order).
+    // Executor pattern:
     await client.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
 
     if (trackingLast8.length === 8) {

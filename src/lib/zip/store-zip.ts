@@ -1,15 +1,4 @@
-/**
- * Minimal STORE-method (no compression) ZIP builder — the single writer behind
- * every "download as .zip" route (photos, share packs, outbound documents).
- *
- * History: three routes each carried a copy-pasted builder whose central
- * directory wrote 0 for every entry's "relative offset of local header"
- * (byte 42), so any archive with ≥2 files failed to extract (macOS Archive
- * Utility errors out; `unzip` reports overlapping entries). This module tracks
- * the real local-header offset per entry. Entries are buffered in memory, so
- * callers should keep per-request entry counts bounded (the documents route
- * caps at 50).
- */
+/** Minimal STORE-method (no compression) ZIP builder — the single writer behind every "download as .zip" route (photos, share packs,… */
 
 export interface StoreZipEntry {
   /** Entry filename as it should appear in the archive (UTF-8). */

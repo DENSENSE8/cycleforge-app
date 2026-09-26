@@ -1,18 +1,4 @@
-/**
- * Label layer — per-org override loader (Phase 2).
- *
- * Reads a tenant's label overrides from the `reason_codes` multi-vocabulary
- * store and shapes them into the `overrides` bag `resolveLabel` consumes. A
- * label vocabulary is `flow_context = 'lifecycle_' + kind`; a row overrides a
- * code's `label` / `tone` when it supplies a non-null value (NULL = keep the
- * code-side default).
- *
- * Degrade-not-fail: any query error (including the columns not existing before
- * `2026-06-28d` is applied) resolves to "no overrides" → pure defaults. Label
- * presentation must never 500 a page.
- *
- * Deps-injected (the house pattern) so unit tests run DB-free.
- */
+/** Label layer — per-org override loader (Phase 2). */
 import type { LabelKind, LabelOverride, LabelResolveContext, LabelTone } from './types';
 import { TONE_CLASSES } from './registry';
 

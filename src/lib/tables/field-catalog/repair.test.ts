@@ -1,14 +1,4 @@
-/**
- * Repair catalog guards + resolver behaviour — wave 1.4's seventh family, and
- * the one whose sort does NOT ride `?colsort=`.
- *
- * Repair shares `?sort=`/`?dir=` with a chrome dropdown, and
- * `repair-display-sort.ts` keeps that vocabulary local on purpose so a
- * rewritten display cannot change the meaning of a bookmarked URL. The tests
- * that matter most here pin the ONE direction of that derivation: a mounted
- * track resolves to a word the URL already understands, and no port mints a new
- * one.
- */
+/** Repair catalog guards + resolver behaviour — wave 1.4's seventh family, and the one whose sort does NOT ride `?colsort=`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

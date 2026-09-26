@@ -1,10 +1,4 @@
-/**
- * Amazon account + credential helpers shared by the /api/amazon routes.
- *
- * The per-seller LWA refresh token lives in the org vault keyed by
- * scope='seller-{sellerId}' (or scope=null for a single unnamed account);
- * amazon_accounts holds the non-secret metadata + sync state.
- */
+/** Amazon account + credential helpers shared by the /api/amazon routes. */
 import { getIntegrationCredentials, type AmazonCredentials } from '@/lib/integrations/credentials';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { toAmazonAccount, type AmazonAccount } from './client';

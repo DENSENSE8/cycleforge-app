@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * FlushTerminalFooter — Macro action floor for Displays / panel columns.
- *
- * **Lane:** panel-terminal commit or multi-select bulk (Claim File, Move photos,
- * Prebox Print, Send note). Not station `SlicedActionDock`, not soft
- * `StickyActionBar`, not mobile `ConfirmDock`.
- *
- * **Geometry:** in-flow flex sibling under a `flex-1 overflow-y-auto` body —
- * the physical floor of the column. Shell is always
- * `shrink-0 border-t border-border-hairline bg-surface-canvas p-0` (Claim
- * golden). Never CSS `sticky`/`absolute`, never outer `px`/`py` air around the
- * primary square, never soft upward shadow.
- *
- * **Layouts:**
- * - `bleed` — children fill the width (single full-bleed primary Button).
- * - `cluster` — optional `leading` + end-aligned action cluster (Claim backup
- *   + File; Prebox "N selected" + Print).
- * - `spread` — equal fill-width peer columns (`flex-1`, no dead air between
- *   icons). Station Displays carton Macro golden. Peers use
- *   {@link FLUSH_TERMINAL_SPREAD_PEER_CLASS} / `IconButton size="fill"`.
- *   **Never** floating `w-11` islands with justify-between gutter.
- *
- * Pair with flush-square DS `Button` (`cornerClass('flush')`). Micro (per-row)
- * actions stay on `IconButton size="md"` inside the scroll rows — never a
- * primary text Button in a repeating list row.
- */
+/** FlushTerminalFooter — Macro action floor for Displays / panel columns. */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';

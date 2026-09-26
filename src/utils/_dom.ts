@@ -10,14 +10,7 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
-/**
- * Legacy `execCommand('copy')` fallback for non-secure contexts. The async
- * Clipboard API (`navigator.clipboard`) is only defined on HTTPS / localhost —
- * over a plain-HTTP LAN IP (how the warehouse stations reach the dev/preview
- * box) it is `undefined`, so without this fallback every Copy/Share silently
- * failed. A hidden, focused textarea + `document.execCommand('copy')` still
- * works there.
- */
+/** Legacy `execCommand('copy')` fallback for non-secure contexts. */
 function legacyCopy(text: string): boolean {
   try {
     const ta = document.createElement('textarea');
@@ -44,16 +37,7 @@ function legacyCopy(text: string): boolean {
   }
 }
 
-/**
- * Copies text to the clipboard. Returns true on success.
- *
- * Prefers the async Clipboard API; falls back to `execCommand('copy')` when it
- * is unavailable (non-secure context / LAN IP) or throws (permission, no focus).
- *
- * Also logs to the device clipboard history (the header clipboard popover) so
- * ad-hoc / bulk "copy all" copies show up alongside CopyChip copies. Pass
- * `recordHistory: false` for programmatic copies that shouldn't surface there.
- */
+/** Copies text to the clipboard. */
 export async function copyToClipboard(
   text: string,
   opts?: {

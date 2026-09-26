@@ -1,14 +1,4 @@
-/**
- * Canonical Zoho webhook pipeline for the per-tenant route
- * (/api/zoho/webhooks/{token}):
- *
- *   resolve org (+ pick secret) → verify HMAC on raw body → parse → normalize
- *   → cross-check Zoho account → reserve (org-scoped dedupe) → dispatch.
- *
- * Org resolution happens BEFORE verification because the signing secret is
- * per-tenant. Idempotent + replay-safe: the dedupe ledger is keyed on
- * (organization_id, event_id); a re-delivery short-circuits with 200.
- */
+/** Canonical Zoho webhook pipeline for the per-tenant route (/api/zoho/webhooks/{token}): */
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyZohoWebhookSignature } from './verify';

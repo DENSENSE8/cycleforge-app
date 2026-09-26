@@ -1,18 +1,4 @@
-/**
- * Beta application intake — validation schema + pure helpers.
- *
- * The ontology-based question schema for POST /api/beta/apply
- * (docs/todo/beta-intake-funnel-plan.md §4): answers are keyed by the
- * product's own vocabulary so they aggregate structurally across companies
- * and map onto workflow_definitions/nodes/edges. This module is deliberately
- * DB-free and Next-free so the route stays thin and the validation edge
- * cases unit-test without a server (see apply-schema.test.ts).
- *
- * Two tiers share one endpoint (plan §9 wires the marketing waitlist form to
- * tier: 'waitlist'): the paid 'application' tier answers the full ~12-question
- * set; the free 'waitlist' tier answers only { businessType, monthlyVolume,
- * topPain }.
- */
+/** Beta application intake — validation schema + pure helpers. */
 
 import { z } from 'zod';
 
@@ -101,13 +87,7 @@ export function isHoneypotTripped(body: unknown): boolean {
   return typeof v === 'string' && v.trim().length > 0;
 }
 
-/**
- * Stripe Payment Link URL for the response — env-configured, echoed with
- * client_reference_id=<application id> so the manual v1 reconcile (plan §7)
- * can match a checkout back to its row. No live Stripe call (owner-gated).
- * Returns null when the link is unconfigured or malformed (the form then
- * shows its "payment link coming soon" fallback instead of a broken href).
- */
+/** Stripe Payment Link URL for the response — env-configured, echoed with client_reference_id=<application id> so the manual v1 reconcile… */
 export function buildPaymentLinkUrl(base: string | undefined | null, applicationId: string): string | null {
   if (!base) return null;
   try {

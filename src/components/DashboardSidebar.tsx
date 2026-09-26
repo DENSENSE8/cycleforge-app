@@ -14,14 +14,7 @@ interface DashboardSidebarProps {
   onNavigate?: () => void;
 }
 
-/**
- * Thin composition layer for the nav spine. State + side effects live in
- * `dashboard-sidebar-hooks`; the chrome lives in `SidebarShell`. The route's own
- * sidebar is NOT here — it mounts beside the workspace via `ContextPanelLayout`.
- *
- * It owns **no geometry**. The host supplies the width — `SidebarNavColumn` on
- * desktop or the mobile drawer — so the two mounts cannot disagree about it.
- */
+/** Thin composition layer for the nav spine. */
 export function DashboardSidebar({
   inDrawer = false,
   onNavigate,

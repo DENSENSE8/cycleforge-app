@@ -10,15 +10,7 @@ import { RmaUpdateBody } from '@/lib/schemas/rma';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * Canonical record route for a single RMA. Lives alongside the lifecycle verb
- * routes (`[id]/close`, `[id]/disposition`, `[id]/mark-received`):
- *   GET    — fetch the authorization record
- *   PATCH  — edit mutable metadata (carrier / expiry / notes)
- *   DELETE — soft-cancel (AUTHORIZED → CANCELED)
- *
- * Gated by `rma.view` (GET) / `rma.manage` (PATCH, DELETE).
- */
+/** Canonical record route for a single RMA. */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

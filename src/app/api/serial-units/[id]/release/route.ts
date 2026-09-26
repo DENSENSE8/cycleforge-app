@@ -3,25 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { releaseUnit } from '@/lib/inventory/hold';
 
-/**
- * POST /api/serial-units/[id]/release
- *
- * Companion to /hold. Restores a unit from ON_HOLD to its previous
- * lifecycle state. The restore target is read from the most recent
- * HELD event's payload.restore_status; falls back to STOCKED.
- *
- * Body:
- *   { reason?: string, force_status?: string, client_event_id?: string }
- *
- * `force_status` overrides the auto-recovered target (e.g. 'TRIAGED' to
- * route a held unit back into the refurb flow).
- *
- * Returns 409 if the unit isn't currently ON_HOLD.
- *
- * Shared logic in src/lib/inventory/hold.ts.
- *
- * Permission: sku_stock.adjust.
- */
+/** POST /api/serial-units/[id]/release */
 export const POST = withAuth(async (request, ctx) => {
   const segments = request.nextUrl.pathname.split('/').filter(Boolean);
   const idStr = segments[segments.length - 2];
@@ -37,13 +19,7 @@ export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
 
   try {
-    // Org-ownership 404 gate (never 403). releaseUnit() runs on the bypass owner
-    // pool with no organization_id predicate (serial_units WHERE id=$1 FOR
-    // UPDATE), and force_status can route a held unit into an arbitrary
-    // lifecycle state — so without this pre-check a user in org A could
-    // release/force-status another org's held unit. serial_units is
-    // tenant-owned, so a cross-tenant id matches zero rows here → 404, and the
-    // backbone call never runs.
+    // Org-ownership 404 gate (never 403).
     const owns = await tenantQuery<{ id: number }>(
       orgId,
       `SELECT id FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1`,

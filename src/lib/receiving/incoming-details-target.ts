@@ -28,12 +28,7 @@ export type IncomingDetailsFromRowResult =
   | { ok: true; target: IncomingDetailsTarget }
   | { ok: false; toast: string };
 
-/**
- * Map a receiving-line (or delivered-unscanned stub) to an inspector target.
- * Open when any of: Zoho PO, shipment anchor, non-Zoho inbound identity, or a
- * real carton (`receiving_id`) — the last covers unpaired / dash-Order rows
- * that still need Package Pairing.
- */
+/** Map a receiving-line (or delivered-unscanned stub) to an inspector target. */
 export function incomingDetailsTargetFromRow(
   row: ReceivingLineRow,
 ): IncomingDetailsFromRowResult {

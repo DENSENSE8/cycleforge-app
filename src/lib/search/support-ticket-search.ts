@@ -1,11 +1,4 @@
-/**
- * Support-ticket exact bypass — reuses resolveSupportTicketToReceiving (the
- * receiving Unbox golden path) and emits a SearchHit so header search,
- * hybridSearch, and exact_id_serial_search all resolve #4821 the same way.
- *
- * Bypass-first (no entity_search_docs SUPPORT_TICKET type): ticket-shaped
- * queries must win over numeric false-positives on receiving/repair/order ids.
- */
+/** Support-ticket exact bypass — reuses resolveSupportTicketToReceiving (the receiving Unbox golden path) and emits a SearchHit so header… */
 
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import {

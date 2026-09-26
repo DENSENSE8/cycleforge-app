@@ -67,12 +67,7 @@ export async function GET(
   }
 }
 
-// â”€â”€ POST /api/fba/shipments/[id]/items â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Add an FNSKU to a plan with automatic condensing:
-//   - If the FNSKU exists in another unshipped plan, it is moved/merged here.
-//   - If the FNSKU already exists in this plan, its expected_qty is incremented.
-//   - Otherwise a new item row is created.
-// Body: { fnsku, expected_qty?, product_title?, asin?, sku?, staff_id? }
+// â”€â”€ POST /api/fba/shipments/[id]/items…
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

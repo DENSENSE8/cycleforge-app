@@ -25,23 +25,7 @@ interface ResolvedSkuCatalogWithColor extends ResolvedSkuCatalog {
   colorVariant: SkuColorVariant | null;
 }
 
-/**
- * Guarded variant-suffix strip (sku-reconciliation plan §6, step 4).
- *
- * Returns the bare base for an input that is a pure-numeric base (>= 4 digits) +
- * a dash + a pure-numeric counter suffix — the Ecwid listing-counter form
- * (`00010-2` → `00010`, `145-3` → `145`). Returns null for anything else.
- *
- * This is deliberately the **narrowest possible** pattern, because the two SKU
- * schemes collide (SoT: never broaden it). It can NEVER match — and so can never
- * mis-strip — these legitimately-distinct SKUs:
- *   - `-P-N` multi-part components (`00072-P-1`): the suffix is non-numeric (P),
- *     so the pattern fails; an explicit guard belts-and-suspenders this too.
- *   - color/condition suffixes (`-B`, `-W`, `-BK`, `-WH`, `-SW`): non-numeric
- *     suffix → no match.
- *   - bare numeric bases (`00010`): no dash → no match.
- *   - sub-4-digit bases (`123-5`): base too short → no match.
- */
+/** Guarded variant-suffix strip (sku-reconciliation plan §6, step 4). */
 const VARIANT_COUNTER_SUFFIX = /^[0-9]{4,}-[0-9]+$/;
 const PROTECTED_PART_INDEX = /^[0-9]+-P-[0-9]+$/i;
 
@@ -82,26 +66,7 @@ const defaultDeps: ResolveSkuCatalogDeps = {
   },
 };
 
-/**
- * Resolve a sku_catalog row for a label/unit operation.
- *
- * Match strategy (shared by the print allocator and the reprint resolver so
- * the same input always lands on the same row):
- *   1. explicit `sku_catalog_id` → direct lookup.
- *   2. exact match on `sku` (case-insensitive, trimmed).
- *   3. leading-zero-stripped match (input "1103" finds catalog "01103").
- *   4. `sku_platform_ids` crosswalk (e.g. a scanned Ecwid SKU that maps to a
- *      different canonical sku_catalog.sku).
- *   5. NEW — guarded variant-suffix strip: a pure `NNNN-N` counter form retries
- *      against its bare base (`00010-2` → `00010`). Never fires on `-P-N` or
- *      non-numeric suffixes (see {@link strippableVariantBase}). Only when no
- *      explicit id was supplied.
- *   6. NEW — queue-on-miss: when nothing resolves, enqueue the raw SKU in the
- *      pending_skus "create in Zoho" to-do (best-effort; the null return and
- *      every prior code path are unchanged).
- *
- * Returns null when nothing matches.
- */
+/** Resolve a sku_catalog row for a label/unit operation. */
 export async function resolveSkuCatalogRow(
   skuInput: string,
   explicitId?: number | null,
@@ -131,19 +96,7 @@ export async function resolveSkuCatalogRow(
   return null;
 }
 
-/**
- * Additive variant-aware resolver (sku-reconciliation plan, Step B — color axis).
- *
- * Resolves the catalog row exactly as {@link resolveSkuCatalogRow} (identical
- * inputs, identical resolution result — zero behavior change), then attaches the
- * COLOR variant decoded from the **input SKU string** (the suffix carries the
- * color; the resolved row is the canonical base). The color decode is read-only
- * and config-driven (`SKU_COLOR_SUFFIX_MAP`): a confirmed suffix (`-B`/`-W`)
- * yields `{ colorCode, colorLabel }`; an unconfirmed (`-N`/`-S`/`-SW`) or
- * non-color suffix yields `colorVariant: null`.
- *
- * Returns null only when the underlying resolution returns null (unchanged).
- */
+/** Additive variant-aware resolver (sku-reconciliation plan, Step B — color axis). */
 export async function resolveSkuCatalogRowWithColor(
   skuInput: string,
   explicitId?: number | null,
@@ -182,11 +135,7 @@ async function lookupSkuCatalogRow(
   const trimmed = String(skuInput ?? '').trim();
   if (!trimmed) return null;
 
-  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): leading-zero-stripped
-  // matching may only reach a row Zoho does NOT own. Stripping is how Ecwid
-  // `143` (a UB-20 wall mount) came to resolve to Zoho `00143` (a Bose Solo
-  // Soundbar). An exact quote of a Zoho SKU still matches exactly; only the
-  // loose arm is fenced off.
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts):
   if (orgId) {
     const { rows } = await tenantQuery<ResolvedSkuCatalog>(
       orgId,

@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * AssistantDockBody — the assistant sidebar's CONTENT (plan §-2.1). Leads with
- * a collapsible context strip, then chat, then the AI-edits tray when mutations
- * exist, with suggestions + composer pinned at the bottom. Opened from the
- * Sparkles entry in the header search field or ⌘J (toggle; focuses composer on open).
- *
- * This is a geometry-free body: the right-edge slot (full-height dock on desktop)
- * and the crossfade are owned by `RightRailHost`, which renders this body as its
- * `assistant` occupant.
- *
- * House rules: named z tokens (z-panel), Button primitive, typography tokens,
- * semantic colors, HoverTooltip (no title=), linear scaffold.
- */
+/** AssistantDockBody — the assistant sidebar's CONTENT (plan §-2.1). */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from '@/components/Icons';

@@ -1,10 +1,4 @@
-/**
- * POST /api/auth/account/passkey/authenticate/begin  (PUBLIC)
- *
- * Returns discoverable (usernameless) WebAuthn options — the authenticator
- * offers its resident credentials and the chosen one resolves to its account.
- * Stashes the challenge in a short-lived cookie for /finish.
- */
+/** POST /api/auth/account/passkey/authenticate/begin (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {

@@ -1,23 +1,4 @@
-/**
- * Paperwork pairing — which `product_manuals` rows (manuals, packing lists,
- * PL + M, any insert) an order resolves, and under which source.
- *
- * One row carries up to three pairing keys (any combination, at least one):
- *   order_id                — this order only.
- *   item_number             — every order whose normalized item number matches
- *                             (recurring orders of the listing).
- *   sku / sku_catalog_id    — every order of the SKU. The catalog id is the SKU
- *                             identity (the Zoho-governed `sku_catalog` row), so
- *                             marketplace SKU variants that resolve to the same
- *                             catalog row match too.
- *
- * Resolution precedence: order > item number > SKU. A row resolves for an order
- * when ANY key matches, and appears once — under the most specific source it
- * matches. Nothing is shadowed: every resolved row is listed and packed, in
- * precedence order, newest first within a source.
- *
- * Pure (no DB). The SQL twin lives in `order-manuals.ts`; keep them in step.
- */
+/** Paperwork pairing — which `product_manuals` rows (manuals, packing lists, PL + M, any insert) an order resolves, and under which source. */
 
 import { normalizeIdentifier } from '@/lib/product-manuals';
 
@@ -103,12 +84,7 @@ function optionalText(value: unknown, field: string, max: number): string | null
   return trimmed || null;
 }
 
-/**
- * Validate a re-pair body `{ orderId?, itemNumber?, sku? }` — the COMPLETE new
- * pairing (absent / null / blank clears that key). Item number is stored as its
- * key; an identifier with no letters or digits is refused rather than silently
- * dropped. Clearing every key is an unpair, not a pairing.
- */
+/** Validate a re-pair body `{ orderId?, itemNumber?, sku? */
 export function parsePaperworkPairing(input: unknown): PaperworkPairingTarget {
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     throw new PaperworkPairingError('pairing must be an object');

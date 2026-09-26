@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Local state for the Unbox Displays push column (`StationDisplaysPushStack`).
- *
- * Navigation (Root-to-Leaf) — React state only (Arrival / Testing parity):
- *   - `display === null` → column CLOSED
- *   - `display === 'index'` → Root Index
- *   - `display === <leaf>` → leaf body (Ticket · Photos · …)
- *
- * Nested modes on leaves ride the same snapshot via `setDisplay(tab, opts)`:
- *   - Photos: `photoAction` move|send|compare|actions
- *   - Linkage: `linkageAction` link|return|note
- *   - Ticket: `ticketAction` chat|claim + `claimMode` create|link
- * Prebox is a peer Assets leaf (not a Units nest).
- *
- * Mutually exclusive with `detail:receiving` and AI. No URL writes — deep-link
- * is not required; stale `?display=` / nest keys are stripped once on mount via
- * silent `history.replaceState` (no App Router pass).
- */
+/** Local state for the Unbox Displays push column (`StationDisplaysPushStack`). */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -47,15 +30,7 @@ export function parseUnboxDisplayParam(raw: string | null): UnboxDisplayNav | nu
   return parseUnboxDisplayNav(raw);
 }
 
-/**
- * Close the Displays column only when the open RECORD genuinely changes.
- *
- * The record is the CARTON (`receiving_id`), not the active child line. Sibling
- * PO lines are children of one parent carton — switching between them keeps the
- * same Displays context (Units / Photos / Ticket / Linkage are carton-scoped and
- * their line-scoped bodies just re-read the new active line). Keying this on the
- * line made every child switch close + reopen the column — the right-rail flash.
- */
+/** Close the Displays column only when the open RECORD genuinely changes. */
 export function shouldClearDisplayOnRecordChange(
   prevRecordId: number | null,
   currentRecordId: number | null,
@@ -108,11 +83,7 @@ export function buildDisplayPending(
 
   let linkageActionRaw: string | null = null;
   if (tab === 'linkage') {
-    // Every drill this snapshot can carry must be listed. An unlisted verb
-    // falls to `null` = the actions list, so the row it came from reads as a
-    // DEAD BUTTON — which is exactly how `return` shipped on 2026-08-19: the
-    // parser accepted it, the leaf rendered it, and the writer quietly threw it
-    // away one layer earlier. Keep this in lockstep with `UnboxLinkageAction`.
+    // Every drill this snapshot can carry must be listed.
     if (opts?.linkageAction === 'note') linkageActionRaw = 'note';
     else if (opts?.linkageAction === 'link') linkageActionRaw = 'link';
     else if (opts?.linkageAction === 'return') linkageActionRaw = 'return';

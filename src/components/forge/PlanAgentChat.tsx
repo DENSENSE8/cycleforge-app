@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Plan-agent chat (ALP-3.4) — Vercel AI SDK `useChat` against
- * POST /api/forge/chat. Streams text + typed tool parts; mutations the agent
- * makes land in the shared Yjs doc and the plan region updates live via Ably.
- *
- * Layout: thread scrolls in the center floor; composer is a centered
- * {@link OmnichannelComposerDock} (house Send SoT — middle is the work).
- */
+/** Plan-agent chat (ALP-3.4) — Vercel AI SDK `useChat` against POST /api/forge/chat. */
 
 import { useState } from 'react';
 import { useChat } from '@ai-sdk/react';

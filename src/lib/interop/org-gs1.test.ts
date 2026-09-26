@@ -1,15 +1,4 @@
-/**
- * DB-free unit test for the GS1 identity resolution point.
- *
- * The degrade path is the reason this exists: `resolveOrgGs1Identity` swallows
- * every failure into `{}`, and "no GS1 identity" is the SAFE answer — it makes
- * the projections omit GS1 keys, which is always a legal document. A throw
- * here would take down an interop read for a settings blob nobody has filled
- * in, and a rethrow-on-DB-error would do it intermittently.
- *
- * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *        --test src/lib/interop/org-gs1.test.ts`
- */
+/** DB-free unit test for the GS1 identity resolution point. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

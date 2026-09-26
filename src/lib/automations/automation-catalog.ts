@@ -1,31 +1,6 @@
 /**
  * THE AUTOMATION CATALOG — what runs by itself in this warehouse.
- *
  * Operator ruling 2026-09-23: *"The cron drop to assign tasks from designated
- * tags should be included in the automations display in the sidebar as a first
- * principles approach to automations."*
- *
- * First principles: an operator asking "what runs without me?" wants five
- * answers per automation, and nothing else —
- *
- *   | Field        | The question it answers                      |
- *   |--------------|----------------------------------------------|
- *   | `name`       | what is it called?                           |
- *   | `summary`    | what does it do, in one sentence?            |
- *   | `trigger`    | WHEN does it fire — a clock, or an event?    |
- *   | `scope`      | WHAT does it act on?                         |
- *   | `gate`       | what turns it ON?                            |
- *   | `permission` | who may see it?                              |
- *
- * This module is PURE DATA + pure functions. No React, no fetch, no DB. The
- * live half — health, last run, run counters — is joined at the surface from
- * `/api/cron-runs` through {@link useCronRunsSummary}, keyed on
- * `trigger.jobKey`. Keeping the two halves apart is the point: the catalog says
- * what an automation IS, the runs API says how it last WENT.
- *
- * `jobKey` is not free text — `automation-catalog.test.ts` pins every
- * cron-triggered entry against `CRON_JOBS`, so deleting a job from the cron
- * registry fails the catalog rather than painting a row that can never be green.
  */
 
 /** When an automation fires. A clock, or something that happened. */

@@ -11,14 +11,7 @@ import {
 } from './oauth-config';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * eBay API Client
- * Handles authentication, token management, and API calls for a specific eBay account
- *
- * App credentials (appId/certId/ruName/environment) are resolved lazily per the
- * account's organization via getEbayAppCreds() — no process.env reads here — so
- * each tenant's sandbox/production setting and (future) BYO app are honored.
- */
+/** eBay API Client Handles authentication, token management, and API calls for a specific eBay account */
 export class EbayClient {
   private api: eBayApi | null = null;
   private accountName: string;

@@ -78,12 +78,7 @@ test('warehouseDayUtcBounds covers a full LA wall day as UTC instants', () => {
 });
 
 test('a half-open day range spans exactly the civil day, including DST shifts', () => {
-  // The media-library photo filter builds its SQL window as
-  //   created_at >= bounds(from).startIso  AND  created_at < bounds(to + 1).startIso
-  // (src/lib/photos/queries/library.ts). That is only correct if consecutive
-  // day-starts differ by the day's TRUE length — which is not 24h twice a year.
-  // A fixed `+86400000` here would silently drop or double-count an hour of
-  // evidence photos on those two days.
+  // The media-library photo filter builds its SQL window as created_at >= bounds(from).startIso AND created_at < bounds(to + 1).startIso…
   const startOf = (key: string) => {
     const b = warehouseDayUtcBounds(key);
     assert.ok(b, `no bounds for ${key}`);
@@ -101,10 +96,7 @@ test('a half-open day range spans exactly the civil day, including DST shifts', 
   assert.equal(startOf('2026-11-01'), Date.parse('2026-11-01T07:00:00.000Z'));
   assert.equal(hoursSpanned('2026-11-01'), 25);
 
-  // The exclusive upper bound must equal the next day's start exactly — no gap,
-  // no overlap. `endIso` (…23:59:59.999) is 1ms short, which is why the query
-  // uses the next day's start instead: a timestamptz has microsecond precision,
-  // so an inclusive millisecond bound can drop a capture.
+  // The exclusive upper bound must equal the next day's start exactly — no gap, no overlap.
   const nov1 = warehouseDayUtcBounds('2026-11-01');
   assert.ok(nov1);
   assert.equal(Date.parse(nov1.endIso) + 1, startOf('2026-11-02'));

@@ -1,20 +1,4 @@
-/**
- * The kiosk POS surface is TOKEN-LEVEL, and this pins the two ways that can
- * quietly stop being true.
- *
- * 1. The responsive literals in `KIOSK_POS_AT_MD` mirror token roles that a
- *    theme is allowed to move. They cannot be composed (`md:${cornerClass(…)}`
- *    is invisible to Tailwind's scanner), so they are hand-written — which
- *    means a theme moving `surface` or the elevation ladder would leave the
- *    `md:` variant pointing at a class that no longer exists, and the tablet
- *    measure would silently lose its corner or its lift. Each literal is
- *    asserted to be exactly `md:` + the role it mirrors.
- *
- * 2. Every depth/corner decision resolves through a ROLE, never a raw value,
- *    so `ds_tokens` can see it. Same posture as `tokens/table-surface.test.ts`,
- *    which asserts the surface composes `ELEVATION_CLASS.raised.default`
- *    rather than regex-ing the class string for `shadow-*`.
- */
+/** The kiosk POS surface is TOKEN-LEVEL, and this pins the two ways that can quietly stop being true. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -56,10 +40,8 @@ test('the selection frame shares the card corner at BOTH measures', () => {
 });
 
 test('the ground is the ONE SoT background at every measure', () => {
+  // Operator 2026-09-14:
   // Operator 2026-09-14: the white under the product display is the
-  // design-system surface token — no page-local hex beside the fixed-width
-  // intake forms. The former `md:bg-[#FAFAFA]` ground is repealed; the
-  // phone-measure depth rules below still hold.
   assert.equal(KIOSK_POS_CANVAS, 'bg-surface-card');
   assert.ok(KIOSK_POS_GRID.includes('gap-0'));
   assert.ok(KIOSK_POS_GRID.includes('md:gap-3'));
@@ -69,10 +51,7 @@ test('the ground is the ONE SoT background at every measure', () => {
 });
 
 test('the CTA casts nothing and presses by travel alone', () => {
-  // Operator ruling: no drop shadow under Continue. Over a transparent dock a
-  // hard lip falls across the product grid and reads as a smear, not as the
-  // control's own thickness. `shadow-none` is stated, not merely omitted,
-  // because Button's variant classes may carry one.
+  // Operator ruling:
   assert.ok(KIOSK_POS_CTA.split(' ').includes('shadow-none'));
   assert.ok(!/shadow-elev/.test(KIOSK_POS_CTA));
   // Travel survives — it needs no ground to read against.
@@ -112,11 +91,7 @@ test('a floating key reserves scroll clearance so the last row is reachable', ()
   assert.ok(!KIOSK_POS_BROWSE_SCROLL.includes(KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE));
 });
 test('word chips and glyph chips share ONE container treatment and ONE size', () => {
-  // Operator rulings: "must all have the same consistent look" (outline) and
-  // "the same size as well for the drop downs and the icons". An outlined
-  // 36px word chip beside an outlined 28px glyph still reads as two systems.
-  // Radius, border, fill AND height must be identical; only horizontal
-  // padding (px-3 vs the glyph's fixed w-9) may differ.
+  // Operator rulings:
   for (const part of [
     'rounded-full',
     'border',

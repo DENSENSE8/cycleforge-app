@@ -321,10 +321,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
               orderDate: parseEcwidOrderDate(order?.createDate ?? order?.created ?? order?.date)?.toISOString() ?? null,
               notes: String(order?.customerComments || order?.orderComments || '').trim() || null,
             },
-            // REQUIRED, not optional-in-practice: `attachRepairCustomer` bails on
-            // a falsy orgId, so omitting it meant the `contact` above was computed
-            // and then discarded on every pass — and the upsert itself fell
-            // through to the un-tenant-scoped raw-pool branch.
+            // REQUIRED, not optional-in-practice:
             orgId,
           );
           touchedRepairIds.add(repair.id);

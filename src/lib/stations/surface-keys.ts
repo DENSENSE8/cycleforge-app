@@ -1,32 +1,8 @@
-/**
- * Operator-surface registry (Studio-driven operator surfaces, Phase 0).
- *
- * A **surface** is a first-class operator "website page" — the job an operator
- * performs ("Unbox", "Triage", "Incoming") — addressed by a stable, semantic,
- * human-readable key (`unbox`, `triage`), NOT a numeric hash. Each surface maps
- * to a semantic route (`/unbox`), an archetype (Station / Workbench / …), and —
- * per §5.3 Option A of the plan — one or more `station_definitions` rows keyed
- * by `page_key` (+ `mode_key` for sub-variants). We do NOT birth a sibling
- * `page_definitions` table: `station_definitions` already carries
- * `page_key`/`mode_key`/`version`/`is_active` + the `'legacy'` slots hatch.
- *
- * This file is CODE (the capability declaration, PR-reviewed). What surfaces
- * exist and how they are composed *for a given org* is DATA
- * (`station_definitions` rows, published from the Studio). The registry below
- * is the closed set of surface capabilities the app knows how to render; a new
- * surface must be added here (guarded by `surface-keys.test.ts`).
- *
- * See docs/todo/studio-driven-operator-surfaces-refactor-plan.md.
- */
+/** Operator-surface registry (Studio-driven operator surfaces, Phase 0). */
 
 import type { ArchetypeId } from './archetype';
 
-/**
- * Workbench Layer C recipe / branch ids. Declared on every
- * `archetype: 'workbench'` surface; null on Station / Monitor / Canvas.
- * Law: `.claude/rules/display/workbench.md` + child recipe files.
- * Never a fifth ARCHETYPE_IDS value.
- */
+/** Workbench Layer C recipe / branch ids. */
 export const WORKBENCH_BRANCH_IDS = [
   'ops-queue',
   'master-detail',
@@ -43,15 +19,7 @@ export function isWorkbenchBranchId(
   return value != null && (WORKBENCH_BRANCH_IDS as readonly string[]).includes(value);
 }
 
-/**
- * Every operator surface the app knows about. Stable string keys — human
- * readable, conventional, and durable across renames (Notion page types /
- * Linear concepts). NEVER a numeric hash for a primary operator surface.
- *
- * Adding a key here is a deliberate act: it must get a `SURFACE_REGISTRY`
- * entry (compile-time enforced by the `Record<SurfaceKey, …>` below) and is
- * checked structurally by the guard test.
- */
+/** Every operator surface the app knows about. */
 export const SURFACE_KEYS = [
   'unbox',
   'triage',
@@ -70,13 +38,7 @@ export type SurfaceKey = (typeof SURFACE_KEYS)[number];
 /** A search-param delta a legacy alias applies to reconstruct the old URL. */
 export type SurfaceParamDelta = Record<string, string | null>;
 
-/**
- * How today's app still renders this surface — the source the migration alias
- * redirects *from*. `pathname` + optional `params` describe the legacy URL(s)
- * that must keep resolving to the surface (e.g. `/receiving?mode=receive`).
- * `bareResolves` = true when the legacy pathname with NO params also lands on
- * this surface (bare `/receiving` → Unbox today).
- */
+/** How today's app still renders this surface — the source the migration alias redirects *from*. */
 export interface SurfaceLegacyLocation {
   pathname: string;
   /** The `?mode=`/`?view=`-style params that select this surface at the legacy path. */
@@ -108,12 +70,7 @@ export interface SurfaceDefinition {
   pageKey: string;
   /** `station_definitions.mode_key` — the sub-variant within `pageKey`. */
   modeKey: string;
-  /**
-   * Scan policy: which focus-locked scan classifier this Station surface owns.
-   * `null` = not a scan surface (Workbench/Monitor). Consumed by the
-   * surface-aware scan classifier (Phase 3a). Pickup opens/matches LCPU orders
-   * (no serial reclassification — that stays Unbox-only).
-   */
+  /** Scan policy: which focus-locked scan classifier this Station surface owns. */
   scan: 'unbox' | 'triage' | 'pickup' | null;
   /** Default `?view=`/sub-view for the surface, if it has one. */
   defaultView?: string;
@@ -123,16 +80,7 @@ export interface SurfaceDefinition {
   legacy?: SurfaceLegacyLocation;
 }
 
-/**
- * The closed registry. `Record<SurfaceKey, …>` makes a missing entry a compile
- * error, so a new key in `SURFACE_KEYS` cannot ship without a definition.
- *
- * The receiving-page family — `unbox`/`triage`/`incoming`/`pickup`/`repair`/
- * `history` — shares the `receiving` page_key with distinct mode_keys, so a
- * per-org `station_definitions` row resolves per surface without a schema
- * change. Each is a mode on the receiving rail with its own graduated route.
- * `pack`/`test` keep their own future page_keys.
- */
+/** The closed registry. */
 export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   unbox: {
     key: 'unbox',
@@ -176,14 +124,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     workflowNodeType: 'receiving',
     legacy: { pathname: '/receiving', params: { mode: 'incoming' } },
   },
-  // Local Pickup — a Receiving MODE with its own graduated route, exactly like
-  // Unbox/Triage/Incoming. (It is not a separate "Walk-In station": front-desk
-  // pickup is receiving work, and the operator switches to it from the receiving
-  // mode rail.) Sales history lives on Dashboard (`?mode=sales` / `?mode=pickup`),
-  // not here; counter intake for sales still opens from `/pickup?job=sales`.
-  // Local Pickup — hybrid Station scan loop (open/match LCPU) + Workbench
-  // ops-queue map. Create stays on the workbench New Pickup CTA; kiosk intake
-  // (later) shares the same POST /api/local-pickup-orders contract.
+  // Local Pickup — a Receiving MODE with its own graduated route, exactly like Unbox/Triage/Incoming.
   pickup: {
     key: 'pickup',
     label: 'Local Pickup',
@@ -197,10 +138,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     workflowNodeType: 'receiving',
     legacy: { pathname: '/receiving', params: { mode: 'pickup' } },
   },
-  // Repair intake — the sibling Receiving mode. `/repair` is now a first-class
-  // surface route (it used to redirect to `/pickup?job=repair`, the job-switcher
-  // model that this refactor drops). Gated by `receiving.view` like the rest of
-  // the rail; `repair.*` still gates the repair APIs.
+  // Repair intake — the sibling Receiving mode.
   repair: {
     key: 'repair',
     label: 'Repair',
@@ -275,26 +213,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
     // Key stays `outbound` for composition stability; URL graduated to `/shipping`.
     legacy: { pathname: '/outbound', bareResolves: true },
   },
-  // Support — the helpdesk/ticket console. **Workbench, branch
-  // `service-workspace`** (ratified 2026-08-01, `docs/todo/
-  // support-service-workspace-PLAN.md`): an agent workspace composed
-  // list | thread + composer | context, on Workbench pick+persist physics —
-  // durable URL ticket selection, CRUD (reply / assign / resolve), density
-  // `ops`, pointer-driven.
-  //
-  // It read `archetype: 'station'` until 2026-08-01. That was a CATEGORY ERROR,
-  // not a nuance: `scan` was already `null`, so nothing about the surface was
-  // scanner-driven, and Q1 of the `pickArchetype` discriminator — the only
-  // question that returns Station — never applied. What the row actually
-  // recorded was the nav promotion (More → Stations); a spine SECTION is a
-  // domain, and a domain is not a region contract.
-  //
-  // The branch is a Layer C composition on Workbench, NOT a fifth archetype:
-  // `ARCHETYPE_IDS` stays four (`archetype.ts`). Branch law:
-  //
-  // Desktop console (mobile-restricted), no `workflowNodeType` (Support isn't
-  // an engine step). Gated by `integrations.zendesk` — same as the
-  // /api/zendesk/* routes it calls.
+  // Support — the helpdesk/ticket console.
   support: {
     key: 'support',
     label: 'Support',

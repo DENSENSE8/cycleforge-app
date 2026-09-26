@@ -8,12 +8,7 @@ import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { SKU_STOCK_REASONS } from '@/lib/sku/sku-stock-reasons';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 
-/**
- * Controller for the SKU detail view: loads the SKU's stock/catalog/ecwid/history
- * bundle, handles stock adjust/set + location change (all via PATCH /api/sku-stock),
- * the soft-delete deactivate, and the transient copy/lightbox/edit UI state.
- * Returns one bag consumed by the shell + cards.
- */
+/** Controller for the SKU detail view: */
 export function useSkuDetailView({ sku, variant = 'page', onClose }: SkuDetailViewProps) {
   const router = useRouter();
   const [data, setData] = useState<SkuDetailData | null>(null);

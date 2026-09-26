@@ -1,12 +1,4 @@
-/**
- * Human-facing FBA **plan** code stored in `fba_shipments.shipment_ref`.
- * This is not the internal DB row id (`fba_shipments.id`) and not the Amazon FBA shipment id.
- *
- * Format: `FBA-MM/DD/YY` from a calendar date only (e.g. `FBA-03/24/26`).
- * Invalid / missing date → `FBA-00/00/00`.
- *
- * @param isoYmd - `YYYY-MM-DD` (e.g. Postgres `CURRENT_DATE::text` or `due_date`)
- */
+/** Human-facing FBA **plan** code stored in `fba_shipments.shipment_ref`. */
 export function buildFbaPlanRefFromIsoDate(isoYmd: string): string {
   const raw = String(isoYmd || '').trim().slice(0, 10);
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw);

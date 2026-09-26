@@ -1,15 +1,4 @@
-/**
- * The signature pad's geometry is a RATIO, and this pins the way that can
- * quietly stop being true.
- *
- * 1. **The class and the law must agree.** Tailwind can only see a literal
- *    (`aspect-[5/1]`), so the token cannot be interpolated from
- *    `SIGNATURE_CAPTURE_ASPECT`. Same split as `KIOSK_POS_AT_MD`, same fix: a
- *    test that reads the literal back out and compares it to the constant.
- * The printed result is measured in `signature-geometry.test.ts`.
- *
- *   npx tsx --test src/app/kiosk/kiosk-signature-pad.test.ts
- */
+/** The signature pad's geometry is a RATIO, and this pins the way that can quietly stop being true. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

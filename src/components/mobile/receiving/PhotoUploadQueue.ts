@@ -14,80 +14,22 @@ import {
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { countInFlightEntries } from './photo-upload-in-flight';
 
-/**
- * Module-singleton store for in-flight receiving photo uploads.
- *
- * Per-photo state machine:   queued → uploading → done | failed
- *                                                    ↑    ↓
- *                                                  retry  retry()
- *
- * Two persistence layers so receivers don't lose work:
- *   • blobCache (in-memory)  — original blob ref for the Retry button.
- *   • localStorage           — base64 of the DOWNSCALED blob + metadata for
- *                              every non-`done` entry. A tab refresh or a
- *                              backgrounded-then-killed tab rehydrates the
- *                              queue and auto-resumes anything in `queued`.
- *
- * Scope: pass `{ receivingId, receivingLineId?, stage? }`. When
- * `receivingLineId` is present the photo posts as an item-level
- * (RECEIVING_LINE) record; otherwise it lands at the PO level (RECEIVING),
- * stamped `receiving_package` vs `receiving_unbox_carton` by `stage`
- * (missing stage = the legacy arrival capture — rehydrated pre-stage entries
- * keep their old stamp).
- */
+/** Module-singleton store for in-flight receiving photo uploads. */
 
 export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
 export interface PhotoScope {
   receivingId: number;
   receivingLineId?: number | null;
-  /**
-   * Human PO reference (Zoho PO number / id) used ONLY to name the file
-   * object — e.g. `4421__photo_….jpg` instead of `PO_1987__photo_….jpg`. Not
-   * sent to the attach endpoint (that still keys off receivingId/receivingLineId).
-   * Falls back to `PO_{receivingId}` when absent.
-   */
+  /** Human PO reference (Zoho PO number / id) used ONLY to name the file object — e.g. */
   poRef?: string | null;
   /** One-based clean filename suffix for captured photos, e.g. PO123_3.jpg. */
   fileIndex?: number | null;
-  /**
-   * Evidence stage this capture belongs to (stage × entity matrix:
-   * `src/lib/receiving/photo-intent.ts`). Decides the stamped `photo_type`,
-   * which the receive-time photo policy judges — `require_one` counts ONLY
-   * `arrival_package`, so a bench stamping the wrong stage silently defeats
-   * that gate. Resolved through `receivingUploadStage()`, which defaults a
-   * carton shot to `unbox_carton` (this is the unbox bench's pipeline) and
-   * forces any line shot to `unbox_item`. A door/triage surface photographing
-   * the box AS IT ARRIVED must set `'arrival_package'` explicitly.
-   */
+  /** Evidence stage this capture belongs to (stage × entity matrix: */
   stage?: ReceivingPhotoStage;
-  /**
-   * What this shot SHOWS within the stage (`@/lib/photos/photo-aspects`).
-   * Guided arrival capture threads `shipping_label` / `box_exterior`; legacy
-   * spam capture leaves this unset (unclassified evidence — legal). Rides in
-   * `scope` so localStorage rehydration keeps the claim across a tab kill.
-   */
+  /** What this shot SHOWS within the stage (`@/lib/photos/photo-aspects`). */
   aspect?: PhotoAspect | null;
-  /**
-   * Device-reported capture instant (epoch ms) — the shutter clock from
-   * `CapturedShot.capturedAtMs`, or `captureTimeFromFile()` for a picked File.
-   * Stored server-side as `photos.client_captured_at`, BESIDE `created_at`.
-   *
-   * Why it must live here rather than be read at upload time: `created_at` is
-   * the server-INSERT instant, and this queue exists precisely because that
-   * insert can be minutes-to-hours late — a photo captured on a dead-zone dock
-   * sits in localStorage until the phone reconnects. Reading a clock in
-   * `postPhotoViaAdapter` would record the drain, not the capture.
-   *
-   * Persisted for free: `PersistedEntry.meta` is `Omit<UploadEntry,'previewUrl'>`,
-   * which carries the whole `scope`, so a tab kill mid-queue rehydrates the true
-   * capture time with the photo. Do NOT move this out of `scope` onto a field
-   * that persist() drops.
-   *
-   * Optional, unlike `CapturedShot.capturedAtMs`: entries rehydrated from a
-   * pre-2026-07-29 localStorage payload have none, and a null column is the
-   * honest record of "no capture time known".
-   */
+  /** Device-reported capture instant (epoch ms) — the shutter clock from `CapturedShot.capturedAtMs`, or `captureTimeFromFile()` for a picked… */
   capturedAtMs?: number | null;
   /**
    * When `receivingLineId` is unset: `all` loads PO + every line (matches
@@ -115,11 +57,7 @@ interface QueueState {
 
 // ─── Storage shape ──────────────────────────────────────────────────────────
 const STORAGE_KEY = 'cf.receiving.upload_queue.v1';
-// Deliberately NOT bumped when `scope.capturedAtMs` was added: rehydrate() drops
-// every entry whose `v` doesn't match, so a bump would delete the queued photos
-// of anyone mid-shift at deploy time — real evidence, thrown away to version an
-// optional field. The field is additive and optional; a v1 payload without it
-// rehydrates fine and uploads with a null capture time, which is the truth.
+// Deliberately NOT bumped when `scope.capturedAtMs` was added:
 const STORAGE_VERSION = 1;
 // Hard cap on persisted entries to keep localStorage well below the 5 MB
 // per-origin quota even on cheap Android Chromes.
@@ -131,13 +69,7 @@ interface PersistedEntry {
   dataUrl: string; // downscaled JPEG as data URL
 }
 
-// ─── State + subscribers ────────────────────────────────────────────────────
-// Fired once per photo the moment it's committed (GCS upload + DB attach both
-// succeeded). The capture surface wires this to an Ably publish on
-// `phone:{staffId}` so open photo strips and feed counts refresh — on this
-// device AND the paired desktop — without the requestId camera flow. Set via
-// configureNotifier(); persists across capture-surface unmounts so a photo that
-// finishes uploading in the background still notifies.
+// ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it's committed (GCS upload…
 export interface UploadNotice {
   receivingId: number;
   receivingLineId: number | null;
@@ -146,12 +78,7 @@ export interface UploadNotice {
 }
 let uploadNotifier: ((notice: UploadNotice) => void) | null = null;
 
-/**
- * Fired whenever the absolute in-flight (queued|uploading) count for a carton
- * changes — shutter enqueue, upload done/fail, retry, clearAll. Desk peeks
- * subscribe via Ably `receiving_photo_taken`. Failed is excluded so a stuck
- * retry does not leave eternal placeholders (phone CaptureUploadStatus owns failure).
- */
+/** Fired whenever the absolute in-flight (queued|uploading) count for a carton changes — shutter enqueue, upload done/fail, retry, clearAll. */
 interface TakenNotice {
   receivingId: number;
   receivingLineId: number | null;
@@ -248,10 +175,7 @@ function rehydrate(): void {
       const blob = dataUrlToBlob(item.dataUrl);
       if (!blob) continue;
       const previewUrl = URL.createObjectURL(blob);
-      // Anything that was mid-upload before the refresh resets to queued so
-      // it gets re-attempted; the photos endpoint is idempotent via the
-      // (entity_type, entity_id, url) unique index — a duplicate POST just
-      // returns 409 and we surface the failure cleanly.
+      // Anything that was mid-upload before the refresh resets to queued so it gets re-attempted; the photos endpoint is idempotent via the…
       const restoredState: UploadState =
         item.meta.state === 'uploading' ? 'queued' : item.meta.state;
       const entry: UploadEntry = {
@@ -285,11 +209,7 @@ async function postPhotoViaAdapter(
 ): Promise<{ id: number; url: string }> {
   const entityType = entry.scope.receivingLineId != null ? 'RECEIVING_LINE' : 'RECEIVING';
   const entityId = entry.scope.receivingLineId ?? entry.scope.receivingId;
-  // Stage → photo_type via the SoT, never a local map. The old inline ternary
-  // stamped EVERY carton shot `receiving_package` (arrival evidence) even when
-  // it was taken at the unbox bench after the box was opened — which both left
-  // `receiving_unbox_carton` with zero writers and let a post-opening photo
-  // satisfy the `require_one` arrival gate.
+  // Stage → photo_type via the SoT, never a local map.
   const stage = receivingUploadStage(entry.scope.receivingLineId, entry.scope.stage);
   const { uploadPhotoClient } = await import('@/lib/photos/upload-client');
   const result = await uploadPhotoClient({

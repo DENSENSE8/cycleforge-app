@@ -1,17 +1,4 @@
-/**
- * Pickup sign-off rules for the desk flow (`RepairPickupFlow`), kept pure so
- * the one write it feeds ({@link submitRepairPickup}) can only ever receive a
- * complete, unambiguous body.
- *
- * - {@link pickupSignoffInput}: signer required; EXACTLY one of a signature or
- *   a decline reason — never both, never neither.
- * - {@link composeDeclinedReason}: a preset chip plus optional detail → the
- *   one sentence the audit trail records.
- * - {@link intakeSignatureUrl} / {@link pickupReviewPaperwork}: the stored
- *   repair's paperwork facts, so the review step shows the sheet that prints.
- *
- * Callers: `src/components/repair/RepairPickupFlow.tsx`.
- */
+/** Pickup sign-off rules for the desk flow (`RepairPickupFlow`), kept pure so the one write it feeds ({@link submitRepairPickup}) can only… */
 
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { RepairReceiptProps } from '@/lib/repair/repair-intake-receipt';

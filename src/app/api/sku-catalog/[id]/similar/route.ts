@@ -3,17 +3,7 @@ import pool from '@/lib/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/sku-catalog/[id]/similar — same-category sibling SKUs.
- *
- * "Similar products" has no dedicated relationship table, so we derive it on
- * demand: other catalog rows that share this SKU's `category` (excluding
- * itself), ordered by on-hand stock then title. Lightweight, no stored data.
- * Returns an empty list when the SKU has no category — the caller renders a
- * graceful empty state rather than guessing.
- *
- * `id` is a sku_catalog.id (integer).
- */
+/** GET /api/sku-catalog/[id]/similar — same-category sibling SKUs. */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

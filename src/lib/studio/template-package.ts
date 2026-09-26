@@ -1,21 +1,4 @@
-/**
- * CycleForgeTemplatePackage v1 — the portable, self-describing serialization of
- * an ops-SOP template (Template Platform Phase 3). A package is what moves a
- * workflow blueprint between tenants / repos / an export file, WITHOUT a second
- * deployable endpoints app: it is pure Neon-bound data (graph + metadata), never
- * code. New capabilities (node/surface types) still require a platform PR — a
- * package may only REFERENCE registered types, and the validator enforces that.
- *
- * Shape:
- *   { schemaVersion, metadata{slug,name,description?,category?},
- *     engineCompat{requiredNodeTypes[]}, graph{nodes,edges},
- *     surfaceSeeds?[] }
- *
- * This module is PURE (Zod + injected registry predicates) so it unit-tests with
- * no DB and no registry bootstrap. The import route calls installTemplateIntoOrg
- * after validation — a package import is "validate + persist template row + call
- * the ONE installer", never a third clone path (see import-package.ts).
- */
+/** CycleForgeTemplatePackage v1 — the portable, self-describing serialization of an ops-SOP template (Template Platform Phase 3). */
 
 import { z } from 'zod';
 import { StudioGraphNodeSchema, StudioGraphEdgeSchema } from '@/lib/schemas/studio';
@@ -30,13 +13,7 @@ export const TemplatePackageGraphSchema = z.object({
   edges: z.array(StudioGraphEdgeSchema).max(400),
 });
 
-/**
- * Optional explicit surface binding carried by the package. NOTE (Phase 3):
- * install derives station surfaces from the cloned node TYPES via the registry
- * join (buildTemplateSurfaceSeeds) — that is authoritative. These explicit seeds
- * are validated for forward-compat (Phase 4/5 hand-authored packages) but are
- * not yet applied on import.
- */
+/** Optional explicit surface binding carried by the package. */
 export const TemplatePackageSurfaceSeedSchema = z.object({
   surfaceKey: z.string().min(1).max(64),
   pageKey: z.string().min(1).max(64),
@@ -81,16 +58,7 @@ function formatIssue(i: z.ZodIssue): string {
   return `${path}: ${i.message}`;
 }
 
-/**
- * Full package validation: shape (Zod, incl. exact schemaVersion) THEN semantic
- * checks that need the live registry:
- *   - every node type used in the graph is a REGISTERED engine node type,
- *   - every engineCompat.requiredNodeTypes entry is registered,
- *   - every graph node type is declared in requiredNodeTypes (the manifest is honest),
- *   - every edge endpoint resolves to a node in the same graph,
- *   - every optional surfaceSeed names a registered surface + an in-graph node.
- * Returns a flat error list (never throws) so the route maps it to 400.
- */
+/** Full package validation: */
 export function validateTemplatePackage(raw: unknown, deps: ValidatePackageDeps): ValidatePackageResult {
   const parsed = TemplatePackageV1Schema.safeParse(raw);
   if (!parsed.success) {
@@ -128,12 +96,7 @@ export function validateTemplatePackage(raw: unknown, deps: ValidatePackageDeps)
   return { ok: true, package: pkg };
 }
 
-/**
- * Serialize a graph + metadata into a v1 package. `engineCompat.requiredNodeTypes`
- * is DERIVED from the graph (the sorted distinct node types) so it can never
- * drift from what the graph actually uses. Pure — the export route reads the
- * definition and hands the graph here.
- */
+/** Serialize a graph + metadata into a v1 package. */
 export function buildTemplatePackage(input: {
   metadata: TemplatePackageV1['metadata'];
   graph: TemplateGraph;

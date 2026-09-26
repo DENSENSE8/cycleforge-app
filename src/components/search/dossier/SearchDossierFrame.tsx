@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * FIND confirmation column: status pin → outline → chronology → sticky handoff.
- * One chrome tree for every ?sel= type. Outline chips filter the same stream
- * (Overview = all kinds).
- *
- * ## Layout is one tree at two DENSITIES — and density is not the viewport
- *
- * The outline rail sits BESIDE the stream when there is measure for it, and
- * ABOVE it when there is not. That was five `md:` breakpoints until
- * 2026-09-13, which made this file disagree with `SearchResultRow` — the row
- * that shares its surface and has refused a viewport query since 2026-09-12:
- * "a desktop sidebar rail is narrow too, and a viewport query corrupts it."
- *
- * `SearchFindPreviewEmbed` is that corruption, live: it paints this frame in a
- * scan-station preview pane a few hundred px wide on a 1440px monitor, where
- * every `md:` fires and reserves a 224px outline gutter the pane cannot spare.
- * The viewport was never the fact anyone wanted.
- *
- * So the gate is {@link useFindDensity} — declared by the route (or by the
- * embedding pane), the row's own axis, the row's own two names. Still ONE
- * tree: `compact` stacks the same nodes, it does not mount a second flow.
- * Never reintroduce a `md:` / `lg:` gate here, and never a pair of
- * breakpoint-hidden trees — the guard in `SearchDossierFrame.test.ts` greps
- * this file for exactly that, which is why it is described and not spelled.
- */
+/** FIND confirmation column: */
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -170,10 +146,6 @@ export function SearchDossierFrame({
 
   // Order-level facts (Order id · Tracking · Qty) moved OUT of the rail and
   // into the centre (operator, 2026-09-12): the rail is navigation, the centre
-  // is the record. A dense multi-column band uses the full measure instead of
-  // leaving a dead right-hand gutter — but only where there IS measure. The
-  // 3/4-up ladder is gated on density for the same reason the rail is: at
-  // `compact` a four-column band truncates every value it prints.
   const factsBand =
     otherFacts.length > 0 ? (
       <dl
@@ -204,11 +176,7 @@ export function SearchDossierFrame({
         data-testid="search-dossier-status-row"
       >
         <div className="flex min-w-0 items-center gap-3">
-          {/* A back affordance says which direction it goes BEFORE it is read.
-              A bare word "Results" is a label with no direction, and it sat
-              beside a status badge and a title, which is exactly where a page
-              puts its nouns — so it read as a heading, not a control. The
-              leading chevron is the whole difference. */}
+          {/* A back affordance says which direction it goes BEFORE it is read. */}
           {onBack ? (
             <Button
               variant="ghost"
@@ -254,12 +222,7 @@ export function SearchDossierFrame({
         )}
         data-testid="search-dossier-investigation"
       >
-        {/* The rail band ALWAYS mounts: `search-dossier-outline` is part of the
-            one chrome tree, and the contract test pins an identical band order
-            across order / unit / carton / SKU. What is conditional is only its
-            WIDTH — a chipless entity (custody-only stream) reserves no 224px
-            gutter, and a compact measure reserves none either, because 224 of
-            390 is the record. */}
+        {/* The rail band ALWAYS mounts: */}
         <section
           className={cn(
             'shrink-0',

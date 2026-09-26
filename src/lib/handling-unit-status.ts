@@ -1,9 +1,4 @@
 // Single source of truth for handling-unit (H-####) box status tones.
-//
-// Flat chip (the only surface — mobile m/h/[id]). Mirrors the
-// lib/<domain>-status.ts pattern. Classes preserved verbatim; hues follow the
-// color story (DESIGN_SYSTEM.md): OPEN=neutral, STAGED=warning, IN_TEST=info,
-// CLOSED=success. src/lib is in Tailwind's content globs.
 
 export type HandlingUnitStatus = 'OPEN' | 'STAGED' | 'IN_TEST' | 'CLOSED';
 

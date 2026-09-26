@@ -22,14 +22,7 @@ import {
   DetailErrorState,
 } from './cards';
 
-/**
- * Unit detail workspace — main pane for `?view=labels` Recent and History
- * sub-views (fed by `?historyId=`). Printing lives on the Products sub-view;
- * this pane is a pure read view of one unit: a 40px linkage header
- * (inventory / compatibility / similar popovers), an identity summary
- * (serial, SKU, condition, status), a working location card, and the full
- * lifecycle timeline + condition / allocation / tech-scan history.
- */
+/** Unit detail workspace — main pane for `?view=labels` Recent and History sub-views (fed by `?historyId=`). */
 export function UnitDetailWorkspace() {
   const searchParams = useSearchParams();
   const { historyId: historyIdRaw } = useLabelsHistoryIdParam();

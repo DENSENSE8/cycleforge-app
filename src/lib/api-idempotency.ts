@@ -74,18 +74,6 @@ export async function saveApiIdempotencyResponse(
 }
 
 // ─── Reserve-up-front claim (concurrent-safe) ──────────────────────────────
-//
-// withIdempotentResponse (above) reads the cache, runs produce(), then writes
-// the result. Two requests with the SAME key that arrive while the first is
-// still in produce() BOTH miss the read and BOTH run produce() — a concurrent
-// double-fire (e.g. a fast double-submit re-running an external Zoho receive).
-// withIdempotencyClaim closes that gap by RESERVING the key up front: the first
-// request claims a pending row; a concurrent second either replays the finished
-// response or gets a 409 "in progress" — it never runs produce() too. A claim
-// abandoned by a crash self-heals after IDEMPOTENCY_STALE_CLAIM_MS.
-//
-// Additive: getApiIdempotencyResponse / saveApiIdempotencyResponse are
-// unchanged, so routes still using the read-then-write pattern are unaffected.
 
 /** status_code sentinel marking an in-flight (claimed, not finalized) row. */
 const IDEMPOTENCY_PENDING_STATUS = 0;
@@ -130,13 +118,6 @@ async function tryClaim(
 
 async function takeOverStaleClaim(db: Pick<Pool, 'query'>, p: ClaimParams): Promise<boolean> {
   // Atomically reclaim a pending row whose claim is older than the stale window.
-  // Two racers both run this UPDATE; only one matches the row (the other sees
-  // created_at already bumped) so exactly one takes over.
-  // org-scoped ($1): a stale claim is reclaimed only for its owning tenant, and
-  // — load-bearing — $1 must be REFERENCED. Binding orgId without using it left
-  // $1 untyped and crashed the whole statement at plan time with
-  // 42P18 "could not determine data type of parameter $1" (the retry-path 500
-  // on mark-received-po). Mirrors getApiIdempotencyResponse's org filter.
   const r = await db.query(
     `UPDATE api_idempotency_responses
         SET created_at = NOW(), staff_id = $4
@@ -156,11 +137,7 @@ export async function finalizeIdempotencyClaim(
   out: { status: number; body: Record<string, unknown> },
 ): Promise<void> {
   try {
-    // org-scoped ($1): finalize only this tenant's claim row. $1 must be
-    // REFERENCED — binding orgId without using it left $1 untyped and crashed
-    // the statement at plan time with 42P18 "could not determine data type of
-    // parameter $1" on the happy path (every successful receive that carried an
-    // Idempotency-Key). Mirrors getApiIdempotencyResponse's org filter.
+    // org-scoped ($1):
     await db.query(
       `UPDATE api_idempotency_responses
           SET status_code = $5, response_body = $6::jsonb, staff_id = $4
@@ -201,19 +178,7 @@ export type ClaimOutcome<B> =
   /** Caller owns the claim — run the work, then finalize/release. */
   | { outcome: 'proceed' };
 
-/**
- * Reserve the idempotency key up front. Returns:
- *   - 'replay'      → a finished response exists; return it without working.
- *   - 'in_progress' → another request is mid-flight with this key; 409.
- *   - 'proceed'     → you own the claim. Run the work, then call
- *                     finalizeIdempotencyClaim (on success/4xx) or
- *                     releaseIdempotencyClaim (on 5xx/throw).
- *
- * This is what closes the concurrent-double-fire gap that the read-then-write
- * pattern (getApiIdempotencyResponse → produce → saveApiIdempotencyResponse)
- * leaves open: two requests with the same key both miss the read and both run.
- * An abandoned claim (crash mid-flight) self-heals after IDEMPOTENCY_STALE_CLAIM_MS.
- */
+/** Reserve the idempotency key up front. */
 export async function claimOrReplay<B extends Record<string, unknown>>(
   db: Pick<Pool, 'query'>,
   p: ClaimParams,
@@ -295,13 +260,7 @@ export function readIdempotencyKey(req: Request, bodyKey?: string | null): strin
   return fromHeader || fromBody || null;
 }
 
-/**
- * Wrap a handler that produces a {status, body} pair with response-level
- * idempotency. When idempotencyKey is set and a prior response exists, returns
- * the cached pair without invoking produce(). Otherwise runs produce() and
- * persists status<500 responses. 5xx is treated as transient and not cached so
- * the next retry can succeed.
- */
+/** Wrap a handler that produces a {status, body} pair with response-level idempotency. */
 export async function withIdempotentResponse<B extends Record<string, unknown>>(
   db: Pick<Pool, 'query'>,
   params: {

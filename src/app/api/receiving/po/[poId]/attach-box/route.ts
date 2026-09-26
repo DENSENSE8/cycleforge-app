@@ -15,35 +15,9 @@ import { INBOUND_SOURCE_TYPES } from '@/lib/inbound/source-registry';
 /** Sargable `= ANY(...)` list for the polymorphic-link fallback (see resolvePo). */
 const NON_ZOHO_INBOUND_SOURCES: string[] = INBOUND_SOURCE_TYPES.filter((t) => t !== 'zoho');
 
-/**
- * POST /api/receiving/po/:poId/attach-box
- *
- * Attach a carrier tracking number to a PURCHASE ORDER — used by the Incoming-tab
- * popover to pre-register a vendor's tracking numbers BEFORE the boxes arrive
- * (docs/multi-tracking-po-plan.md, Phase 4b).
- *
- * Get-or-creates the PO's `receiving` carton locally (no Zoho round-trip) without
- * linking its lines — so the PO stays in the Incoming view — then attaches the
- * tracking via the shared `attachBoxToReceiving` core. Because `view=incoming`
- * joins the carton by PO id preferring a row with a shipment_id, the first
- * attached tracking flips the PO's delivery_state from AWAITING_TRACKING → carrier
- * status automatically.
- *
- * `poId` may be a Zoho purchaseorder_id or a PO number/reference.
- * Body: { trackingNumber: string }
- */
+/** POST /api/receiving/po/:poId/attach-box */
 
-/**
- * Resolve a Zoho purchaseorder_id (or PO number/reference) to the canonical id.
- *
- * Universal Incoming (plan §7.4): the input may also be an *eBay order id* — the
- * `source_order_id` an eBay-originated Incoming row carries when it has no Zoho
- * PO of its own. When that eBay line has since been linked/merged to a Zoho PO
- * (via `POST /api/receiving/inbound/link`), we resolve through the polymorphic
- * links to the Zoho id so attach-tracking flows through the same carton path as
- * a native Zoho PO. (A pure eBay-only line with no Zoho link yet has no carton
- * anchor in the current physical model — the operator links a Zoho PO first.)
- */
+/** Resolve a Zoho purchaseorder_id (or PO number/reference) to the canonical id. */
 async function resolvePo(
   orgId: string,
   poIdInput: string,
@@ -81,11 +55,7 @@ async function resolvePo(
     poId = m.rows[0]?.zoho_purchaseorder_id ?? null;
     poNumber = poNumber ?? m.rows[0]?.zoho_purchaseorder_number ?? null;
   }
-  // Universal Incoming fallback: treat the input as a non-Zoho external order id
-  // and follow the polymorphic links to a Zoho PO on the same spine row. Use an
-  // explicit `= ANY(<non-zoho sources>)` (not `<> 'zoho'`) so the composite index
-  // idx_inbound_po_links_source_lookup (org, source_type, source_order_id) stays
-  // fully sargable instead of degrading to a per-org Filter scan.
+  // Universal Incoming fallback:
   if (!poId) {
     const link = await tenantQuery<{ zoho_purchaseorder_id: string; zoho_purchaseorder_number: string | null }>(
       orgId,
@@ -113,13 +83,7 @@ async function resolvePo(
   return poId ? { poId, poNumber } : null;
 }
 
-/**
- * GET /api/receiving/po/:poId/attach-box
- *
- * List the boxes (tracking numbers) already attached to a PO's carton — lets the
- * attach popover preload existing boxes so repeat opens show what's linked instead
- * of an empty list. Read-only: does NOT get-or-create the carton.
- */
+/** GET /api/receiving/po/:poId/attach-box */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ poId: string }> },

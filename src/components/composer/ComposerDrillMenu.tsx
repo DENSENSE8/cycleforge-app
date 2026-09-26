@@ -2,21 +2,7 @@
 
 /**
  * `+` → “Add to message” — a Telegram-mobile drill menu.
- *
- * ONE panel with a STACK of pages, not a flyout tree. A station `+` is tapped
- * with a glove on a mounted screen; a desktop `DropdownMenuSub` that opens
- * sideways on hover has nowhere to go and nothing to hover with. Pushing the
- * submenu into the same panel keeps every row under the same thumb and keeps
- * “back” a real, hittable control.
- *
- * The page swap is INSTANT — no height tween between stack pages. A menu that
- * animates its own height moves every row the operator was already reaching
- * for, which is the interaction this shape exists to make fast.
- *
- * The ROOT page has no header. A title over a short list of verbs is a label
  * for a question nobody asked (operator ruling 2026-08-30). A pushed submenu
- * still gets one, because there the header carries the back control and says
- * where you are.
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -74,12 +60,7 @@ function DrillHeader({ title, onBack }: { title: string; onBack: () => void }) {
   );
 }
 
-/**
- * Trigger + panel + stack. The caller owns `open` so a host can close the menu
- * from elsewhere (mode switch, send); the stack is internal and always resets
- * to the root when the panel closes — reopening into a submenu the operator
- * left three cartons ago is a lie about where they are.
- */
+/** Trigger + panel + stack. */
 export function ComposerDrillMenu({
   nodes,
   open,

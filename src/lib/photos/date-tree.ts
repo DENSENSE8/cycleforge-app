@@ -1,9 +1,4 @@
-/**
- * Derive a Year → Month → Day → PO# navigation tree from the loaded library
- * photos (client-side; reflects whatever pages are loaded). Days bucket by
- * America/Los_Angeles so they line up with the rest of the library's PST date
- * grouping, and each day's PO refs come from `poRef`.
- */
+/** Derive a Year → Month → Day → PO# navigation tree from the loaded library photos (client-side; reflects whatever pages are loaded). */
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 
 export interface DatePoNode {

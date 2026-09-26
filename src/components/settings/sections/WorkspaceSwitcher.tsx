@@ -3,15 +3,7 @@
 // MOUNT: render <WorkspaceSwitcher /> inside OrganizationSection.tsx (e.g. just
 // below ActiveWorkspaceCard) — self-contained, reads memberships from useAuth().
 
-/**
- * Settings → Organization · "Switch workspace".
- *
- * Lists every OTHER workspace the signed-in account can act in (memberships
- * from the auth envelope, minus the current org) and switches via
- * {@link useSwitchOrg} / {@link orgInitials} (shared with the MasterNav spine
- * org control). The whole block renders only when the account belongs to >1
- * workspace — a single-org account sees nothing.
- */
+/** Settings → Organization · "Switch workspace". */
 
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';

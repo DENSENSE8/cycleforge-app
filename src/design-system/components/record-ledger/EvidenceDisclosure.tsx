@@ -1,17 +1,4 @@
-/**
- * Evidence-column facts that DISCLOSE — the Selected-order column of the
- * industrial record ledger (To-ship). Three parts, one geometry:
- *
- *   EvidenceFactRow         label · value, ruled underneath (no disclosure)
- *   EvidenceFactDisclosure  label · value · +/−; expands in place for detail
- *   EvidenceDisclosure      a collapsible block (Labels, Price, Customer):
- *                           label · summary · +/−; the body never repeats it
- *
- * The +/− sits in {@link RECORD_TRAILING_CELL_CLASS}, the one trailing axis
- * every right-edge glyph in the row shares (open ↗, edit ✎, a picker's ⌄ via
- * {@link RECORD_TRAILING_GLYPH_INSET_CLASS}). Label lane is the record's w-24.
- * Colours are the region's mode.
- */
+/** Evidence-column facts that DISCLOSE — the Selected-order column of the industrial record ledger (To-ship). */
 import type { ReactNode } from 'react';
 import { Minus, Plus } from '@/components/Icons';
 import { RECORD_LABEL_CLASS, RECORD_TRAILING_CELL_CLASS } from '@/design-system/tokens/industrial-record';

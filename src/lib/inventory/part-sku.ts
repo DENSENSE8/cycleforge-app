@@ -1,33 +1,4 @@
-/**
- * Part-SKU grammar — the single source of truth for classifying a Zoho `items`
- * SKU as a "part" and decomposing its suffix tokens.
- *
- * Convention (confirmed with the business):
- *
- *     <BASE> - P - <STOCK_INDEX> [ - <COLOR> ] [ - <CONDITION> ]
- *
- *   - BASE          zero-padded numeric code of the whole unit the part belongs
- *                   to (e.g. `00007`).
- *   - P             the PART FLAG. Its presence (immediately after the base) is
- *                   what makes a SKU "a part".
- *   - STOCK_INDEX   a DEDUP STOCK COUNTER, not a part discriminator. `00007-P-1`
- *                   and `00007-P-3` are the *same exact SKU item* — two stock
- *                   instances. The index collapses; it never splits a part.
- *   - COLOR         variant: BK/WH/GR/GY (GR and GY both = Gray).
- *   - CONDITION     variant: N (New) / U (Used).
- *
- * The LOGICAL PART IDENTITY (the grouping key) is `BASE + COLOR + CONDITION`
- * (with the index collapsed). Color and condition DO distinguish separate parts;
- * the index does not.
- *
- * Parsing is deliberately tokenized and lenient: an unrecognized trailing token
- * is captured as an `unknown` variant rather than causing a mis-parse, so a new
- * suffix code never silently merges two different parts or drops a real part.
- *
- * NOTE: this operates only on the Zoho `items` SKU scheme. Never cross it with
- * `sku_catalog` — the two are independent SKU numbering schemes that collide on
- * the same string ().
- */
+/** Part-SKU grammar — the single source of truth for classifying a Zoho `items` SKU as a "part" and decomposing its suffix tokens. */
 
 /** Canonical color codes → labels. GR and GY both mean Gray. */
 export const PART_COLORS = {

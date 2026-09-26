@@ -1,21 +1,4 @@
-/**
- * POST /api/auth/signin
- *
- * Body: { staffId: number, pin?: string, deviceKind?: 'station' | 'personal',
- *         deviceLabel?: string, persistent?: boolean }
- *
- * `persistent` is the sign-in page's "Keep me signed in" checkbox. True keeps
- * the session alive with no idle timeout on a sliding 1-year window, and makes
- * it ignore shift-end expiry.
- *
- * Default: verifies the PIN, creates a session, sets the httpOnly `cf_sid`
- * cookie, audits the result.
- *
- * Pinless mode: when `AUTH_PINLESS_SIGNIN=true`, an empty/missing `pin` skips
- * verification and signs the staff in by name alone (active status still
- * required). Audited as `signin.pinless`. Temporary measure during rollout
- * — flip the env var off to restore the PIN gate.
- */
+/** POST /api/auth/signin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -98,10 +81,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 404 });
     }
 
-    // WS6.1: staff forced onto password auth must use the account
-    // (email + password) entry point — refuse the station PIN/pinless path.
-    // Defaults to 'pin' (incl. when the column is absent pre-migration), so
-    // every existing staff signs in exactly as before.
+    // WS6.1: staff forced onto password auth must use the account (email + password) entry point — refuse the station PIN/pinless path.
     if ((await getStaffAuthMethod(staffId)) === 'password') {
       await audit({
         staffId, event: 'signin.pin', result: 'denied', ip, userAgent: ua,
@@ -150,11 +130,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE', status: row.status }, { status: 403 });
     }
 
-    // Sign-in == clock-in (soft gate). Look up an active shift but do NOT
-    // reject when there isn't one — staff should always be able to clock in
-    // (covering a shift unannounced, working off-hours, etc.). When a shift
-    // exists the session expires at shift end; otherwise the device-kind
-    // absolute window applies as before.
+    // Sign-in == clock-in (soft gate).
     const activeShift = await findActiveShift(staffId);
 
     const session = await createSession({

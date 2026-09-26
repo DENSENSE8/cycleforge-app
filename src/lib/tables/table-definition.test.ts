@@ -1,13 +1,4 @@
-/**
- * Table definition schema — the structural laws an author (human or model)
- * must not be able to break silently.
- *
- * Each rejection below corresponds to a rule that fails as a LAYOUT bug rather
- * than an error: a mis-ordered frozen pane pins at the wrong origin, a second
- * flex track makes slack absorption unpredictable, a fat default set turns a
- * dense queue into soup. Those are exactly the failures a validator has to
- * catch, because none of them throws on its own.
- */
+/** Table definition schema — the structural laws an author (human or model) must not be able to break silently. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

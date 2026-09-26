@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Phone "Add task" — the words first, then who, then (optionally) a record.
- *
- * A task does not need an order, carton or ticket behind it. The creator is
- * preselected (see `useThrowTask`), so the shortest path is: type what needs
- * doing → Create. Handing it on is unticking yourself and ticking a colleague;
- * sharing it is ticking several. Linking a record is a collapsed, optional
- * step below — the Ticket face still anchors a helpdesk thread.
- */
+/** Phone "Add task" — the words first, then who, then (optionally) a record. */
 
 import { useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';

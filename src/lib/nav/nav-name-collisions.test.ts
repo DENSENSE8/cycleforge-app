@@ -1,9 +1,6 @@
 /**
  * The hard gate for *"it should never display the same child and parent name"*
  * (operator 2026-09-14). Runs in verify's **Unit tests** gate, so a registry
- * edit that re-introduces a stutter fails before it ships — see
- * `nav-name-collisions.ts` for why this is a test rather than a design-mcp
- * refuse rule.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';

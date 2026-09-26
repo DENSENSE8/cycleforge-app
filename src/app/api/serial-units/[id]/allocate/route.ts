@@ -7,29 +7,7 @@ import { findByNormalizedSerial } from '@/lib/neon/serial-units-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/serial-units/[id]/allocate — pair a unit with an order.
- *
- * Resolves the unit by numeric `serial_units.id` or by `normalized_serial`,
- * resolves the order by numeric `orders.id` or by the textual `orders.order_id`,
- * and inserts an `order_unit_allocations` row in state ALLOCATED. Emits an
- * `inventory_events` ALLOCATED row in the same logical step so the History
- * Log timeline picks it up.
- *
- * Concurrency: the partial UNIQUE `idx_oua_open_unit` rejects a second open
- * allocation for the same unit. If the unit already has an open row we
- * return 409 by default — the caller can pass `transfer: true` to release
- * the prior allocation (reason='REASSIGNED') and then allocate to the new
- * order in the same request.
- *
- * Body:
- *   {
- *     order_pk?: number;        // orders.id — preferred when known
- *     order_ref?: string;       // orders.order_id (the human/business id)
- *     transfer?: boolean;       // auto-release any open allocation first
- *     client_event_id?: string; // idempotency key for the inventory_event
- *   }
- */
+/** POST /api/serial-units/[id]/allocate — pair a unit with an order. */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     const idParam = extractIdSegment(request.nextUrl.pathname);
@@ -137,12 +115,7 @@ export const POST = withAuth(
       );
     }
 
-    // 6. Flip the unit → ALLOCATED so serial_units.current_status stays in
-    //    lockstep with the allocation row (the pick flow then sees a clean
-    //    ALLOCATED→PICKED). This also emits the ALLOCATED pairing event
-    //    atomically. For a unit already ALLOCATED (reassignment, an identity
-    //    transition) or in a non-allocatable state, fall back to recording the
-    //    pairing event without a status change.
+    // 6. Flip the unit → ALLOCATED so serial_units.current_status stays in lockstep with the allocation row (the pick flow then sees a clean…
     const allocatedPayload = {
       allocation_id: allocation.id,
       order_id: order.id,
@@ -166,12 +139,7 @@ export const POST = withAuth(
       console.warn('[allocate] unit ALLOCATED transition threw (non-fatal)', err);
     }
     if (!t?.ok) {
-      // The unit's status wasn't flipped to ALLOCATED. If the guard rejected
-      // because the unit is in a genuinely non-allocatable state (a real
-      // from-state that isn't already ALLOCATED — e.g. RECEIVED / IN_TEST),
-      // don't leave a dangling ALLOCATED allocation out of sync with the unit:
-      // release it and 409. This keeps the invariant the pick flow relies on —
-      // "an open ALLOCATED allocation ⇒ the unit is ALLOCATED".
+      // The unit's status wasn't flipped to ALLOCATED.
       if (t && !t.ok && t.from && t.from !== 'ALLOCATED') {
         await releaseAllocationOrg(allocation.id, 'NOT_ALLOCATABLE', orgId).catch(() => {});
         return NextResponse.json(
@@ -263,16 +231,7 @@ async function resolveOrder(input: { orderPk: number | null; orderRef: string | 
   return null;
 }
 
-// ─── order_unit_allocations: org-scoped writers/readers ──────────────────────
-// order_unit_allocations is tenant-owned (NOT NULL organization_id with a
-// GUC-reading default). The shared allocations repo (allocate/release/
-// findOpenAllocationForUnit) runs on the stateless drizzle neon-http connection
-// with NO GUC and NO org stamp → the ALLOCATED insert resolves org=NULL → a
-// NOT NULL violation, and release()/findOpenAllocationForUnit() are unscoped
-// (release keyed only by id). We re-implement them org-scoped here: writes stamp
-// organization_id + run under the GUC, reads/updates carry an explicit
-// organization_id predicate. Rows are mapped back to the OrderUnitAllocation
-// camelCase shape so the JSON response bodies are byte-identical.
+// ─── order_unit_allocations:
 
 interface AllocationRow {
   id: number;

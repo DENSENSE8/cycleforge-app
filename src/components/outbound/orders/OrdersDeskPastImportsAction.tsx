@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * To-ship's **Past imports** header action — opens the per-day import record.
- *
- * `role="overall"` and not `primary`: this is a COLLECTION action ("show me
- * what arrived"), not the desk's create verb. Sync ShipStation keeps `primary`
- * and the Labels walk keeps `leading`, so all three coexist rather than
- * evicting each other (`DeskActionSlot` — last writer wins PER ROLE). To-ship
- * tucks its CSV export into the Sync dropdown (`copyExportPlacement: 'menu'`),
- * which is what leaves `overall` free for this.
- *
- * The button only writes `?imports` — the desk body decides what to paint from
- * it, the same split `?import=csv` already uses. `imports` / `importDay` /
- * `importFrom` / `importTo` are declared in `ORDERS_ROUTE_PARAMS`; an
- * undeclared param is stripped by `useSurfaceParamHygiene` on the operator's
- * next keystroke, which is the bug `ingest` and `paperwork` each paid for once.
- */
+/** To-ship's **Past imports** header action — opens the per-day import record. */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

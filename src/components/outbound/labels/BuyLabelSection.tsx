@@ -102,13 +102,7 @@ interface BuyLabelSectionProps {
   onPurchased?: (info: BuyResponse) => void;
 }
 
-/**
- * Buy Label — the ShipStation rate-shop → purchase → print flow for the Outbound
- * · Labels order panel. Fetches live rates on demand, lets the operator pick one
- * (cheapest first), confirms the charge, and buys the label; the purchased label
- * + generated packing slip flow into the existing document tray + print view via
- * `onChange`. Includes an immediate void/refund on the success card.
- */
+/** Buy Label — the ShipStation rate-shop → purchase → print flow for the Outbound · Labels order panel. */
 export function BuyLabelSection({
   orderId,
   orderRef,
@@ -122,10 +116,7 @@ export function BuyLabelSection({
   const face = cornerClass(flush ? 'flush' : 'field');
   const faceSm = cornerClass(flush ? 'flush' : 'control');
   const [selectedRateId, setSelectedRateId] = useState<string | null>(null);
-  // Why this label is bought: the order's shipment (outbound), the buyer's
-  // parcel back to us (return — rated and bought buyer → warehouse, v2
-  // `is_return_label`), or a second shipment to the buyer (replacement). Every
-  // purpose is recorded on THIS order, under its number and name.
+  // Why this label is bought:
   const [purpose, setPurpose] = useState<LabelPurpose>('outbound');
   // The evidence column's Label block reads the purchase ledger; a buy or a
   // void changes it.
@@ -135,10 +126,7 @@ export function BuyLabelSection({
   const [bought, setBought] = useState<BuyResponse | null>(null);
   const [voidReason, setVoidReason] = useState('');
   const [voidOpen, setVoidOpen] = useState(false);
-  // One idempotency key per INTENDED purchase: it survives re-rating, a
-  // network retry and a page-level remount of the confirm step, so a retry can
-  // only ever replay the purchase the server already recorded. A fresh key is
-  // minted only after a confirmed void (the next buy is a new purchase).
+  // One idempotency key per INTENDED purchase:
   const clientEventIdRef = useRef<string>('');
   const purchaseKey = () => {
     if (!clientEventIdRef.current) clientEventIdRef.current = safeRandomUUID();

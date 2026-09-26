@@ -11,19 +11,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     );
     const minDays = Math.max(parseInt(searchParams.get('minDays') || '90', 10) || 90, 0);
     const includeNever = searchParams.get('includeNeverMoved') === 'true';
-    // TENANT ISOLATION: mv_dead_stock is a cross-tenant-collapsed materialized
-    // view — it GROUP BYs on the bare `sku` string and string-key JOINs
-    // (sku_catalog/sku_stock ON sku) with NO organization_id, so once a second
-    // org carries the same SKU string its rows merge and the MV leaks across
-    // tenants. RLS does not apply to MV rows, so the GUC alone can't fix it.
-    // The org dimension DOES exist on the base tables (sku_stock /
-    // sku_stock_ledger / sku_catalog / sku_platform_ids all carry
-    // organization_id — 2026-05-23_org_id_on_business_tables.sql), so we bypass
-    // the leaky MV and recompute the same projection directly from the
-    // org-bearing base tables, scoping every table to ctx.organizationId and
-    // pinning every `sku` string-key JOIN to the same org. This serves only the
-    // caller's own dead stock; output column shape is unchanged. (The MV remains
-    // for any future per-org-MV redesign; this route no longer reads it.)
+    // TENANT ISOLATION:
     const r = await tenantQuery(
       ctx.organizationId,
       `WITH last_move AS (

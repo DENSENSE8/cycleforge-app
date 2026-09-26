@@ -1,21 +1,4 @@
-/**
- * AI Chat — STREAMING endpoint (Server-Sent Events).
- *
- * Mirrors the routing logic of ../route.ts (local-ops resolver → Bose RAG →
- * Hermes gateway) but streams the assistant answer token-by-token so the UI
- * can render text as it arrives instead of waiting 60-80s for one blob.
- *
- * Event protocol (text/event-stream), one JSON payload per `data:` line:
- *   event: meta      { mode, sessionId }
- *   event: step      { label }                 // coarse progress hints
- *   event: delta     { text }                  // incremental assistant text
- *   event: analysis  { ...AiStructuredAnswer } // structured card (local/rag/hybrid)
- *   event: error     { message }
- *   event: done      { mode }
- *
- * Instant/structured modes (local_ops, rag) don't stream from the model — we
- * emit their full text as a single delta followed by the analysis + done.
- */
+/** AI Chat — STREAMING endpoint (Server-Sent Events). */
 import { NextRequest } from 'next/server';
 import { detectIntents } from '@/lib/ai/intent-router';
 import { queryNemoClawRag } from '@/lib/ai/nemoclaw-rag';
@@ -163,14 +146,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         send('meta', { mode: prepared.intents.length > 0 ? 'hybrid' : 'assistant', sessionId });
         send('step', { label: 'Asking the assistant' });
 
-        // Per-org provider chain with failover (local-first by default). A
-        // cold or unreachable local box falls forward to cloud here rather
-        // than ending the turn — the whole point of the inversion.
-        //
-        // Unconfigured / whole-chain-down is a first-class in-protocol answer,
-        // not a thrown fetch at a default URL: this stream has already emitted
-        // `meta`, so the client is listening for `error`/`done` and would
-        // otherwise hang on a dead socket.
+        // Per-org provider chain with failover (local-first by default).
         let hermesRes: Response;
         let servedBy: string;
         try {
@@ -184,13 +160,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             // falling forward to a different model name.
             buildBody: (config) => chatBody(config.model, enrichedMessage),
             body: null,
-            // Streaming needs the ORIGINAL 3-minute budget, not the helper's
-            // per-provider default. `AbortSignal.timeout` bounds the whole
-            // fetch — body included — so a 45s local budget would guillotine a
-            // long answer mid-sentence: at the measured ~17 tok/s a 2048-token
-            // reply runs past two minutes. A genuinely dead endpoint still
-            // fails over fast, because that surfaces as a network error rather
-            // than as this timeout.
+            // Streaming needs the ORIGINAL 3-minute budget, not the helper's per-provider default.
             timeoutMs: 180_000,
           });
           hermesRes = attempt.res;

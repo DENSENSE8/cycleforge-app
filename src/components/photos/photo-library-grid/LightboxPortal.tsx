@@ -5,13 +5,7 @@ import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGall
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 
-/**
- * Mounts the shared fullscreen viewer for a set of photos, opens it at
- * `startIndex` on mount, and calls `onClose` (to unmount) once the viewer is
- * dismissed. Shared by the folders view and the flat (list/grid) views.
- *
- * Dismiss / present / portal chrome is owned by {@link PhotoViewerPortal}.
- */
+/** Mounts the shared fullscreen viewer for a set of photos, opens it at `startIndex` on mount, and calls `onClose` (to unmount) once the… */
 export function LightboxPortal({
   photos,
   startIndex = 0,

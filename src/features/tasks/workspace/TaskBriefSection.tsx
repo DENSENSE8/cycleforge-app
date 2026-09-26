@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Task evidence — **Instructions**: the description the assignee works from
- * (`work_assignments.notes`), written and read as MARKDOWN — numbered steps,
- * checklists, tables, code — because a job worth handing over is usually
- * more than a sentence.
- *
- * Read mode renders it (no raw HTML — see `MarkdownRenderer`). Edit mode is a
- * Write / Preview pair so the thrower sees what the floor will see before
- * saving. Editable after the throw: the first sentence typed at the composer
- * is rarely the whole instruction, and a handoff whose words cannot be
- * corrected gets re-thrown as a second task.
- *
- * Draft is `null` while pristine (the house pattern), so a server repaint
- * after a save never fights the operator's typing.
- */
+/** Task evidence — **Instructions**: */
 
 import { useId, useState } from 'react';
 import MarkdownRenderer from '@/components/ui/MarkdownRenderer';

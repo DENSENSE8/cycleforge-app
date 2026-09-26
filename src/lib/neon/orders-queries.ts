@@ -8,10 +8,6 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 // Order record with shipping information.
-// Definition lives in the dependency-free leaf @/types/orders so low-layer
-// modules (utils/*, hooks/*) can consume the shape without importing this heavy
-// query module. Imported for internal use and re-exported so existing callers
-// of this module are unaffected.
 import type { ShippedOrder } from '@/types/orders';
 export type { ShippedOrder };
 
@@ -85,38 +81,7 @@ const WA_DEADLINE_LATERAL = `
     LIMIT 1
   ) wa_deadline ON TRUE`;
 
-/**
- * Pick facts for one order — who picked it and when. Aliases: `pick_alloc`
- * (allocation-level), `pick_sess` (session-level fallback), `s_picked` (face).
- *
- * `order_unit_allocations` is the only order→unit link, but it records no pick
- * actor and no pick stamp: /api/pick/scan writes `state` alone (pick/scan
- * route.ts step 4), and the row's own timestamps are allocated_at /
- * released_at / returned_at — confirmed against information_schema on
- * 2026-09-14, so there is no allocation column to read a pick time off. The
- * pick ACT is the inventory_events row the same transaction emits (PICKED, or
- * FORCE_PICK on the operator-override path); that carries actor_staff_id +
- * occurred_at.
- *
- * States past PICKED count: pack and ship advance the SAME allocation row
- * (lib/inventory/sync-legacy-pack.ts), so an `= 'PICKED'` gate would blank the
- * pick fact on exactly the packed rows this CTE lists. `occurred_at >=
- * oua.allocated_at` stops a re-allocated unit from inheriting the pick of its
- * previous (RETURNED) allocation cycle.
- *
- * Allocation beats session per fact, not per row: an event with a NULL actor
- * still contributes its stamp while the name falls to the session picker —
- * both describe the same order's pick, and a stamp with no face beats a blank.
- *
- * Adds five columns to the caller's GROUP BY.
- *
- * **Exported because the outbound queue has THREE independent order readers**
- * (this file's `ORDER_SERIALS_CTE`, `getShippedOrderById`, and
- * `src/app/api/orders/route.ts` — the live path the To-ship / Pending grid
- * actually fetches; see that route's own comment at :506). A fact added to one
- * does not reach the others, which is exactly how the Pick column spent months
- * painting tester data. One string, three call sites, so they cannot drift.
- */
+/** Pick facts for one order — who picked it and when. */
 export const PICK_FACTS_LATERALS = `
   LEFT JOIN LATERAL (
     SELECT ie.actor_staff_id AS picked_by,
@@ -174,15 +139,7 @@ export const PICK_FACTS_LATERALS = `
   LEFT JOIN staff s_picked
     ON s_picked.id = COALESCE(pick_alloc.picked_by, pick_sess.picked_by, pick_station.picked_by)`;
 
-/**
- * Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the
- * warehouse" stamp plus who scanned it. Mirrors packer-logs-week.ts.
- *
- * Exported for the same reason as {@link PICK_FACTS_LATERALS}: the third order
- * reader (`src/app/api/orders/route.ts`) never projected these, which is why
- * the slot table's Scanned-out column dashed on every row while the field
- * catalog documented the gap instead of closing it. One string, both readers.
- */
+/** Dock scan-out (SHIP_CONFIRM) for this order's shipment — the "left the warehouse" stamp plus who scanned it. */
 export const SHIP_OUT_LATERAL = `
     LEFT JOIN LATERAL (
       SELECT
@@ -196,25 +153,7 @@ export const SHIP_OUT_LATERAL = `
     ) ship_out ON true
     LEFT JOIN staff shipped_out_staff ON shipped_out_staff.id = ship_out.shipped_out_by`;
 
-/**
- * Pre-box facts for one order line. Alias: `prebox` (+ `prebox_staff` face).
- *
- * The only order→unit link is `order_unit_allocations` (live rows: not
- * RELEASED / RETURNED); a unit is pre-boxed when its live
- * `label_manifest_items` row belongs to a SEALED `PREBOX` manifest
- * (2026-07-06b: one live manifest per unit, dissolve deletes the items). The
- * manifest records no sealer, so "by" is its `created_by`; "when" is
- * `sealed_at`.
- *
- * An aggregate lateral, so it always yields one row: `unit_count` 0 means the
- * line maps to no serial unit and its pre-box state is UNKNOWN (the record
- * paints nothing), not "not pre-boxed". Index path: idx_oua_order_state
- * (order_id, state) → ux_label_manifest_items_one_live (organization_id,
- * serial_unit_id) → label_manifests_pkey.
- *
- * Joined by `/api/orders` (the To Ship feed and the Shipped record's line
- * read); the grouping readers in this file do not project it.
- */
+/** Pre-box facts for one order line. */
 export const PREBOX_FACTS_LATERAL = `
     LEFT JOIN LATERAL (
       SELECT
@@ -260,37 +199,7 @@ export const DOCK_STAGING_LATERAL = `
         AND stage.organization_id = o.organization_id
     ) dock_stage ON true`;
 
-/**
- * The two ESTIMATE arms of an order line's price. Aliases: `listing_price`
- * (channel ask for the SKU), `unit_price` (ask for the exact allocated box).
- * `orders.sale_amount` needs no lateral — it is already on the row.
- *
- * Measured 2026-09-15 on live prod: 6 of 4467 orders carry `sale_amount`, so
- * reading only the sold column shows a dash on 99.9% of the book. All 1557
- * `platform_listings` rows ARE priced, which is why these arms exist at all.
- * `resolveLinePrice` (lib/orders/price-resolve.ts) turns the three facts into
- * one displayable number and flags the estimates as estimates.
- *
- * Two join keys, not one: `sku_catalog_id` is the strong link but was NULL on
- * all 1557 listing rows until migration 2026-09-15b backfilled 177 of them,
- * and the rest still key only on the merchant SKU string. `NULLIF(BTRIM(...),
- * '')` on the order's SKU is load-bearing — 36 of the 64 unshipped lines carry
- * no SKU at all, and a bare `UPPER(BTRIM(o.sku))` would pair every one of
- * them with any listing whose `merchant_sku_normalized` is blank.
- *
- * The ORDER BY prefers a listing from the channel the order actually came from
- * (case-insensitive: `account_source` holds ecwid / ECWID / Ecwid): what we
- * ask on eBay is not what we ask on our own storefront, so the order's own
- * channel is the right estimate. `p.id DESC` terminates the ranking so the
- * same row wins on every run — a price that flickers between reads is worse
- * than no price.
- *
- * `serial_unit_listings` is EMPTY today (0 rows). The arm is a LEFT JOIN
- * LATERAL returning at most one row, so it contributes NULL rather than
- * dropping the order — the unit-priced path can start working the day a lister
- * prices a serialized unit, with no query change. `state = 'ALLOCATED'` only:
- * a released or returned allocation no longer describes what is shipping.
- */
+/** The two ESTIMATE arms of an order line's price. */
 export const PRICE_FACTS_LATERALS = `
     LEFT JOIN LATERAL (
       SELECT p.listing_price_cents,
@@ -559,14 +468,7 @@ const ORDER_SERIALS_CTE = `
              pick_station.picked_by, pick_station.picked_at, s_picked.name
   )`;
 
-// Search path variant: swaps the carrier-accepted gate for a packer-scan gate.
-// A row counts as "shipped" for search only when a packer actually scanned it out —
-// either a PACK-station scan (pack_sal) or an ORDERS packer_log (pl.packed_by). This
-// keeps packed-but-not-yet-carrier-scanned orders discoverable (the original reason
-// the carrier gate was dropped) while excluding orders that merely have a shipment_id
-// assigned but were never packed/shipped. Those un-shipped rows used to leak into
-// shipped search with the order's created_at timestamp and a "Not specified" packer —
-// if there's no packer scan, it was never shipped, so it must not appear here.
+// Search path variant:
 const ORDER_SERIALS_CTE_ALL = ORDER_SERIALS_CTE.replace(
   `WHERE COALESCE(stn.is_carrier_accepted OR stn.is_in_transit
             OR stn.is_out_for_delivery OR stn.is_delivered, false)`,
@@ -587,12 +489,7 @@ interface GetAllShippedOrdersOptions {
   weekEnd?: string;
   packedBy?: number | null;
   testedBy?: number | null;
-  /**
-   * Universal staff filter (P1-WORK-02): narrow to orders this staff packed OR
-   * tested. Distinct from packedBy/testedBy (which are separate AND filters) —
-   * this is a single OR predicate pushed into SQL so the route no longer has to
-   * fetch the full page and post-filter in JS.
-   */
+  /** Universal staff filter (P1-WORK-02): */
   staffFilterId?: number | null;
   missingTrackingOnly?: boolean;
   /** Filter records by order type. 'all' returns everything; default is no restriction. */
@@ -690,16 +587,7 @@ export async function getAllShippedOrders(
   }
 }
 
-/**
- * AI-focused query: get orders packed within a date range.
- *
- * Unlike `getAllShippedOrders` (which requires carrier tracking confirmation),
- * this counts orders by their **pack date** — what the warehouse team actually
- * did that week. Includes orders packed but not yet carrier-confirmed.
- *
- * Falls back to carrier-shipped orders filtered by tracking update date if
- * pack data is sparse (covers the case where tracking confirms days later).
- */
+/** AI-focused query: */
 export async function getPackedOrdersForAi(opts: {
   weekStart: string;
   weekEnd: string;
@@ -707,10 +595,7 @@ export async function getPackedOrdersForAi(opts: {
 }, orgId?: OrgId): Promise<ShippedOrder[]> {
   const limit = opts.limit ?? 5000;
   try {
-    // When orgId is threaded, scope to the tenant via the `orders` parent (which
-    // carries organization_id). LIMIT stays at $3 (byte-identical to the legacy
-    // path); the org predicate is appended as $4 so existing placeholders are
-    // untouched.
+    // When orgId is threaded, scope to the tenant via the `orders` parent (which carries organization_id).
     const orgClause = orgId ? `AND o.organization_id = $4` : '';
     const params = orgId
       ? [opts.weekStart, opts.weekEnd, limit, orgId]
@@ -1049,12 +934,7 @@ interface ShippedSearchResult {
   debug: ShippedSearchDebug;
 }
 
-/**
- * Search shipped orders by tracking number, order ID, product title, or serial number.
- * Uses ORDER_SERIALS_CTE_ALL so packed-but-not-yet-carrier-scanned orders are also
- * discoverable; the is_shipped column on each row lets the UI distinguish "shipped"
- * from "pending carrier scan".
- */
+/** Search shipped orders by tracking number, order ID, product title, or serial number. */
 export async function searchShippedOrders(
   query: string,
   options?: {
@@ -1219,10 +1099,7 @@ export async function searchShippedOrders(
       }
 
       if (numericParam) {
-        // Demoted from 1420 → 600: previously a search for order_id "12345" could
-        // surface an unrelated record whose primary key is 12345 and outrank the
-        // real order_id match. 600 keeps this as a useful tiebreaker without
-        // overriding exact/prefix hits on order_id or tracking.
+        // Demoted from 1420 → 600:
         variants.push({
           predicate: `os.id = ${numericParam}`,
           score: 600,
@@ -1666,13 +1543,7 @@ export class OrderDeleteBlockedError extends Error {
   }
 }
 
-/**
- * Delete an order by ID.
- *
- * The tenant-scoped path locks the parent row before checking restrictive
- * children, so a concurrent allocation or label-ingestion insert cannot race
- * the preflight and turn into an opaque 500.
- */
+/** Delete an order by ID. */
 export async function deleteOrder(id: number, orgId?: OrgId): Promise<boolean> {
   if (!orgId) {
     const result = await pool.query('DELETE FROM orders WHERE id = $1', [id]);

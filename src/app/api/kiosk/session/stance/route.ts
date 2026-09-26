@@ -1,10 +1,4 @@
-/**
- * POST /api/kiosk/session/stance — Work · Show · Verify from the tablet.
- *
- * Callers: `useKioskSharedSession` writer `setConsultStance`.
- * Schema: `counter_sessions.consult_stance` + `face`.
- * User: continue Phase 3 Show; dual-device stance already in the store.
- */
+/** POST /api/kiosk/session/stance — Work · Show · Verify from the tablet. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

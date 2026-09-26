@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Bulk triage-flag picker for the dashboard selection bar — one flag onto N orders.
- *
- * A dialog for the same reason {@link BulkShipByDialog} is one: the
- * `ContextualSelectionBar` renders an icon-only capsule with no anchor for a
- * floating layer, and teaching it one would grow a shared primitive's public
- * API for a single call site.
- *
- * Every option shows its **word, its colour, and what it means** together. A
- * bare swatch grid would let two staffers assign two meanings to the same
- * colour inside a week; the hint line is what keeps the vocabulary shared.
- */
+/** Bulk triage-flag picker for the dashboard selection bar — one flag onto N orders. */
 
 import { useState } from 'react';
 import {

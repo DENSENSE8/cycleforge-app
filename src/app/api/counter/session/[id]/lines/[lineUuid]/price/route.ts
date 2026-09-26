@@ -1,18 +1,4 @@
-/**
- * POST /api/counter/session/{id}/lines/{lineUuid}/price — override a line price.
- *
- * Its own verb because it is its own risk. A price change (a discount, a
- * re-quote, a goodwill zero) moves money, so it carries `walk_in.adjust_price`
- * — changing a price, not taking one — a fresh PIN step-up, and an audit row
- * with the before and after amounts.
- *
- * Splitting it off the general line PATCH is the load-bearing part. With one
- * endpoint, the step-up gate would depend on which optional field the caller
- * chose to send — and a permission you can bypass by omitting a field is not a
- * permission.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P7 · D5).
- */
+/** POST /api/counter/session/{id}/lines/{lineUuid}/price — override a line price. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

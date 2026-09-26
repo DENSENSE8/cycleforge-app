@@ -1,17 +1,4 @@
-/**
- * Left context-rail park/restore chord — ⌘/Ctrl+B on {@link ContextPanelLayout}.
- *
- * One owner: the layout toggles {@link CONTEXT_PANEL_COLLAPSE}. Click hosts
- * ({@link RailFilterCollapseButton} / parked expand strip) advertise the same
- * chord via {@link contextPanelToggleHotkeyLabel} — never a second listener
- * (the open panel stays mounted `inert` while collapsed, so an exclusive-host
- * mount on both sides would double-bind).
- *
- * Distinct from Station Displays ⌘] and MasterNav (click-only). Steals browser
- * Bold via preventDefault — same class of decision as Displays stealing
- * Forward. Modifier chord (⌘K rule): fires from text fields; stands down only
- * for an open overlay (`hasOpenOverlay`).
- */
+/** Left context-rail park/restore chord — ⌘/Ctrl+B on {@link ContextPanelLayout}. */
 
 'use client';
 

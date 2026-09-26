@@ -1,15 +1,4 @@
-/**
- * A desk's bin count writes, as request builders.
- *
- * Nothing here invents an endpoint: an adjust is the `put` / `take` the phone
- * and the scan gun already send to `PATCH /api/locations/[barcode]`
- * (`adjustBinQty`), which is what keeps the ledger row, the `sku_stock`
- * recompute and the `STOCK_DELTA_*` publish identical on every surface.
- *
- * Every request carries a fresh `Idempotency-Key`, which the route reads
- * (`readIdempotencyKey`) and caches its response against, so a retried press
- * replays rather than writing twice.
- */
+/** A desk's bin count writes, as request builders. */
 
 import { safeRandomUUID } from '../safe-uuid';
 import type { StockBinWriteTarget } from './stock-bin-writes';

@@ -1,64 +1,4 @@
-/**
- * unit-events.ts — the transactional unit-lifecycle façade.
- * ────────────────────────────────────────────────────────────────────
- * `recordUnitEvent()` is the single entry point for "a thing happened to a
- * serialized unit": it find-or-creates the `serial_units` master, writes the
- * `tech_serial_numbers` lineage row, optionally moves quantity via
- * `sku_stock_ledger`, and appends the linked `inventory_events` row — all on
- * ONE pg client so it commits or rolls back atomically with the caller's work.
- *
- * STATUS CHANGES ROUTE THROUGH THE STATE MACHINE (relational-reuse §2).
- * ────────────────────────────────────────────────────────────────────
- * The façade does NOT stamp `serial_units.current_status` directly. The SoT
- * rule is that every status change on a
- * *pre-existing* unit goes through the guarded `transition()` chokepoint
- * (`src/lib/inventory/state-machine.ts`) so the allow-list, the `FOR UPDATE`
- * lock, optimistic-concurrency (`expectedFrom`), and the atomic
- * `serial_units` UPDATE + `inventory_events` INSERT all happen in one place.
- *
- * So the façade splits into two paths:
- *
- *   • EXISTING unit + a real status change → `transition()` owns it. We upsert
- *     identity WITHOUT moving status (pass `target_status = priorStatus`, a
- *     no-op for the upsert), then call `transition({ to, expectedFrom, … })`,
- *     which writes the guarded UPDATE + the status-transition `inventory_event`.
- *
- *   • BRAND-NEW unit (no prior status) → there is no valid `from` state for
- *     `transition()` to guard against, so the CREATE stays explicit:
- *     `upsertSerialUnit()` INSERTs the row at its birth status and the façade
- *     records the create `inventory_event` directly. This is the one path that
- *     legitimately does not flow through the state machine — a create is not a
- *     transition. (Existing units with NO status change also record their event
- *     directly, since there is nothing for the state machine to move.)
- *
- * Why NOT `applyTransition()`? `applyTransition` always opens its OWN
- * transaction (it calls `transition()` with an undefined db arg), so it
- * cannot co-commit with the façade's caller-owned pg transaction — the same
- * transport constraint that rules out the Drizzle repositories here (see
- * `tech-serial.ts`). The façade therefore composes `transition()` directly,
- * threading the shared `client` so the status write co-commits with the
- * lineage/ledger writes. The engine tap (`tapWorkflow`) is a fire-and-forget
- * side-effect a caller can fire from `after()`; it is deliberately out of this
- * atomic spine.
- *
- * Why a PoolClient (not the pool, not Drizzle): the upsert + `transition()`
- * take `FOR UPDATE` locks that the FK checks and ledger insert must see in the
- * same transaction. The Drizzle (`neon-http`) repositories run on a separate
- * stateless connection and cannot join this transaction (see the transport
- * note in `tech-serial.ts`). Callers own the transaction:
- *
- *     await transaction(async (client) => {
- *       await recordUnitEvent({ ... }, client);
- *       // ...other writes in the same txn...
- *     });
- *
- * Collaborators are injected (defaulting to the real impls) so this is unit
- * testable with in-memory fakes — see `unit-events.test.ts`, the same pattern
- * `applyTransition()` / `advanceItem()` use.
- *
- * This is the spine Phase 2 migrates the hot paths onto incrementally; new
- * unit-touching code should use it rather than hand-rolling the four inserts.
- */
+/** unit-events.ts — the transactional unit-lifecycle façade. */
 
 import type { PoolClient } from 'pg';
 import {
@@ -101,14 +41,7 @@ export interface RecordUnitEventInput {
   originSource: SerialOriginSource;
   originReceivingLineId?: number | null;
   conditionGrade?: string | null;
-  /**
-   * Target lifecycle status.
-   *   • New unit: the birth status (defaults from originSource when omitted).
-   *   • Existing unit: the state to `transition()` the unit INTO. Omit it to
-   *     record an event WITHOUT moving status (e.g. a NOTE). The requested
-   *     transition must be allowed by the state machine's allow-list, or the
-   *     call throws (the caller's transaction rolls back).
-   */
+  /** Target lifecycle status. */
   targetStatus?: SerialStatus;
 
   // ── event ──
@@ -146,12 +79,7 @@ export interface RecordUnitEventResult {
   transitioned: boolean;
 }
 
-/**
- * Injectable collaborators (real impls by default; in-memory fakes in tests so
- * the façade runs DB-free). `lookupUnit` takes the early `FOR UPDATE` lock that
- * both establishes new-vs-existing and lets us neutralize the upsert's status
- * move; `transition` is the guarded state-machine writer.
- */
+/** Injectable collaborators (real impls by default; in-memory fakes in tests so the façade runs DB-free). */
 export interface RecordUnitEventDeps {
   lookupUnit: (
     client: Pick<PoolClient, 'query'>,
@@ -188,15 +116,7 @@ const defaultDeps: RecordUnitEventDeps = {
   transition,
 };
 
-/**
- * Atomically find-or-create a unit + write its lineage/ledger/event rows on the
- * given transaction client. Status changes on an EXISTING unit are routed
- * through the guarded `transition()` state machine (a brand-new-unit create is
- * stamped at birth — there is no prior state to transition from). Throws if the
- * serial is invalid OR the requested transition is rejected by the state
- * machine (rolls back via the caller's transaction). Idempotent on
- * `clientEventId` at the event layer.
- */
+/** Atomically find-or-create a unit + write its lineage/ledger/event rows on the given transaction client. */
 export async function recordUnitEvent(
   input: RecordUnitEventInput,
   client: PoolClient,
@@ -212,12 +132,6 @@ export async function recordUnitEvent(
   const priorStatus: SerialStatus | null = existing?.current_status ?? null;
 
   // 1. Upsert the unit master.
-  //    • EXISTING unit: pass target_status = priorStatus so the upsert ONLY
-  //      backfills identity (sku / catalog / zoho / grade / origin / unit_uid)
-  //      and leaves current_status untouched — the state machine owns the move.
-  //    • NEW unit: pass the requested target (or let it default from origin) so
-  //      the INSERT stamps the birth status. transition() can't guard a create
-  //      (no from-state), so the create is explicit by design.
   const upsertTargetStatus = existing ? priorStatus ?? undefined : input.targetStatus;
   const upserted = await deps.upsertSerialUnit(
     {
@@ -284,14 +198,6 @@ export async function recordUnitEvent(
   }
 
   // 4. The lifecycle event.
-  //
-  //    Status-change path (EXISTING unit, requested target differs from prior):
-  //    drive it through the guarded transition(). transition() owns the
-  //    FOR UPDATE re-check, the allow-list guard, the serial_units UPDATE, and
-  //    the status-transition inventory_event — all on THIS client (co-commit).
-  //    We thread the ledger link + event passthrough so the emitted event is
-  //    identical to what the façade used to write by hand. A rejected
-  //    transition (404/409) throws so the caller's transaction rolls back.
   const wantsStatusChange =
     existing != null && input.targetStatus != null && input.targetStatus !== priorStatus;
 

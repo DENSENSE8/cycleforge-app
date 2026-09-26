@@ -20,16 +20,7 @@ import { assertTaskInOrg } from '@/lib/tasks/task-links-db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Read the device-reported capture instant off the multipart body.
- *
- * Absent is the normal case (desktop uploads, and any legacy client that
- * predates the field) and must be indistinguishable from a clean upload —
- * hence `null`, never a 400. Present-but-unparseable also degrades to `null`
- * rather than rejecting: provenance is a secondary fact on an evidence upload,
- * so a client bug must cost the timestamp, not the photo. It is logged so the
- * bug is still visible instead of silently eroding the column.
- */
+/** Read the device-reported capture instant off the multipart body. */
 function parseCapturedAt(raw: FormDataEntryValue | null): Date | null {
   const captured = parseClientCapturedAt(raw);
   if (!captured && raw !== null && String(raw).trim()) {
@@ -78,16 +69,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const linkRole = parseLinkRole(form.get('linkRole'));
     const clientCapturedAt = parseCapturedAt(form.get(CLIENT_CAPTURED_AT_FIELD));
 
-    // What this shot SHOWS, within its stage — the second axis beside
-    // `photoType`. Validated against the stage the (entity × photo_type) pair
-    // RESOLVES to, never a stage the caller claimed: a caller that mis-claims
-    // the stage must not also get to mis-claim the aspect, or the pairing the
-    // `require_one` receive gate depends on stops meaning anything.
-    //
-    // Absent → null → legal (unclassified evidence, what every pre-aspect row
-    // carries). Present-but-unknown → 400, never silently dropped: an aspect is
-    // a claim about the frame, and a dropped claim reads to the operator as a
-    // recorded one.
+    // What this shot SHOWS, within its stage — the second axis beside `photoType`.
     const rawAspect = String(form.get('photoAspect') || '').trim();
     let photoAspect: PhotoAspect | null = null;
     if (rawAspect) {

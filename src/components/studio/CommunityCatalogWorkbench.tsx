@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * CommunityCatalogWorkbench — the BROWSE/CLONE half of the unified /studio/catalog
- * surface (Template Platform Phase 4). Any studio.view user browses the curated
- * community catalog here (org-submitted, curator-approved blueprints from
- * GET /api/studio/catalog) and clones one into their own Studio as a draft via
- * POST /api/studio/templates/[id]/import (studio.manage, enforced server-side).
- *
- * Workbench archetype (list → select → detail → act), structurally mirroring
- * CatalogReviewWorkbench: the template list is the stable w-80 left picker;
- * selection is durable + URL-addressable (?selectedId); the right pane is the
- * selected template's detail + the Clone action and crossfades on selection
- * change (the list stays put). House style throughout: linear space-y/divide-y
- * scaffold, one-row anatomy, semantic-token color, selection =
- * bg-blue-50 ring-1 ring-inset ring-blue-400 (no size shift), icons from
- * @/components/Icons, right-pane motion via the canonical workbenchPane preset
- * routed through the reduced-motion bridge.
- */
+/** CommunityCatalogWorkbench — the BROWSE/CLONE half of the unified /studio/catalog surface (Template Platform Phase 4). */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

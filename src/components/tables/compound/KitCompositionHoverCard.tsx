@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Hover card for Item-cell Bundle / Kit face (Shopify-like components list).
- *
- * Importers: CompoundCells when view.kitFace is set.
- * Schema: KitFace from mergeKitComposition (sku_relationships | sku_kit_parts).
- * API: none (client face only).
- * User: Implement multi-tenant kit / bundle display (Shopify-like).
- */
+/** Hover card for Item-cell Bundle / Kit face (Shopify-like components list). */
 
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';

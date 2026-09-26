@@ -1,14 +1,4 @@
-/**
- * The customer book's display contract — one DTO and one set of readers for
- * every surface that shows a `customers` row.
- *
- * `GET /api/customers/[id]` returns this row, and `/api/orders` joins the same
- * columns onto each order as `customer` (`orders.customer_id → customers`,
- * org-scoped), so the To-ship ledger row and its evidence column read the book
- * without a fetch per row. `CustomerDetailsTab` reads the same helpers; a
- * surface that needs a customer's name or address calls these, never a local
- * `display_name || customer_name || …` chain.
- */
+/** The customer book's display contract — one DTO and one set of readers for every surface that shows a `customers` row. */
 
 /**
  * ShipStation's `billTo`, as the buyer writer stores it in

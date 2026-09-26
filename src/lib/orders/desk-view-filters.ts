@@ -1,21 +1,4 @@
-/**
- * Outbound desk VIEW filters — the two lenses the desk sidebar adds on top of
- * the existing queues: URL parse, the counts payload shape, and the Shortage
- * desk's canonical redirect. Their SQL predicates live in
- * `@/lib/orders/desk-view-sql`, shared by the row feed (`GET /api/orders`)
- * and the badge feed (`GET /api/orders/desk-counts`) so a sidebar number can
- * never disagree with the list it opens.
- *
- * - `pair=po` (Shortage desk): blocked / out-of-stock orders that have an open
- *   `order_line_shortages` row earmarked onto a PO line or a receiving line via
- *   `shortage_inbound_links` (`src/lib/orders/shortage-inbound.ts`).
- * - `queue=pick` (To-ship desk): in-warehouse orders not yet packed whose
- *   allocated units are not all picked — "nothing picked" included — newest
- *   synced first.
- *
- * Pure and client-safe (no SQL, no DB), so the desk components and the route
- * read the same parser.
- */
+/** Outbound desk VIEW filters — the two lenses the desk sidebar adds on top of the existing queues: */
 
 import { DESK_PAIR_PARAM, DESK_QUEUE_PARAM, type DeskCountKey } from '@/lib/outbound/desk-views';
 

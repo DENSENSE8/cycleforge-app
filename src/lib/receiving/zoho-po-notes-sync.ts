@@ -15,13 +15,7 @@ export interface SyncPoHeaderNotesResult {
   live_last_modified_zoho?: string | null;
 }
 
-/**
- * Push carton-level Zoho PO header notes (`receiving.zoho_notes`) to the linked
- * Zoho PO `notes` field. Full replace — manual edits own the whole blob.
- * When `baseLastModifiedZoho` is set, refuse overwrite if Zoho's live stamp
- * differs (block-if-stale — never blind last-write-wins).
- * Never throws; failures are returned for the route to map.
- */
+/** Push carton-level Zoho PO header notes (`receiving.zoho_notes`) to the linked Zoho PO `notes` field. */
 export async function syncPoHeaderNotesToZoho(params: {
   zohoPoId: string | null | undefined;
   notes: string | null;

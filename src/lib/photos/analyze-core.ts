@@ -1,12 +1,4 @@
-/**
- * Photo-analysis orchestration — PURE wiring, no DB / no `server-only` imports, so
- * it unit-tests with zero database. The server bindings (DB context load, real
- * provider calls, persistence) live in `analyze.ts`, which injects them as Deps.
- *
- * analyzePhoto routes a photo to the provider THIS ORG chose (resolved upstream in
- * the context) and degrades to deterministic catalog metadata on any null — it
- * never throws on a missing model or an unreachable vision box.
- */
+/** Photo-analysis orchestration — PURE wiring, no DB / no `server-only` imports, so it unit-tests with zero database. */
 
 import type { PhotoAnalysisMetadata } from './analyze-types';
 import type { PhotoAnalyzeProvider } from './analyze-provider';

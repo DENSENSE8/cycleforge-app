@@ -13,15 +13,7 @@ import { PhotoEntityGroupHeader } from './PhotoEntityGroupHeader';
 import { groupPhotosByTicket } from './photo-grid-format';
 import type { PhotoGridViewProps } from './types';
 
-/**
- * Google Photos–style entity wall — PO / ticket bands with one title each,
- * select-all on the band, and a flush tile grid with **no per-tile labels**
- * (the group header is the only place the PO or ticket name appears).
- *
- * Sticky discipline (one sticky layer per scroll port): workbench chrome +
- * footer live outside the scroll body via `DashboardScrollShell`; these entity
- * bands are the only sticky layer inside the port (`top-0`).
- */
+/** Google Photos–style entity wall — PO / ticket bands with one title each, select-all on the band, and a flush tile grid with **no… */
 export function PhotoFlatGrid({
   gridDensity,
   photos,

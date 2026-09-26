@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Invisible hit map over the print-faithful sticker ({@link LabelFacePreview}).
- *
- * Flush to the sticker box — no wrap pad, no row gap. The printed HTML still
- * has its own 4px/5px ink inset; the hits cover that paper to the edge so
- * they sit ON the type, not in the white margin around it.
- *
- * Rows: top corners · middle notes · bottom corners. The matrix column on
- * the right is not a hit. Notes are only the middle row.
- *
- * The iframe stays `pointer-events-none`.
- */
+/** Invisible hit map over the print-faithful sticker ({@link LabelFacePreview}). */
 
 import { type Ref } from 'react';
 import { cn } from '@/utils/_cn';

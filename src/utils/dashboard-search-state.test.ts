@@ -205,15 +205,7 @@ test('patchDashboardSelectedOrderFromAssignment updates only matching selected o
 });
 
 test('every param the retired-front-door redirects forward is declared by /dashboard', () => {
-  // `/dashboard` reads these off the URL solely to forward them — to Support for
-  // `?warranty=`, and to the FBA board for `?fba`. An undeclared hand-off key is
-  // dropped the instant this route mounts `useSurfaceParamHygiene()` (step 6 of
-  // the migration method, still open per nav-routing-refactor-FINISH-PROMPT §3.3),
-  // which would silently strip the bookmark's open claim, filters, or intent.
-  //
-  // `wstatus`/`wexp` were undeclared before 2026-07-30 — a latent break waiting
-  // for whoever graduated the dashboard. `fba` became one when IA row L removed it
-  // from the lifecycle-tab set while the redirect kept reading it.
+  // `/dashboard` reads these off the URL solely to forward them — to Support for `?warranty=`, and to the FBA board for `?fba`.
   const spec = routeParamsFor('/dashboard')!;
   const undeclared = [...SUPPORT_WARRANTY_FORWARDED_PARAMS, 'fba', 'warranty'].filter(
     (key) => !parseRouteParams(spec, new URLSearchParams(`${key}=1`)).has(key),
@@ -227,16 +219,7 @@ test('every param the retired-front-door redirects forward is declared by /dashb
   );
 });
 
-/**
- * Regression (2026-08-20): the Add-orders rail opened and closed itself.
- *
- * `useSurfaceParamHygiene` (mounted in `src/app/shipping/layout.tsx`) re-parses
- * the URL against the route spec on every param change and drops anything the
- * route does not declare. `ingest` was undeclared, so the chrome Add wrote
- * `?ingest=true` and the very next hygiene pass stripped it — `showIngestRail`
- * flipped false before the operator could type. Both keys that open the rail
- * must survive the boundary parse.
- */
+/** Regression (2026-08-20): */
 test('the To-ship desk keeps the params that open the Add-orders rail', () => {
   const spec = routeParamsFor('/shipping/orders');
   assert.ok(spec, 'expected a route spec for /shipping/orders');
@@ -251,13 +234,7 @@ test('the To-ship desk keeps the params that open the Add-orders rail', () => {
   }
 });
 
-/**
- * Regression (2026-09-01): Labels opened the paperwork walk and closed it.
- *
- * Same hygiene trap as `ingest`. The CTA writes `?paperwork=<id>`; if the
- * To-ship spec does not own that key, the shipping-layout hygiene pass
- * strips it on the next tick and the desk flashes table ↔ walk.
- */
+/** Regression (2026-09-01): */
 test('the To-ship desk keeps the param that opens the Labels walk', () => {
   const spec = routeParamsFor('/shipping/orders');
   assert.ok(spec, 'expected a route spec for /shipping/orders');

@@ -4,27 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { transition } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/fba/items/[id]/link-unit
- *
- * Phase 6. Links a specific serialized unit to an FBA shipment item line.
- * For Tier-3 (serialized) FNSKUs only — Tier-1/2 lines remain pure
- * actual_qty counters and don't go through this endpoint.
- *
- * Single transaction:
- *   1. INSERT fba_shipment_item_units (idempotent via PK).
- *   2. UPDATE serial_units.current_status → ALLOCATED (FBA pack is the
- *      allocation moment for FBA-bound stock).
- *   3. INSERT inventory_events ALLOCATED with payload tagging this as
- *      an FBA allocation.
- *
- * Body:
- *   { scan?: string, serial_unit_id?: number, client_event_id?: string }
- *
- * The `scan` field accepts a raw serial OR a GS1 Digital Link URL.
- *
- * Permission: fba.stage_shipments.
- */
+/** POST /api/fba/items/[id]/link-unit */
 export const POST = withAuth(async (request, ctx) => {
   // /api/fba/items/[id]/link-unit
   const segments = request.nextUrl.pathname.split('/').filter(Boolean);
@@ -98,10 +78,7 @@ export const POST = withAuth(async (request, ctx) => {
       );
       const created = link.rows.length > 0;
 
-      // 4+5. Transition unit → ALLOCATED if it's currently STOCKED, which also
-      //    emits the ALLOCATED event atomically (guarded, replacing the former
-      //    raw status UPDATE + manual event INSERT). Don't downgrade an
-      //    already-PACKED/LABELED unit (defensive) — only STOCKED units move.
+      // 4+5. Transition unit → ALLOCATED if it's currently STOCKED, which also emits the ALLOCATED event atomically (guarded, replacing the…
       const prevStatus = unit.current_status;
       let nextStatus = prevStatus;
       let eventId: number | null = null;
@@ -121,11 +98,7 @@ export const POST = withAuth(async (request, ctx) => {
             fnsku: item.fnsku,
           },
         }, client, ctx.organizationId);
-        // Throw (don't return) so a transition failure rolls back the
-        // fba_shipment_item_units link inserted above — never commit a link
-        // with the unit left un-allocated. Unreachable in practice (STOCKED→
-        // ALLOCATED is a valid edge and the row is locked), but keeps the txn
-        // all-or-nothing, symmetric with allocate.ts.
+        // Throw (don't return) so a transition failure rolls back the fba_shipment_item_units link inserted above — never commit a link with the…
         if (!t.ok) throw new Error(`fba.link-unit: STOCKED→ALLOCATED failed for unit ${unit.id}: ${t.error}`);
         nextStatus = 'ALLOCATED';
         eventId = t.eventId;

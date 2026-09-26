@@ -18,19 +18,7 @@ import {
   type TicketLinkTimelineRow,
 } from './index';
 
-/**
- * Client-side merge for the Master Operations Journey. The `/api/operations/journey`
- * endpoint returns events bucketed by `source` with a `raw` payload shaped to each
- * source's existing `*ToTimeline` adapter — so this dispatches each bucket through
- * the SAME adapter (no new label/tone mapping), then sorts newest-first and folds
- * adjacent duplicates via `collapseTimeline`. The grouping keys the server resolved
- * per row drive the per-entity journey bands (order / serial / tracking) through
- * `EventTimeline`'s `groupKeyOf`.
- *
- * These are the client mirror of the server wire types (see
- * `src/lib/operations/journey.ts`) — kept structurally local so this module never
- * imports the `server-only` domain module.
- */
+/** Client-side merge for the Master Operations Journey. */
 
 export type JourneySource =
   | 'sal'
@@ -129,18 +117,7 @@ export function mergeJourney(events: JourneyEvent[]): MergedJourney {
   return { items: collapseTimeline(merged), groupOf };
 }
 
-/**
- * Ship/return round-trip counts for a merged journey (§1 success metric of the
- * returns-unification plan: "how many times it has been returned and shipped
- * out"). Two counts, not one combined "trips" figure — a unit can ship more
- * times than it's returned (the latest trip may still be out), so pairing
- * them would either be wrong or need an arbitrary tie-break; two counts stay
- * exactly as literal as the ask.
- *
- * Keyed on `TimelineItem.sourceEventType` (only `inventoryEventsToTimeline`
- * sets it) — never the display `title` string, which is free to change
- * without warning. A unit with no ship/return history yields {0, 0}.
- */
+/** Ship/return round-trip counts for a merged journey (§1 success metric of the returns-unification plan: */
 export function countRoundTrips(items: TimelineItem[]): { shippedCount: number; returnedCount: number } {
   let shippedCount = 0;
   let returnedCount = 0;
@@ -151,12 +128,7 @@ export function countRoundTrips(items: TimelineItem[]): { shippedCount: number; 
   return { shippedCount, returnedCount };
 }
 
-/**
- * Build the `groupKeyOf` selector for {@link EventTimeline} that buckets each row
- * into its order / serial / tracking journey band. Rows missing the active
- * dimension's key are forced into the trailing "Other events" band rather than
- * fragmenting into incidental ref bands.
- */
+/** Build the `groupKeyOf` selector for {@link EventTimeline} that buckets each row into its order / serial / tracking journey band. */
 export function journeyKeyOf(
   dim: JourneyDimension,
   groupOf: Map<string, JourneyGroupKeys>,

@@ -4,12 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const runtime = 'nodejs';
 
-/**
- * Generates a new chat session ID server-side.
- * The ID is a standard UUID. /api/ai/chat forwards it to the local
- * Hermes gateway as `X-Hermes-Session-Id` so Hermes can persist the
- * conversation in ~/.hermes-cycleforge/state.db for follow-up turn memory.
- */
+/** Generates a new chat session ID server-side. */
 export const POST = withAuth(async () => {
   return NextResponse.json({ session_id: randomUUID() });
 }, { permission: 'dashboard.view', feature: 'aiChat' });

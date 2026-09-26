@@ -1,26 +1,4 @@
-/**
- * `UnitTsnLinkTableRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * The family's ONLY contribution to how a v1 TSN record paints. Every fact it
- * does not name here is a bound SLOT resolved through
- * `unit-tsn-links-resolve.ts`.
- *
- * ## What the compound row says about a v1 record
- *
- * - IDS — the TSN id. It is the identity fact and the number an operator
- *   pastes into a v1 log query. No tracking number exists on a v1 serial
- *   record, so the cell's second line stays empty.
- * - TITLE — the STATION that wrote it. A v1 audit row has no name; where it
- *   came from is the closest thing to one, and it is what an operator joining
- *   v1 logs to v2 lifecycle actually scans for.
- * - the note line — the shipment, in words. A FALLBACK: the product layout
- *   binds `shipment` as a track, so this only shows if an org hides it.
- * - STATE — the serial TYPE, verbatim. There is no house vocabulary for v1
- *   serial types and inventing one would put a word on the pill that does not
- *   appear in the v1 table an operator is cross-referencing.
- * - DATES — Hash line = when v1 wrote the record. A v1 audit row has no
- *   deadline and no second stamp, so the Calendar line stays empty.
- */
+/** `UnitTsnLinkTableRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -64,10 +42,8 @@ export function unitTsnLinksCompoundView(row: UnitTsnLinkTableRow): CompoundRowV
     // rather than painting "Untitled" over a fact the row does not have.
     title: station ?? `TSN #${row.id}`,
     note: shipment ? `Shipment ${shipment}` : null,
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(str(row.id), 'Link id'),
     orderId: null,
     tracking: null,

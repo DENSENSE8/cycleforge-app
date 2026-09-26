@@ -1,12 +1,4 @@
-/**
- * Receiving surface-path helpers (Studio-driven operator surfaces, Phases 1–2).
- *
- * Two receiving modes have graduated to their own first-class routes — Unbox
- * (`/unbox`) and Triage (`/triage`); the rest still live on `/receiving?mode=…`.
- * These pure helpers keep the routes as a single source of truth (from the
- * surface registry) so no component hardcodes them, and let in-surface
- * navigations stay on the current surface instead of bouncing to `/receiving`.
- */
+/** Receiving surface-path helpers (Studio-driven operator surfaces, Phases 1–2). */
 
 import { getSurface } from '@/lib/stations/surface-keys';
 

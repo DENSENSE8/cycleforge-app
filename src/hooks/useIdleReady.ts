@@ -2,16 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-/**
- * Flips to `true` once the browser goes idle after first paint (or after
- * `timeout` ms, whichever comes first). Gate non-critical mount work on this —
- * app-wide seed fetches, analytics warmups, prefetch caches — so it never
- * competes with the route's first render for main-thread time.
- *
- * SSR/first render always return `false`, so gated effects run exactly once
- * on the idle flip. Falls back to `setTimeout` where `requestIdleCallback`
- * is unavailable (Safari).
- */
+/** Flips to `true` once the browser goes idle after first paint (or after `timeout` ms, whichever comes first). */
 export function useIdleReady(timeout = 2_000): boolean {
   const [ready, setReady] = useState(false);
 

@@ -11,21 +11,7 @@ const VALID_REASONS: ReadonlySet<ShortPickReason> = new Set([
   'OTHER',
 ]);
 
-/**
- * POST /api/picking/session/[id]/short-pick
- *
- * Records a short pick: releases the allocation back to STOCKED and writes
- * the reason + note to inventory_events for the audit trail.
- *
- * Body: {
- *   allocation_id: number,
- *   picked_qty: number,
- *   planned_qty: number,
- *   reason: ShortPickReason,
- *   note?: string,
- *   client_event_id?: string,
- * }
- */
+/** POST /api/picking/session/[id]/short-pick */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
@@ -66,12 +52,7 @@ export const POST = withAuth(async (request, ctx) => {
   }
 
   try {
-    // Thread the caller's tenant id so the shared module org-gates the
-    // order_unit_allocations read/write (WHERE id=$1 AND organization_id=$2 →
-    // 404 on a foreign-org allocation, never 403), runs inside a GUC-wrapped
-    // transaction, and forwards orgId to transition() so the serial_units
-    // mutation is org-scoped and the release NOTE is stamped to the real tenant
-    // — closes the cross-tenant short-pick release-to-STOCKED leak.
+    // Thread the caller's tenant id so the shared module org-gates the order_unit_allocations read/write (WHERE id=$1 AND organization_id=$2 →…
     const result = await recordShortPick({
       sessionId,
       allocationId,

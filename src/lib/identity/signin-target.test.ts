@@ -1,10 +1,4 @@
-/**
- * Unit gate for account sign-in workspace resolution (node:test, no I/O).
- * Pins the contract the /signin workspace picker relies on: an
- * organizationId is honored only when the server's own membership list
- * contains it — anything else is NOT_A_MEMBER, never a session for another
- * org.
- */
+/** Unit gate for account sign-in workspace resolution (node:test, no I/O). */
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { resolveAccountSigninTarget, type AccountMembershipRow } from './signin-target';

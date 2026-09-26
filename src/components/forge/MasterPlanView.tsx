@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Live master-plan Monitor region (ALP-3.1/3.2) — read-only render of the
- * shared MDX. Markdown flows through react-markdown; `<TicketStatus/>` and
- * `<AgentLog/>` tags render as real components between blocks (segments
- * parser — no MDX compiler). Linear scaffold, no decorative card chrome on
- * the plan hero, per the display rules.
- */
+/** Live master-plan Monitor region (ALP-3.1/3.2) — read-only render of the shared MDX. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';

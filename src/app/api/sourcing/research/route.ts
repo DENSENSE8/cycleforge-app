@@ -10,14 +10,7 @@ import pool from '@/lib/db';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/**
- * POST /api/sourcing/research
- *
- * Runs the normal secondary-market search, then asks Hermes to rank the
- * returned listings for an operations buyer. This is a draft/research aid only:
- * it does not save candidates unless the caller explicitly uses the existing
- * candidate save/import endpoints.
- */
+/** POST /api/sourcing/research */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

@@ -1,11 +1,4 @@
-/**
- * My-Day slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks.
- *
- * Vocabularies are never declared here: the lane resolves through
- * `myDayLaneShortLabel` and the lifecycle through `workStatusLabel`, the same
- * SoTs the chips read.
- */
+/** My-Day slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { myDayLaneShortLabel, type MyDayTask } from '@/lib/my-day/my-day-tasks';

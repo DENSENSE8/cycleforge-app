@@ -1,19 +1,10 @@
-/**
- * Station terminal registry — declarative tab → kind maps per workspace mode.
- *
- * Kind strings (`mode-default`, `po-note`, `none`) are resolved into
- * TerminalActionVm by mode-specific builders under each panel's `terminal/`
- * folder. This file never builds icons or handlers.
- */
+/** Station terminal registry — declarative tab → kind maps per workspace mode. */
 
 import type { ModeTerminalSliceDef, TerminalWorkspaceMode } from './types';
 
 export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTerminalSliceDef> = {
   unbox: {
-    // Carton-terminal: the Unbox dock is always Print · Receive. The displays
-    // moved to the right-edge Displays push column (Lane E), so a tab → kind map
-    // would mean a right-panel click silently re-labelling the bottom primary.
-    // Tab-scoped actions are local controls inside their own display now.
+    // Carton-terminal:
     hasSectionTabs: false,
     defaultKind: 'mode-default',
     tabs: {},

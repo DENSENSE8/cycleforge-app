@@ -8,22 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { OrderLookupRecord } from '@/lib/orders/order-hub';
 import pool from '@/lib/db';
 
-/**
- * GET /api/orders/lookup/:orderId
- *
- * Resolve a single order by:
- *   1. human `order_id` (externally-visible order #), or
- *   2. carrier tracking (header-search paste / scan) via {@link findOrderByTrackingKey}, or
- *   3. `?by=id`: the internal `orders.id` pk only — the phone order hub's
- *      fallback when a job linked by pk (pick queue, exceptions). Never mixed
- *      with 1/2, so a numeric order # can never shadow a pk or vice versa.
- *
- * Returns the order joined with customer + current work assignment + serial
- * numbers so mobile `/m/orders/[orderId]` and header-search identifier commits
- * (`resolveSearchOrder` → `/o/[id]`) can render in one shot.
- *
- * Read-only. Does not write to receiving or any other table.
- */
+/** GET /api/orders/lookup/:orderId */
 
 export const dynamic = 'force-dynamic';
 
@@ -183,11 +168,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ ok: false, error: 'invalid order id' }, { status: 400 });
   }
 
-  // Short-TTL read model for the mobile order-detail page: order VM + activity
-  // strip, reloaded per scan. 20s TTL bounds staleness; tech/scan + the order
-  // mutation chokepoint (invalidateOrderViews) bust the org-scoped tags. The
-  // cache key carries the lookup mode — `id:14262` (pk) and `no:14262` (order #)
-  // are different orders, and neither prefix can be forged by the other.
+  // Short-TTL read model for the mobile order-detail page:
   const cached = await getOrSet<{ order: OrderDetail | null; activity: unknown[] }>(
     CACHE_NS.orderDetail,
     orgId,

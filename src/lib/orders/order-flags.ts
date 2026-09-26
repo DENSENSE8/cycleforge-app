@@ -4,18 +4,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isOrderRowFlagId, type OrderRowFlagId } from './order-row-flags';
 
-/**
- * Write side of the order row flag (`order_flags`).
- *
- * The vocabulary and every presentation decision live in the dependency-free
- * `order-row-flags.ts`; this module is only the persistence half, so the API
- * route stays thin (validate → domain helper → audit) per
- *
- * Reads do NOT come through here. The queue needs the flag on every row, and a
- * per-row fetch would be an N+1 against a virtualized grid — it is joined into
- * the shared `ORDER_SERIALS_CTE` in `lib/neon/orders-queries.ts` instead, so
- * the flag arrives with the row that renders it.
- */
+/** Write side of the order row flag (`order_flags`). */
 
 interface SetOrderFlagArgs {
   orderId: number;
@@ -30,16 +19,7 @@ type SetOrderFlagResult =
   | { ok: true; flag: OrderRowFlagId | null }
   | { ok: false; reason: 'not_found' | 'invalid_flag' };
 
-/**
- * Set or clear one order's flag. Idempotent by construction: the upsert targets
- * `ux_order_flags_org_order`, so re-sending the same flag is a no-op update
- * rather than a duplicate row, and a double-click from the selection bar cannot
- * fan out into two records.
- *
- * Existence is checked against `orders` first rather than relying on the FK:
- * a bad id must come back as a 404 the operator can act on, not a raw
- * constraint violation surfaced as a 500.
- */
+/** Set or clear one order's flag. */
 export async function setOrderFlag({
   orderId,
   organizationId,
@@ -70,16 +50,7 @@ export async function setOrderFlag({
   });
 }
 
-/**
- * Set or clear the flag on many orders at once — the multi-select plane
- * (`ContextualSelectionBar`) writes one value onto N rows, which is the one
- * case that genuinely is a single bulk mutation rather than per-record
- * judgement (`display/workbench.md` → Action planes).
- *
- * Returns the ids that actually exist in this org. Ids that do not are silently
- * dropped rather than failing the batch: a stale selection (a row shipped out
- * from under the operator) must not throw away the other nine flags.
- */
+/** Set or clear the flag on many orders at once — the multi-select plane (`ContextualSelectionBar`) writes one value onto N rows, which is… */
 export async function setOrderFlagBulk({
   orderIds,
   organizationId,

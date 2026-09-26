@@ -20,16 +20,7 @@ import {
   type AdminDriftAlertsGridColumn,
 } from './admin-drift-alerts-grid-layout';
 
-/**
- * Nothing on this desk writes. An alert is opened and resolved by
- * `/api/cron/inventory/drift-check` — it closes itself the next run after the
- * drift clears — so there is no row verb an admin could be offered that would
- * not be a second, manual writer into the table the cron owns. The retired
- * cells offered none either.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting a run of alerts into a reconciliation ticket is why the page is open.
- */
+/** Nothing on this desk writes. */
 export const ADMIN_DRIFT_ALERTS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

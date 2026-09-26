@@ -7,12 +7,7 @@ import {
 } from './state-machine';
 import { deriveReceivingLineStatus, resolveReceivingLineStatus } from './workflow-stages';
 
-// ─── Deps / db fakes ──────────────────────────────────────────────────────────
-// transitionReceivingLine issues: a SELECT … FOR UPDATE (the lock), then an
-// UPDATE receiving_line. With a `db` passed and NO orgId it takes the executor
-// path → no BEGIN/COMMIT, no set_config. The fake routes canned rows by
-// inspecting the SQL and captures every call + the event so we assert on the
-// result AND what was threaded — fully DB-free.
+// ─── Deps / db fakes ────────────────────────────────────────────────────────── transitionReceivingLine issues:
 
 interface LockedRow {
   workflow_status: string;

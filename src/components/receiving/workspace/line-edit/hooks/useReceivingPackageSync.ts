@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Two halves of the carton-level metadata sync loop for LineEditPanel:
- *
- *   1. Persist `listing_url` to the carton (`receiving.listing_url`), debounced
- *      so paste-then-type doesn't thrash PATCH, then broadcast
- *      `receiving-package-updated` so other open surfaces (the tech testing
- *      workspace in another browser, the top PO card) pick it up.
- *   2. Mirror incoming `receiving-package-updated` events — when the platform
- *      or listing changes elsewhere for THIS carton, reflect it here.
- *
- * Extracted from LineEditPanel; behaviour is unchanged. The write guards
- * against round-tripping the same value just hydrated from the DB.
- */
+/** Two halves of the carton-level metadata sync loop for LineEditPanel: */
 
 import { useEffect } from 'react';
 import { emitAppEvent, useEventBridge } from '@/hooks';

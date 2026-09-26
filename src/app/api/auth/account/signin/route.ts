@@ -1,19 +1,4 @@
-/**
- * POST /api/auth/account/signin  (PUBLIC)
- *
- * Account-level (email + password) login — the cross-org entry point, distinct
- * from the org-scoped station PIN flow (/api/auth/signin). Resolves the account,
- * verifies the password, then:
- *   • 0 memberships  → 403 NO_WORKSPACE
- *   • 1 membership   → sign in directly (mint session for that org's profile)
- *   • >1 memberships → 200 { needsOrgChoice, memberships } unless an
- *                      organizationId is supplied, then sign into that one.
- *
- * Body: { email, password, organizationId?, persistent? }
- *
- * `persistent` is the "Keep me signed in" checkbox — no idle timeout on a
- * sliding 1-year window for this device.
- */
+/** POST /api/auth/account/signin (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -144,12 +129,7 @@ export async function POST(req: NextRequest) {
   });
   await logAuthEvent({ accountId: account.id, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
-  // SHARED-account (umbrella) avenue: on a shared workspace the shared login's
-  // session is minted (above), but instead of going straight in we hand back
-  // the staff roster so the client can "act as" any staff PIN-lessly
-  // (POST /api/auth/act-as-staff). The shared login's OWN profile is excluded —
-  // it's the front door, not a selectable staff member. A per-email
-  // ('individual') org skips this block entirely and signs straight in.
+  // SHARED-account (umbrella) avenue:
   const staffChoice = await loadSharedStaffChoices(target.organization_id, target.staff_id);
 
   const res = NextResponse.json({

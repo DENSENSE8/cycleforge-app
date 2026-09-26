@@ -45,13 +45,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'sourcing.view', feature: 'sourcing' });
 
-/**
- * POST /api/sourcing/candidates — Save a candidate to the watchlist.
- *
- * eBay hits (with `externalId`) dedupe on the (source, external_id) unique
- * index — a re-save updates in place (200); a new candidate is 201. A retried
- * create replays via `Idempotency-Key`.
- */
+/** POST /api/sourcing/candidates — Save a candidate to the watchlist. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

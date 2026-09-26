@@ -1,21 +1,4 @@
-/**
- * scan-history-route — maps a phone scan's `routed_to` (a /m/* mobile path)
- * to the equivalent DESKTOP page, plus a human label.
- *
- * Phone receiving Data Matrix labels resolve (via barcode-routing) to one of
- * three mobile routes. On desktop we open the corresponding workspace page:
- *
- *   /m/r/{id}  receiving / PO   →  /receiving/history?recvId={id}
- *              History shows every carton regardless of state, so the deep
- *              link always lands; the default (unbox) view only lists active
- *              work and silently missed already-received cartons. (History
- *              graduated to its own route `/receiving/history` in Phase 9.)
- *   /m/l/{id}  receiving line   →  /receiving/lines/{id}
- *   /m/u/{id}  serial unit      →  /serial/{id}
- *
- * Anything else (generic order scans, unknowns) is not a receiving handle and
- * returns null — those don't belong in the receiving scan-history list.
- */
+/** scan-history-route — maps a phone scan's `routed_to` (a /m/* mobile path) to the equivalent DESKTOP page, plus a human label. */
 
 export type ScanHandleType = 'receiving' | 'receiving-line' | 'serial-unit';
 

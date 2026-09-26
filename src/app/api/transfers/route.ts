@@ -17,19 +17,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 const ROUTE_TRANSFERS = 'transfers.post';
 
-/**
- * POST /api/transfers
- * Body: { fromBinBarcode, toBinBarcode, sku, qty, reasonCodeId?, notes?,
- *         staffId, clientEventId? }
- *
- * Atomic bin-to-bin move: take from A, put to B, write one MOVED row to
- * inventory_events tying both legs together. Each leg goes through the same
- * writer as a normal take/put so the ledger trail stays honest. Idempotent
- * on clientEventId.
- *
- * Required permission: bin.adjust (everyone except readonly). Bin moves are
- * an everyday workflow, not a destructive admin action.
- */
+/** POST /api/transfers Body: */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json().catch(() => ({}));

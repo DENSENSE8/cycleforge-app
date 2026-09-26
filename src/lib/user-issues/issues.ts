@@ -1,12 +1,4 @@
-/**
- * User-reported issues domain (ALP-5.*) — the in-app half of the
- * issue → fix → toast loop. Neon (`user_reported_issues`, tenant-from-birth)
- * is the primary record; GitHub is a best-effort mirror that feeds the
- * claude-fix-issue.yml automation. Status vocabulary mirrors the master-plan
- * TicketStatus enum: pending | in-progress | deployed.
- *
- * Deps-injected (query fn) so unit tests run DB-free (house pattern).
- */
+/** User-reported issues domain (ALP-5.*) — the in-app half of the issue → fix → toast loop. */
 
 export type UserIssueType = 'bug' | 'suggestion' | 'question';
 export type UserIssueStatus = 'pending' | 'in-progress' | 'deployed';
@@ -344,12 +336,7 @@ export type SetIssueStatusResult =
   | { ok: true; issue: ReportedIssue; from: UserIssueStatus; to: UserIssueStatus }
   | { ok: false; error: 'not_found' | 'conflict' | 'invalid_transition' | 'bad_input' };
 
-/**
- * Atomic status flip with optimistic concurrency (`expectedFrom`).
- * Shared by the session PATCH (UIC-3) and the machine resolve webhook.
- * Returns `conflict` (→ HTTP 409) when the row's status no longer matches
- * `expectedFrom` — never a scattered raw status UPDATE outside this helper.
- */
+/** Atomic status flip with optimistic concurrency (`expectedFrom`). */
 export async function setIssueStatus(
   orgId: string,
   id: number,
@@ -411,14 +398,7 @@ export async function setIssueStatus(
   return { ok: true, issue, from: opts.expectedFrom, to };
 }
 
-/**
- * Flip an issue to `deployed` (ALP-5.3). Idempotent: re-resolving an already
- * deployed issue reports `idempotent: true` and does NOT re-notify — the
- * reporter gets exactly one toast per fix.
- *
- * Delegates the write to `setIssueStatus` so the session PATCH and this
- * machine webhook share one atomic UPDATE waist.
- */
+/** Flip an issue to `deployed` (ALP-5.3). */
 export async function resolveReportedIssue(
   orgId: string,
   input: ResolveIssueInput,

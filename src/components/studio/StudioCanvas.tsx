@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * StudioCanvas — the React Flow surface behind the Studio.
- *
- * Two semantic-zoom depths on ONE canvas:
- *   L0 — department group cards (derived from each node's `config.station`,
- *        labeled/colored by the operations-catalog STATIONS registry) with a
- *        count strip; aggregate edges between departments. Clicking a
- *        department dives to L1.
- *   L1 — the working altitude: one card per process node showing its
- *        numbered lifecycle states (`workflow-stages.ts` order + label,
- *        rendered ①②③-style), one source handle PER output port,
- *        port-labeled edges, rework loops (fail/repaired) tinted rose.
- *
- * Edit mode (ST4, drafts only): nodes drag, ports connect (a new connection
- * from an already-wired port REPLACES that port's edge — one port routes to
- * one target, matching the engine's first-match resolution), clicking an
- * edge removes it, and every mutation flows UP via onGraphChange — the shell
- * owns the canonical draft. Published views stay fully read-only.
- *
- * Thin composition shell: the custom node renderers live in
- * `./canvas/StudioCanvasNodes`, the L0/L1 graph builders in
- * `./canvas/studio-canvas-graph`, and the tone maps + types in
- * `./canvas/studio-canvas-shared`.
- */
+/** StudioCanvas — the React Flow surface behind the Studio. */
 
 import { useCallback, useMemo } from 'react';
 import {
@@ -101,10 +78,7 @@ export function StudioCanvas({
     () => (lens === 'static' ? buildStaticFlowGraph(nodes, edges) : null),
     [lens, nodes, edges],
   );
-  // Procedure lens: same discipline one altitude deeper — each node's declared
-  // step sequence and the relations those steps touch. The node→procedure bind
-  // is `node.type`, which is already on the fetched graph, so switching to this
-  // lens repaints and never refetches (Studio law #3).
+  // Procedure lens:
   const procedureByNode = useMemo(() => {
     if (lens !== 'procedure') return null;
     registerStationBuiltins();

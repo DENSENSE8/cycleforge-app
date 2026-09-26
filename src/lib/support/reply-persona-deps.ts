@@ -3,15 +3,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { SupportReplyPersona } from './reply-persona';
 
-/**
- * Read the tenant's own framing for {@link buildSupportSystemPrompt}.
- *
- * The business name is the org's `name`; the vertical is optional and comes
- * from `organizations.settings.support.vertical` when an admin has set it.
- * Degrades to `{}` — the generic "a reseller" clause — on a missing org, an
- * unparseable settings blob, or a DB hiccup. There is no failure mode where
- * guessing a brand would be better; that is the bug this replaced.
- */
+/** Read the tenant's own framing for {@link buildSupportSystemPrompt}. */
 export async function resolveSupportReplyPersona(orgId: OrgId): Promise<SupportReplyPersona> {
   try {
     const { rows } = await tenantQuery<{ name: string | null; settings: unknown }>(

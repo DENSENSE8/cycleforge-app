@@ -11,17 +11,7 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-/**
- * Scan-anchored substitution action for the testing / packing card. The operator
- * scans the substitute serial, picks a reason, optionally notes "customer asked
- * for white", and submits — recording the ordered-vs-fulfilled deviation.
- *
- * Presentational + controlled: the parent owns the network (the useSubstituteUnit
- * mutation) and passes `busy` / `error` + an `onSubmit` callback. That keeps this
- * reusable across both stations and renderable in the showroom with a mock
- * handler. Composes the house Button, CopyChip family, and SubstituteReasonPicker
- * — nothing hand-rolled.
- */
+/** Scan-anchored substitution action for the testing / packing card. */
 
 export interface SubstitutePayload {
   substituteSerial: string;

@@ -1,12 +1,4 @@
-/**
- * Warranty slot resolvers — row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks.
- *
- * It also owns the family's pure LABEL functions — the countdown face and the
- * item label. The countdown one lived privately inside the client chip module,
- * which meant a bound column or an export would have had to re-derive "14d
- * left" and could drift from the chip beside it. One SoT; the chip imports it.
- */
+/** Warranty slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { WARRANTY_STATUS_LABEL, type WarrantyClaimListRow } from '@/lib/warranty/types';

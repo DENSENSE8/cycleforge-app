@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * **OrderShippingPanel** — the ONE shipping component (operator ruling
- * R-FLOW-6, 2026-09-01: shipping is a COMPONENT, not a page, and it is never
- * scoped to exceptions).
- *
- * Two hosts import this same file:
- *  (a) the order-intake editor's Shipping (G3) card (`OrderIntakeForm.tsx`),
- *  (b) the To-ship queue's inline label band (`LabelRunBand`), expanded
- *      beneath the active row of the one data table.
- *
- * The exceptions desk does **not** host this panel (R-FLOW-7, 2026-09-01):
- * that form pairs the item number to the Zoho catalog SKU only.
- *
- * It COMPOSES what already exists — nothing here is a second engine:
- *  - tracking / label-state readout from the order's live gate facts
- *    (`orderReleaseGatesQuery`; tracking renders as the house `TrackingChip`);
- *  - the ShipStation state line from the key health check
- *    (`useShipStationStatus`: "ShipStation active (v1 ✓ v2 ✓)", or which key
- *    is missing / rejected / not answering, linking Settings → Integrations);
- *  - parcel weight-oz + L×W×H persisting via
- *    `POST /api/orders/[id]/cage-release {action:'set-parcel'}` (the one
- *    parcel write path, `setOrderParcel`);
- *  - `BuyLabelSection` (ShipStation rate-shop → buy → void), fed the parcel
- *    from these fields;
- *  - the upload/attach tray (`OrderDocumentsSection` with `readOnly={false}`
- *    — browser→NAS PUT + attach-by-URL; the tray states its own hard failure
- *    when the org has no `nasBaseUrl`).
- *
- * Discipline (the `useOrderTriage` law): after EVERY write the panel re-reads
- * the server facts and calls `onFactsChanged` — it never patches a gate fact
- * locally. No exception / gate / release logic lives here; the cage belongs
- * to the triage form.
- */
+/** **OrderShippingPanel** — the ONE shipping component (operator ruling R-FLOW-6, 2026-09-01: */
 
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
@@ -214,11 +182,7 @@ export function OrderShippingPanel({
     }
   }, [testIdPrefix]);
 
-  // An order paired with a ShipStation order carries its own weight there;
-  // `POST /api/shipping/order-rates` falls back to it, so the panel must not
-  // refuse to rate just because no local weight was typed. The pairing (a
-  // `shipstation_order_refs` row), not `account_source`: imports keep their
-  // platform source.
+  // An order paired with a ShipStation order carries its own weight there; `POST /api/shipping/order-rates` falls back to it, so the panel…
   const shipstationSourced = record?.hasShipStationRef === true;
 
   const stateLine = record?.shippingLabelPurchased

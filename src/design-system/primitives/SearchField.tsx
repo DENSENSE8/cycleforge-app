@@ -60,21 +60,7 @@ export interface SearchFieldProps {
    */
   onSearch?: (value: string) => void;
   onClear?: () => void;
-  /**
-   * ArrowDown in the input hands focus to the result list the caller owns.
-   *
-   * Arrow keys are otherwise swallowed by the `<input>` (Enter is the only key
-   * with a path — see `handleSubmit`), so an operator who has just typed a
-   * query has to leave the keyboard and reach for the mouse to touch the first
-   * row. Moving focus is NOT submitting: this never flushes the debounce and
-   * never commits the draft, so the in-flight query the operator is still
-   * refining is left exactly as it is.
-   *
-   * Omit it and ArrowDown stays untouched — the keydown is not prevented and
-   * still bubbles, which is what a parent that already runs its own roving
-   * listbox (DataTable's column-filter popover wraps the field in a keydown
-   * host) depends on. Binding both would move focus twice on one press.
-   */
+  /** ArrowDown in the input hands focus to the result list the caller owns. */
   onNavigateResults?: () => void;
   inputRef?: Ref<HTMLInputElement>;
   placeholder?: string;
@@ -119,24 +105,7 @@ export interface SearchFieldProps {
   fillHost?: boolean;
 }
 
-/**
- * SearchField — decoupled draft architecture.
- *
- * The input owns its own `draft` state so parent re-renders during async fetches
- * never disrupt the cursor position or erase typed characters. The `onChange`
- * prop is called only after the debounce window, preventing per-keystroke DB pings.
- *
- * Sync contract:
- *  - Parent clears `value` → draft resets immediately.
- *  - Parent sets non-empty `value` → draft syncs only while input is not focused.
- *  - Draft → parent: debounced, so a single DB query fires after typing pauses.
- *
- * Keyboard contract:
- *  - Enter → flush the debounce, commit, fire `onSearch`.
- *  - ArrowDown → `onNavigateResults` when supplied; focus only, no commit.
- *  - Every other key is the browser's, so the field never fights a parent
- *    that runs its own key handling above it.
- */
+/** SearchField — decoupled draft architecture. */
 export function SearchField({
   value,
   onChange,
@@ -180,10 +149,6 @@ export function SearchField({
   };
 
   // Sync contract:
-  // - Always sync clears (parent requested reset).
-  // - Sync non-empty external updates only when input is not focused.
-  //   This preserves typing focus/cursor during async search, while still
-  //   allowing external actions (e.g. selecting a recent search) to update text.
   useEffect(() => {
     if (!isMountedRef.current) {
       isMountedRef.current = true;
@@ -374,13 +339,7 @@ export function SearchField({
           />
         </div>
 
-        {/*
-          Trailing row: spinner / pending / clear. There is no prefix, suffix or
-          paste slot — the field holds TEXT and nothing else (Cmd/Ctrl+V still
-          pastes, and still commits when `onSearch` is set). A control that
-          narrows the list belongs beside the field, not inside it (teardown
-          handoff § 2.1: two funnels, one job).
-        */}
+        {/* Trailing row: */}
         <span
           className={`flex shrink-0 items-center gap-0.5 ${sizeClasses.rightSlot}`.trim()}
         >

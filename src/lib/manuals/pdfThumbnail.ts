@@ -1,24 +1,4 @@
-/**
- * Client-side PDF → PNG thumbnail generator.
- *
- * Uses pdfjs-dist to render page 1 of the supplied PDF (or any source the
- * library can fetch) to an offscreen canvas, then exports it as a PNG Blob.
- *
- * Why client-side:
- *   - Vercel serverless runtime has no native PDF renderer (no ghostscript,
- *     no poppler), and bundling pdfjs + a canvas polyfill on the server
- *     adds ~10MB and a cold-start hit.
- *   - The operator's browser already has the PDF bytes in memory at upload
- *     time, so generating the thumb client-side is free network-wise.
- *
- * pdfjs ships its rendering loop on a Web Worker. We point at the worker
- * file bundled in node_modules via dynamic import — Next.js produces the
- * right URL at build time. If that fails (some bundler configs), the
- * generator returns null and the caller falls back to no thumbnail.
- *
- * Returns null on any failure (encrypted PDF, render error, unsupported
- * source). Callers must treat the result as best-effort.
- */
+/** Client-side PDF → PNG thumbnail generator. */
 
 const THUMB_WIDTH = 320;       // target render width in CSS px
 const JPEG_QUALITY = 0.85;     // PNG would be larger; JPEG is fine for a preview
@@ -35,14 +15,7 @@ export async function loadPdfjs() {
   if (!pdfjsModulePromise) {
     pdfjsModulePromise = (async () => {
       const mod = await import('pdfjs-dist');
-      // Worker source: pin to the matching pdfjs-dist version on a public
-      // CDN. We tried `new URL(..., import.meta.url)` first but that pattern
-      // is bundler-specific — it works under Next.js webpack, breaks under
-      // Turbopack and dev-mode HMR, and silently 404s the worker (which
-      // then makes every render fail with no UI signal). The CDN URL is
-      // immutable per version, cached aggressively, and version-matched
-      // to whatever pdfjs we resolved at runtime — so library upgrades
-      // can't cause silent worker drift.
+      // Worker source:
       mod.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${mod.version}/pdf.worker.min.mjs`;
       return mod;
     })();

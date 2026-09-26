@@ -1,38 +1,4 @@
-/**
- * Sensitive-information wall (WS6.1).
- *
- * A reusable server guard that, for a staff member flagged
- * `staff.requires_sensitive_stepup = true`, requires a *fresh* step-up grant
- * before a guarded sensitive surface runs. It REUSES the existing step-up
- * machinery — the grant is minted by `POST /api/auth/step-up` and stored in
- * `staff_stepups` with its own TTL (`src/lib/auth/stepup.ts`); this guard only
- * checks for a live grant in the sensitive scope. It does NOT introduce a
- * second/parallel auth system.
- *
- * Usage (inside a `withAuth` handler — add at the very top):
- *
- *   const block = await requireSensitiveStepUp(ctx);
- *   if (block) return block;            // 403 STEP_UP_REQUIRED
- *
- * The client should respond to STEP_UP_REQUIRED exactly as it does to the
- * wrapper's STEPUP_REQUIRED: open the step-up prompt (StepUpModal), POST
- * `/api/auth/step-up` with `{ scope: 'sensitive', method: 'pin' | 'passkey' }`,
- * then retry the original request.
- *
- * FAIL-SAFE: if the `requires_sensitive_stepup` column is not present yet
- * (migration not applied) the flag reads as `false`, so the guard is a no-op
- * and existing behavior is fully preserved.
- *
- * Deliberately NOT bolted onto every route. Apply it to clearly-sensitive
- * surfaces only — e.g. staff/role management mutations, payroll / billing
- * settings, org export, integration-credential changes. The reference wiring
- * lives in `src/app/api/admin/staff/update/route.ts`.
- *
- * NOTE: unlike `withAuth`'s destructive step-up (which exempts admins), this
- * wall is an *explicit per-staff opt-in* set by the owner. It is intentionally
- * NOT admin-exempt — the whole point is that an owner can force even an admin
- * to re-auth before sensitive surfaces.
- */
+/** Sensitive-information wall (WS6.1). */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

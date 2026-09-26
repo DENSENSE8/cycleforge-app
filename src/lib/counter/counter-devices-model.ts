@@ -1,18 +1,4 @@
-/**
- * Client-safe tablet picker model — types, presence window, spoken copy,
- * and the projection that sorts free-and-awake first.
- *
- * Lives apart from {@link ./counter-devices.ts} because that file’s default
- * deps import `listKioskDevices` → `db.ts` (`server-only`). The desk header
- * CTA is a client component; importing the store module would ship Neon into
- * `/counter` and fail the Turbopack `server-only` boundary.
- *
- * Callers: `CounterDeviceAction` (copy + `CounterDevice` type),
- * `listCounterDevices` (projects the fleet read), `counter-devices.test.ts`.
- * No new HTTP. Schema: none (pure projection of kiosk_devices + open
- * counter_sessions bindings). User: "Ecmascript file had an error
- * ./src/lib/db.ts import 'server-only'".
- */
+/** Client-safe tablet picker model — types, presence window, spoken copy, and the projection that sorts free-and-awake first. */
 
 export const COUNTER_DEVICE_ONLINE_WINDOW_MS = 120_000;
 
@@ -31,13 +17,7 @@ export interface CounterDevice {
   /** Heard from inside the presence window. */
   online: boolean;
   lastSeenAtMs: number | null;
-  /**
-   * The OTHER open visit holding this tablet, or null when it is free.
-   *
-   * Never this session: a tablet already bound here is not "in use", it is
-   * *the* tablet, and offering it as busy would tell a staffer their own
-   * counter is taken.
-   */
+  /** The OTHER open visit holding this tablet, or null when it is free. */
   heldByOtherVisit: boolean;
 }
 
@@ -55,13 +35,7 @@ export function deviceAvailabilityCopy(device: CounterDevice, nowMs: number): st
   return hours < 24 ? `Asleep · ${hours}h ago` : 'Asleep';
 }
 
-/**
- * Fold rows + open bindings into what the picker paints.
- *
- * Ordering is what a staffer scans: free-and-awake first (the tablet they are
- * about to use), then awake-but-taken, then everything asleep, each group by
- * label so the list does not reshuffle under a click when a poll lands.
- */
+/** Fold rows + open bindings into what the picker paints. */
 export function projectCounterDevices(args: {
   devices: readonly CounterDeviceRow[];
   bindings: readonly { deviceId: number; sessionId: number }[];

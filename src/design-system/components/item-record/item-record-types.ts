@@ -1,22 +1,4 @@
-/**
- * ItemRecord — the domain-neutral shape behind the shared item face.
- *
- * Ported from the scan-station PO line row (`receiving/workspace/PoLineRow`),
- * which was the only surface in the app that painted a full item identity:
- * thumb, wrapping title, and the five-track meta ledger
- * (qty · SKU · condition · serials · price).
- *
- * Nothing here names a purchase order, a carton or a receiving line. A caller
- * maps ITS record onto this shape — a PO line, a sales order, an inventory
- * unit — and the face is the same everywhere. That is the whole point: the row
- * was PO-shaped only because a PO happened to be the first thing that needed
- * it.
- *
- * Every field except `id` and `title` is optional, and absence is rendered
- * honestly (an empty SKU face, an em dash serial, a `—` price) rather than by
- * collapsing the track — a surface that drops a column reads as "this item has
- * no such fact", which is a different claim from "this fact is empty".
- */
+/** ItemRecord — the domain-neutral shape behind the shared item face. */
 
 export interface ItemRecordQuantity {
   /**

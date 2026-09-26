@@ -1,63 +1,16 @@
-/**
- * Intake-kind fork for `TriagePanel` (docs/receiving-triage-redesign-plan.md
- * §3.3) — PO vs Return template selection.
- *
- * `columnsToClassification` (src/lib/receiving/intake-classification.ts) is the
- * canonical PO/Return/Trade-in/Pickup resolver, but it reads `is_return` /
- * `return_platform`, which live on `ReceivingPackageMeta` (a separate fetch),
- * not on the `ReceivingLineRow` the workspace already has in hand. This reads
- * the return signal ReceivingLineRow DOES carry — the per-line
- * `receiving_lines.intake_type` (set by the classification picker on an
- * unmatched line) and the carton-level default — so the template fork needs no
- * extra fetch.
- */
+/** Intake-kind fork for `TriagePanel` (docs/receiving-triage-redesign-plan.md §3.3) — PO vs Return template selection. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { effectiveIntakeKind, isIntakeKind } from '@/lib/receiving/kinds/registry';
 
-/**
- * Composes off the effectiveIntakeKind SoT (line override wins unless it's
- * the 'PO' default, else the carton default) rather than an independent
- * "line is RETURN OR carton is RETURN" check — the latter would fork a line
- * explicitly tagged TRADE_IN/PICKUP on a RETURN-default carton into the
- * Return template, contradicting the documented override precedence.
- *
- * Typed to the 3 fields it actually reads (not the full ReceivingLineRow) so
- * a caller holding only a slice of the row — e.g. a Pick<> for a narrower
- * surface — can call it without widening to the full row shape.
- */
+/** Composes off the effectiveIntakeKind SoT (line override wins unless it's the 'PO' default, else the carton default) rather than an… */
 export function isReturnIntake(
   row: Pick<ReceivingLineRow, 'intake_type' | 'receiving_type' | 'carton_intake_type'>,
 ): boolean {
   return effectiveIntakeKind(row.intake_type || row.receiving_type, row.carton_intake_type) === 'RETURN';
 }
 
-/**
- * Has a concrete intake kind been *deliberately assigned* to this carton?
- *
- * The door/header classify pills persist the carton disposition to the CARTON
- * `intake_type` (`receiving.intake_type` → `carton_intake_type`), and the
- * unmatched line-classify picker sets the LINE `intake_type` — both have no DB
- * default, so a fresh / 0-line unfound carton reads null on both → `false`.
- *
- * Deliberately does NOT read the line `receiving_type`: that field defaults to
- * `'PO'` on an unfound line/stub (the "Unfound – PO" you see before any pick),
- * so counting it would falsely read an unclassified carton as classified — which
- * it did, showing Classify ✓ and suppressing the header auto-expand on cartons
- * whose carton `intake_type` was still null. This mirrors the controller, which
- * resolves classification from the CARTON columns (null → `UNKNOWN`), not the
- * line default. Composes the `isIntakeKind` registry vocabulary.
- *
- * Used as the unfound stepper's `Classify` gate (`derive-unfound-step-states`)
- * and the header `classifyPending` auto-expand: `false` keeps Classify the
- * active "you are here" dot (and expands the classify pills) until the door pick
- * lands; a concrete kind flips it done.
- *
- * Known gap: `LOCAL_PICKUP` classified purely via carton *source* (the unmatched
- * controller deliberately skips `intake_type` for PICKUP) leaves no kind on
- * these fields and reads unclassified — rare for unfound intake; thread the
- * controller's resolved classification if that ever becomes load-bearing.
- */
+/** Has a concrete intake kind been *deliberately assigned* to this carton? */
 export function isIntakeClassified(
   row: Pick<ReceivingLineRow, 'intake_type' | 'carton_intake_type'>,
 ): boolean {

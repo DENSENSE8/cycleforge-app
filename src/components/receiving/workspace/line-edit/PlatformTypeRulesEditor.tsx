@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Which receiving types a platform allows — the editor for
- * `platform_type_rules`, rendered inline under a PLATFORM row in
- * {@link CatalogManagerList} when `enablePlatformRules` is set (the /settings
- * catalog section and the classify pill's Edit popover).
- *
- * Authored from the PLATFORM side deliberately. Platform is the CONTROLLING
- * field of the dependent picklist, so the rule is a property of the platform;
- * expressed per-type it would read backwards and force a visit to every type to
- * answer one question about one platform.
- *
- * **Open by default, closed per platform.** No rules means every active type is
- * allowed. Adding the first rule CLOSES the platform to the listed set, and
- * removing the last one REOPENS it — which is why the empty state says so and
- * the last removal confirms. "Remove the last allowed type" reads like "allow
- * nothing" and means the opposite; that is the one genuinely confusing edge of
- * this design and it belongs in the copy, not in a doc nobody opens.
- *
- * Sibling of {@link TypeBindingsEditor}: same immediate-write-then-`onChanged()`
- * seam, same select chrome, no local mirror of server state.
- */
+/** Which receiving types a platform allows — the editor for `platform_type_rules`, rendered inline under a PLATFORM row in {@link… */
 
 import { useState } from 'react';
 import { Loader2, Plus, Trash2 } from '@/components/Icons';
@@ -54,10 +34,7 @@ export function PlatformTypeRulesEditor({
   const [busy, setBusy] = useState<number | 'add' | null>(null);
   const [adding, setAdding] = useState('');
 
-  // `Number()` on both sides, always. `platforms.id` / `types.id` are BIGSERIAL
-  // and reach the client as STRINGS ("5") from the catalog endpoints, while the
-  // rules endpoint coerces them to numbers — so a bare `===` here silently
-  // matched nothing and this editor rendered empty for every platform.
+  // `Number()` on both sides, always.
   const platformId = Number(platform.id);
   const mine = rules.filter((r) => Number(r.platformId) === platformId);
   const takenTypeIds = new Set(mine.map((r) => Number(r.typeId)));

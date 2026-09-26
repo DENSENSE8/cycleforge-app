@@ -8,13 +8,7 @@ export interface SchedulerResult {
   durationMs: number;
 }
 
-/**
- * Re-poll an explicit set of shipments now (operator-triggered refresh),
- * bypassing `next_check_at`. Carrier-grouped + chunked exactly like
- * {@link runDueShipments} so per-carrier rate limits are respected. Used by the
- * Incoming receiving "Refresh tracking" button to flip just-delivered packages
- * to DELIVERED so the "Delivered · not scanned" count reflects reality.
- */
+/** Re-poll an explicit set of shipments now (operator-triggered refresh), bypassing `next_check_at`. */
 export async function syncShipmentsByIds(
   rows: Array<{ id: number; carrier: string }>,
   options?: { concurrency?: number },
@@ -81,12 +75,7 @@ interface StreamingSyncCallbacks {
   onCarrierDone?: (carrier: string) => void;
 }
 
-/**
- * Streaming variant of {@link syncShipmentsByIds}: same carrier-grouped,
- * rate-limit-respecting sweep, but invokes callbacks as each carrier starts and
- * each shipment resolves so callers (the Incoming "Sync carriers" popover) can
- * surface live per-shipment progress. Still returns the aggregate counts.
- */
+/** Streaming variant of {@link syncShipmentsByIds}: */
 export async function syncShipmentsByIdsStreaming(
   rows: ShipmentSyncRow[],
   callbacks: StreamingSyncCallbacks = {},

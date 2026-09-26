@@ -10,20 +10,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Debug-only synchronous wrapper around createPurchaseReceive. POST the same
- * body shape the after() block in mark-received-po would generate. The Zoho
- * response (or the raw error) is returned verbatim so we can see exactly what
- * Zoho is saying.
- *
- * Body:
- * {
- *   purchaseorder_id: "5623409000002250332",
- *   receive_number: "optional — generated if omitted",
- *   line_items: [{ line_item_id: "...", quantity or quantity_received: 1, item_id?: "..." }]
- *   (createPurchaseReceive maps counts to Zoho's `quantity` field on the wire.)
- * }
- */
+/** Debug-only synchronous wrapper around createPurchaseReceive. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   // Bind the authenticated tenant so the Zoho client resolves THIS org's creds.
   return withZohoOrg(ctx.organizationId, async () => {

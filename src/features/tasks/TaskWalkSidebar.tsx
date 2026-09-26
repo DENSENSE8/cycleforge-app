@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Left column of the task record walk — Unbox context-panel resize grammar
- * ({@link CONTEXT_PANEL_RESIZE} + trailing inset sash). Queue only; the form
- * lives to its right. No title/subtitle band — priority order is the sort, not
- * a caption.
- *
- * A PRESET over the shared context-panel column, the same shape the exceptions
- * walk uses. Its own `storageKey` because a stored width belongs to the
- * surface an operator dragged, not to the class of surfaces.
- */
+/** Left column of the task record walk — Unbox context-panel resize grammar ({@link CONTEXT_PANEL_RESIZE} + trailing inset sash). */
 
 import type { ReactNode } from 'react';
 import {

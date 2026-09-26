@@ -2,13 +2,7 @@ import type { BrowseCondition } from '@/lib/ebay/browse-client';
 import type { CandidateSource, NormalizedCandidate } from '@/lib/sourcing/normalize';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * SourceAdapter — one secondary-market channel behind a uniform contract
- * (Sourcing Hub plan §4.1). The scour orchestrator (search.ts) fans a single
- * ScourRequest across every *enabled* adapter, dedupes, and persists. eBay is
- * the first impl; adding a channel = a new adapter + registry entry, no change
- * to callers.
- */
+/** SourceAdapter — one secondary-market channel behind a uniform contract (Sourcing Hub plan §4.1). */
 
 /** Condition filter — the same enum the candidate normalizer emits. */
 export type SourceCondition = BrowseCondition;

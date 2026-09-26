@@ -1,15 +1,4 @@
-/**
- * Render-contract — the Daily row model (`src/features/home/grid/`).
- *
- *   npx tsx --test src/features/home/grid/daily-task-row.test.ts
- *
- * What the builder promises:
- *   - the team denominator is PER-ITEM: the roster, or just the owner when the
- *     item is owned (the report already drops non-responsible marks, so `0/5`
- *     on an owned item would be a fraction over a denominator nobody owes);
- *   - the title carries the glyph prefix when one exists — one derivation,
- *     shared with the phone face through `dailyCheckItemTitle`.
- */
+/** Render-contract — the Daily row model (`src/features/home/grid/`). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

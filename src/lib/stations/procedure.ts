@@ -1,70 +1,11 @@
-/**
- * Procedure registry — the ORDERED step sequence an operator performs at a
- * surface, and the data each step touches (Operations Studio, Procedure lens).
- *
- * Why this exists beside `station_definitions.config`. A station COMPOSITION
- * answers "what blocks are mounted, in which slot" — `trigger · queue ·
- * workspace · advance · header` is a layout taxonomy, and slots carry no order
- * across each other. A PROCEDURE answers "what does the operator do, in what
- * order, and what does each of those acts read and write". Unbox proves the two
- * are not the same shape: its published composition is two blocks (a scan band
- * and a queue rail), while the real bench procedure is seven acts ending in a
- * push to the purchase order. Projecting only the composition would render a
- * correct, near-empty diagram — worse than none, because people act on it.
- *
- * Vocabulary is BPMN 2.0's, deliberately: a step is an ACTIVITY, a table is a
- * DATA STORE (persistent, shared across processes), the carton/line payload a
- * block renders is a DATA OBJECT (transient, per-instance), and reads/writes are
- * directional DATA ASSOCIATIONS. BPMN is the only mainstream process notation
- * with a normative persistent-vs-transient distinction, which is exactly the
- * line this file draws. The layout it feeds is Value Stream Mapping's — process
- * boxes in a row, a data box beneath each — but VSM's data box holds cycle-time
- * metrics, so we borrow its FRAME, not its contents.
- *
- * Honesty rules, in order of importance:
- *
- *   1. A step declares `composed: true` ONLY when the station registry really
- *      drives it. Everything else is `composed: false` — hand-coded UI over a
- *      hand-coded route. A map that quietly omits the code-only steps is a
- *      worse SOP than a document, because it reads as complete.
- *   2. A composed step names its registry ids and INHERITS their lineage — it
- *      never restates it (one module per concern).
- *   3. A code-only step declares its own `reads`/`writes`, and every one of them
- *      is verified against the route's SQL by `data-lineage.guard.test.ts`.
- *
- * This file is CODE (PR-reviewed capability declaration). Which surfaces a given
- * org actually publishes stays DATA in `station_definitions`.
- *
- * ## Unbox flows (Found · Unfound · Return)
- *
- * Unbox is three named capture trees, not one list with co-occurring booleans.
- * Industry WMS inbound templates work the same way: select a process by inbound
- * type, then apply controlled modifiers (here: local-pickup omits dunnage photos).
- * See `docs/todo/unbox-procedure-flows-HANDOFF.md`.
- */
+/** Procedure registry — the ORDERED step sequence an operator performs at a surface, and the data each step touches (Operations Studio,… */
 
 import { ASPECTS_BY_STAGE, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { TableRef } from './contract';
 import type { SurfaceKey } from './surface-keys';
 import { applyCaptureOrderOverride } from './unbox-flow-capture-order';
 
-/**
- * Which part of the station's work a step belongs to. The split exists because
- * two surfaces render two different slices of one procedure:
- *
- *   intake  — how work reaches the bench (scan, classify). Studio shows it;
- *             the bench checklist does not, because by the time the operator
- *             reads the checklist it has already happened.
- *   capture — the per-carton / per-unit acts. THIS is the slice the station's
- *             right-rail checklist renders.
- *   commit  — the terminal acts that close the carton out
- *             (print → stage → receive). Print · Receive live on the dogfood
- *             strip. Never the capture checklist.
- *
- * Without this, the two surfaces disagreed about what "the Unbox procedure" is
- * — Studio said 7 steps, the bench said 5, and both docblocks claimed to be the
- * operator-facing one.
- */
+/** Which part of the station's work a step belongs to. */
 export type ProcedurePhase = 'intake' | 'capture' | 'commit';
 
 /**
@@ -80,13 +21,7 @@ export const UNBOX_FLOW_LABEL: Record<UnboxFlowId, string> = {
   return: 'Return unbox',
 };
 
-/**
- * Controlled variation inside a named flow — not a fourth SOP.
- *
- * `isLocalPickup` omits carrier dunnage photo steps (handed over, no ship box).
- * `needsClassify` prepends `classify` on the return flow when the carton is still
- * unpaired (today's unfound×return).
- */
+/** Controlled variation inside a named flow — not a fourth SOP. */
 export interface ProcedureModifiers {
   isLocalPickup?: boolean;
   needsClassify?: boolean;
@@ -171,20 +106,9 @@ export interface ProcedureStep {
   perUnit?: boolean;
   /** Receiving photo stage this step is evidenced by, when it is a photo step. */
   photoStage?: 'arrival_package' | 'unbox_carton' | 'unbox_item';
-  /**
-   * Photo ASPECT this step is evidenced by, when its evidence is one specific
-   * shot (`@/lib/photos/photo-aspects`). Refines WITHIN `photoStage` — the two
-   * are orthogonal axes, so both are declared. Three capture steps share
-   * `unbox_carton` and are told apart by this alone.
-   */
+  /** Photo ASPECT this step is evidenced by, when its evidence is one specific shot (`@/lib/photos/photo-aspects`). */
   photoAspect?: PhotoAspect;
-  /**
-   * The step is evidenced by a SET of aspects, each of which is its own sub-row
-   * (`item_photos`). Which of them are REQUIRED is org policy resolved at read
-   * time (`receiving.requiredItemPhotoAspects`) — never a constant here, or a
-   * six-shot minimum ships to a two-person reseller and the step becomes
-   * un-completable for them.
-   */
+  /** The step is evidenced by a SET of aspects, each of which is its own sub-row (`item_photos`). */
   photoAspectSet?: readonly PhotoAspect[];
   /**
    * True when the station registry drives this step (a composed block bound to
@@ -214,13 +138,7 @@ export interface ProcedureDefinition {
   /** The operator surface this describes. */
   surface: SurfaceKey;
   label: string;
-  /**
-   * Workflow node types whose nodes this procedure describes. This is the L1
-   * paint binding and it is deliberately CLIENT-RESOLVABLE: `node.type` is on
-   * the graph the canvas already fetched, so the Procedure lens repaints with
-   * zero additional requests (Studio law #3). The per-org node↔station binding
-   * (`station_definitions.workflow_node_id`) is a server fact and stays at L2.
-   */
+  /** Workflow node types whose nodes this procedure describes. */
   nodeTypes: string[];
   /**
    * Full step catalog for this surface (lineage · Studio · guards). Order here
@@ -242,12 +160,7 @@ export interface UnboxFlowDefinition {
 
 const registry = new Map<SurfaceKey, ProcedureDefinition>();
 
-/**
- * Module-private on purpose: a procedure is a PR-reviewed capability
- * declaration, so the only registrar is `registerBuiltinProcedures` below.
- * Export it the day an integration ships its own — not before, or it is a dead
- * public API that reads as an extension point nobody uses.
- */
+/** Module-private on purpose: */
 function registerProcedure(def: ProcedureDefinition): void {
   if (registry.has(def.surface)) {
     throw new Error(`Station procedure already registered: ${def.surface}`);
@@ -283,16 +196,7 @@ function normalizeContext(
   return isResolveContext(ctx) ? ctx : variantToResolveContext(ctx);
 }
 
-/**
- * The ordered steps for one carton's shape — THE resolver both surfaces read.
- *
- * Studio calls it with no phase filter (it shows the whole procedure); the
- * station checklist calls it with `phase: 'capture'`. That is the entire
- * reconciliation: one declaration, two slices, no second vocabulary.
- *
- * Accepts {@link ProcedureResolveContext} (preferred) or a legacy
- * {@link ProcedureVariant} (mapped through {@link variantToResolveContext}).
- */
+/** The ordered steps for one carton's shape — THE resolver both surfaces read. */
 export function resolveProcedureSteps(
   procedure: ProcedureDefinition,
   ctx: ProcedureResolveContext | ProcedureVariant = { flow: 'found' },
@@ -339,17 +243,8 @@ export function resolveProcedureSteps(
 export const UNBOX_FLOW_IDS: readonly UnboxFlowId[] = ['found', 'unfound', 'return'];
 
 // ─── Unbox ───────────────────────────────────────────────────
-//
-// The pilot, and every act is hand-coded today — each one says so. Reading a
-// flow top to bottom is meant to be the same experience as watching someone
-// work the bench for that inbound type.
 
-/**
- * The read/write triple every `/api/receiving-photos` step shares. Declared
- * once because five steps now drive that one route: restating it per step is
- * how a lineage declaration drifts from the SQL it describes, which is the
- * exact failure `data-lineage.guard.test.ts` exists to catch.
- */
+/** The read/write triple every `/api/receiving-photos` step shares. */
 const RECEIVING_PHOTO_READS: TableRef[] = [
   { table: 'receiving_carton' },
   { table: 'receiving_scans' },

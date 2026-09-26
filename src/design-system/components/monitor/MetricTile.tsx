@@ -52,16 +52,7 @@ export type MetricTileProps = {
   active?: boolean;
 };
 
-/**
- * MetricTile — one KPI as a labelled radial gauge with a clear good/bad signal.
- * Composes {@link MetricRing} + {@link DeltaChip}; it is the tile twin of the
- * distribution `SectionCard` donut, so a strip of them reads as one family.
- * Drive it declaratively from a metric registry — never hand-assemble tiles.
- *
- * Default is a standalone card (`MONITOR_KPI_TILE_CLASS`); pass `bare` to render
- * it as a chromeless unit inside a titled `SectionCard` (two peer cards read as
- * one family, instead of a card beside a grid of little cards).
- */
+/** MetricTile — one KPI as a labelled radial gauge with a clear good/bad signal. */
 export function MetricTile({
   label,
   value,

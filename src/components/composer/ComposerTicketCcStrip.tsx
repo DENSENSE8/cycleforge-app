@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * CC strip — the audience row of a **public** ticket reply.
- *
- * ONE strip, two hosts: the Support console chat composer and the Unbox station
- * Ticket composer. It was console-only until 2026-08-30; the station shipping a
- * second copy is what this extraction exists to prevent.
- *
- * It renders only when the channel is Public — an internal note is never
- * emailed, so there is no audience to name. The `@` button is a shortcut to the
- * email field, NOT a context-attach menu: attaching product / “what happened”
- * lives on the `+` drill menu.
- *
- * Suggestions (requester + agent roster) are fetched HERE rather than by the
- * host, so the agent roster request is paid only by a composer that is actually
- * on Public — the console used to fire it for every internal note as well.
- */
+/** CC strip — the audience row of a **public** ticket reply. */
 
 import { useId, useMemo, useRef } from 'react';
 import { AtSign, X } from '@/components/Icons';

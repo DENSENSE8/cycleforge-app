@@ -1,17 +1,4 @@
-/**
- * Assistant read-tool registry — shared shapes (plan §3.1).
- *
- * A tool is a small, typed, org-scoped read the model composes per question.
- * The entry shape is deliberately transport-agnostic: `name` + `description` +
- * a Zod `inputSchema` (JSON-schema derivable via z.toJSONSchema) + a pure
- * `run` — so the same registry can later back MCP without rework (§-2 "AI
- * runtime"). Adding a capability = registering a tool; no migration.
- *
- * Org scoping is structural: every tool receives an AssistantToolCtx whose
- * `organizationId` comes from the authenticated request (never the model),
- * and every SQL statement leads with an explicit organization_id predicate on
- * top of the tenant-pool GUC (tenantQuery).
- */
+/** Assistant read-tool registry — shared shapes (plan §3.1). */
 
 import type { z } from 'zod';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -63,13 +50,7 @@ export interface AssistantToolDeps {
     statusCache: string | null;
   } | null>;
 
-  /**
-   * Tool-forge collaborators. Same optional-collaborator pattern as above:
-   * defaults live on each tool, so a caller that only fakes `query` stays
-   * valid, and the unit tests can drive the four gateway tools through the
-   * real runAssistantTool chokepoint without a DB, a sandbox VM, or a GitHub
-   * token.
-   */
+  /** Tool-forge collaborators. */
   toolForgeDedupe?: (orgId: OrgId, prompt: string) => Promise<unknown>;
   toolForgeDecide?: (orgId: OrgId, input: unknown) => Promise<unknown>;
   toolForgeValidate?: (orgId: OrgId, files: ReadonlyArray<{ path: string; contents: string }>) => Promise<unknown>;

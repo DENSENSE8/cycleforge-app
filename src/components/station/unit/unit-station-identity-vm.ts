@@ -1,23 +1,4 @@
-/**
- * Serial unit → station identity view model. Pure, no React, no JSX.
- *
- * The identity row on a station is the SAME card everywhere
- * (`CartonContextCard` — root `AGENTS.md`: "the carton header has no read-only
- * twin"). What differs per entity is the MAPPING, and for a unit that mapping
- * is worth isolating and testing on its own, because it resolves three separate
- * SoTs and gets them wrong silently if it guesses:
- *
- *   • status  → `unitStatusDotClass` / `unitStatusBadgeClass` (`@/lib/unit-status`)
- *   • grade   → `normalizeCondition` + `conditionLabel` (`@/lib/conditions`)
- *   • lead id → serial number, falling back to the minted `unit_uid`
- *
- * **Intrinsic facts only.** Everything here is a property OF the unit. Its
- * relationships (carton, order, repairs, warranty …) are Displays leaves, not
- * identity — a unit's identity must not change because an allocation did.
- *
- * The card's `lifecycle` slot takes a RESOLVED `{dotClass, pillClass, label}`;
- * it never maps a status itself. This module is that resolver for units.
- */
+/** Serial unit → station identity view model. */
 
 import { conditionLabel } from '@/lib/conditions';
 import { unitStatusBadgeClass, unitStatusDotClass } from '@/lib/unit-status';

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Repair queue host — mounts the repair-queue spreadsheet (`NonlinearTableHost`
- * + the repair table definition) directly.
- * Dual-door: Scan Stations `/repair` (task/intake) and Sales `?mode=repairs`
- * (overall history). Same table; surface defaults differ (active vs done).
- * Owns fetch, the open record + keyboard move, the `?openRepair=` deep-link,
- * rail multi-select (History SoT — no bottom capsule), and workbench chrome.
- * Sort is URL-backed (`?sort=`/`?dir=`, {@link useRepairDisplaySort}) so the
- * top-bar dropdown and the grid header clicks share one state (dashboard
- * parity). The open repair is `RepairRecordView` on `DeskRecordPlane`; its
- * verbs live only in the action strip under the search row (`RepairRecordStrip`).
- */
+/** Repair queue host — mounts the repair-queue spreadsheet (`NonlinearTableHost` + the repair table definition) directly. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -236,16 +225,7 @@ export function RepairTable({ filter }: RepairTableProps) {
               }}
               loading={loading}
               emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-              // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=`
-              // (:27); the route answers it over the CONTACT joins — customer email
-              // and phone — plus source tracking / SKU / serial
-              // (repair-service-queries.ts:188-199), and returns only its top 20.
-              // Email, tracking, SKU and serial have no field in the repair catalog,
-              // so no layout can mount them and only the server can find those rows.
-              // `pending` is the live fix: `useRepairsTable` keeps the PREVIOUS
-              // query's rows through `placeholderData` (useRepairs.ts:36) with
-              // `isLoading` false, so without it the grid presented one search's
-              // repairs as the answer to another.
+              // `search` rides the query key (useRepairs.ts:21) and goes out as `?q=` (:27); the route answers it over the CONTACT joins — customer…
               search={{
                 value: search,
                 onChange: setSearch,

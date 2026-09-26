@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Multi-select batch roster — condensed {@link StackedRowIdentity} rows inside
- * the right-rail selection plane (Order / Receiving / Repair batch shells).
- *
- * **Title wraps** (PoLineRow grammar) — never `truncate` / ellipsis on the
- * product subject. Typed CopyChip keys (order · PO · tracking · ticket · SKU)
- * sit on row 2 with platform-aware tooltip + `#` glyph tone. Never a
- * single-line `title | mono id` twin with `ml-auto`.
- *
- * Detail: Stacked row identity.
- */
+/** Multi-select batch roster — condensed {@link StackedRowIdentity} rows inside the right-rail selection plane (Order / Receiving / Repair… */
 
 import type { ReactNode } from 'react';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';

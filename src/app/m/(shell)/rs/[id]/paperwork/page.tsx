@@ -16,13 +16,7 @@ const LOG_SETTLE_MS = 4_000;
 
 type SendResult = { doc: RepairPaperDoc; stationName: string; acked: boolean };
 
-/**
- * `/m/rs/[id]/paperwork` — every printable document for the repair (repair
- * receipt, 2×1 label, the SKU's manuals). Open views it here; Print to station
- * sends it over the staff print bridge to the ONE picked print station (a named
- * computer signed in as this staffer), which prints and records it
- * (`POST /print-log`). The log below is the server's.
- */
+/** `/m/rs/[id]/paperwork` — every printable document for the repair (repair receipt, 2×1 label, the SKU's manuals). */
 function RepairPaperworkInner() {
   const params = useParams<{ id: string }>();
   const repairId = Number(params?.id);

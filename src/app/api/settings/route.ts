@@ -1,16 +1,4 @@
-/**
- * /api/settings — the generic Settings Registry endpoint.
- *
- *   GET  ?page=receiving → { page, plan, canManageOrg, items: ResolvedSetting[] }
- *   PUT  { key, value, target? } → { ok, item }   (target 'org' | 'staff')
- *
- * One route serves every page and every setting. Each setting carries its own
- * permission + entitlement in the registry, so the route uses an auth-only
- * wrapper and enforces PER-SETTING inside the handler (a single route-level
- * permission can't express the mix). Values are validated against the registry
- * schema and written as flat namespaced keys into the org/staff JSONB bags via
- * the raw mergers. See docs/settings-registry.md.
- */
+/** /api/settings — the generic Settings Registry endpoint. */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

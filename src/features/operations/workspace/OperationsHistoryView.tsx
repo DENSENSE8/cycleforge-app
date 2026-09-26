@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Operations → History mode: the Master Operations Journey, as a RECORD LOOKUP.
- *
- * The right panel never shows a loose firehose of all events — it stays empty
- * until you paste an order / serial / tracking number in the sidebar, then it
- * renders THAT record's complete event timeline across every station
- * (receiving → tested → packed → shipped → carrier → returned/warranty),
- * aggregated from all five spines. The record number renders as a last-8
- * copy chip. Monitor archetype: observe-only, URL-driven, no edit affordances,
- * one shared `EventTimeline` primitive.
- */
+/** Operations → History mode: */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -66,12 +56,7 @@ function RecordChip({ dim, value }: { dim: JourneyDimension; value: string }) {
   return <OrderIdChip value={v} display={getLast8(v)} dense />;
 }
 
-/**
- * "N signals →" strip in a Trace (plan §7.1). Fetches this record's related
- * `entity_signals` count and deep-links into Signals Browse scoped to the same
- * entity (via the shared `operationsSignalsBrowseHref` SoT). Degrades to nothing
- * on empty/error — a sub-resource must never break the trace.
- */
+/** "N signals →" strip in a Trace (plan §7.1). */
 function RelatedSignalsStrip({
   entityType,
   entityId,

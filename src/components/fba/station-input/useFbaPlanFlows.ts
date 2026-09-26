@@ -45,13 +45,7 @@ interface FbaPlanFlowsDeps {
   fetchTodayShipmentSnapshot: () => Promise<TodayShipmentSnapshot>;
 }
 
-/**
- * The FBA plan-write network flows split out of {@link useFbaStationInput}:
- * single + bulk FNSKU plan adds, the pending-today review submit (PATCH lines
- * already on today, POST only new / moved-from-other), and the plan-preview
- * line qty patch. All shared controller state flows in via the passed setters,
- * so this hook owns no state of its own.
- */
+/** The FBA plan-write network flows split out of {@link useFbaStationInput}: */
 export function useFbaPlanFlows({
   openPlanId,
   fbaScanOnly,

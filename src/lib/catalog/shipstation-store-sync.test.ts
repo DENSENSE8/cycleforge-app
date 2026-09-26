@@ -2,12 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isShipStationInternalStore, shipstationMarketplaceSlug, storesToPlace } from './shipstation-store-sync';
 
-/**
- * DB-free unit tests for the marketplace → catalog-slug mapping (the pure half
- * of the ShipStation store sync; the SQL upsert is additive/idempotent by
- * construction and covered by the migration's ON CONFLICT contracts).
- * Run: node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/catalog/shipstation-store-sync.test.ts
- */
+/** DB-free unit tests for the marketplace → catalog-slug mapping (the pure half of the ShipStation store sync; the SQL upsert is… */
 
 test('known marketplaces reuse the org catalog slugs (no duplicate platforms)', () => {
   assert.equal(shipstationMarketplaceSlug({ marketplace: 'eBay', marketplaceName: 'eBay' }), 'ebay');

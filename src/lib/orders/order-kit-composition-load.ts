@@ -1,11 +1,4 @@
-/**
- * Server batch loader for Shopify-like kit faces on order desks.
- *
- * Prefer sku_relationships; fall back to sku_kit_parts; never Zoho `-P`.
- * Callers: POST /api/sku-catalog/composition/batch.
- * Schema: sku_catalog + sku_relationships + sku_kit_parts (read).
- * User: Implement multi-tenant kit / bundle display (Shopify-like).
- */
+/** Server batch loader for Shopify-like kit faces on order desks. */
 
 import { getGraphNodes, getChildrenForParents } from '@/lib/neon/sku-relationship-queries';
 import { getKitPartsForCatalogIds } from '@/lib/neon/sku-catalog-queries';

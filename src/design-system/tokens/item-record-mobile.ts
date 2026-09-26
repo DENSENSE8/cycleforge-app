@@ -4,13 +4,7 @@ import { LIFECYCLE_CLASSES } from './lifecycle';
  * Phone item-record faces — photo + context row, title row, and an operational facts row. Desk compound order under the title: qty · amount · condition.
  */
 
-/**
- * Industrial phone queue row.
- *
- * The phone is one white sheet (`ds_mobile_ground`), so repeated work records
- * separate with a hairline rather than rounded islands or elevation. Orders,
- * Picks, and Shipping all consume this shell through `ItemCardRow`.
- */
+/** Industrial phone queue row. */
 export const ITEM_RECORD_MOBILE_ROW = {
   shell:
     'relative overflow-hidden border-b border-border-hairline bg-surface-card',
@@ -40,13 +34,7 @@ export const ITEM_RECORD_MOBILE_THUMB = {
   // gutter beneath it when the management facts add a third line.
   column: 'flex self-stretch items-stretch pr-2',
   face: 'relative flex w-12 shrink-0 self-stretch items-center justify-center overflow-hidden bg-surface-card',
-  /**
-   * The phone cube — 64px, where the desk face (`ITEM_RECORD_FACE`) is 80px.
-   * A phone row is 390px wide and the photo is the cheapest 16px to give back:
-   * the title and the SKU under it are what an operator reads to decide, and at
-   * 80px a two-word product name truncated mid-word. `.face` states the same
-   * width for the card-row variant that also owns the background.
-   */
+  /** The phone cube — 64px, where the desk face (`ITEM_RECORD_FACE`) is 80px. */
   size: 'w-12',
   activeSize: 'w-20',
   corner: 'rounded-none',

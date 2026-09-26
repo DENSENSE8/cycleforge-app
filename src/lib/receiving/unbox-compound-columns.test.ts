@@ -1,9 +1,4 @@
-/**
- * The receiving family's mounted column model IS the shared compound skeleton —
- * the flat sibling it used to be compared against is deleted. These pin the
- * properties the geometry depends on, derived from `COMPOUND_COLUMN_KEYS` so a
- * skeleton change lands in one place instead of re-forking the list per family.
- */
+/** The receiving family's mounted column model IS the shared compound skeleton — the flat sibling it used to be compared against is deleted. */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';

@@ -1,18 +1,6 @@
 /**
  * Exception membership — unpaired catalog pairing, not paperwork.
- *
  * Operator 2026-09-01: the exceptions desk pairs an item number to the Zoho
- * inventory SKU (`sku_catalog`). That pairing is what leaves the exception
- * queue. Manuals, shipping labels, and tracking live on To-ship as a sibling
- * paperwork walk — they must not hold an order in this cage.
- *
- * The cage stamp (`release_state = 'caged'`) stays the curated set so several
- * thousand historical unpaired rows do not flood the desk. Membership is the
- * intersection: caged **and** unpaired. A paired row with a stale cage stamp
- * is live To-ship work (needs a label), not an exception.
- *
- * SQL fragments share one alias helper so `/api/orders` fulfillmentScope,
- * queue-counts, work-orders, and the exceptions list cannot drift.
  */
 
 const SQL_ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;

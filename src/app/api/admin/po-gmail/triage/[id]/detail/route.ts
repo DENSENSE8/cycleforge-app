@@ -1,16 +1,4 @@
-/**
- * GET /api/admin/po-gmail/triage/[id]/detail
- *
- * One-shot fetch for the checklist pane: the worklist row, the live
- * Gmail body, and a small "Zoho compare" payload (POs already in the
- * mirror that match this email + the vendor + open-PO count for that
- * vendor). Used to populate the right-pane checklist on /inventory/po-mailbox.
- *
- * The body is fetched live from Gmail (not stored on the row) so a
- * vendor who edits or forwards the thread is reflected immediately.
- * Live fetch keeps the worklist row small and avoids stale body text
- * surviving in our DB after the user purges Gmail.
- */
+/** GET /api/admin/po-gmail/triage/[id]/detail */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

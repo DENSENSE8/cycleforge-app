@@ -6,13 +6,7 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * POST /api/repair-service/[id]/reopen — reverse of the DELETE soft-cancel.
- *
- * Restores a Cancelled repair to the EXACT status it held before cancellation
- * (recovered from status_history). Refuses (409) when the repair isn't
- * Cancelled or when no prior status can be recovered. Optional `?reason=`.
- */
+/** POST /api/repair-service/[id]/reopen — reverse of the DELETE soft-cancel. */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

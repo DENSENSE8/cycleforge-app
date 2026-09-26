@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * StudioNodeStationEditor — the EDITABLE L2 station pane (Operations Studio
- * Phase D / ST5).
- *
- * The read-only L2 preview (StudioStationPreview) shows a node's bound station;
- * this is its editable twin for `studio.manage` holders. It reuses the SAME
- * headless edit core as the page-bound StationSlot (useStationEditor) and the
- * SAME registry-driven palette + config sheet, but persists to the NODE-scoped
- * endpoints (PUT /api/studio/nodes/[id]/station + .../publish) — binding the
- * composition to this node's workflow_node_id. No chrome is duplicated: the
- * draft/publish buttons live here, the block state machine lives in the hook.
- *
- * The editor edits the `queue` slot — the slot the one shipped block (Checklist)
- * occupies, and the canonical worklist slot a node-bound station fills. Other
- * slots stay read-only in the preview until more blocks register for them.
- *
- * When the node has no station yet, an owner gets an empty editable queue and
- * the first save BINDS a fresh station_definition to this node.
- */
+/** StudioNodeStationEditor — the EDITABLE L2 station pane (Operations Studio Phase D / ST5). */
 
 import { useCallback } from 'react';
 import { toast } from '@/lib/toast';

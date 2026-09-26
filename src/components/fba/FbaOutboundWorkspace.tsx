@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * FBA inbound workbench — composed under `/shipping/fba`.
- *
- * The board / shipped table displays were torn out 2026-08-30 so the desk
- * can be rebuilt without hanging the dev server. Ready still mounts its own
- * body (a different family). Combine, detail, and the add/plan modals stay.
- */
+/** FBA inbound workbench — composed under `/shipping/fba`. */
 
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
@@ -38,12 +32,7 @@ import { useFbaWorkspaceUrlState } from '@/components/fba/sidebar/fba-workspace-
 import { cn } from '@/utils/_cn';
 import { FBAManagementTab } from '@/components/admin/FBAManagementTab';
 
-/**
- * The desk MODES, as filter-option vocabulary (`mode:*` ids so Ready's
- * merged menu can route them). `combine` is what an unset `?fbaMode=`
- * resolves to, so it IS the default body and never appears as an option —
- * "all" is the absence of a filter.
- */
+/** The desk MODES, as filter-option vocabulary (`mode:*` ids so Ready's merged menu can route them). */
 const FBA_MODE_OPTIONS = [
   { id: 'mode:ready', mode: 'ready', label: 'Ready' },
   { id: 'mode:plan', mode: 'plan', label: 'Plan' },
@@ -81,11 +70,7 @@ export function FbaOutboundWorkspace() {
 
   const modeFilter = useMemo(
     () => ({
-      // Banded, because these three are not peers of the status facets they
-      // merge with: a status narrows the rows in front of you, a mode swaps
-      // which collection you are looking at. Rendered as one flat column the
-      // operator could only learn that by picking one and watching the board
-      // change underneath them.
+      // Banded, because these three are not peers of the status facets they merge with:
       options: FBA_MODE_OPTIONS.map((o) => ({
         id: o.id,
         group: 'Board',
@@ -173,13 +158,7 @@ export function FbaOutboundWorkspace() {
           ) : error ? (
             <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
           ) : activeMode === 'plan' ? (
-            /*
-             * The former board table was removed with its unsafe table
-             * implementation. The existing Plan rail already owns the live
-             * FBA board query, selection event, and row identity, so it is the
-             * canonical interim main-pane projection — not a copied table or
-             * another scan input.
-             */
+            /* The former board table was removed with its unsafe table implementation. */
             <FbaPlanRailBody view="planned" />
           ) : activeMode === 'combine' ? (
             /* The combine queue is the same selected-shipment source used by

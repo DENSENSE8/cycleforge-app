@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Receiving-domain scan-band wrappers for the receiving sidebar.
- *
- * Shared flush band chrome lives in {@link ScanBandShell}
- * (`@/components/station/scan-bar`). `TriageScanBand` is the tracking-only
- * entry used by the Receiving (triage) surface; `UnboxScanBand` is the
- * mode-toggling entry used by Unbox. Both are thin: they own no scan logic —
- * submit/value are handed down from the panel's scan hook.
- */
+/** Receiving-domain scan-band wrappers for the receiving sidebar. */
 
 import {
   ScanBandShell,

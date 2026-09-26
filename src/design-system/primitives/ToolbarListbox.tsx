@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * `ToolbarListbox*` — the ONE option-row anatomy for a quiet workbench toolbar
- * dropdown (a `ToolbarButton` trigger + a `Popover role="listbox"`).
- *
- * **Selection reads as a leading checkmark, never a filled row.** A tinted
- * `bg-blue-50 text-blue-700` option turns a four-item menu into four competing
- * color blocks and fights the calm-chrome discipline the trailing cluster is
- * built on; a check in a reserved glyph gutter marks the current value with
- * zero added ink and keeps every row on one baseline. The glyph track is
- * **always** rendered (`opacity-0` when unselected) so nothing shifts
- * horizontally as the selection moves down the list.
- *
- * Consumers: `QueueSortSwitch` (single-select display sort), `GridColumnDetailsPanel`
- * (multi-select column visibility), and `FilterMenuRow` (the [⫶]
- * filter popover on every workbench chrome header). All three compose this row,
- * so they are structurally incapable of drifting apart — which is exactly what
- * happened before this module existed.
- *
- * Row anatomy — the gutters are FIXED so every row in a menu lines up
- * whether or not it carries a dot or a count:
- *
- *   start (default): [✓ 3.5 gutter] [leading] label …flex… [trailing]
- *   end (combobox):  [leading] label …flex… [trailing] [✓ 3.5 gutter]
- *
- * `checkAlign="end"` is the DataTable sort combobox face. Filter / icon menus
- * keep `start` so their check does not compete with a trailing count.
- *
- * The row is deliberately NOT a `Button` variant: it is a flush, full-width
- * menu child, not an action control.
- */
+/** `ToolbarListbox*` — the ONE option-row anatomy for a quiet workbench toolbar dropdown (a `ToolbarButton` trigger + a `Popover… */
 
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Check } from '@/components/Icons';
@@ -80,12 +51,7 @@ interface ToolbarListboxOptionProps {
   index?: number;
   /** Current value (single-select), shown column (multi-select), active filter. */
   selected?: boolean;
-  /**
-   * How the row announces itself:
-   * - `option` (default) — `role="option"` + `aria-selected`, a listbox child.
-   * - `toggle` — `aria-pressed`, an independently on/off filter.
-   * - `plain` — neither; a menu affordance like "Reset to default".
-   */
+  /** How the row announces itself: */
   semantics?: 'option' | 'toggle' | 'plain';
   /** Replaces the checkmark in the glyph gutter (e.g. a reset arrow). */
   icon?: ReactNode;

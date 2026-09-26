@@ -27,15 +27,7 @@ interface ProductHubPanelProps {
   headerTitle?: string | null;
 }
 
-/**
- * The Product Hub right pane: one row per platform showing confirmed pairings
- * and ranked suggestions, with batch accept/reject + atomic save.
- *
- * Pre-selection: candidates scoring ≥80 are seeded as "accept" by useProductHub
- * so the operator's default action is one Save click. Nothing commits without
- * explicit Save — human-in-the-loop by design. Thin composition layer — data
- * lives in {@link useProductHub}; the views live under `./product-hub/`.
- */
+/** The Product Hub right pane: */
 export function ProductHubPanel({ skuCatalogId, allowManualPair = false, headerTitle }: ProductHubPanelProps) {
   const hub = useProductHub(skuCatalogId);
   const snapshot = hub.snapshot;

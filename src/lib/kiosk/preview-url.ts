@@ -1,9 +1,4 @@
-/**
- * Resolve the landscape kiosk shell URL for staff desktop preview.
- * Always same-origin `/kiosk/v2` so tunnel / LAN / iPad share the staff
- * session host. Production staff-host `/kiosk/*` redirects preserve the path
- * (see proxy.ts) so this still lands on the tenant kiosk shell.
- */
+/** Resolve the landscape kiosk shell URL for staff desktop preview. */
 
 export const KIOSK_SHELL_PREVIEW_PATH = '/kiosk/v2';
 

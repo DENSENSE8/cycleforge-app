@@ -7,25 +7,7 @@ import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/receiving/po/list
- *
- * PO-grouped feed for the mobile Receiving Pipeline (/m/receiving). One row
- * per PO with header fields the list screen needs:
- *   - po_id / po_number
- *   - receiving_id (so photo endpoints stay PO-keyed via the carton row)
- *   - tracking_number (carton shipment tracking, when present)
- *   - aggregate counts (items, qty expected/received)
- *   - status summary, photo count, last activity timestamp
- *
- * Filters:
- *   ?view=open      → has at least one line not in DONE/RECEIVED
- *   ?view=received  → every line is DONE/RECEIVED
- *   ?view=today     → received_at >= today (warehouse local)
- *   default         → all PO-bearing lines, newest activity first
- *   ?search=…       → PO number, SKU, item name, tracking #, or carton QR
- *                     (`R-<id>` / `#R-<id>` / legacy `RCV-<id>`)
- */
+/** GET /api/receiving/po/list */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;
@@ -74,10 +56,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
-    // One row per (PO id, PO number) pair. Aggregate item totals and the
-    // newest activity timestamp so list order tracks "what just happened".
-    // Status summary buckets a PO as open (any non-terminal line) vs done
-    // (every line is DONE/PASSED/MATCHED).
+    // One row per (PO id, PO number) pair.
     const result = await tenantQuery(
       orgId,
       `WITH grouped AS (

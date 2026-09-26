@@ -1,14 +1,4 @@
-/**
- * The route → param-spec registry.
- *
- * One lookup for every navigation site that needs to know what a destination
- * owns. Today only the six receiving surfaces are migrated; each later slice
- * registers its family here and inherits the boundary parse for free — no
- * navigation site changes again.
- *
- * A route with no spec keeps the legacy copy-forward behaviour, so migrating is
- * additive and one surface at a time.
- */
+/** The route → param-spec registry. */
 
 import { OUTBOUND_ROUTE_PARAMS } from './outbound-routes';
 import { QUERY_MODE_ROUTE_PARAMS } from './query-mode-routes';

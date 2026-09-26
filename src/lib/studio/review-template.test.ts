@@ -1,9 +1,4 @@
-/**
- * DB-free tests for reviewSubmittedTemplate (Phase 4). The guarded UPDATE is
- * injected, so we assert the decision→(review_status, visibility) mapping and
- * that a no-op update (already reviewed / not found) 409s.
- *   npx tsx --test src/lib/studio/review-template.test.ts
- */
+/** DB-free tests for reviewSubmittedTemplate (Phase 4). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

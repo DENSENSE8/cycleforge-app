@@ -1,10 +1,4 @@
-/**
- * `repair.queue` — Repair-queue table definition (plan Phase 1, wave 3).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry.
- */
+/** `repair.queue` — Repair-queue table definition (plan Phase 1, wave 3). */
 
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

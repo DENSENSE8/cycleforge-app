@@ -23,12 +23,7 @@ import type { StationDepthName } from '@/design-system/themes/station-depths';
 import type { StationSkinName } from '@/design-system/themes/station-skins';
 import { slotLayoutSchema } from '@/lib/tables/slot-layout';
 
-/**
- * The constants live in `staff-preferences-constants.ts` — a module with no
- * `zod` import — and are re-exported here so every existing importer keeps
- * working. Import them from the CONSTANTS module in client code: reaching them
- * through this file pulls Zod into the bundle. See that file's docblock.
- */
+/** The constants live in `staff-preferences-constants.ts` — a module with no `zod` import — and are re-exported here so every existing… */
 export {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
@@ -56,13 +51,7 @@ const BOARD_RANGE = z
   })
   .strict();
 
-/**
- * Generic swimlane-board prefs — one shape reused by every board surface
- * (Unshipped, Shipped, …) via {@link SwimlaneBoard}. Lane ids and sort ids are
- * open strings here: the SoT for which lanes/sorts are valid lives in each
- * consuming board (which validates + falls back on hydrate), so this schema
- * stays surface-agnostic and a new board needs no schema change.
- */
+/** Generic swimlane-board prefs — one shape reused by every board surface (Unshipped, Shipped, …) via {@link SwimlaneBoard}. */
 const BOARD_LANE_PREF = z
   .object({
     sort: z.string().max(40).optional(),
@@ -128,12 +117,7 @@ export const StaffPreferencesPutBody = z
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
-    /**
-     * Scan-station Color (industrial mill, packing bench, coal, catalog
-     * materials). `null` resets to industrial. Independent of app theme and of
-     * Depth (`stationDepth`) — every scan station reads the same `--ds-station-*`
-     * fill tokens.
-     */
+    /** Scan-station Color (industrial mill, packing bench, coal, catalog materials). */
     stationSkin: z
       .enum(STAFF_STATION_SKINS as [StationSkinName, ...StationSkinName[]])
       .nullable()
@@ -187,17 +171,7 @@ export const StaffPreferencesPutBody = z
      *  surface; add a key here when a new board surface ships. */
     unshippedBoard: BOARD_PREFS.nullable().optional(),
     shippedBoard: BOARD_PREFS.nullable().optional(),
-    /**
-     * Per-staff list-table column config, keyed by TableId. Each table maps to
-     * `{ hidden, shown, widths, order }`. Sent as the whole map (shallow JSONB
-     * merge); each writer preserves the sibling fields (a widths write keeps
-     * `hidden` + `order`, and so on).
-     *
-     * `hidden` + `shown` are a DELTA against the descriptor's default tier, not
-     * an absolute column list — that is what lets a lean default widen later
-     * without silently re-showing tracks a staffer curated away (and lets a new
-     * `optional` column ship without appearing in anyone's grid unasked).
-     */
+    /** Per-staff list-table column config, keyed by TableId. */
     tableColumns: z
       .record(
         z.string(),
@@ -291,17 +265,7 @@ export const StaffPreferencesPutBody = z
       )
       .nullable()
       .optional(),
-    /**
-     * Per-staff SLOT LAYOUT override, keyed by TableId — the personal layer of
-     * the slot cascade (`resolveEffectiveLayout`: savedView ?? staff ?? org ??
-     * product). Sibling of `tableColumns` on purpose: widths stay keyed by
-     * SLOT ids (`status:1`) there, so rebinding a slot never thrashes them.
-     *
-     * Whole-map shallow JSONB merge like `tableColumns`: writers read-modify-
-     * write the entire record (a one-table write replaces the map). `null`
-     * clears every personal override. Structural validation only here —
-     * catalog staleness is dropped at read time by the cascade resolver.
-     */
+    /** Per-staff SLOT LAYOUT override, keyed by TableId — the personal layer of the slot cascade (`resolveEffectiveLayout`: */
     tableLayouts: z
       .record(z.string().max(64), slotLayoutSchema)
       .refine((map) => Object.keys(map).length <= 32, 'too many table layouts')
@@ -317,44 +281,17 @@ export const StaffPreferencesPutBody = z
      * (`unbox`, … — see `WORKBENCH_KPI_SURFACE`). `true` = collapsed (hidden).
      * Absent / false = open. Shallow JSONB merge: writers send the whole map.
      */
-    /**
-     * @deprecated Dead since 2026-08-29 — the workbench KPI bands were removed
-     * (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5) and nothing reads or
-     * writes this any more.
-     *
-     * The FIELD stays because existing `staff_preferences` rows still carry the
-     * key: this schema parses stored JSON, so dropping the member would make
-     * every one of those rows fail validation or get silently stripped on the
-     * next write. It costs nothing to keep and can be removed by a migration
-     * that clears the key first.
-     */
+    /** @deprecated Dead since 2026-08-29 — the workbench KPI bands were removed (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5) and nothing… */
     kpiCollapsed: z.record(z.string().max(64), z.boolean()).nullable().optional(),
-    /**
-     * Extra Unbox Band-1 tabs pinned via the Pin-list composer
-     * (`unbox-extra-tabs` catalog). v1: `incoming` only. Bounded at
-     * {@link UNBOX_PINNED_EXTRA_TABS_MAX} so a third pin never persists — the
-     * Band-1 vocabulary stays 5 system + ≤2 pinned (Gemini D2 · D14).
-     * `null` / absent = inherit the org/role default; `[]` = staff cleared.
-     */
+    /** Extra Unbox Band-1 tabs pinned via the Pin-list composer (`unbox-extra-tabs` catalog). */
     unboxPinnedExtraTabs: z
       .array(z.literal('incoming'))
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
-    /**
-     * Per-staff MasterNav order — ordered `SidebarNavItem.id`s.
-     * `null` / absent = full catalog in registry order. Ids are intersected
-     * with the permission + org catalog on hydrate; unknown / unpermitted ids
-     * drop; new catalog ids append. Cap 40. See `src/lib/nav/spine-slots.ts`.
-     */
+    /** Per-staff MasterNav order — ordered `SidebarNavItem.id`s. */
     spineSlots: z.array(z.string().min(1).max(64)).max(40).nullable().optional(),
-    /**
-     * Generation of {@link spineSlots} this row was last rolled onto
-     * (`SPINE_SLOTS_VERSION`). Absent / `null` = pre-v1. `migrateSpineSlots`
-     * writes it together with `spineSlots`, and the guard on this number is
-     * what makes a default-order change apply exactly ONCE per staffer rather
-     * than fighting their drag every render.
-     */
+    /** Generation of {@link spineSlots} this row was last rolled onto (`SPINE_SLOTS_VERSION`). */
     spineSlotsVersion: z.number().int().min(0).max(999).nullable().optional(),
   })
   .strict();

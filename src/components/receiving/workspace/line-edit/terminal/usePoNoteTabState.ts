@@ -6,17 +6,7 @@ import type {
   SaveOverallNoteResult,
 } from '../hooks/useSyncedPoNote';
 
-/**
- * Lifted inventory-notes (PO note) state — draft, dirty, sync, save.
- *
- * Owned at the LineEditPanel level so BOTH the content-only LinePoNoteCard and
- * the tab-aware StationTerminalDock can share the same draft / save path.
- * Lazy sync on tab activate (same contract as the former in-card footer).
- *
- * Block-if-stale: optional `baseLastModifiedZoho` is sent on Save so Zoho push
- * refuses when the live stamp drifted since the last trusted pull. Never
- * clobber dirty drafts on Refresh.
- */
+/** Lifted inventory-notes (PO note) state — draft, dirty, sync, save. */
 export interface PoNoteTabState {
   draft: string;
   setDraft: (next: string) => void;

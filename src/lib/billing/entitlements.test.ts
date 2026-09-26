@@ -1,10 +1,4 @@
-/**
- * Money-path entitlement gating.
- *
- * Verifies that requireFeature throws a typed error for under-plan tenants,
- * so route handlers can map it to 402/403 + upgrade prompt without each
- * one knowing what's in each plan.
- */
+/** Money-path entitlement gating. */
 
 import { test } from 'node:test';
 import { ok, strictEqual } from 'node:assert';

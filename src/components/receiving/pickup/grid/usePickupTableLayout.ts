@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The Local-pickup slot-layout hook — the pickup CONFIG on the shared
- * {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law,
- * org capture, Fields-picker data; see its docblock). The second family on
- * the engine — proof that adoption is a config object, not a hook fork
- * (kill-list 07 §4).
- *
- * Pickup paints the SHEET morph only: a stored `compound` layout would
- * promise a two-row item cell nothing draws — `paintMorph` coerces, the org
- * write gate (`slotMorphsFor('pickup')`) refuses.
- */
+/** The Local-pickup slot-layout hook — the pickup CONFIG on the shared {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW… */
 
 import {
   PICKUP_FIELD_CATALOG,

@@ -1,15 +1,4 @@
-/**
- * Shared validation for a tenant-authored command alias.
- *
- * Lives apart from the store so BOTH ends use one answer: the API route
- * rejecting a bad write, and any UI that wants to show the reason before the
- * operator submits. A second copy in the form is how an admin ends up with a
- * row the route would have refused.
- *
- * The DB constrains SHAPE (`station_command_aliases_code_chk`); this constrains
- * MEMBERSHIP — that the target is a command that actually exists — because the
- * registry is code and Postgres cannot see it.
- */
+/** Shared validation for a tenant-authored command alias. */
 
 import { NAV_COMMAND_CODES, parseNavCommand, squashCommandCode } from './nav-command-codes';
 import { ACTION_COMMAND_CODES, parseActionCommand } from './action-command-codes';

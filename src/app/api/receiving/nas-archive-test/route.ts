@@ -7,19 +7,7 @@ import { getNasStorageTarget } from '@/lib/tenancy/settings';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * PROD proof for the Zendesk claim NAS archive.
- *
- * Vercel can't write to the LAN NAS, so this route (server-side) calls the
- * archive agent running on the office machine — through the Cloudflare tunnel
- * (Caddy reverse-proxies /_agent/* → the agent) — which does the real mkdir on
- * the NAS under ".../2 Zendesk 2026/<name>/". A success here proves the live
- * path: prod browser → Vercel → tunnel → agent → NAS write.
- *
- * Env (Production):
- *   NAS_AGENT_URL   = https://nas-photos.michaelgarisek.com/_agent
- *   NAS_AGENT_TOKEN = <shared secret, also on the agent>
- */
+/** PROD proof for the Zendesk claim NAS archive. */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     try {

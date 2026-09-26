@@ -13,18 +13,7 @@ import { observePlacementParity } from '@/lib/workflow/placement-parity';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { isPlacementStranglePartsSort } from '@/lib/feature-flags';
 
-/**
- * Auto-sort to the Parts bin.
- *
- * When a serial unit's condition is set to PARTS ("For Parts") it does not need
- * testing or a claim — it is sorted straight into a single Parts bin in the
- * Technical Room. Parts are sellable AND repair stock, so the bin is PICKABLE
- * (RESERVE role) and the unit lands in normal sellable stock (STOCKED).
- *
- * This is metadata + a location move; it never touches the stock ledger or
- * received quantity (serials are decoupled from quantity — see
- * {@link ../receiving/serial-attach}).
- */
+/** Auto-sort to the Parts bin. */
 
 const DEFAULT_PARTS_BIN_BARCODE = 'TECH-PARTS';
 
@@ -33,14 +22,7 @@ function partsBinSymbol(): string {
   return (process.env.PARTS_BIN_BARCODE || DEFAULT_PARTS_BIN_BARCODE).trim();
 }
 
-/**
- * The declarative placement policy that EXPRESSES today's hardcoded parts-sort
- * routing as a decision table (Track 1, Stage 1.x). Right now it only feeds the
- * OBSERVE-ONLY parity shim — proving `resolveDecision → resolvePlacementBin`
- * picks the same bin the env-constant path does. When the cutover flag lands,
- * the same policy becomes the source of truth (and later, a per-org decision
- * node in the workflow definition overrides this system default).
- */
+/** The declarative placement policy that EXPRESSES today's hardcoded parts-sort routing as a decision table (Track 1, Stage 1.x). */
 function partsSortPlacementPolicy(): DecisionRule[] {
   return [
     {
@@ -119,13 +101,7 @@ export type SortSerialToPartsResult =
   | { sorted: true; bin: PartsBin }
   | { sorted: false; reason: 'disabled' | 'no_parts_bin' | 'not_found' | 'committed' | 'already_there' | 'blocked' };
 
-/**
- * Move a serial unit into the Parts bin and mark it STOCKED. No-op (returns
- * `sorted:false` with a reason) when auto-sort is disabled, the bin isn't
- * configured, the unit is missing, the unit is already committed to an order /
- * shipped, or it's already in the parts bin. Never throws on the no-op paths —
- * the caller's grade write must still succeed.
- */
+/** Move a serial unit into the Parts bin and mark it STOCKED. */
 export async function sortSerialUnitToParts(
   input: SortSerialToPartsInput,
 ): Promise<SortSerialToPartsResult> {
@@ -152,21 +128,11 @@ export async function sortSerialUnitToParts(
     return { sorted: false, reason: 'committed' };
   }
 
-  // serial_units.organization_id is NOT NULL (2026-05-23 business-table pass,
-  // restated in 2026-06-19_serial_units_org_scoped_unique.sql:22), so this is a
-  // data-integrity check, not a fallback. It used to read
-  // `?? DOGFOOD_ORG_ID` — a default on a column that cannot be null, which
-  // could only ever fire if the row shape lied, and would then silently sort
-  // another tenant's unit into the dogfood org's parts bin.
+  // serial_units.organization_id is NOT NULL (2026-05-23 business-table pass, restated in 2026-06-19_serial_units_org_scoped_unique.sql:22),…
   const orgId = unit.organization_id as OrgId | null;
   if (!orgId) return { sorted: false, reason: 'not_found' };
 
-  // Resolve the destination bin. CUTOVER (PLACEMENT_STRANGLE_PARTS_SORT): source
-  // it from the declarative policy — the org's Studio decision nodes first, then
-  // the system-default parts policy — and only fall back to the env-constant bin
-  // when the policy resolves nothing. With no decision node authored, the
-  // system-default policy targets the same PARTS_BIN_BARCODE, so flipping the
-  // flag ON is byte-identical to the legacy path. Flag OFF → env-constant only.
+  // Resolve the destination bin.
   let resolvedBin: PartsBin | null = null;
   if (isPlacementStranglePartsSort()) {
     const policy = await resolveSitePlacementBin({
@@ -187,10 +153,7 @@ export async function sortSerialUnitToParts(
     return { sorted: false, reason: 'already_there' };
   }
 
-  // OBSERVE-ONLY (PLACEMENT_PARITY_OBSERVE): prove the declarative decision-table
-  // mechanism resolves the SAME bin this path is about to use. Most valuable when
-  // the cutover flag is OFF (it compares policy vs the env-constant bin). Always
-  // fire-and-forget + self-guarded — never disturbs the real move.
+  // OBSERVE-ONLY (PLACEMENT_PARITY_OBSERVE):
   void observePlacementParity({
     site: 'parts-sort',
     orgId,
@@ -208,14 +171,7 @@ export async function sortSerialUnitToParts(
     prevBinId = prev?.id ?? null;
   }
 
-  // Guarded status write + PUTAWAY event + the location move, in ONE transaction
-  // so a unit never ends STOCKED-but-not-relocated (the split would otherwise
-  // commit the status in transition()'s own tx, then do current_location as a
-  // separate autocommit). transition() emits the event (SoT rule: never
-  // hand-write current_status); current_location is a location-only UPDATE on the
-  // same client. Common from-states (GRADED/RECEIVED/TESTED/RETURNED → STOCKED)
-  // are guard-clean; an odd source (e.g. mid-repair) is declined → no-op
-  // ('blocked'), best-effort so the caller's grade write still succeeds.
+  // Guarded status write + PUTAWAY event + the location move, in ONE transaction so a unit never ends STOCKED-but-not-relocated (the split…
   const runMove = async (txc: Pick<PoolClient, 'query'>): Promise<boolean> => {
     const moved = await transition(
       {

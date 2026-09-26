@@ -59,13 +59,7 @@ const MODE_OPTIONS = [
   },
 ] as const;
 
-/**
- * Closes the two gaps the canonical pairing queue can't:
- *   1. Add an inventory SKU that isn't in sku_catalog yet (POST /api/sku-catalog).
- *   2. Pair an unmapped account-source identifier (Amazon ASIN, eBay/Walmart
- *      item id, Ecwid SKU) to a canonical SKU — either the brand-new one or an
- *      existing one (POST /api/sku-catalog/pair, which also backfills orders).
- */
+/** Closes the two gaps the canonical pairing queue can't: */
 export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Props) {
   const [mode, setMode] = useState<Mode>('create');
   // ⌥1 / ⌥2 jump modes directly — same chord the ticket claim's Create|Link
@@ -94,10 +88,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   useEffect(() => {
     if (!open) return;
     setMode('create');
-    // Add-to-catalog flow (no pending id): the operator searched the inventory SKU
-    // itself, so seed the field with it. Pairing an unmapped identifier (pending)
-    // means the search term is an ASIN / platform id — NOT an inventory SKU — so leave
-    // it blank for the operator to enter the real canonical SKU.
+    // Add-to-catalog flow (no pending id):
     setSku(pending ? '' : query.trim());
     setTitle(pending?.suggestedTitle || '');
     setCategory('');
@@ -247,11 +238,7 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
           </div>
         )}
 
-        {/* Create | Link mode (only meaningful when pairing an identifier) —
-            same flush combobox grammar as the ticket claim's Create|Link
-            picker (ClaimModeSelect): keyboard-searchable, filters the option
-            list as you type. Never a hand-rolled segment-tab twin. Flush
-            select owns its own bottom hairline — no wrapper border-b. */}
+        {/* Create | Link mode (only meaningful when pairing an identifier) — same flush combobox grammar as the ticket claim's Create|Link picker… */}
         {pending && (
           <div className="shrink-0 pt-2" data-testid="pair-mode-select">
             <SearchableSelectField

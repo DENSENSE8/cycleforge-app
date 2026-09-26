@@ -74,9 +74,6 @@ async function ensureUnpairedPlatformListing(
   }
 
   // DO NOTHING matches every sibling writer (pairing-queries, sync-ecwid-products).
-  // This is also the race partner of the SELECT above: two orders in one import
-  // touching the same listing both miss, and the loser must be a no-op rather
-  // than aborting the import's transaction.
   await tenantQuery(
     orgId,
     `INSERT INTO sku_platform_ids

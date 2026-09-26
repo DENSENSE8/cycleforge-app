@@ -1,16 +1,4 @@
-/**
- * Neon Control Plane client for ephemeral VERIFY branches (ALP-4.2).
- *
- * The forge loop verifies DB-touching work against an instantaneous
- * copy-on-write branch of production — NEVER against production itself.
- * Lifecycle contract (locked, plan §-2):
- *   create → run VERIFY against the branch connection string →
- *   success: delete the branch · failure: keep it for retry (TTL-swept).
- *
- * Deps-injected (fetchFn/env/now) so unit tests run with zero network — the
- * house pattern. Consumers: .cycle_forge_ops/scripts/forge-verify-branch.mjs
- * (via tsx) and any future server-side verify orchestration.
- */
+/** Neon Control Plane client for ephemeral VERIFY branches (ALP-4.2). */
 
 export const NEON_API_BASE = 'https://console.neon.tech/api/v2';
 
@@ -63,15 +51,7 @@ async function neonRequest<T>(
   return (await res.json()) as T;
 }
 
-/**
- * Normalize a Neon host to its endpoint IDENTITY so pooler/direct variants of
- * the SAME production endpoint compare equal. Neon exposes an endpoint as both
- * `ep-foo-123.<region>.aws.neon.tech` (direct) and
- * `ep-foo-123-pooler.<region>.aws.neon.tech` (pooled); a naive host-equality
- * check would treat the pooled prod host as "not production" and wave it
- * through. We strip the `-pooler` marker AND collapse to the endpoint id +
- * region so any alias of prod is caught.
- */
+/** Normalize a Neon host to its endpoint IDENTITY so pooler/direct variants of the SAME production endpoint compare equal. */
 export function neonEndpointIdentity(host: string): string {
   const lower = host.toLowerCase().replace(/^ep-([^.]*?)-pooler\./, 'ep-$1.');
   // Endpoint id is the first label (`ep-...`); keep it plus the rest for region.

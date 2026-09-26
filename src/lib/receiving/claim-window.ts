@@ -1,19 +1,4 @@
-/**
- * Claim-window presentation kind — the eBay item-not-received deadline as a
- * displayable fact (Phase 5 of docs/todo/ebay-delivered-not-unboxed-PLAN.md).
- *
- * **Dependency-free on purpose.** The escalation cron
- * (`./claims-escalation.ts`) and the Incoming grid cell must agree on what "due"
- * means — if they drift, the chip reads "fine" on a carton the cron just filed a
- * ticket about. So the threshold and the day math live HERE, in a module with no
- * imports at all, and `claims-escalation.ts` re-exports them rather than keeping a
- * second copy. A UI module importing the cron module directly would drag its
- * dynamic `server-only` graph toward the client bundle
- * (bundle altitude).
- *
- * Views stay dumb: this resolves label + tip + description, the cell renders them
- * (Kinetic Ledger law 4 — presentation kinds resolve via SoT).
- */
+/** Claim-window presentation kind — the eBay item-not-received deadline as a displayable fact (Phase 5 of… */
 
 /**
  * How many days before the deadline counts as DUE — the point at which the cron
@@ -21,14 +6,7 @@
  */
 export const CLAIM_DUE_LEAD_DAYS = 5;
 
-/**
- * Whole days from `todayKey` to `claimByDate`, both civil dates (`YYYY-MM-DD`).
- * Negative once the deadline has passed.
- *
- * Civil-date math only — never `new Date('YYYY-MM-DD')`, which parses as UTC
- * midnight and shifts the answer a day for a Pacific warehouse
- * (Dates & times, the banned list).
- */
+/** Whole days from `todayKey` to `claimByDate`, both civil dates (`YYYY-MM-DD`). */
 export function daysUntilClaimDeadline(claimByDate: string, todayKey: string): number {
   const toUtcMs = (key: string): number => {
     const [y, m, d] = key.split('-').map(Number);
@@ -51,13 +29,7 @@ export interface ClaimCountdownFace {
    * Grid cells use {@link tip}.
    */
   description: string;
-  /**
-   * Text-color class only — no background or ring. The Incoming status track is
-   * height-critical (its header records a regression where cell text "blew row
-   * height into an address block"), and the sibling Unv. chip in that same
-   * cell established text-only as the pattern there. No weight class: the
-   * `role-eyebrow` role already bakes 600.
-   */
+  /** Text-color class only — no background or ring. */
   tone: string;
 }
 

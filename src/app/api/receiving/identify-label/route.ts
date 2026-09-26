@@ -1,18 +1,4 @@
-/**
- * POST /api/receiving/identify-label
- *
- * Resolve Bose model string(s) read off a product label by the LAN vision box
- * (/identify-label OCR) to real catalog products, so the receiving UI can show
- * "Bose Wave Music System AWRCC1 — confirm?" and then add the line by its resolved
- * sku_catalog_id. The browser posts the captured label frame straight to the box
- * (full-res never reaches Vercel) and forwards the resulting model(s) here.
- *
- * Read-only: this only looks up Zoho items + catalog rows. The actual pairing reuses
- * the existing idempotent /api/receiving/add-unmatched-line — no mutation here.
- *
- * Body: { model: string }  or  { models: string[] }
- * Resp: { success, candidates: LabelMatch[] }
- */
+/** POST /api/receiving/identify-label */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { resolveModels } from '@/lib/receiving/label-identify';

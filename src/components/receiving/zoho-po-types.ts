@@ -7,11 +7,7 @@ import {
 // All 7 grades from the shared source of truth (was a 5-grade subset).
 export const CONDITION_OPTIONS = conditionOptions('full');
 
-// Friendly labels for every condition grade, used anywhere a raw enum like
-// `BRAND_NEW` would otherwise leak to a human — ticket bodies, exports, etc.
-// Delegates to the shared `full` variant (src/lib/conditions.ts), which is
-// pure + dependency-free so this stays safe to import from server code (e.g.
-// Zendesk ticket templates). Empty → '' and unknown → Title Case are kept.
+// Friendly labels for every condition grade, used anywhere a raw enum like `BRAND_NEW` would otherwise leak to a human — ticket bodies,…
 export function conditionLabel(code: string | null | undefined): string {
   const c = String(code ?? '').trim().toUpperCase();
   if (!c) return '';

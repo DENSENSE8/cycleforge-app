@@ -1,10 +1,4 @@
-/**
- * Verifies the seeded Unbox surface composition (2026-07-05 migration) is
- * registry-valid — every block/source/field is registered and slot-compatible,
- * so validateStationConfig passes and publish would accept it. Pure / DB-free:
- * mirrors the migration's jsonb config exactly.
- *   node --import tsx --test src/lib/stations/unbox-composition.test.ts
- */
+/** Verifies the seeded Unbox surface composition (2026-07-05 migration) is registry-valid — every block/source/field is registered and… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

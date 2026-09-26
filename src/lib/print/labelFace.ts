@@ -1,33 +1,8 @@
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 
-/**
- * One model for the printed 2×1" label *face*, shared by every label in the
- * app — receiving/PO cartons, testing/unit stickers, local-pickup, etc.
- *
- * The face is a fixed 5-slot grid plus a DataMatrix:
- *
- *   topLeft ───────────── topRight   ┌──────────┐
- *        (center, 3-line)            │  Data    │
- *   bottomLeft ───────── bottomRight  │  Matrix  │
- *                                     └──────────┘
- *
- * Both the on-screen preview ({@link LabelFacePreview} — a scaled iframe of
- * {@link buildLabelHtml}) and the printed HTML ({@link buildFaceInfoHtml} →
- * the shared {@link buildLabelHtml}/`printLabel` shell) consume this model, so
- * what techs see is exactly what prints — there's no second hand-built layout
- * to drift. Domain adapters (`receivingPayloadToFace`, `unitLabelToFace`) map
- * their payloads into it.
- */
+/** One model for the printed 2×1" label *face*, shared by every label in the app — receiving/PO cartons, testing/unit stickers,… */
 export interface LabelFaceModel {
-  /**
-   * Layout family. `receiving` (default) = the 4-corner carton face
-   * (platform·date / notes / condition·corner). `product` = the unit/testing
-   * face where the product title fills a full top row, with condition·color on
-   * the bottom row and no center band. `location` = coordinate-only inventory
-   * sticker: large alphanumeric code, no room name / zone kicker / level gloss.
-   * `lpn` = the handling-unit (box / tote) licence plate: kicker, a large
-   * `H-{id}` code, then a member-count · date row over the bin name.
-   */
+  /** Layout family. */
   kind?: 'receiving' | 'product' | 'location' | 'lpn';
   /** Top-left (receiving: platform/type). For `product`, holds the full-top-row title. */
   topLeft: string;
@@ -65,12 +40,7 @@ export const LPN_LABEL_FACE_LAYOUT = {
  * bl/br) so the same stylesheet serves carton and unit labels. Mirrors the
  * weights/sizes the receiving label has used since it was the only label face.
  */
-// All slots share one font size (9px) and pure black so the face reads uniformly
-// on the tiny 2×1" label without clipping; center notes stay 9px too. On-screen
-// preview scales this same CSS via a print-HTML iframe — no second type scale.
-// `.row` is width:100% so space-between actually pins left/right weight across
-// the info column (shrink-wrapped rows collapse to the left and leave a dead
-// gap before the matrix).
+// All slots share one font size (9px) and pure black so the face reads uniformly on the tiny 2×1" label without clipping; center notes…
 export const LABEL_FACE_CSS =
   '.row{display:flex;justify-content:space-between;align-items:baseline;gap:4px;line-height:1;width:100%}' +
   '.tl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:700;color:#000;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
@@ -86,14 +56,8 @@ export const LOCATION_LABEL_FACE_CSS =
   '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}';
 
 /**
- * Handling-unit (box / tote) licence plate. Two rows: a `BOX / LPN` kicker
- * pinned top-left, and the code filling the rest — left-aligned, vertically
- * centred, as big as 2×1 stock allows.
- *
+ * Handling-unit (box / tote) licence plate.
  * Operator ruling 2026-09-15: kicker top-left, ID left-middle, NO date. The
- * member count and bin name are gone too — both are stale the instant a unit
- * moves or the tote is carried anywhere, which is the entire job of a tote.
- * What remains is the identity the scanner and the eye both use.
  */
 export const LPN_LABEL_FACE_CSS =
   `.hu-kicker{flex:0 0 auto;font-size:${LPN_LABEL_FACE_LAYOUT.kickerFontCssPx}px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280;text-align:left;line-height:1}` +
@@ -102,14 +66,7 @@ export const LPN_LABEL_FACE_CSS =
   // of relying on an ellipsis to conceal a clipped identity.
   `.hu-code{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:flex-start;font-size:${LPN_LABEL_FACE_LAYOUT.codeFontCssPx}px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}`;
 
-/**
- * Build the info-column HTML + CSS for a label face. Feed the result straight
- * into the shared `printLabel`/`buildLabelHtml` shell along with `model.matrix`
- * and `model.hri`. Branches on `model.kind`: `location` is a single large code;
- * `lpn` is the box licence plate (kicker · big code · count/date · bin);
- * `product` puts the title in a full top row with condition·color beneath;
- * `receiving` keeps the 4-corner grid.
- */
+/** Build the info-column HTML + CSS for a label face. */
 export function buildFaceInfoHtml(model: LabelFaceModel): {
   infoHtml: string;
   infoCss: string;
@@ -146,15 +103,7 @@ export function buildFaceInfoHtml(model: LabelFaceModel): {
   return { infoHtml, infoCss: LABEL_FACE_CSS, infoAlign: 'space-between' };
 }
 
-/**
- * Mutate an already-mounted label document's text slots in place.
- *
- * Used by {@link LabelFacePreview} so typing the center (or any face string)
- * does not rewrite iframe `srcDoc` — that would tear down the document and
- * flash the sticker. Matrix / kind identity still requires a full rebuild.
- *
- * Sets `textContent` (not `innerHTML`) so caller strings need no escaping.
- */
+/** Mutate an already-mounted label document's text slots in place. */
 export function patchLabelFaceDocument(
   doc: {
     querySelector(selectors: string): {

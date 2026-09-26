@@ -292,10 +292,7 @@ test('emptyMessage reflects mode + facet context', () => {
 });
 
 test('an empty lane under a PASTE never explains the guard the paste removed', () => {
-  // `?tracking_in=` drops NOT_ZOHO_RECEIVED server-side, so the default line
-  // ("Zoho says everything issued is already received") describes a predicate
-  // that did not run — and an operator who filtered to one tracking read that
-  // as the filter being broken. Both incoming lanes must answer for the paste.
+  // `?tracking_in=` drops NOT_ZOHO_RECEIVED server-side, so the default line ("Zoho says everything issued is already received") describes a…
   for (const mode of ['incoming', 'incoming_removed'] as const) {
     const msg = RECEIVING_MODES[mode].emptyMessage(ctx({ trackingIn: ['ABC123'] }));
     assert.doesNotMatch(

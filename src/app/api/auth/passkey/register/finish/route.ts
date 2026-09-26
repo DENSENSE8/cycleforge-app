@@ -1,15 +1,4 @@
-/**
- * POST /api/auth/passkey/register/finish
- *
- * Body: { response: RegistrationResponseJSON, deviceLabel?: string,
- *         enrollmentToken?: string }
- *
- * Verifies the WebAuthn attestation against the challenge cookie set by
- * /register/begin, stores the credential on the staff row.
- *
- * Does NOT sign anyone in. The signin flow with passkey (different route)
- * is /authenticate/{begin,finish}.
- */
+/** POST /api/auth/passkey/register/finish */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -44,9 +33,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Re-derive the registering staff AUTHORITATIVELY — never from the cookie.
-    // Mirrors /register/begin: an enrollment token (validated server-side) or
-    // the live session. A forged challenge cookie therefore can't bind a
-    // credential to anyone but the caller's own resolved identity.
     let staffId: number;
     if (typeof enrollmentToken === 'string' && enrollmentToken) {
       const enr = await loadEnrollment(enrollmentToken);

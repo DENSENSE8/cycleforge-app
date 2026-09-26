@@ -18,26 +18,7 @@ import {
 // Re-exported so consumers can import state types from the hook module.
 export type { RefetchStatus, RefetchState } from './useUnfoundRefetchActions.classify';
 
-/**
- * Operator-initiated live integration re-checks for an UNFOUND carton — the data
- * layer behind {@link UnfoundMatchStrip}. Shared by POUnboxingSection (desktop)
- * and the mobile carton sheet.
- *
- * SPEED-FIRST invariant: nothing here runs on the scan path. The tracking scan
- * resolves from LOCAL data only (see scan-apply.ts / lookup-po localOnly) and
- * opens the unfound workspace instantly; these requests fire ONLY when the
- * operator taps a button. Passive freshness stays on the reconcile / incoming-PO
- * crons — the operator is never blocked waiting for an integration.
- *
- *   • checkZoho  → POST /api/receiving/unfound-queue/retry-pair
- *       (reconcileUnmatchedReceiving). On promote it invalidates the receiving
- *       feeds and RE-SELECTS the promoted carton's real primary line, so the open
- *       workspace swaps UnmatchedItemsSection → PoLinesAccordion in place with no
- *       re-scan.
- *   • checkAmazon → POST /api/receiving/[id]/amazon-return-lookup
- *       (SP-API listReturns by reverseTrackingId). Stamps the carton as an
- *       AMAZON_RETURN + persists return facts.
- */
+/** Operator-initiated live integration re-checks for an UNFOUND carton — the data layer behind {@link UnfoundMatchStrip}. */
 
 const IDLE: RefetchState = { status: 'idle', message: null };
 
@@ -52,12 +33,7 @@ export interface UnfoundRefetchActions {
   checkAmazon: () => Promise<void>;
 }
 
-/**
- * After a Zoho promote, re-select the carton's real primary line so the open
- * pane remounts as a matched PO carton (PoLinesAccordion) — no re-scan. Best
- * effort: the feed invalidation already refreshed the rails, so a failure here
- * just means the operator reopens the (now-matched) carton from the list.
- */
+/** After a Zoho promote, re-select the carton's real primary line so the open pane remounts as a matched PO carton (PoLinesAccordion) — no… */
 async function promoteInPlace(receivingId: number): Promise<void> {
   try {
     const res = await fetch(

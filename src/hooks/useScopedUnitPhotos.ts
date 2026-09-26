@@ -4,13 +4,7 @@ import { useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-q
 import type { PriorPhoto } from '@/components/mobile/station/MobilePackerSpamCamera';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 
-/**
- * Committed SERIAL_UNIT testing-scan photos for one unit — the unit-scoped twin
- * of `useScopedReceivingPhotos`. Reads `GET /api/serial-units/{id}/photos`
- * (returns every SERIAL_UNIT photo for the unit) and deletes via the shared
- * `DELETE /api/photos/{id}`. Keyed `['unit-photos', serialUnitId]` so the
- * realtime refresh + the mobile capture surface invalidate the same cache.
- */
+/** Committed SERIAL_UNIT testing-scan photos for one unit — the unit-scoped twin of `useScopedReceivingPhotos`. */
 
 export interface UnitPhotoRow {
   id: number;

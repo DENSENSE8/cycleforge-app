@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * Station Displays right-edge **push** column — shared shell for
- * {@link StationDisplaysPushStack} (Unbox golden · Arrival · Testing · Pack ·
- * Shipping · Review). Not a `RightRailHost` occupant.
- *
- * **In-flow when it fits** (ruled 2026-08-10): flush
- * {@link STATION_DISPLAYS_COLUMN_CLASS} sibling that **encloses** the middle
- * (and its bottom dock) — never an overlay that covers them. When the frame
- * cannot seat Displays beside an open left rail, the frame store parks the
- * **left** rail first so Displays stays open. Displays itself auto-parks to the
- * slim strip only when even a parked left cannot seat
- * `{@link resolveStationDisplaysCollapse}` — so nothing paints off-screen.
- * Expand maximizes the sash to the local cap (still in flow).
- *
- * **Local splitter (Option A, 2026-08-10):** in-flow Displays is an
- * explicitly-sized `shrink-0` sibling of the elastic center. Its leading-edge
- * sash resizes ONLY Displays; the center absorbs the change and the left context
- * rail is untouched (VS Code / Figma splitter model). The sash clamps at
- * {@link RightRailFrameSnapshot.stationDisplaysCapPx} (`frame − leftCost − 720`)
- * so it stops at the center floor rather than crushing the middle or reaching
- * across to move the far rail — there is no inverse coupling. Because the center
- * eats all leftover, Displays always abuts the center with no gray band. Never
- * host `gap-*` / `justify-between` / gutter divs / `ml-auto` detach.
- *
- * **Filter is row 2** (`subHeader`, index only). There is **no bottom band** —
- * the column ends at its body. **Top band keeps maximize + optional ring + the carton Macro
- * verbs** ({@link headerActions}, `⋯` last). The carton `↑↓` cursor no longer
- * mounts here (2026-08-18) — the corner is the utility cluster's.
- */
+/** Station Displays right-edge **push** column — shared shell for {@link StationDisplaysPushStack} (Unbox golden · Arrival · Testing · Pack… */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Maximize2, Minimize2 } from '@/components/Icons';
@@ -72,13 +44,7 @@ import {
   UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX,
 } from '@/lib/right-rail/frame';
 import { cn } from '@/utils/_cn';
-/**
- * Host trailing padding while a push column is mounted.
- *
- * Empty since flush planes (2026-08-03) — was `pr-2` island gutter. Kept as a
- * named export so LineEditPanel composes one host pad token (now a no-op).
- * Never `py-*`.
- */
+/** Host trailing padding while a push column is mounted. */
 /** Host trailing pad while a Displays push column is mounted (flush — no-op). */
 export const STATION_DISPLAYS_HOST_PAD_CLASS = '';
 
@@ -88,19 +54,7 @@ const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
 const STATION_DISPLAYS_PUSH_EXPAND_LABEL = 'Widen panel';
 const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Restore panel width';
 
-/**
- * `relative z-header` keeps maximize / trailing cursor above the inset
- * resize sash's elevated hairline paint. Children re-enable pointer events
- * (`pointer-events-auto` on the cell) so the band itself stays pass-through
- * for the sash hit area under empty chrome.
- *
- * The band has NO leading pad AND no trailing pad (2026-08-19): the leaf Back
- * chevron takes the column's own left corner and the close takes its right one.
- * Both are `0` on the band token — a trailing inset left the `✕` floating off
- * the column's own edge.
- * Maximize and close share {@link STATION_DISPLAYS_PUSH_TOP_CELL} (28px,
- * `gap-0`) — close must not `-ml-px` into fullscreen.
- */
+/** `relative z-header` keeps maximize / trailing cursor above the inset resize sash's elevated hairline paint. */
 export function StationDisplaysPushColumn({
   ariaLabel,
   testId = 'receiving-displays-push',
@@ -151,45 +105,17 @@ export function StationDisplaysPushColumn({
    * progress ring. A read-only metric, so it sits left of the action verbs.
    */
   headerRightSlot?: ReactNode;
-  /**
-   * Carton Macro verbs — top-right of the band, `⋯` last
-   * ({@link StationDisplaysHeaderActions}). A control that acts on the open
-   * carton belongs in the corner the operator already looks at for chrome, not
-   * at the far end of a scrolling column. Never a bottom `actionFloor` rung and
-   * never desk `InspectorActionFloor`.
-   */
+  /** Carton Macro verbs — top-right of the band, `⋯` last ({@link StationDisplaysHeaderActions}). */
   headerActions?: ReactNode;
-  /**
-   * Row 2 — a full-width band directly under the header, above the body.
-   *
-   * **This is where `Filter displays…` lives (ruled 2026-08-19).** It used to
-   * sit in the bottom footer as the left context rail's twin; that pairing
-   * stopped holding the moment `→|` left the footer for the header band, since
-   * what made the two rails read alike was the filter sharing a band with the
-   * dismiss control. A find field that filters the list *below* it now sits
-   * above that list — the same order the Unbox workbench sheet already uses
-   * (Band 1 chrome → Band 3 find → rows), so one muscle memory covers both.
-   *
-   * Index-only by contract: a leaf must never inherit list-filter chrome that
-   * does not refine the leaf.
-   */
+  /** Row 2 — a full-width band directly under the header, above the body. */
   subHeader?: ReactNode;
-  /**
-   * PARKED-strip content, given the restore callback so a cell can open the
-   * column ON the display it names. Rendered instead of the old empty mid +
-   * foot button: 32px of chrome that says what is behind it beats 32px that
-   * says nothing and repeats the click the whole strip already accepts.
-   */
+  /** PARKED-strip content, given the restore callback so a cell can open the column ON the display it names. */
   parkedRail?: (open: () => void) => ReactNode;
   children: ReactNode;
 }) {
   useEscapeClose(true, onEscape ?? onClose);
 
-  // `stationDisplaysCapPx` = the LOCAL sash clamp (`frame − leftCost − 720`) so
-  // dragging Displays resizes only Displays and the elastic center absorbs it;
-  // the far left rail is untouched (no coupling). `stationDisplaysCollapsed` =
-  // frame budget cannot seat Displays' min — auto-park to the slim strip
-  // (never overlay, never off-screen overflow).
+  // `stationDisplaysCapPx` = the LOCAL sash clamp (`frame − leftCost − 720`) so dragging Displays resizes only Displays and the elastic…
   const { stationDisplaysCapPx, stationDisplaysCollapsed, stationContextSashArmed } =
     useSyncExternalStore(
       subscribeRightRailFrame,
@@ -204,27 +130,10 @@ export function StationDisplaysPushColumn({
   const [maximized, setMaximized] = useState(false);
   const preMaxWidthRef = useRef<number | null>(null);
 
-  // Operator PARK — drag the sash past its min collapses the whole column to a
-  // slim right-edge strip (mirror of the left context rail's drag-past-min
-  // park). Transient by design: it survives leaf changes WITHIN an open session
-  // (so the cockpit's auto-follow respects the park), and resets when the
-  // display is closed and reopened (the column unmounts), so opening a display
-  // fresh always shows it. Click the strip to restore the column at its width
-  // — unless the frame is still too narrow (`stationDisplaysCollapsed`).
+  // Operator PARK — drag the sash past its min collapses the whole column to a slim right-edge strip (mirror of the left context rail's…
   const [parked, setParked] = useState(false);
   const collapsed = parked || stationDisplaysCollapsed;
-  /**
-   * The header `→|` PARKS (2026-08-19) — it does not unmount the column.
-   *
-   * It used to call the host's `onClose`, which took the column off screen
-   * entirely, so the parked icon strip was only reachable by dragging the sash
-   * past its min — a gesture most operators never find. Parking on the control
-   * they already use is what makes the strip the normal closed state.
-   *
-   * Full close still exists and is Esc's job (`onEscape` → leaf → index →
-   * `onClose`). Two controls, two meanings: `→|` gets the column out of the
-   * way and leaves the index one click away; Esc puts it away.
-   */
+  /** The header `→|` PARKS (2026-08-19) — it does not unmount the column. */
   const park = useCallback(() => setParked(true), []);
   const restore = useCallback(() => {
     // Frame auto-park refuses restore while the pane still cannot seat the
@@ -282,10 +191,7 @@ export function StationDisplaysPushColumn({
     effectiveMaxWidthPx,
   );
 
-  // Publish this column's live width + in-flow state so the frame store can
-  // reactively clamp the CONTEXT sash (`frame − displays − 720`) — the symmetric
-  // local clamp, not coupling. Parked / frame-collapsed release push demand so
-  // the center reclaims width — never overlay.
+  // Publish this column's live width + in-flow state so the frame store can reactively clamp the CONTEXT sash (`frame − displays − 720`) —…
   const publishedDesireRef = useRef(layoutWidth);
   publishedDesireRef.current = layoutWidth;
   useEffect(() => {
@@ -297,11 +203,7 @@ export function StationDisplaysPushColumn({
     return () => setStationPushDemand({ active: false, desiredWidthPx: publishedDesireRef.current });
   }, [collapsed, layoutWidth]);
 
-  // Tell the frame store when THIS sash is being dragged — the one signal that
-  // opens the cascade's Stage 2 (Displays cap → ladder max; the left rail's cap
-  // goes tight and its own resize-clamp yields it). Idle → the left rail is the
-  // default authority, so opening Displays or narrowing the viewport yields
-  // Displays width into leftover, never the operator's rail.
+  // Tell the frame store when THIS sash is being dragged — the one signal that opens the cascade's Stage 2 (Displays cap → ladder max; the…
   useEffect(() => {
     setStationDisplaysSashDragging(isDragging && !collapsed);
     return () => setStationDisplaysSashDragging(false);
@@ -329,19 +231,7 @@ export function StationDisplaysPushColumn({
     [],
   );
 
-  /**
-   * While PARKED, this column owns ⌘] — because nothing else does.
-   *
-   * The chord's normal owner is whichever `StationDisplaysEdgeToggle` is
-   * mounted (`←|` pane-open when the column is absent, `→|` column-close when
-   * it is open). A parked column mounts neither: the host still believes
-   * Displays is open, so the pane's `←|` is gone, and the parked strip paints
-   * no band. Without this the chord would be dead in exactly the state the
-   * operator most needs it.
-   *
-   * The callback no-ops while open, so the band's toggle stays the single
-   * ACTING owner and the two are never both live.
-   */
+  /** While PARKED, this column owns ⌘] — because nothing else does. */
   const parkedChordToggle = useCallback(() => {
     if (collapsed) restore();
   }, [collapsed, restore]);
@@ -363,10 +253,7 @@ export function StationDisplaysPushColumn({
     };
   }, [claimKeyboardRegion, collapsed]);
 
-  // Parked (drag-past-min OR frame too narrow): a slim right-edge strip in place
-  // of the column — whole-strip click / Enter / Space restores it when the frame
-  // can seat it again (mirror of the left rail's parked strip). The column body
-  // unmounts; local leaf selection keeps the leaf, so it comes back at its width on restore.
+  // Parked (drag-past-min OR frame too narrow):
   if (collapsed) {
     const frameParked = stationDisplaysCollapsed;
     const showLabel = frameParked
@@ -397,16 +284,7 @@ export function StationDisplaysPushColumn({
         )}
         data-station-displays=""
       >
-        {/* The Root Index as icons (2026-08-19). The strip used to be an empty
-            mid plus a restore button at its foot; both are gone. The foot
-            button spent a permanent cell on the one action the WHOLE strip
-            already performs, and the empty mid told the operator nothing about
-            what was parked behind it. Now the strip shows the displays and a
-            cell opens the one it names — the click an operator was going to
-            make anyway, minus the intermediate open.
-
-            Whole-strip click still restores (role=button above); the rail stops
-            propagation so a cell never fires both. */}
+        {/* The Root Index as icons (2026-08-19). */}
         {frameParked ? (
           <div className="min-h-0 flex-1" aria-hidden />
         ) : (
@@ -444,14 +322,7 @@ export function StationDisplaysPushColumn({
       <div
         className={cn(STATION_DISPLAYS_COLUMN_CLASS, 'relative h-full min-h-0')}
         data-station-displays=""
-      >        {/* Drag ONLY — inset on this card's border-l seam (display hairline).
-            `elevatedHairline` paints the rule ABOVE the leaf ← → header band
-            (`z-header`, opaque) so the seam reads continuously over the Back
-            chevron; the hit stays below the chrome so the chevron keeps its
-            clicks. The flash marks the pane about to DISAPPEAR, not the sash
-            under the cursor — so Displays lights only when the CONTEXT sash is
-            one shove from closing THIS column, never while its own sash parks
-            the context rail (that flash belongs to the context rail). */}
+      >        {/* Drag ONLY — inset on this card's border-l seam (display hairline). */}
         <HorizontalEdgeResizeHandle
           edgeHandleProps={edgeHandleProps}
           isDragging={isDragging}
@@ -461,12 +332,7 @@ export function StationDisplaysPushColumn({
           armed={stationContextSashArmed}
           tooltipLabel={resizeTooltip}
         />
-        {/* ONE header band (2026-08-18):
-              [ < > ] Displays ………… [ ring ][ verbs ⋮ ][ ⤢ ][ →| ]
-            Left answers "where am I", right answers "what can I do to this".
-            Fullscreen and close are the two WINDOW controls, so they close the
-            row and never collapse — the item verbs to their left are what a
-            narrower column would fold into `⋮`. */}
+        {/* ONE header band (2026-08-18): */}
         <div className={cn(STATION_DISPLAYS_PUSH_TOP_BAND, STATION_DISPLAYS_BAND_CLASS)}>
           {headerNav}
           {headerNav == null ? <div className="flex-1" /> : null}

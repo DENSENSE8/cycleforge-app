@@ -1,9 +1,6 @@
 'use client';
 
-// MOUNT: drop <CsvOrderImport /> into a settings/integrations surface (e.g. an
-// "Import orders from CSV" card under Settings → Integrations). Desk staging
-// lives on To-Ship (`CsvImportStagingHost`); this card stays a Settings wrapper
-// over the shared parse / map / POST SoT in `csv-order-import.ts`.
+// MOUNT: drop <CsvOrderImport /> into a settings/integrations surface (e.g.
 
 import { useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';

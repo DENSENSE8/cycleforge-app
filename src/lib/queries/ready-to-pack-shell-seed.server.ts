@@ -1,45 +1,4 @@
-/**
- * Shell-level paint seed for the Testing station's default landing —
- * **Ready to Pack** (`/test`, no `?view=`).
- *
- * ## What it seeds, and why each piece is here
- *
- * | Key | Paints | Was |
- * |---|---|---|
- * | `dashboard-table / unshipped` | the grid rows — the LCP element | `/api/orders?listShape=queue` at **13.0s** under this surface's ~17 concurrent shell fetches |
- * | `dashboard-table / unshipped-counts` | Band-2 lifecycle tiles | a client fetch |
- * | `orders / pack-placement` | Band-2 per-bench tiles + the rail's armed-bench chip | a client fetch |
- * | `units / pack-placement` | the per-bench units strip under Band 2 | a client fetch |
- * | `ops-roi` | the ROI tile | a client fetch |
- *
- * The grid seed is the LCP fix. The other four are a **CLS** fix, and they are
- * not optional once the grid paints: `ShippingKpiStrip` shows a four-slot
- * skeleton until all of its inputs settle, while the loaded band is data-sized
- * (four lifecycle tiles PLUS one per packing bench, wrapping to a second row)
- * and is followed by a units strip that renders `null` while pending. That swap
- * is a ~80px height change in the band directly above the work surface. With an
- * empty grid it cost nothing; with rows under it, it moved every one of them.
- * A taller skeleton cannot fix it — the loaded height depends on how many
- * benches the org has.
- *
- * ROI is seeded for a second reason: `useGatedOperationsRoi` is disabled until
- * client auth resolves, so it is not pending during SSR and then becomes
- * `isLoading` a moment later — which would send an already-painted band back to
- * its skeleton and shift the grid twice.
- *
- * ## Why this is a SHELL seed and not a page seed
- *
- * `ShippingScanBand` lives in the left rail, which `ResponsiveLayout` renders as
- * a sibling of `children` — so it mounts `packPlacementQuery` **before** the
- * page renders. `HydrationBoundary` hydrates immediately only for keys the cache
- * does not already hold; a key the rail already created goes to its deferred
- * effect path, which does not run during SSR. Seeded from the page, the KPI band
- * therefore server-rendered its skeleton anyway and swapped at hydration — the
- * same shift, just earlier. Above the shell it lands in the first HTML.
- *
- * Every failure is soft and logged: an unseeded key is fetched by the client
- * exactly as it was before.
- */
+/** Shell-level paint seed for the Testing station's default landing — **Ready to Pack** (`/test`, no `?view=`). */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import { isNextDynamicUsage } from '@/lib/kiosk/next-dynamic-usage';
@@ -132,17 +91,7 @@ export async function seedReadyToPackStation(): Promise<DehydratedState> {
     const ok = (roi as { success?: boolean }).success === true;
     queryClient.setQueryData(OPS_ROI_KEY, ok ? roi : null);
   }
-  // The staffer's saved column widths — **this is the CLS**, and it is not a
-  // KPI-band problem the way it first looked. `tableColumns.orders.widths.title`
-  // is 654px for the dogfood operator, while the SoT track is a hard
-  // `minmax(12rem, 12rem)` = 192px with the trailing `_fill` absorbing the
-  // slack. The server has no preferences, so it renders 192px + a 486px filler;
-  // the client loads them and Product jumps to 654px, collapsing that filler to
-  // 24px. Measured under 4x CPU / Slow 4G: one shift, **0.1179**, every cell in
-  // every row moving 462px sideways at t≈3.2s.
-  //
-  // `useStaffPreferences` unwraps `{ prefs }` and falls back to `{}`, so seed
-  // the same shape rather than the envelope.
+  // The staffer's saved column widths — **this is the CLS**, and it is not a KPI-band problem the way it first looked.
   if (prefs != null) {
     queryClient.setQueryData(
       STAFF_PREFERENCES_KEY,

@@ -23,12 +23,7 @@ interface Props {
   label?: string;
 }
 
-/**
- * Chip-input for CC collaborator emails, mirroring the Support chat composer's
- * CC field. Commits on Enter / comma / semicolon / blur, de-dupes, and drops the
- * last chip on Backspace when the input is empty. Free entry (any valid email);
- * `suggestions` only power the datalist autocomplete.
- */
+/** Chip-input for CC collaborator emails, mirroring the Support chat composer's CC field. */
 export function CcEmailField({
   emails,
   onChange,

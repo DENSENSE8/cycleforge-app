@@ -1,11 +1,4 @@
-/**
- * Cycle-counts column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced `campaignColumns`, a page-local `AdminTableColumn[]` literal
- * carrying JSX: a second table engine's column type, with no header sort, no
- * Fields picker and no org binding, because that engine never grew them.
- */
+/** Cycle-counts column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -26,16 +19,7 @@ export interface CycleCountsGridColumn extends Omit<LedgerGridColumnModel, 'key'
   key: CycleCountsGridColumnKey;
 }
 
-/**
- * Materialize the mounted columns from an effective layout.
- *
- * The skeleton mounts WHOLE — no `.filter`. A count campaign has no picture,
- * so the photo gutter paints the typed placeholder (exactly what
- * kiosk-slot-events already does). Filtering `thumb` off the mount would have
- * required a new `COMPOUND_SKELETON_FILTER_DEBT` row, and that list is
- * documented shrink-only — "do not grow this list to paint fewer columns".
- * Chrome headers are family DATA and may be relabelled; a geometry cut is not.
- */
+/** Materialize the mounted columns from an effective layout. */
 export function cycleCountsCompoundColumnsFor(layout: SlotLayout): readonly CycleCountsGridColumn[] {
   const tracks = materializeTracks<CycleCountsGridColumn>({
     layout,
@@ -66,16 +50,7 @@ export function cycleCountsCompoundColumnsFor(layout: SlotLayout): readonly Cycl
 export const CYCLECOUNTS_COMPOUND_COLUMNS: readonly CycleCountsGridColumn[] =
   cycleCountsCompoundColumnsFor(CYCLECOUNTS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers here — the header-sort law. The three
- * chrome tracks that paint a fact the layout does not BIND (`item` = the
- * campaign name, `dates` = the created stamp, `state` = the status pill) are
- * mapped to the catalog field behind them, so the header sorts the thing the
- * operator is looking at. Real chrome (select · thumb · _fill) carries no
- * `fieldId` and falls through to null.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function cycleCountsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

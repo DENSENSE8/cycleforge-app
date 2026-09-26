@@ -1,10 +1,4 @@
-/**
- * Guards for the Parts auto-sort.
- *
- * The committed-status predicate must protect units that are promised to an
- * order or already shipped — auto-sort must never yank those into the parts
- * bin. Early-lifecycle units (RECEIVED/TESTED/STOCKED/etc.) are eligible.
- */
+/** Guards for the Parts auto-sort. */
 
 import '@/lib/assistant/test-db-url'; // MUST be first: sets DATABASE_URL before parts-sort loads the neon client
 import { test } from 'node:test';

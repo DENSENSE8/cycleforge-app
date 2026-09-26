@@ -1,13 +1,4 @@
-/**
- * Pending-work MODEL — types + pure ordering, with zero imports.
- *
- * Split out of `pending-work.ts` because that module reaches `@/lib/tenancy/db`
- * → `@/lib/db`, which carries `server-only`: a client component (the card, the
- * hook) importing the shape from there is one careless value-import away from a
- * build error, and the unit test cannot load it at all. Same rule as the rest of
- * the repo — pure helpers get their own dependency-free module and the heavy one
- * re-exports them (bundle altitude).
- */
+/** Pending-work MODEL — types + pure ordering, with zero imports. */
 type PendingWorkSource = 'nas-archive' | 'open-exception';
 
 
@@ -28,13 +19,7 @@ interface PendingWorkBase {
   actionLabel: string;
 }
 
-/**
- * Idempotent work the card may simply DO.
- *
- * `ticketNumber` narrows to a required string: the commit path copies into a
- * ticket folder, so an item with no folder to copy into is not a commit item.
- * That removes the runtime "is there a ticket?" check the button used to carry.
- */
+/** Idempotent work the card may simply DO. */
 export interface PendingWorkCommitItem extends PendingWorkBase {
   action: 'commit';
   ticketNumber: string;
@@ -46,15 +31,7 @@ export interface PendingWorkCommitItem extends PendingWorkBase {
   href?: never;
 }
 
-/**
- * Work that is a DECISION. The card takes the operator to the record and stops.
- *
- * `href` is required, so the navigate branch cannot render without a
- * destination — and because the union is discriminated on `action`, the commit
- * button and the navigate link are unreachable from each other's item type.
- * This is the invariant "a navigate source never gets a one-click commit",
- * enforced by construction rather than by a test that reads the JSX.
- */
+/** Work that is a DECISION. */
 export interface PendingWorkNavigateItem extends PendingWorkBase {
   action: 'navigate';
   href: string;
@@ -62,14 +39,7 @@ export interface PendingWorkNavigateItem extends PendingWorkBase {
 
 export type PendingWorkItem = PendingWorkCommitItem | PendingWorkNavigateItem;
 
-/**
- * Newest-first across every source — the card shows `[0]` and counts the rest,
- * so this ordering IS the promise that the thing on screen is the most recent
- * work owed. Pure and exported so it can be tested without a database.
- *
- * ISO-8601 UTC strings compare correctly lexicographically, which is why this
- * does not parse dates: `Date` construction here would be pure cost.
- */
+/** Newest-first across every source — the card shows `[0]` and counts the rest, so this ordering IS the promise that the thing on screen is… */
 export function orderPendingWork(items: PendingWorkItem[]): PendingWorkItem[] {
   return [...items].sort((a, b) =>
     a.latestAt < b.latestAt ? 1 : a.latestAt > b.latestAt ? -1 : 0,

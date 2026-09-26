@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * CSV import staging inspector — the desk Context plane for a staging draft.
- *
- * Index→leaf via {@link DeskInspectorIndexShell} (the shared Unbox
- * `DisplaysIndexLeafStage` waist), NOT a page-local twin and never
- * `PaneHeaderTabs` as primary topic nav
- * (`display/right-rail-inspector.md`).
- *
- * Three leaves, one job each:
- *   • **Row**         — the focused record's canonical fields, all six at once,
- *                       with the missing-field reason spelled out.
- *   • **Map columns** — the file→canonical mapping. It lives HERE rather than
- *                       taking over the middle: an unmapped `order_number` now
- *                       paints a full sheet of Action-required rows whose reason
- *                       is visible in the `status` column, which says strictly
- *                       more than a full-screen form. The commit GATE survives
- *                       (no `order_number` ⇒ nothing is ready ⇒ Confirm is out).
- *   • **Batch**       — file identity and the Ready / Action-required split over
- *                       the WHOLE draft, not the filtered view.
- *
- * Selection verbs (Clear · Discard N) dock on {@link InspectorActionFloor} —
- * they act on N rows, so they belong to the selection plane, never to Band 1
- * beside the one primary CTA.
- */
+/** CSV import staging inspector — the desk Context plane for a staging draft. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
@@ -73,19 +50,7 @@ const BATCH_LEAF = 'batch';
 /* Leaves                                                                     */
 /* -------------------------------------------------------------------------- */
 
-/**
- * The row inspector IS the intake form — the same `OrderIntakeForm` (same
- * `data-testid`s) the single density mounts, prefilled from the staged row
- * projected onto `CanonicalOrderIntake`. Canonical edits write straight back
- * onto the staged row through the mapping (unmapped columns are ignored by
- * `applyCsvOrderCanonicalEdits`, exactly as before), so the classify loop —
- * fix a cell, watch Action required flip to Ready — still runs live.
- *
- * "Start triage" here creates a CAGED order from this one row (the operator
- * then discards the staged twin); the bulk Confirm path is untouched and
- * still lands uncaged live-queue rows. A duplicate order number binds the
- * form to the EXISTING order instead of inserting a second one.
- */
+/** The row inspector IS the intake form — the same `OrderIntakeForm` (same `data-testid`s) the single density mounts, prefilled from the… */
 function StagingRowLeaf({
   draft,
   index,
@@ -93,13 +58,7 @@ function StagingRowLeaf({
 }: {
   draft: TableImportDraft;
   index: number | null;
-  /**
-   * Rail-lifetime memory of "this staged row already became order <pk>",
-   * keyed by the row's ORDER NUMBER (stable across the index shifts a
-   * discard causes). Without it, focusing away and back forgot the binding
-   * and re-offered Start triage for a row that already has a caged order —
-   * only the duplicate lookup / server 409 stood between that and a twin.
-   */
+  /** Rail-lifetime memory of "this staged row already became order <pk>", keyed by the row's ORDER NUMBER (stable across the index shifts a… */
   boundByOrderNumber: Map<string, number>;
 }) {
   const row = index == null ? undefined : draft.rows[index];
@@ -162,17 +121,7 @@ function StagingRowLeaf({
   );
 }
 
-/**
- * AI mapping suggestions for the columns the alias map could not place.
- *
- * Every suggestion is APPLIED BY THE OPERATOR, one click each. Nothing here
- * auto-applies: a wrong guess and a right one look identical once written into
- * the mapping, and the whole point of the confirm step is that they do not have
- * to be told apart at commit time.
- *
- * Failure is a stated absence, never a blocked import — the manual selects
- * below keep working whether or not a provider answered.
- */
+/** AI mapping suggestions for the columns the alias map could not place. */
 function MappingSuggestions({ draft }: { draft: TableImportDraft }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{
@@ -477,10 +426,7 @@ export function CsvImportStagingRail({
               onClick={() => clearTableImportSelection(SURFACE)}
               data-testid="csv-import-staging-clear-selection"
             />
-            {/* Two-click arm, no dialog: a staging row has never been written
-                anywhere, so a modal on top of the arm would over-guard a
-                session-only discard. The dialogs stay on the two acts that
-                DO leave the draft — Confirm (writes) and Cancel (drops all). */}
+            {/* Two-click arm, no dialog: */}
             <InspectorFlushDelete
               label={`Discard ${selectionCount} selected row${selectionCount === 1 ? '' : 's'}`}
               confirmLabel="Click again to discard"

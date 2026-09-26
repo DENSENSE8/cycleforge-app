@@ -9,16 +9,7 @@ import { labelIntakeErrorResponse } from '@/lib/shipping/label-intake-errors';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/label-intake/rates
- *
- * Rate-shop a return or replacement for an order number that is NOT in the
- * system, from the address and parcel typed on the intake. `return` swaps the
- * ends (customer → warehouse). Paired orders rate through
- * `/api/shipping/order-rates` instead. Read-only — nothing is bought.
- *
- * Body: { purpose: 'return'|'replacement', shipTo: ShipAddress, parcel: Parcel }
- */
+/** POST /api/shipping/label-intake/rates */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

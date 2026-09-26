@@ -1,9 +1,4 @@
-/**
- * One QC checklist step's value rules — pass band, value kind, reading → POST
- * fields, verdict — shared by the desk runner, the phone runner and the
- * checklist route so they cannot disagree about what a step accepts or how
- * it is judged. Pure; no React, no DB.
- */
+/** One QC checklist step's value rules — pass band, value kind, reading → POST fields, verdict — shared by the desk runner, the phone… */
 
 /** The template columns (`qc_check_templates`) that shape how a step is answered. */
 export interface QcStepConfig {
@@ -75,12 +70,7 @@ export function stepValueFields(
   return { ok: true, fields: { valueNum: n } };
 }
 
-/**
- * Derive a step's pass/fail. When the step has a numeric pass band
- * (pass_min/pass_max), the recorded number decides it (inclusive bounds);
- * otherwise fall back to the explicit boolean the tester sent. Returns null
- * when nothing can be determined (no band + no explicit value).
- */
+/** Derive a step's pass/fail. */
 export function deriveStepPassed(
   step: QcStepConfig,
   recorded: { passed?: boolean; valueNum?: number | null },

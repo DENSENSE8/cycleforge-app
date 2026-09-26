@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The drift-alerts slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline under the title — `paintMorph` coerces,
- * and the org write gate (`slotMorphsFor('admin-drift-alerts')`) refuses the
- * foreign morph.
- */
+/** The drift-alerts slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   ADMIN_DRIFT_ALERTS_FIELD_CATALOG,

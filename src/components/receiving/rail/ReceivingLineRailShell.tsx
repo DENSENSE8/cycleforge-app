@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The rail body for a receiving-line multi-select — occupant
- * `detail:receiving-line-batch`.
- *
- * Cardinality (see `receiving-selection-occupancy.ts`):
- * - Unbox / History: any non-empty check-set
- * - Incoming: 2+ only — one picked row opens its record on the ledger's
- *   `DeskRecordPlane` (never this batch shell)
- *
- * Close clears the selection (order-rail D4 / receiving R6).
- *
- * Roster rows compose {@link RailSelectionRosterRow} / {@link StackedRowIdentity}
- * (title → PO · tracking · SKU chips) — never a single-line title | mono id twin.
- */
+/** The rail body for a receiving-line multi-select — occupant `detail:receiving-line-batch`. */
 
 import { useCallback, useMemo } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';

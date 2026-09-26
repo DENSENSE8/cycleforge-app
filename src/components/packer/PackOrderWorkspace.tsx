@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Pack right-pane shell — browse workbench always mounted; focused order
- * workspace crossfades over it (UnboxLineWorkspace pattern).
- *
- * Motion is the STATION cadence preset (`motionRole.swap.scan`), not the pointer
- * `workbenchPaneSettle`. Exit is instant.
- *
- * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
- * - Order→order (next scan): `mode="sync"` + hard-cut enter so the new opaque
- *   pane covers the old one — `mode="wait"` would punch a hole through the host.
- */
+/** Pack right-pane shell — browse workbench always mounted; focused order workspace crossfades over it (UnboxLineWorkspace pattern). */
 
 import {
   AnimatePresence,

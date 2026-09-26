@@ -1,23 +1,4 @@
-/**
- * Platform social login (Google, Apple, then Microsoft) — the provider buttons
- * button on /signin.
- *
- * THIS IS DELIBERATELY SEPARATE from the tenant Google Drive / PO Gmail OAuth
- * clients (`src/lib/google-auth.ts`, `src/lib/photos/drive/*`). The platform
- * login client only ever requests `openid email profile` — never Drive/Gmail
- * scopes — and uses its own `GOOGLE_OAUTH_*` credentials. Do not reuse Drive
- * credentials or scopes here.
- *
- * Flow (CSRF-safe, PKCE): /start sets a short-lived httpOnly state cookie and
- * redirects to the provider; /callback verifies the state (double-submit) +
- * nonce, exchanges the code, and resolves the account by federated identity.
- *
- * id_token signature verification against the provider JWKS is deferred (see
- * decodeIdTokenClaimsUnsafe) — Google/Microsoft return a verified email + stable
- * sub, and the code is exchanged over TLS directly with the provider token
- * endpoint using our client secret, so the token is provider-authenticated. Full
- * JWKS verification is tracked as a follow-up (out of scope for this wave).
- */
+/** Platform social login (Google, Apple, then Microsoft) — the provider buttons button on /signin. */
 
 import { createSign, randomBytes } from 'node:crypto';
 
@@ -177,13 +158,7 @@ export interface OAuthStatePayload {
    * the user actually made, not something a page can forge after the fact.
    */
   persistent: boolean;
-  /**
-   * IDENTITY LINKING: the account to attach the returning identity to,
-   * instead of signing in with it. Set only by /start when `link=1` AND the
-   * caller holds that account's session — the callback re-verifies both, so
-   * the cookie alone can never graft an identity onto someone's account.
-   * Null on every ordinary sign-in state.
-   */
+  /** IDENTITY LINKING: */
   linkAccountId?: string | null;
   /**
    * Sign-in door the round trip started from (`/signin` or `/m/signin`).

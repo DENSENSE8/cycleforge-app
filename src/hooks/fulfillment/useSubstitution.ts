@@ -6,19 +6,7 @@ import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import type { AmendmentTimelineRow } from '@/lib/timeline';
 import type { PickOrderTasks } from '@/lib/picking/sessions';
 
-/**
- * Client data layer for fulfillment substitution. Three hooks the testing /
- * packing cards compose:
- *   - useOrderPickTasks  → the order's open allocations (the "original" context;
- *                          carries allocationId + sku/condition/serial).
- *   - useOrderAmendments → the order's substitution history (for the timeline).
- *   - useSubstituteUnit / useDecideAmendment → the mutations.
- *
- * Each mutation threads a fresh clientEventId (safeRandomUUID — crypto.randomUUID
- * crashes over plain-HTTP LAN IPs) so a flaky-network retry is the idempotent
- * no-op the server already guarantees (UNIQUE client_event_id). On success they
- * invalidate the amendments + pick-tasks queries so the card reconciles.
- */
+/** Client data layer for fulfillment substitution. */
 
 export const orderAmendmentsKey = (orderId: number) => ['order-amendments', orderId] as const;
 export const orderPickTasksKey = (orderId: number) => ['order-pick-tasks', orderId] as const;
@@ -87,11 +75,6 @@ export function useSubstituteUnit() {
       qc.invalidateQueries({ queryKey: orderAmendmentsKey(vars.orderId) });
       qc.invalidateQueries({ queryKey: orderPickTasksKey(vars.orderId) });
       // Post-submit reconciliation (tech-substitution wiring §5 Phase 2.1):
-      // the substitution re-allocates the unit shipping on the order, so the
-      // tech history table (['tech-logs', techId]) and the station/dashboard
-      // outbound order tables must refetch. Prefix-match invalidation covers
-      // every techId variant; the domain signal reaches the tables that are not
-      // on this query client (src/lib/refresh/domains.ts).
       qc.invalidateQueries({ queryKey: ['tech-logs'] });
       dispatchDashboardAndStationRefresh();
     },

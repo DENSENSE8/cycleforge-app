@@ -1,43 +1,4 @@
-/**
- * GET /api/ecwid/order-search?q=<order# or keyword>[&limit=N]
- *
- * Live Ecwid order lookup for the repair-service linkage editor. The operator
- * types an order number (or customer name / email) and we resolve the ACTUAL
- * Ecwid order so the repair links to a real `source_order_id` instead of a
- * free-typed string.
- *
- * Deliberately UNFILTERED by fulfillment state: a repair can be linked to an
- * order whether or not it has shipped (most repair intakes reference an order
- * the customer already received). We therefore pass NO `fulfillmentStatus` /
- * `paymentStatus` filter to Ecwid — every matching order is returned, shipped
- * or not. This is the key difference from the order dashboards
- * (`/api/orders`, `/api/shipped/lookup-order`) which gate on carrier-shipped
- * state via `SHIPPED_BY_CARRIER_SQL`.
- *
- * Ecwid's `keywords` param searches across order number, customer name, email,
- * and item names (Ecwid REST v3 "Search orders"), so a partial order# resolves
- * the same way the storefront admin search does. Exact order-number matches are
- * floated to the top.
- *
- * Response (mirrors a thin order candidate the picker renders directly):
- *   {
- *     success: true,
- *     orders: [{
- *       ecwidOrderId,      // Ecwid internal id (stable)
- *       orderNumber,       // the value to persist as source_order_id (public #)
- *       displayNumber,     // human label, e.g. "USAV-10421" or "#10421"
- *       date,              // ISO order-placed timestamp | null
- *       customerName,      // billing/shipping person name | null
- *       email,             // customer email | null
- *       total,             // order total | null
- *       paymentStatus,     // raw Ecwid status (shown, never filtered on)
- *       fulfillmentStatus, // raw Ecwid status (shown, never filtered on)
- *       itemCount,
- *       firstItemName,
- *       firstItemSku,
- *     }]
- *   }
- */
+/** GET /api/ecwid/order-search?q=<order# or keyword>[&limit=N] */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

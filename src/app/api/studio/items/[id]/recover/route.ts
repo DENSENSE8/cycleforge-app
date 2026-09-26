@@ -5,17 +5,7 @@ import { errorResponse } from '@/lib/api/errors';
 import { recoverItem } from '@/lib/workflow/recover';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/items/[id]/recover
- *
- * Unpark one stuck workflow item: reset a blocked|error item_workflow_state row
- * back to active so the engine can advance it on the next tap. [id] is the
- * serial_unit_id. The domain logic (guarded reset + inventory_event +
- * workflow_runs + realtime nudge) lives in src/lib/workflow/recover — this is
- * the HTTP shell: id validation, the formal audit_logs row, and the response.
- *
- * Non-destructive + reversible, so no step-up (a re-park is one scan away).
- */
+/** POST /api/studio/items/[id]/recover */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(

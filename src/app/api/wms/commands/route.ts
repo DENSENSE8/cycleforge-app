@@ -4,12 +4,7 @@ import { runWmsCommandOverHttp } from '@/lib/realtime/wms-command-http';
 
 export const runtime = 'nodejs';
 
-/**
- * POST /api/wms/commands — one `WmsExecutionCommand` over HTTP.
- * Same kernel and authority (`orders.view`, the WMS ticket permission) as the
- * `/__wms/attach` socket; the command's `commandId` is its idempotency key, so
- * a retry after a dropped socket replays instead of writing twice.
- */
+/** POST /api/wms/commands — one `WmsExecutionCommand` over HTTP. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const raw = await req.json().catch(() => null);
   const result = await runWmsCommandOverHttp(raw, {

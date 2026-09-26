@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * View-model for the Staff Schedule tab: builds the per-staff scheduled-date map,
- * resolves the "today" labels, composes the schedule + availability editors, and
- * derives the per-cell meta + the roster summary. Keeps the tab a pure
- * composition surface. Extracted from StaffScheduleTab; behaviour is unchanged.
- */
+/** View-model for the Staff Schedule tab: */
 
 import { useMemo } from 'react';
 import { toast } from '@/lib/toast';

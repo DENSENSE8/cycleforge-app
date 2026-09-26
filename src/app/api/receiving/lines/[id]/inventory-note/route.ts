@@ -1,17 +1,4 @@
-/**
- * PATCH /api/receiving/lines/[id]/inventory-note
- *
- * Save the per-line inventory-provider **item description**
- * (`receiving_line_zoho.zoho_notes`) and push the same text to the linked Zoho PO
- * line item's `description` field. Edited inline in Inventory Displays.
- *
- * `zoho_notes` stays the request/response body key — it is an API contract,
- * not renamed here (see the source-of-truth rules on stable response shapes).
- *
- * Wave-3: zoho_* facts live on `receiving_line_zoho` (spine column dropped
- * 2026-07-11e). Provider-agnostic path (B3) — legacy alias
- * /api/receiving/lines/[id]/zoho-note re-exports this handler.
- */
+/** PATCH /api/receiving/lines/[id]/inventory-note */
 import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';

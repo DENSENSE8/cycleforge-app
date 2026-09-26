@@ -19,14 +19,7 @@ import { releasePackedTotes } from '@/lib/picking/tote-scan';
 
 class PackFinalizeRequestError extends Error {}
 
-/**
- * The signed-in actor's staff id — a positive integer, never aliased.
- *
- * The legacy packer alias map (1→4, 2→5, 3→6) used to run here. It must NEVER
- * touch a server-trusted `ctx.staffId`: staff 1/2/3 are real people, so aliasing
- * the actor stamped their pack work as someone else's and hid it from Pack →
- * History (which filters by the signed-in staff and applies no alias).
- */
+/** The signed-in actor's staff id — a positive integer, never aliased. */
 function sessionStaffId(rawId: string | number | null | undefined): number | null {
   const numeric = Number(String(rawId ?? '').trim());
   return Number.isInteger(numeric) && numeric > 0 ? numeric : null;
@@ -34,13 +27,7 @@ function sessionStaffId(rawId: string | number | null | undefined): number | nul
 
 const PACKING_LOGS_UPDATE_ROUTE = 'packing-logs.update';
 
-/**
- * Update packer_logs table (mobile app after photos are uploaded).
- * Shipped state is now derived from shipping_tracking_numbers, not stored on orders.
- *
- * Idempotency: prefer a client `Idempotency-Key` over the 5-minute photo-EXISTS
- * heuristic — same key replays the cached body without a second INSERT.
- */
+/** Update packer_logs table (mobile app after photos are uploaded). */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== 'object') {
@@ -99,10 +86,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ? packerPhotosUrl.filter((u: any) => typeof u === 'string' && u.trim())
       : [];
 
-    // Run the whole write inside the per-org GUC transaction (app.current_org)
-    // so RLS isolates every tenant-table touch. withTenantTransaction owns
-    // BEGIN/COMMIT/ROLLBACK + SET LOCAL; the callback returns a discriminated
-    // result the route maps to a response and after-commit side-effects.
+    // Run the whole write inside the per-org GUC transaction (app.current_org) so RLS isolates every tenant-table touch.
     type TxResult =
       | { deduplicated: true; existingId: number }
       | {
@@ -183,19 +167,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         packerLogId = finalized.id;
       }
 
-      // Idempotency: the mobile flow auto-finalizes when uploads complete AND
-      // tapping "Done" calls this endpoint. If both reach the server, the
-      // second call must NOT re-INSERT, re-write the sku_stock_ledger
-      // (duplicate PACKED rows would double-count inventory), or re-touch
-      // the orders row.
-      //
-      // Lookup rows and completion rows have an identical packer_logs shape
-      // after the 2026-03-12 timestamps migration (pack_date_time was
-      // dropped), so we can't dedup on a column. The structural signal that
-      // separates them is the photos table: only completion writes rows
-      // with entity_type='PACKER_LOG' pointing back at the packer_log. We
-      // use that EXISTS as the "this row is a completion" check, scoped to
-      // (scan_ref, packed_by, tracking_type) inside a 5-minute window.
+      // Idempotency: the mobile flow auto-finalizes when uploads complete AND tapping "Done" calls this endpoint.
       const dupCheck = isDraftFinalization ? { rows: [] as Array<{ id: number }> } : await client.query<{ id: number }>(
         `SELECT pl.id
            FROM packer_logs pl
@@ -362,10 +334,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         await releasePackedTotes(ctx.organizationId, { shipmentId: resolvedShipmentId }, client);
       }
 
-      // 4. Emit PACKED ledger rows per SKU in the shipment. The trigger
-      //    fn_recompute_sku_stock updates sku_stock.boxed_stock automatically.
-      //    orders.quantity is TEXT, coerce per-row before aggregation.
-      //    sku_stock_ledger.organization_id is stamped from the GUC default.
+      // 4. Emit PACKED ledger rows per SKU in the shipment.
       const ledgerRows: Array<{ id: number; sku: string; delta: number }> = [];
       if (resolvedShipmentId) {
         const ledgerResult = await client.query<{ id: number; sku: string; delta: number }>(

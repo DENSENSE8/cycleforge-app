@@ -33,24 +33,7 @@ function mapPhotos(data: { photos?: ApiPhoto[] } | null): ClaimPhoto[] {
     }));
 }
 
-/**
- * Loads a carton's photos so the operator can pick which ones a surface acts on.
- * Starts with none selected on first open — the operator opts in. Self-contained:
- * re-loads whenever the host opens on a new carton, and best-effort throughout.
- *
- * `refetch()` re-pulls on demand — wired to the realtime "phone uploaded a
- * photo" signal so send-to-phone captures appear in the grid live, pre-selected,
- * without the operator leaving the surface.
- *
- * NOT the claim's any more (2026-08-30): the claim dropped its attach picker
- * when attaching moved to the composer, so the live hosts are
- * {@link SendPhotoNotePanel} and {@link MovePhotosBetweenPoPanel}. The name is
- * kept because {@link ClaimPhotoPicker} — the grid both of them render — still
- * carries it.
- *
- * @param open          Whether the host surface is open (gates the fetch).
- * @param receivingId   The carton receiving id to load photos for.
- */
+/** Loads a carton's photos so the operator can pick which ones a surface acts on. */
 export function useClaimPhotos(open: boolean, receivingId: number | null | undefined): UseClaimPhotos {
   const [photos, setPhotos] = useState<ClaimPhoto[]>([]);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<number>>(new Set());

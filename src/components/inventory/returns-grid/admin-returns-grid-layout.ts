@@ -1,11 +1,4 @@
-/**
- * Admin › Returns column model — MATERIALIZED from a {@link SlotLayout} onto
- * the SHARED compound skeleton, never a hand array.
- *
- * It replaced seven hand-written `AdminTableColumn` objects carrying JSX — a
- * second table engine's column type, with no header sort, no Fields picker and
- * no org binding, because that engine never grew them.
- */
+/** Admin › Returns column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -40,17 +33,7 @@ export interface AdminReturnsGridColumn
   key: AdminReturnsGridColumnKey;
 }
 
-/**
- * Materialize the mounted columns from an effective layout.
- *
- * The skeleton mounts WHOLE — no `.filter`. Three tracks say little on this
- * feed (`select` has no bulk verb, `dates` duplicates the bound sortable
- * `occurred` track, `thumb` has no photo fact), but cutting chrome geometry
- * off a mount requires a `COMPOUND_SKELETON_FILTER_DEBT` row and that list is
- * documented shrink-only — "do not grow this list to paint fewer columns".
- * Chrome headers are family DATA and may be relabelled; the geometry is the
- * engine's.
- */
+/** Materialize the mounted columns from an effective layout. */
 export function adminReturnsCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly AdminReturnsGridColumn[] {
@@ -80,19 +63,7 @@ export function adminReturnsCompoundColumnsFor(
 export const ADMIN_RETURNS_COMPOUND_COLUMNS: readonly AdminReturnsGridColumn[] =
   adminReturnsCompoundColumnsFor(ADMIN_RETURNS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers — including the state pill, whose fact is
- * `inventory-events.status_change`. The Ledger refuses to sort that fact
- * because there it is a two-ended transition; on THIS feed the landing end is
- * constant (`Returned`) and the resolver returns the prev status alone, so
- * ordering by it groups "everything that came back from SHIPPED" — a real
- * question, and a header that would otherwise be dead.
- *
- * Chrome tracks (`_fill`) carry no `fieldId` and fall through to null, which
- * is what keeps them out of the header-sort law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function adminReturnsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * The ONE drop-panel display for carton-context chrome.
- *
- * Every menu the carton identity bar opens — identity chips (Open / Edit),
- * the listing cell, the classify pills (urgency · platform · type) — renders
- * through this component, so the strip drops ONE panel with one anchoring, one
- * row anatomy and one seam rule rather than three near-twins that only agreed
- * by luck.
- *
- * Before 2026-08-20 there were three mechanisms behind the same class tokens:
- * an `AnchoredLayer` portal (identity chips), a CSS-visibility `absolute` box
- * (listing cell) and a Radix `DropdownMenu` (classify pills). They anchored
- * differently (portal-centred vs in-flow vs Radix popper), painted their rows
- * differently (icon rows vs dot rows), and only the portal escaped the locked
- * 720 centre's `overflow-hidden`. Picking "Medium" off a pill therefore looked
- * like a different product from picking "Open" off the tracking chip one cell
- * to the left.
- *
- * Contract:
- * - **Portaled** (`AnchoredLayer`), bottom-CENTRE under the trigger cell. The
- *   bar is a row of narrow abutting cells: a start-aligned panel puts its body
- *   under a NEIGHBOUR and reads as that cell's menu.
- * - **No appear animation.** The bench reads the panel the instant it exists.
- * - Open/close timing belongs to {@link useHoverSurface} — the caller owns the
- *   hover engine and hands this component `open` + `surfaceProps`.
- *
- * Chrome tokens stay in `copy-chip-hover-menu-chrome.ts`; this file owns the
- * SHAPE (panel → rows → seams), which is what was forking.
- */
+/** The ONE drop-panel display for carton-context chrome. */
 
 import type { ReactNode, RefObject } from 'react';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
@@ -89,16 +61,7 @@ function iconTone(tone: ChipHoverMenuRowTone | undefined): string {
       : 'text-text-soft';
 }
 
-/**
- * Presentational panel + rows — the ONE menu-row renderer.
- *
- * Exported only for {@link CopyChipHoverMenu}, the LedgerGrid SIDE flyout,
- * which owns its own positioning for a documented reason (a below-chip menu
- * sits in the vertical row-scan path and blocks travel to the next row). Its
- * placement differs; its rows must not. Anything that drops a menu BELOW a
- * chip composes {@link ChipHoverMenuSurface} instead — a second door into the
- * panel is the first step back to per-host anchoring.
- */
+/** Presentational panel + rows — the ONE menu-row renderer. */
 export function ChipHoverMenuPanel({
   menuLabel,
   rows,
@@ -182,12 +145,7 @@ export function ChipHoverMenuPanel({
   );
 }
 
-/**
- * The hover-opened form: the panel above, portaled and centred under the
- * trigger cell. `surfaceProps` comes from the caller's {@link useHoverSurface}
- * — a portal means the pointer crossing the seam is a real DOM exit, so the
- * hook's pointer guard (not raw leave events) keeps the panel reachable.
- */
+/** The hover-opened form: */
 export function ChipHoverMenuSurface({
   open,
   onClose,
@@ -215,10 +173,7 @@ export function ChipHoverMenuSurface({
       anchorRef={anchorRef}
       placement="bottom-center"
       level="panelPopover"
-      // Flush to the cell — no dead band between the hovered face and the panel
-      // it opened. The 6px gap it replaced was the only reason the hover engine
-      // needed its close delay to "bridge the physical pixel gap"; with the
-      // panel abutting the trigger the pointer never crosses dead space.
+      // Flush to the cell — no dead band between the hovered face and the panel it opened.
       gap={0}
       className="w-max"
     >

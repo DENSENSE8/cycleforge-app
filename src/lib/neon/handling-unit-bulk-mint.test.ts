@@ -1,21 +1,4 @@
-/**
- * DB-free unit tests for the bulk tote mint (POST /api/handling-units/bulk):
- * the `HandlingUnitBulkCreateBody` contract the route parses, and the ONE
- * statement `createHandlingUnitsBulk` issues for N boxes.
- *
- * Invariants under test:
- *  - N boxes cost exactly ONE INSERT (never a loop of N), carrying the count as
- *    a parameter into `generate_series`.
- *  - `code` is inserted as SQL NULL so the BEFORE INSERT trigger mints `H-{id}`;
- *    no code is ever generated in TypeScript (no minted code in the params).
- *  - Rows are returned ascending by id, whatever order RETURNING produced, so
- *    the label run prints in mint order.
- *  - On the tenant path the GUC is set on the caller's executor BEFORE the
- *    insert, so RLS sees the right org.
- *
- * The query-helper seam is the module's existing `executor: Queryable`
- * parameter, so no database is touched.
- */
+/** DB-free unit tests for the bulk tote mint (POST /api/handling-units/bulk): */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

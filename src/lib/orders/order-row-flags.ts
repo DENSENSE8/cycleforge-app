@@ -1,27 +1,4 @@
-/**
- * Order row flags — the operator-set triage tag that tints a queue row.
- *
- * A dispatch queue is scanned, not read: an operator needs to isolate "the four
- * rows I already looked at" or "the two that are blocked" without re-reading
- * seven columns per row. Row tint is the cheapest possible carrier for that,
- * and every ops spreadsheet in the category ships it (Airtable record coloring,
- * Sheets conditional fill, Excel highlight).
- *
- * **A flag is a NAMED TAG, never a raw swatch.** Colour on its own carries no
- * meaning across a shift handoff — two staffers will use yellow for different
- * things inside a week, and the third one has no way to ask. Every flag here
- * pairs a semantic tone with a word, so the row tint is readable in the grid
- * and the reason is legible in the inspector, the menu, and the audit row.
- *
- * **Flags are ORG-WIDE**, not per-staff: the whole point is that the next shift
- * sees what this shift flagged. That is also why the writer stamps
- * `set_by_staff_id` — a shared signal with no author is an anonymous claim.
- *
- * This module is pure and dependency-free so the row renderer, the selection
- * bar, the inspector, the API validator, and the guard test all resolve the
- * same five ids from one list. Adding a flag = one entry here + one value in
- * the `order_flags_flag_chk` CHECK (migration).
- */
+/** Order row flags — the operator-set triage tag that tints a queue row. */
 
 /** Stable ids — persisted in `order_flags.flag`. Never rename one in place. */
 export const ORDER_ROW_FLAG_IDS = [
@@ -41,15 +18,7 @@ interface OrderRowFlag {
   label: string;
   /** One line on when to use it — the menu's tooltip, so the set stays shared. */
   hint: string;
-  /**
-   * Row wash. `-50` matches the weight of the selected fill
-   * (`QUEUE_ROW.selectedLedgerClass`) so a flagged row never out-shouts the row
-   * the operator is actually working. Sticky identity cells are `bg-inherit`,
-   * so this propagates through the frozen pane for free.
-   *
-   * **No blue.** Blue is selection on this surface; a blue flag would make
-   * "I picked this" and "someone flagged this" the same colour.
-   */
+  /** Row wash. `-50` matches the weight of the selected fill (`QUEUE_ROW.selectedLedgerClass`) so a flagged row never out-shouts the row the… */
   rowClass: string;
   /** Solid dot for the row's flag indicator + the menu's leading mark. */
   dotClass: string;
@@ -118,13 +87,7 @@ export function isOrderRowFlagId(value: unknown): value is OrderRowFlagId {
   return typeof value === 'string' && (ORDER_ROW_FLAG_IDS as readonly string[]).includes(value);
 }
 
-/**
- * Resolve a stored flag id to its presentation.
- *
- * Returns `null` for anything unknown rather than throwing or substituting a
- * default: a row written by a newer deploy (or a hand-edited row) must render
- * as *unflagged*, not as some arbitrary colour the operator never chose.
- */
+/** Resolve a stored flag id to its presentation. */
 export function resolveOrderRowFlag(value: unknown): OrderRowFlag | null {
   return isOrderRowFlagId(value) ? FLAGS[value] : null;
 }

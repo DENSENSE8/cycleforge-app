@@ -31,16 +31,7 @@ import {
 } from '@/lib/orders/order-shortage-identity';
 import { clearOrderLineShortages, upsertOrderLineShortage } from '@/lib/orders/order-line-shortage';
 
-/**
- * POST /api/orders/assign
- * Assigns tech and/or packer to one or more orders via work_assignments.
- * Also handles non-assignment order field updates (ship_by_date, condition, etc.).
- *
- * NOT notes: an order annotation goes to `order_notes` via
- * POST /api/orders/[id]/notes. This route used to accept `{ notes }` and
- * overwrite the scalar `orders.notes`, which made the same note writable in two
- * places — the thing `2026-07-28_order_notes.sql`'s scope boundary forbids.
- */
+/** POST /api/orders/assign Assigns tech and/or packer to one or more orders via work_assignments. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json();
@@ -119,11 +110,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         );
       }
 
-      // ── 2b. Update carrier tracking through shipment backbone ──────────────
-      // Capture which orders had NO tracking yet (shipment_id IS NULL) BEFORE the
-      // upsert, so we can record a one-time `orders.tracking.added` event only on
-      // the first add (re-edits stay just ORDER_ASSIGNMENT_UPDATED). Powers the
-      // order timeline + the Unshipped "tracking added" record.
+      // ── 2b. Update carrier tracking through shipment backbone ────────────── Capture which orders had NO tracking yet (shipment_id IS NULL)…
       let newlyTrackedIds: number[] = [];
       const trimmedTracking = String(shippingTrackingNumber ?? '').trim();
       if (shippingTrackingNumber !== undefined && trimmedTracking) {

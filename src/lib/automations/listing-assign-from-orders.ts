@@ -1,10 +1,4 @@
-/**
- * Bulk listing→staff from to-ship selection: upsert automation_rules keyed on
- * the (item #, SKU) pair and/or assign TEST+PACK on the selected orders now.
- * A line with an item # but no SKU keys the item-#-only listing-wide wildcard.
- * Each role carries an optional backup who takes the work when the primary is
- * out that day — the same resolution the rules engine runs on import.
- */
+/** Bulk listing→staff from to-ship selection: */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

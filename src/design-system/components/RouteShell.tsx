@@ -39,13 +39,7 @@ function parseView(raw: string | null, fallback: RouteShellView): RouteShellView
   return raw === 'actions' || raw === 'history' ? raw : fallback;
 }
 
-/**
- * RouteShell — single tree per page. Desktop renders `history` only (sidebar is owned by `DashboardSidebar`).
- * Mobile renders a TabSwitch that flips between Actions and History, driven by `?view=` in the URL.
- *
- * Desk / table surfaces rise on appear (`framerPresence.routeHistory`) — never a
- * left→right wipe.
- */
+/** RouteShell — single tree per page. */
 export function RouteShell({
   actions,
   history,

@@ -1,30 +1,4 @@
-/**
- * The printed repair-service paper — one renderer, two principals.
- *
- * Callers: `/api/repair-service/print/[id]` (staff session, `withAuth`,
- *   `repair.view`) and `/api/kiosk/repair/[id]/paperwork` (device cookie,
- *   `withKioskAuth`).
- * Affected API: both of those GETs; they differ only in who they let in, the
- *   id parse and the JSON error shapes. The document itself is this file.
- * Data schemas: `getRepairById` (`repair_service` row — ticket_number,
- *   product_title, serial_number, issue, price, contact_info, created_at,
- *   updated_at), `getOrganization` + `getOrgLetterhead` (letterhead),
- *   `documents` (signature_url per `document_type`: `intake_agreement` /
- *   `pickup_agreement`, older intake rows with NULL document_type), and
- *   `repair_actions` LEFT JOIN `staff` (the "Internal Use" table, capped at 6).
- *
- * WHY this is shared rather than copied: the same sheet of paper is asked for
- * by two different principals. At the desk it is a staff session clicking Print
- * on the repair details panel; on the counter tablet it is a device cookie —
- * the kiosk History face, which has no staff session at all — reprinting the
- * paperwork for a ticket it already lists and opens. A customer must not be
- * able to tell which machine printed their copy, and the legal wording, the
- * signature bands and the 30-day warranty line are the part that must not
- * drift. A second copy of this markup is exactly how it drifts: one route gets
- * the new warranty text, the other keeps printing last year's. So the document
- * lives here and the routes stay thin — they decide WHO may ask, never WHAT is
- * printed.
- */
+/** The printed repair-service paper — one renderer, two principals. */
 
 import { getRepairById } from '@/lib/neon/repair-service-queries';
 import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket';
@@ -42,16 +16,7 @@ import { getOrgLetterhead } from '@/lib/branding/letterhead';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Render the full printable HTML document for one repair.
- *
- * Returns `null` when the repair does not exist in `orgId` — the caller maps
- * that to its own 404 shape. `autoPrint` defaults to TRUE: every caller today
- * is a Print button, and both routes open the document in a tab expecting the
- * browser's print dialog to come up on its own. The flag is a seam for a
- * future silent render (preview pane, emailed copy), not a query knob — no
- * route reads it off the URL.
- */
+/** Render the full printable HTML document for one repair. */
 export async function renderRepairPaperHtml(
   orgId: OrgId,
   repairId: number,
@@ -120,16 +85,6 @@ export async function renderRepairPaperHtml(
   const price = repair.price || '';
 
   // ── Who this ticket belongs to ─────────────────────────────────────────────
-  //
-  // One rule, shared with the ticket reader, the payment link, the field
-  // catalog and the two repair panes: `src/lib/repair/contact-info.ts`. The
-  // joined `customers` row wins; `contact_info` is an index-free fallback for
-  // rows that predate the link.
-  //
-  // Note the previous local copy only consulted the fallback when ALL THREE
-  // fields were empty, so a linked customer with a blank phone printed no
-  // phone even when the intake string held one. The shared rule fills each
-  // field independently.
   const contact = resolveRepairContact(repair);
   const name = contact.name ?? '';
   const phoneNumber = formatPhoneNumber(contact.phone ?? '');
@@ -143,9 +98,6 @@ export async function renderRepairPaperHtml(
   const repairDbId = repair.id;
 
   // Resolve drop-off (intake) and pickup signatures separately by document_type.
-  // The intake row uses blob path "{RS-####}_<ts>.png" while pickup uses
-  // "{RS-####}_pickup_<ts>.png" — older intake rows may pre-date document_type
-  // discrimination, so the intake query also accepts NULL document_type.
   async function resolveSignatureUrl(
     docTypeFilter: 'intake_agreement' | 'pickup_agreement',
   ): Promise<string> {

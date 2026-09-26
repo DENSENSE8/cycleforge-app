@@ -1,22 +1,6 @@
 import type { RowGroup } from '@/lib/group-rows';
 
-/**
- * Absolute ARIA row numbering for virtualized ledger grids.
- *
- * `aria-rowindex` / `aria-rowcount` exist precisely because a virtualized table
- * has only a window of its rows in the DOM: without them a screen reader
- * announces "row 3 of 30" when the user is really on row 403 of 1,200.
- *
- * Sheet list bodies render **flat leaves** (no in-grid summary row). Indices
- * match what the group renderers emit: one row per leaf, plus optional day-band
- * headers. Parent rollups live only on the drill parent map and are outside
- * this table's row count.
- *
- * Row budget per item:
- *  • day band header  → 1 row
- *  • group            → `rows.length` leaf rows
- *  • flat row         → 1 row
- */
+/** Absolute ARIA row numbering for virtualized ledger grids. */
 
 /** The column header occupies row 1; body numbering starts at 2. */
 export const GRID_HEADER_ROW_INDEX = 1;
@@ -46,10 +30,7 @@ export function countGridRows<T>({
   sectionHeaders,
 }: CountGridRowsArgs<T>): number {
   let total = GRID_HEADER_ROW_INDEX;
-  // A named SECTION band emits a header row of its own even when day banding is
-  // off, so it counts here too — `VirtualGroupedSections` advances `rowIndex`
-  // past it, and an `aria-rowcount` that ignored it would be one short of the
-  // largest `aria-rowindex` the grid actually renders.
+  // A named SECTION band emits a header row of its own even when day banding is off, so it counts here too — `VirtualGroupedSections`…
   const bandHeaderRows = (key: string) =>
     showDayHeaders || sectionHeaders?.[key] !== undefined ? 1 : 0;
 
@@ -71,23 +52,7 @@ export function countGridRows<T>({
   return total;
 }
 
-/**
- * Does this grid have any DATA to show — chrome (column header, day bands)
- * excluded?
- *
- * The empty question and the `aria-rowcount` question are different, and
- * conflating them is how `LedgerGrid` used to answer it: it tested
- * `orderGroupsByDate?.length === 0`, i.e. **how many BANDS were passed**, not
- * how many rows those bands held. A surface that always emits one band — the
- * natural shape for a flat, un-banded list (`[['', groups]]`) — therefore read
- * as non-empty with zero rows, and rendered its column headers over a void
- * instead of the teaching box. `/pickup` shipped that way; the warranty grid
- * hit it the day it was written.
- *
- * `countGridRows` cannot answer this on its own: it starts at
- * {@link GRID_HEADER_ROW_INDEX} and adds a row per day band, so its floor moves
- * with the chrome. This counts leaves only.
- */
+/** Does this grid have any DATA to show — chrome (column header, day bands) excluded? */
 export function hasGridRows<T>({
   orderGroupsByDate,
   daySections,

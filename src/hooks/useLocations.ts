@@ -58,14 +58,7 @@ async function fetchLocations(): Promise<LocationsListData> {
   };
 }
 
-/**
- * The ONE `/api/locations` read. Anything that needs the shelf catalog composes
- * its options from here rather than opening a second key over the same endpoint
- * — `['locations','active']` used to do exactly that, and cold `/triage` paid
- * for the identical 8165-byte body twice (plus twice more on every window-focus
- * refetch). `qk.locations.all` is a prefix of this key, so every existing
- * mutation invalidation still reaches every consumer.
- */
+/** The ONE `/api/locations` read. */
 export function locationsListQueryOptions() {
   return {
     queryKey: qk.locations.list(),

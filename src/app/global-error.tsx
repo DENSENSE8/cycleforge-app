@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Root error boundary — the last line of defense.
- *
- * `global-error.tsx` is the ONLY boundary that catches errors thrown by the root
- * layout itself (or by a component it renders, like `ResponsiveLayout` /
- * `DashboardSidebar`). When it renders, the root layout is gone, so it must
- * supply its own `<html>` and `<body>`.
- *
- * This is the boundary that turns a module-eval crash (e.g. an undefined symbol
- * in a sidebar panel) into a recoverable card instead of a raw 500 white page on
- * every route. Most failures should be caught lower down — per-route `error.tsx`
- * or the sidebar `ErrorBoundary` in `ResponsiveLayout` — and only the layout
- * shell itself falls through to here.
- */
+/** Root error boundary — the last line of defense. */
 
 import { useEffect } from 'react';
 

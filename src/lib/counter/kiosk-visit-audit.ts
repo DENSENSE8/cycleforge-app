@@ -1,23 +1,4 @@
-/**
- * One audit writer for every History act a tablet performs.
- *
- * Callers: GET /api/kiosk/visit/[id]/receipt · PATCH /api/kiosk/visit/[id] ·
- * POST /api/kiosk/visit/[id]/label-printed ·
- * POST /api/kiosk/repair/[id]/label-printed.
- * Affected API: none. Data schemas: audit_logs (entity `counter_transaction`,
- * or `repair_service` for a ticket that never became a transaction).
- * User: "a reprint that does not record itself is a lie."
- *
- * The device principal carries no `staffId` (see `kiosk-context.ts`), so the
- * actor is the PIN-stepped-up staffer when there is one and the tablet
- * otherwise — exactly the attribution `/api/kiosk/intake` established. The
- * device is always the `via`, so a row can be read as "who did it, on which
- * tablet" without joining anything.
- *
- * Never throws: `recordAudit` already swallows its own failures, and the
- * transaction wrapper is caught here, because a receipt must still print when
- * the audit table is unreachable.
- */
+/** One audit writer for every History act a tablet performs. */
 
 import type { NextRequest } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';

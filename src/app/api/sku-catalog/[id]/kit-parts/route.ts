@@ -41,12 +41,7 @@ async function getKitPartById(partId: number, orgId: OrgId): Promise<Record<stri
   return r.rows[0] ?? null;
 }
 
-/**
- * GET /api/sku-catalog/[id]/kit-parts — Read the kit-parts BOM for a SKU.
- * Returns the catalog row (header) plus ALL its kit parts (every condition —
- * the authoring view is not condition-gated; condition gating happens at pack
- * time via /api/get-title-by-sku).
- */
+/** GET /api/sku-catalog/[id]/kit-parts — Read the kit-parts BOM for a SKU. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const skuCatalogId = skuIdFromPath(req.nextUrl.pathname);

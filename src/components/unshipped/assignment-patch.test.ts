@@ -3,15 +3,8 @@ import { describe, it } from 'node:test';
 import { assignmentPatchFromEvent } from '@/components/unshipped/UnshippedTable';
 
 /**
- * The event payload → row-patch boundary. `useOrderAssignment` dispatches
- * `order-assignment-updated` on every mutation and `UnshippedTable`'s listener
- * turns it into a cache patch; a field missing from THIS map is a verb the API
- * accepts, the toast confirms… and the queue never shows.
- *
+ * The event payload → row-patch boundary.
  * That is exactly how clearing urgent shipped broken (operator 2026-09-15):
- * the mutation 200'd, "Urgent cleared" toasted, and the row stayed yellow with
- * the strip's transition label stuck on "Clear urgent" — `isUrgent` was in
- * neither the guard nor the patch.
  */
 describe('assignmentPatchFromEvent', () => {
   it('maps the urgent toggle onto the row', () => {

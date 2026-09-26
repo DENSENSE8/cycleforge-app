@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Slot popovers for the product / unit sticker: title (top + center),
- * condition (bottom-left), color (bottom-right).
- *
- * Same hit map as the carton face ({@link LabelFaceSlotOverlay}) so every
- * station that prints a unit label gets the same inline edit, not a pencil-only
- * fork.
- */
+/** Slot popovers for the product / unit sticker: */
 
 import { type ReactNode, useRef, useState } from 'react';
 import { Popover } from '@/design-system/primitives';

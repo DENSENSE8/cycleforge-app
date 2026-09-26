@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/fba/shipments/active-with-details
- *
- * Returns ALL non-archived shipments (PLANNED, TESTED, PACKED, LABEL_ASSIGNED)
- * plus recently shipped ones — each with nested items + tracking + allocations.
- *
- * This consolidates what previously required 2 + 2N API calls:
- *   - GET /api/fba/shipments?status=PLANNED,TESTED,PACKED,LABEL_ASSIGNED
- *   - GET /api/fba/shipments?status=SHIPPED&limit=10
- *   - For each shipment with tracking: GET /api/fba/shipments/[id]/items
- *   - For each shipment with tracking: GET /api/fba/shipments/[id]/tracking
- *
- * Now returns everything in a single round-trip.
- */
+/** GET /api/fba/shipments/active-with-details */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

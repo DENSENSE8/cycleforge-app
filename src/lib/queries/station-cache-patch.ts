@@ -1,18 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-/**
- * Station-log cache surgery — the station twin of {@link import('./dashboard-cache-patch')}
- * (station-table-unification-plan §7.3). One place for the incremental patches
- * that keep the Tech / Packer / Receiving lists live WITHOUT a full list refetch
- * (Phase 6). Each family operates over a query-key PREFIX
- * (`['tech-logs', …]` / `['packer-logs', …]` / `['receiving-lines', …]`), so a
- * single call updates EVERY cached week/staff variant at once. All helpers are
- * array-safe (a non-array in-flight placeholder passes through untouched) and
- * identity-preserving (an entry that didn't change is returned by reference so
- * React Query skips the re-render). Counts live under sibling `*-counts` keys and
- * are refreshed via the `invalidate*Counts` helpers — the list helpers never
- * touch them (patch the hot list, invalidate only the cheap tally).
- */
+/** Station-log cache surgery — the station twin of {@link import('./dashboard-cache-patch')} (station-table-unification-plan §7.3). */
 
 const TECH_LIST_KEY = ['tech-logs'] as const;
 const TECH_COUNTS_KEY = ['tech-logs-counts'] as const;
@@ -53,12 +41,7 @@ function removeRowByPrefix(queryClient: QueryClient, prefix: readonly string[], 
   });
 }
 
-/**
- * Prepend a freshly-scanned row to the caches whose week bounds contain it (or
- * all mounted list caches when bounds are unknown — a single week cache is
- * usually mounted, and PST vs stored-tz can disagree, so we don't over-filter).
- * De-dupes by `id` so a prepend that races the refetch can't double-insert.
- */
+/** Prepend a freshly-scanned row to the caches whose week bounds contain it (or all mounted list caches when bounds are unknown — a single… */
 function prependRowByPrefix(queryClient: QueryClient, prefix: readonly string[], record: StationRow): void {
   const id = Number(record?.id);
   if (!Number.isFinite(id)) return;

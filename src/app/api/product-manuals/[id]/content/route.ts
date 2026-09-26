@@ -8,16 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/**
- * GET /api/product-manuals/[id]/content
- *
- * Same-origin bytes for iframe / embed preview (pack print, manuals library,
- * testing slide-over). Vercel Blob's own CSP blanks PDFs framed on our origin,
- * so we stream rather than 302.
- *
- * Session-only (no `orders.view`): testers and packers already receive
- * `source_url` from their surfaces; this route must not 403 them.
- */
+/** GET /api/product-manuals/[id]/content */
 
 function manualIdFromPath(pathname: string): number | null {
   // /api/product-manuals/:id/content

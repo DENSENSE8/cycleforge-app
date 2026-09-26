@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets identity — the dense identity block in the thread's
- * {@link PaneHeader} (Workbench branch `service-workspace`).
- *
- * Status · subject · priority on row 1; ticket `#` on row 2 via
- * {@link StackedRowIdentity} + {@link SupportTicketIdMark}. Open / details /
- * close are the header's icon actions.
- *
- * **The status dot became the status control on 2026-08-02.** Status is the most
- * load-bearing fact on a ticket and it was being told twice, quietly, in two
- * places: an 8px dot here, and a dropdown in the chat header's field band one
- * row below. The band is gone; the fact kept the position operators already
- * scan and gained the weight — and the editing — it had been missing. Priority
- * rides beside it because it is the same kind of fact and had the same second
- * home. Do not restore either as a read-only echo elsewhere on this surface.
- *
- * **Ticket # is never trailing on the subject row.** Long subjects already
- * fight for width; parking `#9693` on the far right invented a third identity
- * grammar beside Move photos / Orders import stacked keys. The short durable
- * key sits on its own second row — same SoT as those displays
- * (`StackedRowIdentity`).
- *
- * Composes {@link TicketSubjectField} rather than hand-rolling the type ladder —
- * the right-rail inspector law caps rail identity at caption density and bans a
- * wrapping hero title, and that rule belongs in one place. Until 2026-08-01 this
- * was a `StationContextBar` bookmark and had to be allowlisted in the station
- * chrome guard as the one sanctioned non-carton identity fork; it is not a fork
- * of anything now, because a ticket header and a carton header are simply
- * different SoTs.
- */
+/** Support · Tickets identity — the dense identity block in the thread's {@link PaneHeader} (Workbench branch `service-workspace`). */
 
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -63,12 +34,7 @@ export function SupportTicketIdentity({
   /** `?ticket=` value — provider/display id while the bundle loads. */
   fallbackId: number;
 }) {
-  // The `?ticket=` value IS the provider ticket id on `/support` — fall back to
-  // it rather than waiting on the context bundle. Without this the identity row
-  // read "(no subject)" for the whole first paint, and since the chat header
-  // below no longer restates the subject, that was the operator's only copy of
-  // it. Same resolution `SupportTicketFocus` uses for its own live bundle, so
-  // both read one cache entry.
+  // The `?ticket=` value IS the provider ticket id on `/support` — fall back to it rather than waiting on the context bundle.
   const providerTicketId = ticket?.providerTicketId ?? fallbackId;
   const { data: liveBundle } = useZendeskTicketBundle(providerTicketId);
   const live = liveBundle?.ticket;

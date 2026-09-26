@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Shared dialog to set a SKU catalog pack-profile override — ONE control.
- *
- * Was a tier-segmented control PLUS a free-text minutes input, which could
- * disagree (LARGE at 3 minutes). Now the operator drags `PackTimeSlider` and
- * the tier follows from the number (`tierForMinutes`), so the dialog and the
- * Products desk record set the same fact the same way.
- *
- * Writes via `savePackStandardMinutes` → PATCH /api/sku-catalog/[id] →
- * `upsertSkuPackProfileLink`.
- */
+/** Shared dialog to set a SKU catalog pack-profile override — ONE control. */
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

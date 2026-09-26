@@ -1,20 +1,4 @@
-/**
- * Per-org sync watermarks (`sync_cursors`).
- *
- * The table is keyed on the COMPOSITE (organization_id, resource) — see
- * migration 2026-07-11c_sync_cursors_per_org_key.sql, applied in prod. The
- * caller change landed late: between 2026-07-11 and 2026-09-15 these helpers
- * still said `ON CONFLICT (resource)`, so EVERY cursor advance threw
- * "no unique or exclusion constraint matching the ON CONFLICT specification".
- * Consequences observed in prod: `zoho.po_sync` failed 173 times and the
- * `zoho_po_mirror` cursor froze at 2026-07-11, so each 15-minute "delta" run
- * replayed two months of Zoho POs. Keep the ON CONFLICT target and the PK in
- * lockstep.
- *
- * `orgId` defaults to the transitional USAV org for session-less jobs that have
- * no tenant in hand; every caller that knows its org MUST pass it, otherwise a
- * second tenant's watermark lands on USAV's row.
- */
+/** Per-org sync watermarks (`sync_cursors`). */
 import pool from '@/lib/db';
 import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 

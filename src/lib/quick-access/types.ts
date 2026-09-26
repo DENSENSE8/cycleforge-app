@@ -27,14 +27,7 @@ export interface PinnedPage {
 export interface QuickAccessSettings {
   version: 1;
   enabled: boolean;
-  /**
-   * There is deliberately NO `hotkey` field. Quick Access used to bind ⌘K/Ctrl+K
-   * itself (default ON), which put a SECOND `window` keydown listener on the
-   * same chord as {@link CommandBar} — both called `preventDefault()` and both
-   * toggled, so one press opened the palette AND this menu. ⌘K now has exactly
-   * one owner (the palette). A stored `hotkey` from before this is stripped in
-   * `getSettings`. Guard: `src/components/layout/cmdk-owner.guard.test.ts`.
-   */
+  /** There is deliberately NO `hotkey` field. */
   /**
    * When true (default), the FAB shows the signed-in staff's initials in their
    * theme colour. When false, the FAB always renders the Zap icon — useful for

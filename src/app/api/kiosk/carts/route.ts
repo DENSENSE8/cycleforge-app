@@ -1,15 +1,4 @@
-/**
- * GET  /api/kiosk/carts — the org's open carts (last 24h, newest first, max 30)
- *                         for the Recent carts panel and the chrome badge.
- * POST /api/kiosk/carts — write the tablet's cart down for the first time:
- *                         `{ snapshot }` → `{ id, version }`, held by this tablet.
- *
- * Callers: `useKioskCartSync`.
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_carts` via `kiosk-carts.server`.
- * User 2026-09-24: "recent carts for juggling multiple customers at the same
- * time, IDed for multiple devices".
- */
+/** GET /api/kiosk/carts — the org's open carts (last 24h, newest first, max 30) for the Recent carts panel and the chrome badge. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

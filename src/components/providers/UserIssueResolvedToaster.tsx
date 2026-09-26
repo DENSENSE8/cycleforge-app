@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Issue→fix→toast subscriber (ALP-5.4). Renders nothing; listens on the
- * signed-in staffer's OWN inbox channel for `issue.resolved` (published by
- * POST /api/user-issues/resolve when their reported issue reaches `deployed`)
- * and fires the locked sonner toast. Mounts once near app root inside
- * AuthenticatedAblyProvider — reuses the ONE shared Ably connection.
- */
+/** Issue→fix→toast subscriber (ALP-5.4). */
 
 import { useCallback } from 'react';
 import { toast } from '@/lib/toast';

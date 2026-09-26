@@ -1,13 +1,4 @@
-/**
- * Kiosk host SoT — `{slug}.kiosk.app.cycleforge.ai` (long-term) + dogfood
- * staff-path bridge (`/kiosk/v2` on the app host) until HUMAN-TODO J7b DNS.
- *
- * The host is a locator + isolation boundary. Write auth still comes from the
- * device row via `withKioskAuth` — never from Host alone. Pairing may reject
- * when the enroll code's org ≠ the host slug's org (defense in depth).
- *
- * Pure string/env helpers — safe to import from `proxy.ts` (no db / node:crypto).
- */
+/** Kiosk host SoT — `{slug}.kiosk.app.cycleforge.ai` (long-term) + dogfood staff-path bridge (`/kiosk/v2` on the app host) until HUMAN-TODO… */
 
 import { normalizeEnvValue, resolvePublicAppUrl } from '@/lib/env-utils';
 
@@ -180,12 +171,7 @@ export function kioskOriginForSlug(slug: string, opts?: { port?: string }): stri
   return `https://${host}`;
 }
 
-/**
- * Dogfood bridge: serve `/kiosk` (+ `/kiosk/v2`) on the staff app host until
- * `*.kiosk.app.cycleforge.ai` DNS (HUMAN-TODO J7b) is attached. Flip to false
- * when subdomain cutover is ready so `staffKioskRedirectOrigin` / proxy 308
- * resume.
- */
+/** Dogfood bridge: */
 export function kioskPathDogfoodActive(): boolean {
   return true;
 }
@@ -210,16 +196,7 @@ export function resolveKioskDogfoodUrl(opts?: { origin?: string | null }): strin
   return `${origin}${KIOSK_DOGFOOD_UI_PATH}`;
 }
 
-/**
- * Where staff-host `/kiosk` should permanently redirect (no trailing slash).
- *
- * While `kioskPathDogfoodActive()` is true this always returns null — tablets
- * use the staff-path URL. After J7b DNS:
- * - Tenant staff slug host → that org's kiosk origin
- * - Production apex + `DEFAULT_TENANT_SLUG` → that org's kiosk origin
- * - Otherwise → null (caller: serve `/kiosk` in non-prod for E2E, or sign-in
- *   in production when no bridge is configured)
- */
+/** Where staff-host `/kiosk` should permanently redirect (no trailing slash). */
 export function staffKioskRedirectOrigin(opts: {
   tenantSlug: string | null | undefined;
   defaultTenantSlug?: string | null;

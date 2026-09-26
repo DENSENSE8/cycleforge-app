@@ -1,27 +1,4 @@
-/**
- * unit-id-format.ts
- * ────────────────────────────────────────────────────────────────────
- * Pure (no-DB, no-`pg`) helpers for the per-unit identifier printed under
- * the DataMatrix on every product box label. Split out of `unit-id.ts` so
- * client components (e.g. the mobile Prepacked Products sheet) can parse /
- * format a unit id WITHOUT pulling the server-only `neon-client` (`pg`) into
- * the browser bundle. `unit-id.ts` re-exports all of these.
- *
- * Format:  {SKU_SHORT}-{YYWW}-{SEQ6}
- * Example: 00098-2621-000142   (week 21 of 2026, the 142nd unit)
- *
- * SKU_SHORT — uppercase the SKU text, drop non-alphanumeric except dashes,
- *             trim to 20 characters max ("iPhone 13/128 Blue" → "IPHONE13128BLUE").
- * YYWW      — 2-digit ISO year + 2-digit ISO week (1-53), the electronics
- *             box-label convention. ISO 8601 weeks start Monday; week 1 is the
- *             week containing the year's first Thursday.
- * SEQ6      — zero-padded sequence number, allocated atomically per
- *             (sku_catalog_id, calendar_year) — see allocateNextUnitId in
- *             unit-id.ts.
- *
- * Legacy units (`{base_sku}:A01`-style from before 2026-05-18) keep their
- * old IDs; parseUnitId returns null for those so callers can fall back.
- */
+/** unit-id-format.ts ──────────────────────────────────────────────────────────────────── Pure (no-DB, no-`pg`) helpers for the per-unit… */
 
 /**
  * Strip a SKU down to the printable short form used in the unit ID.
@@ -50,14 +27,7 @@ export function isoWeekParts(date: Date): { isoYear: number; isoWeek: number } {
   return { isoYear: d.getUTCFullYear(), isoWeek };
 }
 
-/**
- * Inverse of {@link formatUnitId} — split a `{SKU_SHORT}-{YYWW}-{SEQ6}` unit
- * id back into its parts. The last two dash-segments are always a 4-digit
- * YYWW and a 6-digit zero-padded sequence, so the base SKU (which may itself
- * contain dashes, e.g. `IPH13-128-BLU`) is everything before them.
- *
- * Returns null for legacy (`{base}:A01`) or otherwise non-conforming ids.
- */
+/** Inverse of {@link formatUnitId} — split a `{SKU_SHORT}-{YYWW}-{SEQ6}` unit id back into its parts. */
 export function parseUnitId(
   unitId: string,
 ): { baseSku: string; yyww: string; seq: number } | null {
@@ -66,14 +36,7 @@ export function parseUnitId(
   return { baseSku: m[1], yyww: m[2], seq: Number(m[3]) };
 }
 
-/**
- * Human-readable breakdown of a printed unit id, for UI display (e.g. the
- * mobile Prepacked Products sheet). Reuses {@link parseUnitId} — the `YYWW`
- * segment is split into a 2-digit ISO year + ISO week and `seq` is the unit's
- * running number. `display` is the compact one-line chip form.
- *
- * Returns null for legacy (`{base}:A01`) or otherwise non-conforming ids.
- */
+/** Human-readable breakdown of a printed unit id, for UI display (e.g. */
 export function describeUnitId(
   unitId: string,
 ):

@@ -18,17 +18,7 @@ import { markLabelPurchaseVoided } from '@/lib/shipping/label-purchase-ledger';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/order-labels/void
- *
- * Void/refund a purchased label via ShipStation v2. Step-up gated
- * (shipping.void_label) and reason-required (AUDIT_REASON_REQUIRED). The carrier
- * decides whether the void is approved; on approval we best-effort reverse the
- * order's linkage (unlink the shipment + repoint the primary via
- * applyOrderTrackingOps) and delete the stored label document, then audit.
- *
- * Body: { orderId, labelId, reason, shipmentId?, documentId? }
- */
+/** POST /api/shipping/order-labels/void */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   try {

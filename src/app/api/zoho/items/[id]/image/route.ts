@@ -7,16 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zoho/items/[id]/image
- *
- * Serves a Zoho item photo, where [id] is the `zoho_item_id`. Zoho's items API
- * exposes only `image_document_id` (captured during sync), not a URL — the bytes
- * must be fetched from GET /inventory/v1/items/{id}/image. We fetch once, cache
- * the bytes in `zoho_item_images`, and re-fetch only when the document id changes
- * (the item's photo was replaced). Read paths only emit this URL for items that
- * actually have a photo, so a 404 here just falls back to the placeholder.
- */
+/** GET /api/zoho/items/[id]/image */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -32,10 +23,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
     }
 
-    // One round-trip: cached bytes (if any) + the item's current document id.
-    // Tenant-scoped: filter the parent `items` by organization_id. zoho_item_images
-    // has no org column (NEEDS-COL); it is scoped through the parent join + the
-    // org GUC set by tenantQuery, so a cross-tenant zoho_item_id can never leak.
+    // One round-trip:
     const { rows } = await tenantQuery<{
       content_type: string | null;
       bytes: Buffer | null;
@@ -75,22 +63,13 @@ export async function GET(
       return NextResponse.json({ error: 'No image' }, { status: 404 });
     }
 
-    // Fetch the bytes from Zoho, cache them, and serve. The byte source MUST be
-    // bound to the authenticated tenant: fetchZohoItemImage resolves credentials
-    // and the Zoho org from the passed-in orgId (the gate org), so a non-USAV
-    // tenant never fetches from — nor caches — USAV's Zoho org.
+    // Fetch the bytes from Zoho, cache them, and serve.
     const fetched = await fetchZohoItemImage(zohoItemId, orgId);
     if (!fetched) {
       return NextResponse.json({ error: 'Upstream image unavailable' }, { status: 404 });
     }
 
-    // zoho_item_images grew an organization_id column (2026-06-14 phase-B
-    // needs-col-2) with a GUC-or-USAV default; zoho_item_id is a global natural
-    // key (the conflict target). tenantQuery sets the GUC so the default stamps,
-    // but stamp explicitly + HEAL on conflict (COALESCE keeps a non-null
-    // existing value, fills a NULL one) — matching the global-natural-key
-    // convention in lib/shipping/repository.ts upsertShipment. Isolation also
-    // rides on the parent `items` precheck above that gated reaching this write.
+    // zoho_item_images grew an organization_id column (2026-06-14 phase-B needs-col-2) with a GUC-or-USAV default; zoho_item_id is a global…
     await tenantQuery(
       orgId,
       `INSERT INTO zoho_item_images (zoho_item_id, document_id, content_type, bytes, fetched_at, organization_id)

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * One-shot "this navigation is a fresh sign-in" flag.
- *
- * Sign-in sets it immediately before the hard `window.location.assign(...)`
- * redirect; the destination route's BootGate reads-and-clears it to decide
- * whether to hold the loading splash while it warms the page's data. It lives
- * in sessionStorage so it survives the full-document navigation but not a later
- * manual refresh (we don't want to replay the splash on every refresh).
- */
+/** One-shot "this navigation is a fresh sign-in" flag. */
 const BOOT_FLAG_KEY = 'cf:boot-splash';
 const LEGACY_BOOT_FLAG_KEY = 'usav:boot-splash';
 

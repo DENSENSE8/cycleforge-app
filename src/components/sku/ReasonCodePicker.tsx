@@ -83,25 +83,7 @@ export function ReasonCodePicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [direction]);
 
-  /*
-   * NO LABEL and NO conditional child — both were removed 2026-09-15.
-   *
-   * The label was a hardcoded `<span>Reason</span>` with no prop to suppress
-   * it, printed above a select whose own value already reads "Put into bin".
-   * Redundant on every one of the four mounts, and on the action strip it was
-   * a title inside a 32px toolbar cell.
-   *
-   * The `requires_note` line was a conditional `<p>` INSIDE the same
-   * `<label>`, so this control had no fixed height: picking a reason that
-   * needs a note made it taller, and anything laid out beside it reflowed.
-   * That is the exact failure a fixed-height action bar forbids. Every
-   * caller already reads `requires_note` off the `ReasonCode` this component
-   * hands to `onChange` and renders its own note field — so the internal line
-   * was duplicating a fact the host was already acting on.
-   *
-   * Height is now a TOKEN, not padding: `h-8` on the strip scale, `h-9` for a
-   * roomier sheet. `py-*` could never line up with a row of `h-*` controls.
-   */
+  /* NO LABEL and NO conditional child — both were removed 2026-09-15. */
   return (
     <select
       value={value ?? ''}

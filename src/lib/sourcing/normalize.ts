@@ -1,12 +1,6 @@
 import type { BrowseItemSummary } from '@/lib/ebay/browse-client';
 
-/**
- * The set of secondary-market channels a candidate can come from. eBay is the
- * only one wired today; the rest are reserved for additional SourceAdapters
- * (Sourcing Hub plan §4.1). NOTE: the sourcing_candidates.source CHECK still
- * only allows 'ebay'|'manual' — widen it (a migration) before enabling a new
- * channel that persists candidates.
- */
+/** The set of secondary-market channels a candidate can come from. */
 export type CandidateSource =
   | 'ebay'
   | 'amazon'

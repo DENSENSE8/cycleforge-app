@@ -1,46 +1,4 @@
-/**
- * EDI 856 (Advance Ship Notice) projection — the HL hierarchy as JSON.
- *
- * Pure over its injected read surface. Writes nothing; every level below is a
- * row that already exists.
- *
- * ## Why JSON and not X12
- *
- * Cycle Forge is not an EDI VAN and must not grow a segment serializer.
- * Every customer that speaks 856 already owns a translator, and those
- * translators take structured JSON — so emitting X12 here would mean building
- * and maintaining a second integration surface (envelopes, ISA/GS control
- * numbers, partner-specific qualifiers, acknowledgement handling) forever, to
- * produce something the partner would immediately re-parse. The HL hierarchy
- * IS the document's content; the envelope is transport.
- *
- * ## The mapping is near-1:1, which is why this needs no migration
- *
- *   HL*S  Shipment  ← `shipping_tracking_numbers` (the carrier tracking row)
- *   HL*O  Order     ← the distinct PO numbers among that shipment's cartons
- *   HL*P  Pack      ← `receiving_carton`
- *   HL*I  Item      ← `receiving_line`
- *
- * ## The shape is derived, never configured
- *
- * A shipment whose cartons carry lines is `SOPI`; one with lines but no
- * carton breakdown is `SOI`. Emitting `SOPI` for the latter would invent a
- * pack level, which is a claim about how the goods are physically packed —
- * exactly the kind of plausible fabrication a partner's receiving dock would
- * act on. `SOTI` / `SOTPI` are in the vocabulary but unreachable here:
- * nothing in Cycle Forge models a pallet, so `hasTare` is always false and
- * the day a tare fact exists is the day this passes `true`.
- *
- * ## SSCC is absent, deliberately
- *
- * The Pack level's natural key is an SSCC, and `receiving_carton` has no such
- * column — its only handle is `id`. Minting one would require a licensed GS1
- * Company Prefix the tenant almost certainly does not have, and a fabricated
- * SSCC collides with a real company's licensed range. So a pack carries an
- * internal `urn:cycleforge:carton:{id}` and the `sscc` field is omitted. The
- * moment a tenant configures a prefix AND a real SSCC has somewhere to live,
- * this upgrades without touching the hierarchy.
- */
+/** EDI 856 (Advance Ship Notice) projection — the HL hierarchy as JSON. */
 
 import {
   numberAsnHierarchy,
@@ -118,14 +76,7 @@ const iso = (v: Date | string | null | undefined): string | null => {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 };
 
-/**
- * Build the ASN for one shipment.
- *
- * Returns `null` when the shipment does not exist for this org — the route
- * turns that into a 404 rather than an empty document, because an empty
- * document asserts "this shipment contains nothing", which is a different and
- * false claim.
- */
+/** Build the ASN for one shipment. */
 export async function projectAsn(
   args: { orgId: string; shipmentId: number; identity: Gs1OrgIdentity },
   deps: AsnProjectionDeps,

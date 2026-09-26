@@ -1,10 +1,4 @@
-/**
- * Esc priority for the station scan bar (module singleton — one focused bar).
- *
- *   1. Preview card open → dismiss card (do not un-arm)
- *   2. Display-edit, value unchanged → leave edit (do not un-arm)
- *   3. Else Phase 1: armed type → release to Auto
- */
+/** Esc priority for the station scan bar (module singleton — one focused bar). */
 
 type ScanEscBlock = 'none' | 'preview-card' | 'display-edit';
 

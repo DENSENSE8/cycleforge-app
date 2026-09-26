@@ -1,17 +1,4 @@
-/**
- * The run's PER-ROW record — "39 inserted, 1 needs a fix" turned into the rows
- * themselves.
- *
- * The ledger ({@link run-steps}) answers *how far along, how many*. It cannot
- * answer *which ones*, and an operator who reads "1 needs a fix" has exactly
- * one next question. Before this existed, that answer lived only in the
- * sidebar's `OrderSyncDialog` — a right-rail panel on a route the desk no
- * longer opened, not a phone surface at all, and deleted 2026-09-15.
- *
- * Pure: takes the ShipStation task state the sync hook already holds and
- * returns groups ready to paint. No React, no fetch, so it is unit-testable and
- * both surfaces render the same answer.
- */
+/** The run's PER-ROW record — "39 inserted, 1 needs a fix" turned into the rows themselves. */
 import type { TransferOrderDetail, TransferTabState } from './types';
 
 export interface SyncRunDetailRow {

@@ -3,21 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { normalizePSTTimestamp } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/tech/orders-without-manual?days=365
- *
- * Returns distinct orders processed by the signed-in tech that do not yet
- * have an assigned manual record in product_manuals.
- *
- * Admin.view_logs holders can pass ?techId=N to view another tech's gaps.
- *
- * Query mirrors /api/tech-logs exactly (LEFT JOIN LATERAL for FBA + orders,
- * same field set) but:
- *  - DISTINCT ON (o.id) — one row per order
- *  - product_manuals assigned-status filter
- *  - Rolling days window (no Mon–Fri weekly slice)
- *  - Sorted ASC by created_at (oldest unresolved first)
- */
+/** GET /api/tech/orders-without-manual?days=365 */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

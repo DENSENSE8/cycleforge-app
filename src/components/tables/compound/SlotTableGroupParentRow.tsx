@@ -1,65 +1,9 @@
 'use client';
 
 /**
- * **The one group-parent band** — the thin row that sits above a fold whose
- * group holds more than one line, on EVERY slot-table peer.
- *
- * ## Why this is engine code and not a per-family row
- *
- * It was born inside `QueueGroupRow` (orders) while Unbox, Pickup, Unfound,
- * Repair, Bins, Warranty, Catalog and the report tables each hand-rolled their
- * own `renderGroup` — twenty-four of them, most painting no parent at all. That
- * is the fork the one engine exists to end: a family adds DATA, never
- * display. So the band moved here and every peer passes it facts.
- *
- * **Props are DATA, never `ReactNode`.** A family hands an identity, a carrier
- * list and a box count; it does not hand JSX. That is what stops the next lane
- * from smuggling a per-desk face in through a slot and forking the row again.
- *
+ * **The one group-parent band** — the thin row that sits above a fold whose group holds more than one line, on EVERY slot-table peer.
  * ## What it paints (operator 2026-09-05)
- *
- * One line of identity — a source dot plus the PO or order chip — over one line
- * carrying the shipment story: a {@link BrandIdentityDot} `variant="ring"` per
- * DISTINCT carrier, then the box count.
- *
- *   ●  20-51978
- *   ○○ 2 boxes
- *
- * **Boxes, not lines.** A tracking number IS a box; "lines" is schema
- * vocabulary and staff do not use it on the floor.
- *
- * **One dot per carrier, not one chip per number.** The parent used to stack a
- * `TrackingNumberMenuChip` per tracking, which made the band TALLER than the
- * leaves under it — a row meant to read as lighter read as heavier. Colour is
- * the channel an operator scans in peripheral vision (USPS blue beside UPS
- * brown answers "who has it" with no reading at all), so the numbers move to
- * the cluster's accessible name and the chips are gone.
- *
- * ## Height is pinned, deliberately
- *
- * Every cell — painted or blank — takes `height: COMPOUND_ROW_PX`, and the row
- * takes the same `minHeight`. Nothing a family passes can grow the band, which
- * is the whole point: a parent that bulges breaks the sheet's rhythm and reads
- * as a different kind of object.
- *
- * ## Frozen columns cannot shear
- *
- * Unbox removed its old PO summary partly because it "sheared sticky columns
- * under h-scroll" — the summary did not reproduce the leaf's frozen geometry,
- * so the two planes slid apart. This row derives every frozen offset from the
- * SAME {@link gridFrozenLeft} call the leaves use and stamps
- * {@link LEDGER_GRID_FROZEN_CELL} on the same cells, so the parent and its
- * children are one rigid grid under horizontal scroll.
- *
- * ## The duplication objection
- *
- * Unbox's other reason for dropping its summary was that it "duplicated Order /
  * PO already on every leaf". REVERSED (operator 2026-09-14): "it must display
- * the order number for all the other rows, the child rows as well" — leaves
- * keep their full identity (order on line 1, tracking/box on line 2), band and
- * children paint the identical face, and the band's rolled facts sit above.
- * The old `quietIdentity` dashing is retired; the flag survives only as a
- * `data-group-child` marker.
  */
 
 import { cloneElement, isValidElement, type ReactNode } from 'react';
@@ -147,27 +91,10 @@ function isGutterColumn(key: string): boolean {
 }
 
 /**
- * The multi-line fold wrapper. Singletons pass through — the leaf IS the
- * order, and wrapping it would draw a box around every row.
- *
+ * The multi-line fold wrapper.
  * NO outline here (operator 2026-09-14: "just one hairline below the rows for
- * multi items included in the PO — currently there is a full square around
- * it"). The 4-side envelope ring was retired: the group's close is the ONE
- * bottom hairline painted below — on the FOLD, not the leaf block, so it shows
  * in BOTH states (operator 2026-09-14: "it must display when it's opened or
- * closed, to display to the user that it's a multi-line-item row"):
- * collapsed → under the title band; expanded → under the last leaf.
- *
  * The close is a BORDER token, not body-text ink (operator 2026-09-15:
- * "instead of a black line displaying below the line"). It no longer has to
- * shout, because MEMBERSHIP is now spoken by the children themselves —
- * {@link SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} on each child's identity track —
- * and this rule only has to say where the group ENDS. See
- * {@link SLOT_TABLE_GROUP_FOLD_INNER_CLASS} for why the black ink was
- * load-bearing before that and is not now.
- *
- * `role="rowgroup"` is load-bearing: the virtualizer shell is
- * `role="presentation"`, so this is what the table sees as the fold.
  */
 export function SlotTableGroupFold({
   multi,
@@ -185,15 +112,7 @@ export function SlotTableGroupFold({
   );
 }
 
-/**
- * The leaf block inside a multi-line {@link SlotTableGroupFold} — the expanded
- * product rows. Pure geometry/semantics now: the fold's close hairline lives on
- * {@link SlotTableGroupFold} so it paints in both fold states; this wrapper
- * adds no paint of its own (its bottom coincides with the fold's).
- *
- * Same contract as the fold: singletons pass through untouched (the leaf IS
- * the order). No `role` — the outer fold owns `role="rowgroup"`.
- */
+/** The leaf block inside a multi-line {@link SlotTableGroupFold} — the expanded product rows. */
 export function SlotTableGroupFoldBody({
   multi,
   children,
@@ -229,11 +148,7 @@ export function SlotTableGroupParentRow({
   const selectLabel = `${selectCount} item${selectCount === 1 ? '' : 's'}`;
   const template = gridTemplate(columns);
   const frozenEdgeKey = [...columns].reverse().find((c) => c.frozen)?.key;
-  // The parent band reports the SAME resting marks as its leaves (operator
-  // 2026-09-15: "display out of stock status for the parent line item as
-  // well"). The rollup is the family's — To-ship folds `is_urgent` /
-  // `is_out_of_stock` / `has_exception` across the group before it hands over a
-  // view — so this only has to read it, once, for both select faces below.
+  // The parent band reports the SAME resting marks as its leaves (operator 2026-09-15:
   const parentStatuses = view ? compoundSelectStatusMarks(view) : [];
 
   return (
@@ -242,31 +157,9 @@ export function SlotTableGroupParentRow({
       data-order-group-parent=""
       data-group-kind={identity?.kind ?? 'order'}
       aria-label={`${face || (identity?.kind === 'po' ? 'PO' : 'Order')} · ${boxLabel}`}
+      // SELECTION FEEDBACK (operator 2026-09-15):
       // SELECTION FEEDBACK (operator 2026-09-15): the band washes when the
-      // whole group is picked — parent-click or every child ticked both land
-      // on `checked === true`, which is the same fact. Before this the leaves
-      // turned blue under a white band and the operator could not tell a
-      // fully-selected order from a partly-selected one without counting.
-      //
-      // `'mixed'` deliberately does NOT wash: a full-row fill would claim a
-      // membership the group does not have, and the mixed square already says
-      // "some". The fill comes from the engine cascade every leaf uses
-      // (`ledgerRowFillClass` → QUEUE_ROW.selectedLedgerClass), so the band and
-      // its children can never wash in two different blues.
-      //
-      // Idle it is a leaf's card ground — NOT a canvas wash. Operator
-      // 2026-09-14: an expanded fold is an OUTLINE, not a grayed-out row.
-      // `bg-surface-canvas` here painted the band gray-50 against white leaves,
-      // which read as a disabled row rather than a parent. Opaque is still
-      // required, not `transparent`: LEDGER_GRID_FROZEN_CELL is `bg-inherit`,
-      // so a see-through row lets h-scrolled cells bleed under the sticky
-      // identity columns — and `ledgerRowFillClass` answers `bg-surface-card`
-      // when unselected, which is exactly that ground.
-      //
-      // `group/row`: the parent's select gutter carries the same resting-status
       // ⇄ check swap as a leaf (operator 2026-09-15), and that face is scoped
-      // to the row hover group. Without the token the parent would sit on its
-      // status glyph forever and never offer the checkbox.
       className={cn(
         'group/row',
         ledgerGridRowShellClass(false),
@@ -309,13 +202,7 @@ export function SlotTableGroupParentRow({
               onClick={(event) => event.stopPropagation()}
             >
               {view?.edgeMark ? <CompoundEdgeRail mark={view.edgeMark} /> : null}
-              {/*
-                ONE select face, foldable or not: the mark plane is the whole
-                cell and `CompoundSelect` pins the mark to the TOP, exactly as a
-                leaf does. The old COMPOUND_TWO_LINE_CLASS stack boxed the
-                control into a 23.5px half instead (see
-                COMPOUND_GUTTER_CHEVRON_BAND_CLASS).
-              */}
+              {/* ONE select face, foldable or not: */}
               <CompoundSelect
                 checked={checked}
                 chrome="hover"
@@ -328,16 +215,7 @@ export function SlotTableGroupParentRow({
                 }
               />
               {onToggleFold ? (
-                /*
-                  Fold chevron — a REACH affordance in EVERY state (operator
-                  2026-09-15: "it should not display any collapse state, it
-                  should only display on hover"). Stricter than the leaf's
-                  detail chevron, which stands once open: this band already
-                  says it is a fold, in words the glyph cannot improve on —
-                  the identity line counts the boxes ("2 boxes") and the child
-                  rows are either under it or not. So the glyph is only ever
-                  an invitation, and it waits to be reached for.
-                */
+                /* Fold chevron — a REACH affordance in EVERY state (operator 2026-09-15: */
                 <button
                   type="button"
                   className={cn(
@@ -400,12 +278,10 @@ export function SlotTableGroupParentRow({
                           style={identity.dot.style}
                         />
                       ) : null}
-                      {/* Operator 2026-09-14: NO `#` glyph on the multi-line
-                          band — POs paint the SAME plain order-chip face the
-                          leaves use (ReceivingOrderCell's OrderNumberMenuChip
-                          plain), so band and children answer "which id?" with
-                          one grammar. PoChip's hash glyph is for surfaces
-                          whose header does not already label the column. */}
+                      {/*
+ * Operator 2026-09-14:
+ * Operator 2026-09-14: NO `#` glyph on the multi-line
+ */}
                       <OrderNumberMenuChip
                         value={face}
                         platformLabel={identity?.platformLabel ?? null}

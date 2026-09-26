@@ -1,16 +1,4 @@
-/**
- * `home.daily` — the Home → Daily AGENDA table definition.
- *
- * Re-declares nothing: the columns are the ENGINE's materialization of
- * {@link DAILY_FAMILY}, and the shell recipe, accessible name, testid and prefs
- * bucket are the literals the mount used to carry.
- *
- * The capability bag and the descriptor factory were folded in here from
- * `daily-grid-descriptor.ts` when `daily` ported to the family record
- * (2026-09-22), the same shape `tasks` took: a family contributes a record, an
- * adapter, a resolver and a registry entry — not a column module and not a
- * layout wrapper.
- */
+/** `home.daily` — the Home → Daily AGENDA table definition. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -34,21 +22,7 @@ export const DAILY_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableColum
   DAILY_PRODUCT_LAYOUT,
 );
 
-/**
- * Daily is a CHECKLIST — on BOTH halves — and the capability bag says so:
- *
- * `multiSelect: false` — the gutter checkbox is the surface's primary VERB
- * (tick the item; mark the task done), not a selection. Declaring multi-select
- * would mount the select-all wiring on top of it, which would give one control
- * two meanings and put "mark everything done" behind a header control that
- * looks like selection. Merging the two feeds did not change that: the task
- * half's tick is a status write, which is the same verb the checklist half's
- * tick already was.
- *
- * `inCellEdit: false` — renaming a checklist item edits the org's list for
- * every staffer on every future day, and re-wording a handoff belongs with the
- * task's other facts. Both are record-plane acts, not cell acts.
- */
+/** Daily is a CHECKLIST — on BOTH halves — and the capability bag says so: */
 export const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -57,15 +31,7 @@ export const DAILY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so a
- * header's sortability is answered against the tracks actually mounted.
- *
- * Sortability is a property of the BOUND FACT, not of the track: the compound
- * `thumb` / `_fill` tracks carry nothing to order by, and the engine's
- * `isSlotTableColumnSortable` is the one answer for the descriptor and the URL
- * guard alike.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so a header's sortability is answered against the tracks actually… */
 export function makeDailyGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<DailyAgendaRow, SlotTableColumn> {

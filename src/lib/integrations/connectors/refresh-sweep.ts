@@ -1,14 +1,4 @@
-/**
- * Token refresh sweep (oauth-plan INT-010) — proactively rotates OAuth tokens
- * before they expire so a connection never goes dark between syncs.
- *
- * Iterates vault connections whose `expires_at` falls within the threshold
- * window and calls the provider connector's `refresh()` when one is defined
- * (providers without a wired refresh() are counted as skipped, not errors).
- *
- * Deps-injected (house pattern, backend-patterns.md) so the unit test runs
- * DB-free. Driven by GET /api/cron/integrations/refresh.
- */
+/** Token refresh sweep (oauth-plan INT-010) — proactively rotates OAuth tokens before they expire so a connection never goes dark between… */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationConnector } from './types';
@@ -29,12 +19,7 @@ export interface RefreshSweepDeps {
   now(): Date;
 }
 
-/**
- * Real reader. Guarded: the `expires_at`/`enabled` columns ship in migration
- * `2026-07-09d_org_integrations_operational_cols.sql`, which is owner-applied
- * later — until then Postgres raises undefined_column (42703); we return []
- * so the sweep is a clean no-op before the migration lands.
- */
+/** Real reader. Guarded: */
 async function listExpiringConnectionsFromDb(threshold: Date): Promise<ExpiringConnection[]> {
   try {
     const { rows } = await pool.query<{

@@ -7,22 +7,7 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { linkCartonIdentifier } from '@/lib/receiving/link-carton-identifier';
 
-/**
- * POST /api/receiving/link-id — the Unbox "Link Id" chokepoint.
- *
- * One identifier in, one honest outcome out:
- *   • `linked`  — it resolved to a local purchase order; that order's SKUs and
- *                 items were adopted/imported onto the carton.
- *   • `pending` — nothing matches yet. The id is recorded on the carton, which
- *                 STAYS unmatched, and the import that eventually brings the
- *                 order in claims it (link-pending-identifier.ts).
- *
- * Everything transactional lives in the Deps-injected domain helper. House
- * skeleton: withAuth(permission) → Zod validate → domain helper → map status →
- * recordAudit → after() cache/realtime.
- *
- * Body: { receiving_id: number, line_id?: number, identifier: string }
- */
+/** POST /api/receiving/link-id — the Unbox "Link Id" chokepoint. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const raw = await request.json().catch(() => ({}));
   const parsed = parseBody(ReceivingLinkIdBody, raw);

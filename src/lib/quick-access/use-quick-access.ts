@@ -22,17 +22,9 @@ function emitChanged() {
   window.dispatchEvent(new CustomEvent(QUICK_ACCESS_CHANGED_EVENT));
 }
 
-/**
- * React hook for Quick Access state. Reads from localStorage, subscribes to
- * cross-component change events, and returns mutation helpers. Pin mutations
- * also persist to `staff_preferences` via the registered persister
- * (`<QuickAccessSync/>`).
- */
+/** React hook for Quick Access state. */
 export function useQuickAccess() {
-  // Server rendering cannot see localStorage. Starting both SSR and the first
-  // client render from the same snapshot prevents pinned header controls from
-  // changing the element tree during hydration; the effect adopts the cached
-  // and server-synced pins immediately afterward.
+  // Server rendering cannot see localStorage.
   const [settings, setSettingsState] = useState<QuickAccessSettings>(DEFAULT_SETTINGS);
 
   useEffect(() => {

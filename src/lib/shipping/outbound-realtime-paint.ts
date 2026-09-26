@@ -1,12 +1,4 @@
-/**
- * Invisible, versioned observability seam for the Outbound realtime path.
- *
- * This is deliberately not a UI status indicator. It lets a browser harness
- * measure the physical contract we care about — Ably receipt to a painted
- * Orders row — without giving a worker a misleading "live" glyph or creating
- * a page-local socket. Consumers may observe the DOM event; application code
- * must continue through the shared React Query patch below it.
- */
+/** Invisible, versioned observability seam for the Outbound realtime path. */
 
 export const OUTBOUND_REALTIME_PAINT_EVENT = 'cf:outbound-realtime-received' as const;
 export const OUTBOUND_REALTIME_PAINT_SCHEMA_VERSION = 1 as const;

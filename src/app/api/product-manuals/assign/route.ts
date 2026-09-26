@@ -8,10 +8,7 @@ async function handlePost(request: NextRequest, ctx: AuthContext) {
   try {
     const body = await request.json();
 
-    // Thread orgId so the upsert (a) GUC-wraps the write, (b) constrains the
-    // existing-row lookup to this org's sku_catalog children (no cross-tenant
-    // match), and (c) resolves sku_catalog_id within this org — preventing the
-    // row from being linked to another org's catalog entry.
+    // Thread orgId so the upsert (a) GUC-wraps the write, (b) constrains the existing-row lookup to this org's sku_catalog children (no…
     const orgId = ctx.organizationId ?? undefined;
     const manual = await upsertProductManual({
       itemNumber: String(body?.itemNumber || body?.item_number || ''),

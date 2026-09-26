@@ -1,18 +1,4 @@
-/**
- * Door scan → Arrival Card. The live `/m/scan` wiring law.
- *
- * Overnight dump 2026-09-04: `/api/receiving/lookup-po` minted an unfound
- * carton for a never-seen tracking (`UNFOUND · Carton logged for triage`), so
- * `verdict.receivingId` was set and `dispatchScan` returned `carton`, never
- * `arrival`. The Card and its tests were green in isolation; the wiring was
- * lying about `trackingSeen`.
- *
- * `trackingSeen` is decided from a READ (`/api/receiving/preview-scan`, which
- * creates nothing). The Card paints without a lookup-po write. Minting is a
- * verb on the Card (Unbox now), not a side-effect of the scan.
- *
- * Plan: docs/warehouse-os/PLAN-scan-shell-mobile.md → G2.
- */
+/** Door scan → Arrival Card. */
 
 import { routeScan, type ScanType } from '../barcode-routing';
 import { dispatchScan, type ScanCard } from './dispatch-table';
@@ -51,25 +37,7 @@ export function planDoorScan(raw: string, trackingSeen: boolean): DoorScanPlan {
   };
 }
 
-/**
- * What the ARRIVAL STATION can do with a scan, decided from the bytes alone.
- *
- * `planDoorScan` answers "which Card", which needs prior state and therefore a
- * network read. This answers the question that comes BEFORE it — is this thing
- * even an arrival? — and answers it with no state and no I/O, so a product
- * label scanned at the door is refused instantly instead of costing a preview
- * round-trip and then minting a carton for a SKU.
- *
- * Three answers, and each is a different next move:
- *
- *  - `tracking` — a carrier label. The station reads whether we have seen it
- *    (preview) and then either logs the arrival or reports the carton.
- *  - `carton`   — one of OUR printed carton stickers. The receiving id is IN
- *    the label, so this needs no lookup at all: the box is already in the
- *    system by construction.
- *  - `refused`  — anything else. Nothing arrives under a bin, a unit or a
- *    ticket, and minting a carton for one is how phantom boxes are born.
- */
+/** What the ARRIVAL STATION can do with a scan, decided from the bytes alone. */
 export type ArrivalScanIntent =
   | { kind: 'tracking'; value: string; carrier: string }
   | { kind: 'carton'; value: string; receivingId: number }

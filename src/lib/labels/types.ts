@@ -1,14 +1,4 @@
-/**
- * Label layer — types. The presentation seam that turns a stable lifecycle
- * `code` into a tenant‑facing label, mirroring the Settings Registry's resolver
- * shape (`src/lib/settings/resolve.ts`) and stored (Phase 2) in the generalized
- * `reason_codes` vocabulary table.
- *
- * The invariant: a `code` is stable + semantic (the engine, analytics, and
- * audit key on it and it is NEVER renamed); the LABEL (text / tone / order /
- * icon) is presentation and is freely tenant‑customizable. See
- * `docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md`.
- */
+/** Label layer — types. */
 
 /**
  * A label vocabulary namespace. One `kind` = one ordered/flat vocabulary the
@@ -17,12 +7,7 @@
  */
 export type LabelKind = 'unshipped' | 'outbound';
 
-/**
- * Semantic tone token — the customizable color identity. Maps to a fixed,
- * Tailwind‑safelisted class pair (`TONE_CLASSES`); a tenant picks a token, never
- * a raw class string (raw classes can't be content‑scanned — see the Tailwind
- * content‑globs gotcha), which is exactly why customization is token‑based.
- */
+/** Semantic tone token — the customizable color identity. */
 export type LabelTone =
   | 'slate'
   | 'yellow'
@@ -38,12 +23,7 @@ export type LabelTone =
   /** The fulfillment state tone (theme-aware) — packed's colour via LIFECYCLE. */
   | 'purple';
 
-/**
- * The default presentation for one code within a kind (the seeded system row).
- * This is the LABEL identity only — text / meaning / tone. Board layout
- * (lane order, icon binding) stays in the board descriptors; it is a different
- * axis and must not be duplicated here.
- */
+/** The default presentation for one code within a kind (the seeded system row). */
 export interface LabelPresentation {
   /** Display text — tenant‑overridable. */
   label: string;

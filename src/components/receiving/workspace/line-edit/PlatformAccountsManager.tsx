@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * CRUD manager for the org's storefront accounts (platform_accounts), grouped
- * under their platform. Each platform shows its active accounts with inline
- * rename (connection name + optional short label, `platform_accounts.short_label`
- * — wins over the platform's on the ledger / label faces) + hide, and an "add
- * account" row; every hidden account sits in ONE collapsed "Hidden" list at the
- * foot (restorable). Backed by /api/catalog/platform-accounts. Lives in the
- * /settings catalog section beside {@link CatalogManagerList} (platforms +
- * types), and under the platform list in {@link CatalogManagerPopover}
- * ("Edit platforms").
- *
- * The seeded `<platform>-main` default IS its platform
- * ({@link isPlatformDefaultAccount}), so it is not listed as an account.
- */
+/** CRUD manager for the org's storefront accounts (platform_accounts), grouped under their platform. */
 
 import { useState } from 'react';
 import { toast } from '@/lib/toast';

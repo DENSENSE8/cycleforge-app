@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * FBA active-shipments rail — thin composition shell. The fetch + bundle
- * transform, editor-mode event wiring, and refresh subscription live in
- * {@link useFbaActiveShipments}; the shipment card + tracking group are
- * presentational components under `./active-shipments/`.
- */
+/** FBA active-shipments rail — thin composition shell. */
 
 import { LayoutGroup } from '@/design-system/motion';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';

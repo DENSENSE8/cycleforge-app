@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Reusable per-entity audit timeline. Fetches /api/audit/bin/[id] or
- * /api/audit/sku/[sku] depending on which prop is set and renders a
- * newest-first stream of events with actor, action, before/after diff,
- * scan_ref, bin/location code, and reason.
- *
- * Drops into the bin detail page and the SKU detail panel.
- */
+/** Reusable per-entity audit timeline. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

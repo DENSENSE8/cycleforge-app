@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Testing Units display — the per-unit **verdict** surface on the right-edge
- * push column ({@link StationDisplaysPushStack}), sibling of Unbox's
- * {@link UnitsExplosionDisplay}.
- *
- * Testing's centre keeps PO lines + Pass · Print (station-centre = ops-flow
- * only); the per-unit list — serial · condition · pass/test-again/fail — is an
- * **Action Display** here (`source-of-truth.md` → Station Action vs Context
- * planes). It composes {@link TestingLineSlot} (→ `ActiveLineTestingSerial` →
- * `UnitSlotList`), the SAME waist Unbox uses, so this is not a second units
- * renderer — only the verdict semantics differ from Unbox's grade-only body.
- *
- * Flush plane: fills the column, `px-0`, hairline rows, no glass island — the
- * Displays column IS the card (units-explosion flush grammar).
- */
+/** Testing Units display — the per-unit **verdict** surface on the right-edge push column ({@link StationDisplaysPushStack}), sibling of… */
 
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

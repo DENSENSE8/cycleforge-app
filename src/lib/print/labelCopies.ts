@@ -6,17 +6,7 @@
 
 export const MAX_LABEL_COPIES = 99;
 
-/**
- * Ceiling on one bulk TOTE run — distinct from {@link MAX_LABEL_COPIES}, which
- * counts identical copies of ONE face. This counts DISTINCT boxes, each of
- * which becomes a row in `handling_units`, so it bounds a database write and
- * not just paper.
- *
- * One home, two readers that must agree: the `/m/print` count step and
- * `HandlingUnitBulkCreateBody`. If they drift, the phone offers a run the
- * server refuses. Sized for a cart of stock, not a warehouse — beyond this,
- * mint in batches so one jam does not strand two hundred rows.
- */
+/** Ceiling on one bulk TOTE run — distinct from {@link MAX_LABEL_COPIES}, which counts identical copies of ONE face. */
 export const MAX_TOTE_PRINT_RUN = 200;
 
 /** Slider ceiling on the tote-print UI — a cart, not a warehouse. */
@@ -38,23 +28,7 @@ export function platesPerTote(copiesPerSide: number | null | undefined): number 
   return clampCopiesPerSide(copiesPerSide);
 }
 
-/**
- * Copies of one face are PLATES IN THE RUN — not a printer-side repeat count.
- *
- * A 2×1 run prints one raw job per sticker (that is what the Locations label
- * run does, and what the floor confirms works on the paired CX418). Asking the
- * printer to repeat a raster instead — TSPL `PRINT N,1` / ZPL `^PQN` after a
- * `BITMAP` / `^GF` — is firmware-dependent, and on this hardware it emits ONE
- * label and swallows the rest. That is why the tote Copies field printed a
- * single plate while a 40-bin location run printed all forty.
- *
- * So multiplicity lives here, in the run, for every family: N plates in the
- * list, N awaited jobs, N stickers, and a progress tick that counts paper.
- * Copies of a face stay adjacent (face1×N, then face2×N) so one tote's plates
- * come off the roll together.
- *
- * Callers: printLabelFacesJob (the shared 2×1 channel).
- */
+/** Copies of one face are PLATES IN THE RUN — not a printer-side repeat count. */
 export function expandPlateRun<T>(items: readonly T[], copies: number | null | undefined): T[] {
   const n = clampLabelCopies(copies);
   if (n === 1) return [...items];

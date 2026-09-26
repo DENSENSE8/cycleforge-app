@@ -1,20 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * "This ticket has photos I took after it was filed, and they are not on the
- * NAS yet."
- *
- * One query behind two surfaces — the carton ticket chip's attention face and
- * the bottom-right archive prompt — so the chip and the prompt can never
- * disagree about whether a sync is owed.
- *
- * SCOPE IS ORG + STAFF, deliberately. The prompt follows the operator across
- * cartons, so it has to be about work *they* did: it counts only photos whose
- * `taken_by_staff_id` is the requesting staffer, which is the same pair the
- * realtime waist is keyed on (`getPhoneBridgeChannelName(orgId, staffId)` in
- * `useReceivingPhotosRealtimeRefresh`). An org-wide sweep would put a
- * colleague's carton in this operator's corner.
- */
+/** "This ticket has photos I took after it was filed, and they are not on the NAS yet." */
 interface NasArchivePendingItem {
   receivingId: number;
   /** Ticket folder name, normalized (no leading `#`) — what the API expects. */
@@ -29,18 +15,7 @@ interface NasArchivePendingItem {
   neverArchived: boolean;
 }
 
-/**
- * The baseline a photo must be newer than to count as pending.
- *
- * - Archived to THIS ticket → the archive stamp.
- * - Never archived, or archived to a DIFFERENT ticket (a relink) → the moment
- *   the ticket was linked. That is what makes this "photos added *after* the
- *   ticket was created" rather than "every photo on the carton" — a box
- *   photographed at the door an hour before anyone filed a claim is not work
- *   the operator owes a sync for.
- * - Neither available → the carton is skipped. With no honest boundary we do
- *   not guess one; an over-reporting prompt is worse than a silent one.
- */
+/** The baseline a photo must be newer than to count as pending. */
 const BASELINE_SQL = `
   CASE
     WHEN rc.nas_archived_at IS NOT NULL
@@ -51,17 +26,7 @@ const BASELINE_SQL = `
   END
 `;
 
-/**
- * When the ticket was filed, as a SCALAR SUBQUERY rather than a join.
- *
- * `ticket_links` declares UNIQUE (organization_id, zendesk_ticket_id) but that
- * constraint is NOT enforced in this database — ticket 9749 carries both a
- * RECEIVING and a SHIPMENT link row. A join therefore fans out and reports the
- * same carton once per link, which double-counts the prompt's "+N more" and
- * shows the operator one box twice. MIN() collapses to one value for any number
- * of link rows and needs no assumption about the constraint: the earliest link
- * IS when the ticket started pointing at this work.
- */
+/** When the ticket was filed, as a SCALAR SUBQUERY rather than a join. */
 const TICKET_LINKED_AT_SQL = `
   (SELECT MIN(tl.created_at)
      FROM ticket_links tl

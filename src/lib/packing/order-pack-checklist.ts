@@ -17,12 +17,7 @@ export interface PackKitPartDto {
   type: string;
   qty: number;
   critical: boolean;
-  /**
-   * The paper this part puts in the box, when it has one. Null for the
-   * overwhelming majority of parts, and a null renders byte-identically to
-   * before the column existed. Resolved once by `kitPartDocument()` so no view
-   * re-interprets the three nullable columns behind it.
-   */
+  /** The paper this part puts in the box, when it has one. */
   document: KitPartDocument | null;
 }
 

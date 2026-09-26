@@ -1,25 +1,4 @@
-/**
- * Kiosk device principal — enrollment, pairing, resolution, revocation.
- *
- * A customer-facing tablet (/kiosk) authenticates as an org-scoped DEVICE, not
- * a person. Lifecycle:
- *
- *   enroll  (manager, authed)  → mint a short-lived, single-use pairing CODE;
- *                                row status='enrolled', only the code HASH stored.
- *   pair    (tablet, pre-auth) → exchange the code for a long-lived device TOKEN;
- *                                row status='active', code cleared, only the
- *                                token HASH stored. Sets the `cf_kiosk` cookie.
- *   resolve (every request)    → hash the presented token, look the device up on
- *                                the OWNER pool (pre-auth, FORCE-inert — mirrors
- *                                session.ts:loadSession by sid), read org FROM
- *                                the row.
- *   revoke  (manager, authed)  → status='revoked', token cleared; dies instantly.
- *
- * Only hashes are ever stored. Both the code and the token are 32/12-byte random
- * values, so a fast SHA-256 (not a slow PIN-style KDF) is the correct at-rest
- * transform — there is no low-entropy brute-force surface. See
- * 2026-07-17_kiosk_devices.sql for the table + pre-auth-lookup rationale.
- */
+/** Kiosk device principal — enrollment, pairing, resolution, revocation. */
 
 import { createHash, randomBytes } from 'node:crypto';
 import type { NextRequest, NextResponse } from 'next/server';
@@ -35,16 +14,7 @@ import type { KioskHardwareStatus } from '@/lib/kiosk/kiosk-device-row';
 /** Device-token cookie. Distinct from the staff `cf_sid` so a kiosk can never present a staff session. */
 export const KIOSK_COOKIE_NAME = 'cf_kiosk';
 
-/**
- * Durable per-CLIENT id cookie (dogfood auto-bind only).
- *
- * A kiosk device token is single-valued: `kiosk_devices` holds ONE
- * `device_token_hash` per row, and re-issuing rotates it. While every dogfood
- * surface shared one row, binding any second surface silently killed the
- * first — open the kiosk on production and the localhost tab answered
- * `KIOSK_UNPAIRED`, bind localhost and production died in turn. A browser IS a
- * device, so each client keeps its own id and therefore its own row.
- */
+/** Durable per-CLIENT id cookie (dogfood auto-bind only). */
 export const KIOSK_CLIENT_COOKIE_NAME = 'cf_kiosk_client';
 
 /** `cf_kiosk` / `cf_kiosk_client` lifetime — a counter tablet is paired once and left alone. */
@@ -75,13 +45,7 @@ export interface ResolvedKioskDevice {
   label: string;
 }
 
-/**
- * Resolve a presented device token to its org + id. Runs on the OWNER pool
- * because the org is unknown until the row is found (pre-auth), exactly like
- * `loadSession(sid)`. The token hash is globally unique, so this is a single
- * indexed lookup. `last_seen_at` is bumped best-effort (never blocks auth).
- * Returns null for a missing/revoked/unpaired token.
- */
+/** Resolve a presented device token to its org + id. */
 export async function loadKioskDeviceByToken(
   token: string | null | undefined,
 ): Promise<ResolvedKioskDevice | null> {
@@ -120,13 +84,7 @@ export function newKioskClientId(): string {
   return randomBytes(9).toString('base64url');
 }
 
-/**
- * This browser/tablet's dogfood client id, or null when absent or implausible.
- *
- * The strict shape is load-bearing, not decoration: the id becomes part of a
- * device LABEL (management-facing text under a 120-char CHECK), so a
- * client-supplied cookie must never decide that string.
- */
+/** This browser/tablet's dogfood client id, or null when absent or implausible. */
 export function readKioskClientId(req: NextRequest): string | null {
   const raw = req.cookies.get(KIOSK_CLIENT_COOKIE_NAME)?.value ?? null;
   return raw && KIOSK_CLIENT_ID_RE.test(raw) ? raw : null;
@@ -205,17 +163,7 @@ interface KioskPairing {
   token: string;
 }
 
-/**
- * Exchange a pairing code for a long-lived device token. Atomic + single-use:
- * the code-consuming UPDATE only matches an `enrolled`, unexpired row, so a
- * replay finds nothing (mirrors `consumeEnrollment`). Runs on the owner pool —
- * pre-auth, org unknown until the row matches; the org is then read FROM the
- * row, never trusted from the request subdomain alone.
- *
- * When `expectedOrganizationId` is set (kiosk host slug → org), the UPDATE
- * also requires `organization_id` to match — wrong-tenant codes fail closed
- * as a miss (same shape as expired/unknown), and never activate the device.
- */
+/** Exchange a pairing code for a long-lived device token. */
 export async function pairKioskDevice(
   code: string | null | undefined,
   opts?: { expectedOrganizationId?: string | null },
@@ -245,15 +193,7 @@ export async function pairKioskDevice(
 /** Prefix every dogfood auto-bind row carries, so Settings → Devices groups them. */
 const DOGFOOD_KIOSK_LABEL_PREFIX = 'Dogfood auto-bind';
 
-/**
- * Label of the dogfood row owned by ONE client.
- *
- * The label is the lookup key (`issueActiveKioskDeviceToken` matches on
- * org + label), and a row holds exactly one token hash. Keying it by client id
- * is what stops a bind on one surface from rotating another surface's token —
- * production and localhost each keep their own row instead of fighting over
- * a single "Dogfood auto-bind".
- */
+/** Label of the dogfood row owned by ONE client. */
 export function dogfoodKioskDeviceLabel(clientId: string): string {
   return `${DOGFOOD_KIOSK_LABEL_PREFIX} · ${clientId}`;
 }
@@ -261,16 +201,7 @@ export function dogfoodKioskDeviceLabel(clientId: string): string {
 /** Idle window after which an auto-bound dogfood credential is retired. */
 const DOGFOOD_KIOSK_IDLE_DAYS = 14;
 
-/**
- * Retire dogfood credentials nobody has used in {@link DOGFOOD_KIOSK_IDLE_DAYS}.
- *
- * One row per client is the right shape — a browser IS a device — but E2E
- * contexts and incognito windows are clients too, so without a sweep the LIVE
- * credential set grows without bound and Settings → Devices stops being
- * readable. Revoked, never deleted: `kiosk_slot_events.kiosk_device_id` is a
- * NOT NULL foreign key, and 'revoked' is already this table's terminal state.
- * A dogfood surface that comes back simply re-binds.
- */
+/** Retire dogfood credentials nobody has used in {@link DOGFOOD_KIOSK_IDLE_DAYS}. */
 export async function revokeStaleDogfoodKioskDevices(
   orgId: OrgId,
   keepLabel: string,
@@ -291,16 +222,7 @@ export async function revokeStaleDogfoodKioskDevices(
   return r.rowCount ?? 0;
 }
 
-/**
- * Mint or rotate an active device token for a named kiosk row.
- *
- * Callers: POST /api/kiosk/dev-autopair (dogfood: bind every kiosk/tablet tab
- * to org #1 with no pairing UI).
- * Affected API: sets `cf_kiosk` after this returns.
- * Data schemas: `kiosk_devices`.
- * User: "Whenever you open a kiosk or a tablet page, I must see it automatically
- * connected to organization one for dog food testing".
- */
+/** Mint or rotate an active device token for a named kiosk row. */
 export async function issueActiveKioskDeviceToken(
   orgId: OrgId,
   label: string,
@@ -405,16 +327,7 @@ export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary
   });
 }
 
-/**
- * Pair (or unpair) a Square Terminal with a counter lane.
- *
- * `null` clears the pairing, which is a REAL configuration — a cash-only lane —
- * and not the same as never having set one. `resolveTerminalDeviceId` treats a
- * cleared lane as standless and refuses rather than reaching for the
- * deployment env, so a counter with no reader never prompts one in another room.
- *
- * Plan: docs/todo/counter-square-enterprise-PLAN.md (SQ3).
- */
+/** Pair (or unpair) a Square Terminal with a counter lane. */
 export async function setKioskDeviceTerminal(
   orgId: OrgId,
   deviceId: number,
@@ -458,25 +371,7 @@ export async function revokeKioskDevice(orgId: OrgId, deviceId: number): Promise
 
 // ── PIN step-up (privileged kiosk actions) ──────────────────────────────────
 
-/**
- * Resolve a staff PIN presented for a privileged kiosk action into a verified
- * `staffId`, org-scoped so a PIN only authorizes within the device's own org.
- * Base intake stays anonymous; only refund / repair-approval / price-override /
- * take-payment style actions call this, and the returned id is what
- * `recordAudit` attributes the write to (the device stays the `via`).
- *
- * `requiredPermission` is a REQUIRED argument with no default, deliberately.
- * It decides whether a valid PIN is *enough* to authorize the action, which is a
- * safety classification — and a defaulted safety classification is a silent
- * opt-out that every call site you did not visit takes automatically, with the
- * compiler staying quiet about exactly the ones you missed
- * (`.claude/rules/backend-patterns.md`). Pass an explicit `null` to mean "a
- * valid PIN is sufficient" so that choice is visible at the call site.
- *
- * Returns null on a bad PIN, an unknown staff, OR a staff who authenticated
- * correctly but does not hold the permission. The caller cannot distinguish —
- * a step-up prompt must not tell an unattended room which PINs are real.
- */
+/** Resolve a staff PIN presented for a privileged kiosk action into a verified `staffId`, org-scoped so a PIN only authorizes within the… */
 export async function resolveKioskStepUp(
   orgId: OrgId,
   staffId: number,
@@ -510,20 +405,7 @@ export async function resolveKioskStepUp(
 
 /**
  * Resolve a staffer the counter tablet SIGNED IN as, without a PIN.
- *
  * Operator 2026-09-22: *"remove the pin, use the same pinless sign in for the
- * switching staff — this is dogfood."* The desk's own staff switch
- * (`/api/auth/act-as-staff`, `SwitchStaffSheet`) has been PIN-less since
- * 2026-09-15; the tablet's History face is the same act — naming who is
- * standing there so the audit row has an actor — so it takes the same form.
- *
- * This is an IDENTITY CLAIM, not proof, and that is the whole difference from
- * {@link resolveKioskStepUp}: it must never gate money. Payment keeps the PIN
- * pad. What it does guarantee is that the claimed staffer is a real, active
- * member of the DEVICE's org, so a tablet cannot attribute a reprint to a
- * staffer in another tenant or to a deactivated account.
- *
- * Returns null for an unknown, deactivated or cross-org id.
  */
 export async function resolveKioskStaffActor(
   orgId: OrgId,

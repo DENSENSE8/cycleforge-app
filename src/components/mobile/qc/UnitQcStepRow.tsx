@@ -31,13 +31,8 @@ function recordedReading(step: UnitQcStep): string | null {
 }
 
 /**
- * One checklist step on the phone, compact: the label with the server's
- * verdict + who/when beside it, then one row of controls — Fail on the left,
+ * One checklist step on the phone, compact:
  * Add note in the middle, Pass on the right (operator 2026-09-24). The
- * recorded answer is the filled button. A numeric step with a band sends only
- * its reading (the server judges it), so it gets Record in Pass's place. The
- * host keys this row by the step's server stamp, so a successful write
- * remounts it with the recorded values.
  */
 export function UnitQcStepRow({ unitId, step }: { unitId: number; step: UnitQcStep }) {
   const record = useRecordUnitQcStep(unitId);

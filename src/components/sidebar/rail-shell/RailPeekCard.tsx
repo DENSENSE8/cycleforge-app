@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The house hover-peek card for a rail row — dense identity + **copyable** id
- * chips + Open →, rendered inside {@link RailPopover}.
- *
- * Receiving's rail publishes its own richer popover (`renderPopover`, with qty
- * progress + condition badges); every other feed composes THIS card so a parked
- * collapse-strip pin peeks the same anatomy and the same copy affordances
- * instead of a text-only tooltip. One card, one grammar — never a per-rail twin.
- *
- * Pad / seam SoT: {@link rail-peek-chrome}. Identity chips:
- * {@link RailPeekIdentityFacts}.
- */
+/** The house hover-peek card for a rail row — dense identity + **copyable** id chips + Open →, rendered inside {@link RailPopover}. */
 
 import { Button } from '@/design-system/primitives';
 import {

@@ -1,16 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/serial-absent
- *
- * Durable no-serial waiver for the Unbox stepper's Serial step. Records
- * serial_absent (+ reason) on receiving_line_testing, replacing the ephemeral
- * per-line controller state so the waiver survives refresh / another device and
- * the Serial dot derives from the SoT. Mirrors the sibling label-printed /
- * condition routes' narrow-column upsert.
- *
- * Toggle, NOT first-wins: the operator can waive and un-waive, so the upsert
- * writes the exact value passed — `{ absent: true, reason }` sets the waiver,
- * `{ absent: false }` clears it (reason forced to null).
- */
+/** POST /api/receiving/lines/[id]/serial-absent */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
@@ -41,10 +29,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   const rawReason = typeof body.reason === 'string' ? body.reason.trim() : '';
   const reason = absent ? rawReason || 'NOT_SERIALIZED' : null;
 
-  // Narrow upsert: serial_absent is a receiving_line_testing fact. The row may
-  // not exist yet (every other testing column carries a DB default), so INSERT
-  // ... ON CONFLICT writes the exact toggle value. The FOR UPDATE spine read
-  // preserves the 404 and locks the line, mirroring the condition route.
+  // Narrow upsert:
   const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
     const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
       `SELECT id, receiving_id FROM receiving_line

@@ -1,16 +1,4 @@
-/**
- * Generic LLM drafting for an internal Zendesk ticket (roadmap A-series).
- *
- * Takes a deterministic ticket template + a short context label and asks the
- * local Hermes model to rewrite it into clearer, more professional prose.
- * Ticket surfaces that need a Hermes rewrite (unfound queue, etc.) use this
- * module.
- *
- * Discipline (mirrors `extract-llm.ts`): local gateway only, forced single tool
- * call, temperature 0 (inside `hermesToolCall`). The model rewrites PROSE only —
- * it must not invent or alter facts. The result is a DRAFT the operator reviews
- * and edits before the ticket is filed.
- */
+/** Generic LLM drafting for an internal Zendesk ticket (roadmap A-series). */
 
 import { hermesToolCall } from '@/lib/ai/hermes-tool-call';
 import type { OrgId } from '@/lib/tenancy/constants';

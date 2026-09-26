@@ -1,42 +1,6 @@
 'use client';
 
-/**
- * The cart's DONE face — the visit shipped, here are the receipts.
- *
- * Extracted from `KioskCartLedger` 2026-09-15 when the cart was ported onto
- * {@link KioskPaneForm}: the ledger's job is the stepper and the submit, and a
- * terminal face with its own two verbs is a different job on the same sheet.
- *
- * Wears the SAME frame as the step flow, with every segment filled. That is
- * deliberate — the visit's units are all satisfied, and keeping the band is
- * what gives this face a way out (X, top-left) without re-growing a titled
- * header just for the done state. One band per pane, no exceptions.
- *
- * ## It is the receipt read back across the counter
- *
- * 2026-09-16, when repair intake became PER DEVICE and this became the kiosk's
- * ONE success page (the cart's Save/Pay AND the repair pane's "Submit repair"
- * both land here): a single prose sentence was not enough. The staffer reads
- * facts back to the customer off this screen — RS number, which device, which
- * serial, what it costs — so the face is a TABLE OF FACTS, not cards, and it
- * is built from {@link CounterTransactionResult} ALONE. No fetch: the two
- * print keys stay the paper authority, and a success screen that can fail to
- * load is worse than one that prints what it was handed.
- *
- * Every line is honest about absence: a staged visit never says "paid"
- * (`result.status` is the truth), a ticket number is never invented
- * (`ticketWork.queued` says "queued" instead), and an idempotent replay —
- * which reports the ORIGINAL transaction with an EMPTY `repairs[]` by design —
- * says so rather than rendering an empty device table.
- *
- * Callers: `KioskCartLedger`, `KioskRepairPane`.
- * Affected API: GET /api/kiosk/visit/[id]/receipt.
- * Schemas: `CounterTransactionResult`.
- * User: "print out a receipt including everything" + "give internal staff an
- * internal record"; def-of-done "select product, add to cart, print receipt" —
- * the customer receipt is the primary key of this face, the staff copy its
- * secondary partner.
- */
+/** The cart's DONE face — the visit shipped, here are the receipts. */
 
 import { Button } from '@/design-system/primitives';
 import { KioskPaneForm } from '@/components/kiosk/KioskPaneForm';

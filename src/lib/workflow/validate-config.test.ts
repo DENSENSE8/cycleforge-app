@@ -1,12 +1,4 @@
-/**
- * DB-free tests for the node-config validator (validate-config.ts).
- * Importing the @/lib/workflow barrel registers the builtin nodes. All the
- * station-style process nodes (inspection/pack/ship/…) share the station
- * configSchema (slaHours/station/trigger); `decision` has its own
- * (outputs/rules/defaultPort). test-db-url must load first (the barrel needs a
- * well-formed DATABASE_URL at import; no query runs).
- * Run: npm run test:assistant
- */
+/** DB-free tests for the node-config validator (validate-config.ts). */
 
 import '@/lib/assistant/test-db-url'; // MUST be first
 import '@/lib/workflow'; // registers builtin nodes

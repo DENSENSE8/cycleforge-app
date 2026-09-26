@@ -46,12 +46,7 @@ export async function createEnrollment(
 ): Promise<EnrollmentToken> {
   const token = newToken();
   const ttlHours = opts.ttlHours ?? DEFAULT_TTL_HOURS;
-  // `staff_enrollments` has no organization_id of its own — it is child-scoped
-  // via staff_id → staff. When an admin context supplies orgId, gate the INSERT
-  // on the staff PARENT's org so an admin cannot mint an enrollment for a staff
-  // row in another org: the INSERT…SELECT only produces a row when the target
-  // staff belongs to this org. (No org → byte-identical legacy path for the
-  // sign-in/transitional callers.)
+  // `staff_enrollments` has no organization_id of its own — it is child-scoped via staff_id → staff.
   const r = orgId
     ? await tenantQuery<EnrollmentDbRow>(
         orgId,

@@ -1,14 +1,4 @@
-/**
- * The spine search, asserted against the REAL nav registry rather than fixtures.
- *
- * The defect this replaces was invisible to a fixture test: matching worked
- * fine, and the renderer was the thing that threw the answer away. Running the
- * live registry through the same two pure modules the spine composes is what
- * makes "typing a destination's name returns that destination" a property of
- * the app, not of a hand-written array.
- *
- * Run: node --test --import tsx src/lib/nav/nav-destinations.test.ts
- */
+/** The spine search, asserted against the REAL nav registry rather than fixtures. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -100,11 +90,7 @@ test('every destination is uniquely keyed (React list safety)', () => {
 });
 
 test('a page passed twice does not emit the same destination twice', () => {
-  // The spine feeds this an `otherPages` prop that already contains the active
-  // page. Spreading the active page in ON TOP of that duplicated every one of
-  // its destinations under an identical key — so the keyboard cursor selected
-  // two rows at once and React rendered duplicate children. Callers dedupe by
-  // page id, and this pins what happens when one does not.
+  // The spine feeds this an `otherPages` prop that already contains the active page.
   const page = SIDEBAR_PAGE_NAV[0]!;
   const doubled = buildNavDestinations([page, page]);
   const keys = doubled.map((d) => d.key);

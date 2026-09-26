@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Serial-scanning domain for the LineEditPanel: attach / delete / replace /
- * grade serial_units on a receiving line, plus the canonical refetch that keeps
- * the table + sibling accordion rows in sync.
- *
- * Extracted verbatim from LineEditPanel (which was carrying ~170 lines of this
- * inline) so the panel composes a focused API instead of owning the scan flow.
- * Serials are sidecar metadata — they attach an item identity + condition to a
- * line and never touch quantity_received or stock (that's the Receive action).
- *
- * Hot path: {@link enqueueSerial} publishes an optimistic chip immediately and
- * queues the POST. The scan field stays enabled — operators wedge many serials
- * in one pass. The drainer serializes writes (FOR UPDATE lock). Never gate or
- * disable the input on `serialSubmitting`.
- */
+/** Serial-scanning domain for the LineEditPanel: */
 
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -128,13 +114,7 @@ export function useLineSerials({
     [queryClient, row.receiving_id],
   );
 
-  // NO per-line `?id=&include=serials` refetch here (was a mount-effect on active-
-  // line change). `usePoLinesData`'s carton-wide `serialsQuery` already hydrates
-  // every line's serials/units onto the same `['receiving-siblings']` cache — and
-  // its overlay SKIPS in-flight optimistic rows, which a raw refetch did not. So
-  // the old per-line fetch was both a redundant fourth round-trip AND the "deleted
-  // serial reappears" back-door (a bare `fetch`, so `deleteSerialUnit`'s
-  // `cancelQueries` guard could not stop it from resolving late over the removal).
+  // NO per-line `?id=&include=serials` refetch here (was a mount-effect on active- line change).
 
   const submitSerial = useCallback(async (
     raw?: string,
@@ -157,15 +137,9 @@ export function useLineSerials({
     }
 
     try {
-      // Serials are sidecar metadata: scanning attaches a serial_unit (the item
-      // identity + its condition) to the line. Unlimited per line — a unit may
-      // carry several serials. It does NOT change quantity_received or stock;
-      // those are owned by the PO line item via the Receive action.
+      // Serials are sidecar metadata:
 
-      // RETURN flow: surface whether this serial already exists in our records
-      // (a genuine return matches a previously-shipped unit). The lookup MUST
-      // run before the upsert below — otherwise it would match the row we're
-      // about to write and always report "Match found".
+      // RETURN flow: surface whether this serial already exists in our records (a genuine return matches a previously-shipped unit).
       if (receivingType === 'RETURN') {
         await serialLookup.check(serial);
       }
@@ -209,12 +183,7 @@ export function useLineSerials({
         publish(data.line_state.id, confirmed);
         playScanFeedback('success');
         pulseScanLine(data.line_state.id);
-        // Return scan: the server resolved + persisted the originating order and
-        // returns the exact row patch (type→RETURN / listing / carton source /
-        // order# / status). Apply it optimistically so the workspace flips to
-        // RETURN instantly — this is what makes the type/label flip RELIABLE
-        // without the heavy refreshLineWithSerials refetch the scan path used to
-        // fire (one of the app's most expensive queries). Null on a normal scan.
+        // Return scan: the server resolved + persisted the originating order and returns the exact row patch (type→RETURN / listing / carton…
         if (data.line_patch) {
           const linePatch = data.line_patch as Partial<ReceivingLineRow> & { id: number };
           // Workspace/accordion only — Unboxed does not subscribe to this bus.
@@ -405,12 +374,7 @@ export function useLineSerials({
   const deleteSerialUnit = useCallback(
     async (serialUnitId: number, lineId: number = row.id) => {
       if (serialUnitId == null) return;
-      // Canonical optimistic-mutation guard (TanStack Query): cancel any in-flight
-      // `?include=serials` refetch for this carton FIRST, so a fetch that began
-      // pre-delete cannot resolve late and overwrite the optimistic removal — the
-      // "deleted serial reappears" race. BOTH keys: the accordion metadata cache
-      // AND the parallel serials-hydration query (`usePoLinesData`'s serialsQuery)
-      // — either can resurrect the removed serial on a late resolve.
+      // Canonical optimistic-mutation guard (TanStack Query):
       if (row.receiving_id != null) {
         await Promise.all([
           queryClient.cancelQueries({

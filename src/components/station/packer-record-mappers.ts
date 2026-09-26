@@ -1,16 +1,7 @@
 import { type PackerRecord } from '@/hooks/usePackerLogs';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 
-/**
- * Stable, UNIQUE rail row id — the `station_activity_logs` id, the same row
- * identity `packerRecordToDetail` uses.
- *
- * Deliberately NOT `packer_log_id`: several scans can share one packer log (the
- * dual-link path attaches a unit-QR scan to the active order's log), so keying
- * rows by it produced duplicate React keys. `PackActiveOrderPane` carries
- * `packerLogId`, so selection resolves by *finding* the matching row rather than
- * by treating the log id as a row id — see `PackRecentPacksRail`.
- */
+/** Stable, UNIQUE rail row id — the `station_activity_logs` id, the same row identity `packerRecordToDetail` uses. */
 export function packerRecordRailId(record: PackerRecord): number {
   return Number(record.id);
 }

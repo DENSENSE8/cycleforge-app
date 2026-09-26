@@ -1,20 +1,4 @@
-/**
- * Resolve a scanned/typed string to the serial unit it names — org-scoped.
- *
- * Resolution order mirrors `GET /api/serial-units/[id]`: numeric
- * `serial_units.id` → `normalized_serial` → minted `unit_uid`. That order is
- * the contract a printed unit label already relies on, so a command sticker
- * acting on "the unit I just scanned" resolves the same value the unit page
- * would open.
- *
- * A narrower job than that route's read (which projects a full unit + timeline
- * + photos), so this is a sibling rather than a refactor of it: a command only
- * needs the id and the state it is transitioning from.
- *
- * The raw value is decoded through `unwrapScannedSerial` first, so a printed
- * `U-…` handle or a GS1 `(01)…(21)…` element string resolves as readily as a
- * hand-typed serial.
- */
+/** Resolve a scanned/typed string to the serial unit it names — org-scoped. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

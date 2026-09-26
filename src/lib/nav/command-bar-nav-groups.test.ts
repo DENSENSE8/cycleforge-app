@@ -41,11 +41,8 @@ test('every spine section with pages emits a band whose label + icon come from t
     assert.equal(group.label, section.label);
     assert.equal(group.sectionIcon, section.icon);
   }
-  // Every VISIBLE spine section with pages ships a band by default. A lane the
+  // Every VISIBLE spine section with pages ships a band by default.
   // mobile-first gate hides (`LANE_MOBILE_FIRST`, operator 2026-09-14) reaches
-  // the palette with no rows at all, so it must emit NO band — the palette is
-  // one of the four doors *"there should not even be any front end routing or
-  // links to"*. Pinned end-to-end in `nav-mobile-first.test.ts`.
   for (const section of SPINE_SECTIONS) {
     const id = String(section.id);
     if (!isLaneVisible(id)) {
@@ -63,40 +60,24 @@ test('pin contains Home Search Media Plans Chat Settings Reports; Monitor is par
   assert.ok(pin);
   assert.equal(footer, undefined);
 
-  // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to
-  // a parent-level spine row; the palette pin follows the registry's `top`
-  // set, so it lands here too rather than under a Monitor band.
-  //
-  // `tasks` is NOT a pin row: the assigned-work desk is a tab on Daily
-  // (`/?mode=tasks`), reached by opening Daily — the page an operator already
-  // opens at the start of a shift — or by the ⌘⇧U chord from anywhere.
+  // `reports` arrived 2026-09-15 with its promotion out of the Monitor lane to a parent-level spine row; the palette pin follows the…
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
     ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings', 'reports'],
   );
-  // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on
-  // every surface, so the palette emits no band. Same mechanism as Sales /
-  // Support: an empty group is omitted, so the palette cannot offer a
-  // withdrawn door.
+  // Monitor (Operations) stays PARKED 2026-09-16 — the door is withdrawn on every surface, so the palette emits no band.
   assert.equal(
     groups.some((g) => g.id === 'monitor'),
     false,
     'parked lane "monitor" must not emit a ⌘K band',
   );
-  // Studio (Automations) was UNPARKED 2026-09-23 — *"the cron drop to assign
-  // tasks from designated tags should be included in the automations display
-  // in the sidebar"*. A lane with a door emits its band, and the palette is the
-  // same funnel as the spine, so this is the ⌘K half of that ruling.
+  // Studio (Automations) was UNPARKED 2026-09-23 — *"the cron drop to assign tasks from designated tags should be included in the…
   assert.equal(
     groups.some((g) => g.id === 'studio'),
     true,
     'the Automations lane emits its ⌘K band again',
   );
-  // Admin is DISSOLVED — `/admin` is a redirect table and permission is
-  // `requires` on rows, not a destination. Same fact as
-  // `sidebar-navigation.test.ts` ("admin ships no nav row"): with no admin page
-  // in the catalog, `buildCommandBarNavGroups` emits no admin band at all
-  // (empty groups are omitted), so the palette cannot offer a dead door.
+  // Admin is DISSOLVED — `/admin` is a redirect table and permission is `requires` on rows, not a destination.
   assert.equal(
     groups.some((g) => g.id === 'admin'),
     false,

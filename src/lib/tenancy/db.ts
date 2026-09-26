@@ -1,41 +1,11 @@
-/**
- * Tenant-scoped DB helper.
- *
- * Every request that touches business data should run inside
- * `withTenantConnection(orgId, fn)`. The wrapper checks out a client from
- * the shared pool, sets `app.current_org` as a session GUC, runs the work,
- * and releases the client.
- *
- * The GUC is the hook that RLS policies bind against — every enforced
- * table's `organization_id = current_setting('app.current_org')::uuid`
- * policy is a backstop against handlers that forget to filter explicitly.
- * Most business tables already carry `organization_id`; FORCE enforcement is
- * being rolled out per table (Phase E) once every route touching a table is
- * GUC-wrapped. Note enforcement only bites under the non-BYPASSRLS
- * `app_tenant` role — `neondb_owner` bypasses RLS (see the tenancy exec plan).
- *
- * Usage:
- *   await withTenantConnection(orgId, async (client) => {
- *     const { rows } = await client.query('SELECT * FROM orders');
- *     return rows;
- *   });
- *
- * For one-off queries that don't need a dedicated client, prefer
- * `tenantQuery(orgId, sql, params)` which handles checkout/release for you.
- */
+/** Tenant-scoped DB helper. */
 
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import pool, { tenantPool as configuredTenantPool } from '@/lib/db';
 import { resolveTenantAppDatabaseUrl } from '@/lib/env-utils';
 import { DOGFOOD_ORG_ID, type OrgId } from './constants';
 
-/**
- * Tenant-runtime pool, but only when TENANT_APP_DATABASE_URL is the same Neon
- * compute as DATABASE_URL. A lane `.env` that inherited production's tenant
- * DSN would otherwise run `tenantQuery` against a different schema than the
- * owner pool — `/api/orders` 500'd with `column o.oos_kind does not exist`
- * while the lane branch already had the column.
- */
+/** Tenant-runtime pool, but only when TENANT_APP_DATABASE_URL is the same Neon compute as DATABASE_URL. */
 const tenantPool = resolveTenantAppDatabaseUrl(
   process.env.DATABASE_URL || '',
   process.env.TENANT_APP_DATABASE_URL,
@@ -64,14 +34,7 @@ export async function withTenantConnection<T>(
   // per-table FORCE can be enabled. Until then tenantPool aliases the owner pool.
   const client = await tenantPool.connect();
   try {
-    // Run the work inside a transaction and set the org GUC with SET LOCAL
-    // (is_local=true). SET LOCAL is scoped to THIS transaction and auto-clears
-    // on COMMIT/ROLLBACK, so a stale `app.current_org` can never survive on a
-    // pooled client into the next checkout. That matters once RLS is enforced:
-    // the loud-fail column default reads `current_setting('app.current_org')`,
-    // so a leftover session GUC could silently mis-attribute a later raw-pool
-    // INSERT to the wrong tenant. A transaction-scoped GUC closes that hole.
-    // (Read-only `fn`s are fine inside a transaction; we COMMIT either way.)
+    // Run the work inside a transaction and set the org GUC with SET LOCAL (is_local=true).
     await client.query('BEGIN');
     await client.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
     const result = await fn(client);
@@ -112,10 +75,7 @@ export async function withTenantTransaction<T>(
 }
 
 /**
- * Transitional escape hatch: returns the dogfood org id when a caller has
- * been migrated to require an orgId but doesn't yet have it threaded
- * through. New code MUST NOT call this.
- *
+ * Transitional escape hatch:
  * @deprecated Use `ctx.organizationId` from withAuth instead.
  */
 export function transitionalDogfoodOrgId(): OrgId {

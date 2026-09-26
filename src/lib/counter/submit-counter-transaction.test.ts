@@ -22,10 +22,6 @@ const KEY = 'aaaaaaaa-1111-2222-3333-444444444444';
 
 function service(patch: Partial<CounterServiceLine> = {}): CounterServiceLine {
   // `repairReasons` is required by the shared intake rule (reason OR notes).
-  // It was absent here and the tests still passed, because the FAKE
-  // `submitRepair` never validated — so the fixture described an input the real
-  // helper would have rejected. The counter's pre-flight (SQ6) checks the same
-  // rule up front, which is what surfaced it.
   return {
     productModel: 'QC35 II',
     serialNumber: 'SN1',
@@ -143,10 +139,7 @@ function fakes(opts: FakeOpts = {}) {
       calls.staged.push({ count: lines.length, idempotencyKey, lines: [...lines] });
       if (opts.stageThrows) throw opts.stageThrows;
       if (opts.stageReturns) return opts.stageReturns;
-      // Mirrors what Square actually returns: the order total is the sum of
-      // its line items. Computed rather than a fixed stub so the total-parity
-      // tests below assert against something that would actually catch a
-      // mismatch, not a number nobody derived from `lines`.
+      // Mirrors what Square actually returns:
       const totalCents = lines.reduce((sum, l) => sum + l.quantity * l.unitAmountCents, 0);
       return { staged: true, providerOrderId: 'sq-new', totalCents };
     },
@@ -234,12 +227,7 @@ function line(patch: Record<string, unknown> = {}) {
 // ── The three transaction shapes ────────────────────────────────────────────
 
 test('repair-only: a repair is created, linked, AND staged as its own Square order', async () => {
-  // Design choice, stated explicitly: a repair-only visit now stages too.
-  // Before this fix `stageOrder` only ever saw `retailLines`, so a repair-only
-  // drop-off had NO way to be charged — the repair's money lived solely in
-  // `repair_service.price` (TEXT). Gating staging on "any retail lines" would
-  // leave that case exactly as unpayable as before, so it is deliberately not
-  // preserved: a repair alone is a billable visit and gets a staged order.
+  // Design choice, stated explicitly:
   const { deps, calls } = fakes();
 
   const res = await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
@@ -432,12 +420,7 @@ test('repair fails with NO sale → stays staged, still reported as a warning', 
 });
 
 test('an INVALID service line fails the whole submit rather than quietly selling the retail half', async () => {
-  // Silently dropping the repair the customer came in for, while charging them
-  // for headphones, is worse than a 400.
-  //
-  // Now driven by REAL invalid input rather than an injected throw: the check
-  // moved above the first write (SQ6 pre-flight), so this asserts the product
-  // rule at the boundary that actually enforces it.
+  // Silently dropping the repair the customer came in for, while charging them for headphones, is worse than a 400.
   const { deps, calls } = fakes();
 
   await assert.rejects(
@@ -458,10 +441,7 @@ test('an INVALID service line fails the whole submit rather than quietly selling
 });
 
 test('a validation error that slips PAST the pre-flight degrades, it does not strand the visit', async () => {
-  // Reaching this arm means the shared rule and the intake path disagree — a
-  // bug in the pre-flight. Throwing here would leave an orphan header holding
-  // the visit's client_event_id while the customer's other device is already
-  // recorded, so it warns and stays reconcilable instead.
+  // Reaching this arm means the shared rule and the intake path disagree — a bug in the pre-flight.
   const { deps, calls } = fakes({ repairThrows: new RepairIntakeValidationError(['Serial #']) });
 
   const res = await submitCounterTransaction(
@@ -483,10 +463,7 @@ test('no payment provider connected → warns, does not fail the visit', async (
 });
 
 test('a Square REJECTION is distinguishable from "no provider connected" and names the actual error', async () => {
-  // The defect this pins: `stageOrder` used to collapse "provider rejected the
-  // request" and "no provider configured" into the same `null`, so an
-  // operator staring at a malformed-request error saw "No payment provider is
-  // connected" — true of neither what happened nor what to do about it.
+  // The defect this pins:
   const { deps } = fakes({
     stageReturns: {
       staged: false,
@@ -751,10 +728,7 @@ test('two devices in one visit each get their own repair, ticket key and RS#', a
 });
 
 test('an INVALID device fails the visit BEFORE anything is written, whatever its position', async () => {
-  // The bug this pins: validating inside the write loop made the outcome depend
-  // on cart order. [invalid, valid] threw after insertHeader, so an orphan
-  // header owned the visit's client_event_id forever and the retry returned
-  // "unchanged" — the valid device was never recorded at all.
+  // The bug this pins:
   for (const services of [
     [service({ serialNumber: '' }), service()],
     [service(), service({ serialNumber: '' })],
@@ -803,10 +777,7 @@ test('device 2 failing does not erase device 1 — the visit is reconcilable, no
     res.warnings.some((w) => w.includes('Device 2 of 2') && w.includes('Lost')),
     `a warning must name WHICH device failed — got ${JSON.stringify(res.warnings)}`,
   );
-  // The line this pins: a device whose repair intake never landed has no
-  // `repair_service` row, so charging for it would be a card presentation for
-  // a repair the system has no record of — the same hazard a voided cart line
-  // guards against. Only the device that actually recorded is billable.
+  // The line this pins:
   assert.equal(calls.staged[0]?.count, 1, 'only the SURVIVING device is staged for payment');
   assert.match(calls.staged[0]?.lines[0]?.productTitle ?? '', /Kept/);
 });
@@ -827,10 +798,7 @@ test('zero-quantity lines are dropped before totalling', async () => {
 //    terminal-checkout.test.ts) ───────────────────────────────────────────
 
 test('buildStageOrderBody sends the ORG location_id and currency — was missing/hardcoded', () => {
-  // Defects 1 and 2: CreateOrder had no `location_id` at all (Square requires
-  // it) and hardcoded `currency: 'USD'` rather than reading it off the
-  // resolved SquareConfig. Asserted here, without a network call, against the
-  // exact two fields the fix touches.
+  // Defects 1 and 2:
   const cfg = { locationId: 'LOC-CA-1', currency: 'CAD' };
   const retail: CounterRetailLine = {
     variationId: null,

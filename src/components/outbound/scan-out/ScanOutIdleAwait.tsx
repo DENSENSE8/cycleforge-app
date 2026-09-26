@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Idle center for `/shipping/scan-out` — white station plane until first confirm.
- *
- * Displays still mounts so the composer context ring can open Look (and the
- * empty index) before a carton is focused. Same Action-plane host as the
- * focused panel — no second mouth, no invented rail.
- */
+/** Idle center for `/shipping/scan-out` — white station plane until first confirm. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Barcode } from '@/components/Icons';

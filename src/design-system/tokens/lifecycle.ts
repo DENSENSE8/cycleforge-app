@@ -2,20 +2,8 @@ import { LIFECYCLE, type LifecycleState, type StateName } from '@cycleforge/desi
 import type { RecordStateFace } from './industrial-record';
 
 /**
- * Web face of the cross-platform lifecycle + state-tone registry
- * (`packages/design-tokens/src/{lifecycle,state}.ts`).
- *
- * A status map that colours a lifecycle state (packed, shipped, …) reads it
- * from {@link LIFECYCLE_CLASSES} — or, when its vocabulary is not a class
- * string (timeline tones, chip-tone names), from `LIFECYCLE[state].tone` —
- * and never picks the colour itself. `lifecycle.guard.test.ts` enforces that
- * for packed / shipped keys across `src/`.
- *
- * Every class is a theme-registry alias (`--ds-color-*`), so every theme
- * repaints it. Tones without a pastel surface var (info, fulfillment) tint
- * with an alpha of their fill; the alphas are the largest that keep the
+ * Web face of the cross-platform lifecycle + state-tone registry (`packages/design-tokens/src/{lifecycle,state}.ts`).
  * tone's text ≥ 4.5:1 on the tint over white and #fafafa (BRIEF §8):
- * info /5 → 4.82 / 4.61, fulfillment /10 → 4.76 / 4.59.
  */
 
 export { LIFECYCLE, LIFECYCLE_STATES, type LifecycleState, type StateName } from '@cycleforge/design-tokens';

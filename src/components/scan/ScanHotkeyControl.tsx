@@ -46,22 +46,7 @@ const STANCE_COPY: Record<
   preview: { label: 'Preview', hint: 'Decode only — no write' },
 };
 
-/**
- * The scan bar's LEFT control — one dropdown in the 17px leading icon slot.
- *
- * Replaces the old stance-toggle-plus-hover-gear pair (two hit targets stacked
- * in one 17px box, one of them only reachable by hovering the bar). The face is
- * the live stance glyph; the menu carries every scan-entry decision:
- *
- *   Scan · Preview  — the stance, checked (name only; the hint lives on the
- *                     trigger tooltip, not repeated on every row)
- *   Focus scan bar  — runs the reclaim key
- *   Edit hotkey     — inline key capture (row stays open while capturing)
- *   Next scan       — runs the fixed {@link NEXT_SCAN_CHORD_LABEL} chord
- *
- * The trigger never steals the wedge: Radix returns focus to it on close and
- * the bar's own focus-scan hotkey stays bound to the input.
- */
+/** The scan bar's LEFT control — one dropdown in the 17px leading icon slot. */
 export function ScanHotkeyControl({
   stance,
   onSelectStance,

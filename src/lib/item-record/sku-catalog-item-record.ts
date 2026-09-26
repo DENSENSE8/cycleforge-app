@@ -1,18 +1,4 @@
-/**
- * SKU catalog entry → {@link ItemRecord}.
- *
- * The last adapter. `/search?sel=sku:{id}` used to mount `SkuDetailView` — the
- * whole products-page surface — inside the find pane, so searching a SKU gave
- * you a different layout from searching anything else that describes the same
- * physical thing.
- *
- * A catalog entry is a DEFINITION, not a holding: it is the answer to "what is
- * this SKU", not "how many are there". That distinction is why `quantity` is
- * omitted entirely rather than reported as zero — a zero count would claim the
- * catalog knows a stock level, which it does not.
- *
- * Pure — no fetch, no hook, no React.
- */
+/** SKU catalog entry → {@link ItemRecord}. */
 
 import type { ItemRecord } from '@/design-system/components/item-record';
 

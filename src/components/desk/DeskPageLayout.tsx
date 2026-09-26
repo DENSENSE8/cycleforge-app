@@ -1,38 +1,8 @@
 'use client';
 
 /**
- * The **desk frame**, ready to mount — what a domain's route-group layout
- * renders and nothing more.
- *
- * ```tsx
- * export default function ProductsDeskLayout({ children }: { children: ReactNode }) {
- *   return <DeskPageLayout>{children}</DeskPageLayout>;
- * }
- * ```
- *
- * Everything that used to be copied per desk lives here once: the CTA slot
- * channel (primary create verb plus overall actions such as Export), the nav →
- * tabs adapter, the page title, and the fullscreen state the table's ⤢ toggles.
- * A desk opts in by declaring `deskChrome: true` on its `SIDEBAR_PAGE_NAV` entry
- * and wrapping its segments in a route group with this layout — no per-desk
- * wiring, which is the point: the second copy of a frame is where two desks
- * start disagreeing about what a desk is.
- *
- * **A route GROUP, not a shared page.** Next keeps a layout mounted across
- * sibling segments, so switching tabs swaps only the body — and fullscreen
- * survives the switch. Fullscreen is a per-staffer, per-desk PREFERENCE, not a
+ * The **desk frame**, ready to mount — what a domain's route-group layout renders and nothing more.
  * URL param (operator 2026-09-25): it is how this staffer chose to see this
- * desk's records — list-left / record-right split (`DeskRecordPlane`) instead
- * of the record in place of the list — so it is remembered through the
- * Settings Registry (`desk.<deskId>.fullscreen`, staff scope) and a pasted
- * link never changes the reader's page.
- *
- * **Scan stations must never mount this.** They keep the edge-to-edge station
- * shell (`kind: 'station'` never opts in).
- *
- * The chrome itself is the design system's ({@link DeskPageChrome}); this file
- * is the app-side adapter that feeds it, because the system must not import the
- * app's spine.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -54,41 +24,16 @@ const noop = () => undefined;
 
 export interface DeskPageLayoutProps {
   children: ReactNode;
-  /**
-   * Title override. The default is the page's own `SIDEBAR_PAGE_NAV` label, and
-   * that is the right answer whenever the page HAS a nav entry — it cannot then
-   * drift from the spine row. Pass this only for a surface the spine does not
-   * name (`/tracking-exceptions`, a nested admin report), where the alternative
-   * is an empty `<h1>`.
-   */
+  /** Title override. */
   title?: string;
   /**
    * Optional line under the title — a count, a scope. Omit it when there is
    * nothing true to say; a placeholder subtitle is worse than none.
    */
   subtitle?: ReactNode;
-  /**
-   * Per-desk tab decoration — the seam for counts a desk can prove
-   * (Shipping's held-order badge on Exceptions).
-   *
-   * A callback rather than a prop on the tabs themselves because the tab LIST
-   * is nav data shared by every desk, and `useDeskPageChromeTabs` must not
-   * learn one desk's query. Keep the function identity stable (`useCallback`)
-   * or the memo below rebuilds the list every render.
-   */
+  /** Per-desk tab decoration — the seam for counts a desk can prove (Shipping's held-order badge on Exceptions). */
   decorateTabs?: (tabs: readonly DeskPageTab[]) => readonly DeskPageTab[];
-  /**
-   * Explicit tabs, for a page whose modes are NOT nav children.
-   *
-   * The nav is the source for a desk whose tabs are its former spine
-   * drill-downs. Some pages have modes that were never nav rows — Reports'
-   * Bin Utilization · Velocity · Dead Stock is local view state, not
-   * navigation — and those used to hand-roll a tab strip beside this one.
-   * Passing them here is what stops that being a second tab vocabulary.
-   *
-   * `activeTab` and `onTabChange` come with it or the row cannot answer a
-   * click; supply all three or none.
-   */
+  /** Explicit tabs, for a page whose modes are NOT nav children. */
   tabs?: readonly DeskPageTab[];
   activeTab?: string;
   onTabChange?: (id: string) => void;
@@ -155,13 +100,7 @@ function DeskPageFrame({
   );
 }
 
-/**
- * The desk's fullscreen state, seeded from and written to the staffer's
- * remembered choice for THIS desk. The local value answers the click at once
- * and is keyed by desk, so a layout shared by two desks (Shipping's route
- * group spans `outbound` and `fba`) never carries one desk's choice into the
- * other. A desk with no registry row toggles without remembering.
- */
+/** The desk's fullscreen state, seeded from and written to the staffer's remembered choice for THIS desk. */
 function useDeskFullscreen(deskId: string) {
   const key = deskFullscreenSettingKey(deskId);
   const remembered = settingByKey(key) != null;

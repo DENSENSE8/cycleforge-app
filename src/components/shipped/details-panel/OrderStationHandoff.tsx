@@ -14,18 +14,7 @@ interface OrderStationHandoffProps {
   flush?: boolean;
 }
 
-/**
- * Record-plane station hand-off — one quiet deep-link to the surface that owns
- * the NEXT piece of work on this order.
- *
- * Deliberately a navigation, never a mutation: the dashboard does not allocate,
- * release, or substitute. It is one control, not a CTA repeated beside every
- * document (the `openInUnboxHref` discipline from the carton read surface,
- * applied to the outbound side).
- *
- * Only `open_testing` is wired today. Pack and Labels already own their own
- * front doors and are not part of this lane.
- */
+/** Record-plane station hand-off — one quiet deep-link to the surface that owns the NEXT piece of work on this order. */
 export function OrderStationHandoff({ order, ctas, flush = false }: OrderStationHandoffProps) {
   if (!ctas.includes('open_testing')) return null;
 

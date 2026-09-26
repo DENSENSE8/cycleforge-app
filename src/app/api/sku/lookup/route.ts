@@ -3,13 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { normalizeSku } from '@/utils/sku';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/sku/lookup?id=123
- * GET /api/sku/lookup?staticSku=PROD or PROD:tag (base segment before ':' is matched)
- *
- * Returns `serial_number`, `static_sku`, and row `id` from the `sku` table for dashboards
- * and tooling that need a direct read without joining packer/tech queries.
- */
+/** GET /api/sku/lookup?id=123 GET /api/sku/lookup?staticSku=PROD or PROD:tag (base segment before ':' is matched) */
 type SkuLookupRow = {
   id: number;
   static_sku: string | null;

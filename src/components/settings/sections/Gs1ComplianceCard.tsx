@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * Settings → Organization → **Product identity (GS1)**.
- *
- * Asks the two questions that decide whether this tenant needs a licensed GS1
- * key at all, and gives the ones who answer yes a place to put the key they
- * hold. See docs/todo/gs1-compliance-onboarding-PLAN.md.
- *
- * ## Three things this card is careful about
- *
- * **1. It talks to a different route than its siblings.** Everything else in
- * `OrganizationSection` reads/writes `/api/admin/organization/profile`; `gs1`
- * and `compliance` live on `/api/admin/organization/settings`, which is where
- * the validation (`isPlaceholderGs1Prefix` / `isLicensedGln`) and the
- * server-side `answeredAt` stamp already are. Routing this card through the
- * profile endpoint instead would mean forking both. So it owns its own
- * fetch + Save, the way `InvitationsSection` does.
- *
- * **2. "Unanswered" is a real, visible third state.** The two questions render
- * as Yes/No pairs with NEITHER selected until the tenant picks, rather than as
- * checkboxes. A checkbox cannot draw `null`, so an untouched card would read as
- * "we already answered no to both" — and one Save would stamp `answeredAt` and
- * silently complete the onboarding step for a tenant who never saw the
- * question. That is the exact collapse the nullable schema exists to prevent.
- *
- * **3. The verdict is computed by the SAME function the server uses.**
- * `resolveGs1Requirement` is pure and client-safe, so the reveal and the nag
- * here cannot drift from what the API decides. It is fed the DRAFT, so the
- * key prompt appears the moment a question is answered rather than after a
- * round-trip.
- *
- * A GLN is deliberately NOT behind the gate — it answers to an EDI / EPCIS
- * partner, not to a marketplace, so it stays an always-visible optional field.
- */
+/** Settings → Organization → **Product identity (GS1)**. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Panel } from '@/design-system/primitives';
@@ -75,13 +43,7 @@ const GS1_STATUS_OPTIONS: ReadonlyArray<{ key: Gs1SourceStatus; label: string }>
   { key: 'none', label: "We don't have one yet" },
 ];
 
-/**
- * A three-state answer: Yes / No / not-yet-answered.
- *
- * `null` renders as neither button selected — see the docblock. Once picked,
- * there is deliberately no way back to `null` from the UI: un-answering is not
- * a thing a tenant means to do, and it would un-complete their onboarding step.
- */
+/** A three-state answer: */
 function YesNo({
   value,
   onChange,

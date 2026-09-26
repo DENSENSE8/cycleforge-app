@@ -4,20 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/inventory/alerts
- *
- * Read endpoint for the Alerts sidebar tab. Lists stock_alerts joined to
- * locations (for bin barcode), filterable by:
- *   q          — substring across sku / bin barcode / alert_type
- *   field      — narrows q to one of: sku | bin | rule
- *   bucket     — repeatable / comma-separated:
- *                 low_stock | stale_count | never_counted | drift | unresolved
- *   limit      — default 100, max 500
- *
- * Returns:
- *   { success, items: AlertRow[], counts: { low_stock, stale_count, never_counted, drift, unresolved, total } }
- */
+/** GET /api/inventory/alerts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     try {
         const sp = req.nextUrl.searchParams;

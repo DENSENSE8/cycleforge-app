@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * Vertical **scroll-section knobs** — the jump control for
- * {@link TriageScrollLayout}.
- *
- * A rail of ticks down the EDGE of the scrolling pane, not a row of buttons
- * across its top. Two reasons the edge wins for a triage form:
- *
- *   1. A top button row costs a band of vertical space in the one direction a
- *      dense form has none, and it scrolls away or has to be made sticky —
- *      which spends the space permanently.
- *   2. The knobs double as a POSITION READOUT. An `IntersectionObserver` marks
- *      whichever section is under the reader, so the rail answers "where am I"
- *      without being clicked. A button row cannot; it only takes orders.
- *
- * `TriageSections` already renders each block as a native `<section id>`
- * precisely so anchors and an observer can share one id — this consumes that
- * seam rather than introducing a parallel registry of refs.
- *
- * **Motion:** colour only. The active tick changes ink and its label changes
- * weight; nothing tweens width, height or position, so no neighbour moves.
- * Scrolling uses `block: 'start'` with no `behavior: 'smooth'`, matching every
- * other jump in this codebase — a scanning operator wants the destination, not
- * the journey.
- */
+/** Vertical **scroll-section knobs** — the jump control for {@link TriageScrollLayout}. */
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { cn } from '@/utils/_cn';
@@ -125,12 +102,7 @@ export function TriageScrollKnobs({
                     active ? 'bg-accent-bg' : 'bg-border-default group-hover:bg-border-strong',
                   )}
                 />
-                {/*
-                  Sentence case, matching the headings it points at. A rail set
-                  in caps while its targets are not reads as a different
-                  vocabulary, and the operator has to re-map "CATALOG PAIRING"
-                  onto "Catalog pairing" on every glance.
-                */}
+                {/* Sentence case, matching the headings it points at. */}
                 <span
                   className={cn(
                     'truncate text-role-caption transition-colors duration-100 ease-out',

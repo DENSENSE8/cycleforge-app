@@ -1,29 +1,6 @@
 /**
  * Kiosk API route wrapper — the device-principal sibling of `withAuth`.
- *
- *   export const POST = withKioskAuth(async (req, ctx) => { ... });
- *
- * The handler receives a `KioskAuthContext` — `{ organizationId, principal:
- * 'kiosk', deviceId }` — resolved from the `cf_kiosk` device token, NEVER a
- * `staffId`.
- *
  * UNPAIRED IS A NON-STATE OUTSIDE PRODUCTION (operator 2026-09-14): the
- * pairing gate existed to enroll real counter tablets; in dev/test it only
- * produced races — a lost `cf_kiosk` cookie painted `KIOSK_UNPAIRED` banners
- * mid-iterate. Now the FIRST kiosk API call with no valid device binds the
- * dogfood device (org #1, same issuance as `/api/kiosk/dev-autopair`) and
- * proceeds — `withKioskAuth` never blocks iteration. Production keeps the
- * 401 enrollment contract untouched, so a REVOKED tablet stays dead there; a
- * dogfood surface on production re-binds through `/api/kiosk/dev-autopair`
- * (`healKioskBinding`) instead of through this gate.
- *
- * The re-bind is keyed by the durable `cf_kiosk_client` id, so it rotates only
- * THIS client's device row. Sharing one dogfood row was what made two dogfood
- * surfaces (production + localhost) evict each other into `KIOSK_UNPAIRED`.
- *
- * `deps` is injectable (defaulting to the real DB-backed resolver) so unit
- * tests exercise device-principal resolution and scope denial with zero DB —
- * the house `Deps`-injection pattern (see backend-patterns.md).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -45,12 +22,7 @@ const ORG_ONE = '00000000-0000-0000-0000-000000000001';
 export interface KioskAuthDeps {
   /** Resolve a raw device token to its org + id, or null when missing/revoked/unpaired. */
   loadDevice: (token: string | null) => Promise<ResolvedKioskDevice | null>;
-  /**
-   * Issue THIS client's dogfood device for a tokenless dev request, returning
-   * the raw token so the wrapper can pin it as `cf_kiosk` on the response.
-   * Injectable so tests can pin the production 401 posture; only consulted when
-   * NODE_ENV is not production.
-   */
+  /** Issue THIS client's dogfood device for a tokenless dev request, returning the raw token so the wrapper can pin it as `cf_kiosk` on the… */
   devAutobind?: (clientId: string) => Promise<{ device: ResolvedKioskDevice; token: string } | null>;
   /** Test seam for the NODE_ENV gate (defaults to the real environment). */
   isProduction?: () => boolean;

@@ -8,13 +8,7 @@ import { notifyWarrantyTransition } from '@/lib/warranty/notify';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyRepairBody } from '@/lib/schemas/warranty';
 
-/**
- * POST /api/warranty/claims/[id]/repair
- *
- * Logs a repair attempt (diagnosis, parts-used, photos, outcome). Auto-advances
- * the claim APPROVED → IN_REPAIR, and IN_REPAIR → REPAIRED when outcome=FIXED.
- * Gated by WARRANTY_LOGGER. Permission: warranty.repair.
- */
+/** POST /api/warranty/claims/[id]/repair */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);

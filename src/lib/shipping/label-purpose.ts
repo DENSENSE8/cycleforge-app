@@ -1,20 +1,4 @@
-/**
- * Why a label is on an order, and how it got there — the vocabulary and the
- * pure rules for the order's label list (`shipping_label_purchases`, migration
- * 2026-09-24j). Client-safe: no DB imports.
- *
- *   purpose        outbound     — the order's shipment to the buyer (default)
- *                  return       — the buyer's parcel back to us (ShipStation
- *                                 `isReturnLabel`, or bought here as a return)
- *                  replacement  — a second shipment to the buyer for the SAME
- *                                 order (a replacement unit / a re-send)
- *   creation type  bought_in_app        — bought in the Labels walk
- *                  imported_shipstation — the ShipStation label backfill
- *                  linked_manually      — an operator paired it (Link label)
- *
- * One order carries any number of labels; each keeps the order's number and
- * name — the purpose and creation type are what tell them apart.
- */
+/** Why a label is on an order, and how it got there — the vocabulary and the pure rules for the order's label list… */
 
 export const LABEL_PURPOSES = ['outbound', 'return', 'replacement'] as const;
 export type LabelPurpose = (typeof LABEL_PURPOSES)[number];
@@ -88,17 +72,7 @@ export type LabelLinkDecision =
   | { kind: 'replay'; rowId: number }
   | { kind: 'refuse'; status: 400 | 409; code: string; message: string };
 
-/**
- * May this ShipStation label be paired to `orderId` with `purpose`?
- *
- *   voided label                         → 409 (nothing to ship with)
- *   ShipStation return label, not Return → 400 (the label says what it is)
- *   already live on THIS order           → replay (same purpose) / 409 (other purpose)
- *   already live on ANOTHER order        → 409 (a label belongs to one order)
- *   ingestion APPLIED to another order   → 409
- *   ingestion MATCHED / APPLYING         → 409 (the backfill is attaching it now)
- *   ingestion QUARANTINED                → create, resolving it as LINKED
- */
+/** May this ShipStation label be paired to `orderId` with `purpose`? */
 export function decideLabelLink(
   orderId: number,
   purpose: LabelPurpose,
@@ -176,16 +150,7 @@ export type LabelUnlinkDecision =
   | { kind: 'replay' }
   | { kind: 'refuse'; status: 409; code: string; message: string };
 
-/**
- * May this label come off the order?
- *
- *   already unlinked                 → replay
- *   bought here                      → 409 (void it — that refunds it)
- *   the import's APPLIED primary     → 409 (it IS the order's tracking + label doc)
- *   otherwise                        → unlink; a LINKED ingestion reopens as
- *                                      QUARANTINED; tracking the pairing added
- *                                      (outbound / replacement) comes off too.
- */
+/** May this label come off the order? */
 export function decideLabelUnlink(facts: LabelUnlinkFacts): LabelUnlinkDecision {
   if (facts.status === 'unlinked') return { kind: 'replay' };
   if (facts.creationType === 'bought_in_app') {

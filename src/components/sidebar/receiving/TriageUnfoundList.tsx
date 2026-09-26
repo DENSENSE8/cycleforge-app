@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Triage "Unfound" list — cartons scanned at the door that Zoho can't match to
- * a PO yet (`kind='unmatched_receiving'` in `v_unfound_queue`). Tap a row to
- * open it in the triage detail pane and add identifiable info (classify, add an
- * item, link a PO#). Rows auto-drop once Zoho syncs the PO or the operator links
- * one manually.
- *
- * Pure composition: the rail is a thin binding over {@link ReceivingFeedRail}
- * (feed `triageUnfound`), and the two triage-specific affordances are behavior
- * hooks wired into the rail's optional popover slots:
- *   • B3 — read-only Zoho-sync exception dot + tooltip ({@link useTriageUnfoundExceptions}).
- *   • B2 — a "Claim" action opening `ReceivingClaimModal` ({@link useReceivingClaimModal}),
- *     filed at the carton level (the unfound row is a synthetic stub with no real
- *     receiving_line).
- *   • Phase 4 — an on-demand "Retry pair" action (§7 Q4) re-running the same
- *     tracking search the (previously untriggered) cron sweep does, via
- *     `POST /api/receiving/unfound-queue/retry-pair`.
- * Both actions live in the popover context block below the badge row.
- */
+/** Triage "Unfound" list — cartons scanned at the door that Zoho can't match to a PO yet (`kind='unmatched_receiving'` in `v_unfound_queue`). */
 
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

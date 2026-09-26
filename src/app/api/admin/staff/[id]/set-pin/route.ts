@@ -1,16 +1,4 @@
-/**
- * POST /api/admin/staff/[id]/set-pin
- *
- * Body: { pin: string }
- *
- * Admin pushes a specific PIN for another staff member. Step-up required
- * (auto-detected because the permission is in STEP_UP_PERMISSIONS via the
- * withAuth wrapper — `admin.manage_staff`). On success, clears lockout
- * state and audit-logs `pin.set_by_admin`.
- *
- * Distinct from /reset-pin: this sets a known PIN immediately, no QR/
- * enrollment dance. Useful when admin needs to dictate a PIN in person.
- */
+/** POST /api/admin/staff/[id]/set-pin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

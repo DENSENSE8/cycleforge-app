@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * Time to pack, on the Products desk record — the SKU→standard-time control.
- *
- * WHERE: `/products/sku/[sku]`, the SKU record. Reached from search, Pairing,
- * and a scanned GS1 label — `productDetailHref` is the one href for all three.
- * The Reference grid used to be a fourth door; that view was removed
- * 2026-09-15 and this record needs no door of its own.
- *
- * WHY A CARD AND NOT A `DetailRow`: the other attributes are identity (GTIN,
- * UPC, category) — read-mostly, edited behind a pencil. This is an operational
- * standard the manager tunes while reading a KPI, so the control is always
- * live: drag, then Save. The slider IS the edit affordance; a pencil in front
- * of it would be a second gesture for nothing.
- *
- * Gated on `sku_stock.manage` — the same permission
- * `PATCH /api/sku-catalog/[id]` enforces. Without it the card still READS the
- * standard (a packer should be able to see what they are measured against) and
- * the slider is disabled rather than hidden, so the number keeps its meaning.
- *
- * `source` is shown, never hidden: `rules` means `classifyPackTier` guessed
- * from the product title and nobody has confirmed it. That caption is the
- * honest difference between a standard and a guess, and it is the queue of
- * work for whoever is re-basing the standards.
- */
+/** Time to pack, on the Products desk record — the SKU→standard-time control. */
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';

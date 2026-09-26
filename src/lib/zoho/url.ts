@@ -1,10 +1,4 @@
-/**
- * Pure Zoho Inventory URL + data-center helpers.
- *
- * Deliberately free of app dependencies (no DB, no '@/' imports) so it is unit
- * testable in isolation under `tsx --test`. core.ts re-exports these and feeds
- * them the tenant's ZohoCredentials (which structurally satisfies ZohoUrlConfig).
- */
+/** Pure Zoho Inventory URL + data-center helpers. */
 
 export interface ZohoUrlConfig {
   /** The TENANT'S Zoho Inventory organization_id (goes in the query string). */

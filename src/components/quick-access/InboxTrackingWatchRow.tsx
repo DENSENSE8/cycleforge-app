@@ -2,29 +2,7 @@
 
 /**
  * "Watch a tracking number" — one row, inside the inbox panel.
- *
  * Operator 2026-09-22: *"the extremely simple button to add a tracker like a
- * tracking number … it would be best to add the add icon inside of the inbox
- * itself. And so it wouldn't take up space within a global header and it would
- * be stuffed within the inbox display dropdown"* — and, from the same session,
- * *"a simple drop-down to add a tracking number with the plus button on the
- * right side of the row when clicked"*.
- *
- * So: an entry with a trailing `+`, mounted in {@link QuickAccessPanelShell}'s
- * `toolbar` slot. It lives HERE rather than on the beam because the answer
- * arrives here — the watch fires a `staff_inbox_items` row that paints three
- * centimetres below this input. A control whose result appears in the same
- * panel does not need a permanent seat in the global header.
- *
- * Enter submits, so a wedge scanner works without the operator reaching for
- * the button: a scan gun types the digits and presses Enter.
- *
- * Callers: {@link ActivityInboxPopover}.
- * Verb: `startTrackingWatch` (`@/lib/notifications/watch-tracking-client`) —
- * the shared client module, so this row and the phone face at `/m/inbox`
- * cannot answer the same bad tracking number two different ways. The fetch
- * used to be inline here; it moved out the day the `/m` twin was built,
- * because `src/components/mobile/**` may not import this directory.
  */
 
 import { useState } from 'react';

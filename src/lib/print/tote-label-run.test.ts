@@ -1,14 +1,4 @@
-/**
- * Tote (handling-unit) plate run — the two contracts a bulk run rides on.
- *
- * 1. The WIRE: `/m/print` publishes a tote job to the desk host over Ably.
- *    Junk, a missing count, and an unbounded count must not reach the mint.
- * 2. The FACE: the plate moved off bespoke HTML onto the shared LabelFaceModel
- *    when the batch engine needed it. The code must still be the hero and the
- *    matrix must still carry the `H-{id}` handle a scanner resolves.
- *
- * Run: node --import tsx --test src/lib/print/tote-label-run.test.ts
- */
+/** Tote (handling-unit) plate run — the two contracts a bulk run rides on. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

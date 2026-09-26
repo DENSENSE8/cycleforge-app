@@ -1,22 +1,4 @@
-/**
- * `/api/tasks/[id]/documents` — markdown documents attached to a task.
- *
- * GET               → `TaskDocumentsPayload`, oldest first, meta only (a
- *                     `repo` document's size is read from disk now; null
- *                     when the file is gone).
- * GET ?docId=N      → `TaskDocumentPayload`: an `upload`'s stored text, or a
- *                     `repo` plan file read NOW (`content: null` when gone).
- * POST              → attach an uploaded/written document or link a plan
- *                     file. 201 with the new document; 200 with the EXISTING
- *                     one when that plan file is already linked — a retried
- *                     tap is a no-op.
- * DELETE ?docId=N   → `{ ok, changed }`; `changed: false` when already gone.
- *
- * Refusals answer `{ error: <TASK_DOCUMENT_REFUSAL_COPY key> }`. Plan paths
- * are gated by `src/lib/tasks/plan-files.ts` (allowlist + realpath re-check).
- *
- * PERMISSION — `work_orders.claim`, the gate every task verb uses.
- */
+/** `/api/tasks/[id]/documents` — markdown documents attached to a task. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

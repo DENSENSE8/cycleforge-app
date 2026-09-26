@@ -1,15 +1,4 @@
-/**
- * Front-desk transaction feed — the presentation SoT for the Sales Monitor
- * (`/walk-in`). Sales, local pickups, and repairs are three different domain
- * spines; this module is the one place they become a single row vocabulary.
- *
- * House law (Kinetic Ledger #4): the adapters below own every domain→display
- * decision (kind, tone, label, ordering, money unit). Views assemble RESOLVED
- * facts and stay dumb — never map a status or re-derive an amount in a component.
- *
- * Pure + DB-free on purpose: the merge/filter/rollup is unit-tested without a
- * render (see `transactions.test.ts`).
- */
+/** Front-desk transaction feed — the presentation SoT for the Sales Monitor (`/walk-in`). */
 
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { formatCentsToDollars } from '@/lib/square/client';

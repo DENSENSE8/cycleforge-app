@@ -13,16 +13,7 @@ import {
   type ProvisionalBinRow,
 } from '../inventory/provisional-sku';
 
-/**
- * Database work for provisional (on-hold placeholder) products — the SKU
- * Exceptions queue on the desk (`/inventory/sku-exceptions`) and the phone
- * (`/m/on-hold`).
- *
- * A provisional is a `sku_stock` row (the warehouse facts, title, description)
- * plus an INACTIVE `sku_catalog` row that exists only so `bin_contents` can
- * reference it. See `2026-09-13b_provisional_skus.sql` and `-13c`. Photos link
- * to the `sku_stock` row (`photo_entity_links.entity_type = 'SKU_STOCK'`).
- */
+/** Database work for provisional (on-hold placeholder) products — the SKU Exceptions queue on the desk (`/inventory/sku-exceptions`) and… */
 
 export interface ProvisionalSkuLocation {
   locationId: number;
@@ -137,23 +128,7 @@ const PROVISIONAL_SELECT = `
     ) bins ON true
    WHERE ss.organization_id = $1 AND ss.is_provisional = true`;
 
-/**
- * Mint a placeholder, or return the one that already exists for the same key.
- *
- * The key is the scanned barcode when there is one (`TMP-<barcode>`), else
- * the caller's `sourceRef` idempotency key (`TMP-XXXXX-XXXXX`, see
- * `provisionalSkuForSourceRef`) — a bin-sheet import passes a stable ref per
- * product, a phone/desk form passes one ref per open form so a double tap
- * joins its own placeholder. With neither, a random ref mints a fresh one.
- *
- * Idempotent on (org, barcode) by the partial unique index, so a second
- * operator scanning the same box joins the existing placeholder rather than
- * starting a rival one holding half the count — including a barcode that was
- * attached later to a barcode-less placeholder. A repeat call may supply a
- * better title or description; it does NOT overwrite one that is already
- * there, because the first person to name the thing was looking at it and a
- * later caller might only be echoing a default.
- */
+/** Mint a placeholder, or return the one that already exists for the same key. */
 export async function createProvisionalSku(
   input: {
     barcode?: string | null;
@@ -190,15 +165,7 @@ export async function createProvisionalSku(
       sku = existing.rows[0]?.sku ?? derivedSku;
     }
 
-    // The catalog row FIRST: `bin_contents.sku` has a FK onto
-    // `sku_catalog(sku)` (fk_bin_contents_sku, ON DELETE RESTRICT), so without
-    // it the placeholder could never be put in a bin — which is the only thing
-    // it exists to allow.
-    //
-    // `is_active = false` is not decoration. Every catalog consumer that
-    // already filters on it excludes provisionals without being modified, and
-    // that is one of the three guards keeping unsellable stock off the
-    // channels (see 2026-09-13c).
+    // The catalog row FIRST:
     await db.query(
       `INSERT INTO sku_catalog (
          sku, product_title, upc, is_active, organization_id,
@@ -314,17 +281,7 @@ export class ProvisionalBarcodeError extends Error {
   }
 }
 
-/**
- * Rename / describe an open placeholder, or attach the barcode a
- * barcode-less one was created without. The title is written to both the
- * warehouse row and the inactive catalog row, since bins paint from either.
- * The SKU key never changes — photos, bins and links already point at it.
- *
- * A barcode is attach-once: setting the one it already has is a no-op, a
- * different one throws `ProvisionalBarcodeError` (as does a barcode another
- * placeholder or a real catalog SKU already owns).
- * Returns `null` when no open placeholder has that SKU.
- */
+/** Rename / describe an open placeholder, or attach the barcode a barcode-less one was created without. */
 export async function updateProvisionalSku(
   input: { sku: string; productTitle?: string; description?: string | null; barcode?: string },
   orgId: OrgId,
@@ -405,50 +362,13 @@ export interface MergeResult {
   ledgerRowsRekeyed: number;
   /** Photo links moved from the placeholder's `sku_stock` row onto the target's. */
   photosMoved: number;
-  /**
-   * The highest `sku_stock_ledger.id` the merge re-keyed, or `null` when it
-   * re-keyed none — the realtime feed key for the move (see the merge route).
-   *
-   * It is a REAL ledger row id, and after the merge that row reads the target
-   * SKU, so the event it keys is not a fiction. `null` means nothing the books
-   * record actually moved, and there is nothing for a subscriber to refetch.
-   */
+  /** The highest `sku_stock_ledger.id` the merge re-keyed, or `null` when it re-keyed none — the realtime feed key for the move (see the… */
   feedLedgerId: number | null;
 }
 
 /**
- * Merge a placeholder into the real SKU: the override.
- *
- * Everything the placeholder accumulated moves onto the target — bin rows and
- * the whole `sku_stock_ledger` history — and the placeholder ceases to exist.
- * Nobody recounts, and the product ends up with ONE unbroken history rather
- * than a count that starts the day somebody fixed the catalog.
- *
- * ## Why the ledger is re-keyed rather than compensated
- *
- * The alternative is a pair of dated offsetting deltas (take N from TMP, put N
- * on the real SKU) plus a lineage map. That keeps every historical row exactly
- * as written — which is the stronger audit posture, and it is a real cost of
- * the choice made here.
- *
+ * Merge a placeholder into the real SKU:
  * It was weighed and declined (operator 2026-09-13). Re-keying is a RENAME of
- * something that was always physically one product: the stock on the shelf
- * never moved, only the name we had for it. Compensated deltas describe a
- * transfer that did not physically happen, leave the real product's history
- * starting at the merge, and leave a dead `TMP-…` key in every historical
- * stock report forever — resolvable only by a consumer who knows to consult
- * the map.
- *
- * The honest cost of the path taken: a ledger row written before the real SKU
- * existed ends up filed under it. `provisional_sku_merges` records the rename
- * — what became what, when, by whom, and how many rows moved — so the
- * re-keying is itself auditable rather than silent. That table is the answer
- * to "this history predates the SKU it is filed under".
- *
- * `trg_sku_stock_from_ledger` fires `AFTER INSERT OR UPDATE OR DELETE` and
- * recomputes from a full per-key SUM, so the re-key projects the target's
- * `sku_stock.stock` with no direct stock write. The placeholder's own row
- * sums to zero and is deleted in the same transaction.
  */
 export async function mergeProvisionalSku(
   input: { provisionalSku: string; targetSku: string; staffId?: number | null },
@@ -504,10 +424,7 @@ export async function mergeProvisionalSku(
 
     const plan = planProvisionalMerge(rowsFor(provisionalSku), rowsFor(targetSku));
 
-    // Folds first: the target's row absorbs the placeholder's quantity, then
-    // the placeholder's row for that location goes. Doing it in this order
-    // means the UNIQUE(location_id, sku) index is never asked to hold two rows
-    // for the same pair, even momentarily.
+    // Folds first: the target's row absorbs the placeholder's quantity, then the placeholder's row for that location goes.
     for (const fold of plan.folds) {
       await db.query(
         `UPDATE bin_contents SET qty = $1, updated_at = NOW()
@@ -617,10 +534,7 @@ export async function mergeProvisionalSku(
       [orgId, provisionalSku],
     );
 
-    // The catalog row goes last. `fk_bin_contents_sku` is ON DELETE RESTRICT,
-    // so if any bin still pointed at the placeholder this DELETE would raise
-    // rather than orphan a reference — the constraint is the proof that the
-    // move above actually completed, so it is deliberately not guarded away.
+    // The catalog row goes last.
     await db.query(
       `DELETE FROM sku_catalog
         WHERE organization_id = $1 AND sku = $2 AND is_provisional = true`,

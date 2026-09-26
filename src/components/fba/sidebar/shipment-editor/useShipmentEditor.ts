@@ -26,13 +26,7 @@ import {
 } from './shipment-editor-helpers';
 import { refreshDomain } from '@/lib/refresh/bus';
 
-/**
- * Owns the entire FBA shipment editor: amazon id + bundle drafts + working item
- * list, the multi-step save, multi-select, undo + move-undo stacks, FNSKU
- * search/add, bundle CRUD, allocation qty edits, and the group-aware drag-and-drop
- * with qty-split. Returns a controller bag the thin `FbaShipmentEditorForm`
- * shell renders from.
- */
+/** Owns the entire FBA shipment editor: */
 export function useShipmentEditor({
   shipment,
   stationTheme = 'green',

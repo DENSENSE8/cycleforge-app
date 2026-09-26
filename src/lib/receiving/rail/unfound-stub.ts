@@ -1,13 +1,4 @@
-/**
- * Shared mapping for unfound-queue rows → the synthetic stub ReceivingLineRow
- * the receiving rails render. Single source of truth so every rail that lists
- * unfound cartons (triage Unfound, triage Combined, unbox Recent) produces the
- * EXACT same stub shape — title "Unfound PO", negative id, qty 0/?,
- * receiving_source 'unmatched', workflow ARRIVED ("SCANNED" chip).
- *
- * Lives in the rail lib (not in a rail component) so the rails import pure
- * stub/match logic from `src/lib`, never from a sibling component.
- */
+/** Shared mapping for unfound-queue rows → the synthetic stub ReceivingLineRow the receiving rails render. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
@@ -41,10 +32,7 @@ export function toStubRow(r: UnfoundQueueRow): ReceivingLineRow {
     quantity_received: 0,
     quantity_expected: null,
     qa_status: 'PENDING',
-    // Unfound = scanned at the dock but not matched to a PO → ARRIVED ("SCANNED"
-    // chip), mirroring buildUnmatchedEmptyReceivingLine on the server. null here
-    // fell back to the gray "EXPECTED" chip in the rail popover, which read as
-    // "not here yet" for a carton that is physically in hand.
+    // Unfound = scanned at the dock but not matched to a PO → ARRIVED ("SCANNED" chip), mirroring buildUnmatchedEmptyReceivingLine on the server.
     workflow_status: 'ARRIVED',
     disposition_code: 'HOLD',
     condition_grade: '',

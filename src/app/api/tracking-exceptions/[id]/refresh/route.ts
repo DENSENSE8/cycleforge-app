@@ -21,18 +21,7 @@ interface ExceptionRow {
   zoho_check_count: number;
 }
 
-/**
- * POST /api/tracking-exceptions/[id]/refresh
- *
- * Re-runs the same Zoho lookup ladder (raw → normalized → last-22/18/15/12)
- * against the row's `tracking_number`. On hit: promotes the linked receiving
- * row to `source='zoho_po'`, imports PO lines, and marks this exception
- * `resolved`. On miss/unreachable: bumps zoho_check_count + last_zoho_check_at
- * so the triage UI can show retry history.
- *
- * Only supports domain='receiving' in this phase. Orders retries are still
- * handled by syncOrderExceptionsToOrders in src/lib/orders-exceptions.ts.
- */
+/** POST /api/tracking-exceptions/[id]/refresh */
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },

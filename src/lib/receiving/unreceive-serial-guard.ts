@@ -4,12 +4,7 @@
  * `server-only` so Client Components can import it.
  */
 
-/**
- * Serial statuses that block website unreceive — the unit has left the dock
- * into fulfillment / outbound / hold. STOCKED is recoverable via un-putaway;
- * RECEIVED / TESTED / GRADED / TRIAGED stay linked but do not block the line
- * qty rewind.
- */
+/** Serial statuses that block website unreceive — the unit has left the dock into fulfillment / outbound / hold. */
 export const UNRECEIVE_BLOCKING_SERIAL_STATUSES: ReadonlySet<string> = new Set([
   'ALLOCATED',
   'PICKING',

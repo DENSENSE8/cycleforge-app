@@ -1,13 +1,4 @@
-/**
- * Packer bench catalog guards + resolver behaviour — Wave C's second family.
- *
- * The guard that matters most here is the one pinning that a packer row
- * carries TWO stamps: `packerRecordToQueueRow` projects the upstream tester
- * alongside the packer, which is why the flat bench painted a Tester column
- * beside the Packer one and why this catalog names two stage events. Every
- * fixture goes through the real mapper, so a catalog path the mapper does not
- * project fails here rather than dashing silently on the floor.
- */
+/** Packer bench catalog guards + resolver behaviour — Wave C's second family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -26,13 +26,7 @@ interface LibraryBrowserProps {
   basePath: string;
 }
 
-/**
- * Body-only manuals/library file browser. Headers, mode pills, and the search
- * input are owned by the parent sidebar (`ProductsSidebarPanel`) — this renders
- * the folder tree, breadcrumb, and fuzzy results when `query` is set. URL writes
- * land on `basePath` so the same component mounts under `/products` or
- * `/manuals`. Thin composition layer — state/logic live in `./library/`.
- */
+/** Body-only manuals/library file browser. */
 export function LibraryBrowser({ query, basePath }: LibraryBrowserProps) {
   const debouncedQuery = useDebounce(query.trim(), 150);
 

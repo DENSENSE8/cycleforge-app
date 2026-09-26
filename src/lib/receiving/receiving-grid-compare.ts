@@ -84,23 +84,7 @@ function isBlankCustomValue(value: CustomFieldValue): boolean {
   return value == null || value === '';
 }
 
-/**
- * Compare two org custom-field values by their RUNTIME type.
- *
- * `hydrateCustomFieldMaps` already emits each value typed per its def —
- * `to_jsonb(value_number)` → number, `to_jsonb(value_date)` → `YYYY-MM-DD`,
- * boolean → boolean, everything else → text. So this reads the value's own
- * type and never needs the def loaded, which is what keeps the comparator pure
- * and synchronous (it runs inside a `useMemo` on every sorted render).
- *
- * That typing is exactly what the TYPED value columns buy: had custom fields
- * been stored as one JSON blob, a number would compare lexically and `10`
- * would sort between `1` and `2` — sortability down a column being the entire
- * point of a column.
- *
- * Dates need no `Date` parse: Postgres emits zero-padded ISO `YYYY-MM-DD`, so
- * string collation already orders them correctly.
- */
+/** Compare two org custom-field values by their RUNTIME type. */
 function compareCustomFieldValues(a: CustomFieldValue, b: CustomFieldValue): number {
   // Numbers MUST take this branch, never the string fallback below: `numeric`
   // collation treats `.` as a separator, so "2.5" vs "2.25" compares 5 against
@@ -135,13 +119,7 @@ export function compareReceivingGridRows(
     const aBlank = isBlankCustomValue(aValue);
     const bBlank = isBlankCustomValue(bValue);
 
-    // Blanks sort LAST in BOTH directions, so this comparison deliberately
-    // escapes `sign` (spreadsheet convention — Sheets and Airtable both do it).
-    // It differs on purpose from `date`'s `+Infinity` above, which floats
-    // undated rows to the TOP under `desc`: that is tolerable for a column
-    // every row fills, and wrong for a custom column that is empty on most rows
-    // until an operator backfills it — otherwise the first click opens on a
-    // screen of `—`.
+    // Blanks sort LAST in BOTH directions, so this comparison deliberately escapes `sign` (spreadsheet convention — Sheets and Airtable both…
     if (aBlank || bBlank) {
       if (aBlank && bBlank) return a.id - b.id;
       return aBlank ? 1 : -1;
@@ -151,17 +129,7 @@ export function compareReceivingGridRows(
     return customPrimary !== 0 ? sign * customPrimary : a.id - b.id;
   }
 
-  // Extract, then let the ENGINE compare. Pulling a comparable value off a
-  // domain row is domain knowledge and stays here; how two values order — and
-  // where a blank lands — is `type` semantics and belongs to one owner. This
-  // switch used to carry the comparison too, which is how `date` ended up with
-  // an unflipped `+Infinity` (undated rows at the TOP under desc) while Orders
-  // sank its missing deadlines under both directions.
-  // The header may speak in COMPOUND track keys (`item`, `fulfillment`,
-  // `amount`) or in this family's flat words — two live mounts, two models.
-  // Normalize once so both the extractor and the `type` lookup below read one
-  // vocabulary; without this the compound desks fell through to `default: null`
-  // and every row compared equal.
+  // Extract, then let the ENGINE compare.
   const fact = receivingSortFactFor(column) ?? column;
 
   const value = (row: ReceivingLineRow): GridSortValue => {

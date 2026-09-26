@@ -1,11 +1,4 @@
-/**
- * Workflow engine — public API.
- *
- * Composes the production engine from its injectable parts and registers the
- * built-in node types. Routes and triggers should import from here.
- *
- *   import { advance, listNodeMeta } from '@/lib/workflow';
- */
+/** Workflow engine — public API. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { advanceItem, type AdvanceArgs, type AdvanceOutcome } from './advance';

@@ -11,40 +11,7 @@ import { isFulfillmentSubstitution } from '@/lib/feature-flags';
 import { substituteOrderUnit, type AmendmentNode } from '@/lib/fulfillment/substitution';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * POST /api/orders/[id]/substitute
- *
- * Fulfillment substitution — the unit physically shipping deviates from what was
- * ordered/listed ("customer asked for white though the order is for black", a
- * tester regrades, a picker swaps the serial). Modeled as an AUDITED
- * RE-ALLOCATION: release the original allocation + allocate the substitute unit
- * + record the ordered-vs-fulfilled delta (order_unit_amendments). Because the
- * substitute unit ends up with a real open allocation, /api/pack/ship's
- * allocation check passes for it unchanged.
- *
- * Body:
- *   {
- *     original_allocation_id: number,    // the allocation being replaced
- *     substitute_unit_id?: number,       // explicit id ...
- *     substitute_serial?: string,        // ... or a raw serial scan (GS1 URL OK)
- *     reason_code: string,               // required — the deviation must justify itself
- *     customer_request_note?: string,
- *     photo_id?: number,
- *     raised_at_node?: 'pick'|'test'|'pack',  // default 'pick'; must be org-allowed
- *     client_event_id?: string           // UUID, idempotent retries
- *   }
- *
- * Enforcement (per-org settings.fulfillment): 'advisory' → APPLIED + shippable;
- * 'block_until_approved' → PENDING (the order can't pack/ship until approved).
- *
- * Permission: packing.substitute_unit OR tech.substitute_unit (a substitution
- * can be raised from the pack bench or the tech/testing bench —
- * docs/todo/tech-substitution-wiring-plan.md §3.3 Option B). withAuth's single
- * `permission` option can't express an OR, so the pair is enforced in-handler
- * (the sanctioned pattern — cf. /api/settings PUT, the photo-label writes);
- * the manifest records this file as authed-no-permission with the real gate
- * asserted in route-permission-manifest.test.ts.
- */
+/** POST /api/orders/[id]/substitute */
 const SUBSTITUTE_PERMISSIONS = ['packing.substitute_unit', 'tech.substitute_unit'] as const;
 
 export const POST = withAuth(async (request, ctx) => {

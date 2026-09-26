@@ -4,22 +4,7 @@ import { test } from 'node:test';
 import { OUTBOUND_SAVED_VIEWS, outboundWorkPageSchema } from './work-contract';
 import { listOutboundWork } from './work-projection';
 
-/**
- * V1.2 checkpoint: "an API test proves each saved view's deterministic
- * membership." Determinism here means three observable properties, checked
- * against the live database for both tenants that have outbound work:
- *
- * 1. **Self-consistency** — every record a view returns carries that view's
- *    id in its own `views` array (the page filter and the row membership are
- *    one SQL expression, and this proves they cannot disagree).
- * 2. **Purity** — the same view, queried twice, returns the same first page;
- *    membership does not depend on when or how often it is read.
- * 3. **Disjointness where the rules demand it** — `ready` and `completed`
- *    are mutually exclusive by definition (a unit cannot be both unpicked
- *    and scanned out), so no record may carry both.
- *
- * Skips loudly without DATABASE_URL so the mocked suite still runs in CI.
- */
+/** V1.2 checkpoint: */
 const ORGS = ['00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002'];
 const hasDatabase = Boolean(process.env.DATABASE_URL);
 

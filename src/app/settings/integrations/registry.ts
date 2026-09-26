@@ -1,14 +1,4 @@
-/**
- * Provider catalog for Settings → Integrations — the single source of truth for
- * what shows on the page, how each provider connects, and where its OAuth /
- * health endpoints live. Adding a provider is one entry here.
- *
- * `connect` drives the card's action set:
- *   - 'amazon' : region picker + OAuth + paste-refresh-token + health + per-account disconnect
- *   - 'ebay'   : OAuth connect (account label) + per-account token refresh
- *   - 'oauth'  : single OAuth redirect (+ optional health) + vault disconnect
- *   - 'vault'  : paste-JSON credential entry via the admin vault + disconnect
- */
+/** Provider catalog for Settings → Integrations — the single source of truth for what shows on the page, how each provider connects, and… */
 
 export type ConnectMethod = 'amazon' | 'ebay' | 'oauth' | 'vault' | 'nango';
 
@@ -201,12 +191,7 @@ export function monogram(label: string): string {
   return (label.trim()[0] || '?').toUpperCase();
 }
 
-/**
- * The permission a user needs to connect/disconnect/health-check this provider —
- * mirrors what the underlying routes enforce server-side. Amazon/eBay/Zoho run
- * through their own `integrations.*`-gated routes; vault providers go through the
- * admin credential vault (`admin.manage_features`).
- */
+/** The permission a user needs to connect/disconnect/health-check this provider — mirrors what the underlying routes enforce server-side. */
 export function managePermission(def: ProviderDef): string {
   if (def.connect === 'amazon') return 'integrations.amazon';
   if (def.connect === 'ebay') return 'integrations.ebay';

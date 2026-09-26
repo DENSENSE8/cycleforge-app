@@ -1,18 +1,4 @@
-/**
- * Photo-policy gate WIRE tokens — the half of the override contract both the
- * routes and the bench UI need (WS-PHOTO §4).
- *
- * Why this module exists at all: `./photo-policy-override.ts` (the domain
- * helper) imports `./exceptions` → `@/lib/tenancy/db`, which is `server-only`.
- * A client that imported the body key from there would drag the Neon driver
- * into every receiving bundle — the exact bundle-altitude trap in
- * `.claude/rules/build-gotchas.md`. So the pure tokens live HERE (this file
- * imports nothing but the pure `./exception-codes` registry) and the heavy
- * module imports them, keeping ONE definition of each wire string rather than
- * a client copy that silently drifts from the server's.
- *
- * Everything below is pure and dependency-free: safe on both sides.
- */
+/** Photo-policy gate WIRE tokens — the half of the override contract both the routes and the bench UI need (WS-PHOTO §4). */
 
 import {
   PHOTO_POLICY_OVERRIDE_CODES,
@@ -37,15 +23,7 @@ export const PHOTO_POLICY_OVERRIDE_BODY_KEY = 'photo_policy_override';
  */
 export const PHOTO_POLICY_OVERRIDE_FLOW_CONTEXT = 'receiving_exception';
 
-/**
- * The request field that turns the hard 409 into a waived receive. Built from
- * the const key so a call site can never typo the wire name.
- *
- * `code` is REQUIRED with no default: absence of an override is expressed by
- * NOT calling this, which leaves the gate hard-blocking. That is the safe
- * direction — a defaulted code here would waive the gate for every caller that
- * forgot to think about it.
- */
+/** The request field that turns the hard 409 into a waived receive. */
 export function photoPolicyOverrideField(
   code: PhotoPolicyOverrideCode,
 ): { [PHOTO_POLICY_OVERRIDE_BODY_KEY]: PhotoPolicyOverrideCode } {
@@ -77,12 +55,7 @@ export interface PhotoPolicyWaiver {
   blockers: string[];
 }
 
-/**
- * Read the 409 block off a response body. Returns null when this response is
- * not a photo-policy block, so a caller can keep its existing error branch.
- * The blockers list may be empty — the gate blocked, it just sent no readable
- * reason; the caller supplies its own fallback copy.
- */
+/** Read the 409 block off a response body. */
 export function readPhotoPolicyBlock(status: number, body: unknown): PhotoPolicyBlock | null {
   if (status !== 409) return null;
   const payload = (body ?? {}) as { error?: unknown; blockers?: unknown };
@@ -117,16 +90,7 @@ export interface PhotoPolicyOverrideOption {
   description: string;
 }
 
-/**
- * The pickable options, in registry order.
- *
- * Tenant `reason_codes` rows may RELABEL an option; they may never widen the
- * set, because the route validates against `PHOTO_POLICY_OVERRIDE_CODES`. So
- * this walks the registry (not the DB rows) and only borrows a label — an
- * unseeded org, a failed fetch, and a tenant who added their own row all render
- * exactly the four codes the server will accept. Offering an option the server
- * rejects is the failure mode this ordering prevents.
- */
+/** The pickable options, in registry order. */
 export function buildPhotoPolicyOverrideOptions(
   vocabulary: readonly { code: string; label: string }[] | null | undefined,
 ): PhotoPolicyOverrideOption[] {

@@ -1,33 +1,6 @@
 /**
  * Order **exceptions** — one list of the orders that cannot ship yet, and why.
- *
  * Operator brief (2026-08-31): "I only care about my order and linking it, so
- * it's not an exception within the system." That sentence is the model. The
- * row is an ORDER, the blockers are the reasons it is stuck, and the work is
- * done until there are no reasons left.
- *
- * ## Blockers, not gates
- *
- * G4 (`evaluateReleaseGates`) still answers "is this item paired"; G1–G3 stay
- * the packet/intake contract and are rendered on To-ship paperwork, not here.
- * A blocker on this queue is a pairing fact: unpaired SKU, or no item number
- * to pair with. Amends the 2026-08-31 reading that every gate had a blocker
- * twin (R-FLOW-7, 2026-09-01).
- *
- * ~~PAIRING is not a gate at all~~ — struck 2026-08-31 by the order-flow
- * ruling (R-FLOW-1, `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2):
- * pairing is now gate **G4**, and `unpaired` is its blocker twin. The
- * observation that motivated the strike stands: 19 of the operator's 22 caged
- * orders were unpaired, and under the old reading they were "perfectly
- * releasable" while their SKU resolved to nothing.
- *
- * ## Pairing is item-number grain
- *
- * Pairing an item number to a catalog entry resolves EVERY order carrying that
- * item number, so `siblingUnpairedCount` tells the UI how many other rows one
- * pairing will clear. The table stays order-grain (triage across orders). The
- * recents rail collapses to one row per item number — five copies of the
- * same listing is not a worklist.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -81,13 +54,7 @@ interface RawExceptionRow {
   internal_note: string | null;
 }
 
-/**
- * Document + label existence, phrased exactly as `caged-orders.ts` phrases them
- * so an order's G2/G3 answer is identical on both surfaces. Duplicated as SQL
- * text rather than imported because those constants are private to that module
- * and the two queries select different column sets; the RULE they feed
- * (`evaluateReleaseGates`) is the shared thing, and it is imported.
- */
+/** Document + label existence, phrased exactly as `caged-orders.ts` phrases them so an order's G2/G3 answer is identical on both surfaces. */
 const G2_DOCUMENT_COUNT_SQL = `(
   SELECT COUNT(*)::int
     FROM documents d

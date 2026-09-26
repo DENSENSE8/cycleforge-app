@@ -1,12 +1,4 @@
-/**
- * POST /api/billing/checkout
- *
- * Body: { plan: 'starter'|'growth'|'pro'|'enterprise' }
- *
- * Creates a Stripe Checkout session for the caller's tenant and returns
- * the redirect URL. Requires the caller to have admin.view (only admins
- * upgrade plans).
- */
+/** POST /api/billing/checkout */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

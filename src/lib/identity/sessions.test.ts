@@ -1,12 +1,4 @@
-/**
- * DB-free unit tests for switchActiveContext() — session-collapse groundwork.
- *
- * Run: npx tsx --test src/lib/identity/sessions.test.ts
- *
- * The helper is currently UNUSED in the live auth path; these tests pin its
- * contract (re-point pointers in one tx; report whether a live session matched)
- * so the future cutover has a tested foundation.
- */
+/** DB-free unit tests for switchActiveContext() — session-collapse groundwork. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

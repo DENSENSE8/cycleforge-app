@@ -25,9 +25,6 @@ export async function GET(req: NextRequest) {
     }
 
     // Query orders table for matching order_id (shipped orders only).
-    // shipping_tracking_numbers has no organization_id column; scope via the
-    // orders parent (o.organization_id) plus the GUC-wrapped connection.
-    // Return product_title
     const result = await tenantQuery(
       orgId,
       `SELECT o.product_title

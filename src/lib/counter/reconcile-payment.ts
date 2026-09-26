@@ -1,41 +1,4 @@
-/**
- * Close the loop between a Square payment and the counter visit that staged it.
- *
- * ### The gap this fills
- *
- * `counter_transactions.staged_square_order_id` exists for exactly one purpose,
- * stated in its own migration: the kiosk STAGES an order and never charges
- * (plan D4), so the `square_transactions` row is created later by the payment
- * webhook — which knows only the provider order id. Without a lookup from that
- * id back to the header, `square_transactions.counter_transaction_id` can never
- * be filled and **a paid visit never reconciles**.
- *
- * The column shipped. The reader did not: as of 2026-08-21 the only references
- * to `staged_square_order_id` in the tree were the writer and its tests. So
- * every counter sale sat at `staged` forever while the money was in the bank.
- *
- * ### Why a domain module and not four lines in the webhook
- *
- * The webhook is a session-less callback that already carries the tenant
- * resolution, the order fetch and the realtime publish. Reconciliation is a
- * decision with rules — partial payment, replay, an order that is not ours —
- * and rules that live inside a `try` block in a webhook are rules nobody can
- * test. `Deps` is injectable so all of them are exercised with zero DB.
- *
- * ### What it must never do
- *
- * **Never move a header OUT of `paid`.** Square redelivers webhooks, and it can
- * deliver a partial payment's event after the completing one. A naive
- * "set status from this payment's amount" would walk a settled visit backwards
- * to `partially_paid` on a redelivery.
- *
- * **Never fail the webhook.** An unknown order is the normal case — a walk-in
- * sale rung up directly on the Square stand has no counter header and must
- * still write its `square_transactions` row. That is `no_staged_header`, not an
- * error.
- *
- * Plan: `docs/todo/counter-square-enterprise-PLAN.md` (SQ1).
- */
+/** Close the loop between a Square payment and the counter visit that staged it. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -66,17 +29,7 @@ export type ReconcileResult =
     }
   | { linked: false; reason: 'no_staged_header' | 'no_order_id' };
 
-/**
- * Which status a payment of `paidCents` puts a visit staged at `totalCents` in.
- *
- * Pure and exported because this is the rule anyone will argue about later, and
- * an argument is easier to settle against a test than against a SQL statement.
- *
- * A payment at or above the staged total settles it. Tips and tax collected at
- * the terminal make `paid > staged` routine, so this is `>=`, never `===`.
- * Anything above zero but short is `partially_paid` — a real state at a counter
- * (a deposit, a split tender), not an error.
- */
+/** Which status a payment of `paidCents` puts a visit staged at `totalCents` in. */
 export function statusForPayment(
   paidCents: number,
   totalCents: number,
@@ -130,14 +83,7 @@ const defaultDeps: ReconcileCounterPaymentDeps = {
   },
 };
 
-/**
- * Link a completed Square payment to its counter visit and settle the header.
- *
- * Best-effort by contract: every refusal is a `linked: false` result, never a
- * throw, because the caller is a webhook whose other work (writing the
- * `square_transactions` row, publishing the sale event) must not be undone by
- * a visit that happens not to exist.
- */
+/** Link a completed Square payment to its counter visit and settle the header. */
 export async function reconcileCounterPayment(
   orgId: OrgId,
   args: { squareOrderId: string | null | undefined; paidCents: number },

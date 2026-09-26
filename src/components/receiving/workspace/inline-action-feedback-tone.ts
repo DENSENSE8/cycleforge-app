@@ -1,17 +1,4 @@
-/**
- * Inline feedback tone map — the four-state machine every receiving-workspace
- * feedback surface paints from.
- *
- * Isolated from the I/O component (same reason as `button-variants.ts`) so a
- * test can import the SHIPPED map without pulling React or motion.
- *
- * It was `emerald | amber` until 2026-08-21 — two Tailwind hues named as if
- * they were the vocabulary — while the receive verdict SoT next door
- * ({@link classifyReceiveResponse}) already resolved a third (`rose`) and the
- * in-flight strip painted a fourth (blue) inline. Four states existed; only two
- * had a name, so the other two were hand-rolled at each call site. The names
- * are now semantic and each state carries its CTA's Button intent.
- */
+/** Inline feedback tone map — the four-state machine every receiving-workspace feedback surface paints from. */
 
 import type { ButtonVariant } from '@/design-system/primitives/button-variants';
 
@@ -32,14 +19,7 @@ export type InlineActionFeedbackPalette = {
   body: string;
   /** Tabular meta (elapsed, commit time). */
   meta: string;
-  /**
-   * The CTA's Button intent — a {@link ButtonVariant} NAME, never a class
-   * string. The fill resolves through `button-variants.ts`, so a warning panel
-   * gets an amber button without anyone reaching for a `className` hue
-   * override on `<Button>` (see *Do not paint over primitives*). `loading`
-   * maps to `secondary`: a state with no verdict yet must not offer a colored
-   * commit.
-   */
+  /** The CTA's Button intent — a {@link ButtonVariant} NAME, never a class string. */
   cta: ButtonVariant;
 };
 

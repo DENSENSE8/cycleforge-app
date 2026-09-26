@@ -10,10 +10,7 @@ function PhotoPageInner() {
   const packerLogId = Number(params?.id);
   const orderId = searchParams.get('orderId') || `PL-${packerLogId}`;
   const orderRowId = Number(searchParams.get('orderRowId'));
-  // Guided Review capture is the default for /m/p/{id}/photos (plan §2b). A
-  // bare open (no ?step=) still runs slip→box→confirm; `?step=box` resumes at
-  // the box step (desktop deep-link / re-entry). `?mode=spam` keeps the legacy
-  // free-capture path for operators who only need extra evidence shots.
+  // Guided Review capture is the default for /m/p/{id}/photos (plan §2b).
   const stepParam = searchParams.get('step');
   const spamMode = searchParams.get('mode') === 'spam';
   const guided = !spamMode;

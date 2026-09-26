@@ -1,22 +1,4 @@
-/**
- * Pick-face replenishment — domain module for the bin-to-bin restock workflow.
- *
- * Pairs with `replenishment_tasks` table (2026-05-22 migration) and the
- * bin_role_enum from Phase A3. Distinct from `src/lib/replenishment.ts`, which
- * tracks vendor-PO replenishment from Zoho.
- *
- * Workflow:
- *   1. `detectReplenishmentNeeds()`   — scans PICK_FACE bins where qty < min_qty,
- *                                        emits a REQUESTED task per (sku, bin).
- *   2. `claimTask({ taskId, staffId })`     — REQUESTED → IN_PROGRESS.
- *   3. `completeTask({ taskId, qtyMoved })` — IN_PROGRESS → COMPLETE; updates
- *                                              bin_contents on both bins.
- *   4. `cancelTask({ taskId, reason })`     — anytime → CANCELED.
- *
- * Detection is idempotent via the partial UNIQUE on (sku, to_bin_id) WHERE
- * status IN ('REQUESTED','IN_PROGRESS'). Re-runs only insert tasks for newly
- * low bins; existing open tasks are left untouched.
- */
+/** Pick-face replenishment — domain module for the bin-to-bin restock workflow. */
 
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
@@ -50,21 +32,9 @@ export interface DetectionResult {
 
 // ─── Detection ───────────────────────────────────────────────────────────────
 
-/**
- * Scan all PICK_FACE bins where qty is below min_qty and create REQUESTED
- * tasks for them. Source bin is the largest RESERVE/STORAGE bin holding the
- * same SKU; when none exists the task is created with `from_bin_id = NULL`
- * and the operator picks a source manually.
- *
- * Target qty = max_qty if set, else min_qty * 2 (sensible default cap).
- */
+/** Scan all PICK_FACE bins where qty is below min_qty and create REQUESTED tasks for them. */
 export async function detectReplenishmentNeeds(orgId?: OrgId): Promise<DetectionResult> {
-  // Tenant-scoped path: GUC-wrapped transaction. `replenishment_tasks` has no
-  // organization_id column (child-scoped via locations); we scope its reads and
-  // the bin_contents/locations joins through the org-bearing `locations` parent
-  // and the org-aligned bin_contents rows. The INSERT can't stamp org (no
-  // column), but it runs inside the GUC transaction and its source data is org-
-  // filtered, so an open task can only be created from this tenant's own bins.
+  // Tenant-scoped path:
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       // 1. Find low PICK_FACE positions (this org only).
@@ -231,10 +201,7 @@ export async function claimTask(input: {
   taskId: number;
   staffId: number;
 }, orgId?: OrgId): Promise<ClaimTaskResult> {
-  // Tenant-scoped path: `replenishment_tasks` has no organization_id column, so
-  // ownership is derived from its `to_bin_id → locations.organization_id` parent.
-  // A task owned by another org reads as 404 (not 403) for both the disambiguating
-  // check and the UPDATE.
+  // Tenant-scoped path:
   if (orgId) {
     const { rowCount } = await tenantQuery(
       orgId,
@@ -297,12 +264,7 @@ export interface ReleaseTaskDeps {
 
 const defaultReleaseTaskDeps: ReleaseTaskDeps = { tenantQuery };
 
-/**
- * Reversibility 5.7 — undo a claim: IN_PROGRESS → REQUESTED, clearing
- * assigned_staff_id + started_at so the task returns to the open queue.
- * 404 when the task doesn't exist (or belongs to another org); 409 when it
- * isn't IN_PROGRESS.
- */
+/** Reversibility 5.7 — undo a claim: */
 export async function releaseTask(
   input: { taskId: number },
   orgId: OrgId,
@@ -357,10 +319,7 @@ export async function completeTask(input: {
     return { ok: false, status: 409, error: 'qtyMoved must be > 0' };
   }
 
-  // Tenant-scoped path: GUC-wrapped transaction. `replenishment_tasks` ownership
-  // is derived from `to_bin_id → locations.organization_id`; bin_contents and
-  // inventory_events are tenant-owned (org predicate / stamp). A cross-org task
-  // reads as 404.
+  // Tenant-scoped path:
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       const taskQ = await client.query<{
@@ -435,10 +394,7 @@ export async function completeTask(input: {
     });
   }
 
-  // orgId is required, so the GUC-scoped path above always returns. The old
-  // un-scoped pool.connect() fallback was removed: it inserted inventory_events
-  // and bin_contents rows with a NULL organization_id (NOT NULL violation once
-  // tenancy hardened) and is unreachable now.
+  // orgId is required, so the GUC-scoped path above always returns.
   throw new Error('completeTask: orgId is required');
 }
 

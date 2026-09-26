@@ -1,13 +1,4 @@
-/**
- * `warehouse.bins` — Warehouse bins table definition (plan Phase 1, wave 3).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference.
- * Bins is the surface that proved the plan's ruling that `surface` belongs to
- * the definition, not the page: the `'framed'` mount was provably dead (its
- * only caller, LocationsWorkspace → BinsTable, always passed `'sheet'`), so the
- * override chain was removed and this definition carries the single truth.
- * Frozen pane is `select · barcode` (the bin's own scannable handle).
- */
+/** `warehouse.bins` — Warehouse bins table definition (plan Phase 1, wave 3). */
 
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

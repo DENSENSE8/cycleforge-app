@@ -1,11 +1,4 @@
-/**
- * Import-exception slot resolvers — row + fieldId → the resolved fact a slot
- * cell paints. Pure functions; no React, no hooks.
- *
- * The channel resolves through `sourcePlatformMetaFromLabel`, the same SoT the
- * compound row's platform mark reads, so a bound Source column and the mark
- * beside it can never disagree.
- */
+/** Import-exception slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';

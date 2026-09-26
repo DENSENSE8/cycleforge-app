@@ -14,19 +14,9 @@ export type PackingReportRow = {
   estimatedMinutes: number;
   trackingType: string | null;
   trackingOrScanRef: string | null;
-  /**
-   * The order's own number, or null when the pack scan never resolved to an
-   * order row. NOT interchangeable with {@link trackingOrScanRef}: the desk Id
-   * chip paints this on its first line and the tracking's last-8 on its
-   * second, so feeding the tracking into both printed one fact twice.
-   */
+  /** The order's own number, or null when the pack scan never resolved to an order row. */
   orderNumber: string | null;
-  /**
-   * The packer's `staff.id`. REQUIRED for parity with every other slot table:
-   * the shared `person` face resolves `staff.color_hex` from this id, so a null
-   * draws the default bubble for everybody — which is what made this family
-   * look like a fork of the engine rather than a member of it.
-   */
+  /** The packer's `staff.id`. */
   packerStaffId: number | null;
   /**
    * The order's marketplace / channel (`orders.account_source`). The shared Id

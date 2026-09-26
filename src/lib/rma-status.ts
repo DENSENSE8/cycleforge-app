@@ -1,10 +1,4 @@
 // Single source of truth for RMA (return authorization) status tones.
-//
-// Bordered pill (the only surface — app/warehouse/rma). Mirrors the
-// lib/<domain>-status.ts pattern. Classes preserved verbatim from the original
-// inline map; hues follow the color story (DESIGN_SYSTEM.md): AUTHORIZED=warning,
-// RECEIVED=info, DISPOSITIONED=fulfillment(purple), CLOSED=success,
-// EXPIRED/CANCELED=neutral. src/lib is in Tailwind's content globs.
 
 export type RmaStatus =
   | 'AUTHORIZED'

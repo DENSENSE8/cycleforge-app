@@ -3,27 +3,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 /**
  * `square_transactions` — tenant-scoped access.
- *
  * The table carries `organization_id NOT NULL`, FORCE row-level security, and
- * the canonical `tenant_isolation` policy bound to `app.current_org`. Every
- * query below therefore goes through the tenant helpers, which open the
- * connection with `SET LOCAL app.current_org` for the duration of the statement.
- *
- * **`orgId` is REQUIRED on every export and there is deliberately no raw-pool
- * fallback.** The app pool connects as a BYPASSRLS role today, so an unscoped
- * `pool.query` here does not merely leave the GUC unset — it steps around the
- * FORCE policy entirely and reads/writes across every tenant. A defaulted or
- * optional org on a call that decides which tenant's money a row belongs to is
- * a silent opt-out, and the sites you forget are exactly the ones the compiler
- * stays quiet about. The explicit
- * `organization_id` predicates below hold the line independently of whichever
- * role the pool happens to connect as.
- *
- * ⚠️ DEPLOY ORDER: `insertSquareTransaction` conflicts on
- * `(organization_id, square_order_id)`, which requires the composite unique
- * added by `src/lib/migrations/2026-07-29a_square_transactions_tenant_contract.sql`.
- * Apply that migration BEFORE deploying this module, or every upsert throws
- * "no unique or exclusion constraint matching the ON CONFLICT specification".
  */
 
 export interface SquareTransactionRecord {
@@ -71,10 +51,7 @@ export async function getSquareTransactions(params: {
   const values: unknown[] = [orgId];
   let paramIndex = 2;
 
-  // The columns a Sales-board row PAINTS, plus the contact facts an operator
-  // reaches a sale by. `id` is here because the board's identity slot paints
-  // the local uuid, not `square_order_id` — a search that could not find a row
-  // by the handle printed on it would be the narrowing bug wearing a WHERE.
+  // The columns a Sales-board row PAINTS, plus the contact facts an operator reaches a sale by.
   if (search) {
     conditions.push(
       `(customer_name ILIKE $${paramIndex} OR customer_phone ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR square_order_id ILIKE $${paramIndex} OR id::text ILIKE $${paramIndex} OR status ILIKE $${paramIndex} OR line_items::text ILIKE $${paramIndex})`,
@@ -128,12 +105,7 @@ export async function getSquareTransactionById(
   return result.rows[0] || null;
 }
 
-/**
- * Soft-delete a walk-in sale (set deleted_at). Square stays the system of
- * record — the row is only hidden locally; re-syncs preserve the flag because
- * the upsert's ON CONFLICT never touches deleted_at. Returns the hidden row,
- * or null if it didn't exist / was already hidden.
- */
+/** Soft-delete a walk-in sale (set deleted_at). */
 export async function softDeleteSquareTransaction(
   id: string,
   orgId: OrgId,

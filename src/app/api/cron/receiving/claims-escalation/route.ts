@@ -1,19 +1,4 @@
-/**
- * GET /api/cron/receiving/claims-escalation  (Vercel cron, daily)
- *
- * Phase 4 of docs/todo/ebay-delivered-not-unboxed-PLAN.md. Files ONE helpdesk
- * ticket per eBay purchase whose item-not-received claim window is about to close
- * while the carton sits delivered-but-never-unboxed.
- *
- * **Runs report-only until explicitly armed.** `RECEIVING_CLAIMS_ESCALATION`
- * defaults to false, so a deploy of this cron creates no tickets: it sweeps, counts
- * what it *would* file, and returns that. Arm it once a real run's numbers look
- * right. `?dryRun=1` forces report-only even when the flag is on.
- *
- * Idempotent twice over: the sweep skips any line that already has a primary
- * support ticket, and the create carries a line-scoped `idempotencyKey`, so a
- * re-run, redeploy, or manual trigger cannot file a second ticket for one carton.
- */
+/** GET /api/cron/receiving/claims-escalation (Vercel cron, daily) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

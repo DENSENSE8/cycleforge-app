@@ -1,16 +1,4 @@
-/**
- * External marketplace / listing URL builders — the SINGLE source of truth for
- * turning an order's item number (or an explicit platform + id) into an openable
- * listing link.
- *
- * Pure functions, NO React, NO `'use client'` — so both client components and
- * server code (API routes, lib helpers) import the SAME builder. The receiving
- * RETURN flow persists `receiving_lines.listing_url` from `getExternalUrlByItemNumber`
- * server-side; the shipped-details panel renders the same URL client-side.
- *
- * The client hook `@/hooks/useExternalItemUrl` re-exports every function here, so
- * existing client imports keep working unchanged.
- */
+/** External marketplace / listing URL builders — the SINGLE source of truth for turning an order's item number (or an explicit platform +… */
 
 export function getExternalUrlByItemNumber(itemNumber: string | null | undefined): string | null {
   const item = String(itemNumber || '').trim();
@@ -21,14 +9,7 @@ export function getExternalUrlByItemNumber(itemNumber: string | null | undefined
   return `https://usavshop.com/products/search?keyword=${encodeURIComponent(item)}`;
 }
 
-/**
- * Compact listing-URL face for diagnostics / non-table chrome — host + path,
- * no scheme, no `www.`.
- *
- * **Not** the compound Item subtitle face. Slot tables paint the listing
- * icon via `CompoundSubtitleCopyChip` (info when live, faint when missing).
- * Prefer that control in DataTable compound rows.
- */
+/** Compact listing-URL face for diagnostics / non-table chrome — host + path, no scheme, no `www.`. */
 export function listingChipDisplay(href: string | null | undefined): string {
   const raw = String(href ?? '').trim();
   if (!raw) return '';

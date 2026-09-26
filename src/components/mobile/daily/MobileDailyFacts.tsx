@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * The item sheet's FACT LEAF — what one checklist item is, read-only.
- *
- * Extracted from `MobileDailySheets` for the same reason `MobileDailyComposerFields`
- * was extracted from the composer: the sheet is a SHELL (state, permission,
- * commit) and these are its leaves, so a reviewer reading "what happens when I
- * press Save" is not scrolling past thirty lines of `<dt>`/`<dd>`.
- *
- * It answers, in order: what kind, whose, did I, did the shift, which day, what
- * is attached, when was it last touched — all derived from the report the API
- * already assembled and the links read, never re-counted here.
- *
- * NO `Id` ROW. The handle rides the sheet header's top-right corner (operator
- * 2026-09-15 — *"within the edit it can display the ID top right"*); a fact row
- * would print it twice on a 390px screen.
- */
+/** The item sheet's FACT LEAF — what one checklist item is, read-only. */
 
 import { TicketChip, TrackingChip } from '@/components/ui/CopyChip';
 import { formatDateTimePST } from '@/utils/date';

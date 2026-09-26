@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * SKU Exceptions — **New temp SKU**, in the evidence column where an open
- * record sits (the ledger opens with a key no record carries, and the head
- * reads `New exception`). The desk twin of the phone's barcode-less create:
- *
- *   title (required) · description · barcode (optional) · location + qty
- *
- * - `POST /api/sku-catalog/provisional` with ONE `sourceRef` per form open, so
- *   a double press joins its own placeholder instead of minting a second one.
- *   No barcode → `TMP-XXXXX-XXXXX`; a barcode is sent only when one is typed,
- *   and can be attached later from the record's Barcode fact.
- * - A location + qty is then put into that bin through the same bin verb as
- *   Add to location ({@link putSkuExceptionStock}).
- * - Done → the new record opens (`?sku=`), photo section first, so photos are
- *   added there when the owner has them.
- */
+/** SKU Exceptions — **New temp SKU**, in the evidence column where an open record sits (the ledger opens with a key no record carries, and… */
 
 import { useState, type KeyboardEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

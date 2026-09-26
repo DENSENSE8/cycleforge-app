@@ -4,19 +4,7 @@ import { hasSidebarContextPanel, isRaillessSurface } from '@/lib/sidebar-navigat
 
 /**
  * The rail-less contract, as behaviour.
- *
- * This replaces the intent of the deleted `outbound-rail-dedup.guard.test.ts`
- * without reviving its method: it calls the predicate and asserts what it
- * ANSWERS, rather than reading a component's source text to see which rail it
- * composes (AGENTS.md — pin an invariant where it can be observed).
- *
- * What it is really protecting, in BOTH directions since the 2026-08-31 split:
- *
- * - a wrong `false` reserves a 360px column beside a stage that was measured to
- *   give that width back (the regression the operator screenshotted 2026-08-30);
- * - a wrong `true` DELETES the navigator of a desk that reads `?id=` / `?skuId=`
- *   / `?open=` off its rail. That is the failure the `railless` flag exists to
- *   make impossible: wearing the page chrome no longer implies losing the rail.
+ * give that width back (the regression the operator screenshotted 2026-08-30);
  */
 
 const params = (qs = '') => new URLSearchParams(qs);
@@ -83,10 +71,7 @@ test('other scan stations keep their rail', () => {
 });
 
 test('the Inbound desk is rail-less by its own clause', () => {
-  // Inbound opted into `deskChrome` on 2026-09-14 (its two lanes are its tab
-  // row), and is STILL rail-less by its own clause — the two flags stayed
-  // separate facts precisely so opting into the chrome could not silently take
-  // or hand back a 360px column.
+  // Inbound opted into `deskChrome` on 2026-09-14 (its two lanes are its tab row), and is STILL rail-less by its own clause — the two flags…
   assert.equal(isRaillessSurface('/incoming', params()), true);
   assert.equal(isRaillessSurface('/incoming/anything', params()), true);
 });
@@ -108,11 +93,7 @@ test('no pathname is not a desk stage', () => {
 });
 
 test('wearing the desk chrome does NOT cost a desk its rail', () => {
-  // The 2026-08-31 decoupling, as behaviour. These wear the same
-  // `DeskPageChrome` as Shipping and navigate BY their context rail — the
-  // manual picker, the SKU picker and the exception list write the params
-  // their bodies read. Deriving rail-less from `deskChrome` deleted exactly
-  // this, which is why the flags are two facts and not one.
+  // The 2026-08-31 decoupling, as behaviour.
   // Inventory is the exception that *did* take `railless` (operator 2026-09-15).
   for (const path of ['/products', '/sourcing', '/operations']) {
     assert.equal(

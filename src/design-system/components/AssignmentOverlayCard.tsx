@@ -132,10 +132,7 @@ export function AssignmentOverlayCard({
       ? 'top-1/2 -translate-y-full'
       : '';
 
-  // Radix portals to <body>, so the overlay escapes any transformed / animated
-  // ancestor — this renders inside slide-over detail panels' motion.div, a
-  // stacking + containing-context trap that used to require a manual portal.
-  // `takeover` (1200) keeps it above the detail stack (160) and modal (200).
+  // Radix portals to <body>, so the overlay escapes any transformed / animated ancestor — this renders inside slide-over detail panels'…
   return (
     <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent

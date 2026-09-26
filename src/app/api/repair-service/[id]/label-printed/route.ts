@@ -13,14 +13,7 @@ function parseId(raw: string): number | null {
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : null;
 }
 
-/**
- * POST /api/repair-service/[id]/label-printed — stamp the first print of the
- * 2×1 REP-{id} internal-insurance label (printRepairLabel).
- *
- * Stamps `label_printed_at` ONLY when NULL (a reprint never moves the
- * first-print instant), so the call is idempotent by construction. Audited and
- * realtime-published so the "Needs label" queue drops the row live.
- */
+/** POST /api/repair-service/[id]/label-printed — stamp the first print of the 2×1 REP-{id} internal-insurance label (printRepairLabel). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

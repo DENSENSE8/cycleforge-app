@@ -49,17 +49,7 @@ interface ReadyQueueTableProps {
   };
 }
 
-/**
- * Row order for a column sort, keyed by SORT FACT — the structural `title`
- * plus catalog field ids (`readySortFactFor` maps a mounted column to one). A
- * `?colsort=` header key resolves through the mounted model, so rebinding a
- * slot re-points the sort with it.
- *
- * `ready.destination` sorts on what the cell actually SHOWS, not on
- * `hit.disposition` alone: a hit with no disposition renders its allocation
- * state instead ("In FBA", "Not ready"), so ordering by the raw field would
- * scatter those rows against a column the operator can see is grouped.
- */
+/** Row order for a column sort, keyed by SORT FACT — the structural `title` plus catalog field ids (`readySortFactFor` maps a mounted… */
 function compareReadyRows(
   a: AllocationHit,
   b: AllocationHit,
@@ -92,16 +82,7 @@ function compareReadyRows(
   }
 }
 
-/**
- * Recently-tested history map — the data host that mounts the Workbench
- * spreadsheet SoT (`NonlinearTableHost` + the Ready table definition) directly.
- * Flat history: no fold, no day band, no selection; owns only display order.
- *
- * The tab + search filters live in `FbaWorkspaceHeader` / `ReadyWorkspaceBody`
- * (URL state); this receives the already-filtered hits. Column sort is DURABLE
- * on `?colsort=`/`?coldir=` (NOT `?sort=` — the outbound routes already spend
- * that pair on the queue display-order vocabulary).
- */
+/** Recently-tested history map — the data host that mounts the Workbench spreadsheet SoT (`NonlinearTableHost` + the Ready table… */
 export function ReadyQueueTable({
   hits,
   isLoading,
@@ -114,10 +95,7 @@ export function ReadyQueueTable({
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — wave 1.1 hand-model kill): the fourth family on the slot
-  // engine, sheet morph. Sort keys are the mounted track keys; each resolves to
-  // its bound field's fact through `readySortFactFor`.
+  // The COLUMNS are the effective slot layout's materialization (staff ??
   const { effectiveLayout, fields } = useReadyTableLayout();
   const columns = useMemo(() => readySheetColumnsFor(effectiveLayout), [effectiveLayout]);
   const sortFactByKey = useMemo(
@@ -134,10 +112,7 @@ export function ReadyQueueTable({
     defaultDir: (key) => defaultDirForReadyColumn(columns, key),
   });
 
-  // One-shot settle re-render after first data — the virtualized LedgerGrid
-  // mounts its scroll element in the same commit the data arrives, and with no
-  // async label/selection churn in this subtree its internal re-measure can
-  // miss on first paint, leaving the body blank until the first interaction.
+  // One-shot settle re-render after first data — the virtualized LedgerGrid mounts its scroll element in the same commit the data arrives,…
   const [, settleTick] = useState(0);
   const hasRows = hits.length > 0;
   useEffect(() => {

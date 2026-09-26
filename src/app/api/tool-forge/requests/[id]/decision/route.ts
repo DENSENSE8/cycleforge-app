@@ -1,19 +1,4 @@
-/**
- * POST /api/tool-forge/requests/[id]/decision — record a human triage decision.
- *
- * The operator half of the loop. Distinct from the model's path
- * (submit_approval_decision over MCP) in exactly two ways, both deliberate:
- * the ledger row is stamped decided_by='human' with the staffer's id, and
- * 'manual_override' is available here and nowhere else — the DB requires a
- * human plus a staff id for that reason code
- * (approval_reviews_override_is_human).
- *
- * A request the deterministic gate denied as a duplicate still cannot be
- * approved through this route. That is not a policy choice made here: the row
- * carries duplicate_tool_id, and build_requests_duplicate_is_denied rejects any
- * status but 'denied' for it. recordApprovalDecision checks first only so the
- * caller gets a sentence instead of a constraint violation.
- */
+/** POST /api/tool-forge/requests/[id]/decision — record a human triage decision. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -26,12 +11,7 @@ import { APPROVAL_REASON_CODES } from '@/lib/tool-forge/constants';
 
 export const runtime = 'nodejs';
 
-/**
- * The gate's own verdicts are not submittable by hand either. A human who
- * disagrees with a duplicate denial records a 'manual_override' — which is
- * visibly an override in the ledger — rather than restating the gate's
- * conclusion as if the gate had reached it.
- */
+/** The gate's own verdicts are not submittable by hand either. */
 const HUMAN_REASON_CODES = APPROVAL_REASON_CODES.filter(
   (c) => c !== 'duplicate_tool' && c !== 'could_not_measure',
 ) as Array<Exclude<(typeof APPROVAL_REASON_CODES)[number], 'duplicate_tool' | 'could_not_measure'>>;

@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * One permission row in the role editor. Mirrors PageAccessSwitch but
- * generic over the source label (this one shows "on/off" only — the role
- * editor is the source of truth, so there's no Role/Granted/Revoked
- * distinction).
- */
+/** One permission row in the role editor. */
 
 import { requiresStepUp, type PermissionString } from '@/lib/auth/permissions-shared';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

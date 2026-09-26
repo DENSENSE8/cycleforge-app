@@ -3,15 +3,7 @@ import { searchPurchaseOrdersByTracking } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// Tracking-only PO lookup. Read-only: no local writes, no side effects.
-// PO#-based search is deferred to a future update.
-//
-// Input:  { trackingNumber: string }
-// Output:
-//   { success, matched, purchase_order: {...} | null, candidates: [...] }
-//
-// When multiple POs match the same reference/search, `purchase_order` is the
-// first hit and `candidates` carries the full list so the caller can disambiguate.
+// Tracking-only PO lookup.
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json().catch(() => ({}));

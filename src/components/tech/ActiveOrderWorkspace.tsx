@@ -60,13 +60,7 @@ interface ActiveOrderWorkspaceProps {
   activeOrder: ActiveStationOrder;
   onClose: () => void;
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
-  /**
-   * `active` — order has been scanned and is in progress (default).
-   * `preview` — user clicked an Up Next card to inspect it; nothing has been
-   *  scanned yet. Header changes to "Preview" and the notes composer mounts at
-   *  the waist with Start / Out of Stock on its trailing edge (they no longer
-   *  live on the sidebar card, and never as a floating bottom CTA).
-   */
+  /** `active` — order has been scanned and is in progress (default). */
   mode?: 'active' | 'preview';
   /**
    * Original `Order` row backing the preview. Required in preview mode so
@@ -78,19 +72,7 @@ interface ActiveOrderWorkspaceProps {
   setActiveOrder?: (next: ActiveStationOrder | null) => void;
 }
 
-/**
- * Focused work-item view rendered in the `/test` right pane while an order is
- * active. Unbox-family host: StationScanPaneHost + StationPanelRoot.
- *
- * **The centre is serial pairing and nothing else.** Units · Condition ·
- * Timeline · Listings · Locations clarify on Displays; the order's identity is
- * `StationContextBar` + `ShippingEntityContextHeader`; the packing desk is the
- * floor's location pill. Two things were deliberately taken OUT of the middle:
- * the wrap of packing-desk chips (a destination picker standing where the work
- * goes — the desks now live in the pill's menu) and the active-order scan dump
- * (a second identity block under the identity row). Neither may come back: the
- * centre of a scan station is the job in hand.
- */
+/** Focused work-item view rendered in the `/test` right pane while an order is active. */
 export function ActiveOrderWorkspace({
   activeOrder,
   onClose,
@@ -421,14 +403,7 @@ export function ActiveOrderWorkspace({
               reserveScrollClearance={isPreview && Boolean(previewOrder)}
               reserveIdentityClearance={false}
               bodyGap="none"
-              // No footer band. The pack-desk picker left the centre 2026-08-20:
-              // choosing a bench is a DESTINATION, and a destination sitting in
-              // the work surface stops the operator's eye before they have done
-              // the job. Desks now live only in Displays → Locations
-              // (`PackLocationsLeaf`), the same place every other station's
-              // placement lives.
-              // Advisories (OOS · sub pending) live in StationMoreDetails — never
-              // a centre entityContext strip (Unbox centre = ops-flow only).
+              // No footer band.
               tabs={
                 <div className={STATION_SCAN_WELL_CLASS}>
                   <ShippingScanWorkspace

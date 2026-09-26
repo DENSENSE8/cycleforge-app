@@ -1,17 +1,4 @@
-/**
- * PATCH  /api/kiosk/carts/[id] — save the cart this tablet holds:
- *        `{ snapshot, expectedVersion }` → `{ version }`.
- * DELETE /api/kiosk/carts/[id] — Clear cart: the basket is abandoned, the row goes.
- *
- * Both are holder-only. 409 `HELD_ELSEWHERE` = another tablet opened the cart
- * since; the caller lets go of it. 409 `STALE_VERSION` = this tablet's own copy
- * is behind (a second window on the same device). 404 = gone or submitted.
- *
- * Callers: `useKioskCartSync`.
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_carts` via `saveKioskCart` / `deleteKioskCart`.
- * User 2026-09-24: "IDed for multiple devices".
- */
+/** PATCH /api/kiosk/carts/[id] — save the cart this tablet holds: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { deleteKioskCart, saveKioskCart } from '@/lib/kiosk/kiosk-carts.server';

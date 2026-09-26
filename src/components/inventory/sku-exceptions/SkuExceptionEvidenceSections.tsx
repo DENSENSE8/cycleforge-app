@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * SKU exception evidence — Product (title + description), the Barcode fact
- * (attach one to a placeholder created without) and Locations & count. Every
- * write is the same endpoint the phone uses, then `onChanged`
- * (→ `invalidateSkuExceptions`), so the phone and this desk repaint each other.
- */
+/** SKU exception evidence — Product (title + description), the Barcode fact (attach one to a placeholder created without) and Locations &… */
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -159,12 +154,7 @@ interface BarcodeConflict {
   conflictSku: string | null;
 }
 
-/**
- * The Barcode fact's value. A placeholder created without one (`barcode === ''`)
- * reads **No barcode** with an attach field: `PATCH { barcode }` attaches it
- * once, and a barcode another record already owns comes back 409 with the
- * owner (`conflictSku`) — linked, so the operator opens THAT record instead.
- */
+/** The Barcode fact's value. */
 export function SkuExceptionBarcodeValue({
   fieldId,
   item,
@@ -306,14 +296,7 @@ export async function putSkuExceptionStock(args: {
   );
 }
 
-/**
- * One row per location holding the placeholder — − / signed amount / + and
- * Apply — plus Add to location for a bin that holds none yet. Every write is
- * the phone's own bin verb (`PATCH /api/locations/[barcode]` put / take via
- * `stockAdjustRequest`), so the ledger row, the `sku_stock` recompute and the
- * `STOCK_DELTA_*` publish are identical to a count made on the floor. A take
- * can never exceed what the bin holds.
- */
+/** One row per location holding the placeholder — − / signed amount / + and Apply — plus Add to location for a bin that holds none yet. */
 export function SkuExceptionLocationsSection({
   fieldId,
   item,

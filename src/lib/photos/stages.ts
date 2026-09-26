@@ -1,27 +1,4 @@
-/**
- * Photo evidence stages — the five-stage insurance spine across stations,
- * and the (entity_type × photo_type) write matrix enforced at the upload /
- * attach waist (`./service.ts`).
- *
- * Composes the receiving stage SoT (`src/lib/receiving/photo-intent.ts`) with
- * the unit-scoped testing / packing types (`./types.ts`). Pure + client-safe:
- * no DB, no server-only imports — journeys, library chrome, and capture UIs
- * all read stage vocabulary from here.
- *
- * Matrix (docs/todo/photo-evidence-chain-INDEX.md):
- *
- *   RECEIVING       → receiving_package | receiving_unbox_carton | receiving (legacy)
- *   RECEIVING_LINE  → receiving_item
- *   SERIAL_UNIT     → testing_photo | packer_photo | prepack
- *   PACKER_LOG      → packer_photo | box_label
- *   STAFF           → staff_avatar          (identity chrome, not evidence)
- *
- * Every other entity (SKU, SKU_STOCK, BIN_ADJUSTMENT, SHARE_PACK,
- * ZENDESK_TICKET) is deliberately unconstrained — those surfaces carry their
- * own vocabularies, including org-defined custom image types
- * (`photo_image_types`), which have no upload surface on the constrained
- * entities.
- */
+/** Photo evidence stages — the five-stage insurance spine across stations, and the (entity_type × photo_type) write matrix enforced at the… */
 
 import {
   RECEIVING_CARTON_PHOTO_TYPES,
@@ -68,10 +45,7 @@ const WRITE_MATRIX: Partial<Record<PhotoEntityType, readonly string[]>> = {
   RECEIVING: RECEIVING_CARTON_PHOTO_TYPES,
   RECEIVING_LINE: RECEIVING_LINE_PHOTO_TYPES,
   SERIAL_UNIT: [UNIT_TESTING_PHOTO_TYPE, UNIT_PACKING_PHOTO_TYPE, UNIT_PREPACK_PHOTO_TYPE],
-  // pack_slip / pack_box are the guided Packer Review two-step capture
-  // (`MobilePackerPhotoStudio`). They land on PACKER_LOG exactly like
-  // packer_photo and are packing-stage evidence — omitting them here would
-  // 400 every guided pack capture at the waist.
+  // pack_slip / pack_box are the guided Packer Review two-step capture (`MobilePackerPhotoStudio`).
   PACKER_LOG: [
     UNIT_PACKING_PHOTO_TYPE,
     PACKER_BOX_LABEL_PHOTO_TYPE,

@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * The support-ticket number the repair paperwork previews on the review step.
- *
- * Fetched ONCE per mount, deliberately not polled and not revalidated: it is a
- * projection whose whole job is to give the customer a number to look at while
- * they sign (`src/lib/support/next-ticket-preview.ts`), and a number that
- * changed under a signature would be worse than one that is merely stale.
- *
- * `null` is the normal, silent outcome — no helpdesk connected, an offline
- * tablet, a provider hiccup. The paperwork then renders exactly the sheet it
- * rendered before this existed, because `formatRepairPaperTicketNumber('')`
- * already collapses to no heading.
- *
- * Callers: `KioskRepairPane` (review step), `KioskPaperworkPanel`.
- * Affected API: GET `/api/kiosk/repair/next-ticket`. Schemas: none.
- */
+/** The support-ticket number the repair paperwork previews on the review step. */
 
 import { useEffect, useState } from 'react';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';

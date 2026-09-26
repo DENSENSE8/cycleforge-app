@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Prefill Zendesk ticket, listing URL, and serial from the line's Zoho PO
- * (notes + matching line-item description). Extracted from LineEditPanel.
- *
- * Precedence is unchanged: a per-browser scratch value or an existing DB value
- * always wins over the Zoho-parsed one, and a local serial (from serial_units)
- * wins over the PO description. So this only fills genuinely-empty fields.
- */
+/** Prefill Zendesk ticket, listing URL, and serial from the line's Zoho PO (notes + matching line-item description). */
 
 import { useEffect } from 'react';
 import { readReceivingLineDetailsScratch } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -46,10 +39,7 @@ export function useZohoLinePrefill({
       if (snLocal) setSerialInput(snLocal);
     }
 
-    // Zendesk + listing come from the PO *header* notes, which the local mirror
-    // (header-only) doesn't carry — so they're the only reason to reach Zoho.
-    // Skip the round-trip entirely when both are already satisfied locally
-    // (DB column or per-browser scratch); only fetch to fill a genuine blank.
+    // Zendesk + listing come from the PO *header* notes, which the local mirror (header-only) doesn't carry — so they're the only reason to…
     const zendeskSatisfied = !!(scratch.zendesk.trim() || (row.zendesk_ticket || '').trim());
     const listingSatisfied = !!((row.receiving_listing_url || '').trim() || scratch.listing.trim());
     if (zendeskSatisfied && listingSatisfied) return;
@@ -66,10 +56,7 @@ export function useZohoLinePrefill({
         const po = data.purchaseorder as { notes?: string | null };
         const { zendesk: zPo, listing: lPo } = parseZendeskListingFromPoNotes(po.notes ?? '');
         if (!zendeskSatisfied && zPo) setZendesk(zPo);
-        // Listing URL: DB column (`receiving.listing_url`) is the source of
-        // truth — never overwrite an existing DB value or a per-browser
-        // scratch override. When both are empty and Zoho has one, set it
-        // locally; the debounced PATCH (useReceivingPackageSync) persists it.
+        // Listing URL: DB column (`receiving.listing_url`) is the source of truth — never overwrite an existing DB value or a per-browser scratch…
         if (!listingSatisfied && lPo) setListingLink(lPo);
       } catch {
         /* Zoho unavailable — fields stay empty */

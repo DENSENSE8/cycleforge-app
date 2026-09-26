@@ -11,37 +11,7 @@ const THUMB_PREFETCH_MARGIN = '400px 0px';
 /** Decoded thumbnails stay warm when list/grid view trees remount. */
 const loadedPhotoUrls = new Set<string>();
 
-/**
- * The single image primitive for every photo-library tile.
- *
- * Thumbnails use stable same-origin content URLs. Unknown images defer their
- * request until the tile is near the viewport; previously loaded images render
- * immediately when list/grid view trees remount.
- *
- * ## It does not animate (2026-08-09)
- *
- * This was a `motion.div` carrying a `layoutId` hero morph paired with
- * `PhotoViewerModal`'s main image, plus a 500ms opacity fade-in and a pulsing
- * gradient placeholder. All three are gone, and the file imports no motion at
- * all. Three reasons, in the order they matter:
- *
- *  1. **`layoutId` for list → detail is banned by house law**
- *     (`display/motion-crossfade.md`): opening the viewer is a *replace*, not a
- *     *move*, and shared-layout there produces a morphing artifact rather than
- *     continuity. The tile side was the only thing keeping the pair alive.
- *  2. **It leaked geometry into unrelated surfaces.** The morph's projected box
- *     overshot the tile's own grid cell, so the file had to raise `z-index` for
- *     the duration, `PhotoCard` had to refuse `overflow-hidden`, and the page's
- *     sheet plane had to refuse `TABLE_SURFACE_SHEET_CLASS` — three unrelated
- *     files carrying a constraint for one animation.
- *  3. **A 500ms fade on a contact sheet is 48 fades.** At library density the
- *     stagger reads as the page failing to settle, which is the opposite of what
- *     a fade is for.
- *
- * Loading is now an honest static placeholder. The other four consumers
- * (pickers, folder covers, claim attachments) never passed `heroId` and are
- * unaffected. SoT:.
- */
+/** The single image primitive for every photo-library tile. */
 export function PhotoThumb({
   src,
   alt,
@@ -116,10 +86,7 @@ export function PhotoThumb({
         className,
       )}
     >
-      {/* Static placeholder — the tile's own `bg-surface-sunken` at the real
-          geometry. A pulsing gradient here was 48 things breathing at once on a
-          contact sheet; reserving the box is the honest half of that signal and
-          the only half the operator reads. */}
+      {/* Static placeholder — the tile's own `bg-surface-sunken` at the real geometry. */}
       {status === 'loading' ? (
         <div aria-hidden="true" className="absolute inset-0 bg-surface-sunken" />
       ) : null}

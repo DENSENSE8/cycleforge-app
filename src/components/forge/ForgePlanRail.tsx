@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Plans Live right-rail occupant — live MDX HTML Monitor + collapsed run history.
- * Registers on the house {@link DetailStackRailRegistrar} (push, non-modal).
- *
- * **ONE band (2026-08-21).** The rail used to stack a `DeskRailChromeRow` over a
- * `PaneHeaderLabel`, so the top of the panel read as two rows — `[⤢][✕]` on one
- * and `Master plan / Live preview` on the next. It now composes the house
- * {@link DeskInspectorIndexShell} band in `stance='standalone'`: this rail opens
- * from the console's own toggle, never off an index, so it owes no Back — and
- * the eyebrow's second line is gone, its identity being the console around it.
- * The dismiss is the host's singleton `✕`, whose cell the band reserves.
- */
+/** Plans Live right-rail occupant — live MDX HTML Monitor + collapsed run history. */
 
 import { useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';

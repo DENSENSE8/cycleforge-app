@@ -1,17 +1,4 @@
-/**
- * Arrival (triage) command-barcode traffic cop.
- *
- * Physical CMD-* stickers arm a session mode on the Arrival scan bar.
- * Classification is pure + mode-aware: commands always win; in `batch_sort`,
- * a confidently decoded shelf/bin barcode is a location commit; everything
- * else is treated as tracking (or unknown) for the caller to resolve.
- *
- * Command vocabulary SoT: {@link parseStationCommand} /
- * `src/lib/stations/station-command-codes.ts`. Location detection deliberately
- * rejects the letter-fallback `routeScan` bin guess (`TBA…`) so Amazon
- * trackings are never mistaken for shelves. Optional `LOC-` prefix strips to
- * the same unwrap path — not a parallel encoding.
- */
+/** Arrival (triage) command-barcode traffic cop. */
 
 import { routeScan } from '@/lib/barcode-routing';
 import { LOCATIONS_BAY_CODE_RE } from '@/lib/inventory/locations-path';

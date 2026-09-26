@@ -1,18 +1,4 @@
-/**
- * GET  /api/tool-forge/requests — this org's build requests, newest first.
- * POST /api/tool-forge/requests — submit a request for a new capability.
- *
- * The POST is where a staff ask becomes a row. It returns the triage outcome
- * inline, so a caller gets its denial (with the duplicate's id and path) in the
- * same round trip rather than having to poll for it — but the row exists from
- * the first write either way, which is what makes a pending state survive a
- * reload or a closed panel.
- *
- * The org is ctx.organizationId. There is no body field for it and no query
- * parameter for it; see src/lib/tool-forge/gateway-tools.ts for why the
- * documented `tenant_id` argument is accepted and ignored on the model-facing
- * side.
- */
+/** GET /api/tool-forge/requests — this org's build requests, newest first. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -108,11 +94,7 @@ export const POST = withAuth(
 
     await recordAudit(pool, ctx, request, {
       source: 'tool-forge',
-      // Neither constant carries a tool-forge member yet, and both fields are
-      // typed `AuditAction | string` / `AuditEntity | string` for exactly this
-      // case. Promoting them into the enums is a separate change once the
-      // surface has settled — inventing members for a pipeline still being
-      // built is how a vocabulary ends up with dead values.
+      // Neither constant carries a tool-forge member yet, and both fields are typed `AuditAction | string` / `AuditEntity | string` for exactly…
       action: 'tool_forge.request_submitted',
       entityType: 'build_request',
       entityId: result.request.id,

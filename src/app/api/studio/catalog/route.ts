@@ -6,18 +6,7 @@ import { workflowTemplates } from '@/lib/drizzle/schema';
 import type { TemplateGraph } from '@/lib/studio/templates';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
 
-/**
- * GET /api/studio/catalog
- *
- * The CURATED community catalog (Template Platform Phase 4): non-system templates
- * a curator has approved for public sharing (review_status='approved' AND
- * visibility='public'). Distinct from GET /api/studio/templates, which lists the
- * SYSTEM library (is_system = TRUE) — this surfaces org-submitted, curator-blessed
- * blueprints so a tenant can clone a peer's proven SOP.
- *
- * studio.view to browse (cloning is studio.manage, via the import routes). These
- * rows hold no tenant data beyond the graph the submitter chose to publish.
- */
+/** GET /api/studio/catalog */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

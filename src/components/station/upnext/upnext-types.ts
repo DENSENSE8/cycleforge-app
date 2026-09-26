@@ -3,12 +3,7 @@
  * (Legacy UpNext queue item types were removed with the orphan UpNext tree.)
  */
 
-/**
- * Open FBA plan row for the /fba workspace sidebar.
- * - `id` — internal `fba_shipments.id` (numeric row id; URL `?plan=` uses this).
- * - `shipment_ref` — human **plan id** (e.g. `FBA-03/24/26`), not Amazon’s FBA shipment id.
- * Not used on station testing routes — pair with {@link FbaShipmentCard}.
- */
+/** Open FBA plan row for the /fba workspace sidebar. */
 export interface FbaPlanQueueItem {
   /** Internal DB id (`fba_shipments.id`) — distinct from {@link shipment_ref}. */
   id: number;

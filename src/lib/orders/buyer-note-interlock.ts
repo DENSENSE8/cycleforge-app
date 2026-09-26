@@ -1,36 +1,6 @@
 /**
+ * Buyer-note interlock (owner 2026-09-24):
  * Buyer-note interlock (owner 2026-09-24): a marketplace buyer note — "ship
- * white instead of black" — is an ACTIVE fulfillment exception, not metadata.
- * An order that carries one cannot start packing or buy a label until a staff
- * member has read it and acknowledged it.
- *
- * ## What counts as a buyer note
- *
- * `orders.buyer_note` (migration 2026-07-03p) — the raw marketplace checkout
- * note, mirrored by the channel sync. NOT `orders.notes`, which is the latest
- * face of the internal operator trail (`order_notes`); an operator remark like
- * "box slightly creased" must never hold a pack.
- *
- * ## Where the ack lives — no new table
- *
- * An acknowledgment is an `ops_events` row (`entity_type='order'`,
- * `event_type='buyer_note_acknowledged'`, actor + time, `payload.note_sha`).
- * The hold compares against the sha of the CURRENT note, so a note the sync
- * edits after the ack holds the pack again — the operator acknowledged the old
- * words, not the new ones. `client_event_id` makes a double tap a no-op while
- * a second staffer's ack still records (who, when) of their own.
- *
- * The sha is computed in SQL on both sides (`sha256(convert_to(btrim(note)))`)
- * so the writer and the gate can never disagree on the hash.
- *
- * Gates: `POST /api/packing-logs/draft` (phone pack), `POST /api/packing-logs`
- * (desk pack scan), `POST /api/pack/ship`, `POST /api/shipping/order-labels/purchase`.
- * Each returns {@link buyerNoteHoldBody} with HTTP 409; the clients read
- * {@link BUYER_NOTE_HOLD_CODE}, show the note, and acknowledge through
- * `POST /api/orders/[id]/buyer-note/ack` before retrying.
- *
- * Pure of server imports (types only) so the client helper can share the code
- * constant without pulling the pool into a bundle.
  */
 
 /** The machine code a held route returns; clients branch on it, never on text. */

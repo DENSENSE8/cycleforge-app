@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Incoming returns CSV/TSV staging — desk-centre triage grid.
- *
- * Ready / Action-required rows from {@link INBOUND_RETURNS_IMPORT_DESCRIPTOR}.
- * Confirm writes through `POST /api/receiving/inbound/import-csv`, then lands
- * Pipeline on `?inkind=return`.
- */
+/** Incoming returns CSV/TSV staging — desk-centre triage grid. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

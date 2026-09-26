@@ -1,25 +1,4 @@
-/**
- * Client-safe SoT for the **directed putaway target** — "put this product
- * HERE" — shown at the top of the station Locations leaf.
- *
- * The DB fetch lives in {@link ./suggested-putaway-location-server} (route-only).
- * Everything here is pure so the ranking rule and the operator-facing reason
- * are unit-testable with zero network.
- *
- * ## Why a basis is part of the type, not a nicety
- *
- * A directive with no reason is one wrong answer away from being ignored
- * forever. The leaf must be able to say *why* it is pointing at a bin, so the
- * basis and its counts travel WITH the suggestion rather than being inferred
- * at the paint site. `sku_history` is a real claim ("the last three of these
- * went here"); `recent_stage` is a much weaker one ("this is where the floor
- * put the last carton") and must never be dressed up as the stronger one.
- *
- * There is deliberately no third basis. A declared home bin per SKU would be
- * the strongest source, and it is a real new column + an editor to maintain
- * it — see `docs/todo/arrival-product-location-HANDOFF.md` → *Requirement B*.
- * When it lands it is a NEW basis value here, never a redefinition of these.
- */
+/** Client-safe SoT for the **directed putaway target** — "put this product HERE" — shown at the top of the station Locations leaf. */
 
 /** Where a suggestion came from. Strongest first. */
 export type PutawaySuggestionBasis = 'sku_history' | 'recent_stage';
@@ -56,14 +35,7 @@ export interface SkuHistoryRow {
   locationId: number;
 }
 
-/**
- * Rank a NEWEST-FIRST list of prior stages of one SKU.
- *
- * Most-frequent wins, ties broken by most recent — a bin that took 4 of the
- * last 10 is a better answer than the one that took the last 1, but between
- * two bins that each took 3 the fresher one is what the floor looks like now.
- * Returns `null` for an empty list; never guesses.
- */
+/** Rank a NEWEST-FIRST list of prior stages of one SKU. */
 export function pickSkuHistoryWinner(
   rows: readonly SkuHistoryRow[],
 ): { locationId: number; hits: number; sampled: number } | null {

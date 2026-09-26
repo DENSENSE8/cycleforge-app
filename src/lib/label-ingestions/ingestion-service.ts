@@ -109,11 +109,7 @@ async function updateQuarantine(deps: LabelIngestionDependencies, organizationId
   return publicRow(result.rows[0]!);
 }
 
-// ─── ShipStation API source ─────────────────────────────────────────────────
-// Historical labels pulled from ShipStation (sources/shipstation-history.ts).
-// The evidence comes from ShipStation's own shipment record (order number,
-// tracking, carrier), not from PDF text, so there is no parse step: the
-// adapter resolves the order and this ledger stages + records the result.
+// ─── ShipStation API source ───────────────────────────────────────────────── Historical labels pulled from ShipStation…
 
 /** A deterministic client event per ShipStation shipment — the same shipment
  *  always claims the same ledger identity, whichever run gets there first. */
@@ -142,14 +138,7 @@ export type ShipStationIngestionOutcome = 'CREATED' | 'REPLAYED' | 'DUPLICATE_PD
 
 export interface ShipStationIngestionRecord { ingestion: PublicLabelIngestion; outcome: ShipStationIngestionOutcome }
 
-/**
- * Record one ShipStation label. Idempotent on the shipment id AND the PDF
- * sha256 (ShipStation re-renders the PDF per download, so the shipment id is
- * the key that makes a re-run a no-op). The PDF is staged in the ledger's
- * object store BEFORE the row exists, so the row is born settled (MATCHED or
- * QUARANTINED) and a crashed run never leaves an unstaged row behind — the
- * content-addressed object is simply overwritten by the retry.
- */
+/** Record one ShipStation label. */
 export async function recordShipStationLabelIngestion(input: ShipStationLabelIngestionInput, overrides: Partial<LabelIngestionDependencies> = {}): Promise<ShipStationIngestionRecord> {
   const deps = { ...dependencies, ...overrides };
   if (!input.bytes.length || input.bytes.length > MAX_LABEL_PDF_BYTES) throw new LabelIngestionServiceError('PAYLOAD_TOO_LARGE', 'PDF exceeds the permitted size.');
@@ -204,14 +193,7 @@ export async function resolveQuarantinedShipStationIngestion(organizationId: Org
   return promoted ? publicRow(promoted) : null;
 }
 
-/**
- * Finalize a MATCHED ShipStation row as APPLIED once the adapter has attached
- * its tracking (`shipmentId`, the shipping_tracking_numbers row) and stored its
- * PDF (`documentId`). Unlike {@link applyStoredLabelIngestion} this moves no
- * serial units: a historical label was printed and shipped outside this
- * ledger, so the physical transition already happened (or never will here).
- * Replays of an APPLIED row are a no-op.
- */
+/** Finalize a MATCHED ShipStation row as APPLIED once the adapter has attached its tracking (`shipmentId`, the shipping_tracking_numbers… */
 export async function markShipStationIngestionApplied(organizationId: OrgId, input: { ingestionId: number; expectedRowVersion: number; orderIds: readonly number[]; shipmentId: number; documentId: number }, overrides: Partial<LabelIngestionDependencies> = {}): Promise<PublicLabelIngestion> {
   const deps = { ...dependencies, ...overrides };
   if (input.orderIds.length === 0) throw new LabelIngestionServiceError('INGESTION_NOT_ACTIONABLE', 'An applied label needs its order rows.');

@@ -2,20 +2,7 @@
 
 /**
  * The TASK half of the Daily agenda composer, as {@link TriageSectionSpec}s.
- *
- * ## Why the sections are a hook and not a component
- *
- * The agenda composer is ONE stage with a type switch at the top: pick
- * *Daily checklist* and the stage shows the checklist fields, pick *Task* and
- * it shows these three. A component would bring its own host, its own rail and
- * its own header, and the stage would nest two chromes. Handing back section
- * specs lets the stage stay one host with one CTA — which is the whole point
  * of consolidating the display (operator 2026-09-22).
- *
- * Resolving a record, loading the roster, POSTing the task and reporting a
- * degraded amplifier are {@link useThrowTask} — the same sequence the
- * chord-summoned `ThrowTaskPanel` runs. This module chooses where the fields
- * sit and nothing else.
  */
 
 import { useCallback, useEffect, useId, useRef } from 'react';
@@ -56,12 +43,7 @@ export function useTaskComposerSections({
   onCreated: (taskId: number | null, mine: boolean) => void;
   /** False while the checklist half is showing — do not steal the caret. */
   active: boolean;
-  /**
-   * Which record the composer is anchoring to. `ticket` asks for a helpdesk
-   * number instead of a scan; everything below it — assignee, deadline,
-   * priority, note — is the same handoff either way, which is why the type
-   * switch mounts ONE set of sections rather than a second form.
-   */
+  /** Which record the composer is anchoring to. */
   mode?: ThrowTaskMode;
 }): TaskComposerSections {
   const fieldId = useId();

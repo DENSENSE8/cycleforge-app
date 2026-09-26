@@ -24,11 +24,7 @@ export async function GET(
     }
     const limitParam = Number(req.nextUrl.searchParams.get('limit'));
     const limit = Number.isFinite(limitParam) && limitParam > 0 ? Math.floor(limitParam) : 200;
-    // Tenant isolation: thread the caller's org so the backbone scopes every
-    // table (audit_logs / inventory_events / locations) to this tenant. Bin ids
-    // are sequential ints; without this an attacker enumerates other tenants'
-    // bins. A bin owned by another org yields an empty timeline (org-ownership
-    // gate is implicit in the AND organization_id = $n predicates).
+    // Tenant isolation:
     const events = await getBinAuditHistory(binId, { limit }, gate.ctx.organizationId);
     return NextResponse.json({ success: true, bin_id: binId, events });
   } catch (err: any) {

@@ -1,13 +1,4 @@
-/**
- * The favorites KEY, as behaviour.
- *
- * Two surfaces answer "is this tile favorited": the picker, from a set of keys,
- * and SQL, from `favorite_skus.sku_normalized`. A SKU typed with a space, a
- * dash or a lowercase suffix is the SAME favorite — get that wrong and a star
- * lands on a tile whose twin in the grid stays hollow.
- *
- * Run: npx tsx --test src/lib/favorites/favorite-sku-key.test.ts
- */
+/** The favorites KEY, as behaviour. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -29,10 +29,7 @@ export function InventoryShell() {
         );
     }
 
-    // Triage/Pulse are full-pane workspaces driven by the sidebar's `?open=`
-    // selection (an exception id / serial-unit id). They MUST be handled before
-    // the ledger `hasOpenDetail` overlay below — otherwise any `?open=` would be
-    // swallowed by the ledger detail overlay and these would never render.
+    // Triage/Pulse are full-pane workspaces driven by the sidebar's `?open=` selection (an exception id / serial-unit id).
     if (mode === 'triage') {
         return (
             <div className="flex h-full min-h-0 flex-col bg-surface-card">
@@ -65,21 +62,7 @@ export function InventoryShell() {
     }
 
     return (
-        /*
-         * No title row and no measure of its own (2026-08-31).
-         *
-         * This drew a hand-rolled `PageHeader` reading "Inventory" at
-         * `max-w-5xl` — a second page-header primitive on a second measure,
-         * one level below the frame that already prints the page's name. The
-         * desk chrome (`@/design-system/components/DeskPageChrome`, mounted by
-         * `src/app/inventory/layout.tsx`) owns the title and the stage now, so
-         * what is left here is the body.
-         *
-         * "Back to recent activity" survives as a row above the list rather
-         * than a header slot: it is a state reset for THIS view, not a
-         * page-level action, and the header's right slot is the desk's primary
-         * CTA.
-         */
+        /* No title row and no measure of its own (2026-08-31). */
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
             {hasAnyTarget ? (
                 <div className="flex shrink-0 items-center justify-end px-2 py-1">

@@ -1,14 +1,4 @@
-/**
- * `inventory.units` — Inventory › Units browse table definition.
- *
- * The units collection for the `/inventory` ops-queue golden (five-row Sheets),
- * sibling of `warehouse.bins`. Columns + capabilities are the family SoT by
- * reference; the definition carries the single truth for the shell recipe
- * (`surface: 'sheet'`), the prefs bucket (`tableId`) and the accessible name.
- *
- * Frozen pane = `serial` (the unit's own scannable handle). Browse-only — no
- * select gutter until bulk unit actions land.
- */
+/** `inventory.units` — Inventory › Units browse table definition. */
 
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
@@ -33,10 +23,7 @@ export const UNITS_TABLE_BINDING: TableSurfaceBinding<UnitsOverviewRow, UnitsGri
   definition: UNITS_TABLE_DEFINITION,
   columns: UNITS_SHEET_COLUMNS,
   makeDescriptor: makeUnitsGridDescriptor,
-  // The push inspector, keyed per RECORD (`?open=unit:<ref>`). Keyed by record
-  // because a unit browse has no queue walk — an operator opens one unit, reads
-  // it, and closes it, so the AnimatePresence re-key that would flash on every
-  // prev/next step never happens here.
+  // The push inspector, keyed per RECORD (`?open=unit:<ref>`).
   recordPlane: {
     kind: 'inspector',
     occupantId: 'detail:unit',

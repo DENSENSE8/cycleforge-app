@@ -180,12 +180,7 @@ export function useAiChat(opts: UseAiChatOptions = {}) {
     void run(text, sessionId);
   }, [run, sessionId, status]);
 
-  /**
-   * Re-send the last user message through the normal send path. Works on an
-   * errored answer, the last completed answer, or mid-stream (aborts the
-   * in-flight run first). The trailing assistant message is dropped and
-   * replaced by the fresh run.
-   */
+  /** Re-send the last user message through the normal send path. */
   const retry = useCallback(() => {
     const lastUser = lastUserTextRef.current;
     if (!lastUser) return;

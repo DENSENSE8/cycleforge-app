@@ -1,16 +1,4 @@
-/**
- * Helpdesk capability resolution — `getHelpdeskProvider(orgId)` is how product
- * code obtains a ticket backend ("Integrations as SoT" program, Wave B2).
- *
- * SERVER-ONLY (reads the vault via capability-connections). Routes call
- * `getHelpdeskProvider(ctx.organizationId)` and map a null / not-configured
- * result to their existing 503 with capability-first copy — never a
- * hardcoded vendor check in product code.
- *
- * Connection semantics come from src/lib/integrations/capability-connections:
- * a vault-connected connector exposing the 'helpdesk' capability, or (dogfood
- * transitional) the USAV env-credential bridge — so USAV never soft-disables.
- */
+/** Helpdesk capability resolution — `getHelpdeskProvider(orgId)` is how product code obtains a ticket backend ("Integrations as SoT"… */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { connectedProviderKey } from '@/lib/integrations/capability-connections';
 import { capabilityNoun, capabilityTitle, integrationsHubHref } from '@/lib/integrations/capability-labels';
@@ -39,10 +27,7 @@ export class HelpdeskNotConnectedError extends Error {
 export async function getHelpdeskProvider(orgId: OrgId): Promise<HelpdeskProvider | null> {
   const key = await connectedProviderKey(orgId, 'helpdesk');
   if (key == null) return null;
-  // Zendesk is the only helpdesk adapter today. The connector registry can't
-  // currently name another helpdesk-capable provider, but guard anyway so a
-  // future connector without an adapter degrades to "not connected" instead
-  // of a runtime crash.
+  // Zendesk is the only helpdesk adapter today.
   if (key !== 'zendesk') return null;
   return createZendeskHelpdeskProvider(orgId);
 }

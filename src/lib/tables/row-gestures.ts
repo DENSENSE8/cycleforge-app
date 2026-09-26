@@ -1,35 +1,4 @@
-/**
- * The row model's gesture table — as DATA, so the code and the docs cannot
- * disagree about what a row does.
- *
- * `docs/todo/seller-table-program-PLAN.md` §04 opens with the instruction:
- * "Build the gesture table **first** and make the code match it." §11 then adds
- * the obligation this file discharges: "The gesture table gains a keyboard
- * column."
- *
- * ## Why data and not a markdown table
- *
- * The plan's own table is prose, and prose is how the repo ended up asserting
- * things that were not true — a docblock claiming three ruled surfaces when
- * there were two, another citing a `useIsColumnHidden` that did not exist. A
- * gesture list has the same failure mode and a worse consequence, because
- * "what does Enter do here" is answered by whichever of 53 window listeners
- * mounted last.
- *
- * So the table is declared once, here, and:
- *   * {@link useRowGestures} binds from it — a verb with no entry cannot be
- *     bound, and an entry with no handler is a compile error;
- *   * `row-gestures.test.ts` asserts the LAW, not the list: every verb the
- *     pointer can reach, the keyboard can reach.
- *
- * ## The law the test enforces
- *
- * > Every verb the pointer can reach, the keyboard can reach.
- *
- * That is the plan's §11 heading, and it is the one property a gesture table
- * can actually be checked against. A `pointer` with no `keys` is a mouse-only
- * verb; the test fails on it by name.
- */
+/** The row model's gesture table — as DATA, so the code and the docs cannot disagree about what a row does. */
 
 /** The precedence layer a binding belongs to — see `table-key-layer.ts`. */
 export type RowGestureLayer = 'table' | 'form';
@@ -46,13 +15,7 @@ export interface RowGesture {
    * one row"); the reverse is not, and the guard says so.
    */
   pointer: string | null;
-  /**
-   * The keys that reach it. **Never empty** while `pointer` is non-null.
-   *
-   * Written the way the operator would say them, and matched
-   * case-insensitively against `KeyboardEvent.key` plus the modifier prefixes
-   * `shift+` / `mod+` (⌘ on macOS, Ctrl elsewhere).
-   */
+  /** The keys that reach it. */
   keys: readonly string[];
   layer: RowGestureLayer;
   /**
@@ -74,14 +37,7 @@ export type RowGestureId =
   | 'open-record'
   | 'dismiss';
 
-/**
- * The table, in the plan's order.
- *
- * Right-click is deliberately ABSENT rather than present-and-disabled. The plan
- * reads "Reserved. No per-row menu without a ruling", and an entry here would
- * be a binding — the honest way to record a reservation is a comment, not a row
- * that resolves to nothing.
- */
+/** The table, in the plan's order. */
 export const ROW_GESTURES: readonly RowGesture[] = [
   {
     id: 'cursor-next',

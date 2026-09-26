@@ -41,19 +41,7 @@ async function fetchWork(pk: number, signal?: AbortSignal): Promise<OutboundWork
   return body.data.items[0] ?? null;
 }
 
-/**
- * The order's two server reads, shared by the hub and every door screen
- * through `qk.orders.hub(…)`, so moving hub ↔ door is a cache hit:
- *   - `record`: `/api/orders/lookup` (customer, ship-to, serials, activity)
- *   - `work`:   `/api/v1/outbound/work?id=` (stage, label, acknowledgment, stock)
- *
- * `back` is the job the record was opened from (`?back=`, `mobileJobReturn`).
- * `link()` carries it — and `?by=id` — onto door and `/info` hrefs, so the X
- * still returns to the job after a detour through the record's own screens.
- *
- * `byId` forces the pk read for a job route whose param is always `orders.id`
- * (`/m/pack/start/[orderId]`), so a numeric marketplace order # cannot shadow it.
- */
+/** The order's two server reads, shared by the hub and every door screen through `qk.orders.hub(…)`, so moving hub ↔ door is a cache hit: */
 export function useOrderHub({ byId: forceById = false }: { byId?: boolean } = {}) {
   const params = useParams<{ orderId: string }>();
   const searchParams = useSearchParams();

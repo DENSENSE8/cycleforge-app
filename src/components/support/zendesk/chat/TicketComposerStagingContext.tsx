@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Host-owned ticket photo staging for station Ticket tabs.
- * {@link SupportTicketFocus} / Testing provide the bag; {@link SupportTicketDetail}
- * reads it when `composerPlacement="host"` so the drop overlay and floating
- * composer share one staging instance without rebuilding section tabs.
- */
+/** Host-owned ticket photo staging for station Ticket tabs. */
 
 import { createContext, useContext, type ReactNode } from 'react';
 import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';

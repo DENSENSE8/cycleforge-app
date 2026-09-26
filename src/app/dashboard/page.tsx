@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Dashboard page — Sales domain host + legacy outbound redirect shell.
- *
- * Outbound To-ship graduated to `/shipping/orders` (P2 page-mode condensation).
- * Bare `/dashboard` and outbound lifecycle bookmarks 308 there (proxy + client).
- * Sales (`?mode=sales|pickup|repairs`) stays until the dedicated `/sales` desk pass (P3).
- */
+/** Dashboard page — Sales domain host + legacy outbound redirect shell. */
 
 import { Suspense, useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -71,15 +65,7 @@ function DashboardPageContent() {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 
-  // Sales (`?mode=sales` | `?mode=pickup` | `?mode=repairs`) — front-desk
-  // transaction history, wearing the one page frame
-  // (`@/design-system/components/DeskPageChrome` via `DeskPageLayout`): title
-  // "Sales" top-left and Counter · Sales Board · Local Pickup · Repair Service
-  // as its tab row, all four resolving back to this page.
-  //
-  // The frame wraps ONLY this branch. The others below are redirect shells —
-  // an `aria-busy` placeholder on its way somewhere else has no page to title,
-  // and a title flashing before a redirect is a page that never existed.
+  // Sales (`?mode=sales` | `?mode=pickup` | `?mode=repairs`) — front-desk transaction history, wearing the one page frame…
   if (domain === 'sales') {
     return (
       <DeskPageLayout className="h-full">

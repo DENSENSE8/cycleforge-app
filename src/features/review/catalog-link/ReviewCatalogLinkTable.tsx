@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Review · Listing match — unmatched listings and sheet rows missing an item
- * number, as a flush workbench sheet.
- *
- * There is no page chrome: {@link DataTable} draws the find field and the
- * section strip from data, over the two registered bindings.
- *
- * A row click opens {@link CatalogLinkFormRail} or {@link ImportExceptionFormRail}
- * in the single `RightRailHost` slot. `?choreId=` / `?exceptionId=` carry the
- * selection so a picked row survives a refresh and is linkable.
- */
+/** Review · Listing match — unmatched listings and sheet rows missing an item number, as a flush workbench sheet. */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -281,15 +271,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                 value: query,
                 onChange: setQuery,
                 placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
-                // `?search=` is the fetch key (useCatalogLinkQueues.ts:48) and
-                // `/api/review/import-exceptions` matches it over `tracking` and
-                // `account_source` as well as order id / title
-                // (order-import-exceptions.ts:138). The PRODUCT layout binds
-                // nothing (import-exception.ts:100), so on a default org neither
-                // is a mounted track: the server's answer is the only one that
-                // can see a row found by its tracking number, and nothing here
-                // may narrow it. `pending` keeps "No sheet row matches" off the
-                // screen while the refetch for the new text is still out.
+                // `?search=` is the fetch key (useCatalogLinkQueues.ts:48) and `/api/review/import-exceptions` matches it over `tracking` and…
                 answeredBy: 'server',
                 pending: exceptions.isFetching,
               }}
@@ -388,14 +370,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                 value: query,
                 onChange: setQuery,
                 placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
-                // Same shape on this queue: `q` is matched over `sku` and
-                // `account_source` (order-catalog-link-chores.ts:180) while
-                // CATALOG_LINK_PRODUCT_LAYOUT is identity-only
-                // (catalog-link.ts:85-91). Measured on the dogfood org, `?q=ecwid`
-                // returns 91 chores and ZERO of them carry "ecwid" in the item
-                // number or the title — the only facts a default layout paints.
-                // Re-running that match in memory would answer "no listing
-                // matches" over 91 real hits.
+                // Same shape on this queue:
                 answeredBy: 'server',
                 pending: chores.isFetching,
               }}

@@ -1,26 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-/**
- * Verify a Zoho webhook delivery by comparing the HMAC SHA-256 of the raw
- * request body against the signature header.
- *
- * Zoho's signing scheme varies slightly across products:
- *   - Zoho Inventory + Books "Workflow Rule" webhooks: header
- *     `X-Zoho-Webhook-Signature` (hex digest of `HMAC_SHA256(secret, rawBody)`).
- *   - Zoho Marketplace / OAuth-style: header `X-ZOH-Hmac` (base64 digest).
- *
- * We accept either header and either encoding, controlled by env. The caller
- * always passes the *raw* (un-parsed) request body — JSON.stringify of the
- * parsed body will not match because Zoho preserves whitespace and key order.
- *
- * Optional env (defaults shown):
- *   ZOHO_WEBHOOK_SIGNATURE_HEADER — primary header name to read.
- *                                   Default: `x-zoho-webhook-signature`
- *   ZOHO_WEBHOOK_SIGNATURE_ENCODING — `hex` | `base64`. Default: `hex`.
- *
- * Returns `{ ok: true }` on match, `{ ok: false, reason }` on mismatch.
- * The reason is opaque on purpose — never leak it to the client response body.
- */
+/** Verify a Zoho webhook delivery by comparing the HMAC SHA-256 of the raw request body against the signature header. */
 
 type VerifyOk = { ok: true };
 type VerifyFail = { ok: false; reason: string };

@@ -1,19 +1,4 @@
-/**
- * Receiving slot resolvers — row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks. The receiving half of the slot
- * contract: the catalog names the fact, this module reads it off the
- * `ReceivingLineRow` the lines feed already returns — one resolver per catalog
- * field, never a `row[path]` generic.
- *
- * Presentation TONES (stage badge wash, condition grade colour, carrier brand
- * dot) stay in the family's cell map, which resolves them from the same SoTs —
- * this module answers WHAT the fact says, in display text.
- *
- * Honest absence is load-bearing here: a line with no unit cost resolves to
- * `null`, never `$0.00`. A receiving line frequently has no price at all (an
- * unfound line, a return, a trade-in), and a zero would read as "we paid
- * nothing for it" rather than "we do not know".
- */
+/** Receiving slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { conditionLabel } from '@/lib/conditions';

@@ -1,43 +1,6 @@
 'use client';
 
-/**
- * StudioWorkspaceContext — the single owner of all Operations Studio client
- * state.
- *
- * The Studio is painted by two sibling React subtrees that must share state:
- *   • the master-nav route panel (StudioSidebarPanel) — View dropdown + the
- *     node Library + the Issues rail, and
- *   • the page body (StudioShell) — the canvas + inspector.
- * Because those live in different layout slots (sidebar vs. main), neither can
- * be the other's parent. So — mirroring FbaWorkspaceProvider — this provider is
- * mounted once high in app/layout.tsx and both subtrees read it via
- * `useStudioWorkspace()`. View state still round-trips through the URL
- * (`?v=&focus=&z=&lens=`); the provider just centralises the data + handlers.
- *
- * Off-route it is inert: every fetch / Ably subscription is gated on the
- * pathname being `/studio`, so other pages pay nothing for it being mounted.
- *
- * This file is a thin composition shell. The state, effects and handlers live
- * in focused hooks under `studio-workspace/`:
- *   • useStudioViewState     — URL-derived view (`?v=&focus=&z=&lens=`) + setParams
- *   • useStudioGraphData     — graph + draft + template state, fetch effects, derived
- *   • useStudioGraphMutations — draft-only node / edge / annotation edits
- *   • useStudioPublish        — draft lifecycle (create / save / publish / discard / import)
- *   • useStudioLensState      — Live / Flow² / People lens fetches + flow pulses
- *   • useStudioStation        — L2 station detail
- *
- * Lenses are render layers (Studio law #3): the GRAPH is fetched once per
- * definition and only repainted. Live (ST2) adds one occupancy fetch + an Ably
- * subscription to the engine's item_workflow_state db-events — refreshes are
- * event-driven with a trailing debounce, never a poll interval (law #4).
- *
- * Editing (ST4) is DRAFT-FIRST (law #6): viewing an inactive version with
- * studio.manage edits a local working copy; "Save draft" PUTs the full graph;
- * "Publish" runs blocking diagnostics server-side inside the activation
- * transaction behind a step-up grant (law #7). The active version is never
- * editable. While editing, diagnostics re-lint CLIENT-side on every change
- * (diagnostics.ts is pure) so gaps surface as you wire.
- */
+/** StudioWorkspaceContext — the single owner of all Operations Studio client state. */
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -92,10 +55,7 @@ export function StudioWorkspaceProvider({ children }: { children: ReactNode }) {
     markDirty,
   } = useStudioGraphData({ active, v, canManage });
 
-  // Editing forces L1 (the canvas is the only editable surface). Otherwise the
-  // URL zoom stands on its own: a cold `?z=2` without `?focus` still lands on
-  // L2 — the station pane renders a "pick a node" empty state — so deep links
-  // are reproducible rather than silently demoted to L1.
+  // Editing forces L1 (the canvas is the only editable surface).
   const z: StudioZoom = editing ? 1 : zParam;
 
   const {

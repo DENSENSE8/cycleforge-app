@@ -1,16 +1,4 @@
-/**
- * Per-staff header to-do list queries (general + recurring).
- *
- * Backs GET/POST/PATCH/DELETE /api/staff-todos, which drives the header goal
- * chip's "Recurring" and "To-do" modes. Every query is scoped by the verified
- * session's staff_id — a staffer can only ever touch their own list.
- *
- * Recurrence: a recurring task carries `recur_interval_ms` + `recur_anchor`
- * and no done flag. Done-this-cycle is derived from the latest
- * staff_todo_completions row falling inside the current cycle; the client
- * recomputes that locally on a timer so rollover needs no polling. Unchecking
- * deletes only the current cycle's completions — prior cycles are history.
- */
+/** Per-staff header to-do list queries (general + recurring). */
 
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -78,19 +66,7 @@ function mapRow(row: Record<string, unknown>): StaffTodoRow {
   };
 }
 
-/**
- * Todos for one staff + station, list order.
- *
- * `station` may be the literal `ALL` — every station list at once, which is what
- * the Tasks workbench triages. The per-station form stays the header chip's
- * hot path.
- *
- * `archived` chooses WHICH half of the list you get, and it has **no default at
- * the call site that matters**: the live list (`false`) is what the checklist
- * renders, the archived list (`true`) is what "view everything" shows so a
- * soft-deleted task can be restored instead of being lost behind a DELETE that
- * was never really a delete.
- */
+/** Todos for one staff + station, list order. */
 export async function listStaffTodos(
   staffId: number,
   station: string,
@@ -102,11 +78,7 @@ export async function listStaffTodos(
   // than dropping out, because a placeholder that disappears from the SQL while
   // its value stays in the params array is a bind-count error, not a no-op.
   const stationWhere = "($2 = 'ALL' OR t.station = $2)";
-  // Lateral top-1 probe on idx_staff_todo_completions_todo_time instead of
-  // SELECT_ROW's correlated subquery — this is the hot path (the header chip
-  // fetches it on every page).
-  // staff_todos has no organization_id column; its org-bearing parent is
-  // `staff`, so when orgId is present we add an EXISTS gate on the staff row.
+  // Lateral top-1 probe on idx_staff_todo_completions_todo_time instead of SELECT_ROW's correlated subquery — this is the hot path (the…
   if (orgId) {
     const r = await tenantQuery(
       orgId,
@@ -161,12 +133,7 @@ export async function listStaffTodos(
   return r.rows.map(mapRow);
 }
 
-/**
- * Create a task. Recurring tasks join the station list's existing cycle
- * (inheriting interval + anchor from any live recurring sibling) so the whole
- * list keeps resetting in lockstep; the first task uses `intervalMs` (the
- * client's selected interval) or the default, anchored at now.
- */
+/** Create a task. */
 export async function createStaffTodo(args: {
   staffId: number;
   station: string;
@@ -289,16 +256,10 @@ export async function setStaffTodoDone(
   const row = await getStaffTodo(staffId, id, orgId);
   if (!row) return null;
 
-  // The post-write state is derived from `row` instead of re-fetching — this
-  // runs on every checkbox click. On an uncheck, last_completed_at_ms is
-  // reported as null even when prior-cycle history exists; done-ness math
-  // treats both identically and the next GET restores the true value.
+  // The post-write state is derived from `row` instead of re-fetching — this runs on every checkbox click.
   const nowMs = Date.now();
 
-  // Neither staff_todos nor staff_todo_completions carries organization_id;
-  // both are gated via the `staff` parent. The completions INSERT derives the
-  // org through todo_id → staff_todos → staff so a cross-tenant todo_id can't
-  // be written against.
+  // Neither staff_todos nor staff_todo_completions carries organization_id; both are gated via the `staff` parent.
   if (orgId) {
     const periodStart =
       row.kind === 'general'
@@ -374,13 +335,7 @@ export async function setStaffTodoDone(
   return { ...row, last_completed_at_ms: null };
 }
 
-/**
- * Change the reset interval for a station's whole recurring list. Restarts the
- * cycle from now (matching the v1 chip behavior) and re-logs a completion for
- * every task that was checked under the old cycle, so the change doesn't
- * silently uncheck anything. One transaction. Returns the previous interval
- * (null when the list was empty) for the caller's audit diff.
- */
+/** Change the reset interval for a station's whole recurring list. */
 export async function setStaffTodoInterval(
   staffId: number,
   station: string,
@@ -498,13 +453,7 @@ export async function archiveStaffTodo(
   return (r.rowCount ?? 0) > 0;
 }
 
-/**
- * Rename a task — the U in this list's CRUD, and the only field a staffer can
- * edit after creation. Scoped to the owner and guarded on `archived_at IS NULL`
- * (an archived task is restored first, then renamed), so a foreign or dead id
- * is a clean no-op the route reports as NOT_FOUND. Text is validated at the
- * schema edge; this layer only trusts that it arrived non-empty.
- */
+/** Rename a task — the U in this list's CRUD, and the only field a staffer can edit after creation. */
 export async function renameStaffTodo(
   staffId: number,
   id: number,
@@ -530,14 +479,7 @@ export async function renameStaffTodo(
   return (r.rowCount ?? 0) > 0;
 }
 
-/**
- * Reverse of {@link archiveStaffTodo} — restore an archived task (archived_at →
- * NULL) so it returns to the live list. Scoped to the owning staffer and guarded
- * on `archived_at IS NOT NULL`, so a double-unarchive (or a foreign id) is a
- * clean no-op → the route surfaces it as NOT_FOUND. The recurring-done cycle
- * math reads recur_anchor + completions, not archived_at, so a restored
- * recurring task resumes its prior cycle without drift.
- */
+/** Reverse of {@link archiveStaffTodo} — restore an archived task (archived_at → NULL) so it returns to the live list. */
 export async function unarchiveStaffTodo(
   staffId: number,
   id: number,

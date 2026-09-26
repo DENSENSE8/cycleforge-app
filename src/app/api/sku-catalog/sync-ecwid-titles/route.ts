@@ -15,25 +15,7 @@ function requiredEnvAny(primaryName: string, aliases: string[] = []): string {
   throw new Error(`Missing required environment variable: ${primaryName}`);
 }
 
-/**
- * POST /api/sku-catalog/sync-ecwid-titles
- *
- * Fetches all enabled products from Ecwid and fills `sku_catalog.product_title`
- * / `image_url` **only for rows Zoho does not own** — the SKU identity law's
- * rule 4 (`src/lib/sku/sku-identity-law.ts`).
- *
- * Before 2026-09-15 this overwrote every SKU-string match, Zoho-twinned rows
- * included. That is how catalog `00143` (Zoho: *Bose Solo Soundbar Series II*)
- * came to read *"1x Original Bose UB-20 Wall Mount"*, `00031` (Zoho: *Bose
- * Wave Music System*) read *"Bose SoundDock 10 remote control"*, and `00017`
- * (Zoho: *Bose Wave Radio II*) read a CineMate remote — 132 of 1118 twinned
- * rows contaminated, then rendered by every surface that reads the catalog
- * title. The Ecwid text is not lost: it already lives on the listing row,
- * `sku_platform_ids.display_name` / `listing_title`.
- *
- * 315 marketplace-only catalog rows have no Zoho twin and are still filled
- * here — for those the Ecwid name IS the identity.
- */
+/** POST /api/sku-catalog/sync-ecwid-titles */
 export const POST = withAuth(async (_req: NextRequest, ctx) => {
   try {
     const storeId = requiredEnvAny('ECWID_STORE_ID', ['ECWID_STOREID', 'ECWID_STORE', 'NEXT_PUBLIC_ECWID_STORE_ID']);

@@ -23,23 +23,7 @@ import { cn } from '@/utils/_cn';
 import { useClipboardHistory, recordCopy } from '@/lib/clipboard-history';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 
-/**
- * The platform · order-id · tracking chip cluster shared by the dashboard
- * order-row tables (unshipped queue, shipped, packer, tech).
- *
- * Hover menus (unbox IdentityLinkChip pattern via {@link CopyChipHoverMenu}):
- *   • Platform — primary **open listing** (new tab); hover: Copy listing link
- *     (+ Edit listing link when the host row supplies an editor)
- *   • Order id — primary **copy**; hover: Open on platform
- *   • Tracking filled — {@link TrackingNumberMenuChip} (copy · Open · Edit →
- *     host opens the order inspector replace flow; carton IdentityLinkChip parity)
- *   • Tracking empty — paste last in-app tracking clipboard entry when present
- *
- * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
- * the platform as a FIXED-footprint brand mark ({@link PlatformMark} — bare
- * monochrome channel icon / lettermark), never a variable-width
- * marketplace name; the label lives in tooltip + sr-only.
- */
+/** The platform · order-id · tracking chip cluster shared by the dashboard order-row tables (unshipped queue, shipped, packer, tech). */
 export interface OrderIdentityChipsProps {
   platformLabel: string;
   /**
@@ -82,30 +66,11 @@ export interface OrderIdentityChipsProps {
   /** Optional 4th column — serial chip on station (Tech) rows. */
   serialChip?: React.ReactNode;
   isMobile: boolean;
-  /**
-   * `icons` (default) — full CopyChip family with leading tone glyphs (Labels,
-   * Receiving, Station, and the mobile fallback all keep these).
-   * `plain` — quiet, icon-less chips for the Sheets-like queue grid: the sticky
-   * column header already labels Platform / Order / Tracking, so the leading
-   * glyphs are noise there. Copy + hover menus stay intact. Never strips icons
-   * globally — scoped to this prop.
-   */
+  /** `icons` (default) — full CopyChip family with leading tone glyphs (Labels, Receiving, Station, and the mobile fallback all keep these). */
   variant?: 'icons' | 'plain';
-  /**
-   * `cluster` (default) — one right-aligned {@link ChipColumns} flex blob.
-   * `cells` — return the platform / order / tracking chips as three SEPARATE
-   * grid cells (React fragment) so the parent grid can lock each column to its
-   * own header. Staged serial folds into the tracking cell. Column-reorderable
-   * grids place single cells via {@link useOrderIdentityCellNodes} instead.
-   */
+  /** `cluster` (default) — one right-aligned {@link ChipColumns} flex blob. */
   layout?: 'cluster' | 'cells';
-  /**
-   * When `layout="cells"`, per-column grid chrome (vertical rule + horizontal
-   * inset) merged into each of the three cells so platform / order / tracking
-   * match the parent grid's other columns. The Sheets-grid parent passes
-   * `ordersQueueGridCell`; `tracking` is the grid's last column (no trailing
-   * rule). Omitted by non-grid consumers — the cells keep their bare layout.
-   */
+  /** When `layout="cells"`, per-column grid chrome (vertical rule + horizontal inset) merged into each of the three cells so platform / order… */
   gridCellClass?: (col: 'platform' | 'order' | 'tracking') => string;
   /** Fires when any chip's hover menu opens/closes — lets the row keep its
    *  hover-expanded chrome (chevron + shifted chips) while a menu is up. */
@@ -124,12 +89,7 @@ function copyValue(value: string, kind?: string, display?: string) {
   recordCopy(v, { kind, display });
 }
 
-/**
- * Build the platform / order / tracking chip nodes once per row. The default
- * layouts consume all three; a column-reorderable grid places each node in its
- * own registry-rendered cell (any column order — the three cells no longer
- * need to be adjacent siblings).
- */
+/** Build the platform / order / tracking chip nodes once per row. */
 export function useOrderIdentityCellNodes({
   platformLabel,
   platformIconClass,
@@ -283,21 +243,7 @@ export function useOrderIdentityCellNodes({
     </CopyChipHoverMenu>
   ) : null;
 
-  /**
-   * IDENTITY LANGUAGE (ruled 2026-08-20): the leading mark on an identity cell
-   * is the BRAND DOT, never the type glyph.
-   *
-   * The type glyph (`#` for id) says what the COLUMN is,
-   * which the header already says — so it was the same ink repeated on every
-   * row, and the 2026-08-04 text-first ruling removed exactly that redundancy
-   * from headers. The brand dot says which MARKETPLACE or which CARRIER, a fact
-   * nothing else on the row carries. One is a restatement, the other is
-   * information, so the information wins the 6px.
-   *
-   * Rides `plain` because `plain` is now derived from the column's
-   * `omitCellIcon` — declaring that flag flips a surface to this language with
-   * no component edit.
-   */
+  /** IDENTITY LANGUAGE (ruled 2026-08-20): */
   const orderChipNode = hideOrderId ? (
     <OrderIdChipPlaceholder plain={plain} />
   ) : plain ? (
@@ -339,12 +285,7 @@ export function useOrderIdentityCellNodes({
   };
 }
 
-/**
- * Order # identity — the one face every record surface paints: the
- * marketplace brand dot + the last-8 copy chip (hover: open on the platform).
- * The dot is information (which marketplace), the `#` glyph would only restate
- * the column, so the plain face carries the dot. Left-aligned, fixed gap.
- */
+/** Order # identity — the one face every record surface paints: */
 export function OrderNumberIdentity({
   orderId,
   platformLabel,
@@ -412,12 +353,7 @@ export function OrderIdentityChips(props: OrderIdentityChipsProps) {
     gridCellClass,
     showPlatform = true,
   } = props;
-  // Grid `cells` layout honors the per-staff column config so the per-column
-  // header "Hide field" actually drops platform/order/tracking (their hide-keys
-  // in the `orders` registry: platform / orderid / tracking). No-op outside a
-  // provider, so the `cluster`/mobile consumers are unaffected.
-  // Per-staff column hiding went with the column-display rail (2026-08-29):
-  // every declared slot paints.
+  // Grid `cells` layout honors the per-staff column config so the per-column header "Hide field" actually drops platform/order/tracking…
   const isColumnHidden = (_key?: string) => false;
   const nodes = useOrderIdentityCellNodes(props);
 

@@ -25,24 +25,7 @@ import type { ItemRecord } from './item-record-types';
 /** Max serials shown in the meta preview. */
 const SERIAL_PREVIEW_CAP = 2;
 
-/**
- * Per-row disclosure for {@link ItemRecordRow}'s `body`.
- *
- * The row owns the FACE of this control (a far-right chevron on the title band)
- * and the unmount; the host owns the state, because collapse is a property of
- * the LIST — several rows answer to one "collapse all" — and a row that held its
- * own flag could not participate in that. `station/collapse` → `useLineCollapse`
- * is the state SoT this pairs with.
- *
- * Omit it entirely for a body that is always open. A row with a `body` and no
- * disclosure renders exactly as it did before this existed.
- *
- * A row with NO body ignores this outright — see `canDisclose` below. That is
- * what lets one host hand the same controller to every line list it owns
- * (`useLineCollapse`) without first working out which of them render bodies:
- * the ledger-only surfaces (Testing centre, `/search` Items, Arrival) simply do
- * not paint a toggle.
- */
+/** Per-row disclosure for {@link ItemRecordRow}'s `body`. */
 export interface ItemRecordDisclosure {
   expanded: boolean;
   onToggle: () => void;
@@ -50,15 +33,7 @@ export interface ItemRecordDisclosure {
   label?: string;
 }
 
-/**
- * An affordance on a meta cell: the cell's face is fixed by this component,
- * the caller supplies only what activating it means.
- *
- * This shape exists so a host can make a cell interactive WITHOUT handing in a
- * node. A node slot is a fork: the moment a caller can replace the face, one
- * surface renders a full SKU where the next renders a last-8, and the ledger
- * stops being one ledger. Callers get behaviour; the face stays here.
- */
+/** An affordance on a meta cell: */
 export interface ItemRecordCellAction {
   /** Tooltip + accessible name. */
   label: string;
@@ -67,28 +42,7 @@ export interface ItemRecordCellAction {
 
 /**
  * One item row — thumb | wrapping title | boxed five-track meta.
- *
- * Ported from the scan-station PO line (`receiving/workspace/PoLineRow`). What
- * came across is the FACE: the nested `5rem | 1fr` grid, the title band with a
- * trailing control slot, and the qty · SKU · condition · serials · price
- * ledger. What did not come across is every reason that row could only ever be
- * a PO line — the scan-sink arming, `receiving-select-line`, the unlink ⋮
- * menu, the dock-focus wiring and the `ReceivingLineRow` type. Those are host
- * behaviours, and hosts pass them in.
- *
  * **No layout animation** (operator rule, 2026-08-22 — AGENTS.md). This row
- * used to reorder through a framer `layout` spring when the active line
- * changed. On a scan station that is a cost with no payer: the operator is
- * looking at the scanner, the row has already been selected by the hardware,
- * and the spring only delays the paint that tells them it worked. Position
- * changes are instant. Hosts may still pass an `overlay` for OPACITY feedback
- * (the scan-acknowledgement ring) — that composites, it does not reflow.
- *
- * **Last-8 is an invariant here, not an option.** Every identifier the ledger
- * paints — SKU, serials — renders through `getLast8` with no truncation and no
- * prop to say otherwise. There is deliberately no `displayWidth`, no
- * `truncate`, no full-value escape hatch: a chip that shows a full SKU on one
- * surface and eight characters on the next is two ledgers wearing one name.
  */
 export function ItemRecordRow({
   item,
@@ -136,11 +90,8 @@ export function ItemRecordRow({
   body?: ReactNode;
   bodyClassName?: string;
   /**
-   * Make {@link body} collapsible from the row's own face. Collapsed UNMOUNTS
+   * Make {@link body} collapsible from the row's own face.
    * the body — no height tween, ever (operator rule, 2026-08-22; AGENTS.md). A
-   * collapse that animates still occupies the space for the length of the
-   * tween, which is backwards for a gesture whose only purpose is to hand the
-   * space back.
    */
   disclosure?: ItemRecordDisclosure | null;
   className?: string;
@@ -241,10 +192,7 @@ export function ItemRecordRow({
           selectable && !active ? 'cursor-pointer' : null,
         )}
       >
-        {/* Nested grid: size-20 thumb | title + boxed meta. The thumb sits in
-            the title + details band and expands that row. Media and data are
-            separated by the thumb's own width, not by a rule; meta gutters are
-            whitespace (gap-x). */}
+        {/* Nested grid: size-20 thumb | title + boxed meta. */}
         <div className={cn('grid min-w-0', ITEM_RECORD_FACE.minH, ITEM_RECORD_FACE.thumbGrid)}>
           <ItemRecordThumb imageUrl={item.imageUrl} />
           <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
@@ -254,10 +202,7 @@ export function ItemRecordRow({
               </p>
               {titleActions}
               {canDisclose ? (
-                // Far right of the face, NOT a chevron beside the title: the
-                // title is a hit target for arming capture, and a disclosure
-                // there steals that press. Rotation only — a transform
-                // composites and moves no neighbour.
+                // Far right of the face, NOT a chevron beside the title:
                 <HoverTooltip label={disclosureLabel} asChild>
                   <Button
                     variant="ghost"

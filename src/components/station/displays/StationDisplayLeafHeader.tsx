@@ -1,36 +1,6 @@
 'use client';
 
-/**
- * Displays nav cluster — history `← →` + **current title** (+ optional trailing
- * perspective segment, e.g. Claim New·Link).
- *
- * **In-band since 2026-08-18.** This was its own sticky `h-6` row under the
- * column's top band; it is now the LEFT group of that single band
- * (`[< >] Displays ……… [verbs] [⤢] [→|]`). Merging the two rows recovers a
- * whole row of vertical space above the index — which on a bench is the
- * difference between seeing the first VERIFICATION rows and scrolling for them
- * — and it separates "where am I" (left) from "what can I do" (right) on one
- * axis instead of two stacked ones.
- *
- * It renders no background, no hairline, and no sticky positioning: the band
- * owns all three. Height is `h-full` so it fills the band rather than setting
- * its own.
- *
- * **There is no Forward BUTTON (2026-08-18).** A `>` twin sat disabled on
- * essentially every frame an operator sees — you only have a forward stack
- * after going back, which on a scan bench is rare — so it spent a permanent
- * cell to render `opacity-30` almost always, next to the one control here that
- * matters. Forward itself is NOT removed: `ArrowRight` still walks the future
- * stack while the Right keyboard region owns, which is the documented Displays
- * history chord. That is a working chord with no advertised affordance, which
- * is the safe direction — the banned shape is the reverse, a hint for a chord
- * that does nothing.
- *
- * Title is always the current trail segment (e.g. `PO notes`). Ancestors are
- * not painted as jump crumbs — depth is ← → / Esc / ArrowLeft·ArrowRight only.
- *
- * Never IconButton. Never a path-as-title Back row.
- */
+/** Displays nav cluster — history `← →` + **current title** (+ optional trailing perspective segment, e.g. */
 
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronLeft } from '@/components/Icons';
@@ -114,15 +84,7 @@ export function StationDisplayLeafHeader({
       tabIndex={0}
       onKeyDown={onBandKeyDown}
       className={cn(
-        // LEFT group of the column's single header band. The band owns the
-        // height, background, hairline and stacking — this cluster owns none of
-        // them, or it would double-paint the seam it used to draw itself.
-        //
-        // `pointer-events-none` + per-control re-enable is inherited from the
-        // band: the inset resize sash (`z-sticky`, full-height `w-3`) sits under
-        // this chrome, and an opaque cluster ate the leading 12px of the Back
-        // chevron — it looked disabled. The empty title gutter still passes the
-        // sash through for a T-junction drag.
+        // LEFT group of the column's single header band.
         'pointer-events-none flex h-full min-w-0 flex-1 items-stretch',
         focusRing('control', 'accent'),
         'outline-none',
@@ -131,10 +93,7 @@ export function StationDisplayLeafHeader({
       data-breadcrumb-depth={trail.length}
       data-testid="station-displays-leaf-nav"
     >
-      {/* Back is the LEADING-most cell of the band (2026-08-19) — no `ml-1`
-          inset and no trailing hairline. It is the one control an operator
-          reaches for without looking, so it takes the corner; the sash still
-          grabs under the rest of the band's empty chrome. */}
+      {/* Back is the LEADING-most cell of the band (2026-08-19) — no `ml-1` inset and no trailing hairline. */}
       <HoverTooltip label={backLabel} asChild>
         <button
           type="button"

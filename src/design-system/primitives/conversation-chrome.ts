@@ -1,32 +1,9 @@
-/**
- * Conversation chrome SoT — hard DS primitive for every message bubble / chat
- * card across the app (helpdesk tickets, entity threads, Assist surfaces).
- *
- * Compose {@link ConversationMessageCard} + these tokens; never fork a
- * page-local bubble shell, blue/amber fill, or 75% chat bubble. Lookup:
- *
- * Face: a CONNECTED ACTIVITY TIMELINE — white plane, a 1px spine down the node
- * column, the author's avatar anchored on it as the node, and a gray card
- * beside it holding the message (amber when internal), capped at a reading
- * measure rather than running the column's full width. Inter sans
- * (`font-sans`) · circular header actions for thread chrome clusters.
- */
+/** Conversation chrome SoT — hard DS primitive for every message bubble / chat card across the app (helpdesk tickets, entity threads,… */
 import { cn } from '@/utils/_cn';
 import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 import { formatLaneAgeCompact } from '@/utils/date';
 
-/**
- * Conversation column plane — white, so the gray message cards read as events
- * sitting on it.
- *
- * The cards were briefly flattened into the plane (2026-08-30) on the theory
- * that the spine alone could carry sequence. Reverted the same day: the spine
- * says these happened IN ORDER, which is not the same claim as this is one
- * message and that is another. On a wide centre column a message with no
- * wrapper is a paragraph of loose text, and two consecutive replies from the
- * same author become one block of prose. The card is the message boundary; the
- * spine is the thread. Both, not either.
- */
+/** Conversation column plane — white, so the gray message cards read as events sitting on it. */
 export const CONVERSATION_DETAIL_SURFACE = 'bg-surface-card font-sans';
 
 /**
@@ -41,15 +18,7 @@ export const CONVERSATION_HEADER_ACTION_BTN_ACTIVE =
 
 export const CONVERSATION_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5 shrink-0';
 
-/**
- * Conversation column inset — same `px-3` as station band names and the
- * ticket title, so avatars, title glyph, and Items/Label icons share one
- * left edge. `DISPLAYS_BODY_INSET` (`px-4`) would sit the thread 4px inside
- * that column.
- *
- * Composer pad uses the same inset: no fill, no top-edge fade. The dock is a
- * bordered card on the conversation plane.
- */
+/** Conversation column inset — same `px-3` as station band names and the ticket title, so avatars, title glyph, and Items/Label icons share… */
 export const CONVERSATION_INSET = 'px-3';
 
 export const CONVERSATION_COMPOSER_PAD = cn(
@@ -58,15 +27,7 @@ export const CONVERSATION_COMPOSER_PAD = cn(
   FLOATING_DOCK_BOTTOM_PAD,
 );
 
-/**
- * OmnichannelComposerDock shell when composing an internal note.
- *
- * Channel is carried by the amber HAIRLINE + focus ring, not by a filled wash:
- * the entry field keeps the dock's own white card so it floats on the
- * conversation plane. The amber FILL stays where it belongs — on posted
- * internal messages ({@link CONVERSATION_SHELL_INTERNAL}), which is what makes
- * an internal note legible in the stream after it is sent.
- */
+/** OmnichannelComposerDock shell when composing an internal note. */
 export const CONVERSATION_COMPOSER_DOCK_INTERNAL =
   '!border-amber-300/80 focus-within:!ring-amber-500/20';
 
@@ -83,13 +44,7 @@ export const CONVERSATION_DAY_HEADER = 'flex justify-center py-2';
 export const CONVERSATION_DAY_LABEL =
   'font-sans text-role-micro font-semibold uppercase tracking-wide text-text-muted';
 
-/**
- * One row: node left, body right — never `flex-row-reverse`.
- *
- * `group` so the spine can trim itself on the last row (`group-last:`), and
- * `items-start` so the node anchors to the body's FIRST line rather than
- * centring against a body of unknown height.
- */
+/** One row: node left, body right — never `flex-row-reverse`. */
 export const CONVERSATION_ROW =
   'group relative flex min-w-0 flex-row items-start justify-start gap-2 py-1';
 
@@ -99,41 +54,13 @@ export const CONVERSATION_ROW =
  */
 export const CONVERSATION_SPINE_TRACK = 'relative flex shrink-0';
 
-/**
- * The vertical spine — one continuous 1px thread down the node column.
- *
- * `-bottom-1.5` bridges the stream's own row gap (`stack-tight`, 6px): without
- * it the line breaks between every message and reads as a stack of tick marks
- * rather than one thread. `group-last:bottom-0` stops it at the final node —
- * a thread that runs past its last event is claiming there is more below.
- *
- * Behind the node (`z-0` vs the mark's `z-10`), which is what makes the node
- * read as a bead ON the thread instead of a circle beside it.
- */
+/** The vertical spine — one continuous 1px thread down the node column. */
 export const CONVERSATION_SPINE = cn(
   'pointer-events-none absolute left-1/2 top-0 -bottom-1.5 z-0 w-px -translate-x-1/2',
   'bg-border-subtle group-last:bottom-0',
 );
 
-/**
- * Message card — gray canvas on the white plane. The card IS the message
- * boundary; {@link conversationShell}(true) swaps the fill for internal amber.
- *
- * ## Capped, never edge to edge
- *
- * `max-w-2xl` (42rem) is the reading measure. The station centre floors at
- * 720px and GROWS with the frame, so an uncapped `flex-1` card stretches its
- * lines as wide as the operator's monitor — a claim body then runs 1,400px per
- * line and the eye loses the return sweep. At the floor the card very nearly
- * fills the column (672 + the 20px node + the 8px gap = 700 of 720); past that
- * it stops and the column grows around it.
- *
- * The cap lives here rather than on the centre host so every conversation host
- * shares one measure. In the narrow right-rail Displays it simply never binds.
- *
- * `py-1.5` also sets the node's baseline (see {@link CONVERSATION_MARK_BOX}) —
- * change it and check both.
- */
+/** Message card — gray canvas on the white plane. */
 export const CONVERSATION_SHELL =
   'min-w-0 max-w-2xl flex-1 stack-tight rounded-lg border border-border-hairline bg-surface-canvas px-2.5 py-1.5';
 
@@ -167,26 +94,14 @@ export const CONVERSATION_MARK_PLACEHOLDER = cn(
 /** @deprecated Prefer {@link CONVERSATION_MARK_PLACEHOLDER} or {@link CONVERSATION_MARK_NODE}. */
 export const CONVERSATION_MARK = CONVERSATION_MARK_PLACEHOLDER;
 
-/**
- * Node box — centred on the spine, top-aligned with the card's first line
- * (author). Slot is 28px (`w-7`) to match {@link StaffAvatar} size `sm`.
- *
- * `pt-1.5` matches {@link CONVERSATION_SHELL} `py-1.5` so the avatar's top
- * edge and the author row's top edge share one y — not the old `-mt-0.5`
- * which centred a 20px node on the meta line.
- */
+/** Node box — centred on the spine, top-aligned with the card's first line (author). */
 export const CONVERSATION_MARK_BOX =
   'flex w-7 shrink-0 justify-center pt-1.5';
 
 export const CONVERSATION_BODY =
   'break-words font-sans text-role-caption leading-snug text-text-default';
 
-/**
- * Copy + Telegram clock. The last paragraph is `inline` so a floated spacer
- * can sit on that line; the visible clock overlays the spacer. A full last
- * line wraps the spacer (one extra row) — that is the only case a new row
- * is required. Attachments must NOT be children here.
- */
+/** Copy + Telegram clock. */
 export const CONVERSATION_COPY = cn(
   'relative min-w-0 font-sans text-role-caption leading-snug text-text-default [overflow-wrap:anywhere]',
   // Markdown wraps blocks in `.stack-row`; hoist so the last <p> is a sibling

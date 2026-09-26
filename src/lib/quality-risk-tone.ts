@@ -1,8 +1,4 @@
 // Single source of truth for unit quality risk-level tones.
-//
-// Chip with ring. Single surface today (labels/unit-detail/UnitQualityPanel).
-// Hues follow the color story (DESIGN_SYSTEM.md): low=success, medium=warning,
-// high=danger. src/lib is in Tailwind's content globs.
 
 export type QualityRiskLevel = 'low' | 'medium' | 'high';
 

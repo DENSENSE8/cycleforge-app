@@ -1,9 +1,4 @@
-/**
- * My-Day catalog guards + resolver behaviour — wave 1.4's eighth family, and
- * the one the kill list called out for a `fieldsMenu: true` that was "leftover
- * column-display lip copy". It is honest now, and these are the guards behind
- * it.
- */
+/** My-Day catalog guards + resolver behaviour — wave 1.4's eighth family, and the one the kill list called out for a `fieldsMenu: */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,10 +1,4 @@
-/**
- * Pure response → UI-state classifiers for {@link useUnfoundRefetchActions}.
- *
- * Kept in a React-free module (no react / react-query / toast imports) so the
- * retry-pair and amazon-return-lookup UI-state mappings are unit-testable under
- * the repo's node `tsx --test` runner without a DOM.
- */
+/** Pure response → UI-state classifiers for {@link useUnfoundRefetchActions}. */
 
 export type RefetchStatus =
   | 'idle'

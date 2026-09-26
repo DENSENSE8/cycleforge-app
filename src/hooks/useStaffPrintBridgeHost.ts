@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Silent-print host — this browser's print station. Listens on this staff ID's
- * print channel, answers status requests with its station id + name + printer
- * faces, and prints jobs ADDRESSED TO THIS STATION (`targetStationId`): raw
- * over a paired USB/serial printer, else through the desk browser's own print
- * (Chrome `--kiosk-printing` = silent to the default printer).
- *
- * Mount on the desk frame and on `/m/*` (phone-frame SoT). A phone with no
- * paired printer is not a station and never answers; another computer signed
- * in as the same staffer never acks a job aimed at a different station.
- */
+/** Silent-print host — this browser's print station. */
 
 import { useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,12 +43,7 @@ import { printFnskuStationJob } from '@/lib/print/printFnskuStationJob';
 import type { RackSegments } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 
-/**
- * A desk browser (fine pointer) can always print through its own print path:
- * Chrome started with `--kiosk-printing` sends it silently to the default
- * printer; any other browser shows the print dialog at the desk. A phone
- * (coarse pointer) cannot, so without a paired printer it is no station.
- */
+/** A desk browser (fine pointer) can always print through its own print path: */
 function deskBrowserCanPrint(): boolean {
   return typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches === true;
 }

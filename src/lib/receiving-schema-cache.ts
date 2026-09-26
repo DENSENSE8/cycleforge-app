@@ -1,14 +1,4 @@
-/**
- * receiving-schema-cache.ts
- * ─────────────────────────────────────────────────────────────────
- * In-memory cache for receiving table schema introspection.
- *
- * All receiving API routes need to know which columns exist in
- * `receiving_carton` and `receiving_line` to build dynamic queries.
- * Querying information_schema on every request adds 2-6 round-trips.
- * This module caches the result for 5 minutes.
- * ─────────────────────────────────────────────────────────────────
- */
+/** receiving-schema-cache.ts ───────────────────────────────────────────────────────────────── In-memory cache for receiving table schema… */
 
 import pool from '@/lib/db';
 import { resolveReceivingSchema } from '@/utils/receiving-schema';

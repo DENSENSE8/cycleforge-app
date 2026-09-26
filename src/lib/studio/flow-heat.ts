@@ -1,21 +1,4 @@
-/**
- * Flow²-lens node heat — Operations Studio "Flow²" lens (ST2).
- *
- * Pure sibling of `live-heat.ts`: the Live lens paints CURRENT occupancy, Flow²
- * paints the TREND/THROUGHPUT picture the GET /api/studio/flow feed already
- * assembled. This only decides how to PAINT what's there — it does not fetch or
- * poll (Studio law #4); the lens fetches once on activation.
- *
- * It reuses the Live lens's `HeatLevel` so the shared HEAT_* tone maps
- * (border/ring/wash, badge, accent, dot) apply unchanged — no new color system.
- *
- * Heat precedence (first match wins):
- *   1. node is a ranked bottleneck      ⇒ hot   (the worst offenders the API surfaced)
- *   2. fail rate ≥ 25%                   ⇒ hot   (lossy step, regardless of queue)
- *   3. WIP backing up (≥ 5) or fail > 0  ⇒ warm
- *   4. some throughput/queue signal      ⇒ active
- *   5. otherwise                         ⇒ idle
- */
+/** Flow²-lens node heat — Operations Studio "Flow²" lens (ST2). */
 
 import type { HeatLevel } from './live-heat';
 

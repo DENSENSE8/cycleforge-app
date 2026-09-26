@@ -9,17 +9,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useLinkTicketTrackingReference } from '@/hooks';
 import { cn } from '@/utils/_cn';
 
-/**
- * Ticket-side STN reference action.
- *
- * Same centered {@link RightPaneOverlay} shell as {@link StnTicketLinkModal} /
- * ReceivingClaimModal — but the opposite direction: the ticket is fixed and
- * each pasted/scanned tracking number becomes a SHIPMENT reference so Receiving
- * Unbox can resolve the ticket when that STN is scanned.
- *
- * Deliberately NOT StnTicketLinkModal (shipment → pick ticket) and NOT the
- * claim wizard (photos / compose / seller). One job: attach tracking refs.
- */
+/** Ticket-side STN reference action. */
 export function TicketStnLinkPopover({
   open,
   onClose,

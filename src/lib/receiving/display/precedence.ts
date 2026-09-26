@@ -1,22 +1,4 @@
-/**
- * Receiving precedence — rules-as-data SoT.
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §2c / §7 Step E.
- * Model: src/lib/order-lifecycle.ts (precedence expressed as inspectable data,
- * presentation kept out).
- *
- * The receiving "Prioritize" rank was duplicated THREE times — the server SQL
- * `RECEIVING_PRIORITY_RANK_SQL` (app/api/receiving-lines/route.ts), the client
- * badge `receivingPriorityRank` (components/.../receiving-priority.ts), and the
- * manual-tier twin in lib/receiving/priority-override.ts. This module is the one
- * place the rank data lives; the SQL fragment and the JS rank are both DERIVED
- * from it, so the badge and the sort can never drift.
- *
- * Pure + isomorphic — no DB, no React. The server SQL builder and the client
- * badge both import from here. (The Incoming-exclusive `delivery_state` buckets
- * are NOT here: they need server-only carrier predicates and belong to the
- * incoming street — see streets/incoming/delivery-state.ts.)
- */
+/** Receiving precedence — rules-as-data SoT. */
 
 /** Rank for a manually/auto-flagged carton (is_priority) — leads the sort. */
 const PRIORITY_RANK_FLAGGED = 0;
@@ -36,12 +18,7 @@ const PRIORITY_PLATFORM_RANKS: ReadonlyArray<{ platform: string; rank: number }>
   { platform: 'goodwill', rank: 4 },
 ];
 
-/**
- * The platform-derived rank (lower = higher priority). This is the JS twin of the
- * SQL CASE inside {@link priorityRankSql} — same data, same order. The manual
- * `priority_tier` override is applied separately (it COALESCEs over this in SQL;
- * the badge shows this platform half).
- */
+/** The platform-derived rank (lower = higher priority). */
 export function platformPriorityRank(
   isUnmatched: boolean,
   sourcePlatform: string | null | undefined,
@@ -66,12 +43,7 @@ interface PriorityRankSqlCols {
   sourcePlatform: string;
 }
 
-/**
- * Build the `COALESCE(tier, CASE …)` priority-rank SQL fragment from the same
- * rank data the JS twin uses. Drop-in replacement for the hand-written
- * `RECEIVING_PRIORITY_RANK_SQL` const — manual tier wins via COALESCE, then the
- * platform CASE.
- */
+/** Build the `COALESCE(tier, CASE …)` priority-rank SQL fragment from the same rank data the JS twin uses. */
 export function priorityRankSql(cols: PriorityRankSqlCols): string {
   const platformWhens = PRIORITY_PLATFORM_RANKS
     .map((r) => `    WHEN lower(${cols.sourcePlatform}) = '${r.platform}' THEN ${r.rank}`)
@@ -85,16 +57,7 @@ ${platformWhens}
   END)`;
 }
 
-/**
- * Triage priority-lane rank (docs/receiving-triage-redesign-plan.md §4.2) — a
- * SECONDARY tie-breaker layered on top of {@link priorityRankSql}, never a
- * replacement. `priority_lane` values mirror
- * `src/lib/receiving/triage-lane-policy.ts`'s `TRIAGE_LANE_OPTS`; keep the two
- * in sync if that list changes. An unassigned lane (NULL — every carton that
- * predates staging, or hasn't been staged yet) ranks last among the lane tier
- * so it never outranks a staged carton, but still sorts purely by the primary
- * rank relative to other unassigned cartons (this tier only ever breaks ties).
- */
+/** Triage priority-lane rank (docs/receiving-triage-redesign-plan.md §4.2) — a SECONDARY tie-breaker layered on top of {@link… */
 const LANE_RANK_ORDER: ReadonlyArray<string> = [
   'PO_STOCKOUT',
   'RETURN',

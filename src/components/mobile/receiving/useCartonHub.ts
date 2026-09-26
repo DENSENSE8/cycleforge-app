@@ -13,12 +13,7 @@ async function fetchCarton(id: number, signal?: AbortSignal): Promise<CartonHubD
   return body as CartonHubData;
 }
 
-/**
- * The carton's one read (`GET /api/receiving/[id]`), shared by the hub and
- * every door screen through `qk.cartons.hub(id, 'record')`, so moving hub ↔
- * door is a cache hit. The `/m/r/[id]` layout's receiving subscription keeps it
- * live.
- */
+/** The carton's one read (`GET /api/receiving/[id]`), shared by the hub and every door screen through `qk.cartons.hub(id, 'record')`, so… */
 export function useCartonHub() {
   const params = useParams<{ id: string }>();
   const id = Number(params?.id);

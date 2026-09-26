@@ -37,21 +37,7 @@ import {
 // Re-export the pure helpers + types so callers import a single module.
 export * from './journey-helpers';
 
-/**
- * Master Operations Journey — the org-scoped, multi-spine event reader that powers
- * the rebuilt Operations ▸ History view. ENTITY mode resolves + org-gates a
- * specific order/serial/tracking and fans out indexed point-lookups across the
- * five spines (SAL, inventory_events, audit_logs, carrier, warranty), merged in
- * JS. BROWSE mode runs the keyset-paginated UNION (`buildBrowseQuery`).
- *
- * TENANT SAFETY: `shipping_tracking_numbers` / `shipment_tracking_events` have NO
- * `organization_id` — they are reached ONLY via an org-verified `orders.shipment_id`.
- * TRACKING mode 404s if no org-owned order references the shipment, so a tenant
- * can't probe another tenant's carrier trail via a globally-unique tracking number.
- *
- * Pure helpers (cursor codec, source pruning, browse SQL) live in
- * `./journey-helpers` (DB-free, unit-tested); this module holds the DB readers.
- */
+/** Master Operations Journey — the org-scoped, multi-spine event reader that powers the rebuilt Operations ▸ History view. */
 
 export interface JourneyDeps {
   readInventorySpine: typeof readInventorySpine;
@@ -238,19 +224,7 @@ export async function resolveEntity(
   return { ...anchors, kind: 'tracking' };
 }
 
-/**
- * Per-serial provenance (SKU · grade · status · originating PO) for the By-unit
- * band headers. Org-scoped on `serial_units`; a unit received off-PO simply
- * yields `poNumber: null`. Empty input → empty result (no query).
- *
- * The PO joins via each unit's CURRENT receiving line — its most recent
- * inventory_events touch, falling back to the frozen `origin_receiving_line_id`
- * — NOT `origin_receiving_line_id` alone. That column COALESCE-freezes to the
- * FIRST-ever receiving line on attach and never advances, so a unit that
- * shipped, was returned, and got re-received under a different PO/carton kept
- * showing its original (now stale) PO here forever. Mirrors
- * `resolveCurrentReceivingLineIds` (src/lib/neon/serial-units-queries.ts).
- */
+/** Per-serial provenance (SKU · grade · status · originating PO) for the By-unit band headers. */
 export async function readSerialProvenance(
   client: PoolClient,
   orgId: OrgId,

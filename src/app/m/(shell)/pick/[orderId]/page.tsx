@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Mobile picker — `/m/pick/[orderId]`
- *
- * Order-specific picker screen. Loads tasks from
- * `/api/orders/:id/pick-tasks`, opens a session via `/api/picking/session`,
- * and drives each action through the typed picking endpoints.
- *
- * Reached by tapping a card on the `/m/pick` queue landing, or by scanning
- * an order QR that resolves to this route via `mobileQrUrl()`.
- *
- * Design principles (see plan B0):
- *   - One thumb, one goal — primary action in the bottom dock.
- *   - Status before form — top strip shows order + progress + connection.
- *   - Optimistic + reconciling — UI advances on tap; failures roll back with a visible error.
- *
- * Thin composition shell: the session state machine lives in
- * {@link useMobilePicker}; the task card + status shells are presentational
- * components under `./_picker/`.
- */
+/** Mobile picker — `/m/pick/[orderId]` */
 
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
@@ -67,11 +49,7 @@ function PickerInner() {
   }
   if (totalTasks === 0) return <EmptyShell onBack={() => router.replace('/m/pick')} />;
 
-  // ── Render
-  // The session page hides the bottom nav (HIDDEN_PREFIXES match in
-  // MobileBottomNav), so the layout's scroll container is full viewport.
-  // h-full fills it exactly — single scroll context lives inside <div>,
-  // and the ConfirmDock anchors to the viewport bottom as a flex sibling.
+  // ── Render The session page hides the bottom nav (HIDDEN_PREFIXES match in MobileBottomNav), so the layout's scroll container is full…
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       {/* ─── Status strip ──────────────────────────────────────────────── */}
@@ -93,10 +71,7 @@ function PickerInner() {
 
       {/* ─── Task content ──────────────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-2">
-        {/* ─── Tote strip ────────────────────────────────────────────────
-            The session's container. Confirming a pick requires an armed
-            tote — every picked unit lands in it and the tote carries the
-            order to the pack station. */}
+        {/* ─── Tote strip ──────────────────────────────────────────────── The session's container. */}
         <div
           className={`mb-3 rounded-none border px-3 py-2 text-xs font-semibold ${
             toteRef

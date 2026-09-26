@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Generic receiving rail — binds a declarative {@link ReceivingRailFeed} to the
- * shared {@link RecentActivityRailBase} display shell. This is the single piece
- * of glue every receiving-page rail flows through: it derives the query key,
- * builds the fetcher (standard or multi-source), and resolves the quantity +
- * status-dot strategies from the registries. No new display — the row anatomy,
- * popover, skeleton, grouping, and keyboard nav all live in the base shell.
- *
- * The named rail components (ReceivingRecentRail / ReceivingScannedRail /
- * ReceivingViewedRail / TriageCombinedList / TriageUnfoundList) are now thin
- * bindings around this, kept as stable seams to diverge later if a single
- * surface needs to.
- */
+/** Generic receiving rail — binds a declarative {@link ReceivingRailFeed} to the shared {@link RecentActivityRailBase} display shell. */
 
 import { useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -92,19 +80,11 @@ export function ReceivingFeedRail({
     : null;
   const q = filterText.trim().toLowerCase();
 
-  // Phase 4 read filter: this staffer's dismissed rows for the feed
-  // (staff_rail_exclusions, keyed by rail id = row.id). Applied as a client-side
-  // DISPLAY filter (`excludedIds` on the rail), NOT baked into the queryKey —
-  // baking it in meant that when the async exclusion fetch resolved (or a dismiss
-  // invalidated it), the signature changed, the queryKey changed, and the rail
-  // blanked to a skeleton then refetched. Filtering in place keeps the list up.
+  // Phase 4 read filter:
   const exclusionFeedKey = railExclusionFeedKey(feedId, scope);
   const excluded = useRailExclusions(exclusionFeedKey);
 
-  // Distinct, isolated cache entry per feed/scope/staff/query — still under the
-  // ['receiving-lines-table'] prefix so broad invalidations refresh it. Built
-  // through the shared SoT so the RSC first-paint seed can match this key exactly
-  // (a mismatch silently no-ops the seed) — see `rail-query-key`.
+  // Distinct, isolated cache entry per feed/scope/staff/query — still under the ['receiving-lines-table'] prefix so broad invalidations…
   const queryKey = useMemo(
     () => receivingRailQueryKey(feed.segment, scope, q, staffId),
     [feed.segment, scope, q, staffId],
@@ -134,11 +114,7 @@ export function ReceivingFeedRail({
     // intentionally omitted — it has a new identity every render).
   }, [feed.segment, feed.stampRailTitleContext, scope, q, staffId]);
 
-  // Cold-reload continuity: seed this rail's first paint from its last-known
-  // rows in Upstash (org + viewer scoped server-side), and persist the rows it
-  // renders for next time. Seed-only — the authoritative fetch reconciles over
-  // it. Only the UNFILTERED view seeds/persists (a searched rail is transient).
-  // feedParam is fully client-composed so read/write keys can't drift.
+  // Cold-reload continuity:
   const snapshotFeedParam = useMemo(
     () => (q === '' ? railSnapshotFeedParam({ feedId, scope, staffFilterId: staffId }) : null),
     [q, feedId, scope, staffId],
@@ -157,10 +133,7 @@ export function ReceivingFeedRail({
   const qty = RAIL_QTY[feed.qty];
   const dot = RAIL_STATUS[feed.status];
 
-  // Per-row ⋮ menu. The feed declares WHICH verbs its rows offer (registry);
-  // this is where the implementations are injected, because this is the one
-  // node that knows the mounted rail's exclusion feed key. No key (Recently
-  // searched) → `dismiss: null` → the verb is omitted, never shown dead.
+  // Per-row ⋮ menu.
   const dismissRow = useRailRowDismiss(exclusionFeedKey);
   const deleteCarton = useRailRowDelete();
   // The DELETE route enforces `receiving.mark_received`; mirror the gate here so
@@ -193,16 +166,7 @@ export function ReceivingFeedRail({
     };
   }, [rowActionsId, exclusionFeedKey, dismissRow, deleteCarton, canDelete, editMode]);
 
-  // Tier A serial pre-seed: read-only observer of the rail cache the base owns
-  // (enabled:false → never fetches), so we can hand the visible rows to the
-  // batch-serial hydrator. It only fires for rows still lacking serials, so once
-  // Tier B2's projection is populated every row arrives with serials and this is
-  // a pure no-op.
-  //
-  // IMPORTANT: reuse the same row-shaped queryFn as the shell. A placeholder
-  // `async () => []` on this shared queryKey can overwrite the real fetcher in
-  // TanStack Query and leave the Unboxed dock stuck on a sparse identity stub
-  // after never-self-blank swallows the empty refetch.
+  // Tier A serial pre-seed:
   const queryClient = useQueryClient();
   const railRows = useQuery<ReceivingLineRow[]>({
     queryKey,
@@ -231,10 +195,7 @@ export function ReceivingFeedRail({
       deleteEvent={feed.listenLineDelete === false ? undefined : 'receiving-line-deleted'}
       deleteGroupEvent="receiving-entry-deleted"
       refreshEvents={feed.refreshEvents}
-      // Workspace header chevrons (`LineEditToolbar`) dispatch this channel —
-      // same contract as TestingRecentRail ↔ testing-navigate-rail. Without it
-      // unbox/triage prev/next are a no-op (the history table listens on the
-      // same name but its rows aren't the rail's PO list).
+      // Workspace header chevrons (`LineEditToolbar`) dispatch this channel — same contract as TestingRecentRail ↔ testing-navigate-rail.
       navigateEvent={
         feedId === 'testingRecent' ? 'testing-navigate-rail' : 'receiving-navigate-table'
       }

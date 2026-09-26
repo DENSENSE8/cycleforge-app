@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Public invitation accept page (/invite/[token]).
- *
- * Previews the invitation, lets the invitee set their name + password, then
- * accepts → the server creates the account/membership/staff profile and signs
- * them in. On success we hard-navigate to /dashboard so the freshly-set session
- * cookie is picked up cleanly. Listed in PUBLIC_PATHS (src/proxy.ts) +
- * CLIENT_PUBLIC_PATHS (src/contexts/AuthContext.tsx).
- */
+/** Public invitation accept page (/invite/[token]). */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';

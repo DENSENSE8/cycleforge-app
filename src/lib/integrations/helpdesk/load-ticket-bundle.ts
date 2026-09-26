@@ -64,10 +64,7 @@ async function loadZendeskTicketBundleFresh(
     entity: entity
       ? { type: entity.type, id: entity.id, source: entity.source }
       : null,
-    // EntityPhoto is a structural superset of ZendeskTicketPhoto (same id/url/
-    // caption plus takenByStaffId/createdAt); only the index-signature nominal
-    // mismatch blocks a direct cast. Widen through unknown — runtime shape is
-    // unchanged (the full EntityPhoto objects are returned as before).
+    // EntityPhoto is a structural superset of ZendeskTicketPhoto (same id/url/ caption plus takenByStaffId/createdAt); only the…
     photos: photos as unknown as ZendeskTicketPhoto[],
   };
 }

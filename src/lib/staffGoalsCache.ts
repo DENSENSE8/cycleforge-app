@@ -1,17 +1,4 @@
-/**
- * Module-level cache for staff daily goals.
- *
- * The full goals list (used by GoalsAnalyticsTab) includes live today/week
- * counts, so it uses a 30-second TTL.
- *
- * Call invalidateStaffGoalsCache() after any PUT to /api/staff-goals so the
- * next read gets fresh data.
- *
- * (A per-staff `getStaffGoalById` fetcher lived here for the station sidebars'
- * goal bars; the Packing sidebar was its last caller and now shows the recent-
- * packs rail instead. Re-add it from git history if a sidebar needs a single
- * staffer's goal again.)
- */
+/** Module-level cache for staff daily goals. */
 
 const ALL_GOALS_TTL_MS = 30 * 1000;      // 30 seconds (live counts)
 
@@ -70,13 +57,7 @@ export function getAllStaffGoals(station?: string): Promise<GoalRow[]> {
 
 // ── Invalidation ──────────────────────────────────────────────────────────────
 
-/**
- * Call after a PUT to /api/staff-goals.
- *
- * `staffId` is accepted for call-site clarity but no longer narrows the clear —
- * the only remaining cache is the full goals list, which any single-staff edit
- * invalidates anyway.
- */
+/** Call after a PUT to /api/staff-goals. */
 export function invalidateStaffGoalsCache(_staffId?: string): void {
   _allGoalsCache.clear();
   _allGoalsPromises.clear();

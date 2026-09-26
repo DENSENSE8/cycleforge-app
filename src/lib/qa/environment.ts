@@ -1,10 +1,4 @@
-/**
- * Organization environment — sandbox vs customer.
- *
- * This is the isolation boundary for the QA Console. It is NOT a setting, NOT
- * a feature flag, and NOT an entitlement. Customer orgs stay 'customer' even
- * if someone grants developer.qa_tools.* on a role.
- */
+/** Organization environment — sandbox vs customer. */
 
 import pool from '@/lib/db';
 import { QA_ORG_ID } from '@/lib/tenancy/constants';

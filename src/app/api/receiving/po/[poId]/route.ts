@@ -10,17 +10,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/receiving/po/[poId]
- *
- * Detail payload for /m/receiving/po/[poId]. `poId` can be either the
- * zoho_purchaseorder_id (preferred, stable across renames) OR the
- * zoho_purchaseorder_number (the human-readable code printed on labels).
- *
- * Returns:
- *   header   — PO id/number, source, totals, status, photo count, receiving id
- *   items[]  — one entry per receiving_lines row, with item photo counts
- */
+/** GET /api/receiving/po/[poId] */
 function poIdFromUrl(req: NextRequest): string {
   // /api/receiving/po/<poId>  — last path segment, URL-decoded.
   const parts = req.nextUrl.pathname.split('/').filter(Boolean);

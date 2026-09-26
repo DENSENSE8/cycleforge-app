@@ -21,24 +21,7 @@ interface Props {
   appearance?: 'default' | 'flush';
 }
 
-/**
- * Zendesk internal-note ↔ public-reply segmented toggle — the SoT for
- * "is this helpdesk comment private or emailed to the customer?"
- * Use only on external ticket surfaces (Support chat, claim modals).
- * Warehouse {@link ThreadNoteComposer} uses different chrome for entity threads.
- *
- * Two corner appearances, and which one is right is about WHERE it sits:
- *
- * - `default` — {@link SEGMENTED_CONTROL_CORNER} track + faces, for a soft
- *   shell. The composer dock is the named exemption from the flush-square ops
- *   law, so a channel toggle on its action bar is rounded, not square.
- * - `flush` — square, for industrial ops chrome (kiosk, workbench rows).
- *
- * The corners are imported, not written here. They used to be `rounded-lg` /
- * `rounded-md` literals in this file, which put them outside the one place the
- * house states its corners — `ds_tokens({ axis: 'radius' })` could not see them
- * and `ds_critique` had nothing to check a call site against.
- */
+/** Zendesk internal-note ↔ public-reply segmented toggle — the SoT for "is this helpdesk comment private or emailed to the customer?" Use… */
 export function VisibilityToggle({
   value,
   onChange,

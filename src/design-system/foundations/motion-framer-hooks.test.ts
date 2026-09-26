@@ -4,21 +4,7 @@ import assert from 'node:assert/strict';
 import { reducePresenceShape } from './motion-framer-hooks';
 import { framerPresence } from './motion-framer';
 
-/**
- * Pins the reduced form of a presence shape — the pure core of
- * `useMotionPresence`.
- *
- * THE REGRESSION THIS EXISTS FOR: the bridge used to return a flat
- * `{ initial:{opacity}, animate:{opacity}, exit:{opacity} }`, which DISCARDED
- * the `height` keys of `framerPresence.collapseHeight` / `sidebarSection`
- * (both `{height:0} → {height:'auto'}`). The element then faded while holding
- * its full box and never collapsed at all — over-reduction, not reduction.
- * `collapseHeight` is the one sanctioned height animation in
- * `.claude/rules/display/motion-crossfade.md`, so it has to survive.
- *
- * Reduced motion means "replace slides with crossfades" (WCAG 2.3.3 / Apple
- * HIG), not "drop every key that is not opacity".
- */
+/** Pins the reduced form of a presence shape — the pure core of `useMotionPresence`. */
 
 const TRANSFORM_KEYS = [
   'x', 'y', 'z',

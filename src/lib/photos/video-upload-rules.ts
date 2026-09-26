@@ -1,14 +1,4 @@
-/**
- * Pure rules for entity video uploads (`POST /api/photos/upload/video`) —
- * shared by the browser (pre-check before asking for a signed URL) and the
- * server (create-upload and finalize), so the two can never disagree about
- * what a legal video is.
- *
- * Phones record large files, so bytes never pass through our functions: the
- * server signs a GCS PUT for one object and later verifies what GCS actually
- * stored. Everything here is a claim check; GCS metadata is the final word.
- * Duration is never taken from the client (the player reads it from the file).
- */
+/** Pure rules for entity video uploads (`POST /api/photos/upload/video`) — shared by the browser (pre-check before asking for a signed URL)… */
 
 /** Container → canonical file extension for the object key. */
 export const VIDEO_MIME_EXTENSIONS = {
@@ -63,15 +53,7 @@ export type VideoUploadVerdict =
   | { ok: true; contentType: VideoMime; extension: string }
   | { ok: false; error: string };
 
-/**
- * Validate a video the phone wants to upload.
- *
- * - The content type must be MP4, QuickTime or WebM. Some Android pickers hand
- *   over an empty `File.type`; then the filename extension decides.
- * - A filename extension that names a different container than the content
- *   type is refused (a renamed file is not the video it claims to be).
- * - Size must be a positive integer no larger than `maxBytes`.
- */
+/** Validate a video the phone wants to upload. */
 export function validateVideoUpload(claim: VideoUploadClaim, maxBytes: number): VideoUploadVerdict {
   const declared = normalizeMime(claim.contentType);
   const ext = extensionOf(claim.fileName);

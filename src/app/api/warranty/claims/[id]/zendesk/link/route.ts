@@ -23,25 +23,7 @@ import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Link an EXISTING Zendesk ticket to a warranty claim — the counterpart to
- * POST /api/warranty/claims/[id]/zendesk (which mints a fresh ticket), and the
- * symmetric reverse of both.
- *
- *   GET    ?query=...  → link candidates (recent list / Zendesk search / direct
- *          "#1234" id lookup), hiding tickets already linked to another entity.
- *          The direct-id branch is the manual-entry path: typing a ticket # by
- *          hand resolves identically to picking one from the list.
- *   POST   { ticketId } → attach an existing ticket: warranty_claims
- *          .zendesk_ticket_id + ticket_links row + external_id backfill +
- *          ZENDESK_LINKED timeline event. 409 if the claim already has a ticket.
- *   DELETE ?ticketId=N → detach: null the column, drop the ticket_links row,
- *          clear the dangling external_id, append ZENDESK_UNLINKED. The Zendesk
- *          ticket itself is never deleted.
- *
- * Mirrors src/app/api/receiving/zendesk-claim/link/route.ts for the
- * WARRANTY_CLAIM entity. Gated by WARRANTY_LOGGER.
- */
+/** Link an EXISTING Zendesk ticket to a warranty claim — the counterpart to POST /api/warranty/claims/[id]/zendesk (which mints a fresh… */
 
 const ZENDESK_NOT_CONFIGURED = NextResponse.json(
   { ok: false, error: 'Zendesk is not configured' },

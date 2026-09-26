@@ -12,25 +12,7 @@ const VALID_CODES: ReadonlySet<DispositionCode> = new Set([
   'SCRAP',
 ]);
 
-/**
- * POST /api/rma/disposition
- *
- * Serial-first sibling of `/api/rma/[id]/disposition` — records a per-unit
- * disposition WITHOUT requiring an RMA id in hand. Exists for the scan-driven
- * disposition station (returns-unification Stage 2.5): staff scan an
- * already-returned unit and disposition it directly; `recordDisposition()`
- * already supports `rmaId: null` (see src/lib/rma/authorizations.ts), the
- * nested `[id]/disposition` route just never exposed that path. Both routes
- * call the same domain function — no duplicated logic, only the id source
- * differs (URL segment vs. required body field).
- *
- * Body: {
- *   serial_unit_id: number,
- *   disposition_code: 'ACCEPT' | 'HOLD' | 'RTV' | 'REWORK' | 'SCRAP',
- *   rma_id?: number,
- *   notes?: string,
- * }
- */
+/** POST /api/rma/disposition */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
@@ -73,11 +55,7 @@ export const POST = withAuth(async (request, ctx) => {
     });
     if (!result.ok) return NextResponse.json(result, { status: result.status });
 
-    // entityId is always the disposition row's own id — never rmaId. Both are
-    // small sequential integers from unrelated tables (rma_authorizations vs
-    // return_dispositions); overloading one AUDIT_ENTITY.RMA id-space with
-    // either would let a lookup on (entity_type='rma', entity_id=N) match the
-    // wrong table's row N. rma_id still travels in `after` for context.
+    // entityId is always the disposition row's own id — never rmaId.
     await recordAudit(pool, ctx, request, {
       source: 'rma-api',
       action: AUDIT_ACTION.RMA_DISPOSITION,

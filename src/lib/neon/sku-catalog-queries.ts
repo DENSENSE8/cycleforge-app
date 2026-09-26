@@ -81,10 +81,6 @@ export interface SkuKitPartRow {
   is_critical: boolean;
   sort_order: number;
   // Reference document (2026-08-01d) — the paper this part puts in the box.
-  // Optional so a caller selecting an explicit older column list still
-  // type-checks; `getKitParts` does SELECT *, so they are always present there.
-  // Normalize with `kitPartDocument()` (src/lib/packing/kit-part-document.ts)
-  // rather than reading these three fields at a call site.
   document_url?: string | null;
   document_title?: string | null;
   document_mime?: string | null;
@@ -151,12 +147,7 @@ export async function getSkuCatalogById(id: number, orgId?: OrgId): Promise<SkuC
   return result.rows[0] ?? null;
 }
 
-/**
- * Lookup by GTIN (GS1 Digital Link AI 01). Returns the row whose `gtin`
- * column matches a digit-stripped form of the input — the column itself
- * is stored as a digit string, but callers may pass URL-encoded or
- * dash-formatted variants from a scanner.
- */
+/** Lookup by GTIN (GS1 Digital Link AI 01). */
 export async function getSkuCatalogByGtin(gtin: string, orgId?: OrgId): Promise<SkuCatalogRow | null> {
   const cleaned = String(gtin || '').replace(/\D/g, '');
   if (!cleaned) return null;
@@ -173,30 +164,7 @@ type SetSkuCatalogGtinResult =
   | { ok: false; reason: 'not-found' }
   | { ok: false; reason: 'conflict'; conflictSku: string };
 
-/**
- * Set (or clear) `sku_catalog.gtin` for one row.
- *
- * ## Why this is not a field on `upsertSkuCatalog`
- *
- * That helper is the SYNC path's upsert, and every one of its columns is
- * `COALESCE(EXCLUDED.x, sku_catalog.x)` — omitted means preserve, and there is
- * deliberately no way to clear. A GTIN needs the opposite: an operator must be
- * able to remove a wrong one, and clearing is meaningful (it hands the row back
- * to `getOrCreateInternalGtin`, which re-mints the same deterministic internal
- * number). Folding it in would also put a licensed identifier one careless
- * param away from being stamped by an inventory sync.
- *
- * ## The conflict is reported, not thrown
- *
- * `idx_sku_catalog_org_gtin` (2026-08-02c) makes the digits unique per org, so
- * the reachable failure is "another SKU in THIS org already claims this GTIN" —
- * an operator mistake with an obvious fix (find that SKU), not a 500. The
- * lookup runs inside the same transaction as the write, so the reported SKU is
- * the one that actually blocked it.
- *
- * Validation is the caller's: `classifyGtinEntry` in `@/lib/interop/gs1-keys`
- * decides what a human is allowed to type. This function stores digits.
- */
+/** Set (or clear) `sku_catalog.gtin` for one row. */
 export async function setSkuCatalogGtin(
   id: number,
   gtin: string | null,
@@ -229,13 +197,7 @@ export async function setSkuCatalogGtin(
   });
 }
 
-/**
- * Replace a catalog product's structured handling facts.
- *
- * This is intentionally a dedicated writer instead of an `upsertSkuCatalog`
- * parameter: sync upserts preserve product metadata by default, whereas an
- * operator's explicit empty list is a real, auditable safety instruction.
- */
+/** Replace a catalog product's structured handling facts. */
 export async function setSkuCatalogHandlingFacts(
   id: number,
   handlingFacts: readonly OutboundHandlingFact[],
@@ -272,18 +234,7 @@ export async function upsertSkuCatalog(params: {
   /** External inventory-provider item id. Omitted = preserve; set to stamp linkage. */
   providerItemId?: string | null;
 }, orgId: OrgId): Promise<SkuCatalogRow> {
-  // The lifecycle params are referenced directly ($8–$11) rather than via
-  // EXCLUDED so that omitting them (null) preserves the existing row on update
-  // and falls back to the column default ('active') on insert — callers that
-  // don't opt into lifecycle behave exactly as before.
-  //
-  // orgId is REQUIRED: we explicitly stamp organization_id ($14) on insert and
-  // scope the upsert via tenantQuery, and conflict on (organization_id, sku) so
-  // the same SKU string can exist per-org (H4). Callers thread ctx.organizationId
-  // / the sync account's org — there is no global (org-less) upsert path.
-  //
-  // provider_item_id ($15): omitted (undefined) preserves existing on conflict;
-  // an explicit non-empty string stamps the inventory linkage.
+  // The lifecycle params are referenced directly ($8–$11) rather than via EXCLUDED so that omitting them (null) preserves the existing row…
   const providerItemId =
     params.providerItemId !== undefined
       ? (params.providerItemId?.trim() || null)
@@ -301,10 +252,7 @@ export async function upsertSkuCatalog(params: {
     params.lastKnownCostCents ?? null,
     params.sourcingNotes?.trim() || null,
     params.replenishTargetCents ?? null,
-    // notes ($13): pack guidance. `notes === undefined` (omitted) preserves the
-    // existing row via COALESCE; an explicit null also preserves (we don't clear
-    // on upsert here — clearing goes through the PATCH null path), so trim-or-null
-    // is the right normalization.
+    // notes ($13): pack guidance.
     params.notes !== undefined ? (params.notes?.trim() || null) : null,
     orgId,
     providerItemId,
@@ -337,13 +285,7 @@ export async function upsertSkuCatalog(params: {
   return result.rows[0];
 }
 
-/**
- * Soft-delete a SKU catalog entry by flipping `is_active = false`. We never
- * hard-delete: platform ids, manuals, QC checks, stock ledger rows and audit
- * history all reference the catalog row by id, so removing it would orphan
- * them. Returns the (now-inactive) row, or null if it doesn't exist or was
- * already inactive — callers should pre-fetch for the audit before-state.
- */
+/** Soft-delete a SKU catalog entry by flipping `is_active = false`. */
 export async function softDeleteSkuCatalog(id: number, orgId?: OrgId): Promise<SkuCatalogRow | null> {
   const sql = `UPDATE sku_catalog
         SET is_active = false, updated_at = NOW()
@@ -471,21 +413,10 @@ export interface SkuCatalogTitleMatch {
   productTitle: string;
 }
 
-/**
- * Minimum trigram similarity for a title-only catalog match when the import
- * row has no SKU or platform item number to anchor on (Google Sheet minimal
- * imports). Higher than {@link SKU_TITLE_GUARD_MIN} because there is no SKU
- * cross-check — we need a stronger title signal to avoid false positives.
- */
+/** Minimum trigram similarity for a title-only catalog match when the import row has no SKU or platform item number to anchor on (Google… */
 const SKU_TITLE_ONLY_MIN = 0.45;
 
-/**
- * Batch-resolve sku_catalog rows from product titles alone.
- *
- * Used by the Google Sheets transfer job for small-business imports that only
- * carry an order number + product title. Returns a map keyed by the exact
- * input title string (trimmed) so callers can look up per row.
- */
+/** Batch-resolve sku_catalog rows from product titles alone. */
 export async function batchResolveSkuCatalogByTitles(
   titles: string[],
   orgId?: OrgId,
@@ -542,35 +473,7 @@ interface ListingTitleMatch {
   skuCatalogId: number | null;
 }
 
-/**
- * Resolve a sheet row's Item Number from an EXACT listing title.
- *
- * Why exact, and why this table:
- *
- *  - `batchResolveSkuCatalogByTitles` answers "which PRODUCT is this" against
- *    `sku_catalog`, then a caller has to pick one of that product's listings —
- *    `batchPlatformItemIdsByCatalogIds` takes the newest by id, which is the
- *    wrong listing whenever a SKU is multi-listed (one live SKU has 7). This
- *    function answers "which LISTING is this" directly, so no arbitrary pick
- *    happens at all.
- *  - It is also where the data actually is: 5,482 of 5,506 `sku_platform_ids`
- *    rows carry a `listing_title`, while only 259 are paired to a catalog SKU.
- *    Marketplace listing titles are copied verbatim into the sheet, so an exact
- *    normalized compare hits — measured on the 2026-07-29 tab, 6 of 10 blank
- *    Item Number rows matched at similarity 1.000.
- *
- * NO fuzzy threshold: a near-miss here would write a WRONG listing id onto a
- * real order, and `platform_item_id` is the key orders join on. Exact or skip.
- *
- * AMBIGUITY IS A NON-MATCH: if a normalized title maps to more than one
- * distinct `platform_item_id` within the scope, the row is left unresolved
- * rather than guessed — that is the precise failure this function exists to
- * avoid repeating.
- *
- * Scoped per (normalized title, platform) so an eBay row can never adopt an
- * Amazon listing id. Rows whose sheet platform is blank match org-wide, still
- * subject to the uniqueness rule.
- */
+/** Resolve a sheet row's Item Number from an EXACT listing title. */
 export async function batchResolveListingsByTitle(
   inputs: Array<{ title: string; platform: string }>,
   orgId: OrgId,
@@ -694,30 +597,10 @@ export async function batchPlatformItemIdsByCatalogIds(
   return out;
 }
 
-/**
- * Minimum trigram similarity between a sku_catalog row's product_title and a
- * caller-supplied expected title for a same-SKU match to be trusted.
- *
- * `sku_catalog` holds the MARKETPLACE SKU namespace (ecwid/ebay/amazon). Zoho
- * `items` is a SEPARATE namespace that collides on the same zero-padded strings
- * — e.g. Ecwid SKU 143 = "Bose UB-20 Wall Mount" vs Zoho SKU 00143 = "Bose Solo
- * Soundbar". A bare `sku = $1` match therefore binds a Zoho line to the wrong
- * product. When the caller knows the Zoho product name it passes it as
- * `expectedTitle`; we only trust the same-SKU row if its title actually
- * resembles that product. Measured separation on live data: real collisions
- * score ~0.10, legitimate same-product matches score ≥0.25.
- */
+/** Minimum trigram similarity between a sku_catalog row's product_title and a caller-supplied expected title for a same-SKU match to be… */
 const SKU_TITLE_GUARD_MIN = 0.25;
 
-/**
- * Resolve by direct SKU text match on sku_catalog.sku.
- *
- * When `expectedTitle` is provided, the matched row is returned only if its
- * product_title is similar enough to be the same product (cross-namespace
- * collision guard — see {@link SKU_TITLE_GUARD_MIN}). On a collision we return
- * `null` rather than the wrong product: the caller falls back to the Zoho title
- * and the line carries no (wrong) catalog identity until it's paired for real.
- */
+/** Resolve by direct SKU text match on sku_catalog.sku. */
 async function resolveSkuCatalogBySku(
   sku: string,
   expectedTitle?: string | null,
@@ -750,13 +633,7 @@ async function resolveSkuCatalogBySku(
   return null;
 }
 
-/**
- * Resolve sku_catalog_id from any available identifier.
- * Tries: direct SKU match → platform_item_id / platform_sku crosswalk.
- *
- * Pass `expectedTitle` (the Zoho item name) when resolving for a Zoho-sourced
- * line so a colliding marketplace SKU isn't mistaken for the same product.
- */
+/** Resolve sku_catalog_id from any available identifier. */
 export async function resolveSkuCatalogId(
   sku?: string | null,
   itemNumber?: string | null,
@@ -803,26 +680,14 @@ function detectPlatform(
   return src || 'unknown';
 }
 
-/**
- * Resolve sku_catalog_id from available identifiers,
- * creating a new sku_catalog row (and optional sku_platform_ids row)
- * if nothing exists yet.
- *
- * Returns the sku_catalog_id or null if no sku/itemNumber provided.
- */
+/** Resolve sku_catalog_id from available identifiers, creating a new sku_catalog row (and optional sku_platform_ids row) if nothing exists yet. */
 export async function resolveOrCreateSkuCatalogId(params: {
   sku?: string | null;
   itemNumber?: string | null;
   productTitle?: string | null;
   accountSource?: string | null;
   orderId?: string | null;
-  /**
-   * When set, treat `productTitle` as the authoritative product identity and
-   * refuse to either bind to OR overwrite a same-SKU `sku_catalog` row that is a
-   * DIFFERENT product. Used by the Zoho receiving-line path, whose SKU namespace
-   * collides with the marketplace catalog (see {@link SKU_TITLE_GUARD_MIN}).
-   * Marketplace sync callers leave this unset and keep the prior behavior.
-   */
+  /** When set, treat `productTitle` as the authoritative product identity and refuse to either bind to OR overwrite a same-SKU `sku_catalog`… */
   guardTitle?: string | null;
 }, orgId: OrgId): Promise<number | null> {
   const sku = (params.sku || '').trim() || null;
@@ -852,11 +717,7 @@ export async function resolveOrCreateSkuCatalogId(params: {
 
   // 2. Nothing found — create new catalog entry if we have a SKU
   if (sku) {
-    // Guarded callers must never clobber a colliding marketplace row. If the
-    // SKU is already taken by a different product, upsert-by-sku would
-    // overwrite its title — bail out instead of corrupting it. (The Zoho line
-    // gets its correct catalog identity via the authoritative Ecwid/Zoho
-    // cross-check path, not by squatting on a marketplace SKU.)
+    // Guarded callers must never clobber a colliding marketplace row.
     if (guardTitle) {
       const clashSql = `SELECT id FROM sku_catalog WHERE sku = $1 AND organization_id = $2 LIMIT 1`;
       const clash = await tenantQuery(orgId, clashSql, [sku, orgId]);
@@ -932,12 +793,7 @@ export async function getKitPartsForCatalogIds(
   return out;
 }
 
-/**
- * Create one kit part (BOM row) under a SKU. Mirrors createQcCheck: when orgId
- * is provided the INSERT stamps organization_id and runs inside one
- * withTenantTransaction (GUC set), and attaching a part reactivates a retired
- * SKU so it resurfaces in the catalog. When omitted, behavior is byte-identical.
- */
+/** Create one kit part (BOM row) under a SKU. */
 export async function createKitPart(
   params: {
     skuCatalogId: number;
@@ -1132,14 +988,7 @@ export async function upsertVerification(params: {
   valueText?: string | null;
   failedModeId?: number | null;
 }, orgId?: OrgId): Promise<TechVerificationRow> {
-  // One verification per (source_kind, source_row_id, step_type, step_id) —
-  // enforced by ux_tech_verifications_step (2026-05-29), so a re-mark UPDATEs
-  // the single row in place.
-  //
-  // tech_verifications is tenant-owned. When orgId is provided we stamp
-  // organization_id ($12) on insert and run via withTenantTransaction (GUC set),
-  // so the row is attributed to the caller's tenant and RLS-subject; when omitted
-  // the statement is byte-identical to before (raw pool, GUC-default org stamp).
+  // One verification per (source_kind, source_row_id, step_type, step_id) — enforced by ux_tech_verifications_step (2026-05-29), so a…
   const values: unknown[] = [
     params.sourceKind,
     params.sourceRowId,
@@ -1177,21 +1026,7 @@ export async function upsertVerification(params: {
 
 // ─── Cache-first resolve-or-fetch from Zoho ─────────────────────────────────
 
-/**
- * Cache-first lookup for sku_catalog. Falls back to Zoho Inventory on miss:
- *   1. SELECT sku_catalog WHERE sku = $1 — synchronous cache path.
- *   2. If hint.zoho_item_id: GET /items/{id}, upsert, return.
- *   3. Else fall back to GET /items?sku={sku}, upsert first match, return.
- *
- * Never throws. Returns null on any Zoho failure or no-match so the caller
- * can proceed with sku_catalog_id = null (relaxed mode). Intended for use
- * inside waitUntil() blocks — synchronous hot-path callers should use
- * getSkuCatalogBySku() directly.
- *
- * Rate-limit guard: callers within one request should de-dupe by SKU
- * (e.g. a Map<string, Promise<...>>) before invoking this, since Zoho's
- * monthly budget is constrained.
- */
+/** Cache-first lookup for sku_catalog. */
 export async function ensureSkuCatalogEntry(
   sku: string,
   hint: { zoho_item_id?: string; zoho_purchaseorder_id?: string } | undefined,
@@ -1292,12 +1127,7 @@ export async function ensureSkuCatalogEntry(
 
 // ─── Zoho Sync Helper ───────────────────────────────────────────────────────
 
-/**
- * Sync items from Zoho upsert into sku_catalog.
- * Called after itemRepository.upsertMany().
- * Stamps `provider_item_id` from the inventory mirror's external id — never
- * treat SKU string equality as identity for later reads.
- */
+/** Sync items from Zoho upsert into sku_catalog. */
 export async function syncSkuCatalogFromItems(
   rows: Array<{
     sku?: string | null;
@@ -1314,10 +1144,7 @@ export async function syncSkuCatalogFromItems(
   const valid = rows.filter((r) => r.sku && r.sku.trim());
   if (valid.length === 0) return;
 
-  // sku_catalog is tenant-owned. orgId is REQUIRED: every VALUES tuple carries an
-  // organization_id column (stamp on insert), the upsert runs via
-  // withTenantTransaction (GUC set), and conflicts on (organization_id, sku) so
-  // the same SKU string can be synced per-org without colliding (H4).
+  // sku_catalog is tenant-owned.
   const cols = 8;
   const values: string[] = [];
   const params: unknown[] = [];
@@ -1442,11 +1269,7 @@ export async function pairEcwidToZoho(
 
   if (!updateResult.rows[0]) return { paired: false, imageBackfilled: false };
 
-  // Backfill image_url on sku_catalog from the Ecwid thumbnail — ONLY when Zoho
-  // does not own this row (SKU IDENTITY LAW, src/lib/sku/sku-identity-law.ts).
-  // A Zoho-twinned row's photo is the Zoho item photo; letting a pairing put an
-  // Ecwid thumbnail there is how 132 of 139 catalog images came to shadow the
-  // real product.
+  // Backfill image_url on sku_catalog from the Ecwid thumbnail — ONLY when Zoho does not own this row (SKU IDENTITY LAW,…
   const ecwidImageUrl = updateResult.rows[0].image_url;
   let imageBackfilled = false;
   if (ecwidImageUrl) {
@@ -1743,12 +1566,8 @@ export async function getSkuCatalogDetail(id: number, orgId?: OrgId): Promise<Sk
      LIMIT 1
   `;
 
-  // sku_platform_ids and qc_check_templates are tenant-owned — both get an org
-  // filter + GUC wrapper when orgId is provided (qc_check_templates must be
+  // sku_platform_ids and qc_check_templates are tenant-owned — both get an org filter + GUC wrapper when orgId is provided…
   // GUC-safe so FORCE row-level security can be enabled on it). product_manuals
-  // has NO organization_id column (child-scoped to sku_catalog, already
-  // org-verified by getSkuCatalogById above), so it stays on the raw pool. When
-  // orgId is omitted, behavior is identical to before.
   const platformSql = `SELECT * FROM sku_platform_ids WHERE sku_catalog_id = $1 AND is_active = true${orgId ? ' AND organization_id = $2' : ''} ORDER BY platform, created_at`;
   const qcSql = `SELECT * FROM qc_check_templates WHERE sku_catalog_id = $1${orgId ? ' AND organization_id = $2' : ''} ORDER BY sort_order, id`;
   const fnskuSql = `SELECT fnsku, asin, sku, product_title, condition, is_active
@@ -1809,11 +1628,6 @@ export async function createManualForCatalog(params: {
   type?: string | null;
 }, orgId?: OrgId): Promise<any> {
   // product_manuals has NO organization_id column (child-scoped to sku_catalog).
-  // When orgId is provided we (1) verify ownership of the parent catalog row
-  // (getSkuCatalogById scopes by org → throws "not found" for a foreign id,
-  // the 404 path) and (2) GUC-wrap the child INSERT via withTenantTransaction so
-  // any RLS policy bound to the parent's org sees the GUC. When omitted, behavior
-  // is byte-identical to before.
   const catalog = await getSkuCatalogById(params.skuCatalogId, orgId);
   if (!catalog) throw new Error('SKU catalog entry not found');
 
@@ -1860,10 +1674,7 @@ export async function updateManual(
   const idPlaceholder = idx++;
   values.push(id);
 
-  // product_manuals has NO organization_id column — scope via its org-bearing
-  // parent (sku_catalog). When orgId is provided we add an EXISTS guard on the
-  // parent catalog row's organization_id (a foreign-org row updates 0 rows → the
-  // 404 path) and GUC-wrap the write. When omitted, behavior is byte-identical.
+  // product_manuals has NO organization_id column — scope via its org-bearing parent (sku_catalog).
   let where = `id = $${idPlaceholder}`;
   if (orgId) {
     where += ` AND EXISTS (SELECT 1 FROM sku_catalog sc WHERE sc.id = product_manuals.sku_catalog_id AND sc.organization_id = $${idx++})`;
@@ -1911,10 +1722,7 @@ export async function createQcCheck(params: {
   const valueEnumJson =
     params.valueEnum != null ? JSON.stringify(params.valueEnum) : null;
 
-  // qc_check_templates and sku_catalog are both tenant-owned. When orgId is
-  // provided we stamp organization_id ($12) on the template INSERT, scope the
-  // catalog-reactivation UPDATE to the org, and run both inside one
-  // withTenantTransaction (GUC set). When omitted, behavior is byte-identical.
+  // qc_check_templates and sku_catalog are both tenant-owned.
   const insertValues: unknown[] = [
     params.skuCatalogId,
     params.stepLabel.trim(),

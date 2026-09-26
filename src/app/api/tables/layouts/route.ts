@@ -18,24 +18,7 @@ import {
 } from '@/lib/tenancy/organizations';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/tables/layouts?tableId=orders — this org's default slot layout for
- *   one table (`organizations.settings.tableLayouts[tableId]`), or null when
- *   the org runs the product default. Read once per table mount.
- * PUT /api/tables/layouts — replace (or reset with `layout: null`) the org's
- *   default layout for one table, whole-document.
- *
- * Sibling of `/api/tables/catalog`, same gates and for the same reason: the
- * read is what every operator's grid resolves through (`dashboard.view`),
- * while the write changes which columns EVERY staffer in the org sees — the
- * same altitude as enabling a feature (`admin.manage_features`), not a
- * per-operator display preference (those stay in `staff_preferences`).
- *
- * Layout documents validate in two stages: structural zod in the body schema,
- * then `parseSlotLayout` against the table's field catalog — an org default
- * naming a field the product does not ship must be refused at write time,
- * never stored to be soft-dropped on every read.
- */
+/** GET /api/tables/layouts?tableId=orders — this org's default slot layout for one table (`organizations.settings.tableLayouts[tableId]`),… */
 
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
@@ -106,10 +89,7 @@ export const PUT = withAuth(
         }
       }
 
-      // Fresh read for the read-modify-write: the org row is cached 30s
-      // per-instance, and seeding the whole-map merge (and the audit
-      // before-image) from a stale copy would resurrect a layout another
-      // admin just replaced.
+      // Fresh read for the read-modify-write:
       invalidateOrgCache(ctx.organizationId as OrgId);
       const org = await getOrganization(ctx.organizationId as OrgId);
       const settings = (org?.settings ?? {}) as Record<string, unknown>;

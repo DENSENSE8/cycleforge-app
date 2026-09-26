@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Query factories for the cage (To-ship intake gate).
- *
- * Same law as `dashboard-queries.ts`: the key lives here so a prefetch and the
- * `useQuery` that later mounts cannot drift apart. Two keys, deliberately
- * separate — the desk's Caged facet wants a COUNT on every paint, and the
- * triage form wants ONE order's live gates. Sharing a key would make opening a
- * form refetch the whole caged list.
- */
+/** Query factories for the cage (To-ship intake gate). */
 
 import { queryOptions } from '@tanstack/react-query';
 import type { CagedOrderRecord } from '@/lib/orders/caged-orders';
@@ -76,16 +68,7 @@ export function orderReleaseGatesQuery(orderId: number | null) {
   });
 }
 
-/**
- * Caged record → the queue grid's row shape.
- *
- * The desk has ONE grid, and the Caged facet renders in it rather than in a
- * second table display — that fork is exactly what the one-table teardown
- * removed. A caged order genuinely has no tester, no packer, no pack bench and
- * no ship-by, so those fields are null here as a statement of fact, not as
- * placeholder filler: the grid prints an em-dash for each, which is the honest
- * reading of "this order has not started".
- */
+/** Caged record → the queue grid's row shape. */
 export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
   return {
     id: record.id,
@@ -115,30 +98,7 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
   } as unknown as ShippedOrder;
 }
 
-/**
- * Order-exception row → the queue grid's row shape.
- *
- * The SECOND adapter of this kind, and it exists for the same reason as
- * {@link cagedRecordToQueueRow} directly above it: the product has ONE outbound
- * grid, and a queue that is a different QUESTION over the same orders renders
- * in it rather than in a table of its own.
- *
- * Exceptions is that queue. It was very nearly built as its own binding —
- * `outbound.order-exceptions`, its own column model, its own row component —
- * on the reasoning that `blockers[]`, `siblingUnpairedCount` and the paired
- * catalog entry have no column on `ShippedOrder`. That reasoning is wrong at
- * the wrong altitude: a fact the grid does not yet print is a SLOT BINDING
- * (`@/lib/tables/field-catalog/orders.ts` + the effective layout), not a
- * licence to fork the display. Adding a field to the catalog gives every
- * outbound lane the option of that column; forking the grid gives the operator
- * a second table that drifts.
- *
- * So: adapt the row, mount the orders binding, and let the slot engine decide
- * which facts are tracks. `sku` is carried (an exception usually has one, even
- * when it is unpaired); tester / packer / bench / ship-by are null as a
- * STATEMENT OF FACT — a held order has not started — and the grid prints an
- * em-dash for each, which is the honest reading of that.
- */
+/** Order-exception row → the queue grid's row shape. */
 export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
   const responsibility = [
     `${row.routing.category} · ${row.routing.owner}`,

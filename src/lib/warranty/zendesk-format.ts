@@ -1,9 +1,4 @@
-/**
- * Warranty ↔ Zendesk — PURE helpers (no DB / API imports) so both the server
- * routes and the client popover can share them. Mirrors the unit-id-format
- * split: server-side linking lives in zendesk-link.ts; this file stays
- * client-safe.
- */
+/** Warranty ↔ Zendesk — PURE helpers (no DB / API imports) so both the server routes and the client popover can share them. */
 
 import type { WarrantyClaimDetail, WarrantyClaimEventRow } from './types';
 

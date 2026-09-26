@@ -1,15 +1,4 @@
-/**
- * Nav-keys regions — the canonical armable region set + their region keys.
- *
- * THREE regions map the 3-column work frame (spec:
- * `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`): after the `⌘;` leader,
- * one region key arms a region and reveals its per-target letters. Letters are
- * unique WITHIN a region only — `p` differs across Left / Middle / Right.
- *
- * Spine (MasterNav) and GlobalHeader are deliberately NOT regions — they own
- * their own nav (pins `⌘1-9`, page switcher). Adding a fourth region needs a
- * new ruling, not a new row here.
- */
+/** Nav-keys regions — the canonical armable region set + their region keys. */
 
 export type NavRegionId = 'left' | 'middle' | 'right';
 

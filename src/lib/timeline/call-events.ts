@@ -1,11 +1,4 @@
-/**
- * Adapter: Nextiva call-log rows → {@link TimelineItem}s for the shared
- * {@link EventTimeline}. The Calls support mode is a Monitor — a newest-first
- * org call stream — so it renders through the one timeline primitive rather
- * than a forked list. Direction drives the dot tone; the agent is the actor.
- *
- * See docs/nextiva-voice-support-mode-plan.md §8 (Call Log mode).
- */
+/** Adapter: Nextiva call-log rows → {@link TimelineItem}s for the shared {@link EventTimeline}. */
 
 import { formatPhoneNumber } from '@/utils/phone';
 import type { TimelineItem, TimelineTone } from './types';

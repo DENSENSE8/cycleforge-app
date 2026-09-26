@@ -1,9 +1,4 @@
 // Single source of truth for mobile PO-detail header status tones.
-//
-// Flat chip (the only surface — mobile m/receiving/po/[poId]). Mirrors the
-// lib/<domain>-status.ts pattern. Classes preserved verbatim; hues follow the
-// color story (DESIGN_SYSTEM.md): OPEN=warning, RECEIVED=success.
-// src/lib is in Tailwind's content globs.
 
 export type PoHeaderStatus = 'OPEN' | 'RECEIVED';
 

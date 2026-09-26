@@ -1,13 +1,4 @@
-/**
- * Readiness endpoint — 200 only when the app can actually serve traffic.
- *
- * Probes the DB pool (cheap `SELECT 1`) and the Redis cache (PING) in
- * parallel; degrades gracefully when Redis is optional. Failing checks
- * return 503 with the failed names listed so the status page can show
- * "DB OK, Redis FAIL" rather than a binary up/down.
- *
- * Public (allowlisted in proxy.ts). Never returns sensitive info.
- */
+/** Readiness endpoint — 200 only when the app can actually serve traffic. */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

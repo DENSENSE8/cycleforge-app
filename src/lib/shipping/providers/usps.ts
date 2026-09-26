@@ -137,20 +137,7 @@ async function callUspsTrack(normalized: string, token: string): Promise<Respons
   );
 }
 
-/**
- * Build a normalized result from a USPS payload. Shared by the polling path
- * (trackByNumber) and the webhook receiver — USPS documents that webhook
- * notification payloads follow the same modernized Tracking API response shape,
- * so one parser serves both. Tolerant of three shapes:
- *   1. Full tracking response — `trackSummary` + `trackDetail[]`.
- *   2. Notification with a `trackingEvents[]` / `eventSummary[]` array.
- *   3. A single bare event object (top-level `event`/`eventCode` fields).
- *
- * `normalizedOverride` supplies the tracking number when the payload omits it
- * (the polling path already knows the number it queried).
- *
- * Returns null when no tracking number can be resolved.
- */
+/** Build a normalized result from a USPS payload. */
 export function parseUSPSTrackingPayload(
   payload: any,
   normalizedOverride?: string,
@@ -228,10 +215,7 @@ export async function trackByNumber(trackingNumber: string): Promise<CarrierTrac
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw Object.assign(new Error(`USPS track failed: ${res.status} ${body}`), {
-      // 403 = USPS "Tracking API Access Controls" gate (IP Agreement pending);
-      // 401 after a token refresh = persistent auth failure. Both are access
-      // blocks, not transient — surfaced as a distinct code so the shipment is
-      // marked TRACKING_UNAVAILABLE rather than retried into the quota wall.
+      // 403 = USPS "Tracking API Access Controls" gate (IP Agreement pending); 401 after a token refresh = persistent auth failure.
       code: res.status === 404 ? 'NOT_FOUND'
           : res.status === 403 ? 'ACCESS_CONTROL'
           : res.status === 401 ? 'AUTH_ERROR'

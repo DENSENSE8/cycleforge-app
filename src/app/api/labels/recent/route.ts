@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/labels/recent — server-backed Recently Printed feed.
- *
- * Reads `station_activity_logs` rows where `activity_type='LABEL_PRINTED'`
- * (written by POST /api/post-multi-sn) and decorates each with:
- *   - product title + image from `sku_catalog`
- *   - current status + location from `serial_units` (via the first
- *     tech_serial_numbers cross-ref, since one print batch can mint
- *     multiple serials)
- *
- * Scoped to the authenticated staff by default; pass `?staffId=all` (or
- * a numeric `staffId`) to widen the scope — currently unrestricted because
- * `print.label` permission gates the read. Tighten later if needed.
- */
+/** GET /api/labels/recent — server-backed Recently Printed feed. */
 
 interface RecentRow {
   id: number;

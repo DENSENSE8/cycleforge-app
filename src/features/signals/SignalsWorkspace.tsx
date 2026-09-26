@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Operations ▸ Signals — the right-pane body for `?mode=signals`.
- *
- * Timeline (default) and Browse are sub-views (`?signalsView=browse`); the
- * sub-view rail AND the in-context `?q=` filter (local SearchBar) live in
- * OperationsSidebarPanel (SignalsSidebar). The global header pill stays global.
- */
+/** Operations ▸ Signals — the right-pane body for `?mode=signals`. */
 
 import { useSearchParams } from 'next/navigation';
 import { SignalsHistoryWorkspace } from './SignalsHistoryWorkspace';

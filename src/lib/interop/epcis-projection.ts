@@ -1,52 +1,4 @@
-/**
- * EPCIS 2.0 event projection — a READING of `inventory_events`, not a new store.
- *
- * Writes nothing, adds no columns, and invents no facts. Every field below
- * comes from a row that already exists; where a standard field has no Cycle
- * Forge fact behind it, the field is ABSENT rather than defaulted (EPCIS
- * tolerates an omitted optional field and does not tolerate a wrong one).
- *
- * ## Why `inventory_events` is the right spine
- *
- * The table already answers four of EPCIS's five dimensions directly:
- *
- *   what   ← `serial_unit_id` / `sku` (+ `receiving_id`, `receiving_line_id`)
- *   when   ← `occurred_at`
- *   where  ← `bin_id` / `prev_bin_id`, `station`
- *   why    ← `event_type` → CBV `bizStep` + `disposition`
- *
- * and the fifth (`how`, the sensor dimension) has no Cycle Forge fact at all,
- * so it is omitted entirely rather than stubbed.
- *
- * ## `eventTime` is the SERVER instant, always
- *
- * `occurred_at` is `TIMESTAMPTZ NOT NULL DEFAULT NOW()` — written by Postgres,
- * never by a device. That is deliberate and load-bearing here: an EPCIS feed
- * is precisely the artefact someone argues a dispute from, and a drifted
- * tablet clock yields a wrong-but-plausible time nobody can later detect. The
- * same rule already governs `photos.client_captured_at`. If a device-clock
- * column is ever added to this table, it belongs in a `cycleforge_` facet as
- * a claim, never in `eventTime`.
- *
- * `eventTimeZoneOffset` is REQUIRED by EPCIS 2.0 and is emitted as the
- * warehouse business zone's offset for that instant — resolved through
- * `@/utils/date`, never hand-computed.
- *
- * ## `bizLocation` is usually absent, and that is correct
- *
- * The `where` dimension wants a GLN. Almost no tenant has licensed one, and
- * this repo's `DEFAULT_GLN` is GS1's own documentation placeholder — see
- * `./gs1-keys.ts`. So `bizLocation` appears only when the tenant configured a
- * real GLN, and the bin is carried as an internal `readPoint` URI that is
- * unmistakably not a GS1 key.
- *
- * ## Pagination is keyset, not OFFSET
- *
- * This is a stream over a tenant's entire history. `OFFSET n` re-scans every
- * row before the window on every page, so deep paging is quadratic — a Neon
- * CU-hour incident waiting for the first partner who backfills. The cursor is
- * `(occurred_at, id)`, which matches the read's ORDER BY.
- */
+/** EPCIS 2.0 event projection — a READING of `inventory_events`, not a new store. */
 
 import type { InventoryEventType } from '@/lib/inventory/events';
 import { formatApiInstant, WAREHOUSE_TIME_ZONE } from '@/utils/date';
@@ -70,15 +22,7 @@ import {
   type Gs1OrgIdentity,
 } from './gs1-keys';
 
-/**
- * One `inventory_events` row, joined to just enough to build an EPC.
- *
- * `gtin` arrives via `serial_units.sku_catalog_id` ONLY. Joining `items` to
- * `sku_catalog` on the SKU *string* is a house hard law violation — the two
- * are independent numbering schemes and the strings collide
- * (SKU identity). A unit with no
- * `sku_catalog_id` therefore has no GTIN here, and gets an internal EPC.
- */
+/** One `inventory_events` row, joined to just enough to build an EPC. */
 export interface EpcisSourceRow {
   id: number;
   occurred_at: Date | string;
@@ -115,14 +59,7 @@ export interface EpcisEvent {
   readPoint?: { id: string };
   bizLocation?: { id: string };
   bizTransactionList?: Array<{ type: string; bizTransaction: string }>;
-  /**
-   * Cycle Forge's own facts, namespaced.
-   *
-   * OpenLineage's rule — a custom facet MUST carry a distinct project prefix
-   * or it collides with the standard set — is the same discipline EPCIS wants
-   * for extension fields, so the same `cycleforge_` prefix is used in both
-   * places (see `./lineage-facets.ts`).
-   */
+  /** Cycle Forge's own facts, namespaced. */
   cycleforge_event?: {
     inventoryEventId: number;
     eventType: string;
@@ -142,12 +79,7 @@ export interface EpcisProjectionResult {
     cbvUriForm: CbvUriForm;
     /** True when the tenant has a real GLN, so `bizLocation` is populated. */
     hasBizLocation: boolean;
-    /**
-     * Event types skipped because they have no honest CBV reading, with
-     * counts. Never silently dropped — a consumer that sees `LISTED: 12` knows
-     * exactly what it is not being told, which is the difference between a
-     * gap and a lie.
-     */
+    /** Event types skipped because they have no honest CBV reading, with counts. */
     skipped: Record<string, number>;
   };
 }
@@ -204,14 +136,7 @@ function warehouseOffsetAt(instant: Date): string {
   return `${m[1]}${m[2]}:${m[3]}`;
 }
 
-/**
- * The EPC list for one event — what the event is ABOUT.
- *
- * Preference order is identity-strength, not convenience: a real SGTIN beats
- * a class-level GTIN, which beats an internal handle. A row that resolves to
- * nothing at all yields an empty list and the event is still emitted, because
- * "something happened to a carton we can name internally" is true and useful.
- */
+/** The EPC list for one event — what the event is ABOUT. */
 export function epcListFor(row: EpcisSourceRow): string[] {
   const out: string[] = [];
 
@@ -256,10 +181,7 @@ export function projectEvent(
   const instant = row.occurred_at instanceof Date ? row.occurred_at : new Date(row.occurred_at);
 
   const event: EpcisEvent = {
-    // A stable, globally-unique event id. `client_event_id` is already UNIQUE
-    // and already the idempotency key the bench mints per scan, so reusing it
-    // means a partner replaying the feed dedupes on the same identity the
-    // write path did. Falls back to the row id, namespaced.
+    // A stable, globally-unique event id.
     eventID: row.client_event_id
       ? `urn:uuid:${row.client_event_id}`
       : internalIdentifier('unit', `event-${row.id}`).uri,

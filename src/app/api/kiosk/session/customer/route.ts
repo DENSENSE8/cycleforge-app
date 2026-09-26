@@ -1,10 +1,4 @@
-/**
- * PATCH /api/kiosk/session/customer — verb 1 of the tablet's three.
- *
- * The customer is standing at this screen, so this is the honest place to take
- * their phone and name. Scoped to the session bound to this device; the tablet
- * cannot name another one.
- */
+/** PATCH /api/kiosk/session/customer — verb 1 of the tablet's three. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

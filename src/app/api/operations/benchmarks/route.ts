@@ -4,12 +4,7 @@ import { getBenchmarkComparison } from '@/lib/operations/benchmarks';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * GET /api/operations/benchmarks — org-scoped "you vs typical" readout:
- * seeded insight_links benchmarks paired with the org's own actuals from its
- * inventory_events spine (plan §2.5 / Phase 1). Read-only Monitor data;
- * org from ctx, never cross-tenant.
- */
+/** GET /api/operations/benchmarks — org-scoped "you vs typical" readout: */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

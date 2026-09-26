@@ -1,17 +1,4 @@
-/**
- * SKU-velocity catalog guards, materialization and adapter behaviour — the
- * family that replaced `/reports`' `VELOCITY_COLUMNS`.
- *
- * Two assertions here are load-bearing beyond the usual shape checks:
- *
- * - the RETIRED HUES. `Out` rendered `text-rose-600` and `In` rendered
- *   `text-emerald-600`. Tone on a compound row means "needs a human", and a
- *   velocity report has no such row — so the adapter must keep every row
- *   neutral rather than re-importing the decoration as a tone.
- * - the NULL STOCK. The retired cell printed `Number(r.current_stock ?? 0)`,
- *   which claimed a SKU with no `sku_stock` row holds zero units. The `LEFT
- *   JOIN` is why that null exists, and the two answers are different.
- */
+/** SKU-velocity catalog guards, materialization and adapter behaviour — the family that replaced `/reports`' `VELOCITY_COLUMNS`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

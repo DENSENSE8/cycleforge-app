@@ -55,36 +55,7 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 /** shadcn popover fade + zoom-95 — side=top slides from bottom (~8px). */
 const ACCOUNT_MENU_MS = 0.15;
 
-/**
- * Spine footer — the phone's account bar, imported to the desk (2026-09-15).
- * The row is {@link MobileAccountFooter}'s display, verbatim: staff colour +
- * initials bubble flush left, name + signed-in email beside it, flush plane
- * (no drop shadow — the open spine stays flat). ONE button, ONE door: the whole bar opens
- * the account panel. The trailing power square is retired — sign-out is the
- * panel's bottom row.
- *
- * The panel is Radix Popover + Motion enter/exit (fade · zoom 95% · slide
- * from bottom for `side="top"`), matching shadcn new-york popover. Soft shell
- * comes from {@link SIDEBAR_SPINE_MENU_PANEL_CLASS}. `modal={false}` so the
- * HUD is not focus-trapped. Report-an-issue still opens as a sibling layer
- * because it is a panel, not a menu row.
- *
- * Panel order: org/staff header → other workspaces (org switcher — rows for
- * every membership besides the current one; switch confirm → hard reload, via
- * the shared {@link useSwitchOrg}) → report an issue → desk→phone session
- * handoff ({@link PhoneHandoffQrDialog} — 4-char code + /m/claim) → clipboard
- * history (⌘⇧V) → open kiosk (`/kiosk/v2`) → switch staff → Settings → Log
- * out (hairline above, danger wash). Deep-link-only "Open on your phone"
- * stays on Settings → Workstation ({@link PhoneSignInQrDialog}). Switch staff
- * opens {@link SwitchStaffSheet}. Throw lives on {@link HeaderGoalChip}.
- * Kiosk is not on GlobalHeader.
- *
- * Callers: SidebarNavList. API: none. Schemas: none.
- * User (2026-09-15): "importing the same mobile display to desktop — the
- * staff icon and the name … on click the same popover just with logout on
- * the bottom … removing the power icon from the bottom right — one button
- * component at the bottom of the left sidebar."
- */
+/** Spine footer — the phone's account bar, imported to the desk (2026-09-15). */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
@@ -272,10 +243,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                         </span>
                       </button>
                     ) : null}
-                    {/* The panel itself is owned by `ClipboardHistoryHost` — this row
-                        only asks it to open. The host is mounted app-wide, so the chord
-                        still works on a page where this footer does not exist (the spine
-                        mounts lazily and starts closed). */}
+                    {/* The panel itself is owned by `ClipboardHistoryHost` — this row only asks it to open. */}
                     <button
                       type="button"
                       role="menuitem"

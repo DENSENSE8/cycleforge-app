@@ -1,27 +1,4 @@
-/**
- * Route param ownership — the URL isolation waist.
- *
- * Replaces the copy-then-hand-delete denylists (`MODE_SCOPED_PARAMS`,
- * `stripCrossSurfaceParams`, …) that a cross-surface navigation needed in order
- * not to leak. Those existed because navigation copied the WHOLE query string
- * forward and then tried to remember every key that should not have come along;
- * every new param was a new leak until someone added it to a list.
- *
- * Three rules (`docs/todo/nav-routing-refactor-EXECUTION-PROMPT.md` §2):
- *
- * 1. **Navigation never copies the current query string.** A target URL is
- *    constructed from a declared param set only — {@link buildRouteUrl}.
- * 2. **Every route declares the params it owns**, as a zod schema. Unknown keys
- *    are dropped at the boundary — {@link parseRouteParams}. A value that fails
- *    its schema is dropped too, so `?unboxview=garbage` can no longer reach a
- *    reader that would have to defend itself.
- * 3. **A param is owned by exactly one route.** Deliberate exceptions live in
- *    {@link SHARED_OWNED_KEYS} with a reason and only ever shrink.
- *
- * Route segments are NOT the isolation mechanism — Next.js strips nothing, and
- * `router.push('/unbox')` carries no query string only because nobody wrote one.
- * Isolation is this module.
- */
+/** Route param ownership — the URL isolation waist. */
 
 import { z } from 'zod';
 
@@ -49,14 +26,7 @@ export function paramEnumUpper<const T extends readonly [string, ...string[]]>(
     .pipe(z.enum(values));
 }
 
-/**
- * Accept exactly the values an existing house parser returns unchanged.
- *
- * Use this instead of re-typing a vocabulary that already has a source of truth
- * (`parseRepairTab`, `resolveTriageView`, `isRepairColumnSort`, …). A schema that
- * duplicates the list is a second SoT and drifts the first time someone adds a
- * tab; a round-trip check cannot.
- */
+/** Accept exactly the values an existing house parser returns unchanged. */
 export function paramRoundTrip(
   parse: (raw: string) => string | null | undefined,
 ): ParamSchema {
@@ -104,32 +74,14 @@ export const paramText: ParamSchema = z
 /** Present-means-on flag (`?ticketView=1`). */
 export const paramFlag: ParamSchema = paramEnum(['1', 'true'] as const);
 
-/**
- * A **bare** presence flag — `?shipped`, `?packed` — read with `.has()`, not
- * `.get()`. Normalizes every accepted spelling to the empty value, which is what
- * `URLSearchParams` yields for a valueless key and what `.has()` tests for.
- *
- * Distinct from {@link paramFlag}, which requires a value: `paramFlag` (and
- * `paramText`, which the dashboard lifecycle tabs used) both REJECT `''`, so a
- * declared-but-valueless key was silently dropped by the boundary parse and the
- * tab it selected reverted to the default. Use this whenever the surface asks
- * `params.has(key)` rather than comparing a value.
- */
+/** A **bare** presence flag — `?shipped`, `?packed` — read with `.has()`, not `.get()`. */
 export const paramPresence: ParamSchema = z
   .string()
   .transform((raw) => raw.trim().toLowerCase())
   .pipe(z.enum(['', '1', 'true']))
   .transform(() => '');
 
-/**
- * Ambient params — owned by this registry rather than by a route, because they
- * are the same question on every surface that asks it (which staff member, which
- * column is sorted, which carton is open). A route opts in via `carries`.
- *
- * Ambient does NOT mean "survives a mode switch": rule 1 means nothing survives
- * a navigation unless the navigation declares it. `carries` only governs what a
- * pasted deep-link or a back-button entry may keep when it LANDS on the route.
- */
+/** Ambient params — owned by this registry rather than by a route, because they are the same question on every surface that asks it (which… */
 export const AMBIENT_PARAMS = {
   /** Canonical staff filter (`useStaffFilter`). */
   staff: paramPositiveInt,
@@ -145,43 +97,9 @@ export const AMBIENT_PARAMS = {
   lineId: paramPositiveInt,
   /** Carton whose workspace pane is open (restored across a reload). */
   openReceivingId: paramPositiveInt,
-  /**
-   * Which pane a MOBILE `RouteShell` is showing (`actions` | `history`).
-   *
-   * Ambient because a shared design-system shell owns it, not a route:
-   * `RouteShell` (`@/design-system/components/RouteShell`) is mounted by
-   * `/test`, `/shipping`, `/support`, `/sourcing`, `/walk-in` and the receiving
-   * surfaces, and asks the identical question on each.
-   *
-   * **This was a live mobile defect, not a precaution.** `RouteShell` reads it
-   * through a CONSTANT (`searchParams.get(PANE_PARAM)`) from a file outside every
-   * surface tree, so neither the migration method's `.get('literal')` grep nor the
-   * ownership guard's literal-only regex could see it — and no spec declared it.
-   * On the two surfaces that already mounted `useSurfaceParamHygiene()` AND a
-   * `RouteShell` (`/test`, receiving), tapping the mobile "Actions" tab wrote
-   * `?pane=actions` and the hygiene hook stripped it on the next commit, snapping
-   * the pane straight back to History.
-   */
+  /** Which pane a MOBILE `RouteShell` is showing (`actions` | `history`). */
   pane: paramEnum(['actions', 'history'] as const),
-  /**
-   * The station-table URL contract (`@/lib/station/table-url-params`) — the same
-   * three questions on every station/history table, so they are ambient for the
-   * same reason `colsort`/`coldir` are.
-   *
-   * **These were dropped on arrival, which broke saved views outright.**
-   * `SAVED_VIEW_PARAM_KEYS` captures `layout` / `weekOffset` for
-   * `tech_history`, `testing_history`, `receiving_history` and
-   * `receiving_incoming`; applying a saved view wrote them and the hygiene hook
-   * on `/receiving/history`, `/incoming` and `/test` stripped every one, so the
-   * view appeared to apply and then silently reverted. Like `pane`, all three are
-   * read through CONSTANTS from modules outside any surface tree, so neither the
-   * `.get('literal')` grep nor the ownership guard's regex could see them.
-   *
-   * Station `scope` is deliberately NOT here: `useStationStaffScope` has zero
-   * consumers and `SCOPE_PARAM`/`parseScope` already sit in `knip-baseline.json`
-   * as dead exports. `?scope=` stays owned by `/` (Home), whose vocabulary is a
-   * different question with its own local parser.
-   */
+  /** The station-table URL contract (`@/lib/station/table-url-params`) — the same three questions on every station/history table, so they are… */
   layout: paramRoundTrip((raw) => (raw === 'board' || raw === 'all' ? raw : null)),
   /** Week navigation offset. Only positive values are ever written (0 = deleted). */
   weekOffset: paramPositiveInt,
@@ -275,13 +193,7 @@ function schemaFor(spec: RouteParamsSpec, key: string): ParamSchema | null {
   return null;
 }
 
-/**
- * Boundary parse: keep only params this route declares, with values that pass
- * their schema. Everything else is dropped — that is rule 2, and it is what
- * makes a stale deep-link or a back-button entry safe without a denylist.
- *
- * Returns a NEW `URLSearchParams`; the input is never mutated.
- */
+/** Boundary parse: */
 export function parseRouteParams(
   spec: RouteParamsSpec,
   params: URLSearchParams,
@@ -307,12 +219,7 @@ export function isRouteParamsClean(
 /** A declared param assignment. `null` / `undefined` omits the key. */
 type RouteParamValues = Readonly<Record<string, string | number | null | undefined>>;
 
-/**
- * Construct a URL for `spec` from a declared value set. **Never reads the
- * current location** — that is rule 1, and it is the whole reason the denylists
- * can be deleted. A value that fails its schema is dropped rather than emitted,
- * so a caller cannot smuggle an unvalidated string into the URL.
- */
+/** Construct a URL for `spec` from a declared value set. */
 export function buildRouteUrl(spec: RouteParamsSpec, values: RouteParamValues = {}): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {

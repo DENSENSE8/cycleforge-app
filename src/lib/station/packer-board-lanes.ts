@@ -1,12 +1,4 @@
-/**
- * Packer history board lanes (station-table-unification-plan §4.4) — the TS SoT
- * for how a packer record buckets into a Pipeline lane (same Decision-12
- * discipline + descriptor/meta split as {@link import('./tech-board-lanes')}).
- *
- * Lanes: TODAY / THIS_WEEK / FBA / EXCEPTION. EXCEPTION (an unmatched
- * `row_source === 'exception'` pack) and FBA are distinct streams and win over
- * day-banding; EXCEPTION wins over FBA (an exception pack needs attention first).
- */
+/** Packer history board lanes (station-table-unification-plan §4.4) — the TS SoT for how a packer record buckets into a Pipeline lane (same… */
 
 import { toPSTDateKey } from '@/utils/date';
 import { isFbaOrder } from '@/utils/order-platform';

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * <TicketStatus /> as rendered on /forge (ALP-3.3).
- *
- * Semantic 3-layer chip per status; a one-shot motion pulse (opacity+transform
- * only, through the reduced-motion hooks) fires when a ticket transitions to
- * `deployed` live. Out-of-enum statuses render as a loud INVALID chip — the
- * contract says reject, never coerce.
- */
+/** <TicketStatus /> as rendered on /forge (ALP-3.3). */
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';

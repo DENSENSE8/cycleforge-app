@@ -7,13 +7,7 @@ import { runEnsureOutboundDocsBatch } from '@/lib/documents/ensure-outbound-docs
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * GET /api/cron/documents/ensure-outbound
- *
- * JIT pack Phase 4 reconciler — for pack-ready (tech-scanned) orders still
- * missing shipping_label / packing_slip, run marketplace fetch. Does not buy
- * postage. Complements the after() hook on publishOrderTested paths.
- */
+/** GET /api/cron/documents/ensure-outbound */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
 

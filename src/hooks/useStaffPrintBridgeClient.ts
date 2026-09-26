@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * Phone side of the staff print bridge: lists the named print stations (the
- * computers signed in as this staffer that answer a status request), keeps the
- * staffer's pick per device, and sends jobs + printer routing to THAT station
- * only (`targetStationId`), with the subscribe-before-publish ACK
- * (`sendToDevice`).
- *
- * This browser runs its own bridge host too (mounted on every shell), so its
- * own status comes back on the channel. It is listed like any other station:
- * a phone with nothing paired drops out in `upsertStaffPrintStation`, and a
- * desk tab and a phone tab open in ONE browser (localhost testing) share one
- * station id — the tab that claims the job first prints it
- * (`runPrintJobOnce`), so it prints once.
- *
- * Same channel, events and wire as the host (`useStaffPrintBridgeHost`,
- * `@/lib/print/staff-print-bridge`). No second queue.
- *
- * Callers: `/m/print` (MobilePrintWorkspace), `/m/rs/[id]/paperwork`, the
- * FNSKU hub `/m/fnsku/[fnsku]`.
- */
+/** Phone side of the staff print bridge: */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';

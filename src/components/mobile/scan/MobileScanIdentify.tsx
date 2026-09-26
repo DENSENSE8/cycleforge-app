@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * `/m/scan` — identification kernel on the phone.
- *
- * Station-agnostic: the page is not named Arrival or triage. `useScanDispatch`
- * (class × object-state) decides the Card; never-seen tracking intakes a
- * package (PO match on lookup-po). House labels identify onto their record.
- * The capture sheet is the same bottom window as scan-out.
- *
- * `?work=qc` arms the QC session on this same kernel (there is no second QC
- * scan door): a unit label opens its checklist, a line label its unit pick,
- * and any other label lands exactly as it does unarmed.
- *
- * An FBA label opens its FNSKU hub — scanned whole (`X00…`), or typed as the
- * 7-character tail a worn label still shows (`36X1R51`), which is confirmed
- * against the catalog before it wins over the bin / SKU guess.
- */
+/** `/m/scan` — identification kernel on the phone. */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -214,11 +199,7 @@ function MobileScanIdentifyInner() {
     [resolve, qcArmed, router, searchParams, submitRaw, playScanFeedback, hapticOn, applyLocationTape],
   );
 
-  // The kernel owns hardware scans on this screen. A ring / HID wedge read is
-  // claimed from the app-wide listener (`useGlobalWedgeScanner`), which would
-  // otherwise navigate straight to the label's UNARMED redirect — so with QC
-  // armed a wedge-scanned unit or carton skipped its checklist / line pick.
-  // Claimed, it resolves through the same dispatch as the camera.
+  // The kernel owns hardware scans on this screen.
   useEffect(() => {
     const onWedge = (event: Event) => {
       const raw = (event as CustomEvent<{ value?: string }>).detail?.value;
@@ -231,12 +212,8 @@ function MobileScanIdentifyInner() {
   }, [onDecode]);
 
   /**
+   * A carton row opens the carton itself (operator 2026-09-24:
    * A carton row opens the carton itself (operator 2026-09-24: the primary
-   * record of the job is a full screen with an X back to the job, never a
-   * sheet or a verb strip). The triage decisions — photos, classify
-   * (Platform → Type → Priority), unbox — live on the carton hub `/m/r/[id]`:
-   * Take photo in its dock, Classify as its door `/m/r/[id]/classify`. A
-   * location row reopens its location record.
    */
   const opens = useMemo(() => {
     const map = new Map<string, () => void>();
@@ -266,19 +243,7 @@ function MobileScanIdentifyInner() {
    */
   const pending = inFlight + dispatching;
 
-  /**
-   * The middle slot, as a COUNT.
-   *
-   * It used to read `2 in flight` / `Offline — nothing is recorded`: prose in
-   * an 11px band, read by someone whose eyes are on the box, re-flowing its
-   * neighbours every time the number changed. The lane now carries "is
-   * anything pending" in the channel peripheral vision actually has (a moving
-   * edge), so this line only has to carry the NUMBER — which is also what
-   * keeps the count reachable by AT, since motion may never be a sole channel.
-   *
-   * `Offline` stays a word because it is not a quantity, and it is the one
-   * state where the operator must stop: the lane goes static danger under it.
-   */
+  /** The middle slot, as a COUNT. */
   const status = useMemo(() => {
     if (!online) return 'Offline';
     if (cameraOff) return 'Camera off';

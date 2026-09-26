@@ -7,16 +7,7 @@ type AllowedStatus = typeof ALLOWED_STATUSES[number];
 
 const DEFAULT_PRINT_STATUSES: AllowedStatus[] = ['TESTED', 'OUT_OF_STOCK', 'PACKED'];
 
-/**
- * GET /api/fba/print-queue
- *
- * Returns fba_shipment_items for print prep (default: TESTED + OUT_OF_STOCK + PACKED),
- * joined with parent fba_shipments and fba_fnskus catalog metadata.
- *
- * Query params:
- *   status — comma-separated statuses (each must be allowed), or single status
- *   date   — optional ISO date YYYY-MM-DD; filters rows to shipments with that due_date (calendar day, UTC)
- */
+/** GET /api/fba/print-queue */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

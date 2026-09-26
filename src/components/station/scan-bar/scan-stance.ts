@@ -2,15 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-/**
- * Left-icon stance on the station scan bar.
- *
- * Distinct from right-rail *type* (Ticket / Tracking / PO / …) and from Auto
- * (`armedMode === null`). Scan commits on Enter; Preview decodes only.
- *
- * Session + localStorage (not staff_preferences) — prefs plumbing is a later
- * pass if we want this cross-device.
- */
+/** Left-icon stance on the station scan bar. */
 export type StationScanStance = 'scan' | 'preview';
 
 const STORAGE_KEY = 'scan:station-stance';

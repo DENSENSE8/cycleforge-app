@@ -14,24 +14,7 @@ import { isLabelPurpose } from '@/lib/shipping/label-purpose';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/order-rates
- *
- * Rate-shop a single order via the ShipStation v2 engine. Ship-to + parcel
- * weight come from the order's stored ShipStation data when it's ShipStation-
- * sourced (the user's chosen weight source, fetched live from v1); otherwise
- * from the local customer + an explicit weight override. Read-only — no DB
- * mutation, no label purchased.
- *
- * Body: { orderId: number, carrierIds?: string[], weightOz?: number,
- *         dimensions?: { length, width, height, unit: 'inch'|'centimeter' },
- *         purpose?: 'outbound'|'return'|'replacement' }
- * Parcel precedence: explicit body values → parcel stored on the order
- * (`parcel_weight_oz` + `parcel_*_in`) → ShipStation-stored weight.
- * `purpose: 'return'` rates the parcel the other way — buyer → warehouse —
- * the shipment a return label is bought against (buildOrderShipmentSpec).
- * Returns the normalized RateQuoteResult (see src/lib/shipping/shipstation/types).
- */
+/** POST /api/shipping/order-rates */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;

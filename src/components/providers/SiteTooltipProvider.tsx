@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Site-wide copy-chip hover bubble (full id + copy / external-link mark).
- *
- * Ops law: paint **immediately** on hover — no enter fade, no layout tween,
- * no content slide. Warehouse staff scan dense LedgerGrid columns; a 150–220ms
- * animation stack reads as "the tip is slow to load." Placement still waits one
- * measure frame (hidden until clamped) — that is geometry, not decoration.
- *
- * Close stays lightly delayed ({@link CLOSE_DELAY_MS}) so crossing chip→menu
- * gaps does not flicker the tip off.
- */
+/** Site-wide copy-chip hover bubble (full id + copy / external-link mark). */
 
 import React, {
   createContext,
@@ -37,17 +27,7 @@ const MAX_PLACEMENT_RETRIES = 8;
 /**
  * How long the bubble HOLDS after a copy, showing the green ✓ where the copy
  * glyph was. This is the whole confirmation: operator 2026-09-15 — *"the
- * problem was that when you clicked on it, the tooltip disappeared. It should
- * remain and display the green as a copy feedback confirmation."* Every close
- * request that arrives inside the window (mouse-out, blur, the chip
- * unmounting) is DEFERRED to its end rather than honoured, so the mark cannot
- * be raced off the screen by the gesture that produced it.
- *
  * 1500ms was too short to read — operator 2026-09-15, after the hold landed:
- * *"I have to hover over it again for the tooltip to display again. The
- * tooltip should be a longer timer."* 3000ms is the confirmation's own window
- * and does not touch {@link CLOSE_DELAY_MS}, which still governs an ordinary
- * hover leaving with nothing to confirm.
  */
 const COPIED_HOLD_MS = 3000;
 
@@ -98,34 +78,7 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeAnchorIdRef = useRef<string | null>(null);
   const placementRetryRef = useRef(0);
-  /**
-   * The held copy ✓: which anchor owns it, WHICH VALUE it confirms, its timer,
-   * whether a close arrived during the hold, and the one hover request that
-   * arrived during it and is waiting for the end.
-   *
-   * Two measured failures shaped this, both on `/shipping/orders`:
-   *
-   * 1. The ✓ vanished ~200ms after the click, because the bubble was
-   *    re-`activate`d for the SAME id (focus landing on the button, the chip
-   *    hover menu deferring its mount, a row re-render handing the chip a
-   *    fresh `useId`) and a fresh session starts `copied: false`. Hence the
-   *    VALUE key: a re-anchor of the same id re-keys the hold instead of
-   *    cancelling it.
-   * 2. The ✓ then vanished ~900ms after the click as soon as the hand drifted,
-   *    because 48px of drift crosses the next chip and that anchor's hover
-   *    `activate` — a different value — replaced the receipt. Trace:
-   *    `activate _r_1t_ "Amazon CF-…"` → `scheduleClose _r_1t_` →
-   *    `activate _r_1u_ "UPS CFML…"` and the mark was gone.
-   *
-   * So for its window the receipt OWNS the bubble: a foreign hover is parked
-   * in {@link pendingActivateRef} and applied when the hold ends, which is
-   * also where a deferred close is honoured. A second COPY still preempts
-   * immediately — it carries `force`.
-   *
-   * Refs, not state: a close or hover request has to be answered
-   * synchronously inside the handler that made it, before any render could be
-   * scheduled.
-   */
+  /** The held copy ✓: */
   const copiedAnchorRef = useRef<string | null>(null);
   const copiedValueRef = useRef<string | null>(null);
   const copiedTimerRef = useRef<number | null>(null);
@@ -239,12 +192,7 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
   const sessionRef = useRef(session);
   sessionRef.current = session;
 
-  /**
-   * Copy landed: paint the ✓ where the copy glyph was and HOLD it for
-   * {@link COPIED_HOLD_MS}. At the end, in priority order: hand the bubble to
-   * whatever hover was parked during the window, else honour a deferred
-   * close, else just drop the mark and leave the tip where it is.
-   */
+  /** Copy landed: paint the ✓ where the copy glyph was and HOLD it for {@link COPIED_HOLD_MS}. */
   const notifyCopied = useCallback(
     (anchorId: string) => {
       console.log('[TT] notifyCopied', anchorId);
@@ -394,11 +342,7 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
               className="pointer-events-none z-tooltip"
             >
               <div
-                // Match HoverTooltip chrome height: py-1 + items-center +
-                // leading-none so carrier/platform id bubbles read as one line.
-                // Same 8px popover rung as every other hover face (cursor
-                // chip, HoverTooltip bubble, chip hover menu) — operator
-                // 2026-09-15: the in-place tooltips round too.
+                // Match HoverTooltip chrome height:
                 className={cn(
                   'relative flex max-w-[min(90vw,24rem)] items-center gap-1.5 bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-none text-white shadow-md',
                   DROPDOWN_SHELL_CORNER,

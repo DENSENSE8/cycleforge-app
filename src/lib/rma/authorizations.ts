@@ -1,20 +1,4 @@
-/**
- * RMA authorizations — domain module for the Phase A5 entity.
- *
- * Pairs with `rma_authorizations` + `return_dispositions` tables (migration
- * 2026-05-23). Promotes RMA from a `serial_units.current_status` flag to a
- * first-class business object so the warehouse can:
- *   - Issue an RMA number before the carton arrives
- *   - Track customer returns AND vendor returns (RTV) in the same table
- *   - Record a typed disposition per unit after inspection
- *   - Look up the history of any returned serial
- *
- * Workflow:
- *   1. `createAuthorization({...})`            — issues a new RMA-NNNNN number
- *   2. (RMA carton arrives) `markReceived({})` — AUTHORIZED → RECEIVED
- *   3. `recordDisposition({...})`              — one row per unit decision
- *   4. `closeAuthorization({...})`             — when all units dispositioned
- */
+/** RMA authorizations — domain module for the Phase A5 entity. */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
@@ -28,12 +12,7 @@ import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import type { PlacementResolverDeps } from '@/lib/workflow/placement';
 
-/**
- * A bin lookup (for the placement strangle) scoped to an open tenant client +
- * org, mirroring receiving's RESERVE + active filter so a restock decision rule
- * resolves a real, pickable bin. Runs on the passed client so it shares the
- * disposition transaction's GUC + lock visibility.
- */
+/** A bin lookup (for the placement strangle) scoped to an open tenant client + org, mirroring receiving's RESERVE + active filter so a… */
 function reserveBinDepsOn(client: Pick<PoolClient, 'query'>, orgId: string): PlacementResolverDeps {
   const find = async (barcode: string): Promise<{ id: number; name: string } | null> => {
     const r = await client.query<{ id: number; name: string }>(
@@ -94,22 +73,10 @@ export type CreateAuthorizationResult =
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-/**
- * Generate the next RMA number for the current year. Format `RMA-YYYY-NNNNN`.
- *
- * Uses a separate read+write rather than a sequence because (a) the format
- * must reset per year and (b) the per-year counter is a small enough table
- * to make a sequence-per-year clunky.
- */
+/** Generate the next RMA number for the current year. */
 async function nextRmaNumber(orgId?: OrgId | null): Promise<string> {
   const year = new Date().getFullYear();
-  // Count existing RMAs for the year and bump. A small race here just means
-  // two parallel calls fail the UNIQUE constraint and one retries — handled
-  // by the caller via `rma_number UNIQUE` collision retry below.
-  //
-  // rma_authorizations has no organization_id column, so when an org is in
-  // scope we route through tenantQuery purely to set the GUC (RLS backstop);
-  // omitted = legacy raw-pool behavior, byte-identical for session-less callers.
+  // Count existing RMAs for the year and bump.
   const sql = `SELECT COALESCE(MAX(
               (regexp_replace(rma_number, '^RMA-\\d{4}-', ''))::int
             ), 0) + 1 AS next_seq
@@ -242,15 +209,7 @@ export interface RecordDispositionInput {
   dispositionCode: DispositionCode;
   decidedByStaffId: number;
   notes?: string | null;
-  /**
-   * Tenant scope — REQUIRED, un-defaulted. The whole disposition runs inside
-   * `withTenantTransaction` (GUC set, RLS backstop) and the org-bearing
-   * co-tables (serial_units / order_unit_allocations) get an explicit
-   * `organization_id` predicate. It used to be optional, and the two internal
-   * `orgId ?? DOGFOOD_ORG_ID` substitutions below meant an org-less caller did
-   * not fall back to an unscoped write — it wrote the event and the restock
-   * under the dogfood tenant's identity.
-   */
+  /** Tenant scope — REQUIRED, un-defaulted. */
   organizationId: OrgId;
 }
 
@@ -279,11 +238,7 @@ export async function recordDisposition(
 
   const orgId = input.organizationId;
 
-  // The transactional body, parameterized over the client + whether an org is
-  // in scope. rma_authorizations / return_dispositions have no organization_id
-  // column, so they are scoped via the GUC (withTenantTransaction) when orgId is
-  // present; the org-bearing co-tables (serial_units / order_unit_allocations)
-  // additionally get an explicit organization_id predicate.
+  // The transactional body, parameterized over the client + whether an org is in scope.
   const run = async (client: PoolClient, manageTxn: boolean): Promise<RecordDispositionResult> => {
     try {
       if (manageTxn) await client.query('BEGIN');
@@ -305,10 +260,7 @@ export async function recordDisposition(
         rmaOrderId = check.rows[0].order_id;
       }
 
-      // Reverse-link applies to customer returns (the unit was out on an order
-      // and physically came back). RTV / vendor returns (OUTBOUND_TO_VENDOR) have
-      // no customer-ship allocation to flip. A standalone unit disposition
-      // (rmaId null) is treated as an inbound return.
+      // Reverse-link applies to customer returns (the unit was out on an order and physically came back).
       const isInboundReturn = rmaDirection == null || rmaDirection === 'INBOUND_FROM_CUSTOMER';
 
       let matchedOrderPk: number | null = null;
@@ -338,10 +290,7 @@ export async function recordDisposition(
         const unit = unitQ.rows[0];
         if (unit) {
           if (isInboundReturn) {
-            // Resolve the outbound order this unit shipped on, flip its open
-            // SHIPPED allocation → RETURNED (durable shipped↔returned link;
-            // idempotent if the returns dock already flipped it), and backfill
-            // the RMA's order_id when it was issued without one.
+            // Resolve the outbound order this unit shipped on, flip its open SHIPPED allocation → RETURNED (durable shipped↔returned link; idempotent…
             const prior = await resolvePriorOutbound(
               { id: input.serialUnitId, normalized_serial: unit.normalized_serial },
               { executor: client, organizationId: orgId },
@@ -397,28 +346,14 @@ export async function recordDisposition(
           );
           eventId = event.id;
 
-          // ACCEPT on a returned unit RESTOCKS it (RETURNED → STOCKED) so it
-          // re-enters sellable inventory. Previously the disposition recorded the
-          // decision but never enacted it, stranding accepted returns in RETURNED.
-          // Gated on isInboundReturn so an OUTBOUND_TO_VENDOR (RTV) RMA's ACCEPT
-          // can NOT put a unit that's physically leaving for the vendor back into
-          // our sellable stock. Only fires when the unit is actually RETURNED;
-          // other states / codes record the disposition without a status change.
+          // ACCEPT on a returned unit RESTOCKS it (RETURNED → STOCKED) so it re-enters sellable inventory.
           if (isInboundReturn && input.dispositionCode === 'ACCEPT' && unit.current_status === 'RETURNED') {
-            // Config-driven restock placement (§1.6 Track 1, opt-in). When the
-            // flag is on, consult the org's Studio decision policy for a restock
-            // bin (NO system default — see resolveSitePlacementBin with [] policy).
-            // With no decision node authored it resolves nothing → restock stays
-            // bin-less, exactly as before; an org that authors a rule gets the
-            // unit physically placed + current_location set, no app change.
+            // Config-driven restock placement (§1.6 Track 1, opt-in).
             const effectiveOrg = orgId;
             let restockBinId: number | null = null;
             let restockBinName: string | null = null;
 
-            // Compensating sku_stock_ledger row (+1, mirrors processReturnsIntake's
-            // Path B, src/lib/inventory/returns.ts:158-167) — without this, the
-            // trigger-projected sku_stock.stock count never sees the restock, so a
-            // unit could be STOCKED here yet absent from the sellable count.
+            // Compensating sku_stock_ledger row (+1, mirrors processReturnsIntake's Path B, src/lib/inventory/returns.ts:158-167) — without this, the…
             let restockLedgerId: number | null = null;
             if (unit.sku) {
               const ledgerQ = await client.query<{ id: number }>(
@@ -554,17 +489,7 @@ export async function recordDisposition(
     }
   }
 
-  // Studio tap (Tap 2, §7.1 of the returns-unification plan): fired after the
-  // transaction commits, never inside it — mirrors Tap 1's timing rule in
-  // linkReturnedSerial. Only when a real unit was dispositioned (rmaId-only
-  // calls have no per-unit engine position to advance) and the write
-  // succeeded. Ports from the function's actual computed outcome, not a
-  // naive disposition-code map: ACCEPT only means "restock" when it actually
-  // did (isInboundReturn + prior RETURNED) — an OUTBOUND_TO_VENDOR RMA's
-  // ACCEPT must not falsely report `restock`. HOLD/REWORK (and a non-
-  // restocking ACCEPT) map to no port, which is correct, not an omission:
-  // the `returns` node has no lane for them yet, so the tap re-parks the
-  // unit there rather than silently inventing a route.
+  // Studio tap (Tap 2, §7.1 of the returns-unification plan):
   if (result.ok && input.serialUnitId != null) {
     const port = dispositionToPort(input.dispositionCode, result.restocked);
     await tapWorkflow({
@@ -669,17 +594,7 @@ export interface DispositionBacklogRow {
   updatedAt: string;
 }
 
-/**
- * The disposition worklist (returns-unification plan §9 Stage 4): units
- * sitting at RETURNED that have never received ANY disposition — not simply
- * `current_status = 'RETURNED'`, which alone over-counts. A HOLD/REWORK
- * disposition deliberately does NOT change `current_status` away from
- * RETURNED (only ACCEPT does, via the restock branch above), so a unit a
- * human already triaged to "needs more review" would incorrectly reappear as
- * backlog on a bare status filter. `NOT EXISTS` against `return_dispositions`
- * is the correct "genuinely untouched since it came back" signal. Oldest
- * first — a worklist should surface what's waited longest.
- */
+/** The disposition worklist (returns-unification plan §9 Stage 4): */
 export async function listDispositionBacklog(
   orgId: OrgId,
   limit = 100,
@@ -731,10 +646,6 @@ export async function findById(
 }
 
 // ─── Record-level update / cancel ─────────────────────────────────────────────
-//
-// These edit the RMA *record* (mutable metadata + a soft-cancel). Lifecycle
-// status transitions (AUTHORIZED→RECEIVED→DISPOSITIONED→CLOSED) stay in their
-// dedicated verb routes — PATCH here intentionally cannot move `status`.
 
 export interface UpdateAuthorizationInput {
   rmaId: number;

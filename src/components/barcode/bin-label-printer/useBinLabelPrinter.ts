@@ -15,18 +15,7 @@ import { DEFAULT_CONFIG, loadConfig, saveConfig, type PrinterConfig, type Step }
 import { registerLocations } from './bin-printer-api';
 import { printBinLabelRun } from '@/lib/print/printLabelRun';
 
-/**
- * Controller for the bin (location) label printer. Owns the five-step builder
- * (zone → aisle → bay → level → optional position), the per-warehouse config, and the
- * register-then-print flow. Bulk ranges open LabelPrintRunSheet; confirm calls printRun.
- * The selection lives in the shared `useLabelPrinterStore` so the main-pane preview
- * stays in lock-step with the sidebar picker.
- *
- * Returns one bag consumed by the layout components so the views stay
- * presentational.
- *
- * Callers: BinLabelPrinter. User: implement print-run plan — wire printBinLabelRun.
- */
+/** Controller for the bin (location) label printer. */
 export function useBinLabelPrinter() {
   const { rooms, roomNames, loading } = useLocations();
 

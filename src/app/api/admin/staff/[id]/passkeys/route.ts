@@ -20,10 +20,7 @@ function idFromUrl(req: NextRequest): number | null {
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const id = idFromUrl(req);
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
-  // staff_passkeys has no organization_id of its own — it is child-scoped via
-  // staff_id → staff. Gate on the staff PARENT's org: a staffId in another org
-  // reads as NOT_FOUND, so an admin can never enumerate another tenant's
-  // passkeys.
+  // staff_passkeys has no organization_id of its own — it is child-scoped via staff_id → staff.
   const owns = await tenantQuery(
     ctx.organizationId,
     `SELECT id FROM staff WHERE id = $1 AND organization_id = $2`,

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * StudioLibrary — the left pane. Registry-driven (never hard-codes a node
- * type): lists every registered engine node type grouped by category, plus
- * the operations-catalog stations as L0 reference. Read-only in ST1 —
- * drag-to-add unlocks with the editable canvas (ST4); at L2 this pane
- * switches to blocks (ST5).
- */
+/** StudioLibrary — the left pane. */
 
 import { icons } from 'lucide-react';
 import { STATIONS } from '@/components/admin/workflow/operations-catalog';

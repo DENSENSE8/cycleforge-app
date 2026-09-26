@@ -3,15 +3,7 @@
 import { ConditionGradeChip } from '@/components/ui/CopyChip';
 import { useConditionGradeStyle, type ConditionGradeStyleSize } from '@/hooks/useConditionGradeStyle';
 
-/**
- * Small condition-grade readout. Extracted into its own leaf module so
- * `ReceivingUnitRows` and `UnitSlotList` can both render it without importing
- * each other (which formed a runtime cycle). `ReceivingUnitRows` re-exports it
- * for backwards compatibility.
- *
- * `size="meta"` renders the shared {@link ConditionGradeChip}; `compact` keeps
- * the lightweight text badge for tight unit-row slots.
- */
+/** Small condition-grade readout. */
 export function ConditionBadge({
   grade,
   size = 'compact',

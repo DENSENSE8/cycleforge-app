@@ -7,15 +7,7 @@ import {
 } from '@/components/settings/settings-sections';
 import { cn } from '@/utils/_cn';
 
-/**
- * `/settings` — the landing (2026-09-06 rail removal): a grouped card grid.
- * Personal sections collapse into the "Your setup" card → `/settings/me`;
- * org sections group into category clusters, permission-gated per row.
- *
- * `?section=<id>` (the old inline-tab addressing) still resolves — DERIVED
- * from the registry (personal → `/settings/me#<anchor>`, org → its route) plus
- * the legacy spellings the registry cannot express.
- */
+/** `/settings` — the landing (2026-09-06 rail removal): */
 const LEGACY_SECTION_ALIASES: Record<string, string> = {
   staff: 'team',
   'operations-log': '/operations?mode=logs',

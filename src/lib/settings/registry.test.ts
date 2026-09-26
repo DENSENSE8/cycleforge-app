@@ -1,10 +1,4 @@
-/**
- * Guard test for the Settings Registry — mirrors permission-registry.test.ts.
- * Run with the repo's node:test + tsx runner. Every invariant the framework
- * relies on (unique page-namespaced keys, a default on every schema, options
- * present where the control needs them, sane entitlement/scope pairings) is
- * asserted here so a malformed row can't slip in unreviewed.
- */
+/** Guard test for the Settings Registry — mirrors permission-registry.test.ts. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

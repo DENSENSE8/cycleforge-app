@@ -17,13 +17,6 @@ type LocationVerb = 'take' | 'put' | 'scan';
 /**
  * `/m/loc/[code]` — a scanned location as a full-screen record on
  * {@link DetailHubScreen} (operator 2026-09-25: "when I scan the location it
- * must display a full page, not just a mounted display at the bottom").
- *
- * Opened from `/m/scan` with `?back=/m/scan`, so the bar's X returns to the
- * scan loop. The card opens `/info`; the content is every SKU here with its
- * live count and the ± strip; the door pairs another product (the empty
- * location's whole job). The dock's Take · Put open the keypad for the sole
- * SKU — with several, each row's `123` key names its SKU instead.
  */
 function LocationHubInner() {
   const router = useRouter();

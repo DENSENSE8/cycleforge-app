@@ -1,19 +1,6 @@
 /**
  * A scripted order-import run — the sample data behind the "Demo sync" button.
- *
  * Operator 2026-09-15: *"I need a testing button instead of the same Google
- * Sheets real production button … when I press the input button that's real it
- * would display exactly the same."*
- *
- * So this is deliberately NOT a second UI. It is a list of the same
- * {@link SyncStreamEvent}s the real route streams, on the same two lanes,
- * replayed on a timer into the same {@link applySyncRunEvent} fold. The run
- * surface cannot tell the difference — which is the whole point: whatever the
- * demo shows is what production shows.
- *
- * Nothing here touches the network or the database. The only visible tell is
- * the `demo` flag the surface paints in its eyebrow, so a screenshot of sample
- * numbers is never mistaken for a real import.
  */
 import type { SyncRunLane, SyncRunOutcomeLine } from './run-steps';
 import type { SyncStreamEvent, TransferOrderDetail, TransferTabState } from './types';
@@ -36,14 +23,7 @@ function detailRow(orderId: string, productTitle: string): TransferOrderDetail {
   };
 }
 
-/**
- * Paced like a real ShipStation import: the read lands fast, tracking
- * resolution is the long pole, the ingest lands updates then inserts, and the
- * exceptions pass trails it. Total ≈ 10s — long enough to watch steps advance,
- * short enough to press twice. Only the phases the ShipStation connector
- * really emits: `fetching_shipstation` bare then counted, one `updating`, one
- * `inserting`.
- */
+/** Paced like a real ShipStation import: */
 export const DEMO_RUN_SCRIPT: readonly DemoRunBeat[] = [
   { after: 200, lane: 'shipstation', event: { type: 'phase', phase: 'starting' } },
   { after: 400, lane: 'shipstation', event: { type: 'phase', phase: 'fetching_shipstation' } },

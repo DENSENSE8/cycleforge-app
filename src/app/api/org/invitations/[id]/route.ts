@@ -1,10 +1,4 @@
-/**
- * DELETE /api/org/invitations/[id] — revoke a pending invitation.
- *
- * Gated by admin.manage_staff, scoped to the caller's org. Mirrors the
- * idFromUrl pattern used by other [id] admin routes (withAuth does not forward
- * Next's route params).
- */
+/** DELETE /api/org/invitations/[id] — revoke a pending invitation. */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

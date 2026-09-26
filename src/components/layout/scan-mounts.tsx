@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The two mount-only scan listeners both shells need.
- *
- * They were local components inside `ResponsiveLayout`. Now that the desk and
- * handheld frames are separate modules (so each tree ships only its own chunk —
- * see `MobileRouteShell`), they live here instead of being duplicated or
- * dragging one shell's import graph into the other's.
- */
+/** The two mount-only scan listeners both shells need. */
 
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';

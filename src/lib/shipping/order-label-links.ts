@@ -1,32 +1,4 @@
-/**
- * Pairing ShipStation labels with orders — the Link label dialog, the label's
- * support-ticket links, and the order's label list.
- *
- *   list      every label on the order (`shipping_label_purchases`, any
- *             creation type, not unlinked), cost filled from the persisted v1
- *             shipment (`shipstation_shipment_refs`), with its ticket links
- *   search    candidates for Link label: this order's own ShipStation
- *             shipments and every quarantined ShipStation label (empty query),
- *             or a tracking # / ShipStation order # (persisted refs first, a
- *             live v1 lookup only when nothing local matches — an explicit
- *             operator search, never a render)
- *   link      pair one label with this order under a purpose
- *             (`decideLabelLink`); a QUARANTINED ingestion (e.g. the second
- *             live label on one order) resolves as LINKED in the same
- *             transaction; outbound / replacement tracking joins the order's
- *             tracking set (tracking the order already carries is left as
- *             it is), a return's never does
- *   unlink    `decideLabelUnlink`: the row goes `unlinked` (kept, so the
- *             backfill never re-imports it), a LINKED ingestion reopens as
- *             QUARANTINED, tracking the pairing itself added comes off
- *   ticket    the existing ticket ↔ entity waist (`ticket_links`): the order
- *             anchors the ticket when it has no anchor yet, and the label's
- *             tracking is referenced as a SHIPMENT — which is what the support
- *             side's Connections strip already renders
- *
- * Orchestration takes an injectable {@link OrderLabelLinkDeps}; the SQL-backed
- * default lives at the foot of this file.
- */
+/** Pairing ShipStation labels with orders — the Link label dialog, the label's support-ticket links, and the order's label list. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -676,12 +648,7 @@ function candidateFromRef(r: RefRow, source: LabelLinkCandidate['source']): Labe
 const REF_COLUMNS = `shipstation_shipment_id, order_number, tracking_number, carrier_code, service_code,
   create_date, voided, is_return_label, shipment_cost, insurance_cost`;
 
-/**
- * Link-label candidates. Empty query: this order's own ShipStation shipments +
- * every quarantined ShipStation label. Query: an exact tracking # or
- * ShipStation order # — persisted first, a live v1 lookup when nothing local
- * matches.
- */
+/** Link-label candidates. */
 export async function searchLabelLinkCandidates(
   orgId: OrgId,
   orderId: number,
@@ -851,13 +818,7 @@ export type LabelTicketResult =
   | { ok: true; ticketId: number; shipmentId: number; added: boolean; orderAnchored: boolean; purpose: LabelPurpose; trackingNumber: string }
   | { ok: false; status: 400 | 404 | 409; code: string; error: string };
 
-/**
- * Link a label (and its order) to a helpdesk ticket through the existing
- * ticket ↔ entity waist: the ORDER anchors the ticket when the ticket has no
- * anchor yet (a ticket anchored elsewhere keeps it), then the label's tracking
- * is referenced as a SHIPMENT (minting its STN row on demand) — what the
- * ticket's Connections strip renders. Idempotent.
- */
+/** Link a label (and its order) to a helpdesk ticket through the existing ticket ↔ entity waist: */
 export async function linkLabelToTicket(input: {
   orgId: OrgId;
   orderId: number;

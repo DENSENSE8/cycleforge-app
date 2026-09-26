@@ -1,14 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/advance
- *
- * Manual, n8n-style lifecycle advance for a receiving line. Drives the line
- * through the coarse receiving lifecycle (INCOMING → SCANNED → UNBOXED →
- * RECEIVED) by hand — from the studio / the line detail — recording a NOTE on
- * the inventory_events spine so the move is auditable and the History timeline
- * shows it. Routes through the guarded transitionReceivingLine() chokepoint
- * (idempotent via client_event_id; org-scoped). Reuses the existing
- * `receiving.mark_received` permission — no new permission minted.
- */
+/** POST /api/receiving/lines/[id]/advance */
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';

@@ -1,12 +1,4 @@
-/**
- * Zendesk attachment helpers — turn library photos (and ad-hoc dropped files)
- * into real Zendesk ticket attachments, and link library photos to the ticket
- * entity so they also surface in the support detail strip + claims scope.
- *
- * Shared by POST /api/zendesk/photo-ticket (the photo→ticket modal) and the
- * support chat composer. Every helper is best-effort per item: one unreadable
- * photo never blocks the rest — it just reduces the attached count.
- */
+/** Zendesk attachment helpers — turn library photos (and ad-hoc dropped files) into real Zendesk ticket attachments, and link library… */
 import { uploadFileToZendesk } from './zendesk';
 import { readPhotoBytesById } from './photos/read-bytes';
 import { linkPhoto } from './photos/service';

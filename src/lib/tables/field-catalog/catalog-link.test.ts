@@ -1,9 +1,4 @@
-/**
- * Catalog-link catalog guards + resolver behaviour — wave 1.3's fifth family.
- * A review queue with a private compound model becomes a vocabulary an
- * organization binds; the guards pin the parity promise and the two honest
- * absences the queue's shape earns.
- */
+/** Catalog-link catalog guards + resolver behaviour — wave 1.3's fifth family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

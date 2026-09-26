@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Tier A of the immediate-serial-display plan
- * (docs/todo/receiving-serial-immediate-display-plan.md): eagerly batch-seed the
- * serials of a feed's VISIBLE cartons so a subsequent row-click opens from a warm
- * cache — instant, identical to the scan path — instead of lazily fetching
- * serials after the workspace mounts (the visible lag).
- *
- * How it stays cheap:
- *   - It only fetches for rows that DON'T ALREADY carry serials. Once Tier B2's
- *     `serial_projection` read-model is populated, every feed row arrives with
- *     `serials` natively, so this hook fires ZERO requests — it degrades to a
- *     pure fallback for the pre-backfill / drifted window, exactly as the plan
- *     sequences it ("retire reliance on Tier A's prefetch").
- *   - One batched request per feed load (not N), reusing the `?receiving_ids=…`
- *     branch of GET /api/receiving-lines.
- *
- * On resolve it patches `serials` onto BOTH the feed's own row cache (so the
- * clicked row — `placeholderActiveRow` — carries serials on frame 1) and each
- * `['receiving-siblings', id]` / serials-hydrate cache (so PoLinesAccordion
- * mounts warm), never clobbering an in-flight optimistic serial (the scan path
- * owns those).
- */
+/** Tier A of the immediate-serial-display plan (docs/todo/receiving-serial-immediate-display-plan.md): */
 
 import { useEffect } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
@@ -127,14 +106,7 @@ export function seedOrPatchSiblingsSerials(
   );
 }
 
-/**
- * Batch-seed serials for the visible rows of one feed and patch them onto the
- * feed cache + the per-carton siblings caches.
- *
- * @param queryClient  the app QueryClient
- * @param rows         the feed's currently-cached rows (from its query cache)
- * @param railQueryKey the feed's own cache key — patched so the clicked row carries serials
- */
+/** Batch-seed serials for the visible rows of one feed and patch them onto the feed cache + the per-carton siblings caches. */
 export function useHydrateVisibleSerials(
   queryClient: QueryClient,
   rows: ReceivingLineRow[] | undefined,

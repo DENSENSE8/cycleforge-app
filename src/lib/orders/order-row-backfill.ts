@@ -1,14 +1,5 @@
 /**
- * The additive backfill of ONE existing `orders` row by an incoming canonical
- * order — pure, so the ingest writer's update rules (and the cross-source
- * adopt/claim policies layered on them) are testable without a database.
- *
- * A populated field is never clobbered, except:
- *   • the title, when the source is authoritative for it;
- *   • the status, when the source is authoritative AND the row is still
- *     untouched (blank / `unassigned`) — once an operator moved it, local
- *     progress wins;
- *   • `account_source`, when `sourceWrite` is `rekey`.
+ * The additive backfill of ONE existing `orders` row by an incoming canonical order — pure, so the ingest writer's update rules (and the…
  * Price + currency are first-write-wins (operator ruling 2026-09-15).
  */
 import { resolveSaleAmountWrite } from '@/lib/orders/canonical-order';

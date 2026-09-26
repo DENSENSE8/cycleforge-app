@@ -1,13 +1,4 @@
-/**
- * GET /api/auth/sso/callback?code=...&state=...
- *
- * Consumes the PKCE state row, exchanges the code at the IdP, fetches
- * userinfo, finds-or-creates the staff row, mints a session, and
- * redirects to the originally-requested page.
- *
- * Errors at any step land at /signin?sso_error=<code> so the user sees a
- * legible message rather than a JSON dump.
- */
+/** GET /api/auth/sso/callback?code=...&state=... */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -153,11 +144,7 @@ export const GET = withAuth(async (req) => {
     return failRedirect(req, 'TOKEN_EXCHANGE_FAILED');
   }
 
-  // Validate the id_token's standard claims (iss/aud/exp) when present. In the
-  // auth-code flow it arrives over the direct, server-to-server TLS token
-  // exchange, so claim validation + TLS stands in for JWS signature
-  // verification (OIDC Core §3.1.3.7); JWKS signature checking is the v2
-  // hardening. The validated claims are the authoritative identity source.
+  // Validate the id_token's standard claims (iss/aud/exp) when present.
   let claims: IdTokenClaims | null = null;
   if (tokens.id_token) {
     try {
@@ -183,11 +170,7 @@ export const GET = withAuth(async (req) => {
   const subject = claims?.sub ?? userinfo?.sub ?? null;
   if (!subject) return failRedirect(req, 'NO_USER_IDENTITY');
   const email = (claims?.email ?? userinfo?.email ?? null)?.toLowerCase() ?? null;
-  // OIDC Core §5.7: an unverified email must not be used as a unique identifier.
-  // We therefore only MATCH onto a pre-existing account by email when the IdP
-  // asserts it verified — otherwise the email is still stored on a freshly
-  // created (subject-keyed) account but can't be used to take over someone
-  // else's identity. Absent `email_verified` is treated as NOT verified.
+  // OIDC Core §5.7:
   const emailVerified = claims?.email_verified === true || userinfo?.email_verified === true;
   const displayName =
     userinfo?.name || claims?.name || userinfo?.preferred_username ||

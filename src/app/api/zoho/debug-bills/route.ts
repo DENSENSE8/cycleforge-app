@@ -6,13 +6,7 @@ import { zohoGet } from '@/lib/zoho/httpClient';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Debug-only: returns the bills the /bills endpoint surfaces for a given PO,
- * plus the `bills[]` (if any) the PO detail returns. Lets us confirm whether
- * the billed-PO receive payload can resolve a bill_id.
- *
- * GET /api/zoho/debug-bills?purchaseorder_id=...
- */
+/** Debug-only: returns the bills the /bills endpoint surfaces for a given PO, plus the `bills[]` (if any) the PO detail returns. */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const purchaseorderId = (request.nextUrl.searchParams.get('purchaseorder_id') || '').trim();
   if (!purchaseorderId) {

@@ -4,16 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * GET /api/fba/board
- *
- * Simple Google-Sheets-style payload for small-team operations:
- * - `pending`: all non-shipped lines (single table source)
- * - `shipped`: all shipped lines (optional compatibility/read model)
- *
- * Legacy keys (`awaiting`, `packed`, `paired`) are still returned as empty arrays
- * so older clients do not crash during rollout.
- */
+/** GET /api/fba/board */
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   try {
     // Heavy per-scan board aggregation → short-TTL cache; every FBA write busts

@@ -9,13 +9,7 @@ import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
 import { toast } from '@/lib/toast';
 import type { RepairTabId } from './repair-details-shared';
 
-/**
- * Owns the repair details panel's interactive concerns: ticket-number /
- * notes / status edits, the manual linkage editors (order / tracking / serial /
- * SKU) with set + clear, soft-cancel delete, the customer-pickup-flow toggle,
- * and the derived pickup eligibility + linkage dirty/has-any state + audit panel
- * actions. Returns a controller bag the thin shell + sections render from.
- */
+/** Owns the repair details panel's interactive concerns: */
 export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; onUpdate: () => void }) {
   const inbox = useActivityInboxOptional();
   const [notes, setNotes] = useState(repair.notes || '');
@@ -43,10 +37,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     setIsMounted(true);
   }, []);
 
-  // Delete = soft-cancel (status → 'Cancelled'); the row stays for audit but
-  // drops out of every queue tab. Repairs link to documents/history, so a hard
-  // delete is intentionally not offered. Throws on failure so the shared
-  // InspectorFlushDelete skips its onDeleted (close).
+  // Delete = soft-cancel (status → 'Cancelled'); the row stays for audit but drops out of every queue tab.
   const handleDelete = async () => {
     const res = await fetch(`/api/repair-service/${repair.id}`, { method: 'DELETE' });
     const body = await res.json().catch(() => null);
@@ -174,10 +165,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     },
   );
 
-  // ── Repair document + Square payment (moved off the queue rows to here) ────
-  // The header action bar surfaces Print always; Pay only when a Square link
-  // can be created (a linked catalog SKU, or a valid free-text price to fall
-  // back on). The panel builds the button chrome from these.
+  // ── Repair document + Square payment (moved off the queue rows to here) ──── The header action bar surfaces Print always; Pay only when a…
   const sourceSku = String(repair.source_sku || '').trim();
   const parsePriceToMinorUnits = (value: string | null | undefined): number | null => {
     const cleaned = String(value || '').replace(/[^0-9.-]/g, '');
@@ -284,12 +272,7 @@ export function useRepairDetailsPanel({ repair, onUpdate }: { repair: RSRecord; 
     }
   };
 
-  /**
-   * Stamp the first print of the 2x1 REP-{id} label (idempotent server-side).
-   * Fire-and-forget beside the client print job: a failed stamp must not
-   * block the paper, but it IS surfaced — a silent failure would strand the
-   * repair on the "Needs label" queue forever.
-   */
+  /** Stamp the first print of the 2x1 REP-{id} label (idempotent server-side). */
   const markLabelPrinted = async () => {
     try {
       const res = await fetch(`/api/repair-service/${repair.id}/label-printed`, { method: 'POST' });

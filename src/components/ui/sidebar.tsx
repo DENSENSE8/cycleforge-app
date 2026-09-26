@@ -2,57 +2,7 @@
 
 /**
  * shadcn/ui Sidebar (new-york), restyled to house tokens.
- *
- * STRUCTURE is upstream — `SidebarProvider` / `Sidebar` / `SidebarContent` /
- * `SidebarGroup` / `SidebarGroupLabel` / `SidebarGroupContent` / `SidebarMenu` /
- * `SidebarMenuItem` / `SidebarMenuButton` / `SidebarMenuSub`, with `data-slot`
- * naming — because the operator asked for this component tree by name
- * (2026-09-14: *"the inbound and outbound should display the parents navigation
- * like this sidebar component as well, and they should all be under parents for
- * the sidebar"*).
- *
- * COLOUR, CORNERS, DENSITY and STATE are the spine's own tokens, never
- * literals: {@link SPINE_ROW_SHELL_CLASS} / {@link SPINE_ROW_FACE_CLASS} /
- * {@link SPINE_LABEL_CLASS} for geometry, {@link SPINE_ACCENT} +
- * {@link SPINE_ACCENT_DATA_ACTIVE} for ink and fill, {@link appChromeClass} for
- * the plane. The desktop spine, the phone drawer and the ⌘K palette are ONE row
- * system; every upstream `bg-sidebar` / `sidebar-accent` literal would be a
- * second source that lets them drift — and those tokens are not even defined in
- * this app's Tailwind theme.
- *
  * **Icon law (operator 2026-09-14: *"icon at the parent level only"*).** A glyph
- * marks a PARENT — an L0 `SidebarMenuButton`, or a `SidebarGroupLabel`. Rows
- * inside a group carry no glyph and wear the rail HAIRLINE on their left
- * instead (`spineRailLineClass`), which is the same child mark the `/m` drawer
- * uses — one law, one paint, both surfaces.
- *
- * ## What this copy does NOT ship, and why
- *
- * Upstream's desktop chrome is a `fixed` overlay panel with a spacer div, four
- * `variant`s and three `collapsible` modes. **This app's spine is a resident,
- * DRAG-RESIZABLE push column** ({@link SIDEBAR_SPINE_RESIZE}) with its own
- * edge handle, hover-peek card and persisted width. So:
- *
- * - `Sidebar` has two branches: the docked column (fills the host, which owns
- *   the measurement) and the phone sheet. No `offcanvas` / `icon` /
- *   `floating` / `inset` — the host answers all four questions already, and a
- *   second answer is how two sources of truth start.
- * - **No `SidebarRail` and no `SidebarTrigger`.** The edge handle and the
- *   collapse gesture belong to the host; a rail here would be a second
- *   affordance on the same pixel.
- * - **No `⌘B`, no cookie.** The host owns open state and persistence. This also
- *   settles the collision question: the provider binds no chord, so it cannot
- *   argue with `⌘;` (nav leader) or `⌘1-9` (pins).
- * - **No `tooltip` prop.** The house hint is `HoverTooltip`; wrap the row.
- * - **Not ported:** `SidebarInput`, `SidebarInset`, `SidebarSeparator`,
- *   `SidebarGroupAction`, `SidebarMenuAction`, `SidebarMenuSkeleton`. The first
- *   five have no consumer here (no search field, no inset main, no group
- *   affordances), and the skeleton picks a `Math.random()` width during render,
- *   which is a guaranteed hydration mismatch. Add one back when a surface needs
- *   it — do not fork this file.
- *
- * `--sidebar-width-mobile` is {@link SIDEBAR_SPINE_WIDTH_PX} capped at `86vw`:
- * the phone drawer is the spine's pixel twin, not shadcn's `18rem`.
  */
 
 import * as React from 'react';
@@ -173,14 +123,7 @@ function SidebarProvider({
   );
 }
 
-/**
- * The nav tree, in whichever presentation the viewport calls for.
- *
- * `collapsible="none"` is the docked column: it fills the host, because the
- * host is what owns (and persists, and lets the operator drag) the width.
- * Under `md` the same children move into a side sheet — one component, two
- * presentations, which is SURFACE_LAW §4's frame law expressed in a primitive.
- */
+/** The nav tree, in whichever presentation the viewport calls for. */
 function Sidebar({
   side = 'left',
   collapsible = 'none',
@@ -276,14 +219,7 @@ function SidebarGroup({ className, ...props }: React.ComponentProps<'div'>) {
   );
 }
 
-/**
- * The group's name — and, under the icon law, the level that WEARS THE GLYPH.
- * Pass the lane icon as a child; `[&>svg]:size-4` matches
- * {@link SPINE_ROW_ICON_CLASS}.
- *
- * `asChild` is how this becomes a disclosure trigger: the spine's lanes
- * collapse, so the label is a `<button>` there rather than a `<div>`.
- */
+/** The group's name — and, under the icon law, the level that WEARS THE GLYPH. */
 function SidebarGroupLabel({
   className,
   asChild = false,
@@ -296,11 +232,8 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
+        // Same ink and same type role as a ROW (operator 2026-09-14:
         // Same ink and same type role as a ROW (operator 2026-09-14: the lane
-        // headers "should display all black, all consistent with the top three
-        // items"). Upstream greys the group label (`text-muted-foreground`) to
-        // push it behind its rows; here the lane header IS a destination the
-        // operator reads and clicks, so a quieter ink read as disabled.
         'flex min-w-0 w-full items-center gap-2 px-2 text-left text-text-default outline-hidden [&>svg]:size-4 [&>svg]:shrink-0',
         SPINE_ROW_FACE_CLASS,
         SPINE_LABEL_CLASS,
@@ -344,11 +277,7 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<'li'>) {
   );
 }
 
-// Geometry comes from `SPINE_ROW_SHELL_CLASS` / `SPINE_ROW_FACE_CLASS` /
-// `SPINE_LABEL_CLASS`; ink and fill come from `SPINE_ACCENT`. Both are the
-// spine's own tokens, not literals in this vendored variant — the desktop list,
-// the phone drawer, the drag overlay and the ⌘K palette are ONE row system, and
-// every literal here would be a second source that lets them drift.
+// Geometry comes from `SPINE_ROW_SHELL_CLASS` / `SPINE_ROW_FACE_CLASS` / `SPINE_LABEL_CLASS`; ink and fill come from `SPINE_ACCENT`.
 const sidebarMenuButtonVariants = cva(
   cn(
     'peer/menu-button items-center gap-2 outline-hidden',
@@ -421,14 +350,7 @@ function SidebarMenuBadge({ className, ...props }: React.ComponentProps<'div'>) 
   );
 }
 
-/**
- * A page's own CHILD MODES — **not** a lane's pages.
- *
- * A lane's pages are `SidebarMenuItem`s in its `SidebarMenu`; this is where a
- * `SidebarPageNav.children` list goes for a page that is NOT `deskChrome`. A
- * desk that tabs its own pages must never get one: that would state the same
- * navigation twice.
- */
+/** A page's own CHILD MODES — **not** a lane's pages. */
 function SidebarMenuSub({ className, ...props }: React.ComponentProps<'ul'>) {
   return (
     <ul

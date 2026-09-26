@@ -1,13 +1,4 @@
-/**
- * The URL contract another phone surface uses to open `/m/t/[ticketId]` with
- * a reply PREPARED, never sent: an editable draft (`?draft=`), photos to stage
- * as attachments (`?photos=12,34`) and the reply channel
- * (`?visibility=internal|public`). The thread seeds `useTicketComposer` from
- * it once; the operator still reads, edits and presses Send.
- *
- * One builder + one parser so the sender (repair workbench) and the reader
- * (the thread page) cannot drift on names or encoding.
- */
+/** The URL contract another phone surface uses to open `/m/t/[ticketId]` with a reply PREPARED, never sent: */
 
 export type TicketThreadVisibility = 'public' | 'internal';
 

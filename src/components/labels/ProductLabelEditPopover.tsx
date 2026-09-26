@@ -29,14 +29,7 @@ const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-/**
- * Custom-print editor for the product/unit (testing + products page) label.
- * Mirrors the receiving {@link LabelEditPopover} — same `RightPaneOverlay`
- * chrome, `ConditionPills`, live `LabelFacePreview`, and Save & print footer —
- * but for the product face: title (full top row), condition, and color. The
- * matrix is supplied by the caller (preview and print encode the same value),
- * so editing the text never touches the scannable code.
- */
+/** Custom-print editor for the product/unit (testing + products page) label. */
 export function ProductLabelEditPopover({
   open,
   defaults,

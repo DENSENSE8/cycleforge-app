@@ -1,23 +1,4 @@
-/**
- * Price approvals — the proof a counter tablet carries for a price the catalog
- * did not set.
- *
- * The tablet has no server session mid-cart (the cart is an in-memory store),
- * so a PIN step-up cannot be remembered server-side between "Save adjustment"
- * and the visit's submit minutes later. Instead the step-up route
- * (`POST /api/kiosk/price-approval`) verifies the PIN against
- * `walk_in.adjust_price` and returns an HMAC-signed approval naming exactly
- * what was authorized: who, which verb, from what price to what price, and
- * why. The line carries it; `/api/kiosk/intake` verifies it and rebuilds the
- * adjustment from the CLAIMS, never from the tablet's copy of them.
- *
- * Bound to the organization, not the device: a tablet that self-heals its
- * `cf_kiosk` cookie mid-visit is re-bound as a new device row, and its cart's
- * approvals must survive that.
- *
- * Callers: `app/api/kiosk/price-approval`, `app/api/kiosk/intake`.
- * Schemas: `counter_transaction_lines.price_adjust_*`, `audit_logs`.
- */
+/** Price approvals — the proof a counter tablet carries for a price the catalog did not set. */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
@@ -145,19 +126,7 @@ export interface VerifyLinePricesDeps {
 
 /**
  * Every submitted line's price, proven.
- *
- *   - A line that presents an approval must match it exactly (the verb's
- *     price is the line's price) and its adjustment is REBUILT from the claims.
- *   - A catalog sale line without one must be at the catalog price: the
- *     tablet's editor no longer changes a price without a PIN, and a request
- *     that does so anyway is refused rather than trusted.
- *   - A positive ad-hoc sale line (no catalog id) is a Keypad custom amount.
- *     It has no catalog price to deviate from, so it needs no approval
- *     (operator 2026-09-24: `+` on the Keypad adds the line at once, Square's
- *     "Keypad" flow; a PIN per line broke that). Trade-in credits (negative)
- *     are the buyback offer and are out of scope here.
- *   - A repair quote without an approval is the quote the repair flow typed;
- *     with one, it is an authorized re-quote.
+ * (operator 2026-09-24: `+` on the Keypad adds the line at once, Square's
  */
 export async function verifyLinePrices(
   input: { retailLines: CounterRetailLine[]; services: CounterServiceLine[] },

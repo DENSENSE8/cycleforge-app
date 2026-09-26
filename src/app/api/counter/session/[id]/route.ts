@@ -1,11 +1,4 @@
-/**
- * GET /api/counter/session/{id} — the full desk snapshot.
- *
- * The desk sees everything: voided lines, the lease holder, internal notes.
- * The device-facing projection is a different route on a different door
- * (`/api/kiosk/session`) — never a query flag on this one, because a flag is a
- * thing a caller can forget and this one leaks a customer's data if they do.
- */
+/** GET /api/counter/session/{id} — the full desk snapshot. */
 
 import { NextRequest } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';

@@ -81,12 +81,7 @@ interface PackBenchOption {
   locationKind: string;
 }
 
-/**
- * Resolve the Settings workstation bench binding against the live bench list.
- * Pure — the SoT stays the `locations` row, so a binding that names a bench
- * that was renamed, deactivated, or deleted resolves to `null` rather than
- * arming a stale name the operator would place packages against.
- */
+/** Resolve the Settings workstation bench binding against the live bench list. */
 export function resolveWorkstationBench(
   locations: readonly PackBenchOption[] | undefined | null,
   packBenchLocationId: number | null | undefined,

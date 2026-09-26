@@ -1,11 +1,4 @@
-/**
- * Multimodal PO field extraction for Incoming desk intake.
- *
- * Turns a screenshot and/or pasted text into an ingest-shaped draft
- * (platform, order id, line items with qty, tracking). Uses the org chat
- * provider with forced tool call — same pattern as po-gmail extract, but
- * with line_items[] and optional image_url content.
- */
+/** Multimodal PO field extraction for Incoming desk intake. */
 
 import { postToAiProvider } from '@/lib/ai/failover';
 import type { OrgId } from '@/lib/tenancy/constants';

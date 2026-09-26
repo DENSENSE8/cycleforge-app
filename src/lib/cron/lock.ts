@@ -1,18 +1,4 @@
-/**
- * Distributed cron lock (Wave 4).
- *
- * Prevents two invocations of the same job from running concurrently — Vercel
- * cron retries, an overlapping next tick on a slow run, and manual triggers can
- * all collide. We use a Postgres SESSION-level advisory lock (the same primitive
- * zoho-receiving-sync uses for per-PO serialization), which needs no extra
- * infrastructure (no Redis/Redlock) and is automatically released if the
- * connection dies — so a crashed run can't wedge the lock forever.
- *
- * The lock is GLOBAL (not tenant-scoped) on purpose: it guards the whole job
- * across all tenants, so it runs on the privileged owner pool, never the tenant
- * pool. A skipped invocation returns `{ ran: false }` — callers should report it,
- * not treat it as a failure.
- */
+/** Distributed cron lock (Wave 4). */
 import pool from '@/lib/db';
 
 export interface CronLockResult<T> {

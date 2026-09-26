@@ -1,17 +1,4 @@
-/**
- * Server-only helper for page.tsx / layout.tsx files.
- *
- *   const user = await requirePermission('receiving.view');
- *   // user.staffId, user.role, user.permissions
- *
- * If the user is unauthenticated → redirect to /signin?next=…
- * If the user is authenticated but lacks the permission → /not-authorized
- *
- * Enforcement is unconditional. The proxy already requires a session cookie
- * for non-public paths; this helper additionally requires `perm` for pages
- * that opt in. The `opts.enforce` field is accepted for backwards-compat
- * but ignored — there is no shadow mode.
- */
+/** Server-only helper for page.tsx / layout.tsx files. */
 
 import 'server-only';
 import { redirect } from 'next/navigation';

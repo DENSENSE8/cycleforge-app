@@ -1,11 +1,4 @@
-/**
- * Scan-station depth application — the runtime half. Depths live in
- * `design-system/themes/station-depths.ts` (injected by app/layout.tsx);
- * this module only flips `data-station-depth` and mirrors the choice to
- * localStorage for no-flash reloads.
- *
- * Flat is the default and is the ABSENCE of the attribute.
- */
+/** Scan-station depth application — the runtime half. */
 
 import {
   DEFAULT_STATION_DEPTH,

@@ -4,14 +4,7 @@ import { listMediaSavedViews, createMediaSavedView } from '@/lib/photos/saved-vi
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * GET  /api/photos/saved-views — the caller's own + org-shared media views.
- * POST /api/photos/saved-views — create a named view (personal by default).
- *
- * A saved view is a personal, read-only filter preset over data the caller can
- * already see; the ownership boundary is `staff_id`, so create is gated on the
- * same `photos.view` read permission. Sharing org-wide requires `photos.manage`.
- */
+/** GET /api/photos/saved-views — the caller's own + org-shared media views. */
 
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {

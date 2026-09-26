@@ -108,19 +108,7 @@ test('only NOTE-family events title from their text', () => {
 });
 
 test('every projection that claims to feed this adapter still satisfies its row', () => {
-  // `TraceEvent` (src/lib/audit-log/trace-aggregator.ts) calls itself "a
-  // structural subset of the spine record, shaped so the client can feed it
-  // straight through inventoryEventsToTimeline". It stopped being one: four
-  // fields the adapter reads — notes, actor_staff_id, bin_barcode, bin_name —
-  // were dropped in the projection, so a trace would have rendered NOTEs as the
-  // word "Note", with no avatar and no bin chip. Exactly the defect journey.ts
-  // had.
-  //
-  // The KEY-completeness half of the contract is enforced in trace-aggregator.ts
-  // itself, not here: `**\/*.test.ts` is excluded from tsconfig and tsx strips
-  // types without checking them, so a type-level assertion in a test file is
-  // evaluated by nothing. This test owns the BEHAVIOURAL half — that a row which
-  // has been through the projection still renders everything it should.
+  // `TraceEvent` (src/lib/audit-log/trace-aggregator.ts) calls itself "a structural subset of the spine record, shaped so the client can…
   const feedsAdapter = (e: TraceEvent): InventoryTimelineRow => e;
 
   // Also exercise it, so the assertion is not purely structural: a NOTE routed

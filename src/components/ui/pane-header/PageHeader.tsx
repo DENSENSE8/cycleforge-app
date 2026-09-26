@@ -15,15 +15,7 @@ import {
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
-/**
- * Single page-header for the whole app. Locks the 44px row height so every
- * page lines up with the sidebar back button. Custom slot content is allowed,
- * but the row's padding/height are NOT — that is the whole point.
- *
- * Composition rule: pick ONE of `title` or `eyebrow+value`. If you need
- * something more exotic, drop down to {@link PaneHeader} directly — but
- * understand you are opting out of the alignment guarantee.
- */
+/** Single page-header for the whole app. */
 interface PageHeaderProps {
   // ── Identity (pick one) ────────────────────────────────────────────────
   /** Single bold title — e.g. "Receiving", "Settings". */
@@ -136,10 +128,7 @@ export function PageHeader({
         rightSlot != null || onClose != null ? (
           <>
             {rightSlot}
-            {/* A PAGE header is not a right-edge push surface — its close
-                genuinely dismisses rather than parking the pane back against
-                an edge, so it keeps the `X`. Every right-rail consumer takes
-                the `>|` default. */}
+            {/* A PAGE header is not a right-edge push surface — its close genuinely dismisses rather than parking the pane back against an edge, so it… */}
             {onClose ? (
               <PaneHeaderCloseButton onClick={onClose} intent="dismiss" />
             ) : null}

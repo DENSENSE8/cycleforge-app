@@ -1,14 +1,4 @@
-/**
- * GET /api/auth/email-login/verify?token=…
- *
- * Phase F1 — consumes a magic-link token (single-use, 15-min) and, if valid,
- * mints a session + redirects to the dashboard. The token is claimed ATOMICALLY
- * (UPDATE … SET used_at WHERE unused AND unexpired RETURNING) so a replay or a
- * double-click can't mint two sessions. On any failure it redirects to the home
- * page with a ?login_error reason (never leaks token state in the body).
- *
- * Public (no session). Pair: POST /api/auth/email-login/request.
- */
+/** GET /api/auth/email-login/verify?token=… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
@@ -52,11 +42,7 @@ export const GET = withAuth(async (req: NextRequest) => {
   const staffId = claimed.rows[0]?.staff_id;
   if (!staffId) return fail('invalid');
 
-  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
-  // session must not silently promise indefinite persistence — it gets the
-  // normal device-kind window, and the user opts in by signing in with the box
-  // checked. Deliberate default, not an oversight (see the persistent flag in
-  // src/lib/auth/session.ts).
+  // "Keep me signed in":
   const session = await createSession({
     staffId,
     deviceKind: 'personal',

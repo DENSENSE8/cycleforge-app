@@ -1,26 +1,4 @@
-/**
- * `QueueRowRecord → CompoundRowView` — the Tech / Packer bench adapter. Pure,
- * strings and enums, no JSX.
- *
- * This is the whole of what the bench families contribute to the row. Before
- * the Wave C port the benches shipped `StationQueueRow` — a row COMPONENT that
- * wrapped `OrdersQueueTableRow`, defaulted its columns to the hand
- * `STATION_HISTORY_COLUMNS` array, and hardcoded `testerDisplay="---"` /
- * `packerDisplay="---"` because the flat tracks had no facts behind them. A row
- * component per family is the fork `ENGINE_IS_MONOMORPHIC` forbids; the names
- * now arrive as BOUND facts through the family catalogs (`tech.tested` /
- * `packer.packed` stage events), resolved by the family resolver.
- *
- * Faithfulness notes — this adapter paints what the bench painted, not more:
- *  · `stateLabel` is the row's SOURCE (platform origin), which is what the old
- *    `stage` track actually showed: `StationQueueRow` passed the source dot in
- *    as `rowStatus`. It is not a workflow stage.
- *  · `delay` is null. The bench passed `daysLate={null}`, so the flat `age` /
- *    "Late" track was always blank — a bench log has no ship-by to be late
- *    against. Painting a delay here would invent a fact.
- *
- * Callers: `useBenchSpreadsheet` → `DataTable`.
- */
+/** `QueueRowRecord → CompoundRowView` — the Tech / Packer bench adapter. */
 
 import { format } from 'date-fns';
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';

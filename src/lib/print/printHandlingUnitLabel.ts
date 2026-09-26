@@ -4,20 +4,7 @@ import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 /**
  * 2×1" licence-plate (LPN) label for a handling unit (box / tote).
- *
- * Two things on the paper: a `Box / LPN` kicker top-left, and the
- * human-readable code filling the rest — left-aligned, vertically centred.
- * The DataMatrix carries the bare `H-{id}` handle, which `routeScan()` parses
- * → `/m/h/{id}` (and the testing resolver fans out to every unit in the box).
- *
  * Operator ruling 2026-09-15 — kicker top-left, ID left-middle, no date. The
- * member count and bin name are gone as well: both are stale the moment the
- * tote is carried anywhere, which is what a tote is for. A date told the
- * operator nothing they act on either.
- *
- * The face is a {@link LabelFaceModel} of kind `lpn`, not bespoke HTML, so the
- * single print here, the bulk run, and every on-screen preview render the same
- * sticker.
  */
 
 export interface HandlingUnitLabelPayload {

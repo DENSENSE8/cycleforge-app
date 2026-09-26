@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Clipboard side of a rail row's Copy verbs. Split from `rail-row-verbs`
- * (which decides WHICH items a row offers) so that module stays pure and
- * unit-testable — importing it must not drag the toaster and the DOM clipboard
- * shim into a node test.
- */
+/** Clipboard side of a rail row's Copy verbs. */
 
 import { toast } from '@/lib/toast';
 import { copyToClipboard } from '@/utils/_dom';

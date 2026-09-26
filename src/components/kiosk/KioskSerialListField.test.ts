@@ -1,11 +1,4 @@
-/**
- * The serial field's draft when the unit's serials change from OUTSIDE — a
- * serial scanned on the phone companion while the staffer is at the tablet.
- * The plausible bug: re-deriving the draft from the stored string, which
- * deletes the empty field the staffer just opened and reorders their list.
- *
- * Run: npx tsx --test src/components/kiosk/KioskSerialListField.test.ts
- */
+/** The serial field's draft when the unit's serials change from OUTSIDE — a serial scanned on the phone companion while the staffer is at… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

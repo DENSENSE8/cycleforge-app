@@ -1,25 +1,4 @@
-/**
- * View-monitor VALUE resolution — turn a monitor's snapshotted view into the
- * number the evaluator compares against a threshold.
- * ─────────────────────────────────────────────────────────────────────────────
- * A monitor snapshots `(monitorSurface, monitorParams)` at arm time (decision B).
- * This module maps that snapshot to a current count as CHEAPLY as possible:
- *   • a MAPPED facet (a single To-ship lane / urgent / placement / the whole
- *     queue) reads off the pre-computed queue-counts aggregate the sidebar
- *     already runs — ZERO new per-row scan (plan → Cost budget);
- *   • a CUSTOM combo (orthogonal filters together) or an `item_aging` count
- *     falls back to ONE bounded COUNT(*) over the shared pre-pack membership.
- *
- * The core is pure + Deps-injected: it decides WHICH path and reads the fields;
- * the injected deps do the I/O. `resolve-value-deps.ts` (server-only) supplies
- * the real fetchers, so this file — and its parity test — import no DB.
- *
- * Phase 1 supports `monitorSurface === 'dashboard_unshipped'` (the To-ship
- * board, where the reusable counts live). Other surfaces throw until their
- * resolver lands; the arm UX (Phase 3) only offers watchable surfaces.
- *
- * Plan: docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md.
- */
+/** View-monitor VALUE resolution — turn a monitor's snapshotted view into the number the evaluator compares against a threshold. */
 
 import { resolveFulfillmentLane, type FulfillmentLane } from '@/lib/order-lifecycle';
 import type { ThresholdType } from './evaluate';
@@ -71,12 +50,7 @@ export interface BoundedUnshippedCountSpec {
 }
 
 export interface ResolveValueDeps {
-  /**
-   * The pre-computed To-ship counts, optionally narrowed to one staffer.
-   * `needsPlacement` lets the binding skip the org-wide placement query when the
-   * facet never reads it (the core sets it from the facet kind); the binding is
-   * free to memoize per scope so N monitors share one fetch per cron tick.
-   */
+  /** The pre-computed To-ship counts, optionally narrowed to one staffer. */
   outboundQueueCounts(opts: { staffId?: number; needsPlacement?: boolean }): Promise<OutboundQueueCounts>;
   /** One bounded COUNT(*) over the pre-pack membership for a custom combo. */
   boundedUnshippedCount(spec: BoundedUnshippedCountSpec): Promise<number>;

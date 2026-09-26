@@ -30,18 +30,7 @@ function seedPlatform(row: ReceivingLineRow): string {
   );
 }
 
-/**
- * Source-platform state for a carton (platform is per-carton, not per-line).
- * Seeds synchronously from the row so the pill never flashes the fallback,
- * reconciles against the parent receiving row, auto-detects from the order
- * number shape (eBay 2-5-5 / Amazon 3-7-7) or listing URL when unset, and
- * persists via PATCH (broadcasting `receiving-package-updated` so sibling
- * surfaces stay in sync).
- *
- * `setSourcePlatform` is returned so the panel's shared
- * `receiving-package-updated` listener can keep this in sync with edits made
- * elsewhere.
- */
+/** Source-platform state for a carton (platform is per-carton, not per-line). */
 export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { listingLink: string }) {
   // Seed from the row the table already loaded (`receiving_lines.source_platform`)
   // so the platform pill paints its real value immediately instead of flashing
@@ -53,10 +42,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
   const queryClient = useQueryClient();
   const autoSavedKey = useRef<string | null>(null);
 
-  // Load the parent receiving row's source_platform so the dropdown reflects
-  // the current shipment-level override. Skip the GET when the list/rail row
-  // already carries a platform — opens share the siblings metadata cache and
-  // must not add a third receiving_id round-trip on every line click.
+  // Load the parent receiving row's source_platform so the dropdown reflects the current shipment-level override.
   useEffect(() => {
     if (row.receiving_id == null) {
       setSourcePlatform(seedPlatform(row));
@@ -67,12 +53,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     setSourcePlatform(seedPlatform(row));
     if ((row.source_platform || '').trim()) return;
 
-    // The accordion's siblings query fetches this exact URL and keeps the whole
-    // envelope, `receiving_package` included. When it has already resolved,
-    // read the platform off that cache instead of issuing a second GET of the
-    // same body — cold /triage was fetching `?receiving_id=` twice.
-    // Server-seeded cache entries carry only `receiving_lines`, so a miss here
-    // simply falls through to the fetch below, exactly as before.
+    // The accordion's siblings query fetches this exact URL and keeps the whole envelope, `receiving_package` included.
     const cached = queryClient.getQueryData<{
       receiving_package?: unknown;
     }>(receivingSiblingsQueryKey(row.receiving_id));
@@ -157,10 +138,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     }
   }, [row.receiving_id]);
 
-  // Auto-detect platform from the order-number shape (same SoT as the `#` chip)
-  // or the listing URL when the operator hasn't set one yet. Only fires when
-  // the stored carton platform is empty so we never clobber a manual choice.
-  // Debounced lightly so paste-then-type doesn't thrash the PATCH.
+  // Auto-detect platform from the order-number shape (same SoT as the `#` chip) or the listing URL when the operator hasn't set one yet.
   useEffect(() => {
     if (row.receiving_id == null) return;
     if ((row.source_platform || '').trim()) return;

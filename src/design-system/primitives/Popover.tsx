@@ -11,32 +11,6 @@ import { DROPDOWN_SHELL_CORNER } from '../tokens/radius';
 import type { ZIndexToken } from '../tokens/z-index';
 
 // ─── Popover ─────────────────────────────────────────────────────────────────
-//
-// The canonical anchored, *styled* popover panel. <AnchoredLayer> owns the hard
-// part (portal, rect-tracking, dismissal) but no visual chrome; <Popover> adds
-// DROPDOWN_SHELL_CORNER, a hairline border, soft elevation, and the shared
-// dropdown enter/exit motion — so callers stop re-rolling floating-card
-// boilerplate.
-//
-// Motion comes from the SHARED presets (`framerPresence.dropdownPanel` +
-// `framerTransition.dropdownOpen`), run through the reduced-motion-aware hooks.
-// The layer stays mounted through exit so AnimatePresence can finish the close
-// animation (AnchoredLayer alone would tear down the portal on `open=false`).
-//
-// A11y: <AnchoredLayer> already owns Escape + outside-click dismissal. The
-// trigger's `aria-haspopup`/`aria-expanded` stay caller-owned (as in
-// ViewDropdown), since only the caller knows the trigger element. Pass a
-// `role` ("menu"/"listbox"/"dialog") + `aria-label` straight through to the
-// panel — extra props spread onto the styled panel.
-//
-// Usage:
-//   const triggerRef = useRef<HTMLButtonElement>(null);
-//   <button ref={triggerRef} aria-haspopup="menu" aria-expanded={open}
-//           onClick={() => setOpen(o => !o)} />
-//   <Popover open={open} onClose={() => setOpen(false)} anchorRef={triggerRef}
-//            role="menu" aria-label="Row actions">
-//     …content…
-//   </Popover>
 
 export interface PopoverProps
   extends Omit<

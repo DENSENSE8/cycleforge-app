@@ -1,14 +1,4 @@
-/**
- * "You vs typical" benchmark comparison (plan §2.5 / Phase 1).
- *
- * Pairs the seeded insight_links benchmarks (global NULL-org rows + any
- * org-specific rows) with the org's OWN actuals computed from its
- * inventory_events spine — org-scoped, never cross-tenant (Monitor rule).
- * Signals/insight tables may be empty pre-apply/pre-backfill; every branch
- * degrades to nulls, never throws past the route's catch.
- *
- * Deps-injected (default tenantQuery) so unit tests run DB-free.
- */
+/** "You vs typical" benchmark comparison (plan §2.5 / Phase 1). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

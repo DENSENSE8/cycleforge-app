@@ -1,46 +1,4 @@
-/**
- * Classify an EXISTING receiving photo — say what the shot shows, after it was
- * taken.
- *
- * ## Why this exists at all
- *
- * `photos.photo_aspect` was write-once at INSERT: `create-photo.ts` stamped it
- * from the upload's `photoAspect` field and nothing else ever touched it.
- * `reassign-receiving-photo.ts` moves a photo's ENTITY LINK between cartons and
- * lines; it does not touch aspect.
- *
- * The three bench carton steps share one stage (`unbox_carton`) and are told
- * apart by aspect alone, so a carton photo shot from the wrong step — or from
- * any surface that sends no aspect, which includes a phone capture launched
- * from generic chrome — could never satisfy the step it obviously depicts. The
- * operator's only recovery was to re-shoot the same box. Every layer was
- * correct in isolation and nothing errored; the pointer simply parked forever.
- *
- * ## Aspect is a CLAIM, so nothing here defaults one
- *
- * `parsePhotoAspect` returns `null` on an unknown value and has no fallback
- * (`./photo-aspects.ts` rule 1), and this helper takes `aspect` as a REQUIRED
- * field whose `null` means *clear the claim* — never *leave it alone*. See
- * *A safety classification is a REQUIRED
- * parameter*: this codebase has already paid twice for a defaulted
- * classification (`intakeSurface` → `'triage'`, `scanKind` → `'work'`).
- *
- * ## The stage check is load-bearing, not a formality
- *
- * `arrival_package` legally carries only `shipping_label` and `box_exterior`
- * because it is the pre-opening door stage and **the only stage the
- * `require_one` receive gate counts**. Letting a bench aspect land there would
- * describe a photo taken after the box was open and void that control — so an
- * illegal (aspect, stage) pair is a 400, never a silent widening of
- * `ASPECTS_BY_STAGE`.
- *
- * ## Overwrite, never COALESCE
- *
- * Re-classifying is a new claim about the same photo, and the caller that sends
- * `null` is retracting one. `reassign`'s `COALESCE($4, photo_type)` is the
- * opposite rule for the opposite reason — its remap only ever sets concrete
- * stage types and must never clear one.
- */
+/** Classify an EXISTING receiving photo — say what the shot shows, after it was taken. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
@@ -60,10 +18,7 @@ export class PhotoAspectError extends Error {
   }
 }
 
-// Not exported until a caller needs to NAME them — the route builds the input
-// inline and spreads the result, so exporting would add two names knip has to
-// justify for zero readers. `PhotoAspectScope` / `SetPhotoAspectDeps` below are
-// exported because the unit test's fakes are typed against them.
+// Not exported until a caller needs to NAME them — the route builds the input inline and spreads the result, so exporting would add two…
 interface SetPhotoAspectInput {
   organizationId: string;
   photoId: number;

@@ -9,10 +9,7 @@ import {
 
 export type DerivedPackerRecord = PackerRecord & WithOutboundState;
 
-// FBA records are identified by scan_ref matching Amazon's FBA shipment ID format
-// (FBAxxxxxxxx) or by tracking_type being 'FBA' / 'FNSKU'.
-// NOTE: equivalent logic is also inlined in hooks/station/usePackerTableController.ts
-// and lib/shipped/pickup-report.ts — candidates for a future single-SoT dedup.
+// FBA records are identified by scan_ref matching Amazon's FBA shipment ID format (FBAxxxxxxxx) or by tracking_type being 'FBA' / 'FNSKU'.
 const FBA_SHIPMENT_ID_RE = /^FBA[0-9A-Z]{8,}$/i;
 
 export function isFbaPackerRecord(record: { scan_ref?: string | null; tracking_type?: string | null }): boolean {
@@ -54,16 +51,7 @@ export function isShippedDeskRow(row: {
   const staff = Number(row.shipped_out_by);
   return Number.isFinite(staff) && staff > 0;
 }
-/**
- * Collapse duplicate scans of the SAME package, while keeping a multi-package
- * order as one row PER package (they ship at different times). Shared by the
- * table and the scan-out sidebar so both count/show the same set.
- *
- * The package is `package_shipment_id` (the scanned box). The order's own
- * `shipment_id` is its PRIMARY box only, so keying on it folded every box of a
- * multi-box order into one row. Rows without a package fall back to the order
- * number, then the scanned reference. The newest scan (highest id) wins.
- */
+/** Collapse duplicate scans of the SAME package, while keeping a multi-package order as one row PER package (they ship at different times). */
 export function dedupeShippedRecords(records: PackerRecord[]): PackerRecord[] {
   const seen = new Map<string, PackerRecord>();
   [...records].sort((a, b) => a.id - b.id).forEach((record) => {

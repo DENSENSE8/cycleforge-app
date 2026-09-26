@@ -23,14 +23,8 @@ async function fetchOrderDocuments(pk: number): Promise<OutboundDocumentsRespons
 }
 
 /**
- * `/m/orders/[orderId]` — the order HUB on {@link DetailHubScreen} (the
- * exoskeleton; reference `/m/r/[id]`). The route param is the public
- * `order_id`, with the `orders.id` pk as a fallback (`useOrderHub`).
- *
- * The primary record of a pick or an exception is a full screen, never a sheet
+ * `/m/orders/[orderId]` — the order HUB on {@link DetailHubScreen} (the exoskeleton; reference `/m/r/[id]`).
  * (operator 2026-09-24): opened from a job with `?back=<job>`, the bar shows an
- * X that returns there. A read-only card opens `/info`; doors open Units and
- * Activity; the dock is Documents · Copy order # · Scan again.
  */
 function OrderHubInner() {
   const router = useRouter();

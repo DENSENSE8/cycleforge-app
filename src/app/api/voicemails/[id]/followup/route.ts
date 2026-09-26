@@ -10,12 +10,7 @@ import { publishStaffMessage, publishVoiceEvent } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * PATCH /api/voicemails/:id/followup
- *   body: { status?, snoozeUntil?, assignedStaffId?, note? }
- * Updates the in-app follow-up (mark done / snooze / assign / note). Assigning
- * to someone else drops a notification in their inbox bell.
- */
+/** PATCH /api/voicemails/:id/followup body: */
 
 function voicemailIdFromUrl(req: NextRequest): number {
   const segs = req.nextUrl.pathname.split('/').filter(Boolean);

@@ -1,23 +1,4 @@
-/**
- * The scan dispatch table — scan class × object state → one Card, one title.
- *
- * This is the whole decision behind the phone's Scan Shell: a scan arrives, and
- * exactly one Card opens with exactly one session title. Nothing here renders,
- * fetches, or navigates. It is a pure function of two inputs and it must stay
- * that way:
- *
- *   - the CLASS comes from `@/lib/barcode-routing` (`routeScan` /
- *     `routeScanPaired`) — a fact about the bytes on the label;
- *   - the STATE comes from the caller — a fact about the object the label names.
- *
- * The split is load-bearing. A tracking number does not know whether we have
- * seen its carton; an LPN does not know whether its QC is open. If this module
- * ever reached for that itself it would need a DB, and the Card could no longer
- * paint inside the 100 ms the plan budgets between wedge keystroke and paint.
- * `state` is therefore an argument, never a lookup.
- *
- * Plan: docs/warehouse-os/PLAN-scan-shell-mobile.md → "Dispatch (mobile subset)".
- */
+/** The scan dispatch table — scan class × object state → one Card, one title. */
 
 import {
   routeScan,
@@ -26,33 +7,13 @@ import {
   type ScanType,
 } from '../barcode-routing';
 
-/**
- * The Cards the phone can open. One at a time — there is no stack of panes and
- * no bottom tab bar; the Stack behind top-left is the only other surface.
- *
- * `carton` is not a new screen: it means "whatever stage this carton is already
- * in", i.e. the existing page, with the existing session title.
- */
+/** The Cards the phone can open. */
 export type ScanCard = 'arrival' | 'carton' | 'qc' | 'pack' | 'preview';
 
-/**
- * What the scan does to the armed session.
- *
- *   `act`     — the scan advances the armed session's work.
- *   `preview` — the Card opens read-only; the armed session is untouched.
- *   `ask`     — two rows of the table matched with equal standing; the Field
- *               asks one line rather than guessing. Exactly three modes; a
- *               fourth ("queue", "park", "defer") is how this becomes a router.
- */
+/** What the scan does to the armed session. */
 export type DispatchMode = 'act' | 'preview' | 'ask';
 
-/**
- * Everything the table knows about the object the scan names, and nothing more.
- *
- * All four are optional and all four default to "no prior state", so a caller
- * that knows nothing yet gets the honest answer (arrival / preview) rather than
- * a wrong one.
- */
+/** Everything the table knows about the object the scan names, and nothing more. */
 export interface ScanObjectState {
   /** Has a carton already been opened against this tracking number? */
   trackingSeen?: boolean;
@@ -64,23 +25,12 @@ export interface ScanObjectState {
   binOrderId?: string | null;
 }
 
-/**
- * The one armed scan session, or `null` when nothing is armed.
- *
- * `expects` is the classes this session can act on. Anything else previews over
- * it and **parks nothing** — an unexpected scan must never silently enqueue
- * itself into work the operator did not ask for.
- */
+/** The one armed scan session, or `null` when nothing is armed. */
 export interface ArmedScanSession {
   expects: readonly ScanType[];
   /** The session's current title, kept as-is by any Card that returns none. */
   title?: string | null;
-  /**
-   * The Card this session DOES, when it is a single-job session (the scan
-   * kernel armed with `?work=qc` arms `'qc'`). Rows keyed on it fire only
-   * inside that session: a unit label is a preview anywhere else, and QC only
-   * where the tech is running QC.
-   */
+  /** The Card this session DOES, when it is a single-job session (the scan kernel armed with `?work=qc` arms `'qc'`). */
   work?: ScanCard;
 }
 
@@ -117,11 +67,6 @@ export interface ScanDispatch {
 }
 
 // ─── The table ──────────────────────────────────────────────────────────────
-//
-// One row per line of the plan's dispatch table, in the plan's order. A row is
-// `stateful` when it fires on PRIOR STATE about the object rather than on the
-// class alone — that flag is the whole "prior state wins" rule: if any stateful
-// row matches, the class defaults below it never get a say.
 
 interface DispatchRow {
   id: string;
@@ -162,10 +107,7 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
     reason: 'this licence plate has an open QC check',
   },
   {
-    // Session work, not object state: a unit has no "QC open" fact on it, so
-    // the unit label only means QC inside a session armed to run QC. It is
-    // `stateful` because the armed job outranks the class default exactly the
-    // way prior state does — at a QC station a unit label is never a preview.
+    // Session work, not object state:
     id: 'qc-unit',
     classes: ['serial-unit'],
     when: ALWAYS,
@@ -247,10 +189,6 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
 ];
 
 // ─── Titles are data ────────────────────────────────────────────────────────
-//
-// Every session title this app writes for a scan is one of these five
-// templates. A Card that returns `null` keeps the session's existing title —
-// that is the plan's "existing" row, not a missing case.
 
 const TITLE_TEMPLATES = {
   // Workstation pivot (operator 2026-09-06): session blocks name the WORK and
@@ -283,13 +221,7 @@ function last4(value: string): string {
   return compact.slice(-4) || compact;
 }
 
-/**
- * The licence-plate number for a `QC · LPN {n}` title.
- *
- * A house LPN carries its id in the redirect (`/m/h/12`) and reads best in
- * full; a foreign SSCC is 18 digits, so it reads as its tail — the same four
- * characters printed large on the label.
- */
+/** The licence-plate number for a `QC · LPN {n}` title. */
 function lpnLabel(route: ScanRoute): string {
   const fromRedirect = /^\/m\/h\/(\d+)$/.exec(route.redirect || '');
   if (fromRedirect) return fromRedirect[1];
@@ -347,25 +279,7 @@ function isExpected(session: ArmedScanSession, type: ScanType): boolean {
 
 // ─── The dispatch ───────────────────────────────────────────────────────────
 
-/**
- * Decide the Card, the session title and the mode for one scan.
- *
- * Resolution, in order:
- *
- *  1. Collect every row whose class list holds this scan's class and whose
- *     state predicate is true. A row `armedFor` a Card counts only when the
- *     armed session's `work` is that Card.
- *  2. **Prior state wins.** If any `stateful` row matched, the class defaults
- *     are dropped — a known carton beats "arrival", a paired bin beats "bin
- *     preview".
- *  3. **A tie asks.** If two stateful rows matched and they name DIFFERENT
- *     Cards (an LPN both in QC and staged for pack), neither is more true than
- *     the other, so the Field asks one line and names both candidates.
- *  4. Otherwise the first matching row wins; the catch-all is `preview`.
- *
- * Then the mode: no armed session → everything previews. Armed session → an
- * expected class acts; **any other class previews and parks nothing.**
- */
+/** Decide the Card, the session title and the mode for one scan. */
 export function dispatchScan(input: ScanDispatchInput): ScanDispatch {
   const armed = input.armedSession ?? null;
   const route = typeof input.scan === 'string' ? routeScan(input.scan) : input.scan;

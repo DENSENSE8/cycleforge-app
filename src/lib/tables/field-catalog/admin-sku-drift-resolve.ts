@@ -1,16 +1,4 @@
-/**
- * SKU stock-drift slot resolvers — pure.
- *
- * Every fact is a signed integer, and each resolves to the BARE number as text:
- * no `+` prefix and no colour. The columns' `slotDisplayType` is `number`, so
- * `compareGridValues` parses this text back into a number to order the column;
- * a decorated face would either fail to parse or sort as a string ("10" before
- * "2"). Direction is spelled into the words the title and the pill carry, in
- * `admin-sku-drift-row-view.ts`.
- *
- * `0` resolves to `'0'`, never to `null`: a zero counter is a fact this desk
- * exists to compare, and dashing it would read as "not fetched".
- */
+/** SKU stock-drift slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { SkuDriftRow } from '@/lib/inventory/drift-rows';

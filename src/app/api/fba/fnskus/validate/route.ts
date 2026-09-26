@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// ── GET /api/fba/fnskus/validate?fnskus=X00XXXXXXX,X00YYYYYYY ─────────────────
-// Validates a comma-separated list of FNSKUs against the fba_fnskus table.
-// Optional: `persist_missing=1` upserts stub catalog rows for unknown FNSKUs so
-// metadata can be filled in later, while still returning them as not ready.
+// ── GET /api/fba/fnskus/validate?fnskus=X00XXXXXXX,X00YYYYYYY ───────────────── Validates a comma-separated list of FNSKUs against the…
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);

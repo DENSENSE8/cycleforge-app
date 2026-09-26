@@ -1,10 +1,4 @@
-/**
- * Station Displays Root Index — pure row model + helpers (no React).
- *
- * Shared waist for Unbox · Arrival · Testing · Pack · Shipping · Review.
- * Domain builders (e.g. `buildUnboxDisplayIndexRows`) return {@link DisplayIndexRow};
- * the list paints icons from matching {@link SectionTab} entries.
- */
+/** Station Displays Root Index — pure row model + helpers (no React). */
 
 import type { SectionTab } from '@/lib/design/section-tab';
 
@@ -84,15 +78,7 @@ export function isDisplaysHostedLeaf(id: string): boolean {
   return id === STATION_LOOK_DISPLAY_ID;
 }
 
-/**
- * Resolve the tab the Displays column should paint.
- *
- * Closed is `null`. `index` stays index. Displays-hosted leaves (`look`) pass
- * through even when the station's carton tab list does not mention them —
- * Pack / Testing / Search used to treat unknown ids as gated-off and bounce
- * to the index. Known carton leaves stay as-is; anything else falls back to
- * the index (never `tabs[0]`).
- */
+/** Resolve the tab the Displays column should paint. */
 export function resolveDisplaysActiveTab(
   requested: string | null,
   knownLeafIds: readonly string[],
@@ -104,16 +90,7 @@ export function resolveDisplaysActiveTab(
   return STATION_DISPLAY_INDEX;
 }
 
-/**
- * Declared stable nav-key per Displays leaf id — the co-located key map the
- * leader-armed selection keyboard reveals on the Right region (nav-keys P0;
- * spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`). Identity-stable:
- * a leaf's letter holds across sessions so muscle memory forms ('p' = Photos,
- * 't' = Ticket). `resolveNavKeymap` honors these when free and falls back
- * deterministically for any unlisted leaf, so a station showing a subset never
- * loses a hint. A P4 uniqueness guard asserts these letters never collide
- * across the full leaf vocabulary — keep them distinct.
- */
+/** Declared stable nav-key per Displays leaf id — the co-located key map the leader-armed selection keyboard reveals on the Right region… */
 export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   ticket: 't',
   photos: 'p',
@@ -139,12 +116,7 @@ export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   look: 'w',
 };
 
-/**
- * Build neutral Root Index rows from visible section tabs.
- * `stripHidden` never appear (Unbox checklist is ring-only via stripHidden).
- * A visible `checklist` leaf (Testing SKU checklist) stays on the index.
- * When `count` is set, subtitle paints the count so thin stations are not blank.
- */
+/** Build neutral Root Index rows from visible section tabs. */
 export function deriveDisplayIndexRowsFromTabs(tabs: readonly SectionTab[]): DisplayIndexRow[] {
   return tabs
     .filter((t) => !t.stripHidden)
@@ -166,12 +138,7 @@ export function deriveDisplayIndexRowsFromTabs(tabs: readonly SectionTab[]): Dis
     });
 }
 
-/**
- * Ensure the Root Index carries a Look row whose subtitle is the live Color ·
- * Depth label (e.g. `Coal · Mill`). PushStack injects this so Unbox builders
- * and thin stations both get the try-on leaf without forking a tab. Existing
- * `look` rows keep their group and get a fresh subtitle.
- */
+/** Ensure the Root Index carries a Look row whose subtitle is the live Color · Depth label (e.g. */
 export function withLookDisplayIndexRow(
   rows: readonly DisplayIndexRow[],
   currentLabel: string,
@@ -210,17 +177,7 @@ export function filterDisplayIndexRows(
   );
 }
 
-/**
- * Aggregate status for an eyebrow trailer — **action rows only**.
- *
- * `N pending` when a group holds work, otherwise nothing. The earlier ladder
- * also emitted `Clear` and `Incomplete`, and `Incomplete` was a lie: Context
- * holds Support · Tracking · Timeline, which are reference rows that can never
- * BE complete, so a group of them read "INCOMPLETE" beside three rows that were
- * all fine. Chrome must not invent a second story about state (Kinetic Ledger
- * law 1) — and a trailer that fires on every group is noise the eyebrow pays
- * for on every render while saying nothing.
- */
+/** Aggregate status for an eyebrow trailer — **action rows only**. */
 export function summarizeDisplayIndexGroup(
   rows: readonly DisplayIndexRow[],
 ): DisplayIndexGroupSummary {

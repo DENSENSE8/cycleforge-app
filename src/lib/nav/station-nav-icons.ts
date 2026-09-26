@@ -1,19 +1,4 @@
-/**
- * Station nav icon registry — maps sidebar page / child-page ids to semantic
- * icon components from `@/components/Icons`. Single write path for
- * SIDEBAR_PAGE_NAV data, the receiving rail, tech top pills, and shipping.
- *
- * MasterNav renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
- * **Weight is not in this registry, and not in the glyphs it names.** Every
- * surface that draws nav chrome applies the ONE stroke token
- * (`NAV_ICON_STROKE_CLASS`, icons/nav-weight.tsx); the glyph components ship
- * bare. The 1.5 / 2.25 split and the `withNavIcon*Stroke` wrappers were deleted
- * 2026-08-19 — a wrapped glyph could not be drawn at a second altitude, and it
- * beat the surface's own weight on emission order rather than losing quietly.
- *
- * Glyphs must stay unique across floor stations — enforced via
- * {@link STATION_GLYPH_KEYS}.
- */
+/** Station nav icon registry — maps sidebar page / child-page ids to semantic icon components from `@/components/Icons`. */
 
 import {
   PackingModeFragile,

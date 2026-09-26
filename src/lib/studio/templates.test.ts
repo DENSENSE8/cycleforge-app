@@ -1,12 +1,4 @@
-/**
- * DB-free unit tests for the template-import clone (Studio ST6 / Phase E4).
- * Mirrors definitions.test.ts: a fake tx client captures every SQL call so we
- * assert on both the return value and what got threaded to the client —
- * specifically that node ids are RE-MINTED, edges are remapped through the same
- * map, every cloned row is org-stamped, and the draft is is_active = FALSE.
- *
- *   node --import tsx --test src/lib/studio/templates.test.ts
- */
+/** DB-free unit tests for the template-import clone (Studio ST6 / Phase E4). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

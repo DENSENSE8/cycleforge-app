@@ -7,14 +7,7 @@ import { getClaimTicketRef } from '@/lib/warranty/claims';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyVerbBody } from '@/lib/schemas/warranty';
 
-/**
- * POST /api/warranty/claims/[id]/revert — the single "undo" for the forward
- * lifecycle verbs (submit/approve/deny/close). Steps the claim back one stage
- * based on its current status (SUBMITTED→LOGGED, APPROVED→SUBMITTED,
- * DENIED→SUBMITTED clearing denial fields, CLOSED→pre-close status). IN_REPAIR
- * is reversed by detaching the repair, not here. No customer notification — a
- * revert is an internal correction. Gated by WARRANTY_LOGGER. warranty.manage.
- */
+/** POST /api/warranty/claims/[id]/revert — the single "undo" for the forward lifecycle verbs (submit/approve/deny/close). */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   const id = claimIdFromPath(request, 2);

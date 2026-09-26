@@ -18,21 +18,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE_CC_LINE = 'cycle-counts.line.patch';
 
-/**
- * PATCH /api/cycle-counts/lines/[id]
- *
- * Two actions:
- *   { action: 'submit',  countedQty, staffId, notes?, clientEventId? }
- *     Records the physical count. If within variance_tol the row auto-
- *     approves and a CYCLE_COUNT_ADJ ledger row + bin_contents.qty fix is
- *     applied. Otherwise the row moves to `pending_review`.
- *
- *   { action: 'approve' | 'reject', staffId, clientEventId? }
- *     Admin-only. Approve writes the variance adjustment; reject leaves
- *     bin_contents untouched and stamps approved_by for audit.
- *
- * Idempotent on `Idempotency-Key` / `clientEventId`.
- */
+/** PATCH /api/cycle-counts/lines/[id] */
 
 interface LineRow {
   id: number;

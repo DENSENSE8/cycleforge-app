@@ -1,15 +1,4 @@
-/**
- * Pins the feedback tone contract.
- *
- * The regression this exists to catch is quiet: a fifth state appears (or a
- * fourth loses its CTA intent), the call site has nowhere to read a fill from,
- * and someone paints the button with `className="bg-amber-600"`. That renders
- * correctly and passes every gate — the DS ratchets that used to catch a
- * Button class override were deleted 2026-08-20. So the map's completeness is
- * the thing worth asserting, and the CTA names are asserted against the SHIPPED
- * `BUTTON_VARIANTS` rather than a copy, so a renamed variant fails here instead
- * of rendering an unstyled button.
- */
+/** Pins the feedback tone contract. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

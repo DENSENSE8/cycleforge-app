@@ -100,9 +100,6 @@ test('EMBEDDING_DIMS is pinned at 768 (schema + provider interchange contract)',
 });
 
 // --- Cloudflare Access passthrough (Phase 0 of the AI provider consolidation).
-// The retired hermes-client was the only emitter of these headers; the chat
-// capability can still resolve to that same tunnelled Hermes URL via the
-// same tunnelled Hermes URL via AI_CHAT_BASE_URL, so the platform leaf carries them.
 
 test('chat: CF Access headers ride the config when both vars are set', () => {
   const cfg = resolveAiConfig('chat', {

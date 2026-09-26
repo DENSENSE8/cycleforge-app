@@ -53,16 +53,7 @@ export interface CatalogLinkGridColumn extends SlotTrackFields {
   omitCellIcon?: boolean;
 }
 
-/**
- * Canonical Listing match columns, in scan order.
- *
- * `select` is a structural gutter with no verb of its own — a click opens the
- * catalog-link rail. `item` (the listing number) is the reading track and is
- * hideable because the compound mount already carries it as fulfillment.
- *
- * The hand flat array (`CATALOG_LINK_GRID_COLUMNS`) is DELETED — the compound
- * materialization below is the one column model, and the desk mounts it.
- */
+/** Canonical Listing match columns, in scan order. */
 export function catalogLinkCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly CatalogLinkGridColumn[] {
@@ -73,35 +64,11 @@ export function catalogLinkCompoundColumnsFor(
   });
 }
 
-/**
- * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
- * With the product layout's empty band that is the shared `COMPOUND_TRACKS`
- * verbatim, so the port reproduces the review queue exactly and every catalog
- * fact becomes bindable without a deploy.
- */
+/** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const CATALOG_LINK_COMPOUND_COLUMNS: readonly CatalogLinkGridColumn[] =
   catalogLinkCompoundColumnsFor(CATALOG_LINK_PRODUCT_LAYOUT);
 
-/**
- * The `?colsort=` vocabulary.
- *
- * Two spellings reach the same fact and both are kept alive on purpose: the
- * FLAT words (`sku`, `orders`, `last`) are what live bookmarks carry, and the
- * compound TRACK keys (`fulfillment`, `state`, `amount`) are what the mounted
- * header emits since wave 1.3. Dropping either half breaks somebody — a saved
- * link, or every header on the desk.
- *
- * `item` was missing from this list while the host's comparator already had a
- * `case 'item'`, so the queue's widest column offered a sort that
- * `useUrlColumnSort` then refused to store — the header moved and nothing
- * happened. That is the same class of dead-header bug `queue-display-sort`
- * documents for To-Ship; it is fixed by naming the track here.
- *
- * Declared as the literal it always resolved to. It used to be derived by
- * filtering the deleted `CATALOG_LINK_GRID_COLUMNS` — a sort vocabulary is not
- * a column layout, and deriving it from a dead model kept the model alive for
- * nothing.
- */
+/** The `?colsort=` vocabulary. */
 const CATALOG_LINK_GRID_SORTABLE_KEYS: readonly CatalogLinkGridColumnKey[] = [
   'item',
   'source',
@@ -118,15 +85,7 @@ export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridCo
   return (CATALOG_LINK_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-/**
- * The comparator shape each sort word uses.
- *
- * Read off the FLAT column array until wave 1.3 moved the mount to compound
- * tracks, at which point `.find(c => c.key === 'state')` returned `undefined`
- * and every compound-track sort silently fell back to the default shape — a
- * date column comparing as text. Declared here so a word that has no flat twin
- * still names its own shape.
- */
+/** The comparator shape each sort word uses. */
 export const CATALOG_LINK_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
   dates: 'date',
   item: 'text',

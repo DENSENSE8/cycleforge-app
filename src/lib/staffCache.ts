@@ -54,13 +54,6 @@ export function getActiveStaff(): Promise<StaffMember[]> {
   if (!_promise) {
     _promise = fetch('/api/staff?active=true')
       // THROW on a bad response so the catch below owns every failure.
-      //
-      // This used to read `res.ok ? res.json() : []`, which turned a 401 or a
-      // dev-server hiccup into an empty ROSTER — and because `_data` is set
-      // unconditionally on the next line and `[]` is truthy, the early return
-      // above then served that empty array to every later caller for the life
-      // of the page. One unlucky request and every staff picker on the surface
-      // says "no staff" until a reload. A failure must stay retryable.
       .then((res) => {
         if (!res.ok) throw new Error(`staff roster ${res.status}`);
         return res.json();

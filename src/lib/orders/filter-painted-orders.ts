@@ -1,10 +1,4 @@
-/**
- * Client-side find for an already-painted orders queue.
- *
- * Typing in the desk search must not navigate or refetch: it narrows the rows
- * currently on screen. A hit on any line of a multi-line order keeps every
- * sibling so the parent fold still has qty / price / boxes.
- */
+/** Client-side find for an already-painted orders queue. */
 import type { ShippedOrder } from '@/types/orders';
 
 export function filterShippedOrdersByQuery(

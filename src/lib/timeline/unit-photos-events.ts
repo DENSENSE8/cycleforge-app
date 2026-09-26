@@ -1,13 +1,7 @@
 import { photoStageLabel, type PhotoEvidenceStage } from '@/lib/photos/stages';
 import type { TimelineItem } from './types';
 
-/**
- * Adapter: a unit's photos (the five stage buckets from
- * `listUnitTimelinePhotos`) → `TimelineItem[]`. Each source collapses to ONE
- * row carrying its photos as inline `media` thumbnails, timestamped at the
- * newest capture. Owns the source → tone map (never inline in a view); titles
- * compose the stage-label SoT (`photoStageLabel`) rather than a second map.
- */
+/** Adapter: a unit's photos (the five stage buckets from `listUnitTimelinePhotos`) → `TimelineItem[]`. */
 
 /**
  * Client mirror of `UnitTimelinePhotoSource`

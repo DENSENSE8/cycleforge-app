@@ -87,20 +87,9 @@ interface ProductSelectorProps {
    * `/api/kiosk/repair` for the device-authed twins (same response shapes).
    */
   apiBasePath?: string;
-  /**
-   * Hides the "Other -- Manual Entry" free-text escape hatch. The kiosk sets
-   * this so a walk-in repair always resolves to a real Ecwid SKU (pricing +
-   * downstream ticketing depend on it); staff keep manual entry for the
-   * one-off devices that genuinely aren't in the catalog.
-   */
+  /** Hides the "Other -- Manual Entry" free-text escape hatch. */
   hideManualEntry?: boolean;
-  /**
-   * Let the results flow in the page instead of scrolling inside a capped
-   * region. The default `max-h-[50vh]` box nests a second scrollbar inside an
-   * already-scrolling page — fine in the staff modal, but on the kiosk it
-   * halves the usable area and hides results behind a scroll the customer
-   * can't see. Mutually exclusive with `fillHeight`.
-   */
+  /** Let the results flow in the page instead of scrolling inside a capped region. */
   flowInPage?: boolean;
   /**
    * `flush` = stacked edge-to-edge chrome (square rows). Ignored when
@@ -118,12 +107,7 @@ interface ProductSelectorProps {
   catalogPhase?: 'browse' | 'checkout';
   /** Continue to checkout when the cart has items (kiosk-split). */
   onContinue?: () => void;
-  /**
-   * Override the kiosk CTA's copy. REPAIR keeps the default "Continue" (there
-   * IS a next step); RETAIL passes "Review cart · N items", because a tapped
-   * retail item is already a cart line and the only forward move is the cart.
-   * A key that says Continue and continues nowhere is the bug this replaces.
-   */
+  /** Override the kiosk CTA's copy. */
   continueLabel?: string;
   /** Return to browse without clearing the cart (kiosk-split). */
   onAddAnotherItem?: () => void;
@@ -152,39 +136,11 @@ interface ProductSelectorProps {
    * Default false so staff stacked + legacy split keep the tray.
    */
   hideCartTray?: boolean;
-  /**
-   * Where a find-bar query is answered.
-   *
-   * `server` sends `?q=` and paints exactly what SQL ranked — the whole
-   * projection is searchable, so a match that sorts 4000th by name is still
-   * found, and the row carries stock + bin location. Requires a route that
-   * supports `?q=` (the `/api/kiosk/*` twins do).
-   *
-   * `client` (default) keeps the legacy in-memory filter over a 100-row root
-   * pool. That is all `/api/repair/ecwid-products` can serve today — it walks
-   * the live storefront and has no query parameter — so staff surfaces stay on
-   * it until that route is ported too.
-   */
+  /** Where a find-bar query is answered. */
   catalogSearchMode?: 'client' | 'server';
-  /**
-   * Mount the FAVORITES scope: the picker lands on this workspace's curated
-   * list, offers it first in the category dropdown, and paints a favorite pip
-   * on every tile's top-right corner.
-   *
-   * The value names the LIST, not the endpoint — favorites are read and written
-   * through `${apiBasePath}/favorites`, so the route decides which workspace a
-   * rail may touch. Omitted (staff counter, legacy hosts) = no favorites scope
-   * and no pip, exactly as before.
-   */
+  /** Mount the FAVORITES scope: */
   favoritesWorkspace?: FavoriteWorkspaceKey;
-  /**
-   * COUNT mode (Sales, Square "Consolidate identical items"): a tile tap calls
-   * `onTap` instead of toggling the picker's own selection, and the tile's
-   * picked state is `quantities` — the cart's units on that catalog id. A
-   * repeat tap therefore adds one and the corner reads `×2`; it never
-   * deselects. Omitted = the picker toggles a selection (Repair picks a
-   * device, it does not count one).
-   */
+  /** COUNT mode (Sales, Square "Consolidate identical items"): */
   countPicks?: {
     quantities: ReadonlyMap<string, number>;
     onTap: (item: SelectedItem) => void;
@@ -261,17 +217,7 @@ const KIOSK_ALL_PRODUCTS_VALUE = 'all-products';
 /** Combobox sentinel — the curated list, `?mode=favorites`, not a category. */
 const KIOSK_FAVORITES_VALUE = 'favorites';
 
-/**
- * The availability line on a product card — "12 in stock" over "Z1-A-03 +1".
- *
- * This is what a walk-in actually asks for, and the reason the kiosk search
- * joins `bin_contents`: a price alone does not tell the staffer whether to walk
- * to the shelf, offer to order it, or check the back.
- *
- * Renders NOTHING when there is nothing to say — no availability at all (staff
- * client-mode routes) or an untracked SKU. Printing a placeholder on the
- * majority of tiles is noise the eye has to skip past on every card.
- */
+/** The availability line on a product card — "12 in stock" over "Z1-A-03 +1". */
 function ProductAvailabilityLine({
   availability,
   muted,
@@ -366,10 +312,7 @@ export function ProductSelector({
     onSearchQueryChange?.(value);
   };
 
-  // Kiosk-split: the find bar is a COLLAPSED glyph riding the trail's lead,
-  // right of the command dropdown, that expands in place (the global-header
-  // pattern). Open/close is picker chrome; the QUERY stays the controlled
-  // searchQuery/session state it always was.
+  // Kiosk-split: the find bar is a COLLAPSED glyph riding the trail's lead, right of the command dropdown, that expands in place (the…
   const [searchOpen, setSearchOpen] = useState(false);
   const openCatalogSearch = () => {
     setSearchOpen(true);
@@ -393,36 +336,18 @@ export function ProductSelector({
   const [otherModelText, setOtherModelText] = useState('');
   const [showOther, setShowOther] = useState(false);
   const [showAllProducts, setShowAllProducts] = useState(false);
-  /**
-   * Favorites scope — the curated list is painting the grid.
-   *
-   * A sibling of `showAllProducts` rather than a third value inside it: the
-   * shipped pool helpers (`isCatalogRootSearchLevel`) read that flag, and both
-   * scopes ARE the root level for search purposes — typing searches the whole
-   * catalog from either one.
-   */
+  /** Favorites scope — the curated list is painting the grid. */
   const [showFavorites, setShowFavorites] = useState(false);
   /** Workspace membership as normalized SKU keys — what each tile pip reads. */
   const [favoriteKeys, setFavoriteKeys] = useState<ReadonlySet<string>>(() => new Set<string>());
   /** SKU whose pip is mid-flight; its own tile is the only one disabled. */
   const [pendingFavoriteSku, setPendingFavoriteSku] = useState<string | null>(null);
-  /**
-   * PIN MODE — the "Add favorite" tile's job. A tile tap pins or unpins the
-   * product instead of putting it on the cart, the way Square's "add tile"
-   * flow makes an item-library tap mean "place this here", never "sell this".
-   * Without it, curating Favorites meant hunting a 32px star on a catalog whose
-   * every other tap adds a line to a live cart.
-   *
-   * Ends on `Done`, or whenever the Favorites scope loads again.
-   */
+  /** PIN MODE — the "Add favorite" tile's job. */
   const [pinning, setPinning] = useState(false);
   const [productsOffset, setProductsOffset] = useState(0);
   const [hasMoreProducts, setHasMoreProducts] = useState(false);
   const [loadingMoreProducts, setLoadingMoreProducts] = useState(false);
-  // Whole-catalog pool, lazily loaded the first time someone types at the root
-  // level. Without it, searching from the root only filtered CATEGORY NAMES —
-  // typing a product ("Wave Radio II") found nothing until you had already
-  // drilled into the right category, which is backwards for a front-desk flow.
+  // Whole-catalog pool, lazily loaded the first time someone types at the root level.
   const [rootSearchPool, setRootSearchPool] = useState<EcwidProduct[] | null>(null);
   const [loadingRootSearch, setLoadingRootSearch] = useState(false);
   const searchInputHostRef = useRef<HTMLDivElement | null>(null);
@@ -457,10 +382,7 @@ export function ProductSelector({
     if (initialLoad) setLoadingCategories(true);
     setError(null);
     setShowAllProducts(false);
-    // A cold mount ALSO calls this (to load the root category level) while the
-    // favorites landing is in flight, and must not cancel it. Only a real
-    // navigation — a drill, or a return to All products once the tree is
-    // hydrated — leaves the favorites scope.
+    // A cold mount ALSO calls this (to load the root category level) while the favorites landing is in flight, and must not cancel it.
     if (parentId || categoriesHydratedRef.current) setShowFavorites(false);
     setProductsOffset(0);
     setHasMoreProducts(false);
@@ -555,13 +477,7 @@ export function ProductSelector({
     }
   };
 
-  /**
-   * The rail's curated list, as ordinary catalog tiles.
-   *
-   * Same route, same wire shape, same card as any other browse page — favorites
-   * are a SCOPE of the catalog (`?mode=favorites`), not a second data source
-   * with its own rail, its own card and its own idea of what a product is.
-   */
+  /** The rail's curated list, as ordinary catalog tiles. */
   const fetchFavoriteProducts = async (offset = 0, append = false) => {
     if (append) setLoadingMoreProducts(true);
     else setLoadingProducts(true);
@@ -594,14 +510,7 @@ export function ProductSelector({
     }
   };
 
-  /**
-   * Membership + landing, in one round trip on mount.
-   *
-   * The keys are needed either way (every tile's pip reads them, in every
-   * scope), and their COUNT answers where to land: a counter with pinned
-   * repairs opens on them, an org with none opens on All products rather than
-   * on an empty grid with a dropdown nobody has reason to open.
-   */
+  /** Membership + landing, in one round trip on mount. */
   const hydrateFavorites = async () => {
     let keys: string[] = [];
     try {
@@ -652,12 +561,7 @@ export function ProductSelector({
     void fetchAllProducts(0, false);
   };
 
-  /**
-   * Whole-catalog server search. Unlike `fetchProducts` / `fetchAllProducts`
-   * this is NOT scoped to the drilled category: someone asking "do you have a
-   * Wave Radio" does not care which category the staffer was browsing, and
-   * scoping the query to it was the defect the 100-row client pool papered over.
-   */
+  /** Whole-catalog server search. */
   const fetchSearchProducts = async (query: string, offset = 0, append = false) => {
     const gen = ++searchFetchGen.current;
     if (append) setLoadingMoreProducts(true);
@@ -711,23 +615,13 @@ export function ProductSelector({
   };
 
   useEffect(() => {
-    // Don't block first paint on the category waterfall — rail + search +
-    // skeleton grid paint immediately; the catalog fills in when ready.
-    //
-    // With a favorites rail the LANDING is the curated list (operator
-    // 2026-09-16: favorites at the top of the kiosk display, All products
-    // behind the dropdown), and `hydrateFavorites` falls through to the
-    // all-products page when the org has pinned nothing.
+    // Don't block first paint on the category waterfall — rail + search + skeleton grid paint immediately; the catalog fills in when ready.
     if (favoritesEnabled) void hydrateFavorites();
     else if (kioskSplit) void fetchAllProducts(0, false);
     void fetchCategoryLevel(null);
   }, []);
 
-  // Lazy-load the full catalog once, on the first root-level keystroke. The
-  // server response is Redis-cached, so this is a single cheap round trip and
-  // every later keystroke filters in memory. Kiosk-split first-page paint
-  // flips showAllProducts — that must not disable this path. Favorites is the
-  // root level too: typing there searches the whole catalog, not the pins.
+  // Lazy-load the full catalog once, on the first root-level keystroke.
   const isAtRootLevel = isCatalogRootSearchLevel({
     currentCategoryId,
     showAllProducts: showAllProducts || showFavorites,
@@ -826,19 +720,7 @@ export function ProductSelector({
         return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
       });
 
-  /**
-   * Report the selection to the host.
-   *
-   * `model` is a JOIN and a SUM on purpose, and it is the STAFF single-intake
-   * title — one `repair_service` row, whatever was ticked. It is NOT a device
-   * title for a multi-device visit: the kiosk reads `selectedItems` and holds
-   * one cart line (one serial, one quote) PER product
-   * (`src/lib/kiosk/repair-devices.ts`), and visit-level chrome that has one
-   * line to say it in uses `summarizeProductTitles` — "Wave Radio II + 2 more"
-   * — rather than painting this string at `text-3xl` on the customer display.
-   * Do not "fix" the join here; the hosts that must not concatenate already
-   * do not read it.
-   */
+  /** Report the selection to the host. */
   const notifyParent = (items: SelectedItem[]) => {
     const model = items.map((i) => i.name).join(', ');
     onSelect({ type: items.length > 0 ? rootName : '', model, sourceSku: deriveSourceSku(items) });
@@ -1054,12 +936,7 @@ export function ProductSelector({
         : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
   );
 
-  /**
-   * The "Add favorite" tile closes the Favorites grid — the last rectangle in
-   * the same card shape as every pinned product, so curating the list happens
-   * where the list is. Not while searching (the grid is then a result set, not
-   * the curated list) and not while already pinning.
-   */
+  /** The "Add favorite" tile closes the Favorites grid — the last rectangle in the same card shape as every pinned product, so curating the… */
   const showAddFavoriteTile =
     pos && favoritesEnabled && showFavorites && !pinning && search.trim() === '';
 
@@ -1144,20 +1021,7 @@ export function ProductSelector({
               {filteredProducts.map((product, index) => {
                 const picked = pickedCount(product.id);
                 const selected = picked > 0;
-                /*
-                 * LCP is a catalog tile photo, and Lighthouse measured its
-                 * resource-load DELAY at 4.2s: the grid is client-fetched, so
-                 * the browser cannot discover any image in the initial HTML,
-                 * and every tile then declared `loading="lazy"` —
-                 * `eagerlyLoaded: false` + `priorityHinted: false` on the
-                 * LCP-discovery audit.
-                 *
-                 * The first row is above the fold by definition (the grid is
-                 * `auto-fill minmax(148px,1fr)`, so an iPad-landscape row holds
-                 * at most ~8 tiles). Those load EAGER at high priority; the
-                 * rest stay lazy, which is what keeps a 400-tile catalog from
-                 * fetching 400 photos.
-                 */
+                /* LCP is a catalog tile photo, and Lighthouse measured its resource-load DELAY at 4.2s: */
                 const aboveFold = index < KIOSK_EAGER_TILE_COUNT;
                 const favorited = isFavoriteSku(favoriteKeys, product.sku);
                 return (
@@ -1226,14 +1090,7 @@ export function ProductSelector({
                         </div>
                       )}
 
-                      {/*
-                        Kiosk POS pick indicator — ONLY once picked. An empty
-                        outline on every tile put a ring over every product
-                        photo and made "selected" a fill-change on an always-
-                        present dot rather than something appearing. The card
-                        already reads as tappable from the accent wash and
-                        frame; affordance does not need a permanent decal.
-                      */}
+                      {/* Kiosk POS pick indicator — ONLY once picked. */}
                       {pos && selected && (
                         <span
                           className={cn(
@@ -1405,10 +1262,7 @@ export function ProductSelector({
         </div>
       )}
 
-      {/* One notice, three reasons the grid is empty. Favorites needs its own
-          line because the categories still exist in that scope, so the
-          "nothing at this level" wording would never fire and the operator
-          would face a blank stage after unpinning the last SKU. */}
+      {/* One notice, three reasons the grid is empty. */}
       {!loadingProducts &&
         filteredProducts.length === 0 &&
         !showAddFavoriteTile &&
@@ -1677,10 +1531,7 @@ export function ProductSelector({
     );
   };
 
-  // ─── Kiosk: trail (command · All products · cart/paperwork/stance)
-  // Callers: KioskShell `/kiosk` + `/kiosk/v2`. Affected API: none.
-  // User: "The top header component should not be another header navigation, it
-  // should be included in the same row as the all products."
+  // ─── Kiosk: trail (command · All products · cart/paperwork/stance) Callers:
   if (kioskSplit) {
     const canGoBack =
       !(loading && !categoriesHydratedRef.current) && breadcrumbs.length > 0;
@@ -1689,30 +1540,7 @@ export function ProductSelector({
       : `Search in ${breadcrumbs[breadcrumbs.length - 1]?.name ?? 'this category'}`;
     const catalogTrail = (
               <div className={cn(KIOSK_POS_TRAIL_BAND, 'pl-2 pr-3', KIOSK_POS_TOP_DOCK_INTERACTIVE)} data-testid="kiosk-catalog-trail">
-              {/* Command dropdown LEADS the row (mode identity: Repair /
-                  Sales / Buyback / Pickup), search glyph second.
-
-                  ONE search glyph, and it both opens and closes (operator
-                  2026-09-15: *"there should not be two search icons. The
-                  search icon to close and to open should be the only search
-                  icon displayed."*). Two shipped before: this trail toggle
-                  AND `SearchField`'s own leading magnifier, plus a THIRD
-                  control — a standalone X — once the field was open. Now:
-                  `hideLeadingIcon` silences the field's copy, the standalone
-                  X is gone, and `aria-pressed` carries the state while the
-                  label stays stable.
-
-                  The glyph is the catalog `Search` on TOP_CHROME_ICON_FACE,
-                  the same face the back chevron wears — it used to be a
-                  hand-drawn inline <svg> at its own size, which is how the
-                  trail ended up with two magnifiers that did not even match.
-
-                  While open the field owns the row's flexible middle — the
-                  browse path is hidden, not crushed — and the dropdown +
-                  utilities hold their shrink-0 ground at both ends. Esc and
-                  the toggle both run closeCatalogSearch, which also clears
-                  the query; the in-field clear X is a different verb (clear
-                  the text, stay open) and only appears with a value. */}
+              {/* Command dropdown LEADS the row (mode identity: */}
               {sidebarHeader}
               <IconButton
                 icon={<Search className={TOP_CHROME_ICON_FACE} />}
@@ -1748,11 +1576,7 @@ export function ProductSelector({
                 </div>
               ) : null}
               {canGoBack ? (
-                // Same family as the search toggle / close above it: one trail
-                // icon vocabulary (IconButton + HEADER_ICON_BTN_CLASS +
-                // KIOSK_POS_TRAIL_ICON). This used to be a hand-rolled
-                // <button> wearing the dead KIOSK_MODE_SPINE_* tokens, which
-                // is what kept the retired command spine's chrome alive.
+                // Same family as the search toggle / close above it:
                 <IconButton
                   icon={<ChevronLeft className={TOP_CHROME_ICON_FACE} aria-hidden />}
                   ariaLabel="Go back"

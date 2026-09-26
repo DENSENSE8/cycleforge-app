@@ -1,19 +1,4 @@
-/**
- * Purchase-order money total for a carton — the presentation-kind SoT for
- * "what did this PO cost".
- *
- * `receiving` has no stored PO total: Zoho mirrors only the per-line rate into
- * `receiving_line_zoho.unit_price` (read-only mirror, see `zoho-receiving-sync.ts`).
- * The total is therefore DERIVED — Σ(unit_price × quantity) across the carton's
- * sibling lines. Derive it here, never inline in a view: the moment two surfaces
- * sum it themselves they disagree about which quantity counts.
- *
- * Quantity is `quantity_expected` (what was ORDERED), not `quantity_received` —
- * a PO's value does not shrink because a box arrived short. A line with no
- * mirrored price contributes nothing; a carton where NO line carries a price
- * returns `null` so the view can render honest absence (`—`) instead of `$0.00`,
- * which would read as "this PO was free".
- */
+/** Purchase-order money total for a carton — the presentation-kind SoT for "what did this PO cost". */
 
 /** The two fields a PO total needs — structurally satisfied by `ReceivingLineRow`. */
 export interface PoTotalLine {

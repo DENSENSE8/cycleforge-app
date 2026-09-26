@@ -1,18 +1,4 @@
-/**
- * Station Displays carton Macro verbs — top-band action descriptors.
- *
- * Header cluster (top-right of the push column, ruled 2026-08-18):
- *   [ Refresh? ][ Print? ][ Edit ][ ⋯ ]
- *
- * `⋯` is always the trailing cell and holds every secondary or destructive
- * verb — Resolve (when unfound) and Delete. Delete is deliberately NOT an
- * exposed peer: a bench operator clicks fast, and the menu's extra click plus
- * the undo toast are the two layers keeping a carton from vanishing mid-scan.
- *
- * Refresh is the peer that survives longest when a station wires fewer verbs —
- * it is the operator's re-sync after touching inventory elsewhere, and it is
- * the one they reach for without reading the row.
- */
+/** Station Displays carton Macro verbs — top-band action descriptors. */
 
 import { getLast8 } from '@/lib/copy-chip-format';
 
@@ -89,13 +75,7 @@ export function cartonDeleteLabels(face: string): {
   };
 }
 
-/**
- * Peer order for {@link CartonDisplaysActionFloor} — `⋯` is ALWAYS last, so it
- * anchors the same trailing corner on every station regardless of which
- * optional peers that station wired.
- *
- * Unbox: Refresh + Print (4). Arrival: Refresh only (3). Testing: neither (2).
- */
+/** Peer order for {@link CartonDisplaysActionFloor} — `⋯` is ALWAYS last, so it anchors the same trailing corner on every station… */
 export function cartonFloorPeerOrder(input: {
   print?: boolean;
   sync?: boolean;

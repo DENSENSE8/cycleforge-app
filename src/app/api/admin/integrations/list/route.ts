@@ -1,13 +1,4 @@
-/**
- * GET /api/admin/integrations/list
- *
- * Lists the caller tenant's integration rows for the admin UI. Never
- * returns the encrypted payload — only the metadata that's safe to show
- * (provider, status, display label, last error, last used).
- *
- * Gated by admin.view because seeing "we have Zoho connected" still leaks
- * business intent that random staff don't need to know.
- */
+/** GET /api/admin/integrations/list */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

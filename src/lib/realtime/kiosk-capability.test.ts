@@ -1,10 +1,6 @@
 /**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/realtime/kiosk-capability.test.ts
- *
- * P3 of `docs/todo/kiosk-desk-session-channel-PLAN.md`. A capability map IS the
+ * node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/realtime/kiosk-capability.test.ts
  * security boundary of a realtime channel — Ably grants exactly what the token
- * says — so these assert the shape of the grant, not just that one is produced.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

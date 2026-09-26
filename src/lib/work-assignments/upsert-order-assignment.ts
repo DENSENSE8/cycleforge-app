@@ -1,13 +1,4 @@
-/**
- * Shared ORDER/TEST|PACK work_assignment upsert.
- *
- * Extracted from `/api/orders/assign` so ingest, listing automations, and the
- * HTTP assign route share one waist. Never writes orders.* assignee columns —
- * work_assignments is the SoT (warehouse-os S11).
- *
- * For TEST: promotes an OPEN canonical deadline row to ASSIGNED rather than
- * inserting a second active row.
- */
+/** Shared ORDER/TEST|PACK work_assignment upsert. */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';

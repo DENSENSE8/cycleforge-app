@@ -2,29 +2,8 @@ import { baseColors } from './primitives';
 
 /**
  * State / functional colours — mode-independent and platform-independent.
- * A state colour says what a thing IS (ready, needs attention, packed,
- * blocked, done); no mode, surface or platform restyles it.
- *
- * Each tone follows the documented family rule: text -600 / tint (pastel
- * surface) -50 / edge (border) -400, plus a solid `fill` for bars, spines and
- * saturated indicators. The light theme's `--ds-color-{text,surface,border,
- * fill}-<tone>` vars read these values (light.ts) — this is the one copy.
- *
- * Text is not fill for success and warning: green-600 (3.30:1) and orange-600
  * (3.56:1) fail the 4.5:1 text floor on white (BRIEF §8), so their TEXT ink is
- * the -700 step — green-700 5.02:1, orange-700 5.18:1 on white — while fills,
- * spines, dots, tints and edges keep the -600/-500 family (non-text floor is
- * 3:1, which they clear).
- *
- * The `code` role is the SOLID BADGE behind a lifecycle state code on an
  * industrial row (owner 2026-09-25): a fill dark enough that its `codeInk`
- * clears 4.5:1 — white on the -700 step; warning keeps its own orange fill
- * (the urgent spine's colour) with near-black ink, because white on orange
- * fails. Measured: info 6.70 · warning 6.75 · fulfillment 6.98 · danger 6.47 ·
- * success 5.02.
- *
- * Which state gets which tone is LIFECYCLE's job (lifecycle.ts): packed is
- * `fulfillment`, shipped is `success`, never the fulfillment purple.
  */
 export type StateName = 'info' | 'warning' | 'fulfillment' | 'danger' | 'success';
 

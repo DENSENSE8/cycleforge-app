@@ -1,38 +1,8 @@
 'use client';
 
 /**
- * Leaf paint for the `/search` browse toolbar — three cluster faces and the
- * two control faces inside them. Split out of {@link SearchRefineControls} so
- * that file stays the URL-contract layer (parse `?etype=`/`?hstat=`/`?chan=`/
- * `?colsort=`, write them back) and this one stays presentational.
- *
+ * Leaf paint for the `/search` browse toolbar — three cluster faces and the two control faces inside them.
  * ## Three clusters, three jobs, three faces (operator 2026-09-12)
- *
- * The band used to wear ONE face: every control in it was the same bubble, so
- * scope, filters and sort were indistinguishable and the row read as a wall of
- * eleven-plus identical pills. They are not one job:
- *
- * - **Scope is NAVIGATION.** Picking `Orders` replaces the list; the options
- *   are mutually exclusive and exactly one is always live. That is a segmented
- *   TRACK — {@link RefineTrack} — a single raised plate holding ghost faces,
- *   so it reads as one control with a current position rather than as eleven
- *   independent toggles.
- * - **States and channels are FILTERS.** They are additive, individually
- *   removable, and none of them is the default. They stay free-floating
- *   BUBBLES ({@link RefinePill}) on the band itself — a chip you can peel off.
- * - **Sort is a CONTROL.** Also a track, but a LABELLED one: the word `Sort`
- *   in front of it is what separates "the ordering knob" from "where am I",
- *   which two unlabelled tracks at opposite ends of a band could not do alone.
- *
- * The separation is spacing, SURFACE TONE and grouping — never a rule. The
- * band sits on `bg-surface-sunken`, so a track plate is `bg-surface-card`
- * lifting off it and a bubble is a ringed card floating on it. There is no
- * `border-border-hairline` on this surface, deliberately (operator
- * 2026-09-12, who overruled the pill-row refusal for FIND browse).
- *
- * A pill/face is the house {@link Button} at `radius="pill"` — the sanctioned
- * `cornerClass('pill')` role. Never a `rounded-full` literal, never a raw
- * element, never a hue painted on with `className`.
  */
 
 import type { ReactNode } from 'react';
@@ -44,17 +14,7 @@ import { SEGMENTED_CONTROL_CORNER } from '@/design-system/tokens/radius';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 
-/**
- * Horizontal run of free-floating filter bubbles in one toolbar slot.
- * `row-tight` is the gap intent.
- *
- * WRAPS, never scroll-clips. This carried a `scroll` prop that set
- * `overflow-x-auto scrollbar-hide`; in the centre slot — which the Toolbar
- * gives `flex-1 min-w-0` — that shrank to nothing behind an 11-pill scope
- * cluster and cut the status pills off mid-word, with `scrollbar-hide`
- * removing the only cue that more existed. A filter you cannot see is a filter
- * you do not know you have, so the row grows downward instead.
- */
+/** Horizontal run of free-floating filter bubbles in one toolbar slot. */
 export function RefineCluster({
   label,
   children,
@@ -70,19 +30,7 @@ export function RefineCluster({
   );
 }
 
-/**
- * A segmented TRACK — one raised plate holding mutually exclusive faces.
- *
- * Used for the two clusters that are not filters: the entity scope (where am
- * I) and the display sort (how is it ordered). The plate is what says "these
- * belong to each other and exactly one of them is true"; a row of separate
- * bubbles says the opposite.
- *
- * `labelText` prints the cluster's job in front of the faces. The scope track
- * omits it (its faces name themselves and it is the band's first thing); the
- * sort track carries it, because an unlabelled pair reading `Relevance`
- * `Date` at the trailing edge could be read as two more filters.
- */
+/** A segmented TRACK — one raised plate holding mutually exclusive faces. */
 export function RefineTrack({
   label,
   labelText,
@@ -113,13 +61,7 @@ export function RefineTrack({
   );
 }
 
-/**
- * One face inside a {@link RefineTrack}.
- *
- * `ghost` when idle: inside a plate the GROUPING already separates the faces,
- * so a per-face ring would draw eleven boxes inside one box. That absence is
- * the whole visual difference from a filter bubble.
- */
+/** One face inside a {@link RefineTrack}. */
 export function RefineTab({
   label,
   count,
@@ -157,13 +99,7 @@ export function RefineTab({
   );
 }
 
-/**
- * One FILTER bubble — additive, removable, and never the default.
- *
- * Keeps the ring: a bubble floating on the band is the face of something you
- * added and can peel off, which is exactly what a status or channel refine is
- * and exactly what a scope is not.
- */
+/** One FILTER bubble — additive, removable, and never the default. */
 export function RefinePill({
   label,
   count,

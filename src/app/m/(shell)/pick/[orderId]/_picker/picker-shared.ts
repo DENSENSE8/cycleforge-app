@@ -24,22 +24,7 @@ export interface PickOrder {
   tasks: PickTask[];
 }
 
-/**
- * Scan-gate validator. Confirms the scanned value identifies the right
- * pick before we commit. Accepts (in priority order):
- *
- *   serial   — exact match against the unit's serial_number barcode
- *   bin      — exact match against the bin barcode (e.g. 'UNSORTED', 'A-12')
- *   url      — internal mobile QR pointing at the unit (/m/u/{serialUnitId})
- *   sku      — exact match against the canonical SKU
- *   platform — exact match against any platform_sku / platform_item_id on
- *              the SKU's marketplace mappings (Amazon MSKU/ASIN, Ecwid SKU,
- *              etc.). Lets pickers scan the marketplace label on the
- *              package rather than always finding the bin barcode.
- *
- * Returns null when nothing matches → caller surfaces a mismatch toast and
- * does NOT call confirm-pick. Comparison is case-insensitive and trimmed.
- */
+/** Scan-gate validator. */
 export function matchScanToTask(
   rawScan: string,
   task: PickTask,

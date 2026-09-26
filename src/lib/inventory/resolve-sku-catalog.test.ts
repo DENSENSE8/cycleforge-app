@@ -1,24 +1,10 @@
-/**
- * Guards for the §6 single guarded pairing function (sku-reconciliation plan).
- *
- * The strip must fire ONLY on a pure NNNN-N counter suffix, never on -P-N part
- * indices or non-numeric (color/condition) suffixes — the two SKU schemes
- * collide, so a broad strip would mis-pair distinct products. Exact/explicit
- * matches must still win before any strip, and an unresolved SKU must fall
- * through to the queue (best-effort) while still returning null.
- *
- * DB-free: the catalog lookup and the queue are injected fakes.
- */
+/** Guards for the §6 single guarded pairing function (sku-reconciliation plan). */
 
 import { test, before } from 'node:test';
 import { equal, deepEqual } from 'node:assert';
 import type { ResolvedSkuCatalog, ResolveSkuCatalogDeps } from './resolve-sku-catalog';
 
-// The module transitively imports `@/lib/neon-client`, which throws at load when
-// NODE_ENV !== 'test' and DATABASE_URL is unset (the CI unit-test step runs with
-// neither). Set the flag, then dynamically import in a `before` hook so the
-// module evaluates after it — keeping the test DB-free without env wiring.
-// (Top-level await isn't available in tsx's CJS output, hence the hook.)
+// The module transitively imports `@/lib/neon-client`, which throws at load when NODE_ENV !== 'test' and DATABASE_URL is unset (the CI…
 process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
 let resolveSkuCatalogRow: typeof import('./resolve-sku-catalog').resolveSkuCatalogRow;
 let strippableVariantBase: typeof import('./resolve-sku-catalog').strippableVariantBase;

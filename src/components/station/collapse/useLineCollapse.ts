@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * React binding over {@link lineCollapseReducer} — per-line capture disclosure
- * inside a station line list.
- *
- * Wire it up as:
- *   const lines = useLineCollapse(activeLineId);
- *   <Row collapse={{ expanded: lines.isExpanded(id), onToggle: () => lines.toggle(id), … }} />
- *   <CollapseAll onClick={() => { band.collapseAll(); lines.collapseAll(); }} />
- *
- * The host owns it, not the row — the whole point is that several lines answer
- * to one gesture. Nothing here decides anything; the rules live in the pure
- * reducer beside it.
- */
+/** React binding over {@link lineCollapseReducer} — per-line capture disclosure inside a station line list. */
 
 import { useMemo, useReducer } from 'react';
 import {

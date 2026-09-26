@@ -6,13 +6,7 @@ import { CACHE_TAGS } from '@/lib/cache/tags';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/fba/shipments/today/duplicate-yesterday
- *
- * Copies all PLANNED items from yesterday's shipment into today's plan.
- * Creates today's plan if it doesn't exist.
- * Skips FNSKUs already in today's plan.
- */
+/** POST /api/fba/shipments/today/duplicate-yesterday */
 export const POST = withAuth(async (_req, ctx) => {
   try {
     type DupResult =

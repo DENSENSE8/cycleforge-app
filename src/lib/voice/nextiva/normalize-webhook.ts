@@ -1,13 +1,4 @@
-/**
- * Normalize a Nextiva webhook payload into our ingest shapes.
- *
- * The EXACT Nextiva event schema is confirmed in the Phase 0 spike
- * (docs/nextiva-voice-support-mode-plan.md §9). This parser is intentionally
- * defensive: it reads a generic `{ event, data }` envelope, maps the fields we
- * know we need, and returns empty arrays for anything it doesn't recognize — so
- * an unknown/extra event type is a no-op, never a 500. Adjust the field paths
- * once the spike pins the real schema; callers (the webhook route) don't change.
- */
+/** Normalize a Nextiva webhook payload into our ingest shapes. */
 
 import type { CallDirection } from '@/lib/voice/types';
 import type { IncomingCallEvent, IncomingVoicemail } from '@/lib/voice/ingest';

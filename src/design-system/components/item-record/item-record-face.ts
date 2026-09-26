@@ -1,11 +1,4 @@
-/**
- * Item record media face — the product thumb that sits in the title + details
- * band and expands that row's height.
- *
- * Ported verbatim from `receiving/workspace/station-scan-face.ts`, minus the
- * receiving name. Keep these as complete Tailwind literals so JIT sees every
- * class.
- */
+/** Item record media face — the product thumb that sits in the title + details band and expands that row's height. */
 export const ITEM_RECORD_FACE = {
   /** Image square */
   size: 'size-20',

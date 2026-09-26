@@ -7,14 +7,7 @@ import {
   type Queryable,
 } from './serial-units-queries';
 
-/**
- * Handling units (LPN) — license-plated boxes/trays that group serial_units
- * across receipts/POs. The single read/write surface for the
- * /api/handling-units CRUD. See docs/handling-unit-lpn-plan.md.
- *
- * Membership is CURRENT, not historical: a unit's handling_unit_id is the box
- * it is physically in now; moving it reassigns the column.
- */
+/** Handling units (LPN) — license-plated boxes/trays that group serial_units across receipts/POs. */
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -281,10 +274,7 @@ export async function listHandlingUnits(
     conds.push(`hu.location_id = $${i++}`);
     vals.push(params.locationId);
   }
-  // Tenant-aware: when an orgId is threaded, add the explicit org predicate on
-  // handling_units. The member-count subquery is keyed on the integer surrogate
-  // su.handling_unit_id = hu.id (safe bare); we also add su.organization_id = $n
-  // as a backstop. The locations LEFT JOIN is on l.id (integer PK, safe bare).
+  // Tenant-aware:
   const huOrgIdx = orgId ? i++ : 0;
   if (orgId) {
     conds.push(`hu.organization_id = $${huOrgIdx}`);
@@ -342,10 +332,7 @@ export async function createHandlingUnit(
   executor: Queryable = pool,
   orgId?: OrgId,
 ): Promise<HandlingUnitRow> {
-  // The INSERT already stamps input.organizationId. The trailing orgId only
-  // governs how the statement is RUN — via the GUC-wrapping tenant txn (or by
-  // setting the GUC on a caller-owned executor) so the RLS/loud-fail default
-  // sees the right tenant. orgId, when present, also wins as the stamped org.
+  // The INSERT already stamps input.organizationId.
   const stampedOrg = orgId ?? input.organizationId;
   const sql = `INSERT INTO handling_units (code, location_id, created_by, notes, organization_id)
      VALUES (NULLIF(btrim($1), ''), $2, $3, $4, $5)
@@ -376,16 +363,7 @@ export interface CreateHandlingUnitsBulkInput {
   notes?: string | null;
 }
 
-/**
- * Mint N boxes in ONE statement inside ONE transaction (bulk tote mint → one
- * label run). `generate_series` fans the row out server-side, so N boxes cost
- * one round trip instead of N inserts, and either all of them land or none do.
- *
- * `code` is passed as NULL on every row so the BEFORE INSERT trigger
- * (`set_handling_unit_code`) mints `H-{id}` per row — codes are never generated
- * in TypeScript. Rows come back ascending by id so the label run prints in
- * mint order regardless of the INSERT's return order.
- */
+/** Mint N boxes in ONE statement inside ONE transaction (bulk tote mint → one label run). */
 export async function createHandlingUnitsBulk(
   input: CreateHandlingUnitsBulkInput,
   executor: Queryable = pool,
@@ -394,10 +372,7 @@ export async function createHandlingUnitsBulk(
   const count = Math.floor(Number(input.count));
   if (!Number.isFinite(count) || count < 1) return [];
 
-  // Same org semantics as createHandlingUnit: the INSERT stamps
-  // input.organizationId, while the trailing orgId governs how the statement is
-  // RUN (GUC-wrapped txn, or GUC set on a caller-owned executor) so RLS sees
-  // the right tenant — and when present it also wins as the stamped org.
+  // Same org semantics as createHandlingUnit:
   const stampedOrg = orgId ?? input.organizationId;
   // Every SELECT-list value is cast explicitly: in `INSERT ... SELECT`, unknown
   // parameter types resolve inside the SELECT (as text) BEFORE the insert
@@ -594,22 +569,11 @@ export async function unassignUnits(
   return { removed: upd.rowCount ?? 0, affectedBoxes };
 }
 
-/**
- * Recompute + persist a box's rollup status from member test state. Never
- * downgrades an operator-set STAGED box, and never reopens a manually CLOSED
- * empty box. Stamps/clears closed_at as the status crosses CLOSED. Safe to call
- * after any membership or verdict change. Best-effort: a rollup failure must not
- * break the triggering mutation.
- */
+/** Recompute + persist a box's rollup status from member test state. */
 export async function refreshHandlingUnitStatus(
   handlingUnitId: number,
   orgId?: OrgId,
-  /**
-   * Optional already-open, GUC'd client. The org-scoped write paths in this
-   * module thread their transaction client here so the rollup reads the
-   * uncommitted membership change in the SAME transaction (matching the legacy
-   * autocommit-pool behavior where each statement committed independently).
-   */
+  /** Optional already-open, GUC'd client. */
   client?: Queryable,
 ): Promise<HandlingUnitStatus | null> {
   try {
@@ -666,15 +630,7 @@ export async function refreshHandlingUnitStatus(
   }
 }
 
-/**
- * Dissolve a handling-unit box (the reverse of {@link createHandlingUnit}) — for
- * an empty/abandoned/mis-scanned H-box. Unassigns every member unit FIRST
- * (handling_unit_id → NULL) so no unit is left pointing at a deleted box, then
- * deletes the box row. Owns the unassign→delete cascade so there are no orphans.
- * `serial_units.handling_unit_id` is ON DELETE SET NULL, so the order is belt-
- * and-braces; doing it explicitly also keeps the units' updated_at fresh.
- * Returns null when the box doesn't exist (already gone).
- */
+/** Dissolve a handling-unit box (the reverse of {@link createHandlingUnit}) — for an empty/abandoned/mis-scanned H-box. */
 export async function dissolveHandlingUnit(
   id: number,
   orgId?: OrgId,

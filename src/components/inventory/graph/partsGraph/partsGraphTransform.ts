@@ -22,15 +22,7 @@ function variantLabel(part: PartsLogicalPart): string {
     .join(' · ');
 }
 
-/**
- * Build cytoscape elements for the derived parts graph. Node ids are sequential
- * integers (the shared `SkuGraphCanvas` resolves selection via `Number(id)`),
- * mapped back to their domain object through `metaById`.
- *
- * Topology: base (whole-unit, tier `system`) → logical part (tier `component`).
- * No part↔parent edges are asserted — base grouping is derived from the SKU
- * prefix only; true parent pairing is a later manual phase.
- */
+/** Build cytoscape elements for the derived parts graph. */
 export function toPartsElements(bases: PartsBase[]): PartsElementsResult {
   const elements: ElementDefinition[] = [];
   const metaById: Record<number, PartsNodeMeta> = {};

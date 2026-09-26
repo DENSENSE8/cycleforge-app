@@ -31,13 +31,7 @@ export interface PatchBody {
   checked?: boolean;
 }
 
-// Match the trailing " · PO: A, B, C" suffix the email_po view branch appends
-// to the context column (see v_unfound_queue migration). The PO numbers are
-// pulled out so they can render as PoChips; the subject prefix stays plain.
-//
-// Format coverage:
-//   • Multiple POs: "Subject · PO: 19-14668-49126, 18-14670-03483"
-//   • Single PO:    "Subject · PO: 27-14557-39548"
+// Match the trailing " · PO:
 const PO_SUFFIX_RE = / · PO:\s*(.+?)\s*$/;
 
 export function splitPoContext(context: string | null): {

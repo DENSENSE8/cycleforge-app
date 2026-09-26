@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Media Library desk header actions — overall Download (shown window ZIP) +
- * primary Add photos (entity-leaf upload). Registers into {@link DeskActionSlotRegistrar}.
- *
- * No ⋯ overflow: NAS/Drive are tenant mirrors elsewhere; Share pack stays on the
- * batch rail. Same altitude as every DataTable desk (Download left of Add).
- */
+/** Media Library desk header actions — overall Download (shown window ZIP) + primary Add photos (entity-leaf upload). */
 
 import { useCallback, useMemo, useRef } from 'react';
 import { Download, Plus } from '@/components/Icons';

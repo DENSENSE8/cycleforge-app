@@ -31,13 +31,7 @@ export interface StudioGraphEdge {
   target: string;
 }
 
-/**
- * A canvas sticky-note annotation (Studio ST6 / Phase E3) — a free-text
- * decoration on the React Flow surface. NOT an engine node: annotations have no
- * type/ports, are never lintable by diagnostics, and never participate in
- * routing or simulate. They ride WITH the definition row (persisted in
- * workflow_definitions.annotations) and are editable only on a draft.
- */
+/** A canvas sticky-note annotation (Studio ST6 / Phase E3) — a free-text decoration on the React Flow surface. */
 export interface Annotation {
   id: string;
   text: string;
@@ -67,10 +61,7 @@ export interface StudioGraphResponse {
   error?: string;
 }
 
-// ─── Template library (ST6 / Phase E4) — the /api/studio/templates feed ──────
-// System-owned DEFAULT workflow graphs a tenant clones into its own definitions
-// (import = re-mint ids + org-stamp into a new is_active=false draft). The rows
-// are GLOBAL (no org), so the list is identical for every org.
+// ─── Template library (ST6 / Phase E4) — the /api/studio/templates feed ────── System-owned DEFAULT workflow graphs a tenant clones into…
 
 export interface StudioTemplateSummary {
   id: number;
@@ -162,10 +153,7 @@ export interface StudioStationResponse {
  */
 export type StudioLens = 'build' | 'static' | 'live' | 'gaps' | 'flow' | 'people' | 'procedure';
 
-// ─── People lens (the /api/studio/people feed) ───────────────────────────────
-// Per-node staffing coverage assembled server-side from the node→station
-// crosswalk + staff_stations. Read-only: the client links to the staff editor,
-// it never writes grants (Studio law #7).
+// ─── People lens (the /api/studio/people feed) ─────────────────────────────── Per-node staffing coverage assembled server-side from the…
 export type {
   StudioPeopleResponse,
   PeopleNodeCoverage,

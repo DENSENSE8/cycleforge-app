@@ -9,18 +9,7 @@ import { requesterFrom } from '@/components/support/zendesk/chat/support-chat-ut
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/support/requester?ticketId=<provider ticket id>
- *
- * Who opened this ticket, and what we already know about them — the head band
- * of the ticket thread. Read-only; not a mutation, so no audit row.
- *
- * The requester identity is read off the ticket itself (`requesterFrom` — the
- * email channel carries it on `via.source.from`), then
- * {@link resolveRequesterProfile} resolves our own customer row and the two
- * counts. Every fact degrades to `null` independently; there is deliberately no
- * LTV and no return rate (see that module's docblock).
- */
+/** GET /api/support/requester?ticketId=<provider ticket id> */
 
 const Query = z.object({
   ticketId: z.coerce.number().int().positive(),
@@ -36,11 +25,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const provider = await getHelpdeskProvider(ctx.organizationId);
     const ticket = provider ? await provider.getTicket(ticketId).catch(() => null) : null;
 
-    // `requesterFrom` reads `via.source.from`, which only the EMAIL channel
-    // populates — on a web-form or API ticket it is empty, and the band's
-    // headline fact would render `—` on the majority of tickets. The user
-    // roster is the authoritative identity, so fall through to it whenever the
-    // ticket itself did not carry one.
+    // `requesterFrom` reads `via.source.from`, which only the EMAIL channel populates — on a web-form or API ticket it is empty, and the…
     let identity = ticket ? requesterFrom(ticket) : { name: null, email: null };
     if (provider && ticket?.requester_id && !identity.email) {
       const [user] = await provider.getUsers([ticket.requester_id]).catch(() => []);

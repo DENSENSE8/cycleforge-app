@@ -2,15 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { completeTask } from '@/lib/replenishment/pick-face';
 
-/**
- * POST /api/replenishment/tasks/[id]/complete
- *
- * Marks an IN_PROGRESS task complete, applies the bin_contents move
- * (source decrement + target increment), and emits an inventory_events row
- * — all atomically.
- *
- * Body: { qty_moved: number }
- */
+/** POST /api/replenishment/tasks/[id]/complete */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;

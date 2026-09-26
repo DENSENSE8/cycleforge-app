@@ -1,21 +1,4 @@
-/**
- * Outbound documents domain layer (docs/outbound-documents-plan.md §4.5, §8.1).
- *
- * Single write/read API for packing slips + shipping labels stored on the
- * existing `documents` table and linked via `document_entity_links`
- * (2026-07-01c migration). Routes stay thin: validate → call these → map
- * status → audit. See src/app/api/orders/[id]/documents/route.ts.
- *
- * Link-role convention (docs/outbound-documents-plan.md §4.1 notes):
- *   - shipping_label: STN is `primary` when resolvable, ORDER `secondary`;
- *     ORDER is the sole `primary` link when no STN resolves yet (D3).
- *   - packing_slip: ORDER is always `primary` (marketplace slips vary in
- *     whether they're order- or box-anchored, D2); STN is `secondary` when
- *     this is a per-box slip.
- * The read resolution order (§2) does not depend on link_role — it only
- * checks entity_type existence — so role is metadata for display, not a
- * correctness dependency.
- */
+/** Outbound documents domain layer (docs/outbound-documents-plan.md §4.5, §8.1). */
 
 import { createHash } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -78,16 +61,7 @@ const defaultDeps: OutboundDocumentDeps = {
   resolveAllowedUrlBases: defaultResolveAllowedUrlBases,
 };
 
-/**
- * Manual-upload URLs must be same-origin (`/…`, never protocol-relative
- * `//…`) or point at the org's configured NAS base. An absolute URL is
- * rejected when NO base is configured, not waved through — this value is
- * later fed straight into a 302 redirect (/api/documents/[id]/content), so
- * "permissive when unconfigured" would be an open redirect for any org that
- * hasn't set up NAS settings yet. Legitimate writers only ever produce a
- * same-origin proxy path or the org's own NAS URL, so this never blocks a
- * real upload — only an unrecognized/attacker-controlled absolute URL.
- */
+/** Manual-upload URLs must be same-origin (`/…`, never protocol-relative `//…`) or point at the org's configured NAS base. */
 async function validateAttachUrl(orgId: OrgId, url: string, deps: OutboundDocumentDeps): Promise<void> {
   if (isSameOriginPath(url)) return;
   const allowedBases = await deps.resolveAllowedUrlBases(orgId);
@@ -220,14 +194,7 @@ function isUniqueViolation(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && (error as { code?: string }).code === '23505');
 }
 
-/**
- * Attach (manually upload or re-link) a shipping label / packing slip to an
- * order. Idempotent on (org, document_type, entity, url) — a duplicate drop
- * is a 409, not a second row. The URL allowlist check, owner check, dupe
- * check, and every write all happen inside ONE transaction; a genuine
- * concurrent-duplicate race is still caught by `ux_documents_outbound_url`
- * (2026-07-01c) and mapped to the same conflict error.
- */
+/** Attach (manually upload or re-link) a shipping label / packing slip to an order. */
 export async function attachOutboundDocument(
   orgId: OrgId,
   input: AttachOutboundDocumentInput,
@@ -235,11 +202,7 @@ export async function attachOutboundDocument(
 ): Promise<AttachOutboundDocumentResult> {
   await validateAttachUrl(orgId, input.url, deps);
 
-  // Resolve a tracking-supplied STN outside any transaction — resolveShipmentId
-  // may hit a carrier API (registerAndSyncShipment) and must not hold a DB
-  // connection open across that network call. The no-tracking fallback
-  // (resolveStnForOrder) is a pure read and runs inside the transaction below
-  // via the shared client, so it doesn't cost a second round trip.
+  // Resolve a tracking-supplied STN outside any transaction — resolveShipmentId may hit a carrier API (registerAndSyncShipment) and must not…
   let shipmentId: number | null = null;
   if (input.tracking && input.tracking.trim()) {
     const resolved = await deps.resolveShipmentId(input.tracking.trim(), orgId);
@@ -317,10 +280,7 @@ export async function attachOutboundDocument(
         [input.orderId, input.documentType, JSON.stringify(data), orgId],
       );
     } catch (error) {
-      // Genuine concurrent-duplicate race: two identical attaches passed the
-      // SELECT-based dupe check above before either committed. The DB-level
-      // partial unique index (ux_documents_outbound_url) is the real guard;
-      // the SELECT above is just the fast, friendly path.
+      // Genuine concurrent-duplicate race:
       if (isUniqueViolation(error)) {
         throw new OutboundDocumentConflictError('Document already attached');
       }
@@ -362,10 +322,7 @@ export interface DeletedOutboundDocument {
 }
 
 export interface DeleteOutboundDocumentOptions {
-  /** When set, a document of a different type 404s instead of deleting — lets
-   * a type-scoped caller (e.g. the deprecated /api/order-labels wrapper, which
-   * must only ever unlink labels) enforce that in the same transaction as the
-   * existence check, with no separate pre-check round trip. */
+  /** When set, a document of a different type 404s instead of deleting — lets a type-scoped caller (e.g. */
   expectedDocumentType?: OutboundDocumentType;
 }
 

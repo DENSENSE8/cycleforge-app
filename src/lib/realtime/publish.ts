@@ -84,15 +84,7 @@ type ReceivingLogChangedPayload = {
 
 type ReceivingPhotoChangedPayload = {
   organizationId: string;
-  /**
-   * `update` = the photo neither arrived nor left; a FACT about it changed
-   * (today: its `photo_aspect` claim, via `PATCH /api/photos/[id]/aspect`).
-   * Added 2026-08-02, matching the DOM-event twin in `@/utils/events` which has
-   * carried it all along. Safe to widen because no subscriber branches on this
-   * field — every one of the three just invalidates — but keep it that way: a
-   * subscriber that starts switching here must handle all three, and an
-   * aspect change must not be counted as a photo arriving.
-   */
+  /** `update` = the photo neither arrived nor left; a FACT about it changed (today: */
   action: 'insert' | 'delete' | 'update';
   receivingId: number;
   receivingLineId?: number | null;
@@ -234,13 +226,7 @@ export type VoiceEventPayload = {
   voicemailId?: number | null;
 };
 
-/**
- * Nudge the Support page that a call/voicemail landed or changed, so the
- * Voicemail Workbench and Call Log Monitor refetch (they invalidate
- * `['voicemails']` / `['call-events']` on receipt). Broadcast on the org
- * dashboard channel — there is no per-user targeting here (the bell
- * notification for an assigned follow-up rides publishStaffMessage instead).
- */
+/** Nudge the Support page that a call/voicemail landed or changed, so the Voicemail Workbench and Call Log Monitor refetch (they invalidate… */
 export async function publishVoiceEvent(payload: VoiceEventPayload) {
   await publishEvent(getDashboardChannelName(payload.organizationId), 'voice_event', {
     type: 'voice_event',
@@ -529,21 +515,7 @@ export type WatchedArrivalPayload = {
   watcherCount: number;
 };
 
-/**
- * Tell the SCANNER that the box in their hands was wanted.
- *
- * Every other notification in this pipeline goes to people who were not there:
- * the fan-out worker excludes the actor by design, because you do not need to
- * be told about your own scan. A watched arrival is the exception — the fact
- * is not "a carton was scanned", it is "somebody has been waiting for THIS
- * one, and it is now in your hands." That is news to the person holding it,
- * and it has to reach them at the door, not in a queue they open later.
- *
- * Its own event name rather than reusing `priority_unbox`: that event means
- * "this carton's SKUs match a pending order" and carries a `skus` array the
- * subscriber renders. Folding a different sentence into it would make the
- * existing row lie.
- */
+/** Tell the SCANNER that the box in their hands was wanted. */
 export async function publishWatchedArrival(payload: WatchedArrivalPayload) {
   const staffId = Number(payload.staffId);
   if (!Number.isFinite(staffId) || staffId <= 0) return;
@@ -611,28 +583,7 @@ type InboxItemPayload = {
   urgent?: boolean;
 };
 
-/**
- * Push a durable `staff_inbox_items` row to its recipient's inbox channel.
- *
- * This is the leg the notification pipeline has been missing since it was
- * built: `2026-07-28d`'s header diagrams `→ Ably org:{org}:inbox:{staff}`, and
- * the Home Inbox that subscribed to it only ever refreshed on window focus,
- * because nothing published. A bench handoff cannot wait for a focus event, so
- * the throw path publishes here.
- *
- * That Home surface was deleted 2026-08-19; this publish is deliberately NOT —
- * the channel is the durable ledger's realtime leg, and the next surface over
- * `staff_inbox_items` inherits a leg that already works rather than
- * rediscovering that it was never wired.
- *
- * Rides the SAME channel as `staff_message` / `priority_unbox` /
- * `warranty_claim` under its own event name. Ably dispatches per event name, so
- * the four coexist; a subscriber opts into exactly the ones it renders.
- *
- * The push is a MIRROR, never the source of truth — the row is already in
- * `staff_inbox_items` before this is called, so a dropped message costs
- * latency, not the task. No-op on a bad recipient id.
- */
+/** Push a durable `staff_inbox_items` row to its recipient's inbox channel. */
 export async function publishInboxItem(payload: InboxItemPayload) {
   const recipientId = Number(payload.recipientId);
   if (!Number.isFinite(recipientId) || recipientId <= 0) return;
@@ -698,12 +649,7 @@ export async function publishWarrantyClaimNotification(payload: WarrantyClaimNot
   );
 }
 
-/**
- * Tech-station inbox nudges — fan out a lightweight "refresh your queue" event
- * to every staffer whose primary station is TECH. The bell derives its actual
- * contents live from GET /api/inbox/tech-queue; these events just tell the
- * client to refetch (derive-live model). Best-effort + no-op with no recipients.
- */
+/** Tech-station inbox nudges — fan out a lightweight "refresh your queue" event to every staffer whose primary station is TECH. */
 type TechInboxPayload = {
   organizationId: string;
   receivingId: number | null;
@@ -803,10 +749,7 @@ export async function publishPackerLogChanged(payload: PackerLogChangedPayload) 
   });
 }
 
-// ─── Packer mobile hand-off ───────────────────────────────────────────────
-// Fired when a desktop scan creates a fresh packer_log row. The paired phone
-// (subscribed to packer:{staffId}) lands on the confirm step so the packer
-// can answer "Ready to pack?" and proceed to the photo camera.
+// ─── Packer mobile hand-off ─────────────────────────────────────────────── Fired when a desktop scan creates a fresh packer_log row.
 
 export interface PackerScanReadyPayload {
   organizationId: string;
@@ -851,12 +794,7 @@ export async function publishPackerScanReady(payload: PackerScanReadyPayload) {
   });
 }
 
-// ─── Phone → desktop scan-history feed ────────────────────────────────────
-// Fired when a phone scans a receiving Data Matrix label (R-/L-/U-) on
-// /m/scan. The signed-in staff's desktop (subscribed to scanlog:{staffId})
-// refetches its phone-history popover so the scan shows up live. This channel
-// is READ-ONLY history — it NEVER writes receiving_* and is strictly disjoint
-// from the receiving-station `phone:{staffId}` bridge.
+// ─── Phone → desktop scan-history feed ──────────────────────────────────── Fired when a phone scans a receiving Data Matrix label…
 
 export interface ScanLoggedPayload {
   organizationId: string;
@@ -916,13 +854,7 @@ export async function publishReceivingPhotoChanged(payload: ReceivingPhotoChange
   });
 }
 
-/**
- * Packer photo insert/delete — the packing mirror of
- * {@link publishReceivingPhotoChanged}. Published on the shared station channel
- * so the desktop photo library and the mobile packing feed live-refresh the
- * moment a packer's phone commits a GCS upload. Keyed by `packer_log_id`; the
- * `order_id` lets subscribers scope to one order without a re-fetch.
- */
+/** Packer photo insert/delete — the packing mirror of {@link publishReceivingPhotoChanged}. */
 export async function publishPackerPhotoChanged(payload: PackerPhotoChangedPayload) {
   const packerLogId = Number(payload.packerLogId);
   if (!Number.isFinite(packerLogId) || packerLogId <= 0) return;
@@ -944,13 +876,7 @@ export async function publishPackerPhotoChanged(payload: PackerPhotoChangedPaylo
   });
 }
 
-/**
- * Serial-unit photo insert/delete — the testing-scan mirror of
- * {@link publishReceivingPhotoChanged}. Published on the shared station channel
- * so the desktop station active card + the unit detail timeline live-refresh the
- * moment a packer's phone commits a testing-photo GCS upload. Keyed by
- * `serial_unit_id`. See docs/todo/packer-testing-photo-scan-timeline-plan.md.
- */
+/** Serial-unit photo insert/delete — the testing-scan mirror of {@link publishReceivingPhotoChanged}. */
 export async function publishUnitPhotoChanged(payload: UnitPhotoChangedPayload) {
   const serialUnitId = Number(payload.serialUnitId);
   if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) return;
@@ -978,12 +904,7 @@ type ShipmentChangedPayload = {
   source: string;
 };
 
-/**
- * Fired whenever a shipment's carrier status changes (webhook push or poll),
- * independent of any order linkage — this is what makes the receiving/incoming
- * carrier panels live-update like the carrier's own website. Order-linked
- * shipments separately get an `order.changed` event for the dashboard views.
- */
+/** Fired whenever a shipment's carrier status changes (webhook push or poll), independent of any order linkage — this is what makes the… */
 export async function publishShipmentChanged(payload: ShipmentChangedPayload) {
   await publishEvent(getStationChannelName(payload.organizationId), 'shipment.changed', {
     type: 'shipment.changed',
@@ -1155,13 +1076,7 @@ export async function publishStockLedgerEvent(input: StockLedgerEventInput) {
 
 export type SkuExceptionChangedAction = 'created' | 'updated' | 'photo' | 'merged';
 
-/**
- * A placeholder product changed outside the stock ledger: minted, renamed,
- * described, photographed, or merged into its real SKU. Count changes already
- * ride `activity.logged` (`STOCK_DELTA_*` from `adjustBinQty`), so this only
- * covers the facts that write no ledger row. Subscribers:
- * `useSkuExceptionsRealtime` (desk `/inventory/sku-exceptions`, phone `/m/on-hold`).
- */
+/** A placeholder product changed outside the stock ledger: */
 export async function publishSkuExceptionChanged(payload: {
   organizationId: string;
   sku: string;
@@ -1181,23 +1096,7 @@ export async function publishSkuExceptionChanged(payload: {
 
 // ── Counter session (desk↔tablet bridge) ────────────────────────────────────
 
-/**
- * Fan out one counter-session event to the device bridge.
- *
- * **Published by the SERVER, not by whichever peer mutated.** The mutating
- * client already has its answer in the HTTP response (P2 returns the new
- * snapshot AND the event), so a client-side publish would only help the *other*
- * peer — and it would stop helping precisely when that client's own socket
- * dropped, which is exactly when the other screen still needs the update. From
- * the server, a desk with a dead websocket still drives the tablet.
- *
- * Best-effort by design: `publishEvent` swallows its own failures, and the
- * mutation has already been committed and answered. A dropped publish costs one
- * poll interval on the far screen (D7), never a lost write.
- *
- * No-ops when the session has no bound tablet — the bridge is keyed by DEVICE,
- * so a desk-only session has no second screen to notify.
- */
+/** Fan out one counter-session event to the device bridge. */
 export async function publishCounterSessionEvent(payload: {
   organizationId: string;
   kioskDeviceId: number | null;
@@ -1211,15 +1110,7 @@ export async function publishCounterSessionEvent(payload: {
   );
 }
 
-/**
- * QR sign-in push: the phone authorized, the desktop completes now.
- *
- * Unlike every other event here, the channel is anonymous
- * (`qr-auth:<hash>`, see `qr-auth-channel.ts`) because the desktop listening
- * for it is PRE-AUTH. Publish-only from the server; the desktop's grant is
- * subscribe-only. Best-effort: the desktop's polling is the fallback, so a
- * failed publish costs latency, never correctness.
- */
+/** QR sign-in push: */
 export async function publishQrAuthorized(tokenHash: string, staffName: string | null) {
   await publishEvent(`qr-auth:${tokenHash}`, 'session.authorized', {
     staffName,
@@ -1227,12 +1118,7 @@ export async function publishQrAuthorized(tokenHash: string, staffName: string |
   });
 }
 
-/**
- * A station asked for remote step-up approval. Broadcast on the org
- * dashboard channel so any manager surface (desk toast or the /m/step-ups
- * list) can pick it up live; the list also polls, so the push is
- * acceleration, not dependency.
- */
+/** A station asked for remote step-up approval. */
 export async function publishStepUpRequested(
   organizationId: string,
   request: { id: number; scope: string; requesterName: string },

@@ -1,30 +1,4 @@
-/**
- * Row mappers for the inventory diagnostics dashboard — this page's SQL shapes
- * lifted onto the shape a REGISTERED family already speaks.
- *
- * `RecentEventsSection` mounts `inventory-events`, the family the Ledger and
- * the per-SKU pulse already mount, so it gets no catalog of its own (invariant
- * 2: one entity, one registration, many mounts). What the page does need is a
- * translation, because its loader is narrower than the Ledger feed and `pg`
- * hands back `Date` objects where the resolver reads ISO strings — the same job
- * `sku-detail-rows.ts` does for `/inventory/health/sku/[sku]`.
- *
- * ## The retired `Unit / SKU` cell packed TWO links into one track
- *
- * `RECENT_EVENT_COLUMNS` had a single `unit_sku` column whose cell rendered
- * `#123 · ABC-1` — two independent identifiers, two independent hrefs, one
- * header word, no way to sort or search either one. They are two facts and the
- * family already names both: `inventory-events.sku` is the IDENTITY (it also
- * carries `paths.title`, the product name this page does not join) and
- * `inventory-events.serial` is a bound track of its own. So the mapper splits
- * them and the engine paints each in its own cell.
- *
- * Facts this page does not fetch (bin moves, notes, receiving refs, the
- * enriched product title) resolve to `null` and their tracks dash — the retired
- * cells never painted them and the mapper does not invent them.
- *
- * Pure: no React, no clock, no I/O.
- */
+/** Row mappers for the inventory diagnostics dashboard — this page's SQL shapes lifted onto the shape a REGISTERED family already speaks. */
 
 import type { PulseEventRow } from '@/components/inventory/types';
 import type { RecentEventRow } from './inventory-admin-data';

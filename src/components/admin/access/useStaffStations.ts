@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Station assignment (header goal chip) for one staffer — its own GET/PUT pair,
- * separate from the main detail envelope just as it was before. Keeps the
- * legacy optimistic behaviour: the UI updates immediately on save and reverts
- * by refetch if the PUT fails.
- */
+/** Station assignment (header goal chip) for one staffer — its own GET/PUT pair, separate from the main detail envelope just as it was before. */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { jsonOrThrow, useResourceMutation } from '@/hooks';

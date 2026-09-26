@@ -12,14 +12,7 @@ import {
   type PhotoLibraryFilterState,
 } from '@/lib/photos/library-filter-state';
 
-/**
- * Map UI filter state → `/api/photos/library` query params. Builds on
- * {@link photoLibraryFiltersToParams} (URL parity) then expands scope→entityType
- * and renames keys the API expects (`photoType`, not `imageType`).
- *
- * Uses cursor pagination ({@link PHOTO_LIBRARY_PAGE_SIZE} per page) — the grid
- * loads more via infinite scroll; never fetches the full library in one request.
- */
+/** Map UI filter state → `/api/photos/library` query params. */
 export function photoLibraryFilterParams(filters: PhotoLibraryFilterState): URLSearchParams {
   const params = photoLibraryFiltersToParams(filters);
 

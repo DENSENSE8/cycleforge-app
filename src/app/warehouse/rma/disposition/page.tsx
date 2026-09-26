@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * /warehouse/rma/disposition — the per-unit disposition station.
- *
- * Station archetype: staff physically hold
- * an already-received, already-graded returned unit and scan its serial to
- * decide its fate — ACCEPT (restock) / HOLD / RTV / REWORK / SCRAP. Scanner-
- * driven, one active unit at a time, act-and-clear. This is the UI Gap #2/
- * Path C of the returns-unification plan named as the single highest-value
- * net-new surface: `recordDisposition()` (src/lib/rma/authorizations.ts) —
- * the only path that can restock a returned unit — had zero UI anywhere
- * until this page.
- *
- * Not the RMA queue (`/warehouse/rma`, a Workbench-ish list of authorizations
- * a supervisor manages) — this is the scan bench a floor operator uses once a
- * unit is in hand. Linked from that page's header, and deep-linkable via
- * `?serial=` from the queue page's disposition-backlog list: the backlog is a
- * Workbench-style worklist, but jumping into it must still land the operator
- * on a scan-driven Station, not a record editor — so `?serial=` pre-fills and
- * auto-fires the same lookup a real scan would, then behaves identically
- * (single active entity, act-and-clear).
- */
+/** /warehouse/rma/disposition — the per-unit disposition station. */
 
 import { useCallback, useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';

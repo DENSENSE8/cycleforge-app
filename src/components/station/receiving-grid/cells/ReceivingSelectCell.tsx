@@ -14,16 +14,7 @@ import {
 import { cn } from '@/utils/_cn';
 import type { ReceivingGridCellProps } from './receiving-grid-cell-types';
 
-/**
- * The multi-select plane's affordance. It is a REAL control (`GridRowCheckbox`
- * stops propagation and calls `onToggle`) — it used to be a painted `span`
- * inside a cell that only swallowed the click, so the row underneath owned the
- * toggle and "open the record" had no gesture left.
- *
- * Click-select (Unbox History): decorative {@link GridClickSelectFace}
- * in the select track; the row body owns bulk toggle. Other surfaces keep
- * interactive `'always'` chrome.
- */
+/** The multi-select plane's affordance. */
 export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
   const {
     selectMode,
@@ -43,11 +34,7 @@ export function ReceivingSelectCell({ ctx }: ReceivingGridCellProps) {
         className={cn(
           receivingGridCell({ inset: 'none', rule: true }),
           RECEIVING_GRID_FROZEN_CELL,
-          // Clip the absolute face to the 2rem track — in-flow full-bleed wash
-          // was bleeding a selection strip into the next column under h-scroll.
-          // `sticky` (from FROZEN_CELL) is already a containing block for the
-          // absolute face — do NOT add `relative` here; it overrides sticky and
-          // the select gutter scrolls away with the facts.
+          // Clip the absolute face to the 2rem track — in-flow full-bleed wash was bleeding a selection strip into the next column under h-scroll.
           'overflow-hidden p-0',
         )}
         style={{ left: gridFrozenLeft(ctx.columns, 'select') }}

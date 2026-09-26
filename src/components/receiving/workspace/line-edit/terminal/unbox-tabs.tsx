@@ -42,22 +42,7 @@ import {
   type LineCollapseController,
 } from '@/components/station/collapse';
 
-/**
- * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
- * Ticket / Photos must not ride the P1 paint path.
- * (ssr OK — they only mount when the topic is selected.)
- *
- * **Triage speed:** cold `import()` used to paint ← over an empty body
- * (`loading: () => null`). The Displays column now holds its own
- * {@link UniversalLoader} field while the chunk lands — scoped to THIS column,
- * so its sweep is the right-edge's own and never a slice of a page-wide one;
- * {@link preloadUnboxDisplayLeafChunks} still warms every deferred leaf when
- * Displays opens so index→leaf is a binary cut.
- *
- * It replaced `DisplaysLeafBodySkeleton`, which drew nine armed rows at a fixed
- * density — a claim about how many verbs the incoming leaf has, made before the
- * chunk that knows is loaded.
- */
+/** P3 Displays bodies — deferred chunks. */
 const loadTicketDisplayHost = () =>
   import('../TicketDisplayHost').then((m) => m.TicketDisplayHost);
 const loadPhotosDisplayHost = () =>
@@ -148,13 +133,7 @@ export interface BuildUnboxTabsInput {
   onViewAllUnits?: (line: ReceivingLineRow) => void;
 }
 
-/**
- * The Unbox CENTRE — PO lines (meta = condition · serial ledger) → label preview.
- *
- * Dual loci: centre capture rows own serial/condition/photos; the bottom dock
- * is the notes bubble + Print·Receive (procedure step studio parked on
- * `unbox-work`). Centre `ProcedureDeck` stays parked.
- */
+/** The Unbox CENTRE — PO lines (meta = condition · serial ledger) → label preview. */
 export function buildUnboxOverview(
   input: Pick<
     BuildUnboxTabsInput,
@@ -167,12 +146,7 @@ export function buildUnboxOverview(
   > & {
     /** Click ledger chips → focus the matching procedure step in the dock. */
     onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
-    /**
-     * The dock's `activeKey` (`useUnboxProcedureSteps` — the ONE derivation).
-     * The active line's capture face lights the moving outline around the
-     * segment / condition the dock is asking for. The ledger reads, the dock
-     * acts, and the outline ties them — one pointer.
-     */
+    /** The dock's `activeKey` (`useUnboxProcedureSteps` — the ONE derivation). */
     activeStep?: string | null;
     /**
      * When set, Items · Label render as one {@link StationBandStack} — a
@@ -183,12 +157,7 @@ export function buildUnboxOverview(
       bands: BandCollapseController;
       collapseAll?: () => void;
     };
-    /**
-     * Per-LINE disclosure inside the Items band ({@link useLineCollapse}).
-     * "Collapse all" drives both altitudes in one press: the band gives the
-     * column back now, and every line is face-only when the band comes back.
-     * The same module owns both — no second disclosure mechanism for rows.
-     */
+    /** Per-LINE disclosure inside the Items band ({@link useLineCollapse}). */
     lineCollapse?: LineCollapseController;
   },
 ): ReactNode {
@@ -277,16 +246,7 @@ export function buildUnboxOverview(
   );
 }
 
-/**
- * Build the Unbox side displays for the Displays push column.
- *
- * Strip (PO-identity first): Listings · Pairing · Inventory · Units ·
- * Photos · Ticket · Tracking. Ticket is presence-exclusive
- * (Claim vs Chat — no nested tabs). Inventory is one stacked dossier (no nested
- * tabs). Photos is armed-row Actions + URL drills. Units · Linkage still nest
- * parent underline (debt — migrate to armed rows).
- * Checklist is a Displays leaf (no floor % ring).
- */
+/** Build the Unbox side displays for the Displays push column. */
 export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
   const {
     row,

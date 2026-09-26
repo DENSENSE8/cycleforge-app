@@ -1,10 +1,4 @@
-/**
- * POST /api/counter/session/{id}/stance — desk Work · Show · Verify.
- *
- * Callers: `useCounterSession.setConsultStance`.
- * Schema: `counter_sessions.consult_stance` + `face`.
- * User: continue Phase 3 Show; stance chrome already on CounterWorkspace.
- */
+/** POST /api/counter/session/{id}/stance — desk Work · Show · Verify. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

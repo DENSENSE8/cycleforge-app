@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets sidebar map — recently selected dock only.
- *
- * Full queue + status tabs live in the right-pane workbench (`SupportTicketsBoard`).
- * Mirrors Unbox's short Unboxed recent dock / Dashboard Search recents.
- * Footer: TechRailSearchBar + status/priority facets (recent-rail filter SoT).
- */
+/** Support · Tickets sidebar map — recently selected dock only. */
 
 import { useMemo, useState } from 'react';
 import { History, TicketHelp } from '@/components/Icons';

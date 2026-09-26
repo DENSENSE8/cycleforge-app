@@ -15,19 +15,7 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ');
 
-/**
- * Trap Tab/Shift+Tab inside a modal container while `active` is true.
- *
- * The container should be the dialog root (give it `tabIndex={-1}` +
- * `role="dialog"` + `aria-modal="true"`). On activate, focus moves into the
- * container so the first Tab lands on the first control instead of the page
- * behind the scrim; on deactivate, focus is restored to whatever had it before
- * the dialog opened. Focus that escapes by any other means (e.g. a click on
- * the browser chrome, programmatic focus) is pulled back on `focusin`.
- *
- * Content portalled outside the container (HoverTooltip labels) is fine as
- * long as it is not focusable.
- */
+/** Trap Tab/Shift+Tab inside a modal container while `active` is true. */
 export function useFocusTrap<T extends HTMLElement>(active: boolean) {
   const containerRef = useRef<T | null>(null);
 
@@ -44,10 +32,7 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
         (el) => el.getClientRects().length > 0,
       );
 
-    // Focus the dialog root (tabIndex={-1}), never the first control — opening a
-    // modal must not visibly highlight/tooltip a button (e.g. the toolbar's
-    // first enabled action). Screen readers announce the dialog, and the first
-    // Tab enters the trap via the `current === container` branch in onKeyDown.
+    // Focus the dialog root (tabIndex={-1}), never the first control — opening a modal must not visibly highlight/tooltip a button (e.g.
     if (!container.contains(document.activeElement)) {
       container.focus({ preventScroll: true });
     }

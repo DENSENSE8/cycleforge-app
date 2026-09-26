@@ -42,10 +42,7 @@ async function synthesizeThumb(
   return entry;
 }
 
-// A photo is content-addressed by an immutable {id}+variant — its bytes never
-// change (a re-upload is a new id). Cache thumbnails hard, browser-only.
-// `private` (never `public`) keeps these auth-gated tenant photos off any shared
-// CDN — the cache stays per-browser, so no cross-tenant leak.
+// A photo is content-addressed by an immutable {id}+variant — its bytes never change (a re-upload is a new id).
 const IMMUTABLE_CACHE = 'private, max-age=31536000, immutable';
 // Cached-302 lifetime for the full-res redirect: half the signing TTL, so the
 // browser always re-fetches the redirect (getting a fresh signed URL) BEFORE the
@@ -79,15 +76,6 @@ export async function GET(
   }
 
   // Anonymous branch — sign-in staff-photo ONLY.
-  //
-  // The sign-in picker renders before any session exists, and it already
-  // discloses this exact set of people (name + role + colour) to anyone who can
-  // reach the tenant's host — see /api/auth/staff-picker, which is public by
-  // construction. `resolveCurrentStaffAvatarOrg` matches that set exactly: it
-  // resolves an org ONLY when the photo is the CURRENT `avatar_photo_id` of an
-  // active staffer in the tenant this request's host resolves to. Anything
-  // else — evidence photos, a replaced avatar, another tenant's staffer —
-  // falls through to the 401 below, unchanged.
   if (!organizationId) {
     const anonOrgId = await resolveCurrentStaffAvatarOrg(request, photoId);
     if (anonOrgId) organizationId = anonOrgId;
@@ -132,10 +120,6 @@ export async function GET(
       const adapter = getStorageAdapter('gcs');
 
       // Thumbnails render by the hundreds (grid + strip) and are tiny (≤256px).
-      // Stream their bytes inline off THIS stable route URL with an immutable
-      // cache, so the browser reuses them across scroll / reopen / revisit with
-      // zero network. The old signed-URL redirect rotated the cache key on every
-      // request, so nothing was ever reused — the "no caching at all" symptom.
       if (variant === 'thumb') {
         const etag = `"p${photoId}-thumb"`;
         if (request.headers.get('if-none-match') === etag) {
@@ -239,17 +223,7 @@ export async function GET(
   return NextResponse.json({ error: 'Photo content unavailable' }, { status: 404 });
 }
 
-/**
- * Resolve the org for an ANONYMOUS request, and only for a photo that is the
- * current profile photo of an active staffer in the tenant this request's host
- * resolves to. Returns null for everything else — including a staff avatar in a
- * DIFFERENT tenant, so a photo id cannot be walked across orgs.
- *
- * Scoped deliberately to `staff.avatar_photo_id` rather than "any STAFF-linked
- * photo": a replaced avatar keeps its `photo_entity_links` row until the delete
- * lands, and a superseded face should stop being publicly readable the moment
- * it stops being the current one.
- */
+/** Resolve the org for an ANONYMOUS request, and only for a photo that is the current profile photo of an active staffer in the tenant this… */
 async function resolveCurrentStaffAvatarOrg(
   request: NextRequest,
   photoId: number,

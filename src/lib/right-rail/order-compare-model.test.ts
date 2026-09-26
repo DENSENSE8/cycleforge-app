@@ -1,13 +1,4 @@
-/**
- * Divergence rules for the rail's two-row compare body (plan Phase 3).
- *
- * Run: `npx tsx --test src/lib/right-rail/order-compare-model.test.ts`
- *
- * These pin the three comparisons that are NOT string equality — the civil-day
- * date, the order-independent multi-serial, and present-vs-absent — because
- * each one silently reports a false divergence on the fact operators most want
- * to trust. See the module docblock.
- */
+/** Divergence rules for the rail's two-row compare body (plan Phase 3). */
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
@@ -88,12 +79,7 @@ test('a civil key and a timestamptz naming the same warehouse day agree', () => 
 });
 
 test('the day is the WAREHOUSE civil day, matching the grid cell', () => {
-  // Deliberate: UTC midnight on the 5th is the evening of the 4th in
-  // `WAREHOUSE_TIME_ZONE`, so this pair AGREES on Aug 4. It looks surprising
-  // written out, but it is exactly what `formatQueueRowDateCell` prints in the
-  // row behind the rail — and a compare pane that disagreed with the visible
-  // grid would be the wrong one to trust. Pinned so a future "fix" here has to
-  // change the grid's date SoT first.
+  // Deliberate: UTC midnight on the 5th is the evening of the 4th in `WAREHOUSE_TIME_ZONE`, so this pair AGREES on Aug 4.
   const fact = factFor(
     { deadline_at: '2026-08-05T00:00:00Z' },
     { ship_by_date: '2026-08-04' },

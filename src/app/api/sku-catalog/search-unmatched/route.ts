@@ -2,25 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/sku-catalog/search-unmatched?q=<fragment>
- *
- * The "gaps" companion to /pairing-queue. The pairing queue only ever shows
- * canonical sku_catalog rows; this surfaces the two cases where a search finds
- * NO canonical row to land on, so the operator can fix it from the sidebar:
- *
- *   1. unmappedPlatformIds — account-source identifiers (Amazon ASIN, eBay /
- *      Walmart item id, Ecwid SKU) that exist as a sku_platform_ids row but are
- *      not yet linked to any canonical SKU (sku_catalog_id IS NULL). These are
- *      the rows that pairing-queue search can't reach (it joins on
- *      sp.sku_catalog_id = sc.id). e.g. ASIN B01AWLPUAG → row 8110, unmapped.
- *
- *   2. catalogSku.exists — whether the query is already an exact sku_catalog.sku.
- *      When false, the UI offers "add this as a new Zoho SKU" (POST /api/sku-catalog).
- *
- * Read-only. The actual create/pair actions are guarded by sku_stock.manage on
- * their own endpoints.
- */
+/** GET /api/sku-catalog/search-unmatched?q=<fragment> */
 export const GET = withAuth(async (request, ctx) => {
   const url = new URL(request.url);
   const q = (url.searchParams.get('q') || '').trim();

@@ -1,57 +1,4 @@
-/**
- * submitCounterTransaction — the ONE counter-visit write path, as a
- * principal-agnostic domain helper.
- *
- * Everything here is scoped by `orgId` + the submitted input; NOTHING depends on
- * a staff actor. That is deliberate and it is the single most important
- * structural constraint in this feature: a staff caller and a kiosk device
- * caller invoke the identical helper, so the two surfaces can never drift.
- *
- *   resolveCounterCustomer()      deterministic identity (phone only)
- *     → counter_transactions      the header + the idempotency anchor
- *     → submitRepairIntake(..., ticketWork: 'skip')  COMPOSED — counter owns ticket enqueue
- *     → linkRepairToHeader(linked)  an EXISTING ticket brought in — no intake, no ticket
- *     → stageSquareOrder(...)     staged, NEVER charged
- *     → enqueueTicketWork(...)    the outbox
- *
- * ## submitRepairIntake is composed, never re-inlined
- *
- * `src/lib/repair/submit-repair-intake.ts` was extracted specifically so the
- * staff route (`/api/repair/submit`) and the device route both share one
- * org-scoped create path. Copying its body in here would recreate the exact fork
- * it exists to prevent, so this module treats it as a black box: it goes in
- * through the published input and comes out through the published result.
- *
- * ## The kiosk stages, it never charges
- *
- * `stageSquareOrder` creates a provider order and STOPS. Payment completes on a
- * physical terminal or behind a staff PIN step-up. No card data is entered,
- * accepted, or forwarded anywhere in this path, under any framing.
- *
- * ## One staged order per visit, not one per money type
- *
- * The staged order carries retail lines AND every repair whose intake already
- * succeeded (built from `repair_service.price` via `serviceLineCents`, the
- * SAME function the header total is built from). A visit that mixed a repair
- * and a retail item used to have no way to settle both on one card — the
- * repair's money lived only in a TEXT column, invisible to Square — so the
- * header could go `partially_paid` after the webhook even though nothing at
- * the counter said why. A repair that fails intake never reaches the staged
- * order (see `stageableRepairLines` below): there is no `repair_service` row
- * to charge for, so including it would be a card presentation for a repair
- * the system has no record of.
- *
-
- * ## Partial failure is designed for, not hoped against
- *
- * | Case                          | Behavior                                        |
- * |-------------------------------|-------------------------------------------------|
- * | Repair declined, retail sold  | header carries no repair link                    |
- * | Device 2 fails, device 1 kept | device 1 stays logged; warning names which failed |
- * | Sale staged, repair fails     | header stays `partially_paid`, reconcilable      |
- * | Helpdesk down                 | outbox absorbs it; the counter is never blocked |
- * | Any sub-write fails           | the signed agreement survives (ON DELETE SET NULL) |
- */
+/** submitCounterTransaction — the ONE counter-visit write path, as a principal-agnostic domain helper. */
 
 import { confirmOrderNumberForPhone } from '@/lib/ecwid/client';
 import { createRepairCustomer } from '@/lib/neon/customer-queries';
@@ -90,12 +37,7 @@ export class CounterTransactionValidationError extends Error {
   }
 }
 
-/**
- * An existing `repair_service` row as a visit links it. The money and the
- * device facts come from HERE, never from the tablet: the ticket was quoted
- * when it was written, and a client-supplied figure would let a cart re-price
- * a repair it never took in.
- */
+/** An existing `repair_service` row as a visit links it. */
 export interface LinkableRepairRow {
   id: number;
   ticketNumber: string | null;
@@ -109,12 +51,7 @@ export interface LinkableRepairRow {
 
 interface ResolvedCustomer {
   id: number;
-  /**
-   * The phone string AS STORED on the customer row. Threaded into
-   * `submitRepairIntake` so its own `findOrCreateRepairCustomer` phone lookup —
-   * which is an exact string match — hits this same row. See the note in
-   * {@link SubmitCounterTransactionDeps.findCustomerByPhoneDigits}.
-   */
+  /** The phone string AS STORED on the customer row. */
   storedPhone: string;
   /**
    * The name already on file. A returning customer who only types their phone
@@ -135,20 +72,7 @@ interface HeaderRow {
 }
 
 export interface SubmitCounterTransactionDeps {
-  /**
-   * Match an existing customer on the TRAILING DIGITS of the phone, org-scoped.
-   *
-   * Why not `findOrCreateRepairCustomer`: that helper matches phone → **name** →
-   * create, and a bare name match silently merges two different "John Smith"s
-   * onto one record. At a counter that is a stranger's repair history attached
-   * to the wrong person. This path is phone-only; on a miss it CREATES rather
-   * than falling through to the name branch.
-   *
-   * Resolving identity here first also neutralizes the hazard inside
-   * `submitRepairIntake`: by the time it runs its own lookup, a row with this
-   * exact phone exists, so its phone branch hits and its name branch is
-   * unreachable.
-   */
+  /** Match an existing customer on the TRAILING DIGITS of the phone, org-scoped. */
   findCustomerByPhoneDigits(orgId: OrgId, phoneDigits: string): Promise<ResolvedCustomer | null>;
   createCustomer(
     orgId: OrgId,
@@ -168,13 +92,7 @@ export interface SubmitCounterTransactionDeps {
       subtotalCents: number;
       totalCents: number;
       clientEventId: string;
-      /**
-       * Retail/buyback lines persisted WITH the header (same transaction).
-       * Repairs are excluded on purpose — repair_service rows are their
-       * record and the receipt prints them as devices; a copy here would
-       * double-print. Deterministic line_uuid (`clientEventId:idx`) keeps a
-       * replayed submit idempotent against the UNIQUE constraint.
-       */
+      /** Retail/buyback lines persisted WITH the header (same transaction). */
       retailLines: CounterRetailLine[];
     },
   ): Promise<HeaderRow>;
@@ -186,31 +104,12 @@ export interface SubmitCounterTransactionDeps {
 
   /** COMPOSED, never re-implemented. */
   submitRepair: typeof submitRepairIntake;
-  /**
-   * Point a repair at the header. Guarded: it only claims a row that is
-   * unlinked (or already this header's), and reports whether it did — a
-   * linked repair that another visit claimed a moment earlier must not be
-   * charged on this one too.
-   */
+  /** Point a repair at the header. */
   linkRepairToHeader(orgId: OrgId, repairId: number, headerId: number): Promise<boolean>;
   /** The existing repairs a visit links, org-scoped. Missing ids are simply absent. */
   findLinkableRepairs(orgId: OrgId, repairIds: number[]): Promise<LinkableRepairRow[]>;
 
-  /**
-   * Creates a provider order and stops.
-   *
-   * `lines` is the WHOLE staged charge for this visit — retail plus every
-   * repair whose intake already succeeded — never retail alone. A cart that
-   * mixed a repair and a cable used to have no way to settle both on one card
-   * (the repair's money lived only in `repair_service.price`, a TEXT column);
-   * see the module docblock and `submitCounterTransaction`'s staging step.
-   *
-   * Returns a discriminated result rather than `null` on any failure: a
-   * missing/unconnected provider and a provider REJECTING the request are
-   * different operator-facing problems, and collapsing them to one `null` is
-   * exactly how "Square said your line items are malformed" became the
-   * misleading "No payment provider is connected."
-   */
+  /** Creates a provider order and stops. */
   stageOrder(
     orgId: OrgId,
     lines: CounterRetailLine[],
@@ -239,24 +138,12 @@ function lastDigits(value: string | null | undefined, n = 10): string {
  */
 export type StageOrderResult = StageOrderNetworkResult | { staged: false; reason: 'not_configured' };
 
-/**
- * The subset {@link interpretStageOrderResponse} can actually produce — it
- * only ever sees a Square response, so it can never report `'not_configured'`
- * (that reason comes from config RESOLUTION failing, one layer up in
- * `defaultDeps.stageOrder`, before any request is sent). Narrower than
- * {@link StageOrderResult} so a caller of the pure function does not have to
- * defensively handle a branch it cannot reach.
- */
+/** The subset {@link interpretStageOrderResponse} can actually produce — it only ever sees a Square response, so it can never report… */
 export type StageOrderNetworkResult =
   | { staged: true; providerOrderId: string; totalCents: number | null }
   | { staged: false; reason: 'rejected'; error: string };
 
-/**
- * A repair's Square line-item name — the device plus what is being fixed,
- * never a bare id. A customer reading the emailed Square receipt has no other
- * way to tell "RS-1042" apart from the cable they also bought at the counter.
- * Falls back to the RS# only when no reason was recorded.
- */
+/** A repair's Square line-item name — the device plus what is being fixed, never a bare id. */
 function repairLineItemName(service: CounterServiceLine, rsNumber: string): string {
   const reasons = (service.repairReasons ?? [])
     .map((r) => String(r ?? '').trim())
@@ -317,26 +204,7 @@ async function linkedRepairRows(
   return rows;
 }
 
-/**
- * The CreateOrder request body. Pure — no fetch, no config resolution — so the
- * two defects this exists to pin (missing `location_id`, hardcoded `'USD'`)
- * can be asserted without a network call. Mirrors `buildTerminalCheckoutBody`
- * in `terminal-checkout.ts`.
- *
- * Every line stages ad-hoc: `name` + `base_price_money` (the line's own unit
- * price) in the ORG's currency, never a hardcoded one.
- *
- * Until 2026-09-23 a retail line with a `variationId` was sent as
- * `{ catalog_object_id }` alone, so Square would have charged its own catalog
- * price. But that id is the **Ecwid** listing id (`catalog-search.ts`
- * `PROJECTION_PLATFORM = 'ecwid'`), and this org stores no Square catalog ids
- * anywhere. Square could not resolve it, and a price edited at the counter
- * would have been ignored at the reader. The id stays on
- * `counter_transaction_lines.variation_id` for reporting and never reaches Square.
- *
- * An item note rides as `OrderLineItem.note` (Square caps it at 2000), and a
- * comp names itself there too, so the $0 line on the Square receipt says why.
- */
+/** The CreateOrder request body. */
 export function buildStageOrderBody(
   lines: CounterRetailLine[],
   cfg: Pick<SquareConfig, 'locationId' | 'currency'>,
@@ -363,14 +231,7 @@ export function buildStageOrderBody(
   };
 }
 
-/**
- * Turn a Square CreateOrder response into a {@link StageOrderResult}. Pure —
- * the caller is responsible for logging; this only decides WHAT happened.
- *
- * A missing `order.id` on a 200 is treated the same as `!ok`: Square has never
- * been observed doing this, but trusting an order that has no id to charge
- * against is worse than a defensive rejection.
- */
+/** Turn a Square CreateOrder response into a {@link StageOrderResult}. */
 export function interpretStageOrderResponse(res: {
   ok: boolean;
   data: { order?: { id?: string; total_money?: { amount?: number } } };
@@ -392,12 +253,7 @@ export function interpretStageOrderResponse(res: {
   };
 }
 
-/**
- * The ONE phone → customer match: trailing 10 digits, org-scoped, newest row
- * wins. Exported so the kiosk's live lookup (`GET /api/kiosk/customer`) shows
- * the staffer exactly the customer submit will attach — two queries would be
- * two answers to "who is this phone".
- */
+/** The ONE phone → customer match: */
 export async function findCounterCustomerByPhoneDigits(
   orgId: OrgId,
   phoneDigits: string,
@@ -580,11 +436,7 @@ const defaultDeps: SubmitCounterTransactionDeps = {
   },
 
   async stageOrder(orgId, lines, idempotencyKey) {
-    // Config resolution (Nango token, or env fallback) THROWS when nothing is
-    // connected — that is the actual "no provider" signal, and it is distinct
-    // from Square answering and rejecting the request. Conflating the two is
-    // the defect this branch exists to fix: an operator was being told "No
-    // payment provider is connected" for a request Square flatly rejected.
+    // Config resolution (Nango token, or env fallback) THROWS when nothing is connected — that is the actual "no provider" signal, and it is…
     let cfg: SquareConfig;
     try {
       cfg = await resolveSquareConfig(orgId);
@@ -656,28 +508,7 @@ export async function submitCounterTransaction(
   if (retailLines.length === 0 && services.length === 0 && linkedRepairIds.length === 0) {
     missing.push('At least one item or a service');
   }
-  /*
-   * PRE-FLIGHT EVERY DEVICE, before a single row is written.
-   *
-   * Validating inside the write loop made the outcome depend on cart ORDER,
-   * and one of the two orders lost a device permanently:
-   *
-   *   [invalid, valid] → threw AFTER insertHeader, so an orphan header owned
-   *                      this visit's client_event_id forever. The retry hit
-   *                      the replay short-circuit and returned "unchanged"
-   *                      with no repairs — the valid device was never recorded.
-   *   [valid, invalid] → the first device was already written, so the throw
-   *                      was downgraded to a warning and the visit returned 200.
-   *
-   * Same two devices, opposite failure modes, decided by scan order. Hoisting
-   * the check above `insertHeader` makes an invalid visit fail cleanly with
-   * nothing written and the idempotency key still free to retry.
-   *
-   * The rule itself is IMPORTED from submit-repair-intake — copying its six
-   * conditions here would be the fork this repo's compose-don't-fork law
-   * exists to prevent, and the drift would be invisible until a device went
-   * missing.
-   */
+  /* PRE-FLIGHT EVERY DEVICE, before a single row is written. */
   services.forEach((service, index) => {
     const label = services.length > 1 ? `Device ${index + 1}` : 'Service';
     for (const field of missingRepairIntakeFields({
@@ -699,10 +530,7 @@ export async function submitCounterTransaction(
 
   const clientEventId = input.clientEventId.trim();
 
-  // ── Idempotent replay ─────────────────────────────────────────────────────
-  // Checked BEFORE any write. A replayed submit must not double-charge,
-  // double-ticket, or double-repair, and the guard has to cover the WHOLE
-  // transaction rather than just the provider calls inside it.
+  // ── Idempotent replay ───────────────────────────────────────────────────── Checked BEFORE any write.
   const existing = await deps.findHeaderByClientEvent(orgId, clientEventId);
   if (existing) {
     return {
@@ -725,11 +553,7 @@ export async function submitCounterTransaction(
     };
   }
 
-  // ── Linked repairs: proven before any write ──────────────────────────────
-  //
-  // Read back from the book, org-scoped. A repair already on ANOTHER visit is
-  // refused outright rather than re-pointed: moving it would silently strip it
-  // from the receipt and staged order the first visit already printed.
+  // ── Linked repairs:
   const linkedRows = await linkedRepairRows(orgId, linkedRepairIds, deps);
   const linkedServices = linkedRows.map(linkedServiceLine);
 
@@ -791,20 +615,9 @@ export async function submitCounterTransaction(
   });
 
   // ── The repairs (composed) ───────────────────────────────────────────────
-  //
-  // One `repair_service` row per device. The DB always allowed this —
-  // `repair_service.counter_transaction_id` is many→one — so the 1:1 lived only
-  // in this loop's absence.
   const repairs: CounterTransactionResult['repairs'] = [];
   let repairFailed = false;
-  /**
-   * The billable half of the repairs, built up ONLY on success. A device whose
-   * intake threw never got a `repair_service` row, so charging for it would be
-   * a card presentation for a repair the system has no record of — the same
-   * hazard a soft-voided cart line guards against, just reached from the other
-   * direction. This is why staging happens AFTER this loop rather than beside
-   * `retailLines` at the top of the function.
-   */
+  /** The billable half of the repairs, built up ONLY on success. */
   const stageableRepairLines: CounterRetailLine[] = [];
 
   for (const [index, service] of services.entries()) {
@@ -825,10 +638,7 @@ export async function submitCounterTransaction(
           assignedTechId: service.assignedTechId ?? null,
           signatureDataUrl: service.signatureDataUrl ?? null,
           signatureStrokes: service.signatureStrokes,
-          // PER DEVICE, not per visit. The key dedupes the helpdesk ticket, so
-          // sharing `clientEventId` across a two-device visit would collapse
-          // both devices onto one ticket. Suffixed by cart position, which is
-          // stable across a retry of the same submit.
+          // PER DEVICE, not per visit.
           idempotencyKey: `${clientEventId}:${index}`,
           // Counter owns CREATE_TICKET / ATTACH via ticket_work_outbox below —
           // skip the inline create so we never mint two tickets for one device.
@@ -863,24 +673,10 @@ export async function submitCounterTransaction(
       await deps.linkRepairToHeader(orgId, result.id, header.id);
     } catch (err) {
       if (err instanceof RepairIntakeValidationError) {
-        /*
-         * A backstop, not the gate. Everything this can catch was already
-         * checked above `insertHeader` by the pre-flight, so reaching here
-         * means the shared rule and this path disagree — which is a bug in the
-         * pre-flight, not in the operator's input.
-         *
-         * It does NOT throw: the header exists by now, and throwing would let
-         * an orphan header keep the visit's idempotency key while the customer's
-         * other device sits recorded. Degrade to the same reconcilable warning
-         * as any other post-header failure and name the device.
-         */
+        /* A backstop, not the gate. */
         console.error('[counter] pre-flight missed a repair validation error', err.missing);
       }
       // A failure AFTER a device is already logged is reconcilable, not fatal:
-      // throwing here would report the whole visit as failed while device #1
-      // sits in the system with the customer's property attached to it. Same
-      // reasoning the original single-repair path used for non-validation
-      // errors, now extended to the only case N can produce.
       repairFailed = true;
       warnings.push(
         `Device ${index + 1} of ${services.length} (${service.productModel || 'unnamed'}) ` +
@@ -891,11 +687,6 @@ export async function submitCounterTransaction(
   }
 
   // ── The linked repairs ───────────────────────────────────────────────────
-  //
-  // Pointed at this header and staged beside the new devices, but never passed
-  // to `submitRepair` and never ticketed: the intake, signature and helpdesk
-  // conversation already exist on the ticket. `repairs` (and so ticket work
-  // below) stays new-devices-only for the same reason.
   for (const [index, row] of linkedRows.entries()) {
     const linkedService = linkedServices[index]!;
     const rsNumber = linkedRepairLabel(row);
@@ -923,18 +714,6 @@ export async function submitCounterTransaction(
   }
 
   // ── The staged sale (never charged) ──────────────────────────────────────
-  //
-  // RETAIL + every repair that actually landed, as ONE Square order. A visit
-  // with a repair and a cable used to have no way to settle both on one card:
-  // the repair's money lived only in `repair_service.price` (TEXT), so a
-  // retail-only guard here left the repair uncharged with the header total
-  // covering it regardless — a header that quietly went `partially_paid` after
-  // the webhook, with nothing at the counter to say why.
-  //
-  // A repair-only visit now stages too, deliberately: the point of widening
-  // this list is that a repair becomes payable at all, and gating staging on
-  // `retailLines.length` (the pre-existing guard) would leave that case
-  // exactly as broken as before.
   const stageLines: CounterRetailLine[] = [...retailLines, ...stageableRepairLines];
   let sale: CounterTransactionResult['sale'] = null;
   if (stageLines.length > 0) {
@@ -1017,10 +796,7 @@ export async function submitCounterTransaction(
     warnings.push('No service line — no helpdesk ticket was created.');
   }
 
-  // ── Status ───────────────────────────────────────────────────────────────
-  // `partially_paid` is the reconcilable state: something was staged for payment
-  // but the visit did not fully materialize. Nothing here is ever `paid` — this
-  // path does not charge, so only the payment webhook may promote a header.
+  // ── Status ─────────────────────────────────────────────────────────────── `partially_paid` is the reconcilable state:
   const status: CounterTransactionStatus =
     repairFailed && sale ? 'partially_paid' : 'staged';
   if (status !== header.status) {

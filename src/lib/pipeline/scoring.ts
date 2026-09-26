@@ -1,20 +1,4 @@
-/**
- * Scoring Module
- *
- * Converts validation results into a numeric rating (1-5) and a weighted
- * auto-score (0.0-1.0). These scores determine whether a training pair
- * is worth including in the next fine-tuning run.
- *
- * Rating scale:
- *   5 — All checks pass including build (production-ready)
- *   4 — Typecheck + lint + tests pass (merge-ready)
- *   3 — Typecheck + tests pass, lint has minor issues
- *   2 — Typecheck passes but tests or lint fail
- *   1 — Typecheck fails (fundamentally broken)
- *
- * Both good AND bad samples are stored — the model learns from failures too.
- * The Jetson trainer filters by rating threshold (default ≥ 2).
- */
+/** Scoring Module */
 
 import { SCORE_WEIGHTS, RATING_MAP } from './config';
 import type { ValidationResult, ScoringResult } from './types';

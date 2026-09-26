@@ -79,11 +79,7 @@ export class DrizzleSalesOrderRepository implements SalesOrderRepository {
     // tenant's sales order — never write an audit note across tenants.
     if (existing.organizationId !== orgId) return;
 
-    // entity_notes will be FORCE-RLS'd (Phase E) and neon-http `db` cannot
-    // carry the app.current_org GUC, so the salesOrders UPDATE + the
-    // entity_notes INSERT both run inside withTenantDrizzle's GUC-bearing
-    // connection. organization_id is stamped explicitly (defense in depth)
-    // and the UPDATE is org-scoped.
+    // entity_notes will be FORCE-RLS'd (Phase E) and neon-http `db` cannot carry the app.current_org GUC, so the salesOrders UPDATE + the…
     await withTenantDrizzle(orgId, async (tx) => {
       await tx.update(salesOrders)
         .set({ status: 'zoho_error', updatedAt: new Date() })

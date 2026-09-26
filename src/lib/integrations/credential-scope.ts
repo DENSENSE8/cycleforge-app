@@ -1,21 +1,4 @@
-/**
- * Credential scope — the service-layer authorization choke point (Wave 5).
- *
- * Every use of a stored integration credential should go through
- * `withCredentialScope`, which:
- *   1. enforces the operation allowlist (requireCredentialPermission) — deny by
- *      default, even if the OAuth token has broader scope;
- *   2. confirms the org actually has an ACTIVE credential for the provider
- *      (fail fast with a clear error instead of deep in the HTTP layer);
- *   3. records credential usage to the audit ledger (throttled for the common
- *      'allowed' case; denials/errors always recorded) + touches last_used_at;
- *   4. runs the work; on *auth* failure (token mint / revoked refresh) flags
- *      the vault row as error — resource misses (e.g. missing PO) do not.
- *
- * This pairs with the ROUTE-layer permission (withAuth({permission})): the route
- * checks the human/staff may invoke the feature; this checks the credential may
- * perform the operation. Both must pass.
- */
+/** Credential scope — the service-layer authorization choke point (Wave 5). */
 
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -135,10 +118,7 @@ export async function withCredentialScope<T>(
   }
 }
 
-// ── audit + last_used throttling ────────────────────────────────────────────
-// In-memory throttle so a high-frequency sync (per-PO, per-order) doesn't write
-// an audit row / UPDATE last_used_at on every call. Only the common 'allowed'
-// path is throttled; denials and errors are always written.
+// ── audit + last_used throttling ──────────────────────────────────────────── In-memory throttle so a high-frequency sync (per-PO,…
 const THROTTLE_MS = 5 * 60 * 1000;
 const lastWriteAt = new Map<string, number>();
 
@@ -155,12 +135,7 @@ export interface CredentialUsageRecord {
   detail?: string;
 }
 
-/**
- * Append a credential-usage row. Best-effort: a missing table (pre-migration)
- * or any insert failure is swallowed so observability never breaks the job.
- * 'allowed' is throttled per (org,provider,scope,operation); denials/errors are
- * always written.
- */
+/** Append a credential-usage row. */
 export async function recordCredentialUsage(rec: CredentialUsageRecord): Promise<void> {
   if (rec.outcome === 'allowed') {
     const key = throttleKey([rec.orgId, rec.provider, rec.scope, rec.operation, 'audit']);

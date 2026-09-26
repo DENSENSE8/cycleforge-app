@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Station Displays — keyboard-armed verb rows (Photos golden twin).
- *
- * Pure presentation: ↑↓ / Home / End via {@link useArmedCursorList}; Enter /
- * Space / pointerdown commits (mouse = keyboard). Hosts supply verb ids +
- * labels + onCommit. Esc stays on {@link StationDisplaysPushStack}.
- */
+/** Station Displays — keyboard-armed verb rows (Photos golden twin). */
 
 import {
   useCallback,

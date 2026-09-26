@@ -1,13 +1,4 @@
-/**
- * Connections gap adoption helpers (Phase 2).
- *
- * Product work: CONN-* tickets in master-plan.mdx (forge org only).
- * Org work: ops_plans from `connections_gap_adoption` template under that org.
- *
- * Optional deploy path: when a CONN-* ticket becomes `deployed`, non-forge orgs
- * may receive an idempotent adoption nudge with
- * `client_event_id = conn-adopt:{ticketId}` (never `master-plan:`).
- */
+/** Connections gap adoption helpers (Phase 2). */
 
 import {
   CONN_ADOPT_TASK_KEY_PREFIX,
@@ -87,13 +78,7 @@ export interface ConnAdoptUpsertArgs {
   createdByStaffId?: number | null;
 }
 
-/**
- * Pure mapping: which adoption task titles/keys to open when product CONN tickets deploy.
- * Full DB upsert can call createPlanFromTemplate once, then attach notes — this keeps
- * the deploy path testable without Neon.
- *
- * Returns one row per deployed CONN ticket for optional progressive checklists.
- */
+/** Pure mapping: */
 export function adoptionTasksForDeployedConnTickets(
   deployedConnTicketIds: string[],
 ): Array<{ clientEventId: string; title: string }> {

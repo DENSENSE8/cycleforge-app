@@ -1,13 +1,4 @@
-/**
- * Mode registry — web face of the four TASK modes. The values and the CSS
- * generator live in the cross-platform token registry
- * (`packages/design-tokens/src/modes.ts`), the one copy web, desktop and iOS
- * all read; read that module for what each mode is and what the stylesheet
- * does.
- *
- * app/layout.tsx injects `modeRegistryStyleText` as
- * `<style id="app-mode-registry">`, directly after the theme palettes.
- */
+/** Mode registry — web face of the four TASK modes. */
 import { modeRegistryCssText, stateCodeCssText, trialCssText } from '@cycleforge/design-tokens';
 
 export {

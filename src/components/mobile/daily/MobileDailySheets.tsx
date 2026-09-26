@@ -2,26 +2,7 @@
 
 /**
  * The item sheet — the phone face of one checklist check, and its editor.
- *
- * A `BottomSheet` because on a phone the sheet IS the detail surface (its own
- * contract: never a desk dialog, never a right rail).
- *
- * ONE SURFACE, NO MODES. The row's pencil lands here with the title field
- * focused and the keyboard up, and the facts — kind, owner, mine, shift, day,
- * links, last mark — sit underneath it, always visible. The first cut made
- * this a two-step (open on facts → press Edit → type), which meant the pencil
- * described a verb it did not deliver and cost two taps before a correction
- * could be typed. Facts and field coexist because an operator fixing a title
- * still wants to see whose item it is and whether the shift already ticked it.
- *
- * Editing is gated on `admin.manage_staff`, and the gate changes the FACE, not
- * a disabled state: without it the title is plain text and the two verbs are
- * absent, so the sheet degrades to what it always was — the detail surface.
- *
- * The ITEM ID lives in this sheet's top-right corner and nowhere else on the
  * phone (operator 2026-09-15). The row that opens it prints a pencil instead:
- * a floor staffer ticks by title, and only someone about to edit or quote the
- * item needs its handle.
  */
 
 import { useEffect, useState } from 'react';
@@ -82,15 +63,7 @@ export function MobileDailyDetailSheet({
   const canSave = trimmed.length > 0 && trimmed !== item?.title && !saving;
 
   return (
-    /*
-     * `scrollBody` is load-bearing now that the field and the facts share one
-     * surface. Header + field + seven fact rows + the footer is taller than
-     * 844px MINUS the on-screen keyboard, and this sheet is bottom-anchored:
-     * without a cap the panel grows off the TOP of the screen and the operator
-     * is typing into a field whose Save button they cannot reach. The clamp is
-     * `70svh` — small viewport units, so it measures the screen the keyboard
-     * left behind rather than the one it covered.
-     */
+    /* `scrollBody` is load-bearing now that the field and the facts share one surface. */
     <BottomSheet
       open={item !== null}
       onClose={onClose}
@@ -100,17 +73,9 @@ export function MobileDailyDetailSheet({
       scrollBodyMaxHeightClass="max-h-[70svh]"
     >
       {/*
-       * The sheet paints its OWN header rather than passing `title`: the
-       * primitive's title is CENTRED, and the id has to land hard right
-       * (operator 2026-09-15 — *"within the edit it can display the ID top
-       * right"*). `title` also names nothing for a screen reader here — only
-       * `DialogPanel` carries `role="dialog"`, and this sheet forces the sheet
-       * variant — so dropping it costs no accessible name.
-       *
-       * The left slot is the REGISTER, not the title, because the title is
-       * already in the field below and printing it twice on a 390px screen
-       * wastes the one line the facts need.
-       */}
+ * The sheet paints its OWN header rather than passing `title`:
+ * (operator 2026-09-15 — *"within the edit it can display the ID top
+ */}
       <div className="flex shrink-0 items-baseline justify-between gap-3 px-1 pb-2">
         <span className="text-role-micro uppercase tracking-wide text-text-faint">
           {canManage ? 'Edit task' : 'Task'}
@@ -125,16 +90,7 @@ export function MobileDailyDetailSheet({
         <PomodoroTimer kind="checklist" id={item.id} date={getCurrentPSTDateKey()} canRun={!report?.mine.doneItemIds.includes(item.id)} className="px-1" />
       ) : null}
 
-      {/*
-       * The title field follows the timer, focused with the keyboard up. The
-       * pencil that opened this sheet promised editing, not another mode.
-       * The facts stay below it: an operator correcting a title still needs
-       * to see whose item it is and whether the shift ticked it.
-       *
-       * Read-only for anyone without `admin.manage_staff` — the title falls
-       * back to plain text, so the sheet is still the detail surface for a
-       * floor staffer, just not an editor.
-       */}
+      {/* The title field follows the timer, focused with the keyboard up. */}
       {item && canManage ? (
         <input
           value={draftTitle}
@@ -171,21 +127,7 @@ export function MobileDailyDetailSheet({
         </p>
       ) : null}
 
-      {/*
-       * The two structural verbs, and they only exist for a manager.
-       *
-       * REMOVE IS A RETIRE, and the label has to say so: the row keeps its
-       * `retired_at` window so every past report still renders the check, and
-       * calling that "Delete" would promise an erasure the system deliberately
-       * refuses to perform. It is also list-wide — unlike a tick, which is
-       * personal and one tap to undo — so it takes a confirm step. The confirm
-       * replaces the FOOTER rather than stacking a second sheet: a sheet inside
-       * a sheet is where an operator gets lost on a 390px screen.
-       *
-       * No Cancel button on the edit row. Dismissing the sheet — drag, scrim,
-       * Escape — already is cancel, and nothing has been written; a third
-       * control here would just crowd the thumb zone.
-       */}
+      {/* The two structural verbs, and they only exist for a manager. */}
       {item && canManage ? (
         confirmingRemove ? (
           <div className="flex shrink-0 flex-col gap-2 px-1 pb-1 pt-3">

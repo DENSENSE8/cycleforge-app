@@ -5,29 +5,7 @@ import { listUnitTimelinePhotos } from '@/lib/photos/queries/unit-timeline-photo
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/serial-units/[id]/timeline-photos
- *
- * The unit's photo evidence for its timeline surfaces, in FIVE stage-tagged
- * buckets (`UnitTimelinePhotoSource`, mirroring `PHOTO_EVIDENCE_STAGES` in
- * `src/lib/photos/stages.ts`):
- *
- *   • `arrival`      — origin parent carton (via serial_unit_provenance →
- *                      receiving line) with a PACKAGE photo_type
- *                      (`receiving_package` / legacy `receiving` / untyped '').
- *   • `unbox_carton` — parent carton + `receiving_unbox_carton`.
- *   • `unbox_item`   — origin RECEIVING_LINE links (entity-only, identity law).
- *   • `testing`      — SERIAL_UNIT + `testing_photo`.
- *   • `packing`      — SERIAL_UNIT + `packer_photo` (± legacy shipout/prepack)
- *                      ∪ PACKER_LOG dual-links.
- *
- * Mis-stamped legacy rows (`receiving_item` on a RECEIVING carton link) match
- * no bucket — deliberately unclassifiable as stage evidence. Each row also
- * carries the unit's `serial` / `sku` for cross-entity chrome. Read-only.
- * The `[id]` segment resolves numeric id / serial / minted unit_uid, org-scoped.
- * See docs/todo/photo-evidence-journey-timeline-plan.md (+ the original
- * packer-testing-photo-scan-timeline-plan.md).
- */
+/** GET /api/serial-units/[id]/timeline-photos */
 
 function extractIdSegment(pathname: string): string {
   const m = /\/api\/serial-units\/([^/]+)\/timeline-photos/.exec(pathname);

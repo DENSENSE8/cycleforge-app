@@ -50,16 +50,7 @@ interface ScannerControls {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-/**
- * Universal barcode scanner hook powered by `@zxing/browser`.
- *
- * Attach `videoRef` to a `<video autoPlay playsInline muted />` element.
- * ZXing manages the camera stream and runs continuous barcode decoding.
- *
- * Supported formats: QR, Code 128, Code 39, Codabar, Data Matrix, ITF,
- * EAN-13, EAN-8, UPC-A, UPC-E — covers shipping labels, serial stickers,
- * and product barcodes.
- */
+/** Universal barcode scanner hook powered by `@zxing/browser`. */
 export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeScanner {
   const { dedupMs = 2000, acceptCooldownMs = 1500 } = options;
 
@@ -142,12 +133,7 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
       setError(null);
       pausedRef.current = false;
 
-      // Acquire the rear camera at high resolution with CONTINUOUS autofocus —
-      // small DataMatrix labels (prepacked SKU+serial) won't decode on the
-      // browser default (low-res, fixed/locked focus): the lens never sharpens
-      // on a close label. decodeFromConstraints lets us tune the stream; we then
-      // also applyConstraints on the live track since `focusMode` in the initial
-      // getUserMedia is widely ignored.
+      // Acquire the rear camera at high resolution with CONTINUOUS autofocus — small DataMatrix labels (prepacked SKU+serial) won't decode on…
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: { ideal: 'environment' },
@@ -183,10 +169,7 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
       controlsRef.current = controls;
       log('Scanning started');
 
-      // Force continuous autofocus on the live track (the lens keeps hunting to
-      // sharpen on whatever's in frame, including a small label held close).
-      // getCapabilities/focusMode aren't in the TS lib types; guard + ignore on
-      // browsers (Safari) that don't support programmatic focus control.
+      // Force continuous autofocus on the live track (the lens keeps hunting to sharpen on whatever's in frame, including a small label held close).
       try {
         const stream = video.srcObject as MediaStream | null;
         const track = stream?.getVideoTracks?.()[0];

@@ -6,26 +6,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { parseBody } from '@/lib/schemas/parse';
 import { QcBulkBody } from '@/lib/schemas/qc-checks';
 
-/**
- * Bulk "check all" / "clear all" for a unit's testing checklist.
- *
- * The per-step endpoint (../checklist) records one step at a time. When the
- * checklist is long — or a tech has eyeballed a known-good unit — settling it
- * one tap at a time is tedious. This endpoint records (or clears) EVERY
- * resolved step for the unit's SKU in a single transaction.
- *
- * Steps resolve exactly like the GET in ../checklist: per-SKU template rows
- * (qc_check_templates.sku_catalog_id = unit's catalog) plus category-shared
- * rows (sku_catalog_id IS NULL AND category = unit's category).
- *
- * Body: { action?: 'pass' | 'clear' }  (default 'pass')
- *   - 'pass'  → upsert passed=true for every step, attributed to the caller.
- *   - 'clear' → delete this unit's recorded results, returning steps to
- *               "not recorded" (so progress goes back to 0/N).
- *
- * Advisory only — recording results never gates grading. QC completion is a
- * signal, not a lock.
- */
+/** Bulk "check all" / "clear all" for a unit's testing checklist. */
 
 const SOURCE_KIND = 'serial_unit';
 const STEP_TYPE = 'QC';

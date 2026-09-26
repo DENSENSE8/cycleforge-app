@@ -71,13 +71,6 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     }
 
     // Targeted DB query — only fetch manuals for the item_numbers in this category.
-    // product_manuals has NO organization_id column and NO RLS policy, so a bare
-    // GUC wrap provides ZERO isolation — the bare item_number string-key match
-    // would otherwise read ANY org's manual rows (cross-tenant read leak of
-    // display_name/google_file_id). Scope through the org-bearing sku_catalog
-    // parent (sku_catalog_id → sku_catalog.organization_id).
-    // NEEDS-COL: NULL-parent (unpaired) manuals are unattributable to any org
-    // and are intentionally excluded until product_manuals gains its own column.
     const itemNumbers = ecwidRows.map((r) => r.item_number);
     const placeholders = itemNumbers.map((_, i) => `$${i + 1}`).join(', ');
     const orgParam = `$${itemNumbers.length + 1}`;

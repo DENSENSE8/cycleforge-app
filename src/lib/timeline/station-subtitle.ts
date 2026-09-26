@@ -1,10 +1,4 @@
-/**
- * Station Timeline subtitle helpers — quiet footnotes vs raw machine status trails.
- *
- * Inventory adapters emit `PREV → NEXT` (e.g. `RECEIVED → ON_HOLD`) as subtitle.
- * On Station floor that duplicates the human title ("Tested — Fail") in a second
- * dialect; omit it. Other subtitles (location, notes, photo counts) stay.
- */
+/** Station Timeline subtitle helpers — quiet footnotes vs raw machine status trails. */
 
 /** Raw inventory/machine status trail like `RECEIVED → ON_HOLD`. */
 export function isRawStatusTrailSubtitle(subtitle: string | null | undefined): boolean {

@@ -40,13 +40,7 @@ export interface UnmatchedItemsSectionProps {
   onFileReturnClaim?: (matchedOrder: SerialMatchedOrder | null, serial: string) => void;
   /** RETURN match → Displays Timeline (full serial genealogy). */
   onOpenReturnHistory?: () => void;
-  /**
-   * Fired whenever a condition grade is picked on this carton (per-line pill or
-   * the carton-level serial-scan card). LineEditPanel mirrors it into the panel
-   * `cond` state so the printed/previewed label reflects the operator's last
-   * grade — matched cartons report this up via ActiveLineConditionSerial, so
-   * without it the label would never update for an unfound carton.
-   */
+  /** Fired whenever a condition grade is picked on this carton (per-line pill or the carton-level serial-scan card). */
   onActiveConditionChange?: (condition: string) => void;
   /**
    * No-serial waiver state, owned by the unbox controller (whose receive runs the
@@ -101,12 +95,7 @@ export interface UnmatchedItemsSectionProps {
    * link `/receiving?recvId=…`). Omitted in the unbox workspace itself.
    */
   onOpenInUnbox?: () => void;
-  /**
-   * Render bare (no own WorkspaceCard chrome, no add pencil) — used when
-   * composed inside the unified {@link POUnboxingSection} wrapper, which
-   * supplies the single shared card + edit pencil. Defaults to the standalone
-   * card so the testing display and any other caller are unaffected.
-   */
+  /** Render bare (no own WorkspaceCard chrome, no add pencil) — used when composed inside the unified {@link POUnboxingSection} wrapper,… */
   embedded?: boolean;
   /**
    * Embedded-only: node rendered at the right of the "PO items · N" header row
@@ -117,16 +106,7 @@ export interface UnmatchedItemsSectionProps {
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
   onViewAllUnits?: (line: ReceivingLineRow) => void;
-  /**
-   * Fired after an Ecwid/repair pairing flips the carton off the Unfound queue.
-   * The host (which owns the selected `row`) uses it to update the open
-   * LineEditPanel IMMEDIATELY from the server's returned row — no refetch wait:
-   *   • `carton` → the recomputed PO#/source/platform for the carton header.
-   *   • `line`   → the full new receiving_line. When the host was on an unfound
-   *     STUB (synthetic negative id, no real line), it re-selects this real line
-   *     so the detail pane upgrades from "Unfound PO" → the actual item (title,
-   *     SKU, qty, listing) in one paint, then reconciles via invalidate.
-   */
+  /** Fired after an Ecwid/repair pairing flips the carton off the Unfound queue. */
   onLinked?: (result: {
     carton: {
       zoho_purchaseorder_number: string | null;
@@ -159,12 +139,7 @@ export interface UnmatchedItemsSectionProps {
   };
   /** Workspace row id for optimistic patch after unpair. */
   activeLineId?: number;
-  /**
-   * Unbox dual loci: when true, bottom dock owns wedge/procedure and the
-   * active unfound line mounts progressive Condition → Serial → Photos
-   * (`ActiveLineConditionSerial` / `ReturnScanCard`). Arrival / Testing omit
-   * (default false).
-   */
+  /** Unbox dual loci: */
   dockOwnsCapture?: boolean;
 }
 

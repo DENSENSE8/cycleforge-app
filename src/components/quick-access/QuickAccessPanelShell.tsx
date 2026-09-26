@@ -24,12 +24,7 @@ interface QuickAccessPanelShellProps {
   bodyClassName?: string;
   /** Panel width — defaults to 340px. */
   widthClass?: string;
-  /**
-   * Max-height cap for the whole panel. Defaults to nearly the full viewport
-   * (`calc(100vh-6rem)`). A bottom-anchored popover that grows upward should pass
-   * a compact cap (e.g. `max-h-[420px]`) so a long list scrolls inside instead of
-   * stretching into a near-full-height slab against the top chrome.
-   */
+  /** Max-height cap for the whole panel. */
   maxHeightClass?: string;
 }
 

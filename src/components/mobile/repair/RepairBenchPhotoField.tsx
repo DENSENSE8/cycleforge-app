@@ -13,14 +13,7 @@ import { BENCH_PHOTO_TYPE, type BenchPhotoSide } from '@/lib/repair/repair-actio
 
 const SIDE_LABEL: Record<BenchPhotoSide, string> = { before: 'Before', after: 'After' };
 
-/**
- * Before / after shots taken while logging work (e.g. the solder joint). They
- * are plain repair photos — the one repair upload (`uploadRepairPhoto` →
- * `/api/photos/upload`, entity REPAIR_SERVICE keyed to the repair id, the same
- * way intake photos are), sent the moment the camera closes, and they show on
- * the repair's Photos screen with the rest. Nothing ties them to the log entry.
- * The thumbnails here only confirm what was just uploaded.
- */
+/** Before / after shots taken while logging work (e.g. */
 export function RepairBenchPhotoField({
   repairId,
   side,

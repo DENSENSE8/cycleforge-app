@@ -1,24 +1,4 @@
-/**
- * Dashboard / queue table row layout — the Orders desk's column SoT.
- *
- * Since the Wave-1 hand-model kill
- * (`docs/kill-list/07-slot-table-hand-models.md`) the Orders desk owns NO hand
- * column array: every outbound lane (Pending · Tested-filter · Packed · Labels
- * · Staged · Review · Shipped) mounts the COMPOUND two-row model materialized
- * from the effective `SlotLayout` by {@link ordersCompoundColumnsFor} — track
- * keys are slot indices (`status:1…N`), never field ids, and what shows is an
- * org/staff/product layout document, not a deploy.
- *
- * The old flat `ORDERS_QUEUE_COLUMNS` array (tracks whose keys WERE fields:
- * `tester`, `testedAt`, `packStation`, …) moved to the station benches as
- * `STATION_HISTORY_COLUMNS`, and DIED there on 2026-09-11 when `tech` and
- * `packer` became registered families on the one engine (Wave C). Nothing in
- * the repo paints a hand fact-track array now. Do not re-add one here; bind a
- * catalog field instead.
- *
- * The legacy two-zone shell helpers at the bottom serve the board / walk-in
- * rows that never joined the grid.
- */
+/** Dashboard / queue table row layout — the Orders desk's column SoT. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -30,16 +10,7 @@ import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materializ
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
-/**
- * Stable key set for the orders-queue columns (scan order).
- *
- * The compound + slot keys are the desk's whole vocabulary. The flat fact keys
- * after them are NOT a column model any more — the last array that used them
- * (`STATION_HISTORY_COLUMNS`) is deleted. They survive as the SORT vocabulary
- * `compareQueueColumnRows` still speaks (`age`, `qty`, `condition`, `order`,
- * `tracking`, …), which is a fact list, not a layout. Adding one here does not
- * create a track; only a catalog binding can.
- */
+/** Stable key set for the orders-queue columns (scan order). */
 export type OrdersQueueColumnKey =
   | 'select'
   /** Compound (two-row) presentation tracks — see {@link ORDERS_COMPOUND_COLUMNS}. */
@@ -48,12 +19,7 @@ export type OrdersQueueColumnKey =
   | 'fulfillment'
   | 'state'
   | 'dates'
-  /**
-   * Materialized SLOT tracks (`status:1…10`; sheet morph adds `subtitle:1…5`).
-   * Keys are slot indices, never field ids — rebinding a slot keeps every
-   * width/pref keyed by it. Built by `materializeTracks`, absorbing the old
-   * hand-spliced `tested` step.
-   */
+  /** Materialized SLOT tracks (`status:1…10`; sheet morph adds `subtitle:1…5`). */
   | `status:${number}`
   | `subtitle:${number}`
   | 'amount'
@@ -78,51 +44,19 @@ export type OrdersQueueColumnKey =
   /** Trailing structural filler — absorbs leftover sheet width (`1fr`). */
   | '_fill';
 
-/**
- * One column of the orders-queue grid — the SoT that the grid template, the
- * sticky header (label + type glyph + per-column menu), and the body/group
- * cells all read, so a column's width, label, type, and hide-key live in ONE
- * place and can never drift apart.
- *
- * EXTENDS the house model rather than re-declaring it. `width` / `label` /
- * `gridLabel` / `labelFitRem` / `type` / `hideKey` were all copied out with
- * their own JSDoc here, which is how a Pending-only field could drift from the
- * same field on every other surface — and why `align` and `omitCellIcon` had to
- * be added in five places before this. Every shared field is inherited; only
- * `key` narrows. `SlotTrackFields` carries the materialized slot metadata.
- */
+/** One column of the orders-queue grid — the SoT that the grid template, the sticky header (label + type glyph + per-column menu), and the… */
 export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'>, SlotTrackFields {
   key: OrdersQueueColumnKey;
 }
 
-/**
- * COMPOUND (two-row) Orders / To-Ship columns — MATERIALIZED from a
- * {@link SlotLayout}, never hand-spliced.
- *
- * Shared chrome prefix is {@link compoundColumnsFor} / `COMPOUND_TRACKS` —
- * Receiving and Tasks keep that object identity. Orders inserts its STATUS
- * band (`status:1…N`, one track per bound catalog field) after `state` via
- * `materializeTracks`. The old `ORDERS_TESTED_TRACK` hand splice is absorbed:
- * the product default binds `orders.picked` into `status:1`, and an org that
- * binds Packed / Scanned out gets `status:2…` from the same materializer.
- */
+/** COMPOUND (two-row) Orders / To-Ship columns — MATERIALIZED from a {@link SlotLayout}, never hand-spliced. */
 export function ordersCompoundColumnsFor(
   layout: SlotLayout,
   options?: { queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped' },
 ): readonly OrdersQueueColumn[] {
   const resolved =
     options?.queueMode === 'shipped' ? layout : omitShippedOnlyBindings(layout);
-  /*
-   * No `actions` track on Orders (operator ruling 2026-08-31 — "remove the
-   * three dots on the most right side").
-   *
-   * The ⋮ is the rightmost track and it is literally three dots. On this desk
-   * it never earned its 2.5rem: the row already opens on click, and the two
-   * verbs it grew (copy order / copy tracking) are the same copies the identity
-   * chips beside them already offer on one click. Other compound families keep
-   * the shared track — this drops it for the Orders mount only, which is why it
-   * is filtered here rather than removed from `COMPOUND_TRACKS`.
-   */
+  /* No `actions` track on Orders (operator ruling 2026-08-31 — "remove the three dots on the most right side"). */
   const base = compoundColumnsFor<OrdersQueueColumn>().filter((c) => c.key !== 'actions');
   return materializeTracks<OrdersQueueColumn>({
     layout: resolved,

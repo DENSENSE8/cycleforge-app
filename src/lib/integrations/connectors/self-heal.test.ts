@@ -1,12 +1,4 @@
-/**
- * Run: npx tsx --test src/lib/integrations/connectors/self-heal.test.ts
- *
- * DB-free: fakes() injects SelfHealDeps and captures collaborator calls.
- *
- * Contract under test: a connection latched to status='error' by a transient
- * provider failure comes back on its own, and a genuinely dead credential does
- * not (it must keep surfacing as "Needs attention").
- */
+/** Run: npx tsx --test src/lib/integrations/connectors/self-heal.test.ts */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { OrgId } from '@/lib/tenancy/constants';

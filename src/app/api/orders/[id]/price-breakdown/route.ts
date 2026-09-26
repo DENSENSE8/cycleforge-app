@@ -3,13 +3,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getOrderPriceBreakdown } from '@/lib/orders/order-price-breakdown';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/orders/[id]/price-breakdown — the Selected-order column's Price
- * panel: item lines (qty × unit), shipping charged, tax, total / paid (the
- * persisted ShipStation v1 order), every label's cost split by purpose, and
- * net = paid − tax − label costs. Persisted rows only — never a live
- * ShipStation call. Read-only. Domain logic: lib/orders/order-price-breakdown.
- */
+/** GET /api/orders/[id]/price-breakdown — the Selected-order column's Price panel: */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

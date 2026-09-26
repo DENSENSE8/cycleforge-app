@@ -46,12 +46,7 @@ export interface StationFbaInputProps {
    * (sidebar scan should not POST directly to the URL plan).
    */
   ignoreUrlPlan?: boolean;
-  /**
-   * Locks the scan flow to one mode and shows only that mode's button:
-   *   'plan'   — plan page: FNSKU adds/updates today's plan.
-   *   'select' — combine page: FNSKU selects packed items for combining.
-   * When omitted, both buttons show and the user can toggle (legacy).
-   */
+  /** Locks the scan flow to one mode and shows only that mode's button: */
   scanMode?: 'plan' | 'select';
   /**
    * Sidebar header band (40px scan row + pills below). Drops the inner halo
@@ -60,18 +55,7 @@ export interface StationFbaInputProps {
   sidebarHeaderBand?: boolean;
 }
 
-/**
- * Owns the entire FBA station scan flow: FNSKU/ASIN parsing, the plan-vs-select
- * mode, today's-plan review queue, plan-line qty patching, and the cross-component
- * window-event wiring (board selection, paired review, quick-add saves). Returns
- * a controller bag the thin `StationFbaInput` shell renders from.
- *
- * Thin controller: the heavy lifting lives in three composed sub-hooks —
- * {@link useFbaPlanFlows} (plan-write network flows), {@link useFbaSelectMode}
- * (combine/select board state + flow), and {@link useFbaScanRouting} (raw-scan
- * classification + dispatch). This hook owns the shared state + chrome and wires
- * them together.
- */
+/** Owns the entire FBA station scan flow: */
 export function useFbaStationInput({
   fbaScanOnly = false,
   inputBorderClassName,

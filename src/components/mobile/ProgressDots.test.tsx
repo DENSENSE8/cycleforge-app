@@ -1,13 +1,4 @@
-/**
- * ProgressDots contracts — the step-rail algorithm and its accessibility face.
- *
- *   npx tsx --test src/components/mobile/ProgressDots.test.tsx
- *
- * The rail is the compact progress vocabulary for every multi-step mobile
- * flow; the compression window (head-2 ··· tail-2) is what keeps long pick
- * lists glanceable. Pinned here: clamping, window boundaries, and where
- * `current` survives compression — including where it does not.
- */
+/** ProgressDots contracts — the step-rail algorithm and its accessibility face. */
 import React from 'react';
 import assert from 'node:assert/strict';
 import test from 'node:test';

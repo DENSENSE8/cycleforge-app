@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Carton add popover — one `+` entry point for every "add" a carton supports,
- * presented as tabs. Mirrors the EcwidProductSearchPopover chrome (portal +
- * backdrop + centered card) so it reads identically to the old per-action
- * popovers it unifies.
- *
- * Tabs (a caller passes the subset that applies to the carton):
- *   • Item — search the INTERNAL catalog (Zoho `items`) and add a line. This is
- *            the surface that used to say "internal"; it's now an explicit tab.
- *   • Web  — search eBay Browse (external/secondary market) and add a line from
- *            a web hit (title + image, no SKU).
- *   • Box  — mint or pick a handling unit (`H-{id}` LPN) and drop the carton's
- *            serial units into it, then print the box label.
- *
- * Item/Web add a receiving LINE, so they only make sense for unmatched cartons.
- * Box groups already-scanned units and applies to any carton.
- *
- * Thin composition layer: shared types + tab metadata live in
- * `./carton-add/carton-add-types`, the per-tab surfaces in `ItemTab`/`WebTab`/
- * `BoxTab`, and the small presentational bits in `carton-add-primitives`.
- */
+/** Carton add popover — one `+` entry point for every "add" a carton supports, presented as tabs. */
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';

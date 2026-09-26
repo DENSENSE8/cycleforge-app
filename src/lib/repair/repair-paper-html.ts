@@ -9,17 +9,7 @@ export const REPAIR_PICKUP_DATE_PLACEHOLDER = 'Date: __/__/____';
 export const REPAIR_SIGNATURE_ROW_GRID_STYLE =
   'grid-template-columns: 5.75rem minmax(0, 1fr) 11rem';
 
-/**
- * The captured signature as it prints inside a {@link repairSignatureRowHtml}
- * band. ONE fragment: drop-off and pick-up carried byte-identical copies of
- * this inline style, so a geometry fix could land on one row and miss the
- * other.
- *
- * `object-fit:contain` + `max-width:100%` is the DEFENSIVE half of the
- * 2026-09-15 floating-ink defect and is deliberately unchanged — the capture
- * aspect was the wrong end of the pipe (`src/lib/repair/signature-geometry.ts`).
- * The filter flattens anti-aliased finger strokes to printable ink.
- */
+/** The captured signature as it prints inside a {@link repairSignatureRowHtml} band. */
 export function repairSignatureInkHtml(dataUrl: string, alt: string): string {
   return `<img src="${dataUrl}" alt="${alt}" style="position:absolute;bottom:2px;left:0;height:${REPAIR_PRINT_SIGNATURE_BAND.inkHeightPx}px;max-width:100%;width:auto;object-fit:contain;filter:contrast(2.2) brightness(0.55) saturate(0);" />`;
 }

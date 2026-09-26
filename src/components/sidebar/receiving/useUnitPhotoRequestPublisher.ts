@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Publishes a `unit_photo_request` on `staffstation:{staffId}` so a phone loaded
- * on the same staff id auto-navigates to the SERIAL_UNIT photo capture page — the
- * packer testing-label scan → phone camera hand-off
- * (docs/todo/packer-testing-photo-scan-timeline-plan.md).
- *
- * This is the exact mirror of `usePhotoRequestPublisher` (receiving), but in a
- * fully separate namespace: the event is `unit_photo_request` (vs
- * `receiving_photo_request`) and the payload is unit-scoped. It reuses the same
- * per-staff `staffstation:` channel — implicit pairing, no claim flow.
- */
+/** Publishes a `unit_photo_request` on `staffstation:{staffId}` so a phone loaded on the same staff id auto-navigates to the SERIAL_UNIT… */
 
 import { useCallback } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';

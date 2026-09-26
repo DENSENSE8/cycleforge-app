@@ -2,38 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { batchPair, type BatchPairInput } from '@/lib/neon/pairing-queries';
 
-/**
- * POST /api/sku-catalog/pair-batch
- *
- * Atomic multi-platform pairing for one canonical SKU. The Product Hub
- * accumulates accept / reject / unpair actions and submits them here in
- * one transaction.
- *
- * Body:
- *   {
- *     skuCatalogId: 123,
- *     accept: [
- *       { platformIdRowId: 555, confidence: 87, reason: "trigram_0.74+order_count_8" },
- *       { platform: "ebay", platformItemId: "1234567890", accountName: "ebay-store-1",
- *         listingTitle: "Bose Home Theater System Smart Ultra…", confidence: 80,
- *         reason: "manual_search" }
- *     ],
- *     reject: [ { platformIdRowId: 777, reason: "wrong_color" } ],
- *     unpair: [ { platformIdRowId: 999, reason: "undo" } ]
- *   }
- *
- * Returns:
- *   {
- *     success: true,
- *     pairsCreated, pairsUnchanged, rejections, unpairs,
- *     ordersBackfilled, manualsBackfilled,
- *     auditIds: [...]
- *   }
- *
- * Every accept/reject/unpair writes a sku_pairing_audit row.
- * Backfill of orders.sku_catalog_id and product_manuals.sku_catalog_id
- * runs ONCE per batch (not once per pairing).
- */
+/** POST /api/sku-catalog/pair-batch */
 
 export const POST = withAuth(
   async (request, ctx) => {

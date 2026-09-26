@@ -13,16 +13,7 @@ import { WarrantyClaimBulkCreateBody, WarrantyClaimBulkDeleteBody } from '@/lib/
  * counts, so a partial batch never masquerades as all-or-nothing.
  */
 
-/**
- * POST /api/warranty/claims/bulk
- *
- * Creates up to 100 claims in one call. Items are processed sequentially —
- * claim-number generation is per-year sequential (WC-YYYY-NNNNN), so parallel
- * inserts would just burn its duplicate-key retries. Each item is its own
- * transaction (inside createClaim); one bad item never rolls back its
- * neighbours, it lands in `results` with ok:false instead. Idempotent via
- * `Idempotency-Key` header or `idempotencyKey` body field. Gated by WARRANTY_LOGGER.
- */
+/** POST /api/warranty/claims/bulk */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   if (typeof ctx.staffId !== 'number' || ctx.staffId <= 0) {
@@ -124,14 +115,7 @@ export const POST = withAuth(async (request, ctx) => {
   });
 }, { permission: 'warranty.manage', feature: 'repair' });
 
-/**
- * DELETE /api/warranty/claims/bulk
- *
- * Soft-deletes up to 200 claims by id (deleted_at tombstone — see the single
- * DELETE route). One set-based UPDATE; unknown / already-deleted ids come back
- * in `results` as ok:false rather than failing the batch. Idempotent via
- * `Idempotency-Key` header or `idempotencyKey` body field. Gated by WARRANTY_LOGGER.
- */
+/** DELETE /api/warranty/claims/bulk */
 export const DELETE = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
 

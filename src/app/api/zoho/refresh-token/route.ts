@@ -4,25 +4,13 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zoho/refresh-token
- *
- * Starts a fresh Zoho OAuth consent flow. Zoho only issues a refresh_token
- * on an authorization_code grant with offline access, not on a refresh grant.
- * The callback route persists the returned refresh_token to the database.
- */
+/** GET /api/zoho/refresh-token */
 export const GET = withAuth(async (request: NextRequest) => {
   const authorizeUrl = new URL('/api/zoho/oauth/authorize', request.url);
   return NextResponse.redirect(authorizeUrl);
 }, { permission: 'integrations.zoho' });
 
-/**
- * POST /api/zoho/refresh-token
- *
- * Refreshes the short-lived access token using the stored refresh token.
- * This endpoint does not mint a new refresh_token; use GET on this route
- * to start a new consent flow when you need one stored in the DB.
- */
+/** POST /api/zoho/refresh-token */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const token = await getAccessToken(ctx.organizationId);

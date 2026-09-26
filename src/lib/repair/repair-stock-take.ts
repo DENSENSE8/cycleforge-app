@@ -1,13 +1,4 @@
-/**
- * Take-from-stock on the bench log is tied to ONE bin (operator 2026-09-24:
- * "tied to the specific bin, updating that bin's count"). The action's
- * transaction moves `bin_contents` and the SKU ledger together; these are the
- * pure rules both halves and the phone's bin picker share.
- *
- * - A bin never goes negative: a take larger than the bin's count is refused,
- *   never clamped (clamping would write a ledger delta the shelf never had).
- * - Deleting the action returns exactly what was taken to the same bin.
- */
+/** Take-from-stock on the bench log is tied to ONE bin (operator 2026-09-24: */
 
 /** One installed part per `replaced` entry. */
 export const REPAIR_STOCK_TAKE_QTY = 1;

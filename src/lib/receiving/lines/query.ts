@@ -1,14 +1,4 @@
-/**
- * Query-string parser for GET /api/receiving-lines (and its testing twin at
- * GET /api/testing/receiving-lines).
- *
- * Extracted VERBATIM from the route handler (roi-execution/03 #8) — every
- * coercion, default, and invalid-value fallback is byte-identical to the old
- * inline logic. Invalid values degrade exactly the way they did in the route
- * (silently ignored / defaulted / NaN-preserved) — parsing NEVER introduces a
- * new 400. Validity checks that gate SQL fragments (e.g. `QA_STATUSES.has`)
- * stay at SQL-build time in `./build-sql`, mirroring the original flow.
- */
+/** Query-string parser for GET /api/receiving-lines (and its testing twin at GET /api/testing/receiving-lines). */
 import { z } from 'zod';
 import {
   normalizeReceivingHistorySearchField,
@@ -29,12 +19,7 @@ export const WORKFLOW_STATUSES = new Set([
   'IN_TEST', 'PASSED', 'FAILED', 'RTV', 'SCRAP', 'DONE',
 ]);
 
-/**
- * Raw `Number(...)` results are preserved as-is (including `NaN` for absent /
- * malformed values) so downstream `Number.isFinite(x) && x > 0` gates behave
- * byte-identically to the old inline code. `z.number()` rejects NaN, hence the
- * union.
- */
+/** Raw `Number(...)` results are preserved as-is (including `NaN` for absent / malformed values) so downstream `Number.isFinite(x) && x >… */
 const numberish = z.union([z.number(), z.nan()]);
 
 export const receivingLinesQuerySchema = z.object({
@@ -42,20 +27,7 @@ export const receivingLinesQuerySchema = z.object({
   id: numberish,
   /** `?receiving_id=` — same raw-Number semantics as `id`. */
   receivingId: numberish,
-  /**
-   * `?receiving_id_in=1,2,3` — restrict the list to an explicit carton set.
-   *
-   * This is the **pre-limit** half of pre-limit-then-hydrate. The list's sort
-   * key (`ru.opened_at`) lives on a JOINED table, so Postgres has to run every
-   * display lateral over the whole candidate set before it can sort and LIMIT —
-   * measured at 274,539 shared buffers / 2.2s to return 50 rail rows, and a
-   * smaller `?limit=` does not help because the limit applies last. Naming the
-   * cartons up front (ranked by a cheap indexed read on the ordering column
-   * alone) collapses the lateral work to just the rows that will be shown.
-   *
-   * Empty by default, and the SQL condition is omitted entirely when empty, so
-   * every existing caller's SQL stays byte-identical to the legacy fixture.
-   */
+  /** `?receiving_id_in=1,2,3` — restrict the list to an explicit carton set. */
   receivingIdIn: z.array(z.number()),
   /** `?limit=` — `Math.min(Number(v || 200), 500)`; junk → NaN (preserved). */
   limit: numberish,
@@ -95,14 +67,7 @@ export const receivingLinesQuerySchema = z.object({
   weekStart: z.string(),
   weekEnd: z.string(),
   includeSerials: z.boolean(),
-  /**
-   * `?phase=` fetch tier — `spine` is the fast-paint tier: it forces
-   * {@link includeSerials} off so the expensive authoritative serial resolve
-   * (`fetchSerialsForLines`) is skipped; rows still carry the compact
-   * `serial_projection` read-model as `serials` (build-sql SELECT), so serial
-   * chips render on the first frame. Clients follow up with a `full` fetch
-   * (`include=serials`) to reconcile. Anything other than `spine` = `full`.
-   */
+  /** `?phase=` fetch tier — `spine` is the fast-paint tier: */
   phase: z.enum(['full', 'spine']),
   /** Universal-Incoming facet params (trimmed + lowercased raw strings). */
   inboundSourceParam: z.string(),
@@ -124,18 +89,7 @@ export const receivingLinesQuerySchema = z.object({
    * Unbox Queue priority lane (`?ulane=`). Empty = all. Invalid → empty.
    */
   unboxQueueLane: z.enum(['', 'PO_STOCKOUT', 'PO_STANDARD', 'RETURN', 'HOLD']),
-  /**
-   * `?tracking_in=` — canonical (upper-alnum) tracking keys from a bulk paste.
-   * Empty array = the param is absent and nothing about the query changes.
-   *
-   * This is an EXACT-KEY filter, not a search: `search` is one free-text ILIKE
-   * answering "narrow this list", and a delimited list there would make the
-   * pattern quadratic and collide with `rh_field` / `rh_scope`.
-   *
-   * Non-empty, it also RELAXES the Incoming lane — see `build-sql.ts`.
-   * Capped + deduped by the shared parser; a hand-edited deep link over the cap
-   * is truncated here rather than 400-ing.
-   */
+  /** `?tracking_in=` — canonical (upper-alnum) tracking keys from a bulk paste. */
   trackingIn: z.array(z.string()),
 });
 
@@ -172,11 +126,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const qaFilter    = String(searchParams.get('qa_status') || '').trim().toUpperCase();
   const dispFilter  = String(searchParams.get('disposition') || '').trim().toUpperCase();
   const workflowFilter = String(searchParams.get('workflow_status') || '').trim().toUpperCase();
-  // Wave-2 dead-arm removal: the no-view ?week_start/?week_end fallback was
-  // deleted (grep-proven zero consumers) — those params are now ignored.
-  // Incoming-only: filters by the computed delivery_state bucket
-  // (DELIVERED_UNOPENED, ARRIVING_TODAY, STALLED, IN_TRANSIT, AWAITING_TRACKING).
-  // Mirrors the stat-tile click semantics on IncomingSidebarPanel.
+  // Wave-2 dead-arm removal:
   const deliveryStateFilter = String(searchParams.get('delivery_state') || '')
     .trim()
     .toUpperCase();
@@ -196,10 +146,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   const poToRaw = String(searchParams.get('po_to') || '').trim();
   const poFrom = isISODate(poFromRaw) ? poFromRaw : '';
   const poTo = isISODate(poToRaw) ? poToRaw : '';
-  // Incoming-only: sort axis. Defaults to most-recently-issued-in-Zoho.
-  // `po_newest`/`po_oldest` (B3, provider-agnostic aliases) map to the SAME
-  // SQL as `zoho_newest`/`zoho_oldest` (see build-sql.ts's incomingOrderBy) —
-  // old values are never removed, so existing deep links keep working.
+  // Incoming-only:
   const sortRaw = String(searchParams.get('sort') || '').trim().toLowerCase();
   const incomingSort:
     | 'zoho_newest'
@@ -214,13 +161,6 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
           ? 'recently_added'
           : 'zoho_newest';
   // Sort axis for the receiving-history feed (view=all/activity).
-  // Lets the history UI sort by scanned-at (door), unboxed-at, or received-at
-  // (the line's terminal DONE / "Received" transition — receiving_lines.
-  // received_done_at, distinct from the misnamed door-scan receiving.received_at).
-  // `unbox_activity` (the unbox Recent rail) = unboxed_at OR the line's own
-  // last write (updated_at) — door re-scans bump neither, so triage scans
-  // can't reorder the rail, while a return-paired/just-received line (no
-  // unbox stamp yet) still surfaces by its line activity.
   const historySort:
     | 'scanned_newest'
     | 'scanned_oldest'
@@ -243,10 +183,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   // the supported view set can't drift between the two ends. `null` = no/
   // unknown view → org-wide default scoping.
   const view = parseReceivingView(viewRaw);
-  // Phase 2 — physical-vs-financial decoupling: `?zohoStatus=open` (the "Hide
-  // Zoho-received" toggle) re-applies the old hide-terminal filter.
-  // `?inventoryStatus=` (B3, provider-agnostic alias) is the same toggle under
-  // the new name — preferred when both are present; old param never removed.
+  // Phase 2 — physical-vs-financial decoupling:
   const zohoStatusRaw = String(searchParams.get('zohoStatus') || '').trim().toLowerCase();
   const inventoryStatusRaw = String(searchParams.get('inventoryStatus') || '').trim().toLowerCase();
   const hideZohoReceived = (inventoryStatusRaw || zohoStatusRaw) === 'open';

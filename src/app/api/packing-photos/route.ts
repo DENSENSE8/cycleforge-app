@@ -13,15 +13,7 @@ import { publishPackerPhotoChanged } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Packer photo endpoint — the packing mirror of `/api/receiving-photos`.
- *
- * Photos are stored polymorphically on the `photos` table, linked via
- * `photo_entity_links` with `entity_type='PACKER_LOG'`, `entity_id=packer_logs.id`.
- *
- *   GET    ?packerLogId=N   → every photo for that packer log (signed URLs)
- *   DELETE ?id=P            → remove one photo + live-refresh subscribers
- */
+/** Packer photo endpoint — the packing mirror of `/api/receiving-photos`. */
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {

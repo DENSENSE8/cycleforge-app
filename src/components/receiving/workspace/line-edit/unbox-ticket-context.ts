@@ -16,12 +16,7 @@ type UnboxTicketContextOpen = {
   ticketAction: 'chat' | 'claim';
 };
 
-/**
- * Linked ticket → open Ticket composer mode (chat above the dock).
- * Unfound carton → Ticket mode on Link so tracking-seeded search runs
- * (empty seed may flip to Create inside the claim controller).
- * Otherwise leave Ticket mode closed (ops-flow middle only).
- */
+/** Linked ticket → open Ticket composer mode (chat above the dock). */
 export function resolveUnboxTicketContextOpen(
   row: ReceivingLineRow,
   hasLinkedTicket: boolean,

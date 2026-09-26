@@ -1,14 +1,4 @@
-/**
- * PATCH /api/admin/staff/[id]/mobile-display-config
- *
- * Body:
- *   { config: MobileDisplayConfigInput | null }
- *
- * REPLACE semantics for the JSONB column. Pass `null` (or `{}`) to clear
- * the override and fall fully back to the staff's roles' defaults.
- *
- * Admin role accepts changes — admins use mobile too.
- */
+/** PATCH /api/admin/staff/[id]/mobile-display-config */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

@@ -6,19 +6,7 @@ import type { TimelineItem, TimelineGroupKey } from '@/lib/timeline/types';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { sectionLabel, microBadge } from '@/design-system/tokens/typography/presets';
 
-/**
- * The drop-in activity-timeline block for any detail panel: a quiet section
- * header, a loading skeleton, an empty state, and the shared {@link EventTimeline}
- * — so a panel adds a full timeline with one line:
- *
- *   <TimelineSection title="Activity" loading={isLoading} items={items} />
- *
- * Owns nothing domain-specific; callers map their source through a
- * `*ToTimeline` adapter and hand the items here.
- *
- * Header type comes from the design-system typography SoT (`sectionLabel` /
- * `microBadge`) — never hand-roll eyebrow tracking here.
- */
+/** The drop-in activity-timeline block for any detail panel: */
 export interface TimelineSectionProps {
   items: TimelineItem[];
   title?: string;

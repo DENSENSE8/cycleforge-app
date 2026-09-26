@@ -200,11 +200,7 @@ test('regression: receiving.upload_photo gates photo reassignment', () => {
 });
 
 test('regression: photo ASPECT classification is floor work, not admin work', () => {
-  // Naming what a shot shows is done at the bench, by the operator standing in
-  // the capture step — the same hands that took it. Migrating this to an admin
-  // permission would 403 the only person who can answer the question, which is
-  // the `integrations.zendesk` failure (an ADMIN_ONLY gate on a floor surface).
-  // Deliberately the SAME permission as the reassign sibling above.
+  // Naming what a shot shows is done at the bench, by the operator standing in the capture step — the same hands that took it.
   const paths = routesGatedBy('receiving.upload_photo').map((r) => r.path);
   assert.ok(
     paths.includes('/api/photos/[id]/aspect/route.ts'),
@@ -363,10 +359,7 @@ test('regression: package export is studio.view, package import is studio.manage
 });
 
 test('regression: catalog curation — submit is studio.manage, review is studio.catalog.review (Template Platform Phase 4)', () => {
-  // Submitting the org's OWN definition to the catalog is an authoring write by
-  // its owner (studio.manage). Browsing the curated (approved+public) catalog is
-  // a read (studio.view). Moderating another org's submission — the review queue
-  // and approve/reject — is the platform-curator gate (studio.catalog.review).
+  // Submitting the org's OWN definition to the catalog is an authoring write by its owner (studio.manage).
   const manage = routesGatedBy('studio.manage').map((r) => r.path);
   assert.ok(
     manage.includes('/api/studio/definitions/[id]/submit/route.ts'),
@@ -389,11 +382,7 @@ test('regression: catalog curation — submit is studio.manage, review is studio
 });
 
 test('regression: AI intake surfaces are studio.view reads, never activation (Template Platform Phase 5)', () => {
-  // The AI palette (constrained vocabulary) and the template recommender are
-  // both read-only: they rank/expose EXISTING system templates + the registered
-  // node/surface vocabulary. Neither installs or activates anything (the owner
-  // still confirms via the studio.manage onboarding chooser), so both are
-  // studio.view.
+  // The AI palette (constrained vocabulary) and the template recommender are both read-only:
   const view = routesGatedBy('studio.view').map((r) => r.path);
   assert.ok(
     view.includes('/api/studio/templates/ai-vocabulary/route.ts'),
@@ -406,11 +395,7 @@ test('regression: AI intake surfaces are studio.view reads, never activation (Te
 });
 
 test('regression: node-bound station writes are studio.manage (ST5 / Phase D)', () => {
-  // The node-scoped station binding (Operations Studio L2). The read
-  // (GET .../station) stays studio.view; the manifest records the first-declared
-  // method's permission per file, so that GET-first file lands on studio.view —
-  // but its PUT (draft write) and the dedicated publish sub-route are
-  // studio.manage at runtime.
+  // The node-scoped station binding (Operations Studio L2).
   const view = routesGatedBy('studio.view').map((r) => r.path);
   assert.ok(
     view.includes('/api/studio/nodes/[id]/station/route.ts'),
@@ -473,10 +458,7 @@ test('regression: integrations.google_drive gates the Drive connect + health rou
 });
 
 test('regression: the image-type registry route is permission-gated', () => {
-  // The saved-folder system was replaced by the image-type registry. The
-  // route file is gated (manifest records the per-file minimum, photos.view for
-  // the GET list); the POST that creates a custom type additionally enforces
-  // photos.manage in-handler (see /api/photos/image-types/route.ts).
+  // The saved-folder system was replaced by the image-type registry.
   const route = routeByPath('/api/photos/image-types/route.ts');
   assert.ok(route, 'the image-types route should be in the manifest');
   assert.equal(route.gate, 'withAuth');
@@ -549,13 +531,7 @@ test('regression: beta.review gates the beta-applications review queue; the publ
 });
 
 test('regression: tech.view gates the fulfillment substitution-policy read; the substitute POST enforces its OR in-handler', () => {
-  // Tech-substitution wiring Phase 0 (docs/todo/tech-substitution-wiring-plan.md
-  // §3.3 Option B): the client policy read is tech.view; the substitute POST
-  // accepts packing.substitute_unit OR tech.substitute_unit. withAuth's single
-  // `permission` option can't express an OR, so the POST enforces the pair
-  // in-handler (403 + auth_audit on denial) and the manifest records the file
-  // as authed-no-permission — NOT ungated. This test pins both facts so a
-  // refactor that drops the in-handler gate shows up as a manifest drift here.
+  // Tech-substitution wiring Phase 0 (docs/todo/tech-substitution-wiring-plan.md §3.3 Option B):
   const policy = routeByPath('/api/fulfillment/substitution-policy/route.ts');
   assert.ok(policy, 'the substitution-policy route should be in the manifest');
   assert.equal(policy.gate, 'withAuth');
@@ -578,10 +554,7 @@ test('regression: buyer-note ack enforces packing.complete_order OR shipping.buy
 });
 
 test('regression: order manuals — reads are orders.view, every manual write is product_manuals.manage', () => {
-  // To-ship paperwork walk: packers read an order's SKU manuals with
-  // orders.view, but upload / pair / rename / replace / unpair / delete mutate
-  // the shared manual library, so they need product_manuals.manage (the POST
-  // on the list route gates in-handler; the manifest records GET's perm).
+  // To-ship paperwork walk:
   const list = routeByPath('/api/orders/[id]/manuals/route.ts');
   assert.ok(list, 'the order manuals route should be in the manifest');
   assert.equal(list.gate, 'requireRoutePerm');
@@ -596,10 +569,6 @@ test('regression: order manuals — reads are orders.view, every manual write is
 
 test('regression: receiving-lines PATCH assign-only accepts tech.qc_pass in-handler', () => {
   // Testing triage ownership (docs/todo/testing-triage-ownership-scope-HANDOFF.md):
-  // technicians lack receiving.mark_received; assign-only PATCHes
-  // (`id` + `assigned_tech_id`) accept tech.qc_pass without widening the
-  // technician role. Pin the in-handler OR so it cannot silently regress to
-  // mark_received-only.
   const src = readFileSync(join(process.cwd(), 'src/app/api/receiving-lines/route.ts'), 'utf8');
   assert.match(src, /tech\.qc_pass/);
   assert.match(src, /receiving\.mark_received\|tech\.qc_pass/);
@@ -629,11 +598,7 @@ test('regression: receiving.match_email gates the incoming match-email route (in
 });
 
 test('regression: operations.plans.view gates the forge master-plan routes (agentic loop Phase 1/3)', () => {
-  // The agentic-loop master plan reuses the ops-plans permission family
-  // (docs/todo/agentic-loop-master-plan.md): viewers bootstrap the CRDT via
-  // GET /api/forge/master-plan (+ /seed), and the plan-agent chat streams from
-  // /api/forge/chat (mutation tools are only handed to operations.plans.manage
-  // holders inside the handler; the route gate is the view permission).
+  // The agentic-loop master plan reuses the ops-plans permission family (docs/todo/agentic-loop-master-plan.md):
   const paths = routesGatedBy('operations.plans.view').map((r) => r.path);
   assert.ok(paths.includes('/api/forge/master-plan/route.ts'), 'view perm should gate /api/forge/master-plan');
   assert.ok(paths.includes('/api/forge/master-plan/seed/route.ts'), 'view perm should gate /api/forge/master-plan/seed');
@@ -698,17 +663,7 @@ test('walk_in.take_payment is a registered permission', () => {
 });
 
 test('taking counter payment is NOT a route gate on any DEVICE-authed kiosk route', () => {
-  // The kiosk write path is device-authed, so there is no staff session for
-  // withAuth to check a permission against. `walk_in.take_payment` is instead
-  // verified inside resolveKioskStepUp against the PIN'd staff's effective
-  // permissions. This test pins that architecture: if someone later "fixes" a
-  // /api/kiosk route to require the permission via withAuth, the device
-  // principal breaks and the whole unattended-tablet model goes with it.
-  //
-  // Narrowed from "no route anywhere" 2026-08-20: the desk twin
-  // (/api/counter/session/**) runs under withAuth with a real staff session, so
-  // gating THOSE on the permission is the correct check, not a violation. The
-  // invariant was always about the device principal — it now says so.
+  // The kiosk write path is device-authed, so there is no staff session for withAuth to check a permission against.
   const r = routeByPath('/api/kiosk/intake/route.ts');
   assert.ok(r, 'intake route should be in the manifest');
   assert.equal(r.permission, null, 'device-authed: no route-level staff permission');
@@ -791,11 +746,7 @@ test('V1 label-ingestion apply and retry are packing.complete_order writes', () 
 });
 
 test('interop.read gates every standards-projection route', () => {
-  // The interop projections read the whole tenant's operational history in a
-  // machine-readable form. That breadth is why they carry their own permission
-  // rather than riding on `reports.export`, and why every one of them must be
-  // gated — an ungated projection would be a full-history export behind a
-  // plain session.
+  // The interop projections read the whole tenant's operational history in a machine-readable form.
   assert.equal(isKnownPermission('interop.read'), true);
 
   const paths = routesGatedBy('interop.read').map((r) => r.path);
@@ -823,11 +774,7 @@ test('interop.read gates every standards-projection route', () => {
 });
 
 test('regression: work_orders.claim gates the whole task desk — read, throw and edit', () => {
-  // Increment 3 added GET beside the existing POST on /api/tasks, plus PATCH
-  // on /api/tasks/[id]. All three reuse the gate POST already carried: driving
-  // a task you were handed is the same everyday floor act as throwing one, and
-  // every floor role already holds work_orders.claim (scripts/seed-roles.mjs).
-  // A NEW permission here would have locked the desk to nobody by default.
+  // Increment 3 added GET beside the existing POST on /api/tasks, plus PATCH on /api/tasks/[id].
   assert.equal(isKnownPermission('work_orders.claim'), true);
 
   const list = routeByPath('/api/tasks/route.ts');
@@ -842,10 +789,7 @@ test('regression: work_orders.claim gates the whole task desk — read, throw an
 });
 
 test('regression: work_orders.claim gates the ticket-target resolver', () => {
-  // The Daily composer's Ticket face resolves a helpdesk number through this
-  // route before POST /api/tasks anchors to it. It MUST carry the same
-  // permission as that throw — a resolver a floor staffer is refused would be
-  // a type the composer offers and then cannot complete.
+  // The Daily composer's Ticket face resolves a helpdesk number through this route before POST /api/tasks anchors to it.
   const r = routeByPath('/api/tasks/ticket-target/route.ts');
   assert.ok(r, 'the ticket-target route should be in the manifest');
   assert.equal(r.permission, 'work_orders.claim');

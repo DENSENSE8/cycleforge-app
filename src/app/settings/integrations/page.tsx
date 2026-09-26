@@ -1,16 +1,4 @@
-/**
- * /settings/integrations — org Settings → Integrations.
- *
- * Server component. Builds per-provider connection status from three sources —
- * the encrypted credential vault (organization_integrations), the per-account
- * tables (amazon_accounts / ebay_accounts), and the env-fallback resolver
- * (getIntegrationCredentials, which covers USAV's env-based config) — then
- * renders a category-grouped catalog of provider cards. The connect / disconnect
- * / health actions live in the client cards.
- *
- * Gated by admin.view at the page level; individual mutations are gated server
- * side (integrations.*, admin.manage_features, CRON_SECRET).
- */
+/** /settings/integrations — org Settings → Integrations. */
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';

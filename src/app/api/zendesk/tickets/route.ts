@@ -14,16 +14,7 @@ import { pairTicketShipmentFromEntity } from '@/lib/support/ticket-link';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Helpdesk tickets collection (Zendesk is the first adapter).
- *
- *   GET  /api/zendesk/tickets            → list (paginated, newest first)
- *   GET  /api/zendesk/tickets?query=...  → helpdesk search
- *   POST /api/zendesk/tickets            → create
- *
- * Goes through the org's HelpdeskProvider (capability facade). Gated by
- * integrations.zendesk.
- */
+/** Helpdesk tickets collection (Zendesk is the first adapter). */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

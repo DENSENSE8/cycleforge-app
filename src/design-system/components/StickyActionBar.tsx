@@ -74,10 +74,7 @@ interface StickyActionBarProps {
   /** Pin `leading` / hints on their own row above the action buttons — for narrow
    *  sidebar panels where a side-by-side layout clips the count label. */
   stackLeading?: boolean;
-  /** Floating variant — instead of a full-bleed bar, render just the CTA
-   *  hovering above the scroll surface with no background/border/backdrop,
-   *  aligned to `maxWidth` + gutter and stretched full-width.
-   *  `hints`/`leading`/`primaryFullWidth` are ignored. */
+  /** Floating variant — instead of a full-bleed bar, render just the CTA hovering above the scroll surface with no… */
   floating?: boolean;
   /** Extra class on the outer wrapper (override bg, padding, etc.). */
   className?: string;
@@ -104,19 +101,7 @@ const TONE_BG_SOLID: Record<StickyActionTone, string> = {
   gray: 'bg-surface-inverse',
 };
 
-/**
- * Sticky bottom action bar — the canonical chrome for every "do the thing"
- * surface (receiving, label printer, pairing). Renders three slots from left
- * to right:
- *
- *  - **Leading**: keyboard `hints` or arbitrary `leading` content (badge counts).
- *  - **Secondary**: optional outline button (Discard, Cancel).
- *  - **Primary**: solid-tone CTA. Pass `primary.menu` to turn it into a
- *    split button — a chevron on the left opens an upward menu on click.
- *
- * Pinned `bottom-0 z-10` inside its containing scroll surface. Parent must
- * leave room (e.g. `pb-32` on the scroll inner) so content isn't hidden.
- */
+/** Sticky bottom action bar — the canonical chrome for every "do the thing" surface (receiving, label printer, pairing). */
 export function StickyActionBar({
   primary,
   secondary,
@@ -314,10 +299,7 @@ export function StickyActionBar({
     </div>
   );
 
-  // Floating variant — the CTA hovers above the scroll surface, aligned to the
-  // panel body's max-width + gutter, with no bar chrome (no background, border,
-  // or backdrop). The outer wrapper is click-through (pointer-events-none) so it
-  // never blocks the content scrolling beneath it; the CTA re-enables clicks.
+  // Floating variant — the CTA hovers above the scroll surface, aligned to the panel body's max-width + gutter, with no bar chrome (no…
   if (floating) {
     return (
       <div

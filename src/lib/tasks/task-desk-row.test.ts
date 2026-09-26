@@ -1,16 +1,4 @@
-/**
- * The task row's two identities, and the doors they open.
- *
- * A ticket task carries TWO numbers — the local `support_tickets.id` it is
- * anchored to and the provider number the helpdesk answers to — and every bug
- * this file defends against is one of them standing in for the other. The
- * symptom is not a crash: `/support?ticket=312` and `SupportTicketDetail
- * ticketId={312}` both render, they just render somebody else's ticket.
- *
- * The surface split is here for the same reason: `/m` may not link into a desk
- * console (`SURFACE_LAW` §1), so the phone and the desk answer differently for
- * the arms where `/m` owns a door, and identically everywhere else.
- */
+/** The task row's two identities, and the doors they open. */
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

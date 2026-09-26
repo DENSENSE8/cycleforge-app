@@ -1,11 +1,4 @@
-/**
- * Channel allocation waist — post-test disposition types.
- *
- * SoT for "where does a passed unit go next": FBA inbound prep vs pre-box/stock
- * vs hold. Views render dispositions/reasons; they must not re-derive the rules.
- *
- * @see docs/todo/fba-surface-split-plan.md
- */
+/** Channel allocation waist — post-test disposition types. */
 
 import type { VelocityTier } from '@/lib/velocity-tier-tone';
 

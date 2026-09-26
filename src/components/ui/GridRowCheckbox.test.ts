@@ -4,16 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { GridRowCheckbox, GridSelectSquareFace } from './GridRowCheckbox';
 
-/**
- * Select chrome — every variant uses a full-cell hit plane; only the painted
- * face differs. `'always'` always paints the bordered 16px square;
- * `'selected-only'` paints it only when checked/mixed; `'hover'` paints it on
- * row hover (and whenever checked/mixed).
- *
- * `'sheets'` / `'flush'` and the full-bleed `GridClickSelectFace` were removed
- * on 2026-09-04 — see {@link GridSelectSquareFace}'s docblock for the two
- * operator rulings that emptied them.
- */
+/** Select chrome — every variant uses a full-cell hit plane; only the painted face differs. */
 describe('GridRowCheckbox chrome', () => {
   it('always chrome paints a bordered face while unchecked on a full-cell hit plane', () => {
     const html = renderToStaticMarkup(
@@ -105,12 +96,7 @@ describe('GridRowCheckbox chrome', () => {
 
 /**
  * {@link GridSelectSquareFace} — the compound row's body face.
- *
- * Three states, and OFF is empty. Both halves of the old face went in one
  * operator pass on 2026-09-04: no full-bleed block ("not a full width or full
- * height display") and no resting mark ("remove the faded checkmark throughout
- * the entire slot data table"). That reverses the 2026-08-21 faded-check
- * ruling deliberately — these pin it so it is not quietly restored.
  */
 describe('GridSelectSquareFace', () => {
   const paint = (checked: boolean | 'mixed') =>

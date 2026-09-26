@@ -1,21 +1,4 @@
-/**
- * The ONE paste parser for tracking **and** order/PO numbers, plus the
- * `?tracking_in=` URL vocabulary built on top of it.
- *
- * Two operator questions share one input — *"are these received upstream?"*
- * (the ERP check) and *"show me these rows"* (the bulk list filter) — so they
- * share one splitter. A second parser is a second set of paste bugs and a
- * second answer to "is `1Z999 AA1 01` one tracking or three". Keys are
- * upper-alnum canons; short PO/order tokens are valid (no minimum length).
- *
- * **Altitude:** dependency-free apart from {@link canonicalizeTrackingKey}
- * (itself pure), because the paste panel is a CLIENT component. This lived in
- * `check-zoho-received.ts` until 2026-08-02; that module reaches the Zoho
- * client and `tenantQuery` (lazily, but the graph is still there), so a client
- * import of the parser would have dragged it along — the bundle-altitude trap
- * in `build-gotchas.md`. `check-zoho-received.ts` re-exports both names, so
- * every existing server import path is unchanged.
- */
+/** The ONE paste parser for tracking **and** order/PO numbers, plus the `?tracking_in=` URL vocabulary built on top of it. */
 
 import { canonicalizeTrackingKey } from '@/lib/zoho/call-reduction';
 
@@ -29,13 +12,7 @@ export const CHECK_ZOHO_RECEIVED_MAX_INPUTS = 100;
 /** The list-filter URL param. One name, imported — never re-typed at a call site. */
 export const TRACKING_IN_PARAM = 'tracking_in';
 
-/**
- * Expand one paste token into tracking string(s).
- * Newline / comma / semicolon are hard separators. Within a token, whitespace
- * splits only when every piece looks like its own tracking (canon length ≥ 8);
- * otherwise spaces are treated as formatting inside one tracking
- * (e.g. `1Z999 AA1 01 2345 6789`).
- */
+/** Expand one paste token into tracking string(s). */
 function expandPasteToken(token: string): string[] {
   const trimmed = String(token ?? '').trim();
   if (!trimmed) return [];
@@ -110,15 +87,7 @@ export function parseTrackingPaste(
   };
 }
 
-/**
- * A paste resolved into the canonical keys the list filter sends, with the
- * truncation stated rather than swallowed.
- *
- * `truncated > 0` is a fact the operator MUST be shown ("showing the first 100
- * of 137"). A paste that silently loses its tail reads as "those 37 aren't in
- * the system", which is the same false-certainty this whole initiative exists
- * to remove — see `verify.md` → no silent caps.
- */
+/** A paste resolved into the canonical keys the list filter sends, with the truncation stated rather than swallowed. */
 interface TrackingKeySelection {
   /** Canonical (upper-alnum) keys, deduped, capped at {@link CHECK_ZOHO_RECEIVED_MAX_INPUTS}. */
   keys: string[];
@@ -137,15 +106,7 @@ const EMPTY_SELECTION: TrackingKeySelection = {
   truncated: 0,
 };
 
-/**
- * Paste blob → capped canonical key selection.
- *
- * Deliberately does NOT reuse `parseTrackingPaste`'s over-cap ERROR: the ERP
- * check refuses an oversize paste because every key past the cap is an
- * unanswered lookup, while the list filter can honestly answer "here are the
- * first 100". Same splitter (called with the cap lifted), different policy at
- * the boundary.
- */
+/** Paste blob → capped canonical key selection. */
 export function parseTrackingKeys(
   input: string | string[],
   maxInputs: number = CHECK_ZOHO_RECEIVED_MAX_INPUTS,

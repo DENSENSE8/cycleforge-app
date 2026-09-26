@@ -1,15 +1,4 @@
-/**
- * POST /api/integrations/nango/session
- *
- * Mints a short-lived Nango Connect session token for the caller's tenant so
- * the browser can open the hosted Connect UI (OAuth dance) for a Nango-backed
- * provider. No secret ever reaches the client beyond this single-use token.
- *
- * Body: { provider: 'square' }   // must be a NANGO_BACKED provider
- *
- * Gated by admin.manage_features + step-up, matching the credential-upsert
- * route — connecting an integration is the same class of action.
- */
+/** POST /api/integrations/nango/session */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

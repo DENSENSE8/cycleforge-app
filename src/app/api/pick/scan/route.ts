@@ -5,33 +5,7 @@ import { parseScannedUrl } from '@/lib/scan-resolver';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/pick/scan
- *
- * Phase 4. Validates a scanned serial against an open ALLOCATED row and
- * advances it to PICKED. Used by the mobile pick app.
- *
- * Body shape (one of):
- *   { scan: "ABC1234..."                   }  // raw serial text
- *   { scan: "https://.../01/{gtin}/21/..." }  // GS1 Digital Link
- *   { serial_unit_id: 42                   }  // explicit id
- *
- * Optional:
- *   { order_id?: number,                // bind to this order; required when
- *                                       // the same SKU has multiple open
- *                                       // allocations across orders
- *     bin_id?:   number,                // destination tote / pick cart bin
- *     client_event_id?: string,
- *     override_mismatch?: boolean }     // record manual_override on mismatch
- *
- * Transitions:
- *   allocation.state ALLOCATED → PICKED
- *   serial_units.current_status ALLOCATED → PICKED
- *   inventory_events PICKED row (payload.allocation_id, payload.order_id,
- *                                payload.mismatch=true if override path)
- *
- * Permission: orders.view (pick action belongs to the order lifecycle).
- */
+/** POST /api/pick/scan */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const scan = String(body?.scan ?? '').trim();
@@ -71,10 +45,7 @@ export const POST = withAuth(async (request, ctx) => {
 
   try {
     const result = await withTenantTransaction(orgId, async (client) => {
-      // 1. Resolve the unit by id or normalized serial. serial_units is
-      //    tenant-owned — scope to this org so a cross-tenant id/serial reads
-      //    as not-found (and the normalized_serial string key can't collide
-      //    across tenants).
+      // 1. Resolve the unit by id or normalized serial.
       const unitQ = serialUnitIdInput
         ? await client.query<{ id: number; sku: string | null; current_status: string }>(
             `SELECT id, sku, current_status::text AS current_status
@@ -139,19 +110,11 @@ export const POST = withAuth(async (request, ctx) => {
         mismatch = true;
       }
 
-      // 3. Advance the UNIT first (guarded), THEN the allocation. Ordering
-      //    matters: transaction() commits on a normal return, so a guard
-      //    rejection must happen BEFORE the allocation is advanced, or we'd
-      //    commit a half-advanced allocation against an unchanged unit.
+      // 3. Advance the UNIT first (guarded), THEN the allocation.
       let prevStatus = unit.current_status;
       let eventId: number | null = null;
       if (!mismatch) {
-        // Normal pick: a matched open ALLOCATED row exists → guarded
-        // ALLOCATED→PICKED. transition() writes status + emits the PICKED event
-        // atomically; it writes status only, so current_location is applied
-        // separately below. binId is always passed (null when unscanned) so the
-        // event's bin_id matches the old behavior instead of falling back to
-        // the unit's current_location.
+        // Normal pick: a matched open ALLOCATED row exists → guarded ALLOCATED→PICKED.
         const tr = await transition({
           unitId: unit.id,
           to: 'PICKED',
@@ -182,12 +145,7 @@ export const POST = withAuth(async (request, ctx) => {
           );
         }
       } else {
-        // Override force-pick: an operator-confirmed pick with no matching open
-        // ALLOCATED row (or an already-advanced allocation). Routed through the
-        // guarded state machine as a dedicated FORCE_PICK event so the override
-        // is auditable and only the modeled force edges (STOCKED / TESTED /
-        // GRADED → PICKED, plus the pre-existing pick-flow edges) can fire — a
-        // state with no edge (e.g. SHIPPED) now 409s instead of being clobbered.
+        // Override force-pick:
         const forcePayload = {
           source: 'pick.scan',
           order_id: allocation?.order_id ?? orderIdInput ?? null,
@@ -286,13 +244,8 @@ export const POST = withAuth(async (request, ctx) => {
     if (!result.ok) {
       return NextResponse.json(result, { status: result.status });
     }
-    // A committed pick changes what the To-ship desk paints (the Pick column),
-    // so it has to reach open desks the way a pack scan does — before this the
-    // route published nothing and a picker's scan was invisible until someone
+    // A committed pick changes what the To-ship desk paints (the Pick column), so it has to reach open desks the way a pack scan does — before…
     // refetched (operator ruling 2026-09-14). Rides the same `order.changed`
-    // event as packing-logs with its own `source`, so the dashboard subscriber
-    // needs no new branch. Off the response path via after(), and swallowed:
-    // an Ably outage must never fail a pick that is already committed.
     const changedOrderId = result.orderId;
     if (changedOrderId != null) {
       after(() =>

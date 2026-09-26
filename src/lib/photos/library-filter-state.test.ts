@@ -396,11 +396,7 @@ test('the facet tabs cover every source scope — no scope stranded off-strip', 
 });
 
 test('?photoId= is a DISPLAY param and never a filter', () => {
-  // Reinstated 2026-08-09 for the desk inspector, on the axis the retired
-  // `PhotoInspectorPanel` failed: it is written from SELECTION (never from the
-  // tile click, which still opens the fullscreen viewer) and it is a display
-  // param, so it cannot reach `buildLibraryWhere` and narrow the very stream the
-  // photo was picked from.
+  // Reinstated 2026-08-09 for the desk inspector, on the axis the retired `PhotoInspectorPanel` failed:
   const display = parsePhotoLibraryDisplayParams(new URLSearchParams('photoId=4210&page=3'));
   assert.deepEqual(Object.keys(display).sort(), ['page', 'photoId', 'view']);
   assert.equal(display.page, 3);
@@ -446,10 +442,7 @@ test('a display bag with no photoId DROPS the param — this is the eviction rul
 });
 
 test('a legacy ?view=folders deep link degrades to the flat stream', () => {
-  // The hierarchy is gone, so a bookmarked drill or a saved view stored with
-  // `view: 'folders'` must land somewhere real rather than throwing or painting
-  // an empty surface. Every photo it used to reach is still reachable — as a
-  // filter rather than a descent.
+  // The hierarchy is gone, so a bookmarked drill or a saved view stored with `view:
   assert.equal(parsePhotoLibraryViewMode('folders'), DEFAULT_PHOTO_LIBRARY_VIEW);
 });
 
@@ -487,10 +480,7 @@ test('default media type landing is all-types recent (no scope or date pin)', ()
 });
 
 test('every lifecycle tab is a distinct, reachable URL state', () => {
-  // Carried forward from the deleted recency-tab suite, which is what caught the
-  // original defect: the old `all` tab serialized byte-identically to `recent`
-  // (both = no date pin), so it could never light up. Generic over the tab list
-  // so a future facet cannot reintroduce a tab that is unreachable by URL.
+  // Carried forward from the deleted recency-tab suite, which is what caught the original defect:
   const seen = new Map<string, PhotoLibrarySourceScope>();
   for (const tab of PHOTO_LIBRARY_SCOPE_TABS) {
     const params = photoLibraryFiltersToParams(applySourceScopeTab(tab)).toString();

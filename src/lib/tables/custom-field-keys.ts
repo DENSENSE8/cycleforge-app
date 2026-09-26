@@ -1,10 +1,4 @@
-/**
- * Custom-field column keys on LedgerGrid surfaces.
- *
- * System columns keep their family keys (`title`, `order`, …). Org-defined
- * fields paint under `custom:<defKey>` so family switches can default to
- * {@link CustomFieldCell} without a new case per field (U2).
- */
+/** Custom-field column keys on LedgerGrid surfaces. */
 
 export const CUSTOM_FIELD_KEY_PREFIX = 'custom:' as const;
 

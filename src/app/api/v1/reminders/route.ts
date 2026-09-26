@@ -9,15 +9,7 @@ import {
 
 export const runtime = 'nodejs';
 
-/**
- * GET /api/v1/reminders?from=&days= — the caller's reminders for the native
- * apps to schedule as LOCAL notifications (contract: `reminder-contract.ts`).
- *
- * Session-only gate: every staffer has a daily checklist, so the checklist
- * half is always included; task reminders ride along only for sessions that
- * can work tasks (`work_orders.claim`, the task desk's permission). Org and
- * staffer come from the verified session, never the request.
- */
+/** GET /api/v1/reminders?from=&days= — the caller's reminders for the native apps to schedule as LOCAL notifications (contract: */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const parsed = reminderFeedQuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams));
   if (!parsed.success) {

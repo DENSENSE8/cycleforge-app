@@ -1,20 +1,4 @@
-/**
- * pending-skus.ts — the "create in Zoho" to-do queue (relational-reuse plan P3 §7).
- * ────────────────────────────────────────────────────────────────────
- * When an operational SKU can't resolve to sku_catalog (because the product
- * hasn't been created in Zoho yet — Zoho is the SoT), we record it here instead
- * of silently dropping it or auto-creating a local catalog row. One row per
- * normalized SKU; `occurrences` tracks how often it's blocking work.
- *
- * Resolution is automatic: the `trg_resolve_pending_sku` trigger on sku_catalog
- * stamps `sku_catalog_id` and flips status → CREATED the moment the matching
- * Zoho SKU lands. The queue key and the trigger both normalize via the SQL
- * `fn_normalize_sku()` so they can't drift.
- *
- * Pairing entry point: `resolveSkuCatalogIdOrQueue()` — resolve through the
- * existing crosswalk chain, and on a miss enqueue + return null (caller leaves
- * the operational row's sku_catalog_id NULL = unmatched).
- */
+/** pending-skus.ts — the "create in Zoho" to-do queue (relational-reuse plan P3 §7). */
 
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
@@ -45,13 +29,7 @@ export interface QueuePendingSkuInput {
   suggestedTitle?: string | null;
 }
 
-/**
- * Record an unmatched SKU in the queue (idempotent). On a repeat sighting it
- * bumps `occurrences` and refreshes a missing title/source rather than
- * duplicating. Returns the queue row, or null for an empty/invalid SKU. A
- * PENDING row is upserted; rows already CREATED/IGNORED/DUPLICATE are left as-is
- * (only occurrences is bumped) so steward decisions stick.
- */
+/** Record an unmatched SKU in the queue (idempotent). */
 export async function queuePendingSku(
   input: QueuePendingSkuInput,
   executor: Pick<PoolClient, 'query'> = pool,
@@ -80,15 +58,7 @@ export interface ResolveOrQueueInput {
   suggestedTitle?: string | null;
 }
 
-/**
- * Resolve a SKU to its canonical sku_catalog_id through the existing crosswalk
- * chain (direct → platform xref). On a miss, enqueue it in pending_skus (so it
- * becomes a "create in Zoho" to-do) and return null. The caller leaves the
- * operational row's sku_catalog_id NULL — that NULL is the unmatched state.
- *
- * Unlike `resolveOrCreateSkuCatalogId`, this never fabricates a local catalog
- * row: Zoho stays the source of truth, and creation happens deliberately there.
- */
+/** Resolve a SKU to its canonical sku_catalog_id through the existing crosswalk chain (direct → platform xref). */
 export async function resolveSkuCatalogIdOrQueue(
   input: ResolveOrQueueInput,
 ): Promise<{ skuCatalogId: number | null; queued: boolean }> {

@@ -1,10 +1,4 @@
 // Single source of truth for warehouse replenishment-task status tones.
-//
-// Bordered pill (the only surface — app/warehouse/replenishment). Mirrors the
-// lib/<domain>-status.ts pattern (see unit-status.ts, repair-status.ts).
-// Classes preserved verbatim from the original inline map; hues follow the
-// color story (DESIGN_SYSTEM.md): REQUESTED=warning, IN_PROGRESS=info,
-// COMPLETE=success, CANCELED=neutral. src/lib is in Tailwind's content globs.
 
 export type ReplenishmentStatus = 'REQUESTED' | 'IN_PROGRESS' | 'COMPLETE' | 'CANCELED';
 

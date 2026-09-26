@@ -1,23 +1,4 @@
-/**
- * Sentry-shaped error reporter.
- *
- * Forwards captured errors to Sentry via the public envelope endpoint
- * (`/api/<project_id>/envelope/`) when SENTRY_DSN is set. We skip the
- * Sentry SDK on purpose — the SDK pulls in ~1 MB of dependencies and we
- * use a single ingest endpoint. The envelope format is documented and
- * stable, so doing it by hand here costs nothing and avoids the install
- * footprint.
- *
- * If SENTRY_DSN isn't set, captureError() is a no-op (the structured
- * logger still records the error). Either way the caller sees the same
- * shape — drop-in replacement.
- *
- * Usage:
- *   import { captureError } from '@/lib/observability/errors';
- *   try { ... } catch (err) {
- *     captureError(err, { orgId, route: req.nextUrl.pathname });
- *   }
- */
+/** Sentry-shaped error reporter. */
 
 import { logger } from './logger';
 

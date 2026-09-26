@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * THE staff avatar. Every surface that shows who did something composes this —
- * spine footer, sign-in picker, PIN chrome, timelines and serial journeys,
- * admin identity + schedule pills.
- *
- * Two facts, one resolution point:
- *   • photo   → `staff.avatar_photo_id`, served through the photos waist
- *               (`/api/photos/{id}/content?variant=thumb`).
- *   • fallback → the staffer's assigned colour + {@link staffInitials}.
- *
- * Both resolve from the staff identity cache (`@/utils/staff-colors`) keyed on
- * staff id, so a feed that only carries an actor's id needs no photo join and
- * no prop drilling. A caller holding the row already may pass `avatarPhotoId` /
- * `colorHex` to skip the lookup; a caller with only a NAME passes no id and
- * correctly gets initials — an avatar is never guessed from a display name.
- *
- * Do not hand-roll a `rounded-full` + initials span beside this; the geometry
- * lives in {@link IdentityMark}.
- */
+/** THE staff avatar. */
 
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { staffInitials } from '@/design-system/components/StaffBadge';
@@ -39,12 +21,7 @@ interface StaffAvatarProps {
   colorHex?: string | null;
   size?: IdentityMarkSize;
   ring?: boolean;
-  /**
-   * Keep the staffer's assigned COLOUR visible when their photo shows, as a
-   * 2px ring (see {@link IdentityMark.ringHex}). For colour-coded scanning
-   * surfaces (the compound stage cells) where the colour is a channel, not
-   * decoration.
-   */
+  /** Keep the staffer's assigned COLOUR visible when their photo shows, as a 2px ring (see {@link IdentityMark.ringHex}). */
   colorRing?: boolean;
   /** Mark corner — see {@link IdentityMark} `shape`. */
   shape?: 'round' | 'square';

@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Scan-station pane host — ONE flex row for Unbox · Arrival · Testing. No host
- * `gap-*` / `justify-between` / spacer columns / `ml-auto` detach bands.
- *
- * The row is `[center flex-1 min-720][optional utility rail][Displays sized]`.
- * The **center is the single elastic absorber** (`flex-1 min-w-[720px]`): it
- * grows when the rails are narrow and shrinks to its 720 floor when they are
- * wide, so resizing either rail moves only that rail and the center absorbs the
- * change (Option A — {@link STATION_CENTER_COLUMN_OPEN_CLASS}). Displays is an
- * explicitly-sized `shrink-0` sibling; because the center eats all leftover,
- * Displays always abuts the center's right edge with no gray band. Always
- * in-flow when open — never an overlay that hides the middle / dock. Never a
- * leading spacer; never a gutter div.
- *
- * Displays `←|` + carton `↑↓` live in {@link ScanStationUtilityRail} — a
- * separate white rail, not carton identity and not an absolute float. When
- * Displays is open Unbox unmounts the utility rail (cursor moves into the
- * push top band).
- */
+/** Scan-station pane host — ONE flex row for Unbox · Arrival · Testing. */
 
 import { useCallback, type ReactNode } from 'react';
 import { KEYBOARD_REGION_ATTR } from '@/lib/keyboard/keyboard-region-owner';
@@ -56,11 +38,7 @@ export function StationScanPaneHost({
   /** Extra `data-*` on the host (e.g. `data-unbox-pane-host`). */
   hostDataAttrs?: Record<string, string | boolean | undefined>;
 }) {
-  // The center is ALWAYS the elastic absorber (`flex-1 min-w-[720px]`) — whether
-  // Displays is an in-flow sized sibling or closed. Because the center eats all
-  // leftover between the rails, an in-flow Displays abuts its right edge with
-  // no gray band. One class, no lock, no overlay hide.
-  // Pointer into the middle reclaims keyboard ownership from Displays.
+  // The center is ALWAYS the elastic absorber (`flex-1 min-w-[720px]`) — whether Displays is an in-flow sized sibling or closed.
   const { claim: claimKeyboardRegion } = useKeyboardRegionOwner();
   const claimMiddle = useCallback(() => {
     claimKeyboardRegion('middle');

@@ -23,16 +23,7 @@ export interface StationDetailsSelection<T> {
   clearSelection: () => void;
 }
 
-/**
- * Shared open-detail selection + keyboard navigation for the station week
- * tables (Tech / Packer). Tracks which row's detail is open (by detail id) and
- * wires the cross-pane `open` / `close` / `navigate` shipped-details events:
- * the row dispatches `open-shipped-details` with the raw detail payload, and
- * this hook keeps `selectedDetailId` in sync from the same events.
- *
- * (Distinct from the dashboard shipped table's selection, which dispatches the
- * wrapped `{ order, context }` payload via `dispatchOpenShippedDetails`.)
- */
+/** Shared open-detail selection + keyboard navigation for the station week tables (Tech / Packer). */
 export function useStationDetailsSelection<T>({
   orderedRecords,
   toDetailRecord,

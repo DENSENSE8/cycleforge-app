@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * **Staff-directory spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useStaffDirectorySpreadsheet({ rows, rowActions, onOpenRow });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * `/settings/staff` has no search params of its own: the retired desk kept a
- * `filter` string in `useState` and narrowed the array it already held in
- * memory. Writing `?q=` per keystroke would round-trip a server component to
- * reorder a roster the client is holding. The search box the engine renders
- * IS that filter, over every MOUNTED fact rather than the three the retired
- * `.filter()` hard-coded (name / role / status).
- */
+/** **Staff-directory spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

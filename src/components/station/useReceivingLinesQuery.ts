@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Spine-first query layer for the receiving/unbox lines table — the ONE hook
- * every consumer of a table view's rows mounts (the table's data layer AND the
- * Unbox KPI strip), so all consumers share a single cache entry per view and a
- * second page-local fetch of the same rows can never reappear.
- *
- * Two-phase fetch (mirrors the shipped dashboard's spine-first pattern in
- * `useShippedTableRecords`):
- *
- *   1. `spine` — `?phase=spine`, no authoritative serial resolve. Cheap, paints
- *      first; serial chips come from the `serial_projection` read-model that
- *      already rides along in the list SELECT.
- *   2. `full`  — the authoritative `include=serials` fetch, fired only after
- *      the spine settles (never in parallel, so the DB does the expensive
- *      resolve once, off the paint path). Its key is the UNCHANGED
- *      `mode.queryKey(ctx)`, so every existing `['receiving-lines-table']`
- *      invalidation / prefetch keeps working.
- *
- * Merged result prefers `full` over `spine`. Spine is scoped to the Unbox
- * workbench modes (+ shared History); Receive/Incoming keep today's single
- * full fetch byte-identically (their spine query is never enabled).
- */
+/** Spine-first query layer for the receiving/unbox lines table — the ONE hook every consumer of a table view's rows mounts (the table's… */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {

@@ -1,15 +1,4 @@
-/**
- * Label layer — per-org override writes (Phase 3 editor backend).
- *
- * A tenant label override is a `reason_codes` row in a `lifecycle_<kind>`
- * vocabulary. Writes are guarded UPSERT / DELETE on the natural key
- * (organization_id, flow_context, code). The stable `code` must already exist
- * in the registry (`LABEL_DEFAULTS`) — callers validate that before writing, so
- * the label API can rename a code's label but never invent or rename a code.
- *
- * Deps-injected (the house pattern); the caller supplies a tenant-scoped client
- * (e.g. from `withTenantTransaction`) so RLS + org stamping apply.
- */
+/** Label layer — per-org override writes (Phase 3 editor backend). */
 import type { LabelKind, LabelTone } from './types';
 import { labelKindToFlowContext } from './load';
 

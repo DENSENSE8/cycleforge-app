@@ -1,18 +1,4 @@
-/**
- * Station side of a phone-sent repair print (`grain: 'repair'` on the staff
- * print bridge). Prints the SAME documents the desk prints, through the SAME
- * print paths, then records the print on the server:
- *
- *   - label   → `printRepairLabel` (USB/serial silent when paired) then
- *               POST `/api/repair-service/[id]/label-printed` (the one label stamp,
- *               audited on every call).
- *   - receipt → the repair paper from GET `/api/repair-service/print/[id]` in the
- *               hidden print iframe, then POST `/api/repair-service/[id]/print-log`.
- *   - manual  → `printPackBundleFallback` (the pack path's manual printer) on
- *               `/api/product-manuals/[id]/content`, then the same print-log POST.
- *
- * Callers: `useStaffPrintBridgeHost`. Returns an operator-facing error or null.
- */
+/** Station side of a phone-sent repair print (`grain: */
 
 import type { StaffPrintRepairPayload } from '@/lib/print/staff-print-bridge';
 import { buildRepairLabelPayload, printRepairLabel } from '@/lib/print/printRepairLabel';

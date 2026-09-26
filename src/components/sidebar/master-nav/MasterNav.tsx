@@ -59,10 +59,7 @@ export function MasterNav({
     [navItems, permissions, orgNav],
   );
 
-  // Roll a saved order onto the current generation. `stamp` is non-null only
-  // while this staffer is behind SPINE_SLOTS_VERSION; persisting it is what
-  // carries a default-order change (v2: Workspaces above Scan Stations) to
-  // someone who already has a saved arrangement, without overwriting it.
+  // Roll a saved order onto the current generation.
   const { slots: spineOrder, stamp } = useMemo(
     () => migrateSpineSlots(prefs?.spineSlots, navItems, prefs?.spineSlotsVersion),
     [prefs?.spineSlots, prefs?.spineSlotsVersion, navItems],

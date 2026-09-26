@@ -1,17 +1,4 @@
-/**
- * `unit-allocations.unit` — the unit-detail allocations table definition,
- * capabilities and surface descriptor.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`UNIT_ALLOCATIONS_COMPOUND_COLUMNS`), never a hand array.
- *
- * The per-SKU allocations mount (a later brief) declares its OWN definition id
- * against this same family — `unit-allocations.sku` on a sibling layout
- * document if the operator wants different defaults there, which is the
- * `incoming` / `receiving` shape. It reuses the catalog, the resolver and the
- * adapter; what it must not do is mint a second allocations vocabulary.
- */
+/** `unit-allocations.unit` — the unit-detail allocations table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -28,13 +15,7 @@ import {
   type UnitAllocationsGridColumn,
 } from './unit-allocations-grid-layout';
 
-/**
- * A READ pane on a detail page. Allocating and releasing a unit happen through
- * `/api/serial-units/[id]/allocate` from the stations that own those decisions,
- * not from a cell on the unit's own history — so there is no verb here and
- * `multiSelect` stays off: the gutter checkbox would be a control with no verb
- * behind it.
- */
+/** A READ pane on a detail page. */
 export const UNIT_ALLOCATIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -43,12 +24,7 @@ export const UNIT_ALLOCATIONS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeUnitAllocationsGridDescriptor(
   columns: readonly UnitAllocationsGridColumn[],
 ): GridSurfaceDescriptor<UnitAllocationTableRow, UnitAllocationsGridColumn> {
@@ -90,17 +66,7 @@ export const UNIT_ALLOCATIONS_TABLE_BINDING: TableSurfaceBinding<
   definition: UNIT_ALLOCATIONS_TABLE_DEFINITION,
   columns: UNIT_ALLOCATIONS_COMPOUND_COLUMNS,
   makeDescriptor: makeUnitAllocationsGridDescriptor,
-  /**
-   * HONEST ABSENCE, ruled rather than defaulted. The retired hand table linked
-   * nowhere — it printed `#{order_id}` as plain mono text — and there is no
-   * desk route for one order to open: To-ship is a QUEUE (`/shipping/orders`),
-   * and the only `[orderId]` page in the app is the mobile shell. Inventing a
-   * reach-through here would either navigate a bench operator off the unit
-   * they are inspecting or stack a second record plane over the detail page
-   * this pane is part of.
-   *
-   * It becomes `navigate` the day an order record route exists.
-   */
+  /** HONEST ABSENCE, ruled rather than defaulted. */
   recordPlane: {
     kind: 'none',
     reason:

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Order-record card vocabulary — shared fact atoms for the durable `/o/[orderId]`
- * record (and siblings that compose the same atoms without forking them).
- *
- * Promoted out of `dashboard/search/SearchOrderTabFrame` in Week 1.
- * Composes the canonical `Panel` shell; never hand-rolls `rounded-2xl border …`.
- */
+/** Order-record card vocabulary — shared fact atoms for the durable `/o/[orderId]` record (and siblings that compose the same atoms without… */
 
 import type { ReactNode } from 'react';
 import { isSearchOrderFactEmpty } from '@/components/order-record/order-fact-presence';
@@ -32,13 +26,7 @@ export function OrderFactRow({
    * surfaces keep the default (em dash) so the full field set still teaches.
    */
   omitWhenEmpty?: boolean;
-  /**
-   * Keep the value's own newlines (`whitespace-pre-line`) — free text an
-   * operator or a buyer typed, where the line breaks carry meaning. Off by
-   * default: a scalar fact has no lines to preserve, and turning it on
-   * everywhere would let a stray newline in a SKU push the grid row taller.
-   * `OrderCommercialFacts` forked this whole cell byte-for-byte to get it.
-   */
+  /** Keep the value's own newlines (`whitespace-pre-line`) — free text an operator or a buyer typed, where the line breaks carry meaning. */
   preserveLines?: boolean;
 }) {
   const empty = isSearchOrderFactEmpty(value);

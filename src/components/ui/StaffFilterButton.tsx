@@ -17,24 +17,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * `StaffFilterButton` — the ONE shared all-staff ↔ single-staff header control
- * (P1-WORK-02). A {@link ToolbarButton} pill that opens a body-portal popover of
- * active staff and writes the canonical `?staff=` URL param via
- * {@link useStaffFilter}. Absent param = ALL staff (every surface's default);
- * picking the active staff again clears back to ALL — unless {@link allToken}
- * is set (absent = Me default for the caller; token = explicit all).
- *
- * Workbench toolbar SoT: popover `align="end"` (opens left — right edge flush
- * with the trigger), matching {@link FilterMenu} lane filters.
- * Do not pass `align="start"` in right-side chrome slots.
- *
- * **It sits BESIDE the find field, never inside it.** The in-field density was
- * deleted on 2026-08-29 with the rest of the display layer: a control that
- * narrows rows belongs next to the query it refines, not in the input
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 2.1). Prefer
- * {@link StaffFilterRows} inside a table's one filter menu.
- */
+/** `StaffFilterButton` — the ONE shared all-staff ↔ single-staff header control (P1-WORK-02). */
 export function StaffFilterButton({
   iconOnly = false,
   align = 'end',
@@ -61,13 +44,7 @@ export function StaffFilterButton({
   allToken?: string;
   /** Trigger label when param is absent and {@link allToken} is set (Me default). */
   meLabel?: string;
-  /**
-   * `toolbar` (default) — {@link ToolbarButton} densified to ops chrome `h-7`
-   * for Band 3 / View-topic clusters. Soft `rounded-lg` stays; height matches
-   * {@link WorkbenchBandControl}.
-   * `field` — paste-sized glyph for a `SearchField` `trailingSuffix` slot, the
-   * same trigger geometry {@link FilterMenu} uses.
-   */
+  /** `toolbar` (default) — {@link ToolbarButton} densified to ops chrome `h-7` for Band 3 / View-topic clusters. */
   density?: 'toolbar' | 'field';
   className?: string;
 }) {
@@ -179,21 +156,7 @@ export function StaffFilterButton({
   );
 }
 
-/**
- * The staff facet as MENU ROWS, for hosting inside the find field's one
- * {@link FilterMenu} — no trigger, no glyph, no popover of its own.
- *
- * **Why this exists.** The in-field trigger gave the facet its own 24px cell
- * with a `User` glyph in it, so a find bar that also had a refine funnel showed
- * two marks, and Incoming showed four. A field glyph answers one question —
- * *does anything narrow these rows?* — and it is the funnel that answers it. A
- * facet is a GROUP inside that answer, not a second question beside it.
- *
- * The in-field density is gone entirely now (2026-08-29). Surfaces with a find
- * field fold the facet into the table's one filter menu as these rows; the
- * standalone {@link StaffFilterButton} remains for rail footers, which have no
- * find field to fold into.
- */
+/** The staff facet as MENU ROWS, for hosting inside the find field's one {@link FilterMenu} — no trigger, no glyph, no popover of its own. */
 export function StaffFilterRows({
   allLabel = 'All staff',
   allToken,

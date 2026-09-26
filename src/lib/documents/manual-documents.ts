@@ -1,11 +1,4 @@
-/**
- * Manual documents domain (JIT pack Phase 3).
- *
- * Promotes / links product_manuals into `documents` (document_type='manual')
- * with document_entity_links.entity_type='SKU' → sku_catalog.id.
- * product_manuals remains the library write SoT; this module is the pack/print
- * + Testing dual-read projection.
- */
+/** Manual documents domain (JIT pack Phase 3). */
 
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * The ONE ticket composer.
- *
- *   ┌──────────────────────────────────────────────┐
- *   │ @ Cc  cc@…  [type email…]   ← Public only     │
- *   │ [📷 staged thumbs]                            │
- *   │  Reply…                                       │
- *   │ [+] [Internal │ Public]   [🔗 File ticket →]  │
- *   └──────────────────────────────────────────────┘
- *
- * Every rule in one place, because they only make sense together:
- *
- * - **Channel on the action bar, right of `+`** — never inside `+`. Whether a
- *   message is a private note or an email to a customer is the highest-stakes
- *   fact about it; two taps deep in a menu, an operator could type a reply
- *   believing it was internal and email it.
- * - **Cc above the draft, Public only** — recipients describe the message, so
- *   they sit above the text they apply to. An internal note is never emailed
- *   and has no audience to name.
- * - **`+` is photo attach** — Browse library · Upload file, flat and untitled.
- *   It briefly also carried product / "what happened" inserts; those were
- *   withdrawn on 2026-08-30.
- * - **A LABELLED commit** — `File ticket →` / `Update ticket`, never a bare
- *   return arrow. This control files a helpdesk ticket or posts to a
- *   customer-visible thread, and it was wearing the quietest face on the bench.
- *
- * It replaced `SupportChatComposer` on 2026-08-31. That component had drifted
- * from the station's copy on signing, `emailCcs` and `photoIds`, and carried a
- * `Plus` + `Paperclip` pair in its footer that did exactly what the station's
- * `+` drill menu does. Behaviour lives in {@link useTicketComposer} so the
- * station — which shares one textarea between Unbox and Ticket and therefore
- * cannot mount this dock — runs the same logic rather than a second copy.
- */
+/** The ONE ticket composer. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { CornerDownLeft, Images, Upload } from '@/components/Icons';

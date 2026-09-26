@@ -1,14 +1,4 @@
-/**
- * The phone order hub's read model (`/m/orders/[orderId]` and its doors).
- *
- * Two server reads, never re-derived on the client:
- *   - `GET /api/orders/lookup/<param>` → {@link OrderLookupRecord} + activity:
- *     customer, ship-to, tracking numbers, serials, notes count.
- *   - `GET /api/v1/outbound/work?id=<pk>` → the server-owned `OutboundWorkItem`:
- *     Zoho-governed title, warehouse stage, label, acknowledgment, stock.
- *
- * Pure: types and formatting only, safe on client and server.
- */
+/** The phone order hub's read model (`/m/orders/[orderId]` and its doors). */
 
 import type { OutboundWorkItem } from '@/lib/outbound/work-contract';
 

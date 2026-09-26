@@ -1,11 +1,4 @@
-/**
- * GET /api/auth/oauth/[provider]/callback  (PUBLIC)  — provider ∈ google | apple | microsoft
- *
- * Completes platform social login: verifies the CSRF state + nonce, exchanges
- * the code for tokens, resolves (or provisions) the account by federated
- * identity (`account_identities` keyed on provider + stable `sub`), signs into a
- * workspace, and sets `cf_sid`. Redirects to /signin?login_error=… on any failure.
- */
+/** GET /api/auth/oauth/[provider]/callback (PUBLIC) — provider ∈ google | apple | microsoft */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimitAsync } from '@/lib/api-guard';
@@ -137,10 +130,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
       codeVerifier: provider === 'apple' ? undefined : payload.verifier,
     });
     const claims = token.id_token ? decodeIdTokenClaimsUnsafe(token.id_token) : null;
-    // Nonce binding, unconditional: all three providers are asked for `openid`
-    // and are sent a `nonce`, so an id_token echoing OUR nonce must come back.
-    // A missing id_token, missing claim or mismatch means this code was not the
-    // one this browser started with (code injection) — refuse it.
+    // Nonce binding, unconditional:
     if (!claims || (claims as { nonce?: string }).nonce !== payload.nonce) {
       return fail(req, 'oauth_nonce');
     }
@@ -166,12 +156,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
   }
   if (!sub) return fail(req, 'oauth_no_subject');
 
-  // IDENTITY LINKING: this round trip was "attach the provider to MY
-  // account", not "sign in". Both gates re-checked HERE because the state
-  // cookie is 10 minutes old: (1) someone still holds the target account's
-  // session, (2) the identity is not already owned by a different account —
-  // grafting it there would be a takeover. On success we link and return to
-  // Settings; no session is minted (the caller never left theirs).
+  // IDENTITY LINKING:
   if (payload.linkAccountId) {
     const me = await getCurrentUser();
     const sessionAccountId = me ? await resolveAccountIdForStaff(me.staffId) : null;
@@ -203,11 +188,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
   // Resolve or provision the account by the stable federated identity.
   let accountId = await getAccountIdByIdentity(provider, sub);
   if (!accountId) {
-    // Adoption by email is a takeover primitive when the provider has not
-    // verified it (nOAuth: Microsoft defaults to /common, where an attacker
-    // controls the unverified `email` claim). Only a VERIFIED email may match
-    // onto a pre-existing account; otherwise provision a fresh subject-keyed
-    // one that still records the email.
+    // Adoption by email is a takeover primitive when the provider has not verified it (nOAuth:
     const existing = email && emailVerified ? await getAccountByEmail(email) : null;
     if (existing) {
       accountId = existing.id;

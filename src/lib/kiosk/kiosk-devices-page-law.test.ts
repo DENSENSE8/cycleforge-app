@@ -1,9 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: node:test only.
- * Affected API: none. Schemas: KioskDevicesPageView / KIOSK_DEVICES_PAGE_LAW.
- * User instruction: upgrade UI with tabs under title; add laws and routing.
- */
+/** Gate preamble (Fact-Forcing): */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

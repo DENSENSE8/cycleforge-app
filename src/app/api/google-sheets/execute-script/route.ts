@@ -61,11 +61,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 }, { permission: 'admin.manage_features' });
 
 async function executeCheckShippedOrders(orgId: OrgId) {
-    // Find orders where a packer log exists via the shipment_id FK
-    // Shipped state is now derived from shipping_tracking_numbers carrier status;
-    // no direct write to orders.is_shipped is needed.
-    // shipment_id is an integer surrogate PK, so the join is safe bare; tenant
-    // scoping is applied via the explicit organization_id filters below.
+    // Find orders where a packer log exists via the shipment_id FK Shipped state is now derived from shipping_tracking_numbers carrier status;…
     const shippedResult = await tenantQuery(
         orgId,
         `SELECT DISTINCT o.id

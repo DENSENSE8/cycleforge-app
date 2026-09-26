@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Settings Registry — the control dispatcher. Renders the right input for a
- * setting's `control` type (toggle / segmented / select / number / text) and
- * calls onChange with a value the registry schema will accept. Purely
- * presentational: the panel owns which value to show and which home to write.
- */
+/** Settings Registry — the control dispatcher. */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, Switch } from '@/design-system/primitives';

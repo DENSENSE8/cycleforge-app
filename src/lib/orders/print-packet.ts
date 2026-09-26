@@ -1,14 +1,4 @@
-/**
- * Print-packet facts — whether pack print has a shipping-label PDF and
- * paperwork (manuals / non-label docs, or an explicit G2 exemption).
- *
- * Distinct from release-gate G3: tracking without a printable label still
- * passes G3, and that order is live To-ship. The packet is still incomplete.
- *
- * SQL fragments stay in lockstep with `G2_DOCUMENT_COUNT_SQL` /
- * `G3_LABEL_EXISTS_SQL` in `caged-orders.ts` (same `documents` +
- * `document_entity_links` shapes; alias must be `o`).
- */
+/** Print-packet facts — whether pack print has a shipping-label PDF and paperwork (manuals / non-label docs, or an explicit G2 exemption). */
 
 export const PAPERWORK_PARAM = 'paperwork';
 

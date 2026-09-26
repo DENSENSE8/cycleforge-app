@@ -41,12 +41,7 @@ interface Params {
   onClose: () => void;
 }
 
-/**
- * Owns the seller-message step: restoring a saved draft, AI-generating one that
- * references the filed ticket #, copy-to-clipboard with header persistence, and
- * the final PATCH-then-close. A bootstrap guard keyed on the ticket id/number
- * ensures we only auto-draft once per ticket.
- */
+/** Owns the seller-message step: */
 export function useClaimSellerMessage({
   open,
   mode,

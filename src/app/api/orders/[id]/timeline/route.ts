@@ -9,43 +9,7 @@ import {
 } from '@/lib/photos/queries/unit-timeline-photos';
 import { listShipmentCarrierEvents } from '@/lib/shipments/carrier-events';
 
-/**
- * GET /api/orders/[id]/timeline — the order's event trail, newest first.
- * Feeds the shared `EventTimeline` in the order details panel.
- *
- * Spines, merged client-side in `OrderTimelineSection`:
- *   • `events`    — order-anchored `audit_logs` (tracking added, label printed,
- *                   packed, shipped, edits…). Matches `lower(entity_type)='order'`
- *                   since callers historically wrote the uppercase 'ORDER' literal
- *                   while AUDIT_ENTITY.ORDER is 'order'.
- *                   `before_data` ships ONLY to `admin.view_logs` holders — the
- *                   client's `diffChanges` needs BOTH snapshots, so withholding
- *                   `before` is what suppresses the field-level diff for everyone
- *                   else while still showing that an edit happened.
- *   • `carrier`   — `shipment_tracking_events` for the order's shipment (Week 2).
- *                   The physical scan trail: accepted → in transit → out for
- *                   delivery → delivered/exception. Previously the record showed
- *                   only a single latest-status badge and none of the history.
- *   • `rma`       — `rma_authorizations` for this order: authorized / received /
- *                   dispositioned / closed. FK'd to `orders(id)` since 2026-05-23
- *                   and read by nothing until now.
- *   • `lifecycle` — the tech VERDICT, which is unit-anchored (not order-anchored),
- *                   so it never lands in the order's audit feed. We resolve the
- *                   order's allocated serial units → their `inventory_events`
- *                   TEST_* rows so "tested" shows on the order timeline too.
- *   • `stationEvents` — SAL (`station_activity_logs`) keyed by `shipment_id`.
- *                   SAL is the complete operational scan ledger; an order's
- *                   `audit_logs` feed is frequently incomplete (often only
- *                   PACK_COMPLETED), so the TECH scan + SHIP_CONFIRM live ONLY in
- *                   SAL. We pull TECH-station rows (the "tech scan" the panel was
- *                   missing) + OUTBOUND ship-out, excluding PACK (audit owns it,
- *                   avoiding a duplicate "Packed").
- *   • `unitPhotos` — five-stage evidence for allocated serial units plus
- *                   shipment-linked PACKER_LOG photos. Pack evidence remains
- *                   visible even when an order has no serialized allocation.
- *
- * Read-only; gated by `orders.view`.
- */
+/** GET /api/orders/[id]/timeline — the order's event trail, newest first. */
 
 /** Photo-spine fan-out cap: enough for every real order, bounded for bulk ones. */
 const PHOTO_SPINE_UNIT_CAP = 20;
@@ -83,12 +47,7 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid order id' }, { status: 400 });
     }
 
-    // Tenant ownership pre-flight + the three independent trails run inside one
-    // GUC-scoped transaction (`app.current_org`) so RLS can isolate these reads.
-    // The trail queries key on the order id / shipment id alone; without org
-    // scoping an authed caller in org A could read org B's audit +
-    // inventory_events via a guessed order id. We 404 (not 403) so we don't
-    // reveal that an order with that id exists in another tenant.
+    // Tenant ownership pre-flight + the three independent trails run inside one GUC-scoped transaction (`app.current_org`) so RLS can isolate…
     const orgId = gate.ctx.organizationId;
     // Field-level audit diffs are admin-only (Operations History §3.2 Option B).
     // We select `before_data` conditionally rather than nulling it after the
@@ -109,14 +68,7 @@ export async function GET(
       const shipmentId = owner.rows[0].shipment_id;
       const marketplaceOrderId = String(owner.rows[0].order_id ?? '').trim();
 
-      // The three trails below are independent (they key on order id / shipment id,
-      // not on each other), so fan them out in one round-trip group instead of
-      // awaiting them serially — the panel's Timeline tab was slow precisely
-      // because these stacked back-to-back on Neon. SAL always includes OUTBOUND
-      // (the ship-out "Scanned out" w/ staff): the order audit feed is
-      // order-anchored and the scan_out audit is shipment-anchored, so it never
-      // double-counts here. PACK station stays excluded (audit_logs owns
-      // PACK_COMPLETED, avoiding a duplicate "Packed").
+      // The three trails below are independent (they key on order id / shipment id, not on each other), so fan them out in one round-trip group…
       const [result, alloc, stationEvents, pickSessions, packEvents, packerLogs] = await Promise.all([
         client.query(
           `SELECT al.id, al.created_at, al.action, al.after_data, al.metadata,
@@ -288,14 +240,7 @@ export async function GET(
     const serialUnitIds = alloc.rows
       .map((r: { serial_unit_id: number }) => Number(r.serial_unit_id))
       .filter(Number.isFinite);
-    // Pull the FULL unit lifecycle for the order's allocated serials (not just
-    // TEST_* verdicts), so the order timeline is the per-unit chronological
-    // history acceptance requires — receiving → test → putaway → pick → pack →
-    // ship → return — keyed by order number. `inventoryEventsToTimeline`
-    // already renders every type in this vocabulary; PACK/LABEL/SHIP rows that
-    // also surface via `audit_logs`/SAL are de-duplicated client-side in
-    // `OrderTimelineSection`. Org-scoped so a guessed order id can't leak a
-    // foreign tenant's unit events.
+    // Pull the FULL unit lifecycle for the order's allocated serials (not just TEST_* verdicts), so the order timeline is the per-unit…
     let lifecycle = serialUnitIds.length
       ? await readInventorySpine(
           {
@@ -344,10 +289,7 @@ export async function GET(
     const packEventRows =
       packEvents.rows.length > 0 ? packEvents.rows : packerLogs.rows;
 
-    // Photo evidence spine — the stage photo buckets per allocated unit, flat
-    // (each row carries the unit's serial from the query's serial_units join,
-    // so the client groups by serial without a second lookup). Capped fan-out;
-    // degrade-not-fail: a photo failure never takes down the timeline.
+    // Photo evidence spine — the stage photo buckets per allocated unit, flat (each row carries the unit's serial from the query's…
     let unitPhotos: UnitTimelinePhoto[] = [];
     if (serialUnitIds.length > 0) {
       try {
@@ -374,11 +316,7 @@ export async function GET(
       unitPhotos.push(photo);
     }
 
-    // Thread spine — entity-anchored conversation messages (THREAD_MESSAGE) for
-    // this order surface as read rows on the merged history (D4). Guarded: the
-    // `entity_threads` / `thread_messages` pair may be UNAPPLIED in a given
-    // environment, so a missing-relation error degrades this sub-resource to []
-    // rather than 500-ing the whole (pre-existing) order timeline.
+    // Thread spine — entity-anchored conversation messages (THREAD_MESSAGE) for this order surface as read rows on the merged history (D4).
     let threadMessages: any[] = [];
     try {
       const threads = await withTenantTransaction(orgId, (client) =>
@@ -406,10 +344,7 @@ export async function GET(
       }
     }
 
-    // Carrier spine — the shipment's physical scan trail. `shipment_tracking_events`
-    // is GLOBAL by design (no organization_id; a tracking number is carrier-global),
-    // so tenant isolation rides on `shipmentId`, which came from the org-checked
-    // order row above — never from the request. Degrades to [] on its own.
+    // Carrier spine — the shipment's physical scan trail.
     let carrierEvents: unknown[] = [];
     if (shipmentId != null) {
       try {
@@ -444,10 +379,7 @@ export async function GET(
       }
     }
 
-    // Notes spine — the `order_notes` TABLE. `orders.notes` is a single free-text
-    // COLUMN and was the only note this route ever returned, so every note staff
-    // wrote through the notes trail was invisible to FIND. Same guard posture as
-    // the thread spine: a missing relation degrades to [], never a 500.
+    // Notes spine — the `order_notes` TABLE.
     let orderNotes: any[] = [];
     try {
       const notes = await withTenantTransaction(orgId, (client) =>
@@ -470,10 +402,7 @@ export async function GET(
       }
     }
 
-    // Signal spine — `entity_signals` is the "why" record (signal_kind,
-    // reason_code, severity, notes). It is what answers "why is this held" on the
-    // floor, and no FIND face read it: the stream could show an exception row
-    // without the reason that caused it.
+    // Signal spine — `entity_signals` is the "why" record (signal_kind, reason_code, severity, notes).
     let signals: any[] = [];
     try {
       const sig = await withTenantTransaction(orgId, (client) =>

@@ -16,13 +16,7 @@ import {
   type ProcessNodeData,
 } from './studio-canvas-shared';
 
-/**
- * Everything a lens (or the simulate overlay) paints onto the L1 graph. One
- * bag rather than a positional tail: each lens contributes an independent,
- * optional layer, so the argument list only ever grows — it reached thirteen
- * positions before this, where adding the last one meant counting `null`s.
- * Every field is optional and absent means "this layer is off".
- */
+/** Everything a lens (or the simulate overlay) paints onto the L1 graph. */
 interface FlowGraphPaint {
   focus?: string | null;
   /** Live-lens per-node occupancy. */

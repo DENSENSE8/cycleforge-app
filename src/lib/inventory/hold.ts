@@ -1,40 +1,4 @@
-/**
- * hold.ts
- * ────────────────────────────────────────────────────────────────────
- * Shared hold + release transactions. Used by both the
- * /api/serial-units/[id]/{hold,release} routes and the
- * /inventory/holds admin page so the lifecycle semantics live
- * in exactly one place.
- *
- * Behavior preserved from the original route logic:
- *   - hold: rejects if unit is already ON_HOLD. Stashes prev status in
- *     inventory_events.payload.restore_status so the release helper can
- *     auto-recover.
- *   - release: optional force_status override. If absent, reads the
- *     most recent HELD event's payload.restore_status; falls back to
- *     STOCKED.
- *   - Both: idempotent via clientEventId on inventory_events.
- *
- * Phase 1.3 (unified engine): the serial_units.current_status write + its
- * lifecycle event now go through the guarded transition() chokepoint
- * (src/lib/inventory/state-machine.ts) instead of a hand-rolled UPDATE +
- * INSERT — the source-of-truth rule. It runs
- * on the helper's own transaction client (executor pattern), so the writes stay
- * atomic within this tx. transition() emits the HELD / RELEASED_HOLD event
- * itself, so there is no separate INSERT. The conversion is unconditional (not
- * flag-gated) because the SoT rule forbids a raw-UPDATE fallback; it is
- * behavior-equivalent for legitimate flows: hold's to=ON_HOLD is universal-entry
- * in the guard, and release's destination is always within RESTORABLE_STATUSES,
- * which are exactly ON_HOLD's modeled outgoing edges — so the guard never rejects.
- * Tenancy: `organizationId` is REQUIRED on both inputs. The whole helper runs
- * inside `withTenantTransaction`, the `serial_units` locks carry an explicit
- * org predicate (a foreign-org unit id reads as 404, not as a successful hold),
- * and the HELD / RELEASED_HOLD events are stamped from it rather than from the
- * `inventory_events` column default — which falls back to the dogfood org.
- *
- * Caller responsibilities: feature-flag check, permission gate,
- * actorStaffId resolution.
- */
+/** hold.ts ──────────────────────────────────────────────────────────────────── Shared hold + release transactions. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -190,10 +154,7 @@ export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitR
       if (candidate && isRestorableStatus(candidate)) {
         restoreStatus = candidate;
       } else if (candidate && !isRestorableStatus(candidate)) {
-        // The unit was held from a state we can't auto-restore (e.g. RECEIVED,
-        // TESTED). Silently defaulting to STOCKED would push an untested unit
-        // into sellable stock, bypassing triage/test/grade. Refuse and make the
-        // caller choose an explicit force_status instead of losing the state.
+        // The unit was held from a state we can't auto-restore (e.g.
         return {
           ok: false,
           status: 409,

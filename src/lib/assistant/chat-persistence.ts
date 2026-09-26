@@ -1,15 +1,4 @@
-/**
- * Assistant chat persistence — org-explicit writes into the existing
- * ai_chat_sessions / ai_chat_messages tables (plan §-2 "AI runtime").
- *
- * Deliberately NOT reusing src/lib/ai/chat-persistence.ts: that helper runs
- * on the global Drizzle client with column-stamped org only. Both tables are
- * in the RLS-FORCEd cohort, so this module goes through tenantQuery (GUC +
- * explicit org) per the house tenancy rules.
- *
- * Fire-and-forget by contract: persistence failures are logged and dropped —
- * a chat turn must never fail because history could not be written.
- */
+/** Assistant chat persistence — org-explicit writes into the existing ai_chat_sessions / ai_chat_messages tables (plan §-2 "AI runtime"). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

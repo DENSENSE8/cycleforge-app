@@ -17,15 +17,7 @@ export interface UseManualDragDrop {
   handleSidebarDrop: (e: React.DragEvent) => void;
 }
 
-/**
- * Drag-and-drop coordination for the library. Two flows share the same folder
- * drop targets: internal manual-row moves (carry the id) and external OS-file
- * uploads (one upload per dropped PDF, all addressed to the target folder). Also
- * owns the whole-sidebar drop catcher that routes loose drops to the current
- * breadcrumb folder.
- *
- * @param currentFolderPath The breadcrumb folder loose drops land in.
- */
+/** Drag-and-drop coordination for the library. */
 export function useManualDragDrop(currentFolderPath: string): UseManualDragDrop {
   const dropManualIdsOnFolder = useCallback(async (ids: number[], folderPath: string) => {
     if (ids.length === 0) return;

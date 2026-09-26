@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * The triage form's data layer — reads the live gates, writes the things the
- * form can change.
- *
- * Every write re-reads the gates afterwards rather than patching a local copy.
- * The gates are derived from facts spread across `orders`, `documents` and
- * `shipping_tracking_numbers`, several of which the operator can change from
- * OTHER surfaces (buying a label in the Labels tab, attaching a manual in the
- * order's documents panel). A locally-patched gate would be a guess about
- * facts this form does not own, and the one place a guess must never appear is
- * the control that decides whether an order reaches the floor.
- *
- * The create draft is `CanonicalOrderIntake` — the SAME type the CSV staging
- * lane projects onto (`docs/todo/order-intake-acknowledgment-PLAN.md` §2), so
- * single and bulk density share one field list.
- */
+/** The triage form's data layer — reads the live gates, writes the things the form can change. */
 
 import { useCallback, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -54,12 +39,7 @@ async function postCageAction(
   return (await res.json().catch(() => ({ success: false }))) as CageActionResponse;
 }
 
-/**
- * Duplicate acknowledgment: does this org already have an order with this
- * number? Uses the existing lookup route (human order # → order detail) so the
- * form can offer "open that order in triage" instead of inserting a second row
- * and learning about it from the 409.
- */
+/** Duplicate acknowledgment: */
 export async function lookupExistingOrder(
   orderNumber: string,
 ): Promise<{ id: number; orderNumber: string } | null> {
@@ -145,16 +125,7 @@ export function useOrderTriage(orderId: number | null): OrderTriage {
     void queryClient.invalidateQueries({ queryKey: [CAGED_ORDERS_QUERY_ROOT] });
   }, [queryClient]);
 
-  /**
-   * Create → cage, in that order.
-   *
-   * `/api/orders/add` is the existing create path and stays the only one — the
-   * plan forbids a second intake engine. The order is caged in a follow-up call
-   * rather than by a new flag on `add`, so every OTHER caller of `add` (CSV
-   * import, mobile verification, the sync backfill) keeps landing straight in
-   * the working set exactly as it does today. Only orders typed at THIS form
-   * are caged.
-   */
+  /** Create → cage, in that order. */
   const createCaged = useCallback(
     async (draft: CanonicalOrderIntake): Promise<number | null> => {
       const orderNumber = draft.orderNumber.trim();

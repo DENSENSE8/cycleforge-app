@@ -1,17 +1,4 @@
-/**
- * The object-state resolver is the read that lights the dispatch table's
- * stateful rows, so this file asserts the wiring law it exists under:
- *
- *   - every handling-unit status maps to exactly the state facts the table's
- *     rows predicate on (`staged-for-pack`, `qc-open`), and nothing more;
- *   - an unknown object answers `known: false` with an EMPTY state — the
- *     honest default, never a guessed "staged" that would hijack the phone
- *     to Pack;
- *   - only classes that can turn on state touch the deps at all.
- *
- * A row that stops being asserted here is a tote an operator will scan on the
- * floor with a Card that lies about what is outstanding on it.
- */
+/** The object-state resolver is the read that lights the dispatch table's stateful rows, so this file asserts the wiring law it exists under: */
 
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';

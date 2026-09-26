@@ -1,13 +1,4 @@
-/**
- * Per-entity audit timeline. Modeled on `receiving-aggregator.ts` but scoped
- * to a single bin or a single SKU. Returns a unified, newest-first event
- * stream stitched from:
- *   • audit_logs        — field-level before/after diffs
- *   • inventory_events  — lifecycle (RECEIVED, MOVED, PUTAWAY, ADJUSTED, …)
- *   • sku_stock_ledger  — qty deltas (for SKU view only)
- *
- * Used by /api/audit/bin/[id] and /api/audit/sku/[sku].
- */
+/** Per-entity audit timeline. */
 
 import 'server-only';
 import pool from '@/lib/db';

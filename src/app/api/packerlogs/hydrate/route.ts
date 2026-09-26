@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { fetchPackerLogHydration } from '@/lib/neon/packer-logs-hydrate';
 
-/**
- * Spine-first hydration for the shipped table. The main `/api/packerlogs` spine
- * response paints immediately without the display-only work_assignments fields
- * and photos; the client posts the visible page's station_activity_logs ids here
- * to fill them in. Read-only (no audit), org-scoped via ctx.
- */
+/** Spine-first hydration for the shipped table. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   let body: unknown;
   try {

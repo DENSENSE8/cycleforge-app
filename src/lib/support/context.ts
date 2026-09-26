@@ -1,10 +1,4 @@
-/**
- * Support Context Hub bundle — one read that resolves linkage, ticket, thread,
- * connections, and a merged activity timeline from any of
- * {order, tracking, ticket, receivingId/lineId}.
- *
- * Anchor-agnostic so GlobalHeaderSearch can deep-link later without API changes.
- */
+/** Support Context Hub bundle — one read that resolves linkage, ticket, thread, connections, and a merged activity timeline from any of… */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import {
@@ -255,18 +249,6 @@ async function fetchTimelineSpines(args: {
         )
       : Promise.resolve([] as ThreadMessageTimelineRow[]),
     // RECEIVING / RECEIVING_LINE link moments, derived from ROW STATE.
-    //
-    // The SHIPMENT arm deliberately moved OUT of this query and into the
-    // ops_events arm below. Row state can only ever say "linked" — an unlink
-    // deletes the row, so the detach moment is unrecoverable, which is why
-    // ticketLinkEventsToTimeline's 'unlinked' branch was dead code. It also
-    // dates a re-anchored ticket by its ORIGINAL created_at against its NEW
-    // entity, because linkTicket upserts.
-    //
-    // Receiving stays on row state for now: those links predate the event
-    // writer (107 live rows as of 2026-07-16), so reading them from ops_events
-    // would silently drop every historical link from the hub. Shipment links
-    // had ZERO rows at that point, so they lose no history by moving.
     receivingId != null
       ? tenantQuery<{
           id: string;
@@ -293,11 +275,7 @@ async function fetchTimelineSpines(args: {
           [orgId, receivingId],
         )
       : Promise.resolve({ rows: [] }),
-    // SHIPMENT / ORDER / REPAIR link/unlink moments from the append-only
-    // ops_events spine. Both kinds are real events here, so 'unlinked' finally
-    // renders. Not folded into the `opsEvents` arm above: that one is
-    // entity_type 'receiving' only, and opsEventsToTimeline would render these
-    // a second time with a prettified title.
+    // SHIPMENT / ORDER / REPAIR link/unlink moments from the append-only ops_events spine.
     fetchTicketLinkOpsEvents(orgId, 'shipment', shipmentIds),
     fetchTicketLinkOpsEvents(orgId, 'order', orderIds),
     fetchTicketLinkOpsEvents(orgId, 'repair', repairIds),

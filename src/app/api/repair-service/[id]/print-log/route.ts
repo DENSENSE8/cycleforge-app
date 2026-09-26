@@ -15,20 +15,7 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /api/repair-service/[id]/print-log — the repair's print history.
- *
- * GET  (repair.view): `{ labelPrintedAt, entries }`, newest first, from
- *      `audit_logs` (see `@/lib/repair/repair-print-log` for which actions).
- * POST (repair.view): a station that just printed the repair paper or a manual
- *      for this repair records it — `{ document: 'receipt' | 'manual',
- *      manualId?, requestId, stationName? }`. The time is the server's; the
- *      actor is the session; `stationName` is the printing station's name (the
- *      log's "Station (Bench A)"). Idempotent per `requestId` so a retried
- *      record is one line.
- *      Labels are NOT recorded here: they stamp through `label-printed`, which
- *      already audits every print.
- */
+/** /api/repair-service/[id]/print-log — the repair's print history. */
 
 async function repairIdFrom(params: Promise<{ id: string }>): Promise<number | null> {
   const { id } = await params;

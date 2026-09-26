@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * The phone item card — ONE component for every queue that lists sellable
- * units (to-ship on `/m/work`, the shipping and exception queues).
- *
- *   [48px photo] [BIN] PLATFORM · ORDER .. SLA
- *               SKU / title              QTY
- *               CONDITION                 PICKED
- *
- * Operator rulings this card enforces:
- *   - 2026-09-16: a floor roster routes by bin first, treats SKU and quantity
- *     as scan-critical, keeps condition visible, and omits sale price. A
- *     48px thumbnail is press-to-inspect, never a detail-page navigation.
- *   - 2026-09-15: both queues render THIS card — a picker and a packer must
- *     recognize the item from either screen. This supersedes the pick row's
- *     old location-lead layout; location survives as the leading mono value
- *     of the meta row, where it was already second in the eye's order.
- *
- * Data arrives as PLAIN values, not a row type — each queue maps its own feed
- * (WorkOrderRow, …) onto the same face. The row only selects work;
- * typed swipe triage is opt-in. Orders may add the governed SKU-adjacent
- * marketplace inspection trigger without creating a second row destination.
- */
+/** The phone item card — ONE component for every queue that lists sellable units (to-ship on `/m/work`, the shipping and exception queues). */
 
 import { type ReactNode, useCallback, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -98,13 +77,7 @@ export interface ItemCardTriageAction {
   onCommit: () => void;
 }
 
-/**
- * Ship-by corner. Read-only on purpose: the card can swipe to commit, so a
- * tappable date here would be a second commit target inside a drag surface.
- * (`DateRangePickerField variant="compact"` is the in-CELL editor for slot
- * tables — a different job, a different surface.) The directed picker's
- * order card paints the same face, so an order reads one SLA everywhere.
- */
+/** Ship-by corner. */
 export function ItemCardShipBy({ deadlineAt, now }: { deadlineAt: string | null; now?: number }) {
   const key = deadlineAt ? toPSTDateKey(deadlineAt) : null;
   const sla = resolveOutboundSlaCountdown(deadlineAt, now);
@@ -207,17 +180,7 @@ export function ItemCardRow({
   reference?: string | null;
   /** Stable order-row identity for non-visual browser observability only. */
   outboundOrderId?: string | number | null;
-  /**
-   * The shelf the unit sits on. Mono, default ink.
-   *
-   * TEXT, and only text. A DataMatrix of the bin barcode used to render beside
-   * it so a bench scanner could read the code off the screen; operator
-   * 2026-09-15 removed it — *"it should never mount the QR code for the
-   * location of the item within the row itself"*. A queue row identifies
-   * work, and a 28px symbol on every row competes with the title for the one
-   * thing the thumb is hunting. The bin's own label carries the scannable
-   * symbol, which is where a scanner is pointed anyway.
-   */
+  /** The shelf the unit sits on. */
   location?: string | null;
   /** Listing identity rendered only through the governed SKU-adjacent trigger. */
   itemNumber?: string | null;
@@ -258,12 +221,7 @@ export function ItemCardRow({
   const [photoInspecting, setPhotoInspecting] = useState(false);
   const tacticalRoster = Boolean(orderContext);
   const skuIdentity = reference ?? itemNumber;
-  // Row tap remains the physical-work selection door. The only sanctioned
-  // secondary destination is MicroListingTrigger, beside the SKU and in a
-  // context-preserving dialog rather than a browser redirect.
-  // The leading label identifies the routing fact at a glance; the formatter
-  // retains the full truthful breadcrumb (for example, ZONE-B // AISLE-04 //
-  // BIN-S4) instead of guessing one unit's bin from a multi-bin allocation.
+  // Row tap remains the physical-work selection door.
   const storageContext = location ? `BIN: ${location}` : 'BIN: Unassigned';
   const x = useMotionValue(0);
   const dragging = useRef(false);

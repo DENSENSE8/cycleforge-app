@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Detail-stack registry — the single source of truth mapping each right-side
- * "detail stack" slide-over (ShippedDetailsPanel, ReceivingDetailsStack,
- * SkuDetailView, FbaBoardDetailPanel, RepairDetailsPanel, …) to the URL param
- * that opens it, a display noun, and an icon.
- *
- * These panels are deep-linkable via an `open<Kind>Id` search param on their
- * home surfaces. The URL tracker records opens into the assistant recents list;
- * re-open from recents uses `openDetailStack` (global host, no navigation).
- */
+/** Detail-stack registry — the single source of truth mapping each right-side "detail stack" slide-over (ShippedDetailsPanel,… */
 
 import type { ComponentType } from 'react';
 import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';

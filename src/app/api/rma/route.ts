@@ -27,18 +27,7 @@ export const GET = withAuth(async (_request, ctx) => {
   }
 }, { permission: 'rma.view' });
 
-/**
- * POST /api/rma
- *
- * Issues a new RMA. Generates the RMA-YYYY-NNNNN number server-side.
- *
- * Body: {
- *   direction: 'INBOUND_FROM_CUSTOMER' | 'OUTBOUND_TO_VENDOR',
- *   order_id?: number, customer_id?: number,
- *   expires_at?: ISO timestamp, expected_carrier?: string,
- *   notes?: string
- * }
- */
+/** POST /api/rma */
 export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
   const actorStaffId: number | null =

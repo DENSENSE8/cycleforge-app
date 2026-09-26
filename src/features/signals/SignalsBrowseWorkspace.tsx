@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Signals ▸ Browse — the Workbench half of the two domain-linked history pages
- * (universal-feed plan Phase 5). A master-detail over `entity_signals`: a
- * searchable list (master) + the selected signal's full detail (crossfading
- * right pane, keyed on `?signalId=`). Durable, URL-addressable selection — the
- * Workbench contract, distinct from the Monitor timeline at `?mode=timeline`.
- *
- * Workbench half of Operations ▸ Signals: searchable list (master) + selected
- * signal detail (crossfading right pane, keyed on `?signalId=`). Search lives
- * in the global header; filters/selection are URL-driven.
- *
- * Row preview: identity chrome paints from the clicked list row (or the list
- * row matching `?signalId=`) before the detail fetch returns. Preview is
- * ephemeral — never durable SoT; drops when the URL clears or fetch supersedes.
- */
+/** Signals ▸ Browse — the Workbench half of the two domain-linked history pages (universal-feed plan Phase 5). */
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';

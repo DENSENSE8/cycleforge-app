@@ -1,20 +1,4 @@
-/**
- * ShipStation API v2 (ShipEngine) client — the label ENGINE.
- *
- * Base: https://api.shipstation.com/v2, `API-Key` header. Covers rate-shop,
- * label purchase (from a quoted rate or straight from a shipment), void, carrier
- * discovery, and label-byte download. Raw provider JSON is validated at the
- * boundary (Zod) and mapped into the normalized shapes in ./types — nothing
- * ShipStation-specific leaks past this module.
- *
- * Credential-injected (the v2 API key is passed in), so this file never imports
- * the vault or the tenant layer and is unit-testable with a fake key + fetch.
- * Vault resolution + the tenant ship-from live in ./config.
- *
- * NOTE: v2 has no order-list endpoint and no create-label-from-order shortcut —
- * order pull + stored weight come from the v1 client (./orders-v1). See
- * docs/shipstation-outbound.md.
- */
+/** ShipStation API v2 (ShipEngine) client — the label ENGINE. */
 
 import { z } from 'zod';
 import type {
@@ -289,12 +273,7 @@ export interface LabelPurchaseOptions {
   labelFormat?: 'pdf' | 'png' | 'zpl';
   /** 4x6 (thermal, default) | letter. */
   labelLayout?: '4x6' | 'letter';
-  /**
-   * Buy a RETURN label (`is_return_label`): the spec's ship-from is the buyer
-   * and its ship-to is us. Only `purchaseLabelFromShipment` (v2 `POST /labels`)
-   * honours it — ShipStation ignores the flag on `/labels/rates/{id}`.
-   * Charged `carrier_default` (most carriers: only when the carrier scans it).
-   */
+  /** Buy a RETURN label (`is_return_label`): */
   returnLabel?: {
     /** Our reference on the label — the order number. */
     rmaNumber?: string | null;
@@ -493,13 +472,7 @@ export function isShipStationHost(url: string, baseUrl: string = DEFAULT_BASE_UR
   return ['shipstation.com', 'shipengine.com'].some((d) => host === d || host.endsWith(`.${d}`));
 }
 
-/**
- * Download a purchased label's bytes. The pdf/png/zpl URLs carry a token, but
- * the generic `href` (`/v2/downloads/…`) is API-key gated and answers 401
- * without it — call it through {@link ShipStationV2Client.downloadLabel}, which
- * supplies the key for ShipStation hosts. Returns raw bytes + content type for
- * the document store (storeOutboundDocumentFromBytes).
- */
+/** Download a purchased label's bytes. */
 export async function downloadLabelBytes(
   url: string,
   apiKey?: string,

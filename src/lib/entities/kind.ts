@@ -1,17 +1,6 @@
 /**
  * THE ENTITY KIND — the one domain union the Warehouse OS speaks
  * (operator ruling, 2026-08-25: one SoT, very simple).
- *
- * ONE list, ONE word each. Everything else DERIVES: the selector letter is
- * the word's first letter (`o`·`t`·`s`·`p`), the picker label is
- * `O · Orders`, the matched-by disclosure is the word uppercased, the face
- * word is the word. Adding a kind is adding ONE line here plus one
- * icon row at the surface that renders it — the Record types break
- * the build until both exist.
- *
- * DB-free, React-free. The header search-by picker, the grouped search,
- * and match-key stamps all key on this union — presentation modules
- * project it, never redefine it.
  */
 
 export const ENTITY_KINDS = ['order', 'tracking', 'serial', 'phone'] as const;

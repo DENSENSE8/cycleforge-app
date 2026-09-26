@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Controls of the receiving-order composer — the vocabulary every composer
- * section is written in. Deliberately not the shared form primitives: the
- * composer is one fixed-width industrial sheet (`ReceivingOrderSheet`), so each
- * field is a flush recessed box on its ruled grid — label above, mono value,
- * 32px hit — and nothing floats, animates or rounds.
- */
+/** Controls of the receiving-order composer — the vocabulary every composer section is written in. */
 
 import {
   forwardRef,

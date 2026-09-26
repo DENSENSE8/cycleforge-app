@@ -17,16 +17,7 @@ import {
   type JourneyEntitySummary,
 } from '@/lib/queries/operations-journey-queries';
 
-/**
- * Drives the Master Operations Journey right pane. This is a RECORD LOOKUP — it
- * only fetches once a specific order/serial/tracking number is in the URL; there
- * is no "browse all events" firehose. The fetched record's events (bucketed by
- * source) merge through the shared adapters; the grouping map feeds
- * `EventTimeline`'s `groupKeyOf`.
- *
- * Realtime: this is a Monitor (observe-only), so a station/order nudge triggers a
- * debounced query *invalidation* (refetch), never an in-place patch.
- */
+/** Drives the Master Operations Journey right pane. */
 export function useOperationsJourney(url: OperationsTimelineUrlState) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -65,10 +56,7 @@ export function useOperationsJourney(url: OperationsTimelineUrlState) {
   const ordersChannel = safeChannelName(() => getOrdersChannelName(orgId!));
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
 
-  // Subscribe only to the meaningful, lower-frequency journey nudges (tech
-  // serial-add → order.tested; order edits → order.changed; receiving →
-  // receiving-log.changed). We deliberately do NOT subscribe to the dashboard
-  // `activity_event` firehose (fires per scan).
+  // Subscribe only to the meaningful, lower-frequency journey nudges (tech serial-add → order.tested; order edits → order.changed; receiving…
   useAblyChannel(ordersChannel, 'order.tested', invalidate, !!ordersChannel);
   useAblyChannel(ordersChannel, 'order.changed', invalidate, !!ordersChannel);
   useAblyChannel(stationChannel, 'receiving-log.changed', invalidate, !!stationChannel);

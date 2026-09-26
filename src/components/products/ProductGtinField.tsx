@@ -16,36 +16,7 @@ interface ProductGtinFieldProps {
   onSaved: (next: string | null) => void;
 }
 
-/**
- * The GTIN row on the product record — read, and (with `sku_stock.manage`) edit.
- *
- * ## Why this row is not a plain `DetailRow`
- *
- * Until now `sku_catalog.gtin` was read-only in the product UI and the only
- * writer in the codebase was `getOrCreateInternalGtin`, which lazily stamps a
- * restricted-circulation number (`02…`) the first time a unit label needs one.
- * A tenant who answered "we buy individual GTINs per product" in Settings →
- * Product identity therefore had nowhere to put the digits they had actually
- * licensed.
- *
- * That makes this field structurally different from the other attributes: the
- * slot is very often already full of a machine-generated value, so the control
- * has to say *which kind of number is in there* before an operator can decide
- * whether to replace it. `isRestrictedCirculationGtin` is exactly that
- * predicate — "still empty in the sense that matters" — which is why the
- * INTERNAL chip is derived rather than stored as a second flag.
- *
- * ## The same verdict runs here and at the route
- *
- * `classifyGtinEntry` is pure and client-safe, so the field can refuse a typo
- * before a round trip while the route refuses it again for anything that did
- * not come through this box. One answer, two call sites — never a regex here
- * and a validator there.
- *
- * Clearing is a real action, not a destructive one: an empty box stores `null`
- * and the row falls back to the deterministic internal number, which
- * `getOrCreateInternalGtin` re-mints unchanged on the next label.
- */
+/** The GTIN row on the product record — read, and (with `sku_stock.manage`) edit. */
 export function ProductGtinField({ catalogId, gtin, onSaved }: ProductGtinFieldProps) {
   const { has } = useAuth();
   const canManage = has('sku_stock.manage');

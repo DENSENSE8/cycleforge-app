@@ -6,12 +6,7 @@ import { sourcePlatformLabel } from '@/lib/source-platform';
 import { manualAddPairing } from './sku-pair-api';
 import { PasteButton } from './PasteButton';
 
-/**
- * Inline "add an identifier to THIS platform" control, shown on every channel
- * row (including empty ones). Hand-enter an item number and/or SKU and link it —
- * posts a single manual accept to the atomic + audited pair-batch path, then
- * refreshes the hub.
- */
+/** Inline "add an identifier to THIS platform" control, shown on every channel row (including empty ones). */
 export function ChannelManualAdd({
   platform,
   skuCatalogId,

@@ -5,12 +5,9 @@ import { INTAKE, type IntakeClass } from '@/design-system/tokens/intake';
 import { cn } from '@/utils/_cn';
 
 /**
- * A triage row's lead: what the thing IS or where it stands, as its 3-letter
+ * A triage row's lead:
  * mono code (BRIEF §4 triage — "what it is + state code" leads the row). The
- * vocabulary is the registry's, never a page's: {@link LIFECYCLE} for work state
- * (`HLD`, `OOS` …), {@link INTAKE} for what arrived (`NEW`, `TKT` …). The code
  * is shown, the full word is spoken (BRIEF §8). Same face as the `/m/scan`
- * tape's intake code.
  */
 export function StateCode({ code, label, tone }: { code: string; label: string; tone: StateName | null }) {
   return (

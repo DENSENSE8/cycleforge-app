@@ -89,11 +89,7 @@ function buildStaffGoalHistorySnapshotQuery(loggedDate: string, filters?: { staf
     nextParam += 1;
   }
 
-  // Tenant scope: staff_goals/staff_goal_history have no own organization_id —
-  // scope them via the parent staff row. station_activity_logs DOES carry its
-  // own organization_id, so the actual-counts read gets an explicit predicate
-  // for defense-in-depth (the RLS GUC is the backstop). When orgId is omitted
-  // (cron-wide snapshot across all orgs) behavior is byte-identical to before.
+  // Tenant scope:
   if (filters?.orgId) {
     goalConditions.push(`s.organization_id = $${nextParam}`);
     actualConditions.push(`sal.organization_id = $${nextParam}`);
@@ -270,10 +266,7 @@ export async function upsertStaffGoalWithHistory(
   station: string = 'TECH',
   orgId?: OrgId,
 ): Promise<StaffGoal> {
-  // Tenant-scoped path: staff_goals/staff_goal_history have no own
-  // organization_id, so the write is scoped via the parent staff row. The
-  // enclosing withTenantTransaction sets the org GUC and the SQL guards the
-  // INSERT against staff in this org.
+  // Tenant-scoped path:
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       const result = await client.query(

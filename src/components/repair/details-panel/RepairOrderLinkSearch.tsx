@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Repair → order linkage search.
- *
- * Replaces the old free-typed "Order #" input with a live Ecwid order lookup
- * (`/api/ecwid/order-search`). The operator types an order number (or customer
- * name / email), picks the real order from the dropdown, and we persist the
- * resolved public order number as `source_order_id`.
- *
- * UNFILTERED by fulfillment state on purpose — a repair links to an order
- * whether or not it has shipped (the API sends no shipped/unshipped filter).
- *
- * Free-text fallback is preserved: an order that isn't in Ecwid (legacy /
- * marketplace) can still be committed as typed via the "Use … as entered" row
- * or Enter, so this never blocks linking.
- */
+/** Repair → order linkage search. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

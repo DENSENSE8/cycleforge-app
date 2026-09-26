@@ -1,10 +1,4 @@
-/**
- * Unbox History Band 3 command-row filter bag — URL SoT for find + exact-match
- * refine (`?rh_q=` / `?rh_field=` / `?rh_scope=` / `?sort=` / `?staff=` /
- * `?weekOffset=`).
- *
- * Layout prefs (`hlayout`, `ukpi`, column prefs, …) stay out of this bag.
- */
+/** Unbox History Band 3 command-row filter bag — URL SoT for find + exact-match refine (`?rh_q=` / `?rh_field=` / `?rh_scope=` / `?sort=` /… */
 
 import { parseStaffParam, STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import {

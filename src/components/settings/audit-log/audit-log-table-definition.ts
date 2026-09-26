@@ -20,16 +20,7 @@ import {
   type AuditLogGridColumn,
 } from './audit-log-grid-layout';
 
-/**
- * Nothing on this desk writes. An audit row is a record of a write that
- * already happened, so there are no row verbs, no cell editing and no triage
- * flags — the only thing an admin does with a page of them is read, narrow and
- * copy.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting a run of rows into an incident write-up is the reason this page is
- * opened at all.
- */
+/** Nothing on this desk writes. */
 export const AUDITLOG_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

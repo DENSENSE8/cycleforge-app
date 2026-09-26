@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Universal station Timeline display — {@link SectionTabsSlider} spines
- * (Units default · Tracking = full carrier display). Shared by Unbox,
- * Testing, Shipping, and Packing Displays.
- *
- * Flush plane on the push column (no WorkspaceCard glass island) — same
- * recipe as Classify / Package Pairing bare chrome.
- *
- * Carrier data paths:
- *   - poId → Incoming details query (same cache as Incoming Shipment tab)
- *   - tracking (no po) → Operations journey dim=tracking
- *   - orderId (no po/tracking) → Operations journey dim=order
- *
- * Serials: explicit list, else carton fetch via {@link useCartonSerials}.
- */
+/** Universal station Timeline display — {@link SectionTabsSlider} spines (Units default · Tracking = full carrier display). */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';

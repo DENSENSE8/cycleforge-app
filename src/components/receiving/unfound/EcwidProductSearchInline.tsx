@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Inline Ecwid product / repair-order search.
- *
- * The non-modal successor to the retired `EcwidProductSearchPopover` — composes
- * the same reusable pieces (`useEcwidProductSearch` + `EcwidSearchHeader` /
- * `EcwidSearchInputs` / `EcwidResultsList`) but renders in flow (no portal,
- * no backdrop, no Escape handler). Drop it into a tab/panel; the host owns
- * layout and when it's shown.
- *
- * Used by the triage Smart-Matching "Repair Service / Trade in" tab and the
- * Local-Pickup "Add item" panel.
- */
+/** Inline Ecwid product / repair-order search. */
 
 import { useEcwidProductSearch } from './ecwid-search/useEcwidProductSearch';
 import { EcwidSearchHeader } from './ecwid-search/EcwidSearchHeader';
@@ -45,13 +34,7 @@ export function EcwidProductSearchInline({
 }: EcwidProductSearchInlineProps) {
   const c = useEcwidProductSearch(props);
 
-  // `bare` (Package Pairing / right-rail Displays): fills whatever height its
-  // flex host gives it — `h-full min-h-0` — so the results list's own
-  // `overflow-y-auto` scrolls inside the available column instead of the
-  // panel stopping at a fixed viewport fraction and leaving dead space below
-  // it. `card` (floating popover-style hosts — Local-Pickup add-item, triage
-  // Smart-Matching) keeps the `max-h-[60vh]` cap; those aren't full-height
-  // flex columns and never were.
+  // `bare` (Package Pairing / right-rail Displays):
   const shell =
     chrome === 'bare'
       ? 'flex h-full min-h-0 min-w-0 max-w-full flex-col'

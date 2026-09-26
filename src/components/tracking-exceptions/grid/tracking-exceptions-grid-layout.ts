@@ -1,16 +1,4 @@
-/**
- * Tracking Exceptions spreadsheet column model — the ops-native sibling of
- * {@link WARRANTY_GRID_COLUMNS}. (Its other sibling, the Ready hand model, was
- * ported to the slot engine on 2026-08-31 — this file is a wave 1.4 port
- * candidate for the same reason: `docs/todo/seller-table-program-PLAN.md` §03.)
- *
- * A row is one unmatched receiving scan waiting on Zoho re-query or a human
- * edit. No fold, no day band, no in-cell edit — corrections open the record
- * plane (edit dialog). Frozen pane = `select` + `title` (tracking identity).
- *
- * `actions` is an ACTION track (Refresh · Edit), not a fact: no `hideKey`, so
- * it is structural and the Fields menu never offers to hide a control.
- */
+/** Tracking Exceptions spreadsheet column model — the ops-native sibling of {@link WARRANTY_GRID_COLUMNS}. */
 
 import {
   gridFrozenLeft,

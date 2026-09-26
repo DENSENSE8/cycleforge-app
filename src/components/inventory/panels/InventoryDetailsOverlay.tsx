@@ -21,17 +21,7 @@ interface OverlaySelection {
 
 const SUPPORTED_KINDS: InventoryDetailKind[] = ['bin', 'sku', 'unit', 'alert', 'count'];
 
-/**
- * Controller for the inventory detail view.
- *
- * Returns the active panel as inline content (no portal, no fixed
- * positioning) so it fills the main pane to the right of the sidebar.
- * Returns `null` when nothing is selected — the parent then renders the
- * default view (e.g. `PulseView`).
- *
- * Selection is URL-driven (`?open=<kind>:<ref>`); the events channel is a
- * convenience for in-session clicks/navigate.
- */
+/** Controller for the inventory detail view. */
 export function InventoryDetailsOverlay() {
     const searchParams = useSearchParams();
     const openParam = searchParams.get('open');

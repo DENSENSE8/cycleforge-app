@@ -1,15 +1,4 @@
-/**
- * Param ownership for the Shipping (Outbound) mode routes.
- *
- * Slice 3 of the nav/routing refactor: the mode moved from `?mode=` onto the
- * path (`/shipping/fba|scan-out`), and each of those routes now
- * declares what it owns. Ready lives as `?fbaMode=ready` on `/shipping/fba`
- * (not its own path). To-ship desk lives at `/shipping/orders` (former
- * `/dashboard` outbound board).
- *
- * The segments are NOT what isolates these params; the boundary parse is. See
- * `@/lib/routing/route-params`.
- */
+/** Param ownership for the Shipping (Outbound) mode routes. */
 
 import {
   OUTBOUND_MODE_PATHS,
@@ -80,28 +69,11 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     packStation: paramPositiveInt,
     packPlaced: paramFlag,
     new: paramEnum(['true'] as const),
-    /**
-     * Add-orders rail, opened on the method list rather than hand entry.
-     * MUST stay declared: `useSurfaceParamHygiene` (mounted in the shipping
-     * layout) re-parses the URL against this spec on every param change and
-     * drops anything undeclared. While `ingest` was missing here, the chrome
-     * Add wrote `?ingest=true` and the hygiene pass stripped it on the next
-     * tick — the rail opened and closed itself before the operator could type.
-     */
+    /** Add-orders rail, opened on the method list rather than hand entry. */
     ingest: paramEnum(['true'] as const),
-    /**
-     * Caged → released intake session (`OrderIntakeOverlay`, centered).
-     * `new` starts an order; a numeric id re-opens that caged order's
-     * session. Declared for the same reason `ingest` is — an undeclared param
-     * on this route is stripped on the operator's next keystroke.
-     */
+    /** Caged → released intake session (`OrderIntakeOverlay`, centered). */
     triage: paramText,
-    /**
-     * To-ship Labels walk (`PaperworkWalkHost`). MUST stay declared:
-     * `useSurfaceParamHygiene` in the shipping layout drops undeclared keys
-     * on the next tick. While this was missing, Labels wrote `?paperwork=`
-     * and hygiene stripped it — the desk flashed table ↔ walk.
-     */
+    /** To-ship Labels walk (`PaperworkWalkHost`). */
     paperwork: paramPositiveInt,
     /** Caged facet on the To-ship queue — shows the held set instead of the live one. */
     cage: paramFlag,
@@ -143,12 +115,7 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
-/*
- * `/shipping/labels` — DELETED 2026-08-30 along with its route. Its params
- * (`ltab`, `open`, `new`, `rtab`, `q`, `sort`) died with the surface that owned
- * them; a spec for a route that does not exist would be a boundary parse for
- * nothing, and `routeParamsFor('/shipping/labels')` now correctly finds none.
- */
+/* `/shipping/labels` — DELETED 2026-08-30 along with its route. */
 /** `/shipping/fba` — Ready · Plan · Combine · Shipped inbound workbench. */
 const FBA_ROUTE_PARAMS = defineRouteParams({
   route: OUTBOUND_MODE_PATHS.fba,
@@ -164,17 +131,7 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
     main: paramText,
     details: paramText,
     r: paramText,
-    /**
-     * The FNSKU catalog rail's three keys (ex-Admin › Amazon Prep, reached as
-     * `?fbaMode=catalog`). `FbaCatalogSidebarPanel` is the only writer and
-     * `FBAManagementTab` the only reader, but the SPEC has to own them or the
-     * boundary parse rebuilds the query string without them and the rail's own
-     * selection vanishes between the click and the pane.
-     *
-     * `search` is the rail's filter box — deliberately NOT folded into
-     * `SHIPPING_COMMON.q`: the catalog rail queries `/api/admin/fba-fnskus?q=`
-     * with it, and `q` on this route already means the board's search.
-     */
+    /** The FNSKU catalog rail's three keys (ex-Admin › Amazon Prep, reached as `?fbaMode=catalog`). */
     search: paramText,
     /** Selected FNSKU — the catalog pane's detail key. */
     fnsku: paramText,
@@ -184,20 +141,7 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
-/**
- * `/shipping/shipped` — the Shipped desk: shipment history + lookup.
- *
- * Owns the whole existing shipped vocabulary, unchanged, because that is what
- * makes the promotion a MOVE rather than a rewrite: `resolveShippedQueryArgs`
- * is still the only resolver, and a `?carrier=UPS&shippedWeekOffset=2` bookmark
- * that used to hang off the orders desk reads identically here.
- *
- * The open-queue keys are deliberately absent. `stage`, `cage`, `ustatus`,
- * `late` and `attention` are questions about work still in the warehouse; on an
- * archive they would be filters that can only ever return nothing, and the
- * boundary parse dropping them is what stops a forwarded To-ship URL from
- * landing here wearing a queue's refinements.
- */
+/** `/shipping/shipped` — the Shipped desk: */
 const SHIPPED_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_SHIPPED_PATH,
   owns: {
@@ -235,24 +179,7 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
 
 /**
  * `/shipping/exceptions` — the held-order queue, on the outbound grid.
- *
- * It needs a spec because `useSurfaceParamHygiene` is mounted in the shipping
- * LAYOUT, so this route is inside the boundary parse whether or not it declares
- * anything. Without one it falls through to `stripCrossSurfaceParams`, which is
- * a DENYLIST — it happens to keep `?order=` today only because this path is not
- * a testing surface, which is luck rather than a contract. This desk has
- * already paid twice for a param the hygiene pass dropped on the operator's
- * next keystroke (`ingest`, `triage`).
- *
- * `order` is the link an operator sends a colleague ("this one is wrong,
- * look"), and it is also the surface's own record/queue switch, so it is the
- * one param here that must survive a paste.
- *
- * There is deliberately NO `scope`: the queue is fixed to `actionable`
  * (operator ruling 2026-08-31 — `all` redefines the queue into a
- * several-thousand-row backlog sweep rather than narrowing it, so it would be a
- * mode, not a filter). Column sort rides `colsort`/`coldir` through
- * {@link SHIPPING_CARRIES}, which is why neither is named here.
  */
 const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: SHIPPING_EXCEPTIONS_PATH,

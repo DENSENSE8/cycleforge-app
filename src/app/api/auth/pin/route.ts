@@ -1,13 +1,4 @@
-/**
- * PIN management.
- *
- *   POST  /api/auth/pin   — set or change PIN
- *     Body: { pin: string, currentPin?: string, staffId?: number }
- *
- *     - Self-change: omit staffId; currentPin required if a PIN already
- *       exists (re-verify before swap).
- *     - Admin set/reset: pass staffId; requires admin.manage_staff permission.
- */
+/** PIN management. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { hashPin, PinError, setStaffPin, verifyStaffPin } from '@/lib/auth/pin';
@@ -64,11 +55,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'pin' }, { status: 400 });
     }
 
-    // Tenant scope (CVE class: IDOR cross-tenant PIN reset → account takeover).
-    // BOTH the self-change and admin-reset target must belong to the CALLER's
-    // org. Probe the target row scoped to me.organizationId: a cross-org id
-    // (the admin-reset IDOR) reads as NOT_FOUND and 404s BEFORE any mutation.
-    // `me` is guaranteed non-null above — both branches 401 when it's missing.
+    // Tenant scope (CVE class:
     const callerOrgId = me!.organizationId;
     const probe = await pool.query(
       `SELECT pin_hash FROM staff WHERE id = $1 AND organization_id = $2 LIMIT 1`,

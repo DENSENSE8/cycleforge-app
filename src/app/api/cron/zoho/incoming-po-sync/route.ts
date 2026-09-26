@@ -1,34 +1,4 @@
-/**
- * GET /api/cron/zoho/incoming-po-sync
- *
- * Vercel-cron-triggered sync of Zoho purchase orders into the
- * `receiving_lines` table. Surfaces issued-but-not-yet-received POs
- * under the "Incoming" pill on the receiving page.
- *
- * Unlike /api/cron/zoho/po-sync (which writes to the audit-only
- * `zoho_po_mirror` table for the email reconciler), this cron is the
- * one that materializes Zoho POs as `workflow_status='EXPECTED'` rows
- * in the operator-facing receiving queue.
- *
- * Behavior:
- *   - Pulls only POs with Zoho status='issued' (vendors have sent it,
- *     warehouse is expected to receive). Draft / billed / cancelled
- *     POs are filtered out by the upstream query.
- *   - Delta sync via `sync_cursors` key 'zoho_purchase_orders'. First
- *     run bootstraps from 14 days back to keep the initial pull bounded.
- *   - Cursor only advances on a clean run (no errors), so a partial
- *     failure replays the same window on the next tick.
- *   - Safe caps: max 25 pages × 2000 items per run so a flood can't
- *     blow the function timeout.
- *
- * Idempotency: handled inside `syncZohoPurchaseOrdersToReceiving` —
- * upserts by (`zoho_purchaseorder_id`, `zoho_line_item_id`); never
- * overwrites `quantity_received` or `workflow_status` on rows the
- * operator has already touched (see zoho-receiving-sync.ts:305-319).
- *
- * Auth: Authorization: Bearer ${CRON_SECRET}. Vercel injects this
- * header automatically when the env var is set in the project.
- */
+/** GET /api/cron/zoho/incoming-po-sync */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncZohoPurchaseOrdersToReceiving, type BulkSyncSummary } from '@/lib/zoho-receiving-sync';
@@ -68,11 +38,7 @@ export async function GET(req: NextRequest) {
           ? poDateFloorParam
           : '2026-05-08';
 
-    // Distributed lock so an overlapping tick / manual trigger / Vercel retry
-    // can't double-sweep. Fan out per Zoho-connected org (plus USAV while it
-    // still uses env creds) — each org syncs under its own Zoho credentials and
-    // tenant GUC (syncZohoPurchaseOrdersToReceiving self-binds withZohoOrg +
-    // withTenantTransaction per PO), with per-org failures isolated.
+    // Distributed lock so an overlapping tick / manual trigger / Vercel retry can't double-sweep.
     const locked = await withCronLock('zoho.incoming_po_sync', () =>
       withCronRun('zoho.incoming_po_sync', async () => {
         const perOrg = await forEachOrgWithProvider(

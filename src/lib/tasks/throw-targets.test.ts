@@ -1,10 +1,4 @@
-/**
- * Run: npx tsx --test src/lib/tasks/throw-targets.test.ts
- *
- * Every case here is a wrong-record bug the panel cannot see: the resolve
- * response looks identical in shape whether the number in it is a carton, a
- * repair ticket or a line.
- */
+/** Run: npx tsx --test src/lib/tasks/throw-targets.test.ts */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

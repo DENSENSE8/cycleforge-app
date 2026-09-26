@@ -1,14 +1,4 @@
-/**
- * Per-staff sign-in policy (WS6.1).
- *
- * Reads the `staff.auth_method` knob added by
- * `src/lib/migrations/2026-06-28_staff_auth_policy.sql`. Kept tiny and
- * standalone so the (hot) sign-in handler only needs a one-line import.
- *
- * FAIL-SAFE: if the column is not present yet (migration not applied), this
- * resolves to 'pin' — the historical default — so every existing sign-in path
- * is byte-identical until the migration lands.
- */
+/** Per-staff sign-in policy (WS6.1). */
 
 import pool from '@/lib/db';
 

@@ -1,11 +1,4 @@
-/**
- * Toast waist — Sonner behind Kinetic Ledger defaults.
- *
- * Theme lives on `AppToaster` + `toast-theme.ts`. This module owns duration /
- * close-button policy so success stays a quiet whisper and errors stay dismissible.
- *
- * Prefer `@/lib/toast` over `sonner` directly so defaults apply.
- */
+/** Toast waist — Sonner behind Kinetic Ledger defaults. */
 
 import {
   toast as sonnerToast,

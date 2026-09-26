@@ -1,10 +1,4 @@
-/**
- * Domain read-tool adapters — thin wrappers over existing helpers
- * (operations journey, orders context, serial lookup, warranty, assignments,
- * inbox queues, photos, receiving resolve, ticket entities).
- *
- * No new SQL. Injectable Deps for DB-free unit tests.
- */
+/** Domain read-tool adapters — thin wrappers over existing helpers (operations journey, orders context, serial lookup, warranty,… */
 
 import { z } from 'zod';
 import {

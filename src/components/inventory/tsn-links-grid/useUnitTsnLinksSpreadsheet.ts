@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * **Unit-TSN-links spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useUnitTsnLinksSpreadsheet({ rows });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * Sort and search are LOCAL state: this is a pane on a detail page beside
- * another pane, and two of them writing the same `?sort=` would fight.
- */
+/** **Unit-TSN-links spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -50,12 +34,7 @@ export interface UseUnitTsnLinksSpreadsheetOptions {
 export function useUnitTsnLinksSpreadsheet({
   rows,
   loading = false,
-  /**
-   * The empty state the retired hand table did not have: it was wrapped in
-   * `tsnLinks.length > 0 ?` and the whole section vanished, so "this unit has
-   * no v1 history" and "this panel does not exist" read identically — on the
-   * one surface whose job is telling an operator whether v1 knew the serial.
-   */
+  /** The empty state the retired hand table did not have: */
   emptyMessage = 'No v1 tech_serial_numbers record references this unit.',
   searchPlaceholder = 'Filter TSN records…',
 }: UseUnitTsnLinksSpreadsheetOptions): CompoundSpreadsheetFeed<

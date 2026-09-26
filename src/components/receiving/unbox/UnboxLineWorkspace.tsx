@@ -1,40 +1,6 @@
 'use client';
 
-/**
- * Unbox right-pane shell — browse workbench always mounted; focused line
- * workspace crossfades over it (TestingLineWorkspace pattern).
- *
- * Motion is the STATION cadence preset (`stationCartonSwap`), not the pointer
- * `workbenchPaneSettle` its siblings use. Exit is instant.
- *
- * - Browse→first open: `mode="wait"` + enter fade (~0.12s).
- * - Carton→carton (rail PO switch / next scan): `mode="sync"` + hard-cut enter
- *   (`initial={false}`). The new opaque pane mounts on top while the old one
- *   exits underneath — `mode="wait"` would remove A before mounting B and
- *   punch a white hole through the card host while the underlay stays
- *   `visibility: hidden`. Concurrent *semi-transparent* fades still
- *   double-image; opaque cover-replace does not.
- *
- * Remount is deliberately KEPT — it re-seeds the editor cleanly per carton
- * (see in-place swap note below). Overlay shell paints `bg-surface-canvas`
- * to match the station body (not card white).
- *
- * The crossfade is keyed on CARTON identity (`workspace-pane-key.ts`), not on
- * how the carton was opened. A scan landing on a different box still remounts
- * the shell; the scan-resolution upgrade (pending stub → matched → hydrated)
- * and a scan→rail-click of the SAME box reconcile in place.
- *
- * DO NOT go further and swap carton→carton IN PLACE (the queue-inspector
- * exception in `display/motion-crossfade.md`). That exception has stated
- * preconditions and `LineEditPanel` does not meet them today: `unboxView`,
- * `classifyExpand`, and `pairingOpen` have no reset keyed on `row.id`, so an
- * in-place carton swap would carry the open tab and sub-form across two
- * different boxes — and the notes composer's dirty draft has no
- * flush-before-swap, which is exactly how one carton's note lands on another.
- * The remount is what guarantees a clean re-seed. Sync + opaque cover-replace
- * buys zero-flash rail switches without taking that risk; removing the
- * *remount* needs those resets first.
- */
+/** Unbox right-pane shell — browse workbench always mounted; focused line workspace crossfades over it (TestingLineWorkspace pattern). */
 
 import { useEffect, useRef } from 'react';
 // useRef carries the render-time pane slot below (see `paneSlotRef`)
@@ -48,13 +14,7 @@ import {
 } from '@/design-system/motion';
 import { LoaderFieldCover, UniversalLoader } from '@/design-system/components/UniversalLoader';
 
-// Phase 2 (lazy carton graph): `ReceivingLineWorkspace` pulls the ~1.1k-LOC
-// `LineEditPanel` + the whole Displays registry — the heaviest module on
-// `/unbox`. Keep the chunk split via `next/dynamic`, but do NOT opt out of SSR:
-// station-first cold land opens the MRU carton on bare `/unbox`, and that
-// workspace is the route's declared LCP surface. `ssr: false` left a blank
-// middle until hydration (~7s). Desk tables (`UnboxWorkspaceView`) stay
-// `ssr: false` — they only mount behind `?unboxdesk=1`.
+// Phase 2 (lazy carton graph):
 const ReceivingLineWorkspace = dynamic(
   () =>
     import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
@@ -119,22 +79,13 @@ export function UnboxLineWorkspace({
   // refresh never flashes the browse feed before the restore lands.
   const showRestoreSkeleton = restorePending && !showOverlay;
 
-  // Overlay presence identity — ONE key per physical carton (see
-  // `workspace-pane-key.ts`). Advanced from a ref DURING render because the key
-  // is needed at render time; `resolveWorkspacePaneSlot` is idempotent under
-  // repeated application, so StrictMode's double-invoke is a no-op. Reset on
-  // close so a fresh open never inherits a stale slot.
+  // Overlay presence identity — ONE key per physical carton (see `workspace-pane-key.ts`).
   const paneSlotRef = useRef<WorkspacePaneSlot | null>(null);
   paneSlotRef.current =
     showOverlay && workspace ? resolveWorkspacePaneSlot(paneSlotRef.current, workspace.row) : null;
   const paneKey = paneSlotRef.current?.key ?? 'carton:none';
 
-  // Carton→carton while the overlay is already open: sync + hard-cut so the
-  // new opaque pane covers the old one — `mode="wait"` would uncover the host
-  // between exit and enter. Browse→first open still uses wait + enter fade.
-  // The "already open" flag commits in an effect, never during render — this
-  // overlay is server-rendered open on cold land, so a render-time answer that
-  // moves between React's double-invoke passes is a hydration mismatch.
+  // Carton→carton while the overlay is already open:
   const cartonSwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   // Read-only "already unboxed" receipt — shown over the editor when THIS
@@ -155,15 +106,7 @@ export function UnboxLineWorkspace({
   }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton]);
 
   return (
-    /*
-      The outer shell wraps BOTH the desk pane and the carton overlay.
-
-      Anything that must stay legible while a carton is open belongs HERE, not
-      inside `UnboxWorkspaceView` — that pane goes `visibility: hidden` whenever
-      a carton is open, so a status readout mounted in it would disappear at
-      exactly the moment "did that scan land?" is being asked. The station
-      history dock learned this the hard way before it was deleted.
-    */
+    /* The outer shell wraps BOTH the desk pane and the carton overlay. */
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
       <div
@@ -230,11 +173,7 @@ export function UnboxLineWorkspace({
                 />
               </div>
             ) : null}
-            {/* Preview makes the whole plane inert rather than threading a
-                `readOnly` prop through ~40 controls: one missed control would
-                be a silent write from the stance whose contract is not
-                writing. `inert` also takes it out of the tab order, so the
-                wedge cannot land in a field that will never save. */}
+            {/* Preview makes the whole plane inert rather than threading a `readOnly` prop through ~40 controls: */}
             <div
               className="flex min-h-0 flex-1 flex-col"
               // Stable hook for the read-only E2E: the assertion has to name

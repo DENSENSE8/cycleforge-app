@@ -1,23 +1,4 @@
-/**
- * GET /api/admin/org/export
- *
- * Returns every row of every business table the calling tenant owns as a
- * single JSON document. Satisfies the "right of access" / data-portability
- * obligation (GDPR Article 15 + 20, CCPA equivalents).
- *
- * Gated by admin.view + step-up because this is a privileged action
- * that dumps PII (customer addresses, staff names, audit logs). The
- * response is unbounded — callers should expect a streaming download
- * for tenants with deep history. We use Content-Disposition so browsers
- * save it as a file rather than render it.
- *
- * Tables included: every table that already carries organization_id, plus
- * staff/sessions/passkeys keyed by organization_id directly. Tables not
- * yet tenant-scoped (the bulk of the business tables) are NOT included
- * here — exporting them would leak across tenants. As we backfill
- * organization_id onto more tables (next migration wave), add them to
- * the EXPORT_TABLES list.
- */
+/** GET /api/admin/org/export */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

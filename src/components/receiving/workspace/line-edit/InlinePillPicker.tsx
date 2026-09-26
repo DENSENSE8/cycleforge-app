@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Collapse-to-active pill selector. Collapsed, it shows the **identity** of the
- * current value (tone-coded icon face, icon+name, or label).
- *
- * Two presentations:
- * - `menu` (carton-context default) — hover list below the face. Optional
- *   Edit row is first. Item pad matches the chip (`px-1.5`). Classify
- *   Displays keeps the full searchable editor when staff open that leaf
- *   themselves.
- * - `inline` — expands the option set in-row (legacy / hosts that need a
- *   horizontal strip without a floating layer).
- *
- * Open/closed is *parent-controlled* (`open` + `onOpenChange`) so a host can
- * orchestrate one picker at a time. The same primitive backs platform,
- * receiving-type, AND urgency pills.
- *
- * Motion (inline only): opacity-only swaps; no `mode="wait"` gap. Timing from
- * `framerTransition` / `motionBezier`.
- */
+/** Collapse-to-active pill selector. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { chipLabel } from '@/design-system/tokens/typography/presets';
@@ -69,17 +51,7 @@ export interface InlinePillOption {
 }
 
 /** Carton-context flush face — square corners; fills station chrome row (h-full). */
-/**
- * **Geometry only — no chrome.** These faces carry size, pitch and type; the
- * border and the hover box belong to the PRESENTATION, and are added below.
- *
- * They used to bake in a four-side `border`, which the carton-bar branch then
- * cancelled with a later `border-0` in the same `cn()`. That worked only
- * because tailwind-merge happens to resolve border-width last-wins — the rest
- * state of the identity bar was decided by class ORDER, not by intent, and
- * reading the constant told you the opposite of what rendered. A face is
- * borderless until a presentation asks for a border.
- */
+/** **Geometry only — no chrome.** These faces carry size, pitch and type; the border and the hover box belong to the PRESENTATION, and are… */
 const PILL_BASE =
   `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none px-1.5 ${chipLabel} transition-colors shadow-none`;
 /**
@@ -91,16 +63,7 @@ const INLINE_PILL_ICON_FACE =
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
   `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none pl-1.5 pr-2.5 ${chipLabel} transition-colors shadow-none`;
-/**
- * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
- * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
- * (`High` / `Med` / `Trade` truncated). Height fills station chrome row.
- *
- * `w-16`, not `w-14`: the lock was measured against `role-micro` (10px
- * condensed). On {@link chipLabel} (12px proportional, sentence case) a short
- * label plus the glyph overruns 56px and clips inside `overflow-hidden`. The
- * lock follows the face — if the face changes again, re-measure this.
- */
+/** Carton bookmark — equal-width quiet shell. */
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
   `inline-flex box-border h-full w-16 min-w-16 max-w-16 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none px-1 ${chipLabel} transition-colors shadow-none`;
 
@@ -221,19 +184,8 @@ export function InlinePillPicker({
    * (Add platform / Edit all) sit above the option list. `inline` — in-row strip.
    */
   presentation?: 'inline' | 'menu';
-  /**
-   * Trailing catalog escape on the `menu` panel — a hairline, then one row that
-   * opens the org catalog manager where this dimension's colours live. Omit it
-   * (honest absence) for a dimension with no colour catalog behind it; urgency
-   * is `receiving.priority_tier`, not a `platforms` / `types` row, so it has no
-   * target and must not render a dead row.
-   */
-  /**
-   * Opens the org catalog manager for this pill's kind. Named for the ACT, not
-   * one field: the manager edits the row's name and its accent behind one
-   * pencil, so a `PaintBucket` + "Edit colors" advertised half of what the row
-   * does — and disagreed with the pencil the manager itself paints.
-   */
+  /** Trailing catalog escape on the `menu` panel — a hairline, then one row that opens the org catalog manager where this dimension's colours… */
+  /** Opens the org catalog manager for this pill's kind. */
   onEditCatalog?: () => void;
   editCatalogLabel?: string;
   /** Hover-menu rows above the option list (catalog add / edit-all). */
@@ -260,39 +212,7 @@ export function InlinePillPicker({
     };
   }, [open, onOpenChange, readOnly, isMenu]);
 
-  /**
-   * Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared
-   * with the rail peek and the chip menus (0ms open, 150ms close, one surface
-   * open at a time). This component owns no timers.
-   *
-   * ## ONE owner. Do not re-introduce a mirror effect.
-   *
-   * For `presentation="menu"` the REGISTRY owns open/closed. The lifted
-   * `open` / `onOpenChange` pair is a write-only *view* of that — the carton bar
-   * reads it to freeze its layout while a cell owns the pointer; it never
-   * dictates back.
-   *
-   * There used to be an effect that mirrored `open` INTO the registry
-   * (`if (open && !hover.isOpen) hover.open()` / the inverse). With two writers
-   * that each react to the other's not-yet-committed value, it oscillated one
-   * render out of phase and every pill hover threw "Maximum update depth
-   * exceeded":
-   *
-   * | render | `open` | `hover.isOpen` | effects |
-   * |---|---|---|---|
-   * | N+1 | false (parent update not landed) | true | hook pushes `true`; mirror reads the STALE false and calls `close()` |
-   * | N+2 | true | false | hook pushes `false`; mirror calls `open()` |
-   * | N+3 | false | true | …N+1 again, forever |
-   *
-   * Explicit closes (select, Escape, outside click) therefore route through
-   * `hover.close()` as well, so the owner is told rather than inferred.
-   *
-   * The panel is NON-MODAL by construction ({@link ChipHoverMenuSurface} →
-   * `AnchoredLayer`): nothing puts `pointer-events: none` on `<body>` and
-   * nothing traps focus. Both matter on a bench the wedge owns — a modal layer
-   * made the trigger stop receiving pointer events, which fired `mouseleave`,
-   * closed the panel, let the pointer "re-enter" and reopen it: a flashing loop.
-   */
+  /** Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared with the rail peek and the chip menus (0ms open, 150ms close,… */
   const hover = useHoverSurface({
     disabled: readOnly || disabled || !isMenu,
     onOpenChange: (next) => onOpenChange(next),
@@ -363,18 +283,12 @@ export function InlinePillPicker({
     // Flat face — classify pills match Photos · Claim (`shadow-none`), even if a
     // tone SoT regresses to `shadow-sm`.
     'shadow-none',
-    // Stacking is the row rule's job now (`.cf-chrome-row .cf-chrome-cell`),
-    // which pins every cell to one layer so none can lift above the seam. Only
-    // the focus ring keeps a lift, because `ring-offset-1` paints OUTSIDE the
-    // box and would be clipped.
+    // Stacking is the row rule's job now (`.cf-chrome-row .cf-chrome-cell`), which pins every cell to one layer so none can lift above the seam.
     'focus-visible:z-raised',
     focusRing('control', 'accent'),
     // Off the carton bar the face is its own boxed control and draws a border.
     !isMenu && 'border',
-    // On the bar it is a CELL: no border of its own (the row is one flush strip
-    // and owns the seam), and it opts into the row's hover display rather than
-    // composing one — which is how this face ended up with the fill and the box
-    // on different conditions.
+    // On the bar it is a CELL:
     isMenu && `bg-transparent ${STATION_CHROME_CELL_CLASS_MARK}`,
     readOnly && 'pointer-events-none',
   );
@@ -433,24 +347,9 @@ export function InlinePillPicker({
   );
 
   if (isMenu) {
-    /**
-     * NO `HoverTooltip` on a hover-opened trigger. The tooltip portals its own
-     * layer under the pointer, which fires `mouseleave` on the wrapper below —
-     * the debounce closes the menu, the pointer "re-enters", it reopens: the
-     * flashing loop, with the tooltip and the menu fighting for the same
-     * gesture. The menu itself already names the dimension (`aria-label`) and
-     * shows the full option labels, so the tooltip said nothing it didn't.
-     */
+    /** NO `HoverTooltip` on a hover-opened trigger. */
 
-    /**
-     * ONE panel for the whole carton bar. The rows below are data, rendered by
-     * {@link ChipHoverMenuSurface} — the same portaled, bottom-CENTRED panel the
-     * identity chips and the listing cell drop. This used to be a Radix
-     * `DropdownMenu`: same class tokens, different mechanism, different
-     * anchoring, and (unlike the portal) a popper that the locked-720 centre's
-     * `overflow-hidden` could clip. Selecting a rung closes through the hover
-     * engine, which Radix used to do for us.
-     */
+    /** ONE panel for the whole carton bar. */
     const selectAndClose = (next: string) => {
       onSelect(next);
       onMenuOpenChange(false);

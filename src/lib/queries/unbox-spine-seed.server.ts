@@ -1,15 +1,4 @@
-/**
- * Server seeds for Unbox station-first cold load — dehydrate Unboxed rail +
- * optional MRU carton siblings so the scan bench paints without a post-hydrate
- * waterfall.
- *
- * - {@link seedUnboxStation} — bare `/unbox` (rail + MRU carton lines).
- *
- * `seedUnboxSpine` (History spine warm cache for `/triage`) was deleted
- * 2026-08-27, operator ruling: it blocked Arrival's TTFB on a `serverSelfFetch`
- * (full `withAuth` re-entry, ~150 rows) to warm a table that surface never
- * paints, and the soft-nav hop it existed for was already warm client-side.
- */
+/** Server seeds for Unbox station-first cold load — dehydrate Unboxed rail + optional MRU carton siblings so the scan bench paints without… */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -42,25 +31,7 @@ interface UnboxStationSeed {
   mruReceivingId: number | null;
 }
 
-/**
- * The MRU Unbox carton — `receiving_id` only, straight off the street table.
- *
- * This used to be answered by prefetching the whole 50-row "Unboxed" rail
- * (`view=unbox_opened`) and taking `rows[0]`, which cost **5.5–6.9s and ~280KB**
- * on the dogfood org — all of it *blocking first byte*, to learn one integer.
- * That endpoint's `ORDER BY` key lives on a joined table, so Postgres runs ~15
- * display laterals over the full candidate set before it can sort and limit;
- * `limit=1` measured 5.4s, so shrinking the window does not help.
- *
- * Reading the ordering column directly is the whole fix: 684 opened cartons
- * seq-scan + top-N in **0.32ms** (39 shared buffers), and it returns the same
- * carton the rail's `rows[0]` did.
- *
- * The rail itself is NOT seeded here on purpose — it is P2 context in the paint
- * order ("full recents fetch may wait"), so it must not sit in front of P1.
- * The client rail query fetches it after paint, exactly as it already does when
- * a seed misses.
- */
+/** The MRU Unbox carton — `receiving_id` only, straight off the street table. */
 async function rankUnboxMruReceivingIds(
   orgId: OrgId,
   limit: number,
@@ -85,26 +56,7 @@ async function rankUnboxMruReceivingIds(
   }
 }
 
-/**
- * Hydrate the recents rail with the full paint window (not one row).
- *
- * Pairs with {@link rankUnboxMruReceivingIds}: rank on the cheap indexed column,
- * then hydrate those ids (`?receiving_id_in=`). Measured on the dogfood org: the
- * unrestricted rail query is 2.2s / 274,539 shared buffers; the pre-limited
- * 50-row window is ~55ms / 9,032.
- *
- * **Whole window + fresh timestamp.** A one-row seed with `updatedAt: 0` forced
- * an immediate client refetch of ~155KB that stole LCP (~7s) when a later-
- * painted title outgrew the seeded one. A fresh stamp keeps `staleTime` honest
- * so the rail does not refetch on mount.
- *
- * **Wire shape via {@link toWireRows}.** RSC serialization preserves `Date`;
- * the HTTP route stringifies. Client code doing `(row.x || '').trim()` crashed
- * on seeded Dates — round-trip JSON so the seed matches the wire path.
- *
- * Seeds the exact key `SidebarRailShell` mounts with, so rows are in the first
- * HTML instead of behind a client fetch.
- */
+/** Hydrate the recents rail with the full paint window (not one row). */
 function toWireRows<T>(rows: T): T {
   return JSON.parse(JSON.stringify(rows)) as T;
 }
@@ -126,23 +78,7 @@ async function seedUnboxRecentRail(
   }
 }
 
-/**
- * The `view=unbox_opened` rows for a known carton set — the same two queries
- * `/api/receiving-lines` runs for that view, in-process.
- *
- * **Why not `serverSelfFetch` (which is what this used to do).** The seed blocks
- * the shell, so every millisecond it costs lands on TTFB. A self-fetch re-enters
- * the app over HTTP and pays a full `withAuth` on the way in — measured at ~600ms
- * with the Redis session cache warm and ~1.2s without it — to fetch data this
- * process could already read. Two such calls (rail + carton lines) were most of
- * a 3.2s TTFB.
- *
- * It does not fork the route: the SQL comes from the same builders, and the rows
- * are shaped by the same `normalizeRow` / `buildUnmatchedEmptyReceivingLine` the
- * route now imports from `lines/normalize-row`. The placeholder arm is not
- * optional — on the dogfood org the most-recently-unboxed carton is usually a
- * LINELESS unfound placeholder, which the main list query cannot return.
- */
+/** The `view=unbox_opened` rows for a known carton set — the same two queries `/api/receiving-lines` runs for that view, in-process. */
 async function readUnboxOpenedRows(
   orgId: OrgId,
   receivingIds: readonly number[],
@@ -201,12 +137,7 @@ function compareByUnboxOpenedAt(
   return d !== 0 ? d : b.id - a.id;
 }
 
-/**
- * Prefetch MRU carton sibling lines (`include=serials`) into the same key
- * `usePoLinesData` mounts with — byte-identical to
- * `receivingSiblingsQueryKey` / `receivingSiblingsSerialsQueryKey` so hydrate
- * hits without importing the client-only receiving-queries module.
- */
+/** Prefetch MRU carton sibling lines (`include=serials`) into the same key `usePoLinesData` mounts with — byte-identical to… */
 async function seedMruCartonLines(
   queryClient: QueryClient,
   orgId: OrgId,
@@ -214,11 +145,7 @@ async function seedMruCartonLines(
 ): Promise<ReceivingLineRow[]> {
   if (!Number.isFinite(Number(receivingId))) return [];
   try {
-    // The route does NOT run a single carton through the generic list builder,
-    // and neither may this: measured on the dogfood org, the generic shape for
-    // `receiving_id=<id>` takes **6.1s** (it still plans across the whole
-    // candidate set), while the dedicated builder the route uses takes ~120ms.
-    // Using the wrong one here is what turned a TTFB win into a 9s regression.
+    // The route does NOT run a single carton through the generic list builder, and neither may this:
     const byReceiving = buildReceivingLinesByReceivingIdSql(receivingId, orgId);
     const res = await tenantQuery<Record<string, unknown>>(
       orgId,
@@ -249,25 +176,7 @@ async function seedMruCartonLines(
   }
 }
 
-/**
- * Station seed for bare `/unbox`, in the operator's stated priority order:
- *
- *   1. the recents rail window — full `UNBOX_SIDEBAR_LIMIT`, wire-shaped, fresh;
- *   2. the middle — MRU carton lines, warmed into the cache the workspace
- *      mounts with, so SSR can paint the open record during render;
- *   3. the right edge follows client-side.
- *
- * Both seeds are cheap by construction: rank the cartons on the indexed column
- * alone, then hydrate those ids (see {@link rankUnboxMruReceivingIds} /
- * {@link seedUnboxRecentRail}). The rail and the carton lines are independent
- * once the ranking is known, so they run in PARALLEL — the seed costs about one
- * round trip, not two.
- *
- * The Queue spine (desk-only) is still not seeded; it is not on this path.
- *
- * Soft-fail throughout: any miss returns an empty seed and the client fetches,
- * so a seed problem degrades to the old behaviour rather than an error page.
- */
+/** Station seed for bare `/unbox`, in the operator's stated priority order: */
 export async function seedUnboxStation(): Promise<UnboxStationSeed> {
   const queryClient = new QueryClient();
 

@@ -23,10 +23,7 @@ export const QA_BADGE: Record<string, string> = {
   HOLD:              'bg-yellow-100 text-yellow-700',
 };
 
-// Badge tone per workflow status, derived from the single lifecycle registry
-// (src/lib/receiving/workflow-stages.ts) so every surface — rails, tables,
-// side panels — renders the same color for the same status. Kept as a
-// Record<string,string> for the existing `WORKFLOW_BADGE[status]` callers.
+// Badge tone per workflow status, derived from the single lifecycle registry (src/lib/receiving/workflow-stages.ts) so every surface —…
 export const WORKFLOW_BADGE: Record<string, string> = Object.fromEntries(
   Object.values(WORKFLOW_STAGES).map((s) => [s.status, s.badge]),
 );
@@ -35,11 +32,7 @@ export const WORKFLOW_BADGE: Record<string, string> = Object.fromEntries(
 export function workflowStatusTableLabel(status: string | null | undefined): string {
   const raw = String(status ?? '').trim().toUpperCase();
   if (!raw) return 'UNKNOWN';
-  // Both early receiving stages read as "SCANNED" on list rows: ARRIVED is a
-  // carton scanned at the dock but not matched to a PO (an Unfound PO), MATCHED
-  // is a carton scanned and matched to a PO line. The matched/unmatched split is
-  // carried by the row title + PO column, not this chip. ARRIVED's lifecycle
-  // label is "Scanned" (see workflow-stages.ts), so this keeps the two in sync.
+  // Both early receiving stages read as "SCANNED" on list rows:
   if (raw === 'ARRIVED' || raw === 'MATCHED') return 'SCANNED';
   // Terminal DONE reads as Received — same SoT as workflowStageLabel / History chips.
   if (raw === 'DONE') return workflowStageLabel('DONE');
@@ -88,20 +81,8 @@ export function unitStatusBadgeTone(status: string | null | undefined): string {
   return UNIT_STATUS_BADGE[s] || 'bg-surface-sunken text-text-muted';
 }
 
-/**
- * Inline status-dot color for a receiving line. Quantity-complete emerald wins
- * for **non-terminal** stages (the finer “dot moves first” vocabulary). Terminal
- * dispositions (FAILED / SCRAP / RTV) keep their failure tones even when qty is
- * complete — a failed line must never read as success. Unlike the registry
- * `workflowStageDot`, this folds in qty for in-flight stages.
- */
-/**
- * Lifecycle status-dot color. Emerald means terminal Received / Passed —
- * never qty-complete alone (UNBOXED stays indigo; DONE / PASSED are emerald).
- *
- * `qtyReceived` / `qtyExpected` are accepted for call-site compatibility but do
- * not drive emerald; stage vocabulary owns the tone.
- */
+/** Inline status-dot color for a receiving line. */
+/** Lifecycle status-dot color. */
 export function getStatusDotBg(
   status: string | null | undefined,
   _qtyReceived?: number,
@@ -120,10 +101,7 @@ export function getStatusDotBg(
   return 'bg-border-emphasis';
 }
 
-// ─── Shared row-display contract (desktop ⇄ mobile) ──────────────────────────
-// One source of truth for the receiving ROW display decisions that both the
-// desktop table (ReceivingLinesTable) and the mobile feed (MobileReceivingRow)
-// make, so they can't drift. Pass the same `ReceivingRowDisplay` to both.
+// ─── Shared row-display contract (desktop ⇄ mobile) ────────────────────────── One source of truth for the receiving ROW display…
 
 /** Per-surface display flags for a receiving row. */
 export interface ReceivingRowDisplay {
@@ -150,12 +128,7 @@ export function getWorkflowIconMeta(label: string): {
   return { Icon: Package, tone: 'text-text-faint' };
 }
 
-/**
- * Whether the workflow status icon should render for this row. History and
- * incoming surfaces suppress it (received is implied / status N/A). The mobile
- * receiving feed is a history surface, so it passes `{ isHistory: true }` and
- * gets the same suppression the desktop history table does — for free.
- */
+/** Whether the workflow status icon should render for this row. */
 export function shouldShowWorkflowStatusIcon(display: ReceivingRowDisplay = {}): boolean {
   return !(display.isHistory || display.isIncoming);
 }

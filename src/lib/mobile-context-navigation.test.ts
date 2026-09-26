@@ -11,26 +11,15 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   assert.equal(getMobileAppTitle('/receiving/lines/42'), 'Unbox');
   assert.equal(getMobileAppTitle('/unbox'), 'Unbox');
   assert.equal(getMobileAppTitle('/triage'), 'Arrival');
-  // `/incoming` is the Deliveries desk (On the way · History · PO Mailbox) —
-  // the title mirrors the sidebar page LABEL, which the name law renamed from
-  // *Inbound* to **Deliveries** on 2026-09-14 (a child never wears its
-  // parent's name; the lane keeps *Inbound*). This pin follows the label, it
-  // does not preserve the retired word.
+  // `/incoming` is the Deliveries desk (On the way · History · PO Mailbox) — the title mirrors the sidebar page LABEL, which the name law…
   assert.equal(getMobileAppTitle('/incoming'), 'Deliveries');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
-  // 'Repair Service', not 'Repair': the title mirrors the sidebar page label,
-  // and the walk-in bench was renamed there (Local Pickup · Repair Service) so
-  // the counter's two jobs read as two jobs. The label is the SoT; this
-  // assertion follows it rather than pinning the old word.
+  // 'Repair Service', not 'Repair':
   assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
 });
 
 test('getMobileAppTitle resolves mobile daily and assigned-orders routes', () => {
-  // `/m/home` IS the shift checklist since 2026-09-14 (it stopped being a
-  // redirect stub), and since the 2026-09-15 deletion it is the ONLY checklist
-  // word on the phone — `/m/checklist` (the SKU kit / QC editor) is gone, so
-  // its path falls through to the desktop page label rather than answering
-  // "Checklists".
+  // `/m/home` IS the shift checklist since 2026-09-14 (it stopped being a redirect stub), and since the 2026-09-15 deletion it is the ONLY…
   assert.equal(getMobileAppTitle('/m/home'), 'Daily');
   assert.equal(getMobileAppTitle('/m/settings'), 'Settings');
   assert.equal(getMobileAppTitle('/m/work'), 'Order management');

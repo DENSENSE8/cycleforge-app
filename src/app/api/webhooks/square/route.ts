@@ -97,10 +97,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ received: true });
       }
 
-      // Session-less callback: map the payload's merchant_id to an org via
-      // organization_integrations (provider='square'). FAIL-CLOSED — no
-      // mapping means we ignore the event (200 so Square doesn't retry)
-      // rather than write under a guessed org.
+      // Session-less callback:
       const merchantId = typeof event.merchant_id === 'string' ? event.merchant_id : '';
       const orgId = merchantId
         ? await resolveWebhookOrgForSquareMerchant(merchantId)
@@ -130,11 +127,7 @@ export async function POST(req: NextRequest) {
       const hasRepairSku = lineItems.some((li: any) => isRepairSku(li.sku));
       const orderSource = hasRepairSku ? 'repair_payment' : 'walk_in_sale';
 
-      // Thread the resolved org into the insert + the realtime publish. This is
-      // a session-less callback, so `orgId` here is the ONLY thing that decides
-      // which tenant owns the row: insertSquareTransaction stamps it into
-      // organization_id and conflicts on (organization_id, square_order_id),
-      // and the table's FORCE RLS policy binds to the same value via the GUC.
+      // Thread the resolved org into the insert + the realtime publish.
       await insertSquareTransaction({
         square_order_id: payment.order_id,
         square_payment_id: payment.id || null,
@@ -155,15 +148,7 @@ export async function POST(req: NextRequest) {
         order_source: orderSource,
       }, orgId);
 
-      // Close the counter loop (SQ1). The `square_transactions` row exists by
-      // now; this stamps `counter_transaction_id` onto it and settles the
-      // header that staged this order.
-      //
-      // AFTER the insert, deliberately: the row must exist to be linked, and a
-      // walk-in sale rung up directly on the stand has no counter visit at all
-      // — that is `no_staged_header`, a normal outcome, not a failure. Guarded
-      // anyway so a reconciliation fault can never cost us the sale record or
-      // the realtime publish below.
+      // Close the counter loop (SQ1).
       const paidCents =
         (typeof payment.total_money?.amount === 'number' ? payment.total_money.amount : null) ??
         (typeof order?.total_money?.amount === 'number' ? order.total_money.amount : 0);
@@ -191,15 +176,7 @@ export async function POST(req: NextRequest) {
       }).catch((err) => console.error('Failed to publish sale event:', err));
     }
 
-    /*
-     * Terminal outcome → the counter session (SQ2).
-     *
-     * A DIFFERENT fact from `payment.completed` above, arriving on its own
-     * webhook: this is the STAND saying the card was taken, cancelled, or the
-     * customer walked away. It moves the session's card prompt; it never
-     * settles the money, which is `payment.completed`'s job (SQ1). Keeping them
-     * apart is what stops a visit reading as paid because a device said OK.
-     */
+    /* Terminal outcome → the counter session (SQ2). */
     if (event.type === 'terminal.checkout.updated') {
       const checkout = (event.data?.object as { checkout?: { id?: string; status?: string } } | undefined)
         ?.checkout;

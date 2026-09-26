@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Paperwork walk rail — the run's orders as industrial records.
- *
- * Same record face as the To-ship ledger (state spine + code, platform, order
- * # in the ID face, the title band) so walking one order never changes the
- * vocabulary the queue was read in. The whole run is listed — the walk list is
- * the To-ship subset in play (selection, or the loaded queue) — and the open
- * record keeps the ledger's 2px ink outline and scrolls into view as the walk
- * advances. Keyboard: the walk host owns the `record` cursor, so J / K / ↑ / ↓
- * step these records from anywhere in the walk; Tab + Enter open a row; the
- * leader-armed nav keys (region `left`) still reach every row.
- */
+/** Paperwork walk rail — the run's orders as industrial records. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import type { ShippedOrder } from '@/types/orders';

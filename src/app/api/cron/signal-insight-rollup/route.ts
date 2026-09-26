@@ -9,21 +9,7 @@ export const maxDuration = 60;
 
 const JOB = 'insights.signal_rollup';
 
-/**
- * GET /api/cron/signal-insight-rollup  (Vercel cron, nightly)
- *
- * Rolls each org's entity_signals into per-org insight_links rows so the
- * assistant + "you vs typical" readout can show the operation's OWN reason-code
- * distribution alongside the seeded typicals (universal-feed plan Phase 5
- * learning loop). Idempotent per (org, signal_kind).
- *
- * Tenancy (global, org-preserving — same posture as workflow-node-stats): the
- * domain fn runs one set-based INSERT…SELECT that reads each row's
- * entity_signals.organization_id and STAMPS the same org on its output row, so
- * it never misroutes to one tenant. Runs cross-org on the owner pool.
- *
- * `?windowDays=` overrides the trailing window (default 30, clamped 1–365).
- */
+/** GET /api/cron/signal-insight-rollup (Vercel cron, nightly) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   const windowParam = Number(request.nextUrl.searchParams.get('windowDays'));

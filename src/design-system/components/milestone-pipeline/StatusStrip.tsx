@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * FIND / confirmation status — rewrite of the station pipeline face.
- *
- * Direction (frontend-design-direction):
- * - Purpose: show which stamps this record already earned.
- * - Audience: warehouse staff confirming a find, not running a gun station.
- * - Tone: dense, quiet, industrial.
- * - Memorable: one hairline through equal stage names. Time hangs under.
- *   No avatars, no actor headline, no "Station scan" captions.
- * - Constraints: house type roles, CopyChip, existing Milestone data.
- *
- * The station {@link MilestonePipeline} keeps faces + a 29px rail because a
- * bench needs WHO. That anatomy climbs when a CTA shares the row. This strip
- * locks the connector on the label line (`h-6 items-center`) so Tested and
- * Scanned Out stay level regardless of caption height.
- */
+/** FIND / confirmation status — rewrite of the station pipeline face. */
 
 import { SerialChip, TrackingChip } from '@/components/ui/CopyChip';
 import { formatDatePST, formatStageClockTimePST } from '@/utils/date';

@@ -2,17 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/sku-catalog/unpaired
- *
- * Returns distinct (item_number, account_source) combos from orders
- * that have no sku_catalog_id pairing yet.
- *
- * Query params:
- *   limit  (default 100, max 500)
- *   offset (default 0)
- *   q      (optional search filter on item_number or product_title)
- */
+/** GET /api/sku-catalog/unpaired */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
@@ -20,10 +10,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const offset = Math.max(Number(searchParams.get('offset') || 0), 0);
     const q = (searchParams.get('q') || '').trim();
 
-    // The search-term placeholder index differs per query (list binds it at $3
-    // after limit/offset; count binds it at $1), so build the clause from the
-    // actual placeholder rather than hardcoding $3 — otherwise the count query
-    // references a non-existent $3 and Postgres throws 'there is no parameter $3'.
+    // The search-term placeholder index differs per query (list binds it at $3 after limit/offset; count binds it at $1), so build the clause…
     const buildSearchClause = (searchPlaceholder: string) =>
       q
         ? `AND (o.item_number ILIKE ${searchPlaceholder} OR o.product_title ILIKE ${searchPlaceholder} OR o.sku ILIKE ${searchPlaceholder} OR o.order_id ILIKE ${searchPlaceholder})`

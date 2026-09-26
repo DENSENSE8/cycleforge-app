@@ -1,102 +1,18 @@
 /**
  * THE SKU IDENTITY LAW — one SKU, one title, one photo, everywhere.
- *
  * Operator 2026-09-15: *"it all needs to be ported under one source of truth
- * which would be the ZOHOSKU … it must be string swapped and it must display
- * the ZOHO SKU, title and more."*
- *
- * ## The failure this replaces
- *
- * PO `10-15153-01528` (carton 52827, line 32354, `rl.sku = '00143'`) painted
- * **"Bose Solo Soundbar 2 Home Theater"** on the PO desk and **"1x Original
- * Bose UB-20 Wall Mount … UB-20B (BLACK)"** in Move photos — same row, two
- * products. Same class: catalog SKU `00031` read "Bose SoundDock 10 remote
- * control" while Zoho says "Bose Wave Music System"; `00017` read a CineMate
- * remote while Zoho says "Bose Wave Radio II". Measured on prod 2026-09-15:
- * **132 of 1118** Zoho-twinned catalog rows carried a title that disagreed
- * with `items.name`, **155** were byte-equal to a marketplace listing title,
- * **132 of 139** catalog images shadowed a Zoho item photo, and **77**
- * `serial_units` were bound through one.
- *
- * ## The key was never broken — the column was
- *
- * Earlier diagnosis blamed a cross-namespace collision on the SKU string and
- * "fixed" it with a `similarity(sc.product_title, …) >= 0.25` join predicate.
- * That was wrong, and the data says so:
- *
- * | measurement (prod, 2026-09-15) | value |
- * |---|---|
- * | `UNIQUE (organization_id, sku)` on `sku_catalog` | already enforced |
- * | distinct active Zoho SKUs / of those with an exact catalog twin | 1118 / **1118** |
- * | Zoho SKUs mapping to >1 `zoho_item_id` | **0** |
- * | receiving lines where the exact org-scoped join disagreed with `rz.zoho_item_id` | **0 / 2862** |
- * | `sku_catalog.provider_item_id` conflicting with the Zoho twin | **0** |
- *
- * The exact, org-scoped string join is total and unambiguous. What poisoned
- * the display was the WRITE side: `/api/sku-catalog/sync-ecwid-titles`
- * overwrote `sku_catalog.product_title` / `image_url` with Ecwid text for
- * every SKU string it matched, Zoho-owned rows included. The similarity guard
- * was a contamination detector wired into a read path — so it silently
- * discarded a CORRECT catalog row, and the six readers that never copied it
- * rendered the marketplace product with full confidence.
- *
- * ## The law
- *
- * 1. **Key** — `sku_catalog` is reached by `sc.sku = rl.sku AND
- *    sc.organization_id = rl.organization_id`. Exact. Org-scoped. Never
- *    leading-zero-stripped, never similarity-gated, never tenant-blind.
- *    {@link SKU_CATALOG_JOIN_ON_SQL}.
- * 2. **Title** — the Zoho item name governs when a Zoho item exists; the
- *    marketplace title is the fallback for the 755 marketplace-sourced lines
- *    that have no `zoho_item_id`. {@link resolveSkuIdentityTitle}.
- * 3. **Photo** — identical precedence, and it already shipped correctly once:
- *    `RECEIVING_LINE_IMAGE_URL_SQL` (`lines/sql-receiving-image.ts`) is the
- *    reference implementation this law generalizes.
- * 4. **Ownership** — a Zoho-twinned catalog row's `product_title` / `image_url`
- *    belong to Zoho. Marketplace text lives in `sku_platform_ids.display_name`
- *    / `listing_title`, which already holds it. A platform sync may write the
- *    catalog columns ONLY through {@link skuCatalogNoZohoTwinPredicateSql}.
- *
- * Three docblocks already asserted rule 2 — `get-title-by-sku/route.ts:30-36`,
- * `lines/build-sql.ts`, `lines/sql-receiving-image.ts:6-9` — and nothing
- * enforced it, which is exactly how ten call sites drifted. So: this module is
- * the rule, `sku-identity-law.test.ts` is the hard gate, `scripts/
- * sku-identity-guard.ts` is the CLI, and `ds_sku_identity` is the MCP face.
- *
- * Leaf module — imports nothing, so the test, the guard and the adjudicator
- * can all load it.
  */
 
-/**
- * The ONLY `ON` predicate for a `sku_catalog` join off a receiving line.
- *
- * Aliases are fixed (`sc`, `rl`) because all ten call sites already use them;
- * a fixed string is what lets the guard grep for compliance instead of
- * re-parsing SQL.
- */
+/** The ONLY `ON` predicate for a `sku_catalog` join off a receiving line. */
 export const SKU_CATALOG_JOIN_ON_SQL =
   'sc.sku = rl.sku AND sc.organization_id = rl.organization_id' as const;
 
-/**
- * The Zoho item title subquery — rule 2's winning arm.
- *
- * Correlated on `rz.zoho_item_id` (`receiving_line_zoho`), `status = 'active'`,
- * so a retired Zoho item degrades to the marketplace title rather than
- * blanking the row.
- */
+/** The Zoho item title subquery — rule 2's winning arm. */
 export const ZOHO_ITEM_TITLE_SQL = `(SELECT name FROM items
                   WHERE zoho_item_id = rz.zoho_item_id AND status = 'active'
                   LIMIT 1)` as const;
 
-/**
- * Write-side ownership predicate (rule 4). A platform title/image sync appends
- * this to its `WHERE` so it can only fill rows Zoho does not own.
- *
- * Org-aligned across the SKU string, same as rule 1: without it a Zoho item in
- * another tenant would decide whether THIS tenant's row is Zoho-owned.
- *
- * @param alias table being updated — `sku_catalog` in an `UPDATE … WHERE`.
- */
+/** Write-side ownership predicate (rule 4). */
 export function skuCatalogNoZohoTwinPredicateSql(alias = 'sku_catalog'): string {
   return `NOT EXISTS (SELECT 1 FROM items i
              WHERE i.sku = ${alias}.sku
@@ -201,15 +117,7 @@ const COMMENT_RE = /^\s*(\/\/|\*|--)/;
 const ZOHO_TWIN_GUARD_RE =
   /skuCatalogNoZohoTwinPredicateSql|NOT EXISTS[\s\S]{0,160}?\bitems\b[\s\S]{0,200}?\bstatus\b/;
 
-/**
- * Pure text audit of one file — no fs, so the test, the guard script and the
- * MCP adjudicator share exactly one implementation.
- *
- * Deliberately line-oriented and conservative: it recognizes the shapes that
- * actually drifted (a hand-written `ON`, a `similarity()` title gate, a
- * `catalog_product_title ||` ladder head, an unguarded catalog title `UPDATE`)
- * rather than pretending to parse SQL.
- */
+/** Pure text audit of one file — no fs, so the test, the guard script and the MCP adjudicator share exactly one implementation. */
 export function auditSkuIdentitySource(file: string, text: string): SkuIdentityViolation[] {
   if ((SKU_IDENTITY_SCAN_EXEMPT as readonly string[]).includes(file)) return [];
 
@@ -221,10 +129,7 @@ export function auditSkuIdentitySource(file: string, text: string): SkuIdentityV
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // A join's ON clause may wrap; the org predicate often sits on the next
-    // line or two. The KEY, though, is read from the ON expression alone —
-    // widening that window let a following `items` join's `zi.sku = o.sku`
-    // mis-key an id-keyed catalog join as identity.
+    // A join's ON clause may wrap; the org predicate often sits on the next line or two.
     const join = JOIN_RE.exec(line);
     if (join) {
       const onExpr = join[2];
@@ -247,10 +152,7 @@ export function auditSkuIdentitySource(file: string, text: string): SkuIdentityV
       if (!already) push('title-similarity-guard', i);
     }
 
-    // Ladder order, POSITIONALLY: the marketplace title may appear in a `||`
-    // chain, but never ahead of the Zoho item title. A chain that names
-    // neither order (no `zoho_item_title` at all) is also wrong — it cannot
-    // reach the SoT.
+    // Ladder order, POSITIONALLY:
     if (/catalog_product_title\s*\|\|/.test(line) && !COMMENT_RE.test(line)) {
       // Forward-only: the chain starts on THIS line, so a `zoho_item_title`
       // sitting in a type declaration four lines above must not absolve it.

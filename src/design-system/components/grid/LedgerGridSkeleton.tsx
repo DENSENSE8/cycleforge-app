@@ -1,20 +1,4 @@
-/**
- * LedgerGridSkeleton — the Band 2 cold-start stand-in for a ledger grid
- * (motion-bands proposal 2026-08-27; first adopter of `--cf-motion-status`).
- *
- * A skeleton is a floor plan, not a promise: every stand-in row is EXACTLY
- * `rowEstimate` tall — the same number the virtualizer's scroll math uses —
- * full-bleed on the sheet with the grid's own hairline separators and cell
- * inset, so the resolve to real rows is a repaint, not a reflow. The previous
- * treatment (`SkeletonList` inside a `p-3` wrapper) padded a flush sheet and
- * guessed its own row box, so the swap moved every line under the operator's
- * eye.
- *
- * Shimmer is opacity-only and tokened (`.cf-skeleton-block`, animated only
- * inside a `data-motion="2"` region at `--cf-motion-status`). No motion
- * import, no transform, no geometry — a Band 0/1 mount of this component is
- * static by arithmetic.
- */
+/** LedgerGridSkeleton — the Band 2 cold-start stand-in for a ledger grid (motion-bands proposal 2026-08-27; first adopter of… */
 
 import { LEDGER_GRID_CELL_INSET } from './grid-cell-chrome';
 import { LEDGER_GRID_ROW_ESTIMATE_PX } from './grid-paint';

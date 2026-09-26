@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Settings → Roles&roleId=N — Discord-style role editor.
- *
- * Four cards (single column, max-w-3xl):
- *   A. Identity      — color, inline-editable label, key (read-only), duplicate, delete
- *   B. Permissions   — toggle grid grouped by PERMISSION_CATEGORIES
- *   C. Members       — staff who hold this role + add/remove
- *   D. Recent audit  — role.* + staff.roles.changed entries
- *
- * Thin composition shell: data + every mutation live in {@link useRoleEditor};
- * each card is a presentational component under `./role-editor/`.
- */
+/** Settings → Roles&roleId=N — Discord-style role editor. */
 
 import { DuplicateRoleDialog } from './DuplicateRoleDialog';
 import { useRoleEditor } from './role-editor/useRoleEditor';

@@ -38,18 +38,7 @@ export interface UseStaffFilterOptions {
   allToken?: string;
 }
 
-/**
- * Shared all-staff ↔ single-staff filter state, threaded through the URL
- * (`?staff=`) so it survives refresh, deep-links, and is consistent across
- * every mode. Defaults to ALL staff (param absent), so every mode keeps its
- * current behavior until a staff is explicitly selected — unless
- * {@link UseStaffFilterOptions.allToken} is set (then absent = caller default,
- * token = explicit all).
- *
- * Optionally scope the picker options to a role (e.g. only show techs in the
- * Tech mode, only packers in Packing) — purely a display narrowing; it never
- * changes the URL convention.
- */
+/** Shared all-staff ↔ single-staff filter state, threaded through the URL (`?staff=`) so it survives refresh, deep-links, and is consistent… */
 export function useStaffFilter(options?: UseStaffFilterOptions): UseStaffFilterResult {
   const router = useRouter();
   const pathname = usePathname();

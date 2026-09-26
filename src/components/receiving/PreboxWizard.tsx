@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * PreboxWizard — serial checklist → one master kit label or one label per unit
- * (serial↔label pairing plan §6.4.C).
- *
- * Hosts:
- *  - `embedded` — flush body inside Unbox Displays → Prebox Assets leaf (no
- *    overlay, no duplicate "Create prebox label" title — the leaf names the
- *    surface). Mode choice is a {@link SearchableSelectField} combobox —
- *    the house child-mode face, shared with the ticket claim panel.
- *  - default — {@link RightPaneOverlay} (legacy / non-Displays callers).
- */
+/** PreboxWizard — serial checklist → one master kit label or one label per unit (serial↔label pairing plan §6.4.C). */
 
 import { useState } from 'react';
 import { toast } from '@/lib/toast';

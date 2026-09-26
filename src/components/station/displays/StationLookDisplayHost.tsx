@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Station Displays → **Look** — live Color + Depth try-on.
- *
- * The trough beside this column IS the preview. Color and Depth are independent
- * methods: ↑↓ / click on Color applies `applyStationSkin`; on Depth applies
- * `applyStationDepth`. Changing one must not rewrite the other.
- *
- * Injected by {@link StationDisplaysPushStack} onto every Action-plane host
- * (Unbox · Arrival · Pack · Testing · Scan-out · Search · Review). Do not
- * register a second Look tab in a station builder.
- */
+/** Station Displays → **Look** — live Color + Depth try-on. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Layers, Box, RotateCcw } from '@/components/Icons';

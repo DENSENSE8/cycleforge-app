@@ -28,14 +28,7 @@ async function fetchPackPlacement(
   return res.json();
 }
 
-/**
- * Packing benches + their open counts.
- *
- * `excludeOrderId` widens the read with `recent` (Last entry) and is part of
- * the key, so the open order's own placement can never seed its own suggestion.
- * The `['orders','pack-placement']` PREFIX is unchanged, so every existing
- * invalidation still matches both shapes.
- */
+/** Packing benches + their open counts. */
 export function packPlacementQuery(
   opts: { excludeOrderId?: number | null } = {},
 ) {

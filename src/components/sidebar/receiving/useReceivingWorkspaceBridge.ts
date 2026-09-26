@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Outbound bridge from the sidebar's selection state to the right-pane
- * `ReceivingLineWorkspace`. The editor moved out of the sidebar; the sidebar
- * stays the source of truth for selection + scan flow and just dispatches the
- * events the workspace listens to:
- *   - open/close whenever the selected line, scan-driven flag, or bootstrap
- *     mode changes (null clears the pane).
- *   - nav-state (prev/next + "Line N of M") so the workspace header can render
- *     navigation without lifting `scanMatchedRows` up.
- *
- * Separated from useReceivingSelection because it depends on the navigation
- * hook's derived values, which are computed from the selection state.
- * Extracted from ReceivingSidebarPanel; behaviour is unchanged.
- */
+/** Outbound bridge from the sidebar's selection state to the right-pane `ReceivingLineWorkspace`. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import {
@@ -66,14 +53,7 @@ export function useReceivingWorkspaceBridge({
     return scoped.length > 0 ? scoped.length : scanMatchedRows.length;
   }, [selectedLine, scanMatchedRows]);
 
-  // A close only makes sense to reverse a prior open. A fresh page mount starts
-  // with no selection, so a naive effect broadcasts `receiving-workspace-close`
-  // before anything is open. On a deep-link load (`/unbox?openReceivingId=`) the
-  // pane's restore dispatches `select-line` asynchronously; a null-close that
-  // races it (before React commits the restored selection) wipes it and the pane
-  // never reopens (the browse-first refresh bug). So never emit a close until
-  // this bridge has emitted at least one open — genuine deselects (a selection →
-  // null transition, which can only happen after an open) still fire it.
+  // A close only makes sense to reverse a prior open.
   const hasOpenedRef = useRef(false);
 
   // Open / close: dispatch whenever the selected line, scan-driven flag, or

@@ -1,20 +1,4 @@
-/**
- * Account-level WebAuthn / passkey helpers — the cross-org analogue of the
- * staff-keyed src/lib/auth/webauthn.ts. Credentials live in the global
- * `webauthn_credentials` table keyed by account_id, so a passkey signs you into
- * your ACCOUNT (then membership resolution picks the workspace), independent of
- * any single org's staff row.
- *
- * Storage: credential_id / public_key are stored as base64url TEXT (the
- * webauthn_credentials columns are text), so — unlike the staff table's bytea
- * columns — no base64⇄base64url juggling is needed; the browser speaks base64url
- * and so do we.
- *
- * Challenge handshake uses its own short-lived cookie so it never collides with
- * the staff passkey flow. RP config is shared via getRpFromRequest().
- *
- * See docs/identity-layer-plan.md.
- */
+/** Account-level WebAuthn / passkey helpers — the cross-org analogue of the staff-keyed src/lib/auth/webauthn.ts. */
 
 import { NextRequest } from 'next/server';
 import {

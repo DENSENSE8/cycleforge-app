@@ -1,11 +1,4 @@
-/**
- * One truthful provider-ticket id for Connections / LinkageStrip actions.
- *
- * Registry rows (`bundle.ticket`) win when present. When the live helpdesk ticket
- * is open from the URL but `support_tickets` has no hydrated row yet, the context
- * anchor still carries `{ type: 'ticket', id: <scan> }` — fall back to that so
- * Link order / Link tracking stay available without inventing a fake registry ticket.
- */
+/** One truthful provider-ticket id for Connections / LinkageStrip actions. */
 import type { SupportContextBundle } from '@/lib/support/context-types';
 
 export function resolveLinkageProviderTicketId(

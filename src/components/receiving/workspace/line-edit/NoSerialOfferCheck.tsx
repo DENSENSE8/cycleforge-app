@@ -4,26 +4,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/**
- * The green-check "no serial" OFFER button.
- *
- * One button, two callers, because they are the same affordance at two
- * cardinalities: the single-qty serial row (`SerialCard`) and the multi-qty
- * unit list's all-units slot (`NoSerialControl` `variant="check"`). It used to
- * exist only as bespoke markup inside `SerialCard`, so the multi-qty side had
- * grown a dashed grey token instead — the two read as different features when
- * they are one, and an operator moving between a 1-of and a 3-of had to learn
- * the control twice.
- *
- * **Sits in the trailing action column**, so it must match the height of the
- * add/submit button it replaces (`h-11`) — a shorter control makes the row look
- * misaligned and reads as disabled chrome rather than something to press.
- * `width` picks which column it is standing in: `w-14` beside a single-qty
- * input, `w-11` in the multi-qty unit list where the per-row buttons are square.
- *
- * `appearance="flush"` joins a host scan bar (`rounded-none`, no own outer
- * gap/radius — the bar owns the shared hairline).
- */
+/** The green-check "no serial" OFFER button. */
 export function NoSerialOfferCheck({
   onClick,
   label,

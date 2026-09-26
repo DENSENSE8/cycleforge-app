@@ -5,14 +5,7 @@ import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import CodeBlock from '@/components/ui/CodeBlock';
 
-/**
- * Renders markdown with correct bold, italic, lists, code and table
- * formatting — AI chat answers, and the task desk's descriptions and plan
- * documents. Raw HTML is NOT enabled (no rehype-raw), so an uploaded document
- * cannot inject markup. Fenced code blocks are syntax-highlighted
- * (rehype-highlight) and wrapped in CodeBlock chrome (language label + copy).
- * The light highlight.js theme lives in globals.css.
- */
+/** Renders markdown with correct bold, italic, lists, code and table formatting — AI chat answers, and the task desk's descriptions and… */
 export default function MarkdownRenderer({ content }: { content: string }) {
   return (
     <ReactMarkdown

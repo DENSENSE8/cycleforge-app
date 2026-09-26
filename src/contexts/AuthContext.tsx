@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Client-side auth context. Hydrates from /api/auth/session on mount, then
- * lets the rest of the app read role + permissions synchronously via
- * useAuth() / <Can perm="...">.
- *
- * This is intentionally cheap to mount even when no session exists — it
- * returns { user: null, isLoaded: true } and the rest of the app just
- * renders public chrome. Pages that REQUIRE a user use requirePermission()
- * in their server component instead.
- */
+/** Client-side auth context. */
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -40,10 +31,7 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept — must match proxy.ts
 
   /^\/offline(?:$|\/)/,
-  /^\/share\/photos\//,                 // public photo share-pack viewer — must match proxy.ts
-  // GS1 Digital Link resolver — server-side redirects anon callers to
-  // the storefront before any client-side guard runs, but listing the
-  // patterns here keeps the contract symmetric with src/proxy.ts.
+  /^\/share\/photos\//,                 // public photo share-pack viewer — must match proxy.ts GS1 Digital Link resolver — server-side redirects anon callers to the storefront…
   /^\/gs1\/resolve(?:$|\/)/,
   /^\/01\/[0-9]+(?:$|\/)/,
   /^\/414\/[0-9]+\/254\/[A-Za-z0-9]+(?:$|\/)/,
@@ -81,12 +69,7 @@ export interface AuthSessionUser {
   role: string;
   permissions: string[];
   mobileDisplayConfig?: MobileDisplayConfig;
-  /**
-   * Profile photo id (`staff.avatar_photo_id`), or null when the staffer has
-   * none — every surface then renders colour + initials via <StaffAvatar>.
-   * <StaffColorsProvider> seeds this into the staff identity cache on boot so a
-   * feed carrying only an actor's staff id can resolve the same face.
-   */
+  /** Profile photo id (`staff.avatar_photo_id`), or null when the staffer has none — every surface then renders colour + initials via… */
   avatarPhotoId?: number | null;
   session: {
     sid: string;
@@ -123,11 +106,7 @@ const AuthCtx = createContext<AuthContextValue>({
 
 interface ProviderProps {
   initial?: AuthSessionUser | null;
-  /** True when this request is on a tenant kiosk host ({slug}.kiosk.app…),
-   *  resolved server-side in the root layout. A kiosk device is never
-   *  session-authed (see withKioskAuth) — /api/auth/session doesn't even
-   *  exist on that host's allowlist — so skip the fetch entirely and treat
-   *  every kiosk-host page as public, never bouncing to /signin. */
+  /** True when this request is on a tenant kiosk host ({slug}.kiosk.app…), resolved server-side in the root layout. */
   kioskHost?: boolean;
   children: React.ReactNode;
 }
@@ -139,13 +118,7 @@ export function AuthProvider({ initial = null, kioskHost = false, children }: Pr
   const pathname = usePathname();
 
   const refresh = useCallback(async () => {
-    // We have to compute the next state outside the React-render path so
-    // that flushSync below can commit it synchronously. The reason:
-    // callers do `await refreshAuth(); router.replace('/dashboard');` —
-    // a plain setUser() returns before React commits, so the next
-    // navigation reads the OLD provider value (`user: null`) and the
-    // post-render `mustRedirect` effect bounces back to /signin. This
-    // was the "second sign-in loop" the signin page comment warned about.
+    // We have to compute the next state outside the React-render path so that flushSync below can commit it synchronously.
     let nextUser: AuthSessionUser | null = null;
     try {
       const r = await fetch('/api/auth/session', {
@@ -192,11 +165,7 @@ export function AuthProvider({ initial = null, kioskHost = false, children }: Pr
     }
   }, [initial, kioskHost, refresh]);
 
-  // Client-side fallback gate. The Next.js proxy at src/proxy.ts is the source
-  // of truth, but it can only check for cookie *presence* — a stale cookie
-  // that points to a revoked/expired/idle-killed session sails past the proxy.
-  // When AuthContext hydrates with user:null on a non-public path, bounce to
-  // /signin and preserve the current path as ?next= so we land back here.
+  // Client-side fallback gate.
   const onPublicPath = isClientPublicPath(pathname) || kioskHost;
   const mustRedirect = isLoaded && !user && !onPublicPath;
 

@@ -8,15 +8,8 @@ import { usePressHaptic } from '@/lib/scan-feedback/useScanFeedback';
 import { copyToClipboard } from '@/utils/_dom';
 
 /**
- * The record-detail layout every phone detail screen shares (repair hub, unit
- * hub, unit QC, every `/info`): one fact list, one section band, one
- * acknowledgement, one door row and the door list — so the screens cannot
- * drift into separate looks. Born on the repair workbench (2026-09-24),
- * promoted when the unit page adopted the same layout.
- *
+ * The record-detail layout every phone detail screen shares (repair hub, unit hub, unit QC, every `/info`):
  * Flat (operator 2026-09-25): every block runs the full width with square
- * corners and no box; the screen's column is `divide-y divide-mode-rule`, so
- * one 1px rule sits between blocks and only text keeps the page inset.
  */
 
 /**
@@ -34,14 +27,7 @@ export function DetailFacts({ label, children }: { label?: string; children: Rea
 
 const COPIED_MS = 1200;
 
-/**
- * One fact row in {@link DetailFacts}: the mono caps label left at the page
- * inset, the value right-aligned in sans at the right inset (identifiers set
- * `mono`). `value` null / `''` is "no data": a muted dash that recedes
- * instead of drawing the eye. `copy` makes the whole row a tap-to-copy key
- * (FNSKU, SKU, serial, tracking) — the string lands on the clipboard at once
- * and the label reads COPIED for a beat.
- */
+/** One fact row in {@link DetailFacts}: */
 export function DetailFact({
   label,
   value,
@@ -116,12 +102,7 @@ export function DetailFact({
   );
 }
 
-/**
- * Section band — the hard break between two blocks of one screen
- * (Information vs Checklist): a full-width well strip with a mono caption at
- * the page inset. It has no rules of its own; the screen's `divide-y` column
- * draws them above and below.
- */
+/** Section band — the hard break between two blocks of one screen (Information vs Checklist): */
 export function DetailSectionHeading({ id, children }: { id?: string; children: ReactNode }) {
   return (
     <h2
@@ -152,12 +133,8 @@ export function DetailAck({ children, onDismiss }: { children: ReactNode; onDism
 }
 
 /**
- * One door on a detail hub. It opens a contextual screen (`href`) or a sheet
- * on the same screen (`onSelect`). With neither, the row stays visible but
- * inert and `meta` says why — an honest dead end beats a missing door.
- *
+ * One door on a detail hub.
  * Rows run edge to edge with a rule under each (operator 2026-09-25), so a
- * row can later take left/right swipe actions without re-laying the list.
  */
 export interface DetailNavItem {
   id: string;

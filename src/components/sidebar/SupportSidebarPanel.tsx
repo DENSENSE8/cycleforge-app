@@ -7,12 +7,7 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SupportTicketsRecentRail } from '@/components/support/zendesk/queue/SupportTicketsRecentRail';
 import { useSupportMode } from '@/components/sidebar/support/useSupportMode';
 
-/**
- * Contextual sidebar for /support. The only left column this desk keeps is
- * Tickets recents — other modes are rail-less (`isRaillessSurface`) and pick
- * from the stage. This panel therefore always mounts the recent dock; the
- * shell simply does not reserve a column when mode is not tickets.
- */
+/** Contextual sidebar for /support. */
 export function SupportSidebarPanel() {
   const { has, isLoaded } = useAuth();
   const queryClient = useQueryClient();

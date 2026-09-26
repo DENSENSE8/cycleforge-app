@@ -1,11 +1,4 @@
-/**
- * Tech-All catalog guards + resolver behaviour — wave 1.4's fifth family.
- *
- * The test that earns its place here is the urgency-RANK one: lower means do it
- * first, so it opens ascending where every other number in the house opens
- * descending — and that exception has to ride the FACT, or rebinding urgency
- * into another slot silently inverts the queue.
- */
+/** Tech-All catalog guards + resolver behaviour — wave 1.4's fifth family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

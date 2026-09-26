@@ -1,12 +1,4 @@
-/**
- * DB-free unit tests for completeTriage — the save-for-unbox transition after
- * the Wave-3 writer inversion. A fake TxClient dispatches on SQL shape so we
- * can prove, without a database:
- *   - replay: a known triage_client_event_id short-circuits (street-keyed)
- *   - 404 vs 422: missing carton vs carton not staged (shelf+lane on rt)
- *   - the completion stamp goes to receiving_triage (never the spine)
- *   - the triage-outcome signal fires only on the FIRST completion
- */
+/** DB-free unit tests for completeTriage — the save-for-unbox transition after the Wave-3 writer inversion. */
 
 process.env.DATABASE_URL ||= 'postgres://test:test@localhost:5432/test';
 

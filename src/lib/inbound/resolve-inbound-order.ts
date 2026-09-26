@@ -1,11 +1,4 @@
-/**
- * Door / Unbox order# → marketplace / manual Incoming carton.
- *
- * Complements Zoho PO# resolution: desk Add / screenshot intake lands rows on
- * inbound_purchase_order_links with source_order_id (eBay / Amazon / manual).
- * Scanning that order number must open the carton — creating one when the line
- * is still EXPECTED with receiving_id NULL.
- */
+/** Door / Unbox order# → marketplace / manual Incoming carton. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ensureReceivingForInboundOrder as EnsureReceivingFn } from '@/lib/receiving/attach-box';

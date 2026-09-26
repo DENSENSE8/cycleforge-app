@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Bookmarkable 2×1 special-bin label print.
- *
- *   /inventory/locations/print/special-bin
- *   /inventory/locations/print/special-bin?barcode=RETURNS-TEST
- *   /inventory/locations/print/special-bin?barcode=TECH-PARTS
- *   /inventory/locations/print/special-bin?count=12
- *
- * Defaults to RETURNS-TEST (or Settings → receiving.returnsTestBin when set).
- * `count` is identical copies of the same 2×1 face (silent USB = one PRINT N job).
- */
+/** Bookmarkable 2×1 special-bin label print. */
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';

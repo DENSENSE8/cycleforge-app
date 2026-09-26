@@ -1,26 +1,4 @@
-/**
- * recordPackVerificationEvent — the single writer for pack_verification_events
- * (docs/todo/packer-review-station-plan.md Phase 3).
- *
- * One call = one append-only verification / review OUTCOME about a packer_log,
- * written in one tenant transaction, plus an ops_events spine emission (same
- * tx). The append-only table is the SoT for review state (latest-wins per
- * packer_log); this helper owns:
- *   • packer_log existence validation (the parent must exist in this org),
- *   • the outcome STATE MACHINE — which prior latest-outcome permits which next
- *     outcome (capture → review → EOD); an illegal transition maps to 409,
- *   • client_event_id idempotency (a retry is a no-op that returns the prior row),
- *   • the ops_events spine emission (entity_type 'other', entity_id = packerLogId).
- *
- * The two API routes decide WHO may request which outcomes (permission gates —
- * `packing.complete_order` for capture, `packing.review` for the manager
- * decision); this helper decides WHETHER the requested outcome is legal given
- * the current latest outcome. Role and machine are enforced in different layers,
- * and audit lives in the route (it needs the request ctx), not here.
- *
- * Deps-injected (default real impls) so unit tests run DB-free — see
- * pack-verification.test.ts.
- */
+/** recordPackVerificationEvent — the single writer for pack_verification_events (docs/todo/packer-review-station-plan.md Phase 3). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -192,10 +170,7 @@ async function writeEvent(
   const row = inserted.rows[0] as { id: number | string; outcome: string };
   const id = Number(row.id);
 
-  // 5. Same-tx ops_events spine emission (prefer the event spine over a new SAL
-  //    writer — plan §3c). entity_type 'other' + entity_id = packerLogId keeps
-  //    the fixed ops_events entity_type CHECK honored without expanding it; the
-  //    payload carries the outcome and detected refs for the timeline.
+  // 5. Same-tx ops_events spine emission (prefer the event spine over a new SAL writer — plan §3c).
   await client.query(
     `INSERT INTO ops_events (
        organization_id, occurred_at, event_type, entity_type, entity_id,

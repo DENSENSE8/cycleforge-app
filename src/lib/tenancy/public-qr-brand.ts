@@ -1,11 +1,4 @@
-/**
- * Anonymous Digital Link brand payload — Next Data Cache, not the 30s
- * in-process org map.
- *
- * Phone-camera scans of `{slug}.app.cycleforge.ai/m/r/…` (and /qr, /01/…)
- * only need name / logo / outbound website. Those change on org-settings
- * write; `revalidatePublicQrBrandCache` runs from `invalidateOrgCache`.
- */
+/** Anonymous Digital Link brand payload — Next Data Cache, not the 30s in-process org map. */
 
 import 'server-only';
 import { unstable_cache } from 'next/cache';

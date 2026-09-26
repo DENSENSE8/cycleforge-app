@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Unbox claim–family create-ticket overlay for the Support station claim host
- * ({@link useSupportTicketClaimHost}). Subject (required) + first note + optional
- * order / tracking / serial linkages that live-resolve via GET /api/support/linkage
- * and auto-link on `POST /api/support/tickets`.
- *
- * Composes the house `RightPaneOverlay` (centered, resizable) — the same overlay
- * shell the receiving claim wizard uses — rather than hand-rolling a modal.
- */
+/** Unbox claim–family create-ticket overlay for the Support station claim host ({@link useSupportTicketClaimHost}). */
 
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

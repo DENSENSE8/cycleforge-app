@@ -10,12 +10,7 @@ import {
   type SavedViewRow,
 } from '@/lib/saved-views/saved-views-queries';
 
-/**
- * Operations ▸ History saved views — thin wrappers over the polymorphic
- * `saved_views` table with `surface = 'operations'`. Preserves the historical
- * function names so `/api/operations/saved-views` and
- * `useOperationsSavedViews` stay unchanged.
- */
+/** Operations ▸ History saved views — thin wrappers over the polymorphic `saved_views` table with `surface = 'operations'`. */
 
 export type OperationsSavedView = SavedViewRow;
 

@@ -3,35 +3,7 @@ import { del } from '@vercel/blob';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/product-manuals/bulk
- *
- * One endpoint, three actions — keeps the surface small and the bulk-action
- * UX (multi-select toolbar) wired to a single call site.
- *
- * Body:
- *   {
- *     action: 'move' | 'update' | 'delete',
- *     ids: number[],
- *     // for 'move':
- *     folderPath?: string,
- *     // for 'update' (per-field optional; null clears, undefined preserves):
- *     type?: string | null,
- *     status?: 'unassigned' | 'assigned' | 'archived',
- *   }
- *
- * Why one endpoint instead of three: bulk UX is a single "do this to the
- * selection" gesture; routing splits the burden of writing/maintaining three
- * almost-identical handlers (auth, validation, cache invalidation, error
- * shape). The action param picks which SQL fires.
- *
- * Why soft-delete here too (matches DELETE on the main route): operator
- * confidence via the bulk-undo toast. The blob bytes stay on disk; only
- * `is_active` flips. A separate trash-cleanup job can hard-delete later.
- *
- * Returns the updated row count so the caller can show "Moved 12 manuals
- * to Sound/Touch" in the success toast.
- */
+/** POST /api/product-manuals/bulk */
 
 interface BulkBody {
   action?: 'move' | 'update' | 'delete';
@@ -74,14 +46,6 @@ export const POST = withAuth(
       if (action === 'move') {
         const folderPath = String(body.folderPath || '').trim().replace(/^\/+|\/+$/g, '');
         // Empty string is meaningful — moves the selection to the root.
-        // product_manuals has NO organization_id column and NO RLS policy, so a
-        // bare GUC wrap provides ZERO isolation — org A could move org B's
-        // manuals by guessing ids. Scope the mutation through the org-bearing
-        // sku_catalog parent (sku_catalog_id → sku_catalog.organization_id),
-        // matching the upsert lookup pattern in lib/product-manuals.ts.
-        // NEEDS-COL: NULL-parent (unpaired) manuals are unattributable to any
-        // org and are intentionally excluded until product_manuals gains its
-        // own organization_id column.
         const result = await withTenantTransaction(orgId, (client) =>
           client.query(
             `UPDATE product_manuals
@@ -133,10 +97,7 @@ export const POST = withAuth(
         const idsParam = params.length;
         params.push(orgId);
         const orgParam = params.length;
-        // product_manuals has NO organization_id column and NO RLS policy — a
-        // bare GUC wrap provides ZERO isolation. Scope through the org-bearing
-        // sku_catalog parent so org A can't retag org B's manuals by id.
-        // NEEDS-COL: NULL-parent manuals are excluded (see 'move' above).
+        // product_manuals has NO organization_id column and NO RLS policy — a bare GUC wrap provides ZERO isolation.
         const result = await withTenantTransaction(orgId, (client) =>
           client.query(
             `UPDATE product_manuals
@@ -157,13 +118,7 @@ export const POST = withAuth(
       }
 
       if (action === 'delete') {
-        // Soft-delete by default — the operator's bulk-undo toast restores
-        // via PATCH isActive=true on each id. Blob bytes stay on disk so
-        // the toast can revert without re-uploading.
-        // product_manuals has NO organization_id column and NO RLS policy — a
-        // bare GUC wrap provides ZERO isolation. Scope through the org-bearing
-        // sku_catalog parent so org A can't soft-delete org B's manuals by id.
-        // NEEDS-COL: NULL-parent manuals are excluded (see 'move' above).
+        // Soft-delete by default — the operator's bulk-undo toast restores via PATCH isActive=true on each id.
         const result = await withTenantTransaction(orgId, (client) =>
           client.query(
             `UPDATE product_manuals

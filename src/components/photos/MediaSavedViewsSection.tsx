@@ -26,12 +26,7 @@ interface MediaSavedViewsSectionProps {
   /** Org-wide sharing needs `photos.manage`. */
   canManage: boolean;
   onApply: (payload: MediaViewPayload) => void;
-  /**
-   * Teaching line for "no views, nothing to save". Pass it wherever this
-   * section is the WHOLE body of a surface (the Band-3 Views menu) — without
-   * it the section renders nothing at all, which is right for one block inside
-   * a shared funnel and wrong for a panel the operator deliberately opened.
-   */
+  /** Teaching line for "no views, nothing to save". */
   emptyHint?: string;
 }
 

@@ -1,9 +1,4 @@
-/**
- * Fixed-width receiving-type mark — classify faces use this instead of the
- * variable-width type name so Urgency / Platform / Type stay equal width.
- * Icon + tone resolve from {@link receivingTypeMeta}; label lives in tooltip /
- * aria — the mark itself is always `aria-hidden`.
- */
+/** Fixed-width receiving-type mark — classify faces use this instead of the variable-width type name so Urgency / Platform / Type stay… */
 
 import {
   ArrowLeftRight,

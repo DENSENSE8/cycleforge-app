@@ -1,20 +1,4 @@
-/**
- * Pairing hub query helpers.
- *
- * One source of truth for the suggestion scoring and the batch-pair writes —
- * the on-demand /api/sku-catalog/suggest-pairings endpoint and the nightly
- * refresh cron both call into here so they can't drift apart.
- *
- * Scoring tiers (until UPC data is reliable — see Phase 0.5):
- *   - title trigram similarity        (primary, capped at 85)
- *   - order volume on the same item   (+0..10 bonus)
- *   - account_source ↔ platform match (+5 bonus)
- *   - MPN/model token overlap         (+0..10 bonus)
- *   - UPC/EAN/GTIN exact              (100, opt-in via PAIRING_USE_UPC_TIER)
- *
- * The `reason` string is human-readable so the Product Hub can render
- * `"trigram_0.74 + order_count_8 + platform_match"` under the confidence dot.
- */
+/** Pairing hub query helpers. */
 
 import pool from '../db';
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
@@ -94,13 +78,7 @@ export interface PairingSnapshot {
 
 // ─── Suggestion query ───────────────────────────────────────────────────────
 
-/**
- * Pull ranked candidates for one canonical SKU across all platforms.
- *
- * One query (not N) — uses a CTE that joins unpaired sku_platform_ids rows
- * against sku_catalog, scores them, and orders by confidence. Caller filters
- * by platform via the perPlatformLimit grouping in JS so the SQL stays simple.
- */
+/** Pull ranked candidates for one canonical SKU across all platforms. */
 export async function suggestPairingsForSku(
   skuCatalogId: number,
   perPlatformLimit = 5,
@@ -142,10 +120,7 @@ export async function suggestPairingsForSku(
   }
   const catalog = catalogResult.rows[0];
 
-  // ── Confirmed (already paired) — one row per existing mapping ─────────────
-  // Strictly rows explicitly linked to this catalog id. We deliberately do NOT
-  // treat platform_sku == sc.sku as confirmed: a coincidental SKU-string match
-  // is not a pairing, and showing it as "linked" misrepresents unpaired rows.
+  // ── Confirmed (already paired) — one row per existing mapping ───────────── Strictly rows explicitly linked to this catalog id.
   const confirmedResult = await runRead<{
     platformIdRowId: number;
     platform: string;
@@ -196,15 +171,7 @@ export async function suggestPairingsForSku(
     [catalog.id],
   );
 
-  // ── Candidates: read from the materialized sku_pairing_suggestions table ──
-  // The cron does the heavy similarity-ranked scan once; the Hub does a
-  // tight join here so panel opens stay sub-100ms even with thousands of
-  // un-paired rows in sku_platform_ids.
-  //
-  // If the cron hasn't run yet (empty table for this catalog id), the
-  // operator's "Refresh suggestions" button can re-trigger the cron — but
-  // we deliberately do NOT recompute on the hot path; that's what blew up
-  // the first version of this query (regexp_replace lateral × 5k rows).
+  // ── Candidates:
   const candidatesResult = await runRead<{
     platformIdRowId: number;
     platform: string;
@@ -308,13 +275,7 @@ export interface BatchPairInput {
   skuCatalogId: number;
   actorId: number;
   actorKind?: PairingAuditActorKind; // defaults to 'user'
-  /**
-   * Owning org. When provided, the whole batch runs inside
-   * withTenantTransaction and every read/write is org-scoped (catalog lock,
-   * platform-id rows, and the orders/product_manuals backfills). When omitted
-   * (legacy/un-threaded callers) the original raw-pool behavior is preserved
-   * byte-for-byte so external callers keep working.
-   */
+  /** Owning org. When provided, the whole batch runs inside withTenantTransaction and every read/write is org-scoped (catalog lock,… */
   organizationId?: OrgId;
   accept: Array<
     | { platformIdRowId: number; confidence?: number; reason?: string }
@@ -371,13 +332,7 @@ export async function batchPair(input: BatchPairInput): Promise<BatchPairResult>
   }
 }
 
-/**
- * Shared batch-pair body. `orgId === null` reproduces the original raw-pool
- * SQL exactly; a non-null orgId adds `organization_id = $n` predicates on the
- * catalog lock and the orders/product_manuals backfills, and stamps the org
- * on the inline sku_platform_ids insert. Transaction lifecycle (BEGIN/COMMIT/
- * ROLLBACK) is owned by the caller (withTenantTransaction or batchPair).
- */
+/** Shared batch-pair body. */
 async function runBatchPair(
   client: PoolClient,
   input: BatchPairInput,
@@ -458,11 +413,7 @@ async function runBatchPair(
           rowId = a.platformIdRowId;
         }
       } else {
-        // Inline creation — operator typed a mapping that isn't in
-        // sku_platform_ids yet. Use the same idempotent path the existing
-        // upsertSkuPlatformId does, scoped to this transaction.
-        // When org-scoped, stamp organization_id on the new row ($10) so the
-        // GUC-default column never receives a NULL.
+        // Inline creation — operator typed a mapping that isn't in sku_platform_ids yet.
         const inserted = orgId
           ? await client.query(
               `INSERT INTO sku_platform_ids
@@ -511,9 +462,6 @@ async function runBatchPair(
           pairsCreated += 1;
         } else {
           // Conflict — claim the existing row by setting sku_catalog_id.
-          // The WHERE matches on string keys (platform/sku/item/account) which
-          // collide across tenants, so the org-scoped path adds an
-          // organization_id equality predicate ($10) to stay in-tenant.
           const claim = orgId
             ? await client.query(
                 `UPDATE sku_platform_ids
@@ -733,10 +681,7 @@ async function runBatchPair(
           );
       ordersBackfilled = ordersBackfill.rowCount ?? 0;
 
-      // product_manuals has NO organization_id column — it is child-scoped via
-      // its sku_catalog parent. The SET ties each manual to the org-verified
-      // catalog id ($1); inside withTenantTransaction the app.current_org GUC
-      // is the RLS backstop. SQL is otherwise byte-identical across paths.
+      // product_manuals has NO organization_id column — it is child-scoped via its sku_catalog parent.
       const manualsBackfill = await client.query(
         `UPDATE product_manuals
             SET sku_catalog_id = $1
@@ -800,32 +745,12 @@ async function writeAudit(
 
 // ─── Cron-driven suggestion refresh (writes to suggestions table only) ─────
 
-/**
- * Materializes suggestions for every catalog row that has at least one
- * un-paired platform candidate above the trigram-similarity threshold.
- *
- * Single bulk SQL — no N+1 round-trips. Runs in seconds even with thousands
- * of un-paired platform rows thanks to the gin_trgm GIN index added in the
- * 2026-05-25 migration.
- *
- * Called from /api/cron/sku-catalog/refresh-suggestions. NEVER writes to
- * sku_platform_ids — pairings stay human-reviewed.
- *
- * Trade-off: this bulk path uses title-similarity only (no order-volume
- * bonus). suggestPairingsForSku() applies the full ranker when an operator
- * opens a product; the materialized table is the index that drives the
- * queue list + sidebar badge.
- */
+/** Materializes suggestions for every catalog row that has at least one un-paired platform candidate above the trigram-similarity threshold. */
 export async function refreshAllSuggestions(orgId?: OrgId): Promise<{
   catalogsScanned: number;
   suggestionsWritten: number;
 }> {
-  // Org-scoped path: run inside the tenant transaction and only rebuild THIS
-  // org's suggestions. sku_pairing_suggestions has no organization_id column,
-  // so it is scoped via its sku_catalog parent — we DELETE (never TRUNCATE) the
-  // rows whose catalog belongs to the org, and constrain the scored CTE to the
-  // org's catalog rows with an aligned org-equality join so cross-tenant
-  // platform rows can't be paired.
+  // Org-scoped path:
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       await client.query(

@@ -3,13 +3,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { lookupShipmentId } from '@/lib/shipping/resolve';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/sku/by-tracking?tracking=xxx
- *
- * Returns the sku record whose shipping_tracking_number matches, along with
- * all associated integrity photos from the unified photos table
- * (entity_type = 'SKU', entity_id = sku.id).
- */
+/** GET /api/sku/by-tracking?tracking=xxx */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const tracking = searchParams.get('tracking')?.trim();
@@ -22,10 +16,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // Read-only resolution (no shipment registration) so this GET is side-effect
     // free; org-scoped now that we thread ctx.organizationId.
     const resolved = await lookupShipmentId(tracking, ctx.organizationId);
-    // v_sku is a read-only VIEW without organization_id, so the `s` rows ride on
-    // the GUC (RLS on the underlying serial_units). The sku_stock string-key
-    // join and the photos subquery hit base tables that DO carry
-    // organization_id, so each gets an explicit tenant filter.
+    // v_sku is a read-only VIEW without organization_id, so the `s` rows ride on the GUC (RLS on the underlying serial_units).
     const result = await tenantQuery<{
       id: number;
       static_sku: string | null;
@@ -40,10 +31,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       photos: Array<{ id: number; url: string }>;
     }>(
       ctx.organizationId,
-      // `s` is the v_sku VIEW, so Postgres can't treat s.id as a unique key for
-      // GROUP BY functional-dependency. Rather than enumerate every column, the
-      // photos are aggregated in a correlated subquery — no GROUP BY, and it also
-      // avoids photo duplication when the sku_stock join fans out to >1 row.
+      // `s` is the v_sku VIEW, so Postgres can't treat s.id as a unique key for GROUP BY functional-dependency.
       `SELECT
          s.id,
          s.static_sku,
@@ -136,19 +124,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
  */
 const POST_RETIREMENT_ID_OFFSET = 1_000_000_000;
 
-/**
- * DELETE /api/sku/by-tracking?id=123
- *
- * Removes a scanned SKU record — the `id` is the value returned by GET above.
- * `v_sku` is a read-only view, so the delete targets the underlying
- * `serial_units` row(s):
- *   - id >= 1e9 → a single post-retirement unit (serial_units.id = id - 1e9)
- *   - otherwise → a legacy group keyed by serial_units.origin_sku_id = id
- *
- * SKU-typed integrity photos are keyed by the v_sku id (entity_type = 'SKU',
- * entity_id = id), which the serial_units delete trigger does NOT reach (it
- * only cascades SERIAL_UNIT photos), so they're cleared in the same transaction.
- */
+/** DELETE /api/sku/by-tracking?id=123 */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const idRaw = searchParams.get('id');
@@ -159,10 +135,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   }
 
   try {
-    // withTenantTransaction sets the org GUC and wraps the whole delete in a
-    // single transaction. serial_units and photos both carry organization_id,
-    // so each DELETE is org-scoped — a cross-tenant id deletes nothing and
-    // falls through to the 404 below (never 403).
+    // withTenantTransaction sets the org GUC and wraps the whole delete in a single transaction.
     return await withTenantTransaction(ctx.organizationId, async (client) => {
       const unitDelete = id >= POST_RETIREMENT_ID_OFFSET
         ? await client.query(
@@ -170,11 +143,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
             [id - POST_RETIREMENT_ID_OFFSET, ctx.organizationId],
           )
         : await client.query(
-            // Phase 3: the legacy origin_sku_id group. origin_sku_id was never
-            // populated in live data (SKU_IMPORT provenance edges are text-only,
-            // origin_id NULL), so this branch matched nothing before and matches
-            // nothing now — re-expressed against provenance so it no longer
-            // references the dropped column while preserving the (empty) result.
+            // Phase 3: the legacy origin_sku_id group.
             `DELETE FROM serial_units WHERE id IN (
                SELECT p.serial_unit_id FROM serial_unit_provenance p
                 WHERE p.origin_type = 'SKU_IMPORT' AND p.origin_id = $1 AND p.organization_id = $2)

@@ -8,18 +8,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/webhooks/shipstation/[token]
- *
- * Per-tenant tokenized ShipStation v2 webhook receiver (mirrors the Zoho/Nextiva
- * model). The unguessable {token} resolves the org; ShipStation's RSA-SHA256
- * signature (over `timestamp + "." + rawBody`, verified via JWKS) is the strong
- * layer when present. Only `track` (API_TRACK) events are applied — mapped onto
- * the existing shipment/tracking spine; everything else is acked and ignored.
- *
- * Exempt from the permission gate as a signature-verified webhook (see
- * scripts/audit-route-auth.ts → /api/webhooks/).
- */
+/** POST /api/webhooks/shipstation/[token] */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 

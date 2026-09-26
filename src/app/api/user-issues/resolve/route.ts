@@ -1,16 +1,4 @@
-/**
- * POST /api/user-issues/resolve — machine ingress for the issue→toast loop
- * (ALP-5.3). Called by the forge loop / fix automation when a reported issue's
- * fix reaches deployment. Webhook-style auth: `x-forge-token` shared secret
- * (same posture as /api/forge/ingest — no session on this path; the tenant is
- * CONFIGURED via FORGE_ORG_ID, matching where reports are dogfooded today).
- *
- * Body: { issueId?: number; githubIssueNumber?: number; resolutionCommit?: string }
- * Effect: status → 'deployed' (+ commit/resolved_at), audit row, and an
- * `issue.resolved` Ably event on the REPORTER's inbox channel → locked toast.
- * Idempotent: an already-deployed issue returns { ok: true, idempotent: true }
- * and does NOT re-toast.
- */
+/** POST /api/user-issues/resolve — machine ingress for the issue→toast loop (ALP-5.3). */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

@@ -27,50 +27,10 @@ import {
   isLeafActive,
 } from '@/lib/mobile/nav-registry';
 
-/**
- * Left slide-over navigation drawer for the mobile shell (2026 redesign).
- *
- * Replaces the fixed bottom nav (RedesignedBottomNav): every destination that
- * used to live in the thumb-zone bar now lives here, opened by the top-left menu
- * button in {@link MobileTopBar}. Moving navigation off the bottom edge stops the
- * accidental taps that plagued the bar and frees the very bottom of each page for
- * the page's own contextual content/actions.
- *
- * ## It renders the DESKTOP spine row, not a phone-shaped approximation
- *
- * Rows compose `SPINE_ROW_SHELL_CLASS` + `SPINE_ROW_FACE_CLASS` +
- * `SPINE_ACCENT` — the same three tokens `SidebarNavList` paints with, at the
- * same 40px height, the same 16px glyph, the same `role-body` label. Until
- * 2026-08-21 this drawer hand-rolled `rounded-2xl` rows with a `bg-blue-50` /
- * `ring-blue-200` active state, which broke three rulings at once: ops chrome
- * is flush-square, the spine treatment is monochrome ("No hue, anywhere"), and
- * selection carries no ring or shadow. Nesting uses the same ONE-line,
- * two-token rail (`spineRailLineClass`) rather than a static hairline.
- *
- * ## Why the DESTINATIONS are still local
- *
- * The rows are the spine's; the list is not. `MasterNav` resolves `/receiving`,
- * `/unbox`, `/pack` — the desktop shell's routes — while this drawer navigates
- * the `/m/*` app, a separate shell with its own scan-first surfaces. Mounting
- * `MasterNav` here would walk operators out of the mobile app. Shared face,
- * different map, and that difference is the reason this component exists.
- *
- * Below the map sits {@link MobileAccountFooter}: a single identity icon that
- * opens `/m/settings`. It intentionally does not reuse the desktop account footer.
- */
+/** Left slide-over navigation drawer for the mobile shell (2026 redesign). */
 
-// Destinations, LANE faces, PARENT icons and active-route identification all
-// live in `@/lib/mobile/nav-registry` — the routing SoT. The drawer used to
-// keep its own `NAV_ITEM_ICONS` map keyed by destination id under the old
-// chrome law (*"pages are text; modes own icons"*), which put glyphs on the
-// CHILDREN and none on the parents.
-//
+// Destinations, LANE faces, PARENT icons and active-route identification all live in `@/lib/mobile/nav-registry` — the routing SoT.
 // **Operator ruling 2026-09-14 — "icon at the parent level only"** inverts
-// that, and the map is deleted rather than re-keyed: a renderer-side icon
-// table is a second source, and it is how the phone and the desk spine came to
-// disagree about which altitude wears a glyph. The registry's types now carry
-// the law (`MobileNavChild` has no `icon` field at all), so this file only
-// paints what it is given.
 
 export const MobileSidebarDrawer = ({
   open,
@@ -86,20 +46,12 @@ export const MobileSidebarDrawer = ({
   const router = useRouter();
   const { user, has } = useAuth();
 
-  /**
-   * A row the viewer cannot use is ABSENT, not disabled (registry rule: a nav
-   * row that 403s is worse than an absent one). The gate reads the registry's
-   * own `requires`, so a new destination declares its permission beside its
-   * href instead of being special-cased here.
-   */
+  /** A row the viewer cannot use is ABSENT, not disabled (registry rule: */
   const visibleItems = NAV_ITEMS.filter((item) =>
     item.kind === 'leaf' && item.requires ? has(item.requires) : true,
   );
 
-  // Auto-expand the lane the operator is already inside. Derived from the
-  // registry rather than a second copy of the prefixes — the old version
-  // hard-coded the five receiving paths AND the group id here, so adding a
-  // lane meant editing two files to keep one behaviour.
+  // Auto-expand the lane the operator is already inside.
   const activeGroupId =
     visibleItems.find(
       (item) => item.kind === 'group' && isGroupActive(pathname, item.matchPrefixes),
@@ -209,11 +161,10 @@ export const MobileSidebarDrawer = ({
                     transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
                     className="overflow-hidden"
                   >
-                    {/* The rail's COLUMN, shared with the desk: the inset lands
-                        it under the parent glyph, not under the parent's left
-                        pad (operator 2026-09-14: "aligned with the icon of the
-                        parent"). The drawer's own `<nav>` pad shifts glyph and
-                        rail together, so the same token is correct here. */}
+                    {/*
+ * The rail's COLUMN, shared with the desk:
+ * pad (operator 2026-09-14: "aligned with the icon of the
+ */}
                     <div className={cn('relative', SPINE_CHILD_RAIL_INSET_CLASS)}>
                       {/* The continuous trunk — same token, same column as the
                           desk. Child segments paint over it to mark the row. */}
@@ -222,12 +173,7 @@ export const MobileSidebarDrawer = ({
                         const childActive = isLeafActive(pathname, child.href);
                         return (
                           <li key={child.id} className="flex items-stretch">
-                            {/* The child mark: the rail LINE — one physical line,
-                                two colour tokens. Since 2026-09-14 the DESK spine
-                                paints the same hairline (operator: "a hairline on
-                                the left of all the child components"), so this is
-                                one law with one paint rather than a per-surface
-                                affordance. Never stack an indent on top of it. */}
+                            {/* The child mark: */}
                             <span className={spineRailLineClass(childActive)} aria-hidden />
                             {/* ds-raw-button: text-left child nav row (label only — no glyph, by the icon law) */}
                             <button
@@ -311,10 +257,7 @@ export const MobileSidebarDrawer = ({
               if (info.offset.x < -80 || info.velocity.x < -500) onClose();
             }}
             className={cn(
-              // Flush-square, spine-width, chrome ground — the desktop push column
-              // in a slide-over. The old panel carried an arbitrary rgba shadow;
-              // depth here is the border + the scrim behind it, per the accent
-              // module's "no ring, no shadow, no bevel".
+              // Flush-square, spine-width, chrome ground — the desktop push column in a slide-over.
               'fixed inset-y-0 left-0 z-panel flex h-[100dvh] max-w-[86vw] flex-col border-r border-border-soft md:hidden',
               'pt-[env(safe-area-inset-top)]',
               SIDEBAR_SPINE_WIDTH,
@@ -322,10 +265,7 @@ export const MobileSidebarDrawer = ({
               cornerClass('flush'),
             )}
           >
-            {/* No close button: the scrim and the left swipe (drag handler
-                above) already dismiss this drawer, and the X cost a whole
-                header strip at the top of a phone screen. Safe-area inset moves
-                to the panel itself now that nothing sits above the nav. */}
+            {/* No close button: */}
             {navigation}
 
             <MobileAccountFooter onNavigate={onClose} />

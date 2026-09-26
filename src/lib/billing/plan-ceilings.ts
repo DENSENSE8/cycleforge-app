@@ -1,32 +1,4 @@
-/**
- * Plan quantity ceilings — maxStaff / maxWarehouses / maxMonthlyOrders.
- *
- * The count-based sibling of the boolean feature gates: where
- * plan-feature-gate.ts asks "does the plan include feature X?", this asks
- * "would adding one more <thing> push the org past its plan's ceiling?".
- * Mirrors `wouldExceedIntegrationLimit` (src/lib/integrations/connectors/
- * connections.ts), which remains the maxIntegrations implementation.
- *
- * ──────────────────────────────────────────────────────────────────────────
- * PERMISSIVE BY DEFAULT (same dormant flag as plan-feature-gate.ts). Every
- * check is a NO-OP until `PLAN_FEATURE_ENFORCED` is explicitly set — with it
- * off, `wouldExceedPlanCeiling()` returns false with NO database read, so the
- * gated routes behave exactly as before until enforcement is flipped on.
- *
- * Escape hatches, even once enforcement is on:
- *   1. Enforcement flag OFF  → always allowed (default).
- *   2. Dogfood/internal org  → always allowed (the deployment we run on).
- *   3. Ceiling of 0          → unlimited (the plans.ts convention).
- *
- * Fail-open: any infra error resolves to "allowed" so a flaky count query can
- * never block staff invites / order creation.
- * ──────────────────────────────────────────────────────────────────────────
- *
- * maxMonthlyOrders is a SOFT ceiling by design: only the manual order-create
- * route and the button-driven connector "Sync now" entry check it. High-volume
- * webhook/cron ingestion paths never block mid-stream (they carry TODO
- * markers pointing here for a future metered-billing pass).
- */
+/** Plan quantity ceilings — maxStaff / maxWarehouses / maxMonthlyOrders. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -101,16 +73,7 @@ const defaultDeps: PlanCeilingDeps = {
   countUsage: (orgId, ceiling) => USAGE_COUNTERS[ceiling](orgId),
 };
 
-/**
- * True if creating ONE MORE unit of `ceiling` would exceed the org's plan.
- *
- * Decision order (each clause short-circuits, cheapest first):
- *   1. enforcement off (PLAN_FEATURE_ENFORCED) → allowed (NO DB read).
- *   2. no org / dogfood org                    → allowed.
- *   3. ceiling is 0 (unlimited)                → allowed (no usage count).
- *   4. used >= max                             → EXCEEDED.
- * Fail-open on any error, mirroring the rest of the billing gates.
- */
+/** True if creating ONE MORE unit of `ceiling` would exceed the org's plan. */
 export async function wouldExceedPlanCeiling(
   orgId: OrgId | null | undefined,
   ceiling: PlanCeiling,

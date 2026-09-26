@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * SurfaceRenderer — mounts a surface's published `station_definitions`
- * composition on a real page (Studio-driven operator-surfaces refactor,
- * Phase 3b). It lays out the archetype scaffold and drops a `StationSlot` for
- * each region; `StationSlot` reads the active config for (pageKey, modeKey, slot)
- * and renders the composed blocks (or nothing, when a slot is empty).
- *
- * This is the production render host the plan called for — the same
- * StationSlot/BlockRenderer runtime the Studio node-editor preview uses, now on
- * a live surface. It only renders when `SurfaceGate` resolves `render:'composed'`
- * (active composition + per-org flag); otherwise the legacy tree renders.
- */
+/** SurfaceRenderer — mounts a surface's published `station_definitions` composition on a real page (Studio-driven operator-surfaces… */
 
 import { getSurface, type SurfaceKey } from '@/lib/stations/surface-keys';
 import { StationSlot } from '@/components/stations/StationSlot';

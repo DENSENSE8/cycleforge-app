@@ -83,12 +83,7 @@ function ChipRow({ label, children }: { label: string; children: React.ReactNode
   );
 }
 
-/**
- * Top-of-body summary — product title is the PRIMARY (large, dark) line, with
- * the SKU on top and the serial below it as copy chips (last-8 display, copy
- * the full value on click). The serial is the one LINKED to the QR label (from
- * tech_serial_numbers lineage), not the raw label text.
- */
+/** Top-of-body summary — product title is the PRIMARY (large, dark) line, with the SKU on top and the serial below it as copy chips (last-8… */
 export function IdentityCard({ unit }: { unit: UnitDetail }) {
   return (
     <section className="rounded-none bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
@@ -130,12 +125,7 @@ export function IdentityCard({ unit }: { unit: UnitDetail }) {
 
 // ─── Location + order pair ───────────────────────────────────────────────────
 
-/**
- * Working location display. Resolves the unit's denormalized
- * `current_location` to its full bin row (room / zone / type) when known, and
- * shows an explicit "not stocked" state otherwise — instead of silently
- * rendering blank.
- */
+/** Working location display. */
 export function LocationCard({
   location,
   detail,

@@ -1,15 +1,4 @@
-/**
- * POST /api/kiosk/enroll
- *
- * Manager (staff session, `walk_in.enroll_kiosk`) mints a one-time, short-lived
- * pairing code for a NEW kiosk tablet. Returns the raw code ONCE (shown to the
- * operator, who carries it to the tablet's /kiosk pairing screen) plus the
- * `deviceId`. Only the code hash is persisted. The tablet then calls
- * /api/kiosk/pair to exchange it for a long-lived device token.
- *
- * Mirrors the staff `enroll-token` route, but the principal being provisioned
- * is a DEVICE (kiosk_devices), never a person.
- */
+/** POST /api/kiosk/enroll */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -1,23 +1,4 @@
-/**
- * Navigation as data (Studio-driven operator-surfaces refactor, Phase 4).
- *
- * The static `APP_SIDEBAR_NAV` is the CODE default (what surfaces the app can
- * render). A per-org `nav_definitions` row is the DATA override — it can hide
- * or rename nav items so a business's sidebar reflects its own operation,
- * without a deploy. This mirrors the station/surface split: code registers
- * capabilities, data drives what each org sees.
- *
- * **Order is suggestion-only (2026-08-30).** Live MasterNav placement is
- * per-staff `prefs.spineSlots` (`src/lib/nav/spine-slots.ts`). Org `order`
- * still sorts the catalog / Add-from-catalog suggestions via
- * {@link mergeOrgNav}; it does not drive the rendered spine once staff slots
- * exist.
- *
- * `mergeOrgNav` is pure + DB-free (unit-tested); the loader + API + hook layer
- * it. The override is ADDITIVE and safe — a null/absent override yields the
- * static defaults unchanged, and an override can never introduce a nav item the
- * code doesn't already define (it only references existing ids).
- */
+/** Navigation as data (Studio-driven operator-surfaces refactor, Phase 4). */
 
 import type {
   SidebarChildPage,
@@ -56,14 +37,7 @@ export interface NavDefinition {
   entries: NavOverrideEntry[];
 }
 
-/**
- * Apply an org's nav override onto the static defaults: filter hidden items,
- * rename labelled ones, and apply suggestion `order`. Ordering semantics for
- * the Add catalog / merge helpers: items given an explicit `order` lead,
- * sorted by that order; every item WITHOUT an explicit order follows, in its
- * default relative position. Live MasterNav placement is per-staff
- * `spineSlots` — this `order` field does not render the spine.
- */
+/** Apply an org's nav override onto the static defaults: */
 export function mergeOrgNav(
   defaults: readonly SidebarNavItem[],
   override: NavDefinition | null | undefined,

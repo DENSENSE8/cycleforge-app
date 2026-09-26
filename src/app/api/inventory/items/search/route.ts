@@ -2,14 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/inventory/items/search?q=<text>&limit=20
- *
- * Searches the Zoho `items` mirror by SKU or name for the parent picker in the
- * parts-pairing UI. Scoped to active items in the caller's org. This is the
- * `items` scheme — deliberately NOT the `sku_catalog` search (the two collide on
- * the SKU string).
- */
+/** GET /api/inventory/items/search?q=<text>&limit=20 */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     try {

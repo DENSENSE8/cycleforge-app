@@ -3,12 +3,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getSkuCatalogById } from '@/lib/neon/sku-catalog-queries';
 import { getTree } from '@/lib/neon/sku-relationship-queries';
 
-/**
- * GET /api/sku-catalog/graph/[skuId]/tree?depth=10
- * Full descendant tree below a root SKU (recursive). Returns { edges, nodes }
- * so the client can render the whole graph without per-node round-trips.
- * `skuId` is a sku_catalog.id (integer). `depth` is clamped to 1..20.
- */
+/** GET /api/sku-catalog/graph/[skuId]/tree?depth=10 Full descendant tree below a root SKU (recursive). */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ skuId: string }> },

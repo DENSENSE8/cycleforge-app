@@ -4,24 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useEventBridge } from '@/hooks';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-/**
- * Carton-level default receiving type (receiving.intake_type) — the mirror of
- * useSourcePlatform, for the carton TYPE pill. Type is now carton-default +
- * line-override: this hook owns the carton DEFAULT; per-line overrides stay on
- * receiving_lines.receiving_type. See migration 2026-06-13b.
- *
- * Seeds synchronously from the row so the pill never flashes 'PO', falls back to
- * the active line's override when no carton default is set yet (so a freshly
- * tagged line still reads correctly), and persists via PATCH /api/receiving/:id
- * (`intake_type` + `is_return` so claim subjects / classification stay coherent),
- * broadcasting `receiving-package-updated` so sibling surfaces stay in sync.
- *
- * Deliberately carton-first — the OPPOSITE precedence of `effectiveIntakeKind`
- * (src/lib/receiving/kinds/registry.ts). That SoT answers "what's this LINE's
- * effective type" (line override wins) for display; this hook answers "what
- * should the CARTON's own type field show/edit" for an editor seeding from the
- * record it's actually about to PATCH. Not a duplicate to consolidate.
- */
+/** Carton-level default receiving type (receiving.intake_type) — the mirror of useSourcePlatform, for the carton TYPE pill. */
 export function useReceivingType(row: ReceivingLineRow) {
   // Carton default first; fall back to the line's own type so a carton that
   // pre-dates the carton-default column (or was just tagged on one line) still

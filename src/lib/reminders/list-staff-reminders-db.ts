@@ -1,11 +1,6 @@
 import 'server-only';
 
-/**
- * Real tenant bindings for {@link listStaffReminders}. Each query only
- * NARROWS (staffer, window, days) and maps; every rule that decides whether a
- * reminder rings lives in the pure core. Org-scoped twice: the GUC wrapper and
- * an explicit `organization_id` filter.
- */
+/** Real tenant bindings for {@link listStaffReminders}. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import { dailyCheckItemLiveOnSql, dailyCheckItemOwedBySql } from '@/lib/daily-checks/queries';

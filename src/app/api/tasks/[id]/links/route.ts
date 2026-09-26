@@ -1,19 +1,4 @@
-/**
- * `/api/tasks/[id]/links` — the records a task names beyond its anchor.
- *
- * GET               → `TaskLinksPayload`, oldest first, enriched for the
- *                     evidence column (order lines, carrier status, ticket caches).
- * POST              → link an order / tracking number / ticket. 201 with the new
- *                     link; 200 with the EXISTING link when the same
- *                     (task, kind, label) is already there — a retried tap is a no-op.
- * DELETE ?linkId=N  → `{ ok, changed }`; `changed: false` when already gone.
- *
- * The label is derived server-side from the resolved record
- * (`src/lib/tasks/task-links.ts`), so two operators naming the same thing land
- * on one row. Refusals answer `{ error: <TASK_LINK_REFUSAL_COPY key> }`.
- *
- * PERMISSION — `work_orders.claim`, the gate every task verb uses.
- */
+/** `/api/tasks/[id]/links` — the records a task names beyond its anchor. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

@@ -1,15 +1,4 @@
-/**
- * Per-staff station assignment queries (primary + secondary).
- *
- * Backs:
- *   - the admin Stations card (GET/PUT /api/admin/staff/[id]/stations)
- *   - the header goal chip's self endpoint (GET /api/staff-goals/me)
- *
- * Daily targets still come from `staff_goals.daily_goal`; this module only
- * decides WHICH stations a staffer sees. Staff with no `staff_stations` rows
- * fall back to the employee_id-prefix derived station (single, no switch) so
- * existing users keep working before any admin assignment is made.
- */
+/** Per-staff station assignment queries (primary + secondary). */
 
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -56,15 +45,7 @@ export async function getStaffStations(staffId: number, orgId?: OrgId): Promise<
   return r.rows.map((row) => ({ station: row.station as StationKey, is_primary: Boolean(row.is_primary) }));
 }
 
-/**
- * Staff ids whose PRIMARY station is TECH — the recipients for tech-station
- * inbox notifications (unboxed returns awaiting test, orders ready to ship).
- * Fan-out target for the publishers in src/lib/realtime/publish.ts.
- *
- * Org-scoped: `staff_stations` has no `organization_id` column, so we JOIN
- * `staff` and filter on its org — otherwise a second tenant's techs would be
- * enumerated into this org's fan-out.
- */
+/** Staff ids whose PRIMARY station is TECH — the recipients for tech-station inbox notifications (unboxed returns awaiting test, orders… */
 export async function getPrimaryTechStaffIds(orgId: string): Promise<number[]> {
   // orgId is always present here → route through the tenant executor (RLS-subject)
   // while keeping the explicit parent-org JOIN predicate. Signature unchanged.
@@ -112,13 +93,7 @@ export interface MyStationGoal {
   today_count: number;
 }
 
-/**
- * The logged-in staffer's station goals with live, deduped today counts.
- *
- * Returns the assigned stations (primary first). When the staffer has no
- * assignments yet, returns a single derived station marked primary — so the
- * chip shows one goal with no Switch control.
- */
+/** The logged-in staffer's station goals with live, deduped today counts. */
 export async function getMyStationGoals(staffId: number, orgId?: OrgId): Promise<MyStationGoal[]> {
   let assigned = await getStaffStations(staffId, orgId);
   if (assigned.length === 0) {
@@ -191,12 +166,7 @@ export async function getMyStationGoals(staffId: number, orgId?: OrgId): Promise
   }));
 }
 
-/**
- * Replace a staffer's station set. `primary` is the single locked station (or
- * null to clear all assignments and fall back to the derived default).
- * `secondary` are the switchable extras; the primary is removed from that list
- * automatically. Runs in one transaction.
- */
+/** Replace a staffer's station set. */
 export async function setStaffStations(
   staffId: number,
   primary: StationKey | null,
@@ -217,10 +187,7 @@ export async function setStaffStations(
   for (const s of secondaries) rows.push([s, false]);
 
   if (orgId) {
-    // Tenant-scoped path. `staff_stations` has no organization_id column, so we
-    // gate both the DELETE and the INSERT on the `staff` parent belonging to
-    // this org (cross-tenant staffId becomes a no-op → org-ownership 404 at the
-    // route layer, never a wrong-tenant mutation).
+    // Tenant-scoped path.
     await withTenantTransaction(orgId, async (client) => {
       await client.query(
         `DELETE FROM staff_stations
@@ -230,10 +197,7 @@ export async function setStaffStations(
       );
 
       if (rows.length > 0) {
-        // INSERT ... SELECT so each row is only written when the parent staff
-        // belongs to this org (derives the guard from the parent, no blind write).
-        // Cast the first VALUES row's columns so the derived table has concrete
-        // types (nullable `assigned_by` would otherwise be ambiguous).
+        // INSERT ... SELECT so each row is only written when the parent staff belongs to this org (derives the guard from the parent, no blind write).
         const values = rows
           .map((_r, i) =>
             i === 0

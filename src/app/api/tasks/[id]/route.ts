@@ -1,24 +1,4 @@
-/**
- * PATCH /api/tasks/[id] — edit one thrown task from the desk.
- *
- * The desk's verbs (mark done, re-prioritise, move the deadline, hand it to
- * someone else, rewrite the description, set a reminder) are ONE route because
- * they are one row and one audit story: every successful call writes a
- * `work_task.update` row naming exactly which fields moved, so "who moved this
- * deadline" stays answerable.
- *
- * ## The body is a strict allowlist, and an unknown key is a REFUSAL
- * `work_assignments` carries station columns (`assigned_tech_id`,
- * `completed_by_packer_id`, `out_of_stock`, …) that no desk edit may reach.
- * Silently ignoring an unrecognised key would let a caller believe it landed;
- * 403 naming the key says which door is shut. That is why the schema is
- * `z.strictObject` and the unrecognised-keys issue is handled explicitly
- * rather than flattened into the generic 400.
- *
- * PERMISSION — `work_orders.claim`, the same gate POST /api/tasks uses.
- * Driving a task you were handed is the same everyday floor act as throwing
- * one; a harder gate here would send operators back to paper.
- */
+/** PATCH /api/tasks/[id] — edit one thrown task from the desk. */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

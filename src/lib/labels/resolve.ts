@@ -1,16 +1,4 @@
-/**
- * Label layer — the effective-value resolver.
- *
- * `resolveLabel()` layers most-specific-wins, mirroring the Settings Registry's
- * `resolveSetting` (`src/lib/settings/resolve.ts`):
- *   1. org override (from ctx.overrides, loaded from `reason_codes` in Phase 2)
- *   2. system default (the seeded `LABEL_DEFAULTS` row)
- * The stable `code` is never overridable — only the presentation (label / tone /
- * description / order). Tone resolves to its safelisted class pair.
- *
- * Pure — give it the override bag; no DB here (the bag is loaded once per
- * request upstream, exactly like `orgSettings` in the settings resolver).
- */
+/** Label layer — the effective-value resolver. */
 import type {
   LabelKind,
   LabelResolveContext,
@@ -64,12 +52,7 @@ export function resolveKind(kind: LabelKind, ctx?: LabelResolveContext): Resolve
   return Object.keys(LABEL_DEFAULTS[kind]).map((code) => resolveLabel(kind, code, ctx));
 }
 
-/**
- * Raw hex for a state's chart arc/segment (KPI donut, sparkline), resolved from
- * the SAME seeded tone that drives its board dot — so the gauge and the status
- * dot always read as one hue. Tenant-override aware (an org that recolors a state
- * recolors both its dot and its donut arc). SVG-only; UI dots keep `dot`/`pill`.
- */
+/** Raw hex for a state's chart arc/segment (KPI donut, sparkline), resolved from the SAME seeded tone that drives its board dot — so the… */
 export function stateChartHex(kind: LabelKind, code: string, ctx?: LabelResolveContext): string {
   return TONE_SVG_HEX[resolveLabel(kind, code, ctx).tone];
 }
@@ -82,12 +65,7 @@ interface StateMetaEntry {
   dot: string;
 }
 
-/**
- * Build the `{ code → { label, description, pill, dot } }` map a `*_STATE_META`
- * consumer expects, from the resolved labels of a kind. This is the bridge that
- * lets `unshipped-state.ts` / `outbound-state.ts` keep their stable export shape
- * while the data now flows from the one label registry (+ tenant overrides).
- */
+/** Build the `{ code → { label, description, pill, dot } }` map a `*_STATE_META` consumer expects, from the resolved labels of a kind. */
 export function buildStateMeta(
   kind: LabelKind,
   ctx?: LabelResolveContext,

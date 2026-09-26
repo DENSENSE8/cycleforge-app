@@ -5,14 +5,7 @@ import { DetailsPanelRow } from '../DetailsPanelRow';
 import { ExternalLinkActionIcon } from '../ExternalLinkActionIcon';
 import type { ItemRecordFact } from './item-record-types';
 
-/**
- * Reference band under an item row — the identifiers a station ledger has no
- * column for (item numbers, marketplace SKUs, external listings).
- *
- * Each fact is a house {@link DetailsPanelRow}; copy and open-out are the DS
- * action icons, so a caller declares `copyValue` / `href` as DATA and never
- * hand-rolls a clipboard button.
- */
+/** Reference band under an item row — the identifiers a station ledger has no column for (item numbers, marketplace SKUs, external listings). */
 export function ItemRecordFactList({ facts }: { facts: ItemRecordFact[] }) {
   if (facts.length === 0) return null;
   return (

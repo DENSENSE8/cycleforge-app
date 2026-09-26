@@ -1,22 +1,4 @@
-/**
- * JSON-line structured logger.
- *
- * Pino-compatible surface (`logger.info`, `.warn`, `.error`, `.child`) so
- * swapping in real pino later is a `import` change, not a callsite change.
- * We don't ship pino itself yet because it adds a transitive dep tree we
- * don't currently need — the in-house implementation here is ~60 lines
- * and covers everything we use.
- *
- * Every line is one JSON object: `{ ts, level, msg, ...bindings }`. Vercel
- * and most log aggregators ingest these natively. In dev, lines are
- * pretty-printed because watching JSON in a terminal during local
- * development is no fun.
- *
- *   import { logger } from '@/lib/observability/logger';
- *   logger.info({ orgId, staffId }, 'order shipped');
- *   const opsLog = logger.child({ component: 'qstash' });
- *   opsLog.warn({ retries: 3 }, 'inbound webhook flaky');
- */
+/** JSON-line structured logger. */
 
 type Level = 'debug' | 'info' | 'warn' | 'error';
 

@@ -1,37 +1,4 @@
-/**
- * POST /api/admin/po-gmail/create-zoho-draft/[id]
- *
- * Creates a Zoho purchase order in `draft` status from the extracted fields
- * on a PO-mailbox row. Operator opens the draft in Zoho, finishes line
- * items + vendor confirmation, and clicks "Convert to Open" to publish.
- *
- * Resolution flow:
- *   1. Load the mailbox row + triage_state.
- *   2. Resolve vendor: body.vendor_id wins; otherwise look up the extracted
- *      vendor name in Zoho contacts. Exactly 1 vendor match = auto-use.
- *      0 matches → 422 (operator must create vendor in Zoho first).
- *      >1 matches → 422 with candidate list; operator re-submits with vendor_id.
- *   3. Build line items: body.line_items wins. Otherwise emit a single stub
- *      ("Items per email body" qty 1, rate 0) so Zoho accepts the create.
- *      Drafts are editable in Zoho — operator finishes the real lines there.
- *   4. POST to Zoho create-PO. Defaults to draft status.
- *   5. Write zoho_uploaded_po_number back onto the mailbox row. Leave pile
- *      as 'upload' — it flips to 'done' only after the operator publishes
- *      the draft and the existing Phase 5 cron picks it up via the Zoho
- *      mirror's PO sync.
- *
- * Request body (all optional — every field has a sensible derivation):
- *   {
- *     vendor_id?: string,           // explicit vendor (skips name lookup)
- *     date?: 'YYYY-MM-DD',          // PO date (default: today PST)
- *     reference_number?: string,    // vendor's own ref / their PO# (default: extracted PO# from email)
- *     notes?: string,               // free text (default: "Drafted from Gmail message <id>")
- *     line_items?: [{ name, rate, quantity, description? }],
- *   }
- *
- * Response 200: { success, purchaseorder_id, purchaseorder_number, status, zohoUrl }
- * Response 422: { success: false, error, code: 'VENDOR_NOT_FOUND' | 'VENDOR_AMBIGUOUS', vendor_query?, candidates? }
- */
+/** POST /api/admin/po-gmail/create-zoho-draft/[id] */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

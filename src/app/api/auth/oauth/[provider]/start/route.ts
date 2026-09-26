@@ -1,15 +1,4 @@
-/**
- * GET /api/auth/oauth/[provider]/start  (PUBLIC)  — provider ∈ google | apple | microsoft
- *
- * Begins platform social login. Sets a short-lived httpOnly state cookie
- * (PKCE verifier + CSRF state + nonce + workspace slug + the "Keep me signed
- * in" choice) and redirects the user to the provider's consent screen. Never
- * touches Drive/Gmail scopes.
- *
- * `?persist=1` carries the sign-in page's checkbox through the redirect — the
- * button sits next to that checkbox, so the flag has to survive the round trip
- * or checking the box would silently do nothing for federated sign-in.
- */
+/** GET /api/auth/oauth/[provider]/start (PUBLIC) — provider ∈ google | apple | microsoft */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimitAsync } from '@/lib/api-guard';
@@ -57,11 +46,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const signinRaw = req.nextUrl.searchParams.get('signin');
   const signinPath = signinRaw === '/m/signin' ? '/m/signin' : signinRaw === '/signin' ? '/signin' : null;
 
-  // IDENTITY LINKING: `link=1` turns this round trip from "sign in with the
-  // provider" into "attach the provider to MY account". The account id comes
-  // from the CALLER'S SESSION, never the query — a query param could name any
-  // account; a session cannot be named, only held. No session → refuse; the
-  // callback re-verifies the binding before anything is written.
+  // IDENTITY LINKING:
   let linkAccountId: string | null = null;
   if (req.nextUrl.searchParams.get('link') === '1') {
     const me = await getCurrentUser();

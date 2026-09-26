@@ -30,12 +30,7 @@ const PatchBody = z.object({
   subjectSnapshot: z.string().optional(),
 });
 
-/**
- * GET    ?receivingId=&lineId?  → draft for a carton/line
- * GET    ?id=                     → draft by receiving_claim_seller_messages.id
- * PATCH  { receivingId, lineId?, sellerMessage } → update draft (links stripped)
- * DELETE ?receivingId=&lineId?  → remove draft for entity (unlink / ticket change)
- */
+/** GET ?receivingId=&lineId? */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const context = 'GET /api/receiving/zendesk-claim/seller-message';
   try {

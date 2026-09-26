@@ -42,13 +42,7 @@ export function SkeletonRow() {
   );
 }
 
-/**
- * Mirrors the Linear-variant `OrderCard` row used in the /tech Up Next list.
- * Three stacked rows inside `px-3 py-2.5`:
- *   1. id chip · channel chip + chevron slot
- *   2. title line
- *   3. ship-by pill + urgency phrase ... condition badge + qty pill
- */
+/** Mirrors the Linear-variant `OrderCard` row used in the /tech Up Next list. */
 export function SkeletonOrderCard() {
   return (
     <motion.div

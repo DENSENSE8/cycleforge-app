@@ -3,18 +3,7 @@ import { Barcode, Check, ClipboardList, Lock, PackageCheck, Truck } from '@/comp
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
-/**
- * Single source of truth for FBA status display. Labels + vocabulary mirror
- * src/lib/fba/status.ts (the framework-agnostic canonical module).
- *
- * Status vocabulary (shared by shipment-level and item-level):
- *   PLANNED        — planning acknowledged today's FBA items
- *   TESTED         — technician scanned the FNSKU; passed, ready to be packed
- *   PACKED         — packer scanned the FNSKU; ready to combine
- *   LABEL_ASSIGNED — combined under one FBA shipment ID (shown as "Combined")
- *   SHIPPED        — UPS tracking scanned; handed to carrier
- *   CLOSED         — plan/shipment archived
- */
+/** Single source of truth for FBA status display. */
 export type FbaStatus =
   | 'PLANNED'
   | 'TESTED'

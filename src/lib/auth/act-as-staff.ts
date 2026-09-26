@@ -1,17 +1,4 @@
-/**
- * "Act as staff" authorization — the pure decision behind POST /api/auth/act-as-staff.
- *
- * The SHARED-account avenue (see settings `staffLoginModel = 'shared'`): on a
- * shared workspace, an already-signed-in session (reached via the shared
- * email+password) may mint a session for ANY active staff in the SAME org with
- * NO PIN. The shared login is the entry gate; this helper enforces the two
- * invariants that keep it from becoming a cross-tenant or per-email-org hole:
- *   1. the caller's org must actually be a shared-account workspace, and
- *   2. the target staff must be an active member of that SAME org.
- *
- * Kept DB-free + Deps-free so it unit-tests with zero database (see
- * act-as-staff.test.ts). The route supplies the three facts it needs.
- */
+/** "Act as staff" authorization — the pure decision behind POST /api/auth/act-as-staff. */
 
 export type ActAsError =
   | 'NOT_SHARED_ORG'    // caller's org isn't a shared-account workspace

@@ -8,19 +8,7 @@ import { OnboardingRecommendBody } from '@/lib/schemas/studio';
 import type { TemplateGraph } from '@/lib/studio/templates';
 import { recommendTemplates, type TemplateCandidate } from '@/lib/studio/recommend-template';
 
-/**
- * POST /api/onboarding/recommend
- *
- * AI-intake recommendation (Template Platform Phase 5): given a free-text
- * description of how the shop runs ops, rank the EXISTING system templates and
- * return their slugs + a short reason. The recommender can only ever return
- * slugs that exist (never invents one), and this route NEVER installs or
- * activates anything — the owner still confirms the pick via the onboarding
- * chooser (POST /api/onboarding/template), which lands the chosen template.
- *
- * studio.view — this is a read/ranking over the (global) system library. orgId
- * is not needed to scope the candidates; the intake text is in the body.
- */
+/** POST /api/onboarding/recommend */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(

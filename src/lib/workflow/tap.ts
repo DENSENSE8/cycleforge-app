@@ -1,30 +1,4 @@
-/**
- * Workflow engine — production tap.
- *
- * The one entry point domain code calls AFTER a mutation commits to mirror it
- * into the operations graph. The engine is an OBSERVER here: the tapped
- * route/lib already did the work (created the unit, recorded the verdict,
- * completed the repair); the tap only tells the engine "this domain event
- * happened to this unit" and the current node translates it into an output
- * port (see nodes/station-node.ts).
- *
- * Two hard rules, both enforced in this file:
- *
- *  1. FIRE-AND-FORGET — an engine failure must never fail a production scan.
- *     tapWorkflow never throws; every error is logged with the [workflow-tap]
- *     prefix and dropped. Callers may `void tapWorkflow(...)` or await it.
- *
- *  2. IDEMPOTENT — a re-scan/retry advances a unit at most once. Enrollment
- *     only happens when the unit has no item_workflow_state row, and every
- *     node parks (`await: true`) unless ctx.input carries the domain event it
- *     is gated on — so replaying an event against a unit that already moved
- *     past that node just re-parks it where it is.
- *
- * Tenancy: enrollment needs an org to resolve the active workflow definition;
- * routes pass ctx.organizationId. Once enrolled, the org comes from the
- * unit's own item_workflow_state row, so lib-level taps (e.g. updateRepair)
- * can omit it.
- */
+/** Workflow engine — production tap. */
 
 import { and, asc, desc, eq, notExists, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
@@ -47,26 +21,15 @@ import { defaultTapOutbox, type TapOutboxDeps } from './tap-outbox';
 export type WorkflowTapEvent =
   | 'unit_received'
   | 'test_verdict'
-  // Fired by the data-wipe station action (recordDataWipe) after a secure
-  // erase / factory reset. The `data_wipe` node maps wipeSuccess → 'wiped'
-  // (→ grade) vs 'failed' (→ repair). Unlike most taps this advances ONLY the
-  // graph position — the wipe is a recorded compliance event, not a
-  // serial_units status change.
+  // Fired by the data-wipe station action (recordDataWipe) after a secure erase / factory reset.
   | 'data_wiped'
   | 'repair_completed'
   | 'listed'
   | 'packed'
-  // Fired when the packer confirms the box contents against the SKU's kit-parts
-  // BOM (the kit_verify node). Like 'packed'/'shipped', the node exists ahead of
-  // its tap — no domain site fires this yet; wiring is one tapWorkflow call at
-  // the pack-confirm gate once the packer adopts a scan→confirm step.
+  // Fired when the packer confirms the box contents against the SKU's kit-parts BOM (the kit_verify node).
   | 'pack_verified'
   | 'shipped'
-  // Fired twice per return, by design (see the done-unit re-entry branch
-  // below and the `returns` node, nodes/returns.node.ts): once with no
-  // `input.disposition` when a return is detected (the unit parks at the
-  // `returns` node), and again once a human disposition decision exists
-  // (routes the parked unit out via restock/rtv/scrap).
+  // Fired twice per return, by design (see the done-unit re-entry branch below and the `returns` node, nodes/returns.node.ts):
   | 'return_received';
 
 export interface WorkflowTapArgs {
@@ -81,26 +44,11 @@ export interface WorkflowTapArgs {
    * for units that already have a workflow position.
    */
   orgId?: string | null;
-  /**
-   * Position guard (opt-in). When set, the tap only advances a unit whose
-   * CURRENT graph node is of this registry type; off that node it is a no-op
-   * (the unit is left where it is, not advanced). Without it, a later-stage
-   * observer event fired against a unit parked at the wrong node runs that node,
-   * fails to match, and parks it `blocked` (see advance.ts await→blocked) —
-   * false "stuck" triage noise. Used by the fulfillment-tail taps: 'listed'
-   * passes 'list_ebay', 'packed' passes 'pack', so a unit shipped without first
-   * being listed-through-the-engine is left alone instead of blocked. Omit it
-   * (the legacy taps do) to advance from wherever the unit sits.
-   */
+  /** Position guard (opt-in). */
   expectNodeType?: string;
 }
 
-/**
- * Why a tap did not land as an engine step. Emitted (best-effort) to
- * ops_events as `workflow_tap_dropped` so silent divergence between the
- * domain spine and the workflow graph is observable instead of a console.warn
- * lost in serverless logs.
- */
+/** Why a tap did not land as an engine step. */
 export type WorkflowTapDropReason =
   /** Unit has no workflow row and this event can't enroll it (non-receiving event, or receiving with no org). */
   | 'unenrolled'
@@ -163,11 +111,7 @@ export async function tapWorkflow(
   // unit is unenrolled — the column is nullable by design.
   let dropNodeId: string | null = null;
   try {
-    // Deliberate pre-read even though advance() loads state again: this row
-    // is the orgId source for lib-level taps that have no auth ctx (e.g.
-    // updateRepair), and advance() must keep doing its own read so the state
-    // is fresh once a real per-unit lock lands (acquire → read → write).
-    // One indexed point-select per human-paced scan is the accepted cost.
+    // Deliberate pre-read even though advance() loads state again:
     const state = await loadState(args, deps);
 
     let orgId = state?.organizationId ?? null;
@@ -197,12 +141,7 @@ export async function tapWorkflow(
         startNodeId: start.nodeId,
       });
     } else if (state.status === 'done') {
-      // A completed run stays finished for every event EXCEPT a return: a
-      // unit that shipped-and-completed is exactly the normal case for a
-      // later return, so re-enroll it at the org's `returns`-type node
-      // (not the graph's normal entry) instead of dropping the tap. Re-
-      // running enrollItem's upsert (unique on serialUnitId) IS "re-enroll"
-      // — no new persistence mechanism needed, see store.ts.
+      // A completed run stays finished for every event EXCEPT a return:
       if (args.event !== 'return_received') {
         await emitDrop(deps, args, orgId, 'already_done', {
           currentNodeType: state.currentNodeType,
@@ -241,11 +180,7 @@ export async function tapWorkflow(
       return;
     }
 
-    // Intended-tap outbox: record the intent BEFORE attempting advance so a
-    // crash mid-advance leaves a PENDING row the reconciler cron can re-drive
-    // (re-driving is safe — the tap is idempotent by design). Best-effort and
-    // flag-gated (default OFF): fully inert until the 2026-07-09b migration
-    // is applied and WORKFLOW_TAP_OUTBOX is enabled.
+    // Intended-tap outbox:
     let intentId: number | null = null;
     if (deps.outboxEnabled()) {
       try {
@@ -368,34 +303,11 @@ interface TapStateRow {
   status: string;
   /** Current parked node's registry type — for the opt-in position guard. */
   currentNodeType: string | null;
-  /**
-   * Current parked node's id (workflow_nodes.id) — threaded onto the drop
-   * event's `ops_events.workflow_node_id` "where" axis (Phase 2 of the
-   * ops-events unification plan). Optional so DB-free test fakes that predate
-   * it stay valid; the real reads always select it.
-   */
+  /** Current parked node's id (workflow_nodes.id) — threaded onto the drop event's `ops_events.workflow_node_id` "where" axis (Phase 2 of the… */
   currentNodeId?: string | null;
 }
 
-/**
- * The org-discovery + position-guard pre-read against item_workflow_state.
- *
- * When the caller knows the org (every route tap + the applyTransition
- * chokepoint always pass it), the read is scoped through `withTenantDrizzle` so
- * it carries the `app.current_org` GUC and keeps working once
- * item_workflow_state is RLS-FORCED (Phase E); the org predicate is explicit
- * (defense in depth). When the caller does NOT know the org — legacy lib
- * re-taps that omit it (recordTestVerdict's pre-chokepoint path, updateRepair) —
- * it falls back to the stateless neon-http `db` to discover the owning org by
- * the globally-unique serial_unit_id. That fallback is an INTENTIONAL cross-org
- * lookup and is the one residual item_workflow_state read not behind the GUC;
- * it relies on the owner connection's RLS bypass and would need an org threaded
- * through those legacy callers before item_workflow_state can be FORCE-enforced.
- *
- * LEFT JOIN on workflow_nodes (no org column) so an enrolled unit parked on a
- * since-removed node still loads (currentNodeType null → guard treats it as a
- * mismatch no-op).
- */
+/** The org-discovery + position-guard pre-read against item_workflow_state. */
 async function loadTapState(
   serialUnitId: number,
   orgId: string | null,
@@ -448,17 +360,7 @@ async function loadTapState(
   return row;
 }
 
-/**
- * The org's active workflow definition + its entry node (the leftmost node
- * with no inbound edges — what the canvas draws first).
- *
- * Cached per org for a minute: enrollment bursts (a PO receive can create
- * several units back-to-back) would otherwise refire the same two queries,
- * and the active definition only changes on publish. Best-effort across
- * serverless instances — a stale hit just enrolls onto the about-to-be-
- * replaced version, which is exactly the documented publish semantics
- * (in-flight items finish on their old version).
- */
+/** The org's active workflow definition + its entry node (the leftmost node with no inbound edges — what the canvas draws first). */
 const ENTRY_CACHE_TTL_MS = 60_000;
 const entryCache = new Map<
   string,
@@ -518,16 +420,7 @@ async function loadEntryNode(
   return { workflowDefinitionId: def.id, nodeId: entry.id };
 }
 
-/**
- * The org's active workflow definition's node of a given registry TYPE (e.g.
- * 'returns') — the re-entry point for an event that doesn't restart the
- * normal graph entry. Sibling to findEntryNode, same active-definition
- * lookup, but filters on node.type instead of "no inbound edges": the
- * returns node is a second, deliberately-disconnected entry point, not the
- * graph's leftmost node. If an org's graph somehow has more than one node of
- * this type, the first one found wins — same "good enough, not over-
- * engineered" tiebreak as findEntryNode's positionX ordering.
- */
+/** The org's active workflow definition's node of a given registry TYPE (e.g. */
 const nodeTypeCache = new Map<
   string,
   { value: { workflowDefinitionId: number; nodeId: string } | null; at: number }

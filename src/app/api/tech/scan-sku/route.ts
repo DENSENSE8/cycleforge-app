@@ -80,10 +80,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const techIdNum = parseInt(String(techId), 10);
 
     // All tenant-table access runs through the GUC path so RLS isolates it.
-    // The wrapper owns the BEGIN/COMMIT (with SET LOCAL app.current_org), so
-    // this body must NOT issue its own BEGIN; failures throw or return a
-    // mapped result. tenant-owned tables: staff, v_sku (over serial_units,
-    // FORCE-RLS), sku_stock, sku_stock_ledger, plus helper-scoped tables.
     const result = await withTenantTransaction<ScanSkuTxResult>(
       ctx.organizationId,
       async (client) => {
@@ -142,16 +138,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
 
         // Lookup order:
-        //  1. Exact match on full colon code (GAS-compatible: static_sku may store "PROD:tag")
-        //  2. Exact match on base SKU only (web-native: static_sku stores "PROD")
-        //  3. Normalized fuzzy match on base SKU
         let skuRecord: { id: number; serial_number: string | null; notes: string | null; static_sku: string | null } | null = null;
 
-        // Reads go through v_sku (compat view over serial_units) now that the sku
-        // table is retired. v_sku preserves legacy ids for rows migrated from sku
-        // and synthesizes ids (+1_000_000_000) for post-retirement serials.
-        // v_sku does not surface organization_id; org isolation comes from the
-        // GUC + RLS on the underlying serial_units (FORCE-enabled).
+        // Reads go through v_sku (compat view over serial_units) now that the sku table is retired.
         const tryExact = async (value: string) => {
           const r = await client.query(
             `SELECT id, serial_number, notes, static_sku FROM v_sku WHERE BTRIM(static_sku) = BTRIM($1) LIMIT 1`,
@@ -261,10 +250,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ledgerIdForPublish = ledgerInsert.rows[0]?.id ?? null;
         canonicalSkuForPublish = canonicalSku;
 
-        // Tracking + shipment_id were already written to serial_units upstream
-        // by insertTechSerialForSalContext → syncTsnToSerialUnit. The old
-        // UPDATE on sku is no longer needed — sku is retired and the pairing
-        // state now lives on serial_units.
+        // Tracking + shipment_id were already written to serial_units upstream by insertTechSerialForSalContext → syncTsnToSerialUnit.
 
         const canonicalSerialList = await getTechSerialsBySalId(client, salIdNum);
 

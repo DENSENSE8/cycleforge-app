@@ -2,19 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/quality/dashboard — aggregate quality/risk analytics for the admin
- * Quality tab: risk distribution + avg score, top open failure modes, repair
- * rollup (counts + cost), and the highest-risk units worklist.
- *
- * All read-only aggregates; the high-risk list rides the
- * (risk_level, quality_score) index on unit_quality_scores.
- *
- * Tenant scoping: unit_quality_scores / unit_failure_tags / failure_modes have
- * no organization_id column, so they are scoped through their serial_units
- * parent (JOIN + su.organization_id filter). unit_repairs carries its own
- * organization_id. Every read also runs GUC-wrapped via tenantQuery.
- */
+/** GET /api/quality/dashboard — aggregate quality/risk analytics for the admin Quality tab: */
 export const GET = withAuth(async (_req, ctx) => {
   try {
     const orgId = ctx.organizationId;

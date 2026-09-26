@@ -1,18 +1,4 @@
-/**
- * Pickability predicate — central rule for "can this unit be picked from this bin?"
- *
- * Phase A3 of the WMS modernization. Centralizing exclusion reasons in one
- * predicate means every new exclusion (expiry, hold reasons, regulatory) is
- * one diff here — never scattered across SELECT clauses in every route.
- *
- * The predicate is used in two modes:
- *   1. Reads (allocation queue, search) — embed the SQL fragment via
- *      `pickableSerialUnitsWhereClause()` so the database does the filtering.
- *   2. Writes (state-machine transitions) — call `isAllocatable()` with a
- *      pre-fetched row to verify before mutating.
- *
- * Pair with the bin-roles migration (2026-05-21_inventory_v2_bin_roles.sql).
- */
+/** Pickability predicate — central rule for "can this unit be picked from this bin?" */
 
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -83,27 +69,9 @@ export function isAllocatable(candidate: PickabilityCandidate): PickabilityResul
 
 // ─── SQL builder (read path) ─────────────────────────────────────────────────
 
-/**
- * Returns a SQL WHERE-fragment string that filters a serial_units join to only
- * pickable rows. The fragment references the aliases:
- *   - `su` for serial_units
- *   - `loc` for locations (joined via su.current_location)
- *
- * Callers compose the fragment into their query and pass it through to pg
- * with no parameters — the fragment is parameter-free and safe to interpolate.
- */
+/** Returns a SQL WHERE-fragment string that filters a serial_units join to only pickable rows. */
 export function pickableSerialUnitsWhereClause(): string {
-  // ANY(ARRAY[...]) avoids ENUM:: arrays in the SQL since the new role list
-  // lives in app code; the cast keeps null-safe via COALESCE.
-  //
-  // NO `su.expires_at` PREDICATE. One used to live here and `serial_units` has
-  // no such column, so EVERY query composing this fragment threw
-  // `column su.expires_at does not exist` — which silently disabled BOTH
-  // allocation doors (`POST /api/orders/[id]/allocate` and
-  // `/inventory/bulk-allocate`). That is the likeliest reason this org held
-  // exactly ONE allocation row against 116 pickable units (found 2026-09-14).
-  // Shelf life is not modelled on units anywhere in this schema; if it ever
-  // is, add the column in a migration FIRST, then re-add the predicate.
+  // ANY(ARRAY[...]) avoids ENUM::
   return [
     `su.current_status = 'STOCKED'::serial_status_enum`,
     `(loc.id IS NULL OR loc.locked_for_count = false)`,
@@ -111,16 +79,7 @@ export function pickableSerialUnitsWhereClause(): string {
   ].join(' AND ');
 }
 
-/**
- * Optional `LEFT JOIN` clause that the WHERE fragment expects. Use this when
- * the caller's base FROM clause doesn't already join locations.
- *
- * Example:
- *   SELECT su.id
- *     FROM serial_units su
- *     ${pickableSerialUnitsLeftJoin()}
- *    WHERE ${pickableSerialUnitsWhereClause()}
- */
+/** Optional `LEFT JOIN` clause that the WHERE fragment expects. */
 export function pickableSerialUnitsLeftJoin(): string {
   return 'LEFT JOIN locations loc ON loc.name = su.current_location';
 }

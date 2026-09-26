@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Shared cell for org-defined custom columns (`custom:*` keys).
- * Dispatches on CustomFieldValueType / ColumnType — never family-specific JSX.
- *
- * **Read-only**, like every other grid cell since the display layer came down
- * on 2026-08-29. The Sheets text editor this used to open was unmounted then,
- * but its TRIGGER was left behind: a button with `hover:underline` that set an
- * `editing` flag nothing read. That is worse than a plainly read-only cell —
- * it advertises a capability the surface has declared it does not have (every
- * receiving descriptor says `inCellEdit: false`). Correction happens on the
- * record plane; `commitCustomFieldValueClient` is still there for whoever
- * re-hosts an editor.
- */
+/** Shared cell for org-defined custom columns (`custom:*` keys). */
 
 import type { ReactNode } from 'react';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';

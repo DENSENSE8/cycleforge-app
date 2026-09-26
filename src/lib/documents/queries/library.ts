@@ -195,10 +195,7 @@ export function outboundLibraryFiltersFromSearchParams(
       docType === 'shipping_label' || docType === 'packing_slip' ? docType : null,
     orderRef: params.get('poRef') || params.get('order') || null,
     tracking: params.get('tracking'),
-    // The sidebar's unified search box — same param the photo-scope resolver
-    // reads (poFinderExists in src/lib/photos/queries/library.ts). Without
-    // this, typing in the search box while "Outbound" is the active sidebar
-    // row silently did nothing server-side.
+    // The sidebar's unified search box — same param the photo-scope resolver reads (poFinderExists in src/lib/photos/queries/library.ts).
     finderTerm,
     finderKind: finderTerm ? ((params.get('poFinderKind') as PhotoFinderKind | null) ?? 'any') : null,
     staffId: params.get('staffId') ? Number(params.get('staffId')) : null,

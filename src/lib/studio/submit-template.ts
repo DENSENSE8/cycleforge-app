@@ -1,22 +1,4 @@
-/**
- * submit-template — an org offers one of its OWN workflow definitions to the
- * curated public catalog (Template Platform Phase 4).
- *
- * This is NOT a clone path (it never touches installTemplateIntoOrg / an org's
- * definitions). It is the mirror of Phase 3's export: it serializes the org's
- * live definition into a CycleForgeTemplatePackage (buildTemplatePackage —
- * requiredNodeTypes DERIVED from the graph, never hand-authored), then PERSISTS
- * that package as a NON-system workflow_templates row stamped for review:
- *   review_status = 'submitted', visibility = 'private', submitted_by_org = orgId.
- *
- * A curator later approves (→ approved / public, surfaced in the curated
- * catalog) or rejects it via the studio.catalog.review routes. Until then the
- * row is private + invisible to every library read (the system library filters
- * is_system = TRUE; the curated catalog filters approved+public).
- *
- * Deps-injected so it unit-tests DB-free: the definition read and the template
- * INSERT are both collaborators with real impls by default.
- */
+/** submit-template — an org offers one of its OWN workflow definitions to the curated public catalog (Template Platform Phase 4). */
 
 import pool from '@/lib/db';
 import { and, eq } from 'drizzle-orm';

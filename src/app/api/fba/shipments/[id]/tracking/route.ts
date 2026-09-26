@@ -84,19 +84,7 @@ export async function GET(
   }
 }
 
-// ── POST /api/fba/shipments/[id]/tracking ────────────────────────────────────
-// Links a tracking number to this shipment.
-// 1. Upserts the raw tracking number into shipping_tracking_numbers.
-// 2. Creates the link in fba_shipment_tracking.
-// 3. Optional: replaces per-item bundle allocations for this shipment+tracking.
-// Body: {
-//   tracking_number: string,
-//   carrier?: string,
-//   label?: string,
-//   staff_id?: number,
-//   station?: string,
-//   allocations?: [{ shipment_item_id|item_id, quantity|qty }]
-// }
+// ── POST /api/fba/shipments/[id]/tracking ──────────────────────────────────── Links a tracking number to this shipment.
 export async function POST(
   request: NextRequest,
   { params }: { params: Params }
@@ -129,12 +117,7 @@ export async function POST(
     const { trackingId, linkRes, allocationCount } = await withTenantTransaction(orgId, async (client) => {
       // Upsert into shipping_tracking_numbers
       const trackRes = await client.query(
-        // shipping_tracking_numbers.organization_id is a stamped-but-global
-        // natural key (SoT: lib/shipping/repository.ts upsertShipment). Stamp it
-        // on INSERT and HEAL it on conflict (COALESCE keeps a non-null existing
-        // value, fills a NULL one) so a row first created by a session-less
-        // writer gets attributed. The GUC default would also stamp inside this
-        // txn, but the explicit form matches the SoT and heals NULL rows.
+        // shipping_tracking_numbers.organization_id is a stamped-but-global natural key (SoT:
         `INSERT INTO shipping_tracking_numbers
            (tracking_number_raw, tracking_number_normalized, carrier, source_system, organization_id)
          VALUES ($1, $2, $3, 'fba', $4::uuid)
@@ -198,17 +181,7 @@ export async function POST(
   }
 }
 
-// ── PATCH /api/fba/shipments/[id]/tracking ───────────────────────────────────
-// Updates a linked tracking row by link id.
-// Body: {
-//   link_id: number,
-//   tracking_number: string,
-//   carrier?: string,
-//   label?: string,
-//   staff_id?: number,
-//   station?: string,
-//   allocations?: [{ shipment_item_id|item_id, quantity|qty }]
-// }
+// ── PATCH /api/fba/shipments/[id]/tracking ─────────────────────────────────── Updates a linked tracking row by link id.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params }

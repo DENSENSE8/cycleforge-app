@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Mobile `/m` face for compound leaf detail — same facts as CompoundRowDetailBand.
- *
- * Callers: CompoundRowDetailHost (OrdersQueueTableRow, ReceivingGridRow, CompoundRow)
- * when pathname starts with /m. Schema: CompoundRowDetail.
- * User: "Rendered fewer hooks… To-ship" — import Facts from CompoundRowDetailFacts,
- * not Band (Turbopack export miss crashed the UnshippedTable module tree).
- */
+/** Mobile `/m` face for compound leaf detail — same facts as CompoundRowDetailBand. */
 
 import { BottomSheet } from '@/components/ui/BottomSheet';
 import type { CompoundRowDetail } from './compound-row-model';

@@ -1,13 +1,4 @@
-/**
- * Order-import-staging slot resolvers — row + fieldId → the resolved fact a
- * slot cell paints. Pure functions; no React, no hooks.
- *
- * `OrderImportRowView` is already all strings: the staging grid shows what the
- * FILE said, before any coercion, which is the point of a staging surface. So
- * these resolvers trim and blank rather than reformat — a quantity the supplier
- * wrote as `02` reads `02` here, and the row that would silently become `2` is
- * the bug staging exists to catch.
- */
+/** Order-import-staging slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { OrderImportRowView } from '@/lib/orders/order-import-descriptor';

@@ -5,13 +5,7 @@ import { listPhotoLibraryIds, libraryFiltersFromSearchParams } from '@/lib/photo
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/photos/library/ids — "select all matching filters" support. Returns
- * the total row count for the SAME filter set as /api/photos/library, plus up to
- * `cap` (default 500, hard max 2000) photo ids. `capped` = the id list is a
- * prefix of a larger match set. Shares the library WHERE builder so the ids can
- * never select a different set than the visible grid.
- */
+/** GET /api/photos/library/ids — "select all matching filters" support. */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     try {

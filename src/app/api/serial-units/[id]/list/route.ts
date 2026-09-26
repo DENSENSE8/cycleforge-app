@@ -6,26 +6,7 @@ import { markUnitListed } from '@/lib/inventory/markUnitListed';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { isUnifiedEngineFulfillmentTaps } from '@/lib/feature-flags';
 
-/**
- * POST /api/serial-units/[id]/list — mark a serial unit live on a sales channel.
- *
- * The per-unit "listed" fact (UNIFIED-ENGINE-MASTER-PLAN §1.4). Records a
- * serial_unit_listings row + a LISTED inventory_event (via markUnitListed), then
- * — behind UNIFIED_ENGINE_FULFILLMENT_TAPS — fires the `listed` engine tap so an
- * enrolled unit advances past the `list_ebay` graph node toward pack. Does NOT
- * change serial_units.current_status: LISTED is a separate axis.
- *
- * Body:
- *   {
- *     platform?: string;            // 'ebay' (default) | 'amazon' | …
- *     external_ref_id?: string;     // channel listing/offer id when known
- *     listing_price_cents?: number; // channel price at list time (cents)
- *     client_event_id?: string;     // idempotency key for the LISTED event
- *     notes?: string;
- *   }
- *
- * Permission: inventory.list_unit.
- */
+/** POST /api/serial-units/[id]/list — mark a serial unit live on a sales channel. */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     const idParam = extractIdSegment(request.nextUrl.pathname);
@@ -81,10 +62,7 @@ export const POST = withAuth(
       },
     });
 
-    // Fire-and-forget engine observe: advance list_ebay → pack for an enrolled
-    // unit. Behind the fulfillment-taps flag; tapWorkflow never throws and drops
-    // unenrolled units. expectNodeType keeps it a no-op unless the unit is
-    // actually parked at list_ebay (no false-blocking). Runs after the response.
+    // Fire-and-forget engine observe:
     if (isUnifiedEngineFulfillmentTaps()) {
       after(async () => {
         await tapWorkflow({

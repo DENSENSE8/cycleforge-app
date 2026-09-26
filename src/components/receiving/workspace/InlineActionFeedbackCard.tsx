@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Shared inline success/error checklist card — the same visual language as
- * Receive complete (tone left bar, staggered checks, optional dismiss). Used
- * below action surfaces in the receiving workspace (receive feedback, item
- * description save, etc.).
- *
- * TONE is the shared four-state machine — `loading` · `success` · `warning` ·
- * `error`, defined in the React-free sibling
- * {@link ./inline-action-feedback-tone} so guards can import it. This file
- * re-exports it for the callers that already reach for it here.
- */
+/** Shared inline success/error checklist card — the same visual language as Receive complete (tone left bar, staggered checks, optional… */
 
 import type { ReactNode } from 'react';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';

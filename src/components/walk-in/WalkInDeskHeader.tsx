@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Sales-hub top-header — the per-mode tab band (Local Pickup: Draft/Completed ·
- * Sales: Today/All · Repair: Incoming/Active/Done). Composes the shared
- * {@link TableTabs} strip, so these tabs are the same control every table foots
- * itself with — never a page-local tab band.
- *
- * Master-SoT styling: `solidTone="accent"` gives the active pill the operator's
- * staff-theme color, and every non-first tab carries a `dividerBefore` hairline.
- */
+/** Sales-hub top-header — the per-mode tab band (Local Pickup: */
 
 import { Button } from '@/design-system/primitives';
 import { ExternalLink } from '@/components/Icons';

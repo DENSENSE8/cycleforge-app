@@ -1,10 +1,4 @@
-/**
- * analyzePhoto orchestration — routes to the provider the ORG chose, degrades to
- * catalog metadata on any null, and persists the right model tag. Zero DB: every
- * collaborator is a captured fake (the repo's Deps-injection pattern).
- *
- * Run: npx tsx --test src/lib/photos/analyze.test.ts
- */
+/** analyzePhoto orchestration — routes to the provider the ORG chose, degrades to catalog metadata on any null, and persists the right… */
 
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, rejects, ok } from 'node:assert';

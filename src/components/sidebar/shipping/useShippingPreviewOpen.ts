@@ -46,14 +46,7 @@ function lookupToPreviewOrder(order: LookupOrder): Order {
   };
 }
 
-/**
- * Preview stance's OPEN for Ready to Pack / Shipping — same contract as
- * {@link useUnboxPreviewOpen}: one read, then paint the station read-only.
- *
- * `GET /api/orders/lookup/:value` already resolves marketplace # or tracking
- * without writing a tech scan. A miss speaks HERE (the surface that would
- * have opened), never in the bar.
- */
+/** Preview stance's OPEN for Ready to Pack / Shipping — same contract as {@link useUnboxPreviewOpen}: */
 export function useShippingPreviewOpen() {
   return useCallback(async (value: string): Promise<Order | null> => {
     const raw = value.trim();

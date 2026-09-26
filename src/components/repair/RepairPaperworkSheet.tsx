@@ -4,18 +4,7 @@ import { FileText } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-/**
- * Paperwork toggle for the repair intake flow.
- *
- * Acceptance B (P2-RPR-01): the document viewer must be reachable from ANY step.
- * This control lives in the RepairIntakeForm header (present on all four steps), so
- * a customer/tech can review the live repair-service agreement at any point during
- * entry — not only at the review step.
- *
- * It is a *toggle*, not a popover: pressing it swaps the intake body for the exact
- * printed document (RepairServiceForm on RepairPaperworkCanvas, rendered by the parent),
- * and pressing again returns to the current step. No dialog / sheet / portal.
- */
+/** Paperwork toggle for the repair intake flow. */
 
 interface RepairPaperworkSheetProps {
   /** Whether the paperwork view is currently shown. */

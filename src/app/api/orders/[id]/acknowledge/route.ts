@@ -10,17 +10,7 @@ import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Outbound Triage acknowledgment for one order.
- *
- *   POST   — acknowledge on a route (`{ route: 'PICK' | 'QC' }`)   (orders.create)
- *   DELETE — undo: clear the acknowledgment                        (orders.create)
- *
- * POST refuses `409 { error: 'NOT_READY', missing: ('pairing' | 'label')[] }`
- * while the order is unpaired to the SKU catalog and/or has no live shipping
- * label (the live-label definition the Triage board shows). Re-acknowledging
- * keeps the first who/when and changes only the route.
- */
+/** Outbound Triage acknowledgment for one order. */
 
 const AcknowledgeBody = z.object({ route: outboundFulfillmentRouteSchema }).strict();
 

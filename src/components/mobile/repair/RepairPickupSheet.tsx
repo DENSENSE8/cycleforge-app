@@ -24,19 +24,7 @@ interface DoneState {
   warning: string | null;
 }
 
-/**
- * Pickup verb of the mobile repair workbench — the phone twin of the desk's
- * `RepairPickupFlow`, on the same write (`submitRepairPickup`).
- *
- * Opening never writes. Both final paths (signed, declined-with-reason) go
- * through one `ConfirmSheet`, and only its confirm handler posts — the write
- * closes the repair as Done, stamps pickup time and closes the work
- * assignment, so it is never one stray tap. A repair already Done opens
- * straight on the receipt state (re-open for the receipt, as on desktop).
- *
- * Full-screen with drag-to-dismiss disabled: the signature canvas would
- * otherwise fight the sheet's drag gesture.
- */
+/** Pickup verb of the mobile repair workbench — the phone twin of the desk's `RepairPickupFlow`, on the same write (`submitRepairPickup`). */
 export function RepairPickupSheet({
   open,
   repair,

@@ -92,11 +92,7 @@ export function useOutboundUrlState() {
 
   const updateMode = useCallback(
     (next: OutboundMode) => {
-      // CONSTRUCT the target, never copy the current query string. This is what
-      // replaced OUTBOUND_MODE_SCOPED_PARAMS: there is no list of sixteen keys
-      // to remember to delete, because nothing rides along unless named here.
-      // The staff filter is the one deliberate carry — an operator preference,
-      // not mode state.
+      // CONSTRUCT the target, never copy the current query string.
       const staff = searchParams.get('staff') ?? searchParams.get('staffId');
       router.push(buildRouteUrl(OUTBOUND_MODE_ROUTE_PARAMS[next], { staff }));
     },

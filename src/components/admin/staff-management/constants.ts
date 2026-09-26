@@ -15,12 +15,7 @@ export function toNullableDateInput(value: string): string | null {
   return trimmed ? trimmed : null;
 }
 
-/**
- * Curated list of paths the admin can pick as a per-staff default landing
- * page. Keeping this in code (instead of free-text) prevents typos that
- * would send staff to a 404 on every sign-in. Add a new entry when a new
- * dashboard ships.
- */
+/** Curated list of paths the admin can pick as a per-staff default landing page. */
 export const STAFF_HOME_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '/dashboard',   label: 'Dashboard' },
   { value: '/operations',  label: 'Operations' },

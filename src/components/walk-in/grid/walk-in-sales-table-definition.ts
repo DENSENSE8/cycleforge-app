@@ -1,11 +1,4 @@
-/**
- * `sales.walk-in` — Sales-board history table definition.
- *
- * Callers: REGISTERED_BINDINGS + useWalkInSalesSpreadsheet.
- * Affected API: `/api/walk-in/sales`.
- * Data schemas: SaleRow.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** `sales.walk-in` — Sales-board history table definition. */
 
 import type { SaleRow } from '@/lib/walk-in/transactions';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

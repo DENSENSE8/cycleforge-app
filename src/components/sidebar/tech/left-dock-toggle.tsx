@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Left-dock park / restore controls — one glyph + size SoT.
- *
- * | Action   | Glyph              | Button | Icon class                          |
- * | Collapse | ArrowLeftToLine    | xs     | LEFT_DOCK_TOGGLE_ICON_CLASS         |
- * | Expand   | ArrowRightToLine   | xs     | same                                |
- *
- * Collapse seats in TechRailSearchBar age column — auto under
- * ContextPanelCollapseProvider, or explicit `trailingAction` (LedgerDrill).
- * Expand seats in {@link LeftDockCollapseStrip} — whole-strip click (or footer
- * chevron) restores the rail. Mid-strip: optional mini scan cell
- * ({@link CollapseStripScanCell}) then MRU pins ({@link CollapseStripMruPins}):
- * pin click selects (stay collapsed); double-click expands the rail.
- *
- * Public exports: {@link RailFilterCollapseButton}, {@link LeftDockCollapseStrip},
- * {@link CollapseStripMruPins}, {@link CollapseStripScanCell}. Expand button +
- * icon class stay module-private so size cannot fork.
- */
+/** Left-dock park / restore controls — one glyph + size SoT. */
 
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { ArrowLeftToLine } from '@/components/Icons';
@@ -194,13 +177,7 @@ function CollapseStripPinFace({
   );
 }
 
-/**
- * Mid-strip MRU peek — top-N status dots from the open rail feed.
- * Click selects (keep collapsed); double-click expands the parked rail.
- * When the open rail has more than N rows, a +N control expands the sidebar.
- * Hover reuses the open-rail popover card when published (`renderPeek`);
- * otherwise a dense identity tip (title · meta · status · age).
- */
+/** Mid-strip MRU peek — top-N status dots from the open rail feed. */
 export function CollapseStripMruPins({
   pins,
   totalCount,
@@ -244,17 +221,7 @@ export function CollapseStripMruPins({
   );
 }
 
-/**
- * Parked left-dock strip — full-height age column.
- *
- * **The strip IS the restore control** (2026-08-19): click / Enter / Space
- * anywhere on it (empty mid or padding) expands the rail, and it carries the
- * host's `testId` so a spec still has one handle. The foot button that used to
- * sit in the filter-height footer is deleted — it was a second door onto the
- * one action the whole strip already performs.
- *
- * Mid-strip {@link CollapseStripMruPins}: click selects, double-click expands.
- */
+/** Parked left-dock strip — full-height age column. */
 export function LeftDockCollapseStrip({
   onExpand,
   label = 'Show sidebar',
@@ -302,11 +269,7 @@ export function LeftDockCollapseStrip({
       >
         {children}
       </div>
-      {/* No foot button (2026-08-19). It spent a permanent cell on the one
-          action the WHOLE strip already performs — the strip is `role="button"`
-          with Enter/Space above — so it was a second door onto one action, in
-          the corner where the parked column has the least room to say anything.
-          The mid content (scan cell · MRU pins) is what earns the 32px. */}
+      {/* No foot button (2026-08-19). */}
     </div>
   );
 }

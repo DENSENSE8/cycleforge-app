@@ -1,20 +1,4 @@
-/**
- * GET /api/kiosk/sales/ecwid-products
- *
- * Device-authed retail catalog for the kiosk Buy/Sell rail. Same response shape
- * as `/api/kiosk/repair/ecwid-products` so `ProductSelector` can swap
- * `apiBasePath` without a second picker. Filters OUT `-RS` repair SKUs.
- *
- * Reads the local catalog projection through `searchKioskCatalog` — filtered,
- * ranked, paged, and availability-joined in ONE SQL round trip. It previously
- * SELECTed every active listing for the org and sliced in JS, which made the
- * counter's find-bar cost grow with the catalog and left on-hand and bin
- * location unanswerable.
- *
- * Query: `?q=` (whole-catalog search) · `?barcode=` (wedge identity) ·
- *        `?mode=all` | `?mode=favorites` | `?categoryId=…` (browse), plus
- *        `limit` / `offset`.
- */
+/** GET /api/kiosk/sales/ecwid-products */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

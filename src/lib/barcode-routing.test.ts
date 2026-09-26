@@ -1,10 +1,4 @@
-/**
- * Round-trip guard for printed handles: every `*Handle()` factory must scan
- * back through `routeScan()` to the right entity type. This test is the
- * standing guard for the "if I can generate it I can scan it back" invariant —
- * if someone adds a new handle prefix without a matching `routeScan` branch,
- * the `every generated handle round-trips` test fails.
- */
+/** Round-trip guard for printed handles: */
 
 import { test } from 'node:test';
 import { strictEqual, ok, deepStrictEqual } from 'node:assert';
@@ -53,24 +47,10 @@ test('every generated handle round-trips to its entity type (not bin/sku fallbac
 });
 
 // ─── THE payload-form table — one SoT for every symbol in the wild ───────────
-//
-// Every payload form this app has ever printed, in one place, asserted in both
-// directions. Nothing is re-printed when the encoder changes, so a warehouse
-// full of stickers is the installed base: a form leaves this table only when
-// the last label carrying it is off the racks, which is never.
-//
-// `mint` is the CURRENT encoder expression, or null for a form we no longer
-// emit but must keep resolving. A new form with no `mint` and no stated reason
-// is a fork; a new `mint` with no row here is an unpinned payload.
 
 const SLUG = 'usav';
 const GTIN = '00012345678905';
-/**
- * An INTERNALLY-MINTED gtin — `'02' + 11-digit sku_catalog.id` + check digit,
- * the form `generateInternalGtin` stamps onto `sku_catalog.gtin` for any tenant
- * without GS1 membership. It is a restricted-circulation number, so it is the
- * gtin most units in this installed base actually carry.
- */
+/** An INTERNALLY-MINTED gtin — `'02' + 11-digit sku_catalog.id` + check digit, the form `generateInternalGtin` stamps onto… */
 const INTERNAL_RCN_GTIN = '02000000000107';
 
 const BIN: LocationSegments = { zone: 'A', aisle: 1, bay: 1, level: 1, position: 1 };
@@ -108,12 +88,7 @@ interface WildForm {
   redirect?: string;
 }
 
-/**
- * Rung 1 — GS1 Digital Link URI. Reachable ONLY with a licensed GS1 key.
- * Rung 2 — GS1 element string (licensed key, no tenant host).
- * Rung 3 — platform Digital Link (no GS1 key, but the path has an anon landing).
- * Rung 4 — bare handle / flat code.
- */
+/** Rung 1 — GS1 Digital Link URI. */
 const WILD_PAYLOAD_FORMS: WildForm[] = [
   // ── Rung 1 · true GS1 Digital Link ────────────────────────────────────────
   {
@@ -126,16 +101,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     redirect: `/01/${GTIN}/21/SN123`,
   },
   {
-    // OPEN RULING, pinned as it behaves TODAY (2026-08-02): the encoder does not
-    // consult `isRestrictedCirculationGtin`, so a unit whose gtin was minted
-    // internally still climbs to rung 1. That is defensible — it is the
-    // tenant's own host and this app's own scanner, and an RCN collides with
-    // nobody — but rung 1 is defined as "a LICENSED GS1 key", and this is not
-    // one. The row exists either way: these stickers are already on units, so
-    // the decode must keep working no matter how the ruling lands. If the
-    // encoder is later dropped to rung 3/4, this becomes `mint: null` with the
-    // reason, exactly like the borrowed-GLN rows below.
-    // See docs/todo/gs1-internal-gtin-rcn-HANDOFF.md → F1.
+    // OPEN RULING, pinned as it behaves TODAY (2026-08-02):
     what: 'GS1 Digital Link — unit on an INTERNAL restricted-circulation gtin',
     rung: 1,
     mint: () =>
@@ -230,11 +196,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
   },
 
   {
-    // NOT a form we mint — it is the rung-3 carton row above as delivered by an
-    // HID wedge running the wrong keyboard country: every separator dropped and
-    // the rest upper-cased. It is in the wild the moment a bench has one such
-    // scanner, and it decoded to `bin`-with-no-redirect until 2026-08-19, which
-    // made the receiving bar intake a duplicate carton on every scan.
+    // NOT a form we mint — it is the rung-3 carton row above as delivered by an HID wedge running the wrong keyboard country:
     what: 'platform Digital Link — carton, punctuation stripped by the wedge',
     rung: 3,
     mint: null,
@@ -383,10 +345,7 @@ test('the table covers all four rungs, and rung 1 is GS1-only', () => {
   const rungs = new Set(WILD_PAYLOAD_FORMS.map((f) => f.rung));
   for (const r of [1, 2, 3, 4]) ok(rungs.has(r as 1), `no form pinned at rung ${r}`);
 
-  // Rung 1 is a *licensed* GS1 Digital Link. Every row there must carry a real
-  // GS1 AI path — `/01/` or `/414/` — and never an internal `/m/` path. This is
-  // the line that stops "make it all one Digital Link" from becoming "mint GS1
-  // keys we do not hold": a carton has no licensed key, so it cannot be here.
+  // Rung 1 is a *licensed* GS1 Digital Link.
   for (const f of WILD_PAYLOAD_FORMS.filter((x) => x.rung === 1)) {
     ok(/\/(01|414)\//.test(f.value), `${f.what}: rung 1 must be a GS1 AI path`);
     ok(!f.value.includes('/m/'), `${f.what}: an internal path is rung 3, not rung 1`);
@@ -399,14 +358,7 @@ test('the table covers all four rungs, and rung 1 is GS1-only', () => {
 });
 
 test('KNOWN LIMIT: a sku-only unit label is not distinguishable from a bin barcode', () => {
-  // `encodePrintMatrix('unit')`'s last-resort branch — no gtin, no serial —
-  // encodes the bare SKU, and a bare letter-leading token is exactly what a
-  // legacy bin barcode looks like (`A12`). routeScan cannot tell them apart,
-  // and widening rule 6 to try would break every bin sticker in the warehouse.
-  //
-  // This is pinned rather than fixed because the honest fix is upstream: a
-  // sku-only label carries no unique identity, so there is nothing to scan
-  // back TO. Do not "repair" this by loosening the bin fallback.
+  // `encodePrintMatrix('unit')`'s last-resort branch — no gtin, no serial — encodes the bare SKU, and a bare letter-leading token is exactly…
   const skuOnly = encodePrintMatrix({ kind: 'unit', orgSlug: 'usav', sku: 'SKU-1' });
   strictEqual(skuOnly.value, 'SKU-1');
   strictEqual(routeScan(skuOnly.value)!.type, 'bin');

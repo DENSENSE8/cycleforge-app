@@ -11,20 +11,7 @@ import { useOrgLetterhead } from '@/hooks/useOrgLetterhead'
 export type RepairServiceFormProps = RepairReceiptProps & {
   /** `compact` — review-step SCALE: column width, smaller type. */
   density?: 'full' | 'compact';
-  /**
-   * Which parts of the document render.
-   *
-   * `dropoff` is drop-off only; `full` adds the internal-use table and the
-   * PICK UP signature line. Split from {@link density} on operator ruling
-   * 2026-09-15 (*"right now it's just displaying the drop-off, it should
-   * display the pickup signature as well at the bottom of the paperwork"*):
-   * `density` was carrying both meanings, so the only way to get the whole
-   * document was to also accept A4 geometry — which does not fit a counter
-   * tablet's form column. Scale and completeness are now separate knobs.
-   *
-   * Defaults to `full` for a `full` density and `dropoff` for `compact`, so
-   * every existing caller renders exactly what it rendered before.
-   */
+  /** Which parts of the document render. */
   sections?: 'dropoff' | 'full';
   /** `screen` — A4 on-screen sheet; `print` — A4 min-height for print layout. */
   surface?: 'screen' | 'print';
@@ -41,16 +28,7 @@ export type RepairServiceFormProps = RepairReceiptProps & {
 const A4_SHEET_CLASS =
   'mx-auto w-[210mm] max-w-full min-h-[297mm] bg-surface-card font-sans text-text-default';
 
-/**
- * One ruled signature row, with the ink on it when there is ink.
- *
- * The band GROWS to the printed ink height once signed
- * (`REPAIR_PRINT_SIGNATURE_BAND.inkHeightPx`) and the image is anchored to the
- * rule with `object-fit: contain` — the same three properties the print route
- * uses (`repairSignatureInkHtml`), so what the customer watches land on screen
- * is what the paper shows. An unsigned row keeps its original 24px rule so
- * every existing surface renders unchanged.
- */
+/** One ruled signature row, with the ink on it when there is ink. */
 function RepairSignatureLine({
   label,
   dateText,
@@ -158,14 +136,7 @@ const RepairServiceForm: React.FC<RepairServiceFormProps> = ({
         <div className="flex border-b border-r border-black">
           {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}
           <div className={`shrink-0 border-r border-black bg-surface-canvas p-2 font-semibold ${isCompact ? 'w-28' : 'w-40'}`}>Product Title:</div>
-          {/* A drop-off can carry several devices, so this cell is either ONE product
-              or a summary of many. On SCREEN the sheet is a fixed A4 column on a
-              counter tablet, so a pathological title would push the signature band
-              off the visible sheet — clamp it to three lines as the floor. On PAPER
-              nothing may be hidden: the customer signs what is printed, so `print`
-              keeps `break-words` alone and wraps to full length. Never pair with
-              `truncate` — `whitespace-nowrap` cancels the clamp
-              (law: `src/components/search/search-result-faces.tsx:154-158`). */}
+          {/* A drop-off can carry several devices, so this cell is either ONE product or a summary of many. */}
           <div className={`min-w-0 flex-1 break-words p-2${isScreen ? ' line-clamp-3 text-pretty' : ''}`}>{productTitle}</div>
         </div>
         {/* ds-allow-raw-neutral: print ink — literal black-on-white output */}

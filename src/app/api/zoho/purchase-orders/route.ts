@@ -102,16 +102,7 @@ function normalizePurchaseOrder(raw: unknown) {
   return normalized;
 }
 
-/**
- * GET /api/zoho/purchase-orders
- *
- * Supports:
- *  ?purchaseorder_id=  → single PO detail (includes line_items)
- *  ?status=open        → filter by status (draft|open|billed|cancelled)
- *  ?search_text=       → search by PO number, vendor name, reference
- *  ?page=&per_page=    → pagination (max 200)
- *  ?last_modified_time= → ISO date filter for incremental sync
- */
+/** GET /api/zoho/purchase-orders */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   try {

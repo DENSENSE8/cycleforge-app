@@ -1,23 +1,4 @@
-/**
- * Paste intake for the To-ship import — the pure half.
- *
- * Two things can land on the mouth that are not prose: a CSV the operator
- * copied out of a marketplace export, or a screenshot of an orders list. Both
- * end in the SAME staging draft `TableImportFileButton` builds from a file.
- * This module only decides what a paste is, and shapes extracted orders into
- * rows the descriptor's `autoMap` binds without a mapping panel — the headers
- * ARE the canonical labels, so every column lands 1:1.
- *
- * Source stamp (HANDOFF-ai-first §2): a paste never produces keystrokes, so it
- * is never a scan and never touches the wedge machine. The draft carries its
- * origin in `fileName` ("Pasted CSV", "Screenshot · 3 orders") until a `paste`
- * origin earns a place in `TableImportOrigin` — the store today knows `file`
- * and `google_sheets`, and a paste behaves exactly like a file (accepted
- * wholesale, no per-row decisions).
- *
- * Client-safe: no DB, no provider. The server extractor lives in
- * `extract-orders-llm.ts` and imports the row type from here.
- */
+/** Paste intake for the To-ship import — the pure half. */
 
 import { parseCsv } from '@/lib/tables/import/parse-csv';
 import {
@@ -39,12 +20,7 @@ export interface ExtractedOrderRow {
   trackingNumber: string;
 }
 
-/**
- * The canonical fields a capture can carry, in staging-column order. Parcel
- * and assignee fields are deliberately absent: an orders list on a screen
- * never shows them, and a column the model cannot see is a column it would
- * be tempted to fill.
- */
+/** The canonical fields a capture can carry, in staging-column order. */
 export const EXTRACTED_ORDER_FIELDS = [
   'order_number',
   'platform',
@@ -108,14 +84,7 @@ export type ClassifiedPaste =
 /** A header cell longer than this is a sentence, not a column name. */
 const MAX_HEADER_CELL = 60;
 
-/**
- * Is this pasted text a CSV/TSV the import can stage, or prose for the
- * assistant? A paste is CSV only when it parses to ≥ 2 columns and ≥ 1 data
- * row AND the header binds an order number (or two canonical fields) through
- * the same alias map the file path uses. Prose with commas in it — "show me
- * orders, picks and packers" — parses to columns but binds nothing, so it
- * stays prose and reaches the mouth untouched.
- */
+/** Is this pasted text a CSV/TSV the import can stage, or prose for the assistant? */
 export function classifyPastedText(text: string): ClassifiedPaste {
   const source = text.replace(/^﻿/, '').trim();
   if (!source) return { kind: 'prose' };

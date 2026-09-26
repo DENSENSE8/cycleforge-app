@@ -42,12 +42,7 @@ export const QA_FIXTURE_SKUS = {
   overlapProbe: 'BOSE-SLM2-BK',
 } as const;
 
-/**
- * One active Zoho `items` mirror row — the pairing fixture for the Add-inbound
- * Product picker. Its `sku` matches the `speaker` `sku_catalog` fixture so the
- * picker's `searchField=zoho_catalog` INNER JOIN (`items` ⋈ `sku_catalog`)
- * returns it. `title` is `items.name` (what the operator searches on).
- */
+/** One active Zoho `items` mirror row — the pairing fixture for the Add-inbound Product picker. */
 export const QA_FIXTURE_ZOHO_ITEM = {
   zohoItemId: 'QA-MOCK-ZITEM-1',
   sku: QA_FIXTURE_SKUS.speaker,
@@ -79,14 +74,7 @@ export const QA_DEMO_SKU_CATALOG: ReadonlyArray<{ sku: string; title: string }> 
   { sku: QA_DEMO_SKUS.webcam, title: 'QA Logitech C920 HD Webcam' },
 ];
 
-/**
- * Demo outbound volume — fills Awaiting / Pending / Packed / Shipped so the QA
- * sandbox looks like a running warehouse. Separate ID prefix from `QA-TEST-*`
- * so Playwright fixtures stay stable; re-provision is idempotent.
- *
- * Tracking uses USPS-shaped digits in a reserved block (`…03xxxx`) that does
- * not overlap `QA_FIXTURE_TRACKING_*` (`…0199` / `…0205` / `…0212` / `…0229`).
- */
+/** Demo outbound volume — fills Awaiting / Pending / Packed / Shipped so the QA sandbox looks like a running warehouse. */
 export const QA_DEMO_ORDER_VOLUME = {
   awaiting: 12,
   pending: 24,
@@ -126,33 +114,13 @@ export const QA_FIXTURE_TRACKING = 'QA-MOCK-TRK-PO';
 export const QA_FIXTURE_PO_ID = 'QA-MOCK-PO-8001';
 export const QA_FIXTURE_PO_NUMBER = 'QA-PO-MOCK-001';
 
-/**
- * Two INCOMING purchase orders — issued in Zoho, untouched by the warehouse
- * (`workflow_status = 'EXPECTED'`, `quantity_received = 0`, no dock scan), which
- * is exactly what `view=incoming` selects.
- *
- * Two of them, on DISTINCT POs, because `/incoming` folds lines by PO: one
- * multi-line PO renders as a single collapsed group, and the row→row inspector
- * spec needs two independently-clickable rows. Without these the QA org showed
- * "No incoming POs" and every `/incoming` spec skipped — the coverage gap
- * `verify.md` says to seed away rather than skip around.
- */
+/** Two INCOMING purchase orders — issued in Zoho, untouched by the warehouse (`workflow_status = 'EXPECTED'`, `quantity_received = 0`, no… */
 export const QA_FIXTURE_INCOMING_POS = [
   { id: 'QA-MOCK-PO-8101', number: 'QA-PO-MOCK-INC-1', lineId: 'QA-MOCK-INC-LINE-1' },
   { id: 'QA-MOCK-PO-8102', number: 'QA-PO-MOCK-INC-2', lineId: 'QA-MOCK-INC-LINE-2' },
 ] as const;
 
-/**
- * A THIRD line on the receiving carton, physically received and still flagged
- * `needs_test` — which is exactly what `view=needs-test` selects, so the
- * Testing workbench's Pending tab has deterministic rows on this tenant.
- *
- * Its own line, not a mutation of `QA-MOCK-LINE-1`/`-2`: those two carry the
- * note-vs-label grain walk (`receiving-note-label-grain.spec.ts`) and the
- * receive-to-Zoho burn, and marking either one received would rewrite the state
- * those specs assert from. `needs-test` is un-tester-scoped (unlike History,
- * which defaults to the signed-in tester), so any QA admin sees it.
- */
+/** A THIRD line on the receiving carton, physically received and still flagged `needs_test` — which is exactly what `view=needs-test`… */
 export const QA_FIXTURE_TESTING_LINE = {
   itemId: 'QA-MOCK-ITEM-3',
   lineId: 'QA-MOCK-LINE-3',
@@ -160,15 +128,7 @@ export const QA_FIXTURE_TESTING_LINE = {
   sku: QA_FIXTURE_SKUS.speaker,
 } as const;
 
-/**
- * A fourth line carrying a recorded `testing_results` verdict by the QA ADMIN,
- * which is what the Testing workbench's History tab (`view=testing`) selects.
- *
- * Attributed to the admin on purpose: History defaults to the signed-in tester,
- * and `?staff=all` cannot rescue a spec here — the route's ambient `staff` param
- * is `paramPositiveInt`, so the literal `all` token `useStaffFilter({ allToken:
- * 'all' })` writes is dropped at the boundary before the list ever reads it.
- */
+/** A fourth line carrying a recorded `testing_results` verdict by the QA ADMIN, which is what the Testing workbench's History tab… */
 export const QA_FIXTURE_TESTED_LINE = {
   itemId: 'QA-MOCK-ITEM-4',
   lineId: 'QA-MOCK-LINE-4',
@@ -176,12 +136,7 @@ export const QA_FIXTURE_TESTED_LINE = {
   sku: QA_FIXTURE_SKUS.speaker,
 } as const;
 
-/**
- * A loose serialized UNIT for Phase-2 unit pack placement. `unitUid` is in the
- * printed unit-id shape ({base}-{YYWW}-{SEQ6}) so `looksLikeUnitId` matches it
- * and the Ready-to-Pack loose-unit trigger fires; the move route resolves it by
- * `unit_uid`. `current_status` stays on-floor so it counts at a bench.
- */
+/** A loose serialized UNIT for Phase-2 unit pack placement. */
 export const QA_FIXTURE_UNIT = {
   unitUid: 'QAUNIT-2621-000042',
   normalizedSerial: 'QAUNIT2621000042',
@@ -190,32 +145,16 @@ export const QA_FIXTURE_UNIT = {
 export const QA_FIXTURE_ORDERS = {
   awaiting: 'QA-TEST-UNSHIP-AWAIT',
   pending: 'QA-TEST-UNSHIP-PENDING',
-  /**
-   * A SECOND tracked pending order. The Pending lane filters out rows with no
-   * tracking, so `awaiting` never reaches the grid — which left every
-   * record→record spec (keyboard `j`/`k` swap, click-through past the inspector)
-   * with `test.skip('needs at least two pending rows')`, i.e. permanently
-   * unrun. Two tracked rows is the minimum that lane's contract needs.
-   */
+  /** A SECOND tracked pending order. */
   pendingSecond: 'QA-TEST-UNSHIP-PENDING-2',
   /** Third tracked pending row — the keyboard specs need to focus a row that is
    *  neither the first nor the second to prove they open THAT row. */
   pendingThird: 'QA-TEST-UNSHIP-PENDING-3',
-  /**
-   * A PACKED order — tracking + a PACK station-activity row, no SHIP_CONFIRM,
-   * which is exactly the `?stagedOnly=true` predicate the Packed lane queries.
-   * Without it `/dashboard?packed` is empty on the QA org and every post-pack
-   * assertion (lifecycle-scoped bulk actions) failed on an unrendered grid.
-   */
+  /** A PACKED order — tracking + a PACK station-activity row, no SHIP_CONFIRM, which is exactly the `?stagedOnly=true` predicate the Packed… */
   packed: 'QA-TEST-PACKED',
 } as const;
 
-/**
- * Product titles for the order fixtures. Exported so a spec can locate a row
- * without re-typing prose that lives in the provisioner — `createFixtureOrder`
- * is `ON CONFLICT DO NOTHING`, so these strings are effectively immutable once a
- * QA org exists and a copy that drifts is a silently-unfindable row.
- */
+/** Product titles for the order fixtures. */
 export const QA_FIXTURE_ORDER_TITLES = {
   awaiting: 'QA — Unshipped AWAITING (add tracking here)',
   pending: 'QA — Unshipped PENDING (tracking assigned)',
@@ -224,27 +163,7 @@ export const QA_FIXTURE_ORDER_TITLES = {
   packed: 'QA — PACKED (staged for the dock)',
 } as const;
 
-/**
- * Today (`/`) fixtures — the `work_assignments` rows `aggregateMyDayFeed` reads.
- *
- * Before these existed, `my-day-today.spec.ts` had to stub the `GET /api/my-day`
- * body outright: the QA org provisioned no `work_assignments`, so all four lanes
- * and all three due horizons were empty. That stub stayed green through a real
- * bug — `myDayTasksFromFeed` emitted the top work order TWICE on any real feed,
- * because `doNext` is a POINTER into `assigned` (`topWorkOrderForStaff` ranks the
- * same predicate `isMineRow` filters), and every hand-written fixture happened to
- * give `doNext` an id no other row used.
- *
- * **Three TEST assignments, one per due horizon, on the three tracked pending
- * orders.** Those three are the only order fixtures `getOrders` can return:
- * `awaiting` has no `shipment_id`, and `packed` carries a `PACK_COMPLETED`
- * station-activity row, both of which that query excludes.
- *
- * `doNext` is DERIVED, never seeded: with equal status and priority,
- * `compareWorkOrderRows` breaks the tie on deadline, so the overdue row is both
- * `doNext` and `assigned[0]` — which is exactly the pointer relationship the
- * duplicate-row regression lives in, now reproduced against real data.
- */
+/** Today (`/`) fixtures — the `work_assignments` rows `aggregateMyDayFeed` reads. */
 export const QA_FIXTURE_MY_DAY = {
   overdue: {
     orderId: QA_FIXTURE_ORDERS.pending,
@@ -261,12 +180,7 @@ export const QA_FIXTURE_MY_DAY = {
     title: QA_FIXTURE_ORDER_TITLES.pendingThird,
     dueInDays: 3,
   },
-  /**
-   * An UNDATED interrupt — a support follow-up assigned to the QA admin. It
-   * carries no `deadlineAt`, which is the point: `myDayDueHorizon` must return
-   * null rather than folding it into `upcoming` and claiming a due date the
-   * record does not have.
-   */
+  /** An UNDATED interrupt — a support follow-up assigned to the QA admin. */
   interruptTicketId: 9100,
   /** `listSupportFollowupsForStaff` LEFT-JOINs `support_tickets`, so with no
    *  cached subject the row titles itself from the ticket id. */
@@ -275,44 +189,13 @@ export const QA_FIXTURE_MY_DAY = {
   priority: 10,
 } as const;
 
-/**
- * Support · Assist vision-loop fixture.
- *
- * The ticket id is the same My Day interrupt — one Zendesk id, two consumers
- * (Today lane + `/support?ticket=`). Provisioning mirrors ZENDESK_* into the
- * QA org vault when those env vars are set, so `/api/support/suggest` clears
- * the helpdesk-connected gate instead of 503-ing vacuously.
- *
- * E2E still stubs the ticket bundle + photo upload: the assertion worth having
- * is the **request contract** (`stagedPhotoIds`, never a URL), not a live draft.
- */
+/** Support · Assist vision-loop fixture. */
 export const QA_FIXTURE_SUPPORT = {
   ticketId: QA_FIXTURE_MY_DAY.interruptTicketId,
   subject: 'QA Assist — carton label paste contract',
 } as const;
 
-/**
- * Org custom-column fixture — one `custom_field_defs` row plus a value on two
- * receiving lines, so a LedgerGrid column sort has something to order.
- *
- * **The values are decimals on purpose.** `2.5` vs `2.25` is the one pair that
- * distinguishes a real numeric compare from the string fallback: `numeric: true`
- * collation treats `.` as a separator and reads them as `5` vs `25`, inverting
- * the pair. Whole numbers (`2` vs `10`) would pass either way and prove nothing
- * — the unit suite learned that by mutation
- * (`receiving-grid-compare.test.ts`), and the E2E asserts the same contract
- * through the real stack.
- *
- * Values ride on the two lines that already exist for the testing feeds rather
- * than on `QA-MOCK-LINE-1`/`-2`: a custom value is additive (its own table, no
- * workflow state touched), so this cannot disturb the note-vs-label grain walk
- * the way mutating those two would.
- *
- * The def is `tier: 'optional'` once merged into the column model, so the
- * provisioner also opts the QA admin in via `staff_preferences` — under BOTH
- * the `receiving` and `testing` buckets, which is what proves the Unbox History
- * and Testing History mounts of the same binding each resolve it.
- */
+/** Org custom-column fixture — one `custom_field_defs` row plus a value on two receiving lines, so a LedgerGrid column sort has something… */
 export const QA_FIXTURE_CUSTOM_FIELD = {
   entityType: 'RECEIVING',
   key: 'qa_rack_slot',
@@ -347,53 +230,7 @@ export const QA_STATION_STAFF: ReadonlyArray<QaStationStaffSeed> = [
   { name: 'QA Shipper', role: 'shipper', homePath: '/shipping' },
 ];
 
-/**
- * Media Library evidence fixtures (2026-08-09) — a real photo stream on
- * `/ops/photos` for the QA org.
- *
- * Before this, `provision-qa-org.ts` seeded **zero** photos (the word did not
- * appear in the file), so every Media Library spec either failed on
- * `--project=qa-desktop` or skipped itself with "no photos seeded in this
- * environment". That is the coverage gap `verify.md` says to seed away rather
- * than skip around.
- *
- * **Metadata-only, deliberately — there are no storage bytes.** The library list
- * query is `FROM photos p` with no `photo_storage` join
- * (`src/lib/photos/queries/library.ts:839`), so a row lists and every routing,
- * filter, day-band and count assertion works while its thumbnail 404s. Seeding
- * bytes would put a GCS dependency in the provisioner and buy no assertion.
- *
- * **The limit of metadata-only, measured 2026-08-09.** Routing / filter / count
- * / day-band assertions pass on these rows — `photos-library-deep-link.spec.ts`
- * is 6/6 green in ~18s, three consecutive runs. **Viewer specs do not**:
- * clicking a tile opens the lightbox, which waits on an image that will never
- * load, so `photos-library-context-panel.spec.ts` and
- * `photo-viewer-dismiss.spec.ts` time out on the click rather than failing an
- * assertion. That is not a bug in those specs and not something a bigger
- * fixture of this shape can fix — they need real bytes (the
- * `photos-gcs-upload.spec.ts` path) or an explicit broken-image tolerance in
- * the viewer. Do not "fix" them by seeding more metadata rows.
- *
- * **Stage is DERIVED, never stored.** `stageFromPhotoType` →
- * `receivingStageFromPhotoType` (`src/lib/receiving/photo-intent.ts:161`):
- * `RECEIVING_LINE` ⇒ `unbox_item` (any photo_type) · `RECEIVING` +
- * `receiving_unbox_carton` ⇒ `unbox_carton` · `RECEIVING` +
- * `receiving_package` ⇒ `arrival_package`. `sourceScope` is derived the same
- * way — a link to `RECEIVING` or `RECEIVING_LINE` yields `unboxing`
- * (`library.ts:832-834`). So the shape of the links below IS the fixture; do
- * not add a `stage` column expecting it to be read.
- *
- * `poRef` doubles as the idempotency scope: re-provisioning deletes by
- * `(organization_id, po_ref)` and re-inserts, and `photo_entity_links` cascades
- * on `photo_id`.
- *
- * `captured` decides whether `client_captured_at` is stamped. The mix is
- * deliberate: `clientCapturedAt` is the device shutter clock and is NOT
- * server-attested, so NULL is the correct and common value for desktop uploads
- * (see the column's docblock in `drizzle/schema.ts`). A fixture where every row
- * was "Captured" would let a Captured-vs-Uploaded assertion pass without ever
- * exercising the absent case.
- */
+/** Media Library evidence fixtures (2026-08-09) — a real photo stream on `/ops/photos` for the QA org. */
 export const QA_FIXTURE_PHOTOS = {
   /** Idempotency scope AND an honest value — these are that PO's captures. */
   poRef: QA_FIXTURE_PO_NUMBER,
@@ -418,19 +255,7 @@ export const QA_FIXTURE_PHOTOS = {
 export const QA_FIXTURE_PHOTO_COUNT =
   QA_FIXTURE_PHOTOS.carton.length + QA_FIXTURE_PHOTOS.line.length;
 
-/**
- * Triage decision fixtures (Foundation 0 item 4, HANDOFF-cross-client-outbound-
- * foundation.md) — one deterministic record per decision the triage pages make:
- * `/m/scan` (return? repair? ticket?), `/m/exceptions` (catalog pairing),
- * `/m/on-hold` (merge a placeholder), `/m/inbox` (a ticket handed to me), and
- * the acknowledge refusal (`409 NOT_READY`).
- *
- * Every fixture is found again by a NATURAL key below (tracking number, order
- * id, ticket number, barcode), never by a serial id — serial ids differ per
- * Neon branch; these strings do not. Tracking numbers are USPS-shaped so
- * carrier detection accepts them, and sit in the same QA range as
- * QA_FIXTURE_TRACKING_*.
- */
+/** Triage decision fixtures (Foundation 0 item 4, HANDOFF-cross-client-outbound- foundation.md) — one deterministic record per decision the… */
 export const QA_TRIAGE_FIXTURES = {
   /** Arrived, door-scanned, not unboxed; tagged RETURN through tagInboundAsReturn. */
   returnPackage: {

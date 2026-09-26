@@ -1,11 +1,4 @@
-/**
- * POST/DELETE /api/admin/organization/attract-media
- *
- * Org admin upload for the front-desk kiosk attract / screensaver. Stores a
- * public Vercel Blob URL on `settings.brand.attractMediaUrl` (same field the
- * kiosk already reads). Does not use the photos platform — AttractLoop needs
- * a public HTTPS URL on the device-authed kiosk host.
- */
+/** POST/DELETE /api/admin/organization/attract-media */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { put, del } from '@vercel/blob';

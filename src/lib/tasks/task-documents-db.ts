@@ -1,15 +1,6 @@
 import 'server-only';
 
-/**
- * Real tenant bindings for task documents (`work_assignment_documents`).
- *
- * `task-documents.ts` owns the branches and the row mapper; this file owns the
- * SQL and binds the plan-file reader (`plan-files.ts`). Every statement runs
- * through the GUC wrapper in `@/lib/tenancy/db` AND names `organization_id`
- * explicitly — `orgId` / `staffId` come from the route's auth context, never
- * a body. Task existence is the same FOLLOW_UP gate links use
- * ({@link findTaskAnchor}).
- */
+/** Real tenant bindings for task documents (`work_assignment_documents`). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

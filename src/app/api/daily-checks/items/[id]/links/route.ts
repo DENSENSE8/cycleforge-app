@@ -52,17 +52,7 @@ function itemIdFromPath(pathname: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/**
- * Connections on one daily-check item.
- *
- * GET    — list
- * POST   — attach a Zendesk ticket or work order
- * DELETE ?linkId= — detach
- *
- * Gate is `dashboard.view`: anyone who can run the list can name the ticket
- * they just opened against a check. Curating the LIST itself stays
- * `admin.manage_staff`.
- */
+/** Connections on one daily-check item. */
 export const GET = withAuth(
   async (request, ctx) => {
     const itemId = itemIdFromPath(request.nextUrl.pathname);

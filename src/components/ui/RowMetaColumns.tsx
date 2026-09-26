@@ -15,53 +15,7 @@ export {
   metaIndentFor,
 } from '@/components/ui/queue-row-chrome';
 
-/**
- * Dashboard / queue / receiving order-row title + meta subrow.
- *
- * The row's identity chips already lay out as fixed virtual columns on the right
- * via `ChipColumns` / `CHIP_COL` (see ui/ChipColumns). This is the LEFT-side
- * counterpart: the product title and the "qty · condition · rest" subrow beneath
- * it, factored out of the five tables that used to hand-roll (and drift) it —
- * DashboardShippedTable, OrdersQueueTable, TechTable, PackerTable,
- * ReceivingLinesTable.
- *
- * Layout contract:
- *   • The dot sits centered inside a fixed `dotTrack` (w-5 / w-7) so the title
- *     text begins at a known x.
- *   • RowMetaColumns indents by that SAME width (`indent`) so the subrow lines up
- *     under the title text — NOT under the dot — and then locks qty | condition |
- *     rest into FIXED virtual columns (a CSS grid), the left-side mirror of
- *     ChipColumns. Because the qty track is a fixed width, the condition starts at
- *     the same x on every row whether qty is "1" or "100/100" — so the columns
- *     never drift the way a content-width flow does.
- *
- * Left-edge stack (title text x), outer → inner:
- *   page gutter → card → [optional nest] → QUEUE_ROW.px → [select gutter] →
- *   META_COL dotTrack → title. Meta indent = metaIndentFor(track, selectMode).
- *   Wide track is intentional for received/expected qty (Receiving) — title starts
- *   0.5rem later than Orders; do not collapse to w-5.
- *
- * Typography — CF Type roles (search-and-dense-ui plan §2.4):
- *     title → text-role-data text-text-default (role-caption when `small`;
- *             role bakes weight 500 — do not stack font-semibold/bold)
- *     meta  → text-role-eyebrow uppercase text-text-muted (role bakes 600 + tracking;
- *             muted — not soft/faint — so qty/condition stay scannable at ops density)
- *
- * INVARIANTS:
- *   • RowMetaColumns `indent` MUST equal the RowTitle `dotTrack` width
- *     (w-5 → 1.25rem, w-7 → 1.75rem). Use `metaIndentFor`, never a hand-rolled calc.
- *   • A wide qty count ("0/1"…"100/100", receiving) needs the wider `qtyCol`
- *     (`qtyColWide`) so it doesn't clip — pair it with `indentWide`/`dotTrackWide`.
- *   • Accordion group headers MUST mirror child meta tracks (`indent` / `qtyCol` /
- *     `condCol`). Receiving PO headers + line rows both use `poCondCol` so the
- *     stage clock (`RowStageTimeMeta` / `META_REST_COL.stageTime`) starts at the
- *     same x whether the row shows PARTS or an empty condition.
- *   • Queue/station rows use `QUEUE_ROW.px` (never page-local `px-4`).
- *   Keep META_COL + QUEUE_ROW the single source for these paired widths.
- *
- * (Meta fields are low visual weight; chip reflow when toggling Configure columns
- * is animated in ChipColumns.)
- */
+/** Dashboard / queue / receiving order-row title + meta subrow. */
 
 export const META_COL = {
   /** Default dot-track width AND meta indent — single-token counts (orders/shipped/tech/packer). */
@@ -223,25 +177,7 @@ export function RowTitle({
   );
 }
 
-/**
- * Left meta subrow under a product title: fixed qty | condition tracks, then a
- * fact-only `rest` flex of optional signals. Callers MUST omit empty facts —
- * never render ghost "---" staff or empty icon boxes (Pending/Blocked have no
- * tester yet; blank slots destroy column scan).
- *
- * Recommended `rest` order (queue / fulfillment tables):
- *   1. price        — money (success tone), only if present
- *   2. daysLate     — tabular urgency number, only if deadline past
- *   3. staff        — StaffInitials cluster, only when at least one assignee
- *   4. flags        — exception icons sharing one cluster:
- *                      notes = muted FileText · OOS = red AlertTriangle
- *                      (same slot family, different tone = different severity)
- *   5. lifecycle    — e.g. LBL printed chip
- *
- * Notes vs OOS: both are "attention" icons, not people or quantities. Pair them
- * in one `flags` group so the eye learns "icons = exceptions"; keep tones
- * distinct so OOS still screams blocked stock and notes stay quiet context.
- */
+/** Left meta subrow under a product title: */
 export function RowMetaColumns({
   qty,
   condition,
@@ -266,10 +202,7 @@ export function RowMetaColumns({
   condCol?: string;
   className?: string;
 }) {
-  // Per-staff hidden slots (no-op outside a TableColumnConfigProvider). A hidden
-  // slot drops its grid track + cell; chip side uses the same drop + layout animation.
-  // Per-staff column hiding went with the column-display rail (2026-08-29):
-  // every declared slot paints.
+  // Per-staff hidden slots (no-op outside a TableColumnConfigProvider).
   const isHidden = (_key?: string) => false;
   const showQty = !isHidden('qty');
   const showCondition = !isHidden('condition');

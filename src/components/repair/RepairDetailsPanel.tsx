@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Repair details — the body a repair wears on a RAIL: the Testing bench's
- * station edge (`TechRepairRail`, exempt from the desk surface law) and the
- * global detail stack (`GlobalDetailStackHost`). The Repair Service desk does
- * NOT mount this; its record is `RepairRecordView` on `DeskRecordPlane`.
- * Thin composition shell: all interactive logic (ticket / notes / status
- * edits, linkage set/clear, soft-cancel delete, pickup toggle) lives in
- * {@link useRepairDetailsPanel}, shared with the desk record; the status /
- * info / linkage sections are presentational components under
- * `./details-panel/`.
- *
- * Topic nav: {@link DeskInspectorIndexShell} (index → leaf) with the verbs on
- * its band's trailing cluster. The host owns the only close — this body paints
- * none — and the ticket editor + status live in the Overview leaf body.
- */
+/** Repair details — the body a repair wears on a RAIL: */
 
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';

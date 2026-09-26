@@ -1,10 +1,4 @@
-/**
- * Resolver decision-tree tests.
- *
- * We pass a stubbed `LookupDeps` so the tests run without a live
- * Postgres. The point is to exercise the priority tree, not the DB
- * helpers (which have their own coverage at the integration layer).
- */
+/** Resolver decision-tree tests. */
 
 import { test } from 'node:test';
 import { strictEqual, ok } from 'node:assert';

@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Station Displays Root Index — grouped status rows (drill-down navigator).
- *
- * Icons resolve from the leaf {@link SectionTab} registry (one glyph SoT).
- * Tone chips replace the far-right orphaned dot; action rows wash lightly.
- * Eyebrow trailing = an action count, or nothing. Rows are read-only navigation:
- * the row holds NO control but itself (see the row-anatomy law below).
- *
- * Character-select: ↑↓ wrap via {@link useArmedCursorList}; armed face =
- * leading `>` + bottom accent track + marker pulse — no left rail / row wash.
- * Enter/Space/pointerdown opens the leaf in the **same turn** (never a
- * hit-marker DOM withhold; mouse matches keyboard — no focus→arm frame before
- * the rail updates). Footer `Filter displays…` drives the same cursor via
- * {@link StationDisplayIndexFilterKeys} (↑↓ without stealing focus; Enter
- * opens; Esc clears the query). Idle rows stay flush; tone chip stays a
- * trailing sibling. No Tab trap, no bare digits (wedge-safe). No UI audio.
- */
+/** Station Displays Root Index — grouped status rows (drill-down navigator). */
 
 import {
   forwardRef,
@@ -90,12 +74,7 @@ export const StationDisplayIndexList = forwardRef<
     /** Leaf registry — icons paint from matching tab ids. */
     tabs: readonly SectionTab[];
     onSelect: (id: string) => void;
-    /**
-     * The footer filter's current text. Only used to tell the two empty states
-     * apart — "this station has no displays" is a different answer from "your
-     * filter excluded all of them", and showing the first when the second is true
-     * tells the operator their displays are gone.
-     */
+    /** The footer filter's current text. */
     filterQuery?: string;
     /** Clears the footer filter from the no-match state. */
     onClearFilter?: () => void;
@@ -156,10 +135,7 @@ export const StationDisplayIndexList = forwardRef<
     regionActive: rightOwnsKeyboard,
   });
 
-  // Nav-keys (Right region). One keymap drives both the revealed keycaps and the
-  // store's leader-armed letter match, resolved from the co-located
-  // DISPLAY_LEAF_NAV_KEY declarations. Letters jump + commit the same targets ↑↓
-  // reach — they coexist, and both go through the shipped hit-marker commit.
+  // Nav-keys (Right region).
   const rightTargets = useMemo(
     () => orderedIds.map((id) => ({ id, preferredKey: DISPLAY_LEAF_NAV_KEY[id] })),
     [orderedIds],
@@ -222,18 +198,10 @@ export const StationDisplayIndexList = forwardRef<
         return;
       }
 
-      // The list OWNS Arrow / Home / End while a row is focused. Consuming them
-      // here — plus the `data-list-key-owner` marker on the root, which the
-      // ambient window keyboards (`useRecordCursorKeyboard`,
-      // `useReceivingLineNavigation`) yield to — keeps ↑/↓ walking these rows
-      // instead of leaking out to step the carton table + pop its peek.
+      // The list OWNS Arrow / Home / End while a row is focused.
       if (handleNavKeyDown(e, id)) return;
 
-      // Letter jump (nav-keys) — a bare single letter matching a live row's
-      // nav key commits that row, the same as ↑↓-then-Enter. Modifier combos
-      // pass through (browser / ⌘ chords stay owned); an unmapped letter is NOT
-      // consumed so it never swallows a keystroke — that no-op is how the
-      // leader-armed mode will exit in P1. Digits are never matched (wedge law).
+      // Letter jump (nav-keys) — a bare single letter matching a live row's nav key commits that row, the same as ↑↓-then-Enter.
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const targetId = matchNavKey(e.key, navKeymap);
       if (targetId) {
@@ -246,11 +214,7 @@ export const StationDisplayIndexList = forwardRef<
   );
 
   return (
-    // Not a listbox: these rows navigate (open a leaf) — they hold no persistent
-    // selection, and the interactive element is the nested button. A listbox
-    // role would promise arrow-key nav + aria-selected + a single tab stop that
-    // this list does not implement; a plain list of Tab-focusable buttons is the
-    // honest contract. The accessible name comes from the push column's region.
+    // Not a listbox:
     <div
       ref={rootRef}
       data-testid="station-displays-index"
@@ -306,17 +270,7 @@ export const StationDisplayIndexList = forwardRef<
             className="pt-4 first:pt-0"
             data-display-index-group={section.group}
           >
-            {/* Eyebrow is LABEL ……… action count, and nothing else. A per-group
-                Collapse button put the word COLLAPSE on screen three times over
-                ten rows — chrome repeated per group is paid for N times and read
-                once — and a `kbd` chip advertised a Digit1–3 chord that only
-                fired after the operator had already tabbed into the list, which
-                is a false shortcut hint (worse than no hint). Both deleted; bare
-                digits cannot be safely bound on a bench where a wedge scan types
-                digits into the page.
-                Height = {@link STATION_SECONDARY_BAND_FACE} — same h-6 seam as
-                left-rail eyebrow + carton commerce row 2. First group is flush
-                under the Displays top band (first:pt-0). */}
+            {/* Eyebrow is LABEL ……… action count, and nothing else. */}
             <div
               className={cn(
                 'flex items-center gap-2 px-4',
@@ -369,16 +323,10 @@ export const StationDisplayIndexList = forwardRef<
                       onFocus={() => setCursorId(row.id)}
                       onKeyDown={(e) => onRowKeyDown(e, row.id)}
                       className={cn(
-                        // 44px hit: py-3 + h-5 icon. Measured at 40px when this
-                        // briefly ran py-2.5 — under the bench floor, so the
-                        // density stays and "immediate" is bought with binary-
-                        // cut arm + type roles (not pad shrink).
+                        // 44px hit: py-3 + h-5 icon.
                         'group/row ds-raw-button relative flex w-full items-center gap-2 py-3 pl-3 pr-3 text-left',
                         'hover:bg-surface-hover',
-                        // Armed face = `>` + bottom track. Suppress control
-                        // focusRing while armed — ring-2 + ring-offset paints
-                        // blue top/bottom bands that read as a second selection.
-                        // ds-allow-focus
+                        // Armed face = `>` + bottom track.
                         isArmed
                           ? 'outline-none'
                           : focusRing('control', 'accent'),
@@ -442,12 +390,7 @@ export const StationDisplayIndexList = forwardRef<
                           {chipText}
                         </span>
                       ) : null}
-                      {/* Reveal-on-arm keycap — the row's stable nav-key letter,
-                          shown only while the list is armed (focus-within) and
-                          gone on disarm. A decorative sibling (never a control):
-                          the letter fires through the button's own onKeyDown.
-                          Trailing so it never touches the leading marker / nudge
-                          track. */}
+                      {/* Reveal-on-arm keycap — the row's stable nav-key letter, shown only while the list is armed (focus-within) and gone on disarm. */}
                       {revealed && navKey ? (
                         <span
                           className={cn(NAV_KEY_HINT_CLASS, 'relative z-raised')}

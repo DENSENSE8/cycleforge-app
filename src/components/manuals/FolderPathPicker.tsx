@@ -8,24 +8,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * Folder navigator for picking (or creating) a manual's `folder_path`.
- *
- * Why a navigator instead of a free-text input: operators were typing
- * `Sound/Touch` from memory and getting typos / duplicate-but-slightly-off
- * folder trees. Surfacing the *actual* folder list lets them drill in by
- * clicking, see what exists, and only type when creating a new segment.
- *
- * Layout (one panel, vertical):
- *   - Breadcrumb at top — Root → Sound → Touch (click any pill to jump back)
- *   - List of sub-folders at the current depth — click a row to drill in
- *   - "+ New folder" row at the bottom — type a name, hit Create/Enter to
- *     extend the path with a new (not-yet-existing) segment
- *
- * The picker is a CONTROLLED component — parent owns the `value` (the
- * resulting folder_path string like "Sound/Touch") and re-renders on every
- * change. Empty string = root.
- */
+/** Folder navigator for picking (or creating) a manual's `folder_path`. */
 
 interface ManualRow {
   folder_path: string | null;

@@ -1,15 +1,4 @@
-/**
- * Ambient wash — the Unbox-family depth backdrop (soft tonal blobs behind the
- * glass cards). **SoT for the 3-blob recipe**: never re-type the
- * `bg-blue-400/[0.08]` / `bg-violet-400/[0.06]` / `bg-emerald-400/[0.06]` trio
- * in a station panel — compose this (or {@link StationPanelRoot}, which renders
- * it) so every bench shares one gradient and it can be tuned in one place.
- *
- * Renders an `aria-hidden`, pointer-events-none `-z-10` layer that covers the
- * whole panel (identity + body) so the gradient isn't clipped under a separate
- * chrome band. Guard: `station-workbench-chrome.guard.test.ts` (Guard B keeps
- * the fingerprint count at 1 — here).
- */
+/** Ambient wash — the Unbox-family depth backdrop (soft tonal blobs behind the glass cards). */
 export function StationAmbientWash() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-visible">

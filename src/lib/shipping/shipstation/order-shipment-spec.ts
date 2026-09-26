@@ -1,17 +1,4 @@
-/**
- * One order → the ShipStation v2 shipment to rate / buy. Shared by the rate
- * shop (`POST /api/shipping/order-rates`) and the return-label purchase
- * (`POST /api/shipping/order-labels/purchase`, purpose `return`), so the
- * parcel a return is BOUGHT against is the one it was RATED against.
- *
- *   ship-to    the order's stored ShipStation data when ShipStation-sourced,
- *              else the local customer (`resolveOrderShipTo`)
- *   ship-from  the org warehouse (`resolveShipFrom`)
- *   parcel     explicit body values → parcel stored on the order
- *              (`parcel_weight_oz` + `parcel_*_in`, else what its SKU / item
- *              number remembers) → ShipStation-stored weight
- *   purpose    `return` swaps the ends: the buyer ships to the warehouse.
- */
+/** One order → the ShipStation v2 shipment to rate / buy. */
 
 import 'server-only';
 import { ApiError } from '@/lib/api';

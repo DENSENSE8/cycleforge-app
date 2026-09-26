@@ -1,21 +1,4 @@
-/**
- * POST /api/auth/switch
- *
- * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'personal',
- *         persistent?: boolean }
- *
- * `persistent` ("Keep me signed in") is omitted by the switch sheet, which has
- * no checkbox — it then INHERITS the session being switched away from, because
- * this is a re-mint on the same physical device.
- *
- * Like /signin, but the caller is already authenticated as some OTHER staff.
- * The current session is revoked first (clean audit trail; the prior sid
- * can't be reused even if a copy escaped). A fresh session is created for
- * the new staffId, the cookie is overwritten.
- *
- * Audit event: `signin.switch` with detail.previousStaffId so the chain of
- * "who was here" is recoverable.
- */
+/** POST /api/auth/switch */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
@@ -72,10 +55,7 @@ export async function POST(req: NextRequest) {
     const prevSid = readSessionSid(req.cookies);
     const prev = prevSid ? await loadSession(prevSid) : null;
 
-    // Tenant scope: you may only switch to a staff member in the SAME org as
-    // your current session (or, signin-like with no prior session, the org of
-    // the request's tenant). A cross-org staffId reads as NOT_FOUND → 404,
-    // so a station bound to org A can't pivot into org B even with a leaked PIN.
+    // Tenant scope:
     const targetOrgId = prev?.organizationId ?? (await resolveOrgIdFromRequest(req));
     const row = await verifyStaffPin(staffId, pin, targetOrgId);
     if (row.status !== 'active') {

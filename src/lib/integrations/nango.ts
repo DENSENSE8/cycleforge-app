@@ -1,25 +1,4 @@
-/**
- * Nango seam — server-only.
- *
- * Additive layer over the existing per-tenant credential vault. Nango runs as
- * a self-hosted auth+proxy sidecar (see docs/nango-sidecar-setup.md); this
- * module is the only place the app talks to it. Existing hand-built providers
- * never touch this file.
- *
- * Model:
- *   - Connections are created through the hosted Connect UI (OAuth dance) and
- *     keyed per-tenant. We pass `organization.id = orgId` + a stable end-user
- *     id; Nango returns a `connectionId` on success.
- *   - We persist a lightweight MARKER in `organization_integrations`
- *     (provider row, payload = { __nango, connectionId, providerConfigKey })
- *     so the admin UI shows connection state and later proxy/token calls know
- *     which Nango connection to use. The marker holds NO secret — Nango keeps
- *     the encrypted tokens in its own store and refreshes them automatically.
- *
- * If NANGO_SECRET_KEY is unset, `isNangoConfigured()` is false and every
- * caller falls back to the existing hand-built path. Nothing here activates
- * until the sidecar is wired.
- */
+/** Nango seam — server-only. */
 
 import 'server-only';
 import { Nango } from '@nangohq/node';

@@ -26,9 +26,6 @@ export function MultiSkuBarcodeWorkspace({ b }: { b: MultiSkuBarcodeController }
   const showPreviewCard = b.previewIsReady;
 
   // Print/log is allowed as soon as the user has a SKU and at least one serial.
-  // When previewIsReady is false (eager pre-allocation failed or hasn't
-  // returned), primaryAction falls through to handleNextStepSn which allocates
-  // on demand — so we don't leave the button disabled forever.
   const hasRequiredInputs =
     mode === 'reprint' || mode === 'auto-unit'
       ? !!b.sku.trim()

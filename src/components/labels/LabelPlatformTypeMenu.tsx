@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * One click-off wrapper for the carton face top-left: Platform, then Type.
- *
- * Two lists in one {@link Popover}. Picking a row updates the face immediately
- * and does NOT dismiss — only outside click / Escape closes. Platform is the
- * controlling field; type is filtered by {@link allowedTypesForPlatform}.
- *
- * Labels are {@link chipLabel} sentence case. Color dots are
- * {@link catalogIdentityDot} — the same ladder Classify pills use.
- */
+/** One click-off wrapper for the carton face top-left: */
 
 import { Check } from '@/components/Icons';
 import { chipLabel } from '@/design-system/tokens/typography/presets';
@@ -85,12 +76,7 @@ export function LabelPlatformTypeMenu({
   const platforms = useMemo(() => {
     const fromCat = platformCat.options.map((o) => ({
       label: o.label,
-      // `string | null`, widened like `colorHex` below: the unshift further
-      // down adds the CURRENTLY SELECTED platform when the catalog does not
-      // know it, and a platform the catalog has never seen has no slug. That
-      // is already the contract `onPlatformChange` declares
-      // (`slug: string | null`); inferring `string` here made the array reject
-      // the one row it exists to prepend.
+      // `string | null`, widened like `colorHex` below:
       slug: o.value as string | null,
       colorHex: o.colorHex ?? null,
     }));

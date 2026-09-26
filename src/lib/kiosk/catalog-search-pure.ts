@@ -1,15 +1,4 @@
-/**
- * Pure helpers for the kiosk catalog searcher (no DB / no `server-only`).
- *
- * The kiosk is the in-person product searcher: a customer asks "do you have
- * this", and the staffer must answer price + have-we-got-it + where-to-walk in
- * one glance. These helpers own the DECISIONS about that answer; the SQL lives
- * in `catalog-search.ts`.
- *
- * Split exists for the same reason as `sales-catalog-pure.ts`: the ranking and
- * availability rules are the part worth pinning with tests, and importing the
- * server read to test them would drag `server-only` into the test runner.
- */
+/** Pure helpers for the kiosk catalog searcher (no DB / no `server-only`). */
 
 /**
  * Below this, a query is not a search — it is a keystroke. The catalog grid
@@ -49,13 +38,7 @@ export interface CatalogAvailability {
   binCount: number;
 }
 
-/**
- * What the product card should SAY about stock.
- *
- * `unknown` is a first-class state, not a fallback for zero. Most of this
- * catalog is not bin-tracked, and printing "Out of stock" for an untracked SKU
- * would send a paying walk-in out the door.
- */
+/** What the product card should SAY about stock. */
 export type CatalogStockState = 'in_stock' | 'low' | 'out' | 'unknown';
 
 /** Collapse a query to the form the search actually runs on. */
@@ -83,13 +66,7 @@ export function buildBinLabel(row: {
   return name || null;
 }
 
-/**
- * One availability answer from one joined search row.
- *
- * `on_hand` arrives null when the SKU has no `bin_contents` rows at all. It is
- * preserved as null (not coerced to 0) precisely so `resolveStockState` can
- * return `unknown` rather than lying about a sellable item.
- */
+/** One availability answer from one joined search row. */
 export function summarizeAvailability(row: {
   in_stock: boolean;
   on_hand: number | null;
@@ -111,13 +88,7 @@ export function summarizeAvailability(row: {
   };
 }
 
-/**
- * Stock state for the card.
- *
- * Order matters: an untracked SKU resolves from the storefront flag, because
- * that is the only fact we hold about it. Bin-tracked SKUs resolve from the
- * count we can physically verify, which overrides a stale storefront flag.
- */
+/** Stock state for the card. */
 export function resolveStockState(
   availability: CatalogAvailability,
   lowStockThreshold: number = CATALOG_LOW_STOCK_FALLBACK,
@@ -130,16 +101,7 @@ export function resolveStockState(
   return 'in_stock';
 }
 
-/**
- * Short badge copy per state — the one place this wording is decided.
- *
- * `null` for `unknown`, and callers render NOTHING for it. Most of the catalog
- * is not bin-tracked, so a placeholder there ("Ask staff") printed on the
- * majority of cards: a constant that repeats on every tile carries no
- * information, and it crowded out the two facts that do (price and SKU). The
- * absence of a stock line is the honest signal — we don't know, so we say
- * nothing rather than adding a word the eye has to skip.
- */
+/** Short badge copy per state — the one place this wording is decided. */
 export function stockBadgeLabel(
   availability: CatalogAvailability,
   lowStockThreshold?: number,

@@ -16,15 +16,7 @@ import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency'
 import { getOrgTypes } from '@/lib/catalog/org-catalog';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/orders/add - Add a new order to the system
- * Used by mobile verification screen to add missing orders.
- *
- * Idempotency: clients mint a per-submit UUID and send it as `Idempotency-Key`
- * (and/or body `idempotencyKey` / `clientEventId`). Same key → replay cached
- * status+body (no second INSERT). Natural 409-on-duplicate-order-id still
- * applies for *different* client events that collide on order_id.
- */
+/** POST /api/orders/add - Add a new order to the system Used by mobile verification screen to add missing orders. */
 const IDEMPOTENCY_ROUTE = 'orders.add';
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -53,10 +45,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         status = 'unassigned',
         saleAmount,
         currency,
-        // The intake form marks BOTH of these required and has always sent them;
-        // until 2026-07-28 this handler destructured neither, so the operator's
-        // tracking number and condition grade were accepted and silently dropped
-        // (order landed with shipment_id NULL → unscannable at every station).
+        // The intake form marks BOTH of these required and has always sent them; until 2026-07-28 this handler destructured neither, so the…
         shippingTrackingNumber,
         shippingTrackingNumbers,
         condition,
@@ -152,11 +141,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         orderId,
       }, ctx.organizationId);
 
-      // Link tracking numbers to shipments BEFORE the insert, so a resolver
-      // failure aborts cleanly instead of leaving a half-created order that can
-      // never be scanned. `shipment_id` stays NULL when no tracking is supplied —
-      // that is the modeled "awaiting label" state (see the `awaitingOnly` scope
-      // in /api/orders), not an error. Extra rows paste into `shipment_links`.
+      // Link tracking numbers to shipments BEFORE the insert, so a resolver failure aborts cleanly instead of leaving a half-created order that…
       const trackingBlobs: string[] = [];
       if (Array.isArray(shippingTrackingNumbers)) {
         for (const item of shippingTrackingNumbers) {

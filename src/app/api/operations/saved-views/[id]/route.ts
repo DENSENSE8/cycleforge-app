@@ -8,12 +8,7 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * PATCH  /api/operations/saved-views/[id] — rename / retune / share a view.
- * DELETE /api/operations/saved-views/[id] — remove a view (confirm-then-commit
- *   on the client). Both are ownership-scoped: only the creating staffer's row is
- *   touched, so a non-owner gets 404.
- */
+/** PATCH /api/operations/saved-views/[id] — rename / retune / share a view. */
 
 function parseId(raw: string): number | null {
   const n = Number(raw);

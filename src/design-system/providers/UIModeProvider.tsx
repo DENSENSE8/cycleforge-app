@@ -47,24 +47,7 @@ interface UIModeProviderProps {
   forceMode?: UIMode;
 }
 
-/**
- * UIModeProvider — wraps the entire app (or a subtree) and provides a single
- * `mode` value that every component can consume to decide desktop vs mobile UX.
- *
- * Detection priority:
- *   1. `forceMode` prop (testing / Storybook)
- *   2. User manual override (localStorage, via DeviceModeToggle)
- *   3. Hardware detection (UA Client Hints → UA string fallback)
- *   4. Viewport width + touch input (< 768px AND coarse pointer)
- *
- * Usage:
- *   <UIModeProvider>
- *     <App />
- *   </UIModeProvider>
- *
- * In components:
- *   const { mode, isMobile, hasCamera } = useUIMode();
- */
+/** UIModeProvider — wraps the entire app (or a subtree) and provides a single `mode` value that every component can consume to decide… */
 export function UIModeProvider({ children, forceMode }: UIModeProviderProps) {
   const device = useDeviceMode();
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -100,14 +83,7 @@ export function UIModeProvider({ children, forceMode }: UIModeProviderProps) {
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
-/**
- * Consume the current UI mode from the nearest `UIModeProvider`.
- *
- * @example
- *   const { mode, isMobile, hasCamera } = useUIMode();
- *   if (isMobile) return <MobileLayout />;
- *   return <DesktopLayout />;
- */
+/** Consume the current UI mode from the nearest `UIModeProvider`. */
 export function useUIMode(): UIModeContextValue {
   const ctx = useContext(UIModeContext);
   if (!ctx) {

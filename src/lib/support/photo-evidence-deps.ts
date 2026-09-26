@@ -10,17 +10,7 @@ import type { PhotoEvidenceDeps } from './photo-evidence';
 /** Rows per identifier. An OCR'd handle should resolve to one thing, not a page. */
 const HITS_PER_TOKEN = 3;
 
-/**
- * Server bindings for {@link PhotoEvidenceDeps} — the real analyzer, the one
- * decoder, and the one search engine.
- *
- * **Analysis is read-then-run, never re-run.** A photo that already carries a
- * `photo_analysis` row was enriched by the upload job with the org's chosen
- * provider; re-running it here would spend a vision call to reproduce a row we
- * already have and would archive the prior run for no reason. Only a photo with
- * no analysis is analysed on demand — through `analyzePhoto`, the same writer
- * the job uses, so there is never a second persistence path.
- */
+/** Server bindings for {@link PhotoEvidenceDeps} — the real analyzer, the one decoder, and the one search engine. */
 export function supportPhotoEvidenceDeps(orgId: OrgId): PhotoEvidenceDeps {
   return {
     async analyze(photoId: number): Promise<PhotoAnalysisMetadata | null> {

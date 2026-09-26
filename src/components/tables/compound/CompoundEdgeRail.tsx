@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Slot-table leading-edge rail — reusable across every PRODUCT_TABLES family.
- *
- * Banner: full row height, flush left, 3px. Traveler: 1px core, full banner
- * width, slow ease-in-out on `y`, with a symmetric lighter trail.
- *
- * Travelers share one clock (`edgeMarkTravelY` + rAF time) so every urgent
- * row bobs in the same place at the same time — including after virtualize
- * remounts.
- */
+/** Slot-table leading-edge rail — reusable across every PRODUCT_TABLES family. */
 
 import { motion, useAnimationFrame, useMotionValue, useReducedMotion } from '@/design-system/motion';
 import { framerDuration } from '@/design-system/foundations/motion-framer';

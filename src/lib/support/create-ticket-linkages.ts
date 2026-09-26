@@ -36,13 +36,7 @@ function trackingStrings(linkage: OrderLinkage): string[] {
   return out;
 }
 
-/**
- * Choose the primary create-anchor + extra STN refs from an optional explicit
- * anchor and a resolved closed-loop linkage.
- *
- * Priority: explicit `anchor` → resolved order → typed/resolved tracking.
- * Serials connect through the order loop (no separate SERIAL_UNIT create anchor).
- */
+/** Choose the primary create-anchor + extra STN refs from an optional explicit anchor and a resolved closed-loop linkage. */
 export function pickAnchorFromLinkage(args: {
   explicitAnchor?: TicketLinkAnchorInput | null;
   linkages?: SupportTicketLinkages | null;

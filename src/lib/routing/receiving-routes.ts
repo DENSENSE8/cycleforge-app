@@ -1,19 +1,4 @@
-/**
- * Param ownership for the six receiving surfaces.
- *
- * These routes graduated to first-class paths (`/unbox`, `/triage`, `/incoming`,
- * `/pickup`, `/repair`, `/receiving/history`) — the URL names the operator's job.
- * What they did NOT get is isolation: `applyChildTarget` / `updateMode` copied the
- * whole query string across a mode switch and hand-deleted the keys someone had
- * remembered to list, which is what `MODE_SCOPED_PARAMS` was. This registry
- * replaces the remembering with a declaration.
- *
- * Vocabularies compose their existing SoT (`resolveTriageView`, `parseRepairTab`,
- * `isRepairColumnSort`, `HISTORY_SORT_WIRE_IDS`) via {@link paramRoundTrip} —
- * never a second copy of the value list.
- *
- * Contract + rationale: `@/lib/routing/route-params`.
- */
+/** Param ownership for the six receiving surfaces. */
 
 import {
   HISTORY_SURFACE_ROUTE,
@@ -60,10 +45,7 @@ const SCAN_SURFACE_CARRIES = [
   'openReceivingId',
   'colsort',
   'coldir',
-  // Every receiving route renders `ReceivingSurfacePage` → `RouteShell`, so the
-  // mobile pane toggle applies to all six. Without this the hygiene hook that
-  // `ReceivingSidebarPanel` mounts stripped `?pane=actions` the moment the
-  // operator tapped it.
+  // Every receiving route renders `ReceivingSurfacePage` → `RouteShell`, so the mobile pane toggle applies to all six.
   'pane',
   'layout',
   'weekOffset',
@@ -72,24 +54,13 @@ const SCAN_SURFACE_CARRIES = [
 /** Ambient set for the browse surfaces — a grid, no scan-selected carton. */
 const BROWSE_SURFACE_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
 
-/**
- * Server ORDER BY for the two feeds that share the History vocabulary — the
- * `/receiving/history` table and the Unbox workbench's History tab, which mount
- * the same header chrome (`normalizeHistorySort`). Also accepts Incoming
- * Docked · Triage (`scanned_newest`). Round-tripped against
- * `HISTORY_SORT_WIRE_IDS` so wire acceptance stays in one place.
- */
+/** Server ORDER BY for the two feeds that share the History vocabulary — the `/receiving/history` table and the Unbox workbench's History… */
 const historySortParam = () =>
   paramRoundTrip((raw) =>
     (HISTORY_SORT_WIRE_IDS as readonly string[]).includes(raw) ? raw : null,
   );
 
-/**
- * `?unboxview=` — round-tripped via {@link parseUnboxViewWire}. Queue omits the
- * param; History / Inbound / Recent (`viewed`) / All / urgent-migration write
- * explicit wires. A hand-copied enum here drifted when History got its own wire
- * (2026-08-08) and hygiene bounced History → Queue.
- */
+/** `?unboxview=` — round-tripped via {@link parseUnboxViewWire}. */
 const unboxViewParam = () => paramRoundTrip(parseUnboxViewWire);
 
 const historySearchFieldParam = () => paramRoundTrip(parseReceivingHistorySearchFieldWire);
@@ -155,12 +126,7 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     hlayout: paramEnum(['drill', 'list'] as const),
     /** Selected PO-group key while History drill is active (`po:…` / `src:…` / `line:…`). */
     drillPo: paramText,
-    /**
-     * History tab search triple (`rh_*`). Same keys as `/receiving/history` and
-     * Incoming Docked — Unbox History chrome + drill parent-map footer write
-     * `?rh_q=`. Must be owned here or `useSurfaceParamHygiene` strips the query
-     * on the next commit (filter flashes then resets).
-     */
+    /** History tab search triple (`rh_*`). */
     [RECEIVING_HISTORY_URL_PARAMS.q]: paramText,
     [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
     [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
@@ -298,30 +264,11 @@ export const HISTORY_ROUTE_PARAMS = defineRouteParams({
   carries: BROWSE_SURFACE_CARRIES,
 });
 
-/**
- * `/carton/[id]` — the durable READ record for one carton.
- *
- * Not a mode of the six surfaces above: it has no sidebar entry, no scan bar and
- * no queue, so it owns a vocabulary of its own. The registry matches by prefix
- * (`routeParamsFor` accepts `/carton/50354` for a `/carton` spec), so declaring
- * it here is what lets the read record's URL survive the boundary parse rather
- * than being dropped as an unknown key.
- *
- * `carries` is deliberately empty. Every other receiving route carries the scan
- * / browse ambient set because an operator moves between them mid-task; a read
- * record is somewhere you ARRIVE — from search, ⌘K, or a pasted link — so
- * inheriting a previous surface's selection state would be the leak the whole
- * registry exists to stop.
- */
+/** `/carton/[id]` — the durable READ record for one carton. */
 const CARTON_READ_ROUTE_PARAMS = defineRouteParams({
   route: '/carton',
   owns: {
-    /**
-     * Photo triage open. Durable because `/carton/[id]` exists to be shareable —
-     * "look at this box's photos" has to survive a reload and paste into a
-     * ticket. The lane and drill INSIDE the panel stay local: those are a
-     * reading posture, not an address.
-     */
+    /** Photo triage open. */
     photos: paramFlag,
   },
   carries: [],

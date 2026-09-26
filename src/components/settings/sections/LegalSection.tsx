@@ -5,15 +5,7 @@ import MarkdownRenderer from '@/components/ui/MarkdownRenderer';
 import { Button, Panel } from '@/design-system/primitives';
 import { LEGAL_DOCS, LEGAL_INDEX_BLURB, type LegalDoc } from '@/content/legal';
 
-/**
- * Settings → Legal & Policies.
- *
- * Read-only viewer for the CycleForge legal baseline (Terms of Service, Privacy
- * Policy, Data Processing Agreement). The documents are the SAME ones published
- * on the marketing site at cycleforge.com/legal; the markdown source lives in
- * src/content/legal/*.json. They are working drafts pending counsel review, so
- * we surface a persistent disclaimer banner above the body.
- */
+/** Settings → Legal & Policies. */
 export function LegalSection() {
   const [activeSlug, setActiveSlug] = useState<LegalDoc['slug']>(LEGAL_DOCS[0].slug);
   const active = useMemo(

@@ -1,13 +1,4 @@
-/**
- * `/api/tasks/plan-files` — the markdown plan files in this codebase a task
- * may link as a `repo` document (`docs/**`, `master-plan.mdx`, root `*.md`).
- *
- * GET ?q= → `PlanFilesPayload`, sorted by path; `q` filters path + title.
- *
- * The allowlist and the disk walk live in `src/lib/tasks/plan-files.ts`.
- *
- * PERMISSION — `work_orders.claim`, the gate every task verb uses.
- */
+/** `/api/tasks/plan-files` — the markdown plan files in this codebase a task may link as a `repo` document (`docs/**`, `master-plan.mdx`,… */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';

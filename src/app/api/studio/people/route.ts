@@ -10,21 +10,7 @@ import {
 } from '@/lib/studio/people-coverage';
 import { asStation } from '@/lib/neon/staff-stations-queries';
 
-/**
- * GET /api/studio/people?v=<definitionId>
- *
- * The People lens feed (Studio ST6 / Phase E1): per-node staffing coverage for
- * one workflow definition. For each process node it returns the staff scoped to
- * that node's STATION — derived by mapping node.config.station (the
- * operations-catalog department key) through the crosswalk in
- * src/lib/studio/people-coverage.ts to the staff_stations enum, then joining the
- * org's staff↔station assignments.
- *
- * Strictly READ-ONLY (Studio law #7): it reads staff access; the Studio UI
- * deep-links to the staff editor. This route never writes a grant. One grouped
- * read of staff_stations + a node-id/config read; no polling on the client
- * (fetch-on-activation), mirroring /api/studio/live's org-scoped resolution.
- */
+/** GET /api/studio/people?v=<definitionId> */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * History auto-week jump: the History tab defaults to the current PST week, but
- * a fresh week (Sunday morning, or before that week's first scan) is empty while
- * last week is full — so it rendered its empty state with plenty of rows one
- * week back. When the current week is empty but earlier weeks have data, jump
- * the window back to the most recent week with activity. One-shot per mount, so
- * manually paging forward to an empty current week isn't bounced back. Extracted
- * from ReceivingLinesTable; behaviour is unchanged.
- */
+/** History auto-week jump: */
 
 import { useEffect, useRef } from 'react';
 import { diffDaysDateKey, type WeekRange } from '@/utils/date';

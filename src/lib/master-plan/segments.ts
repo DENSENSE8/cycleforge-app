@@ -1,12 +1,4 @@
-/**
- * Master-plan MDX → render segments (ALP-3.2).
- *
- * react-markdown does not compile JSX, so the plan view splits the raw MDX
- * into alternating markdown / component segments and renders `<TicketStatus/>`
- * and `<AgentLog/>` tags as real React components between ReactMarkdown
- * blocks. Pure + unit-testable; no MDX compiler dependency (locked decision:
- * add next-mdx-remote only if genuine MDX compilation becomes necessary).
- */
+/** Master-plan MDX → render segments (ALP-3.2). */
 
 import { scanTicketStatuses, parseTicketStatus, type TicketStatus } from './ticket-status';
 

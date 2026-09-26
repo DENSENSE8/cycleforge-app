@@ -2,40 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/sku-catalog/pairing-queue
- *
- * The Product Hub left-rail data source. Returns canonical SKUs ranked by
- * "pairing debt" — i.e. how many unpaired sku_pairing_suggestions reference
- * them, weighted by the highest-confidence candidate.
- *
- * Query params:
- *   q          full-text fragment matched against sku_catalog.sku / product_title
- *   sort       'volume' (default) | 'confidence' | 'count' | 'title'
- *              - volume     = most-ordered canonical SKU first (highest leverage)
- *              - confidence = highest suggestion confidence first (easy wins)
- *              - count      = most suggestions first (deepest pairing backlog)
- *              - title      = alphabetical
- *   limit      default 100, max 500
- *   offset     default 0
- *
- * Response:
- *   {
- *     success, items: [
- *       { skuCatalogId, sku, productTitle, imageUrl,
- *         suggestionCount, topConfidence, orderCount,
- *         confirmedCount,
- *         platforms: ['amazon','ebay',...]  // platforms with at least one suggestion
- *       }
- *     ],
- *     total
- *   }
- *
- * Reads from sku_pairing_suggestions so this query is cheap regardless of
- * how large sku_platform_ids gets — the cron does the expensive work.
- * order_count is a separate aggregate against orders.sku_catalog_id so the
- * "most ordered SKU = highest pairing priority" sort can be the default.
- */
+/** GET /api/sku-catalog/pairing-queue */
 
 type SortKey = 'volume' | 'confidence' | 'count' | 'title';
 
@@ -72,14 +39,7 @@ export const GET = withAuth(
     const offset = Math.max(Number(url.searchParams.get('offset') || 0), 0);
     const orgId = ctx.organizationId;
 
-    // ── Search semantics ──────────────────────────────────────────────────────
-    // Default (no `q`): show the suggestion backlog — canonical SKUs that carry at
-    // least one open pairing suggestion (the "needs review" queue).
-    // With `q`: search the FULL active catalog, matching the canonical SKU/title OR
-    // any account-source identifier mapped to it via sku_platform_ids
-    // (platform_sku / platform_item_id). That lets an operator paste an Amazon
-    // ASIN, eBay/Walmart item id, or Ecwid SKU and land on the canonical product —
-    // even when it's already paired and has no outstanding suggestion.
+    // ── Search semantics ────────────────────────────────────────────────────── Default (no `q`):
     const searching = q.length > 0;
 
     // $1 is always the org — every catalog/platform/orders predicate below filters
@@ -124,16 +84,10 @@ export const GET = withAuth(
     }
     // The backlog gate only applies to the default (non-search) view.
     const debtGate = searching ? '' : 'AND d.sku_catalog_id IS NOT NULL';
-    // ~85% of sku_catalog is is_active=false (inactive Zoho items that are still
-    // valid pairing targets). The default backlog stays active-only, but a search
-    // must reach inactive rows too — otherwise pasting most ASINs finds nothing.
-    // Inactive hits are flagged in the response (`isActive`) so the UI can badge them.
+    // ~85% of sku_catalog is is_active=false (inactive Zoho items that are still valid pairing targets).
     const activeGate = searching ? '' : 'AND sc.is_active = true';
 
-    // sku_pairing_suggestions has no organization_id column (child-scoped); it is
-    // tenant-isolated transitively by joining to sku_platform_ids (sp) and
-    // filtering sp.organization_id. d.sku_catalog_id then only ever references
-    // this org's catalog rows.
+    // sku_pairing_suggestions has no organization_id column (child-scoped); it is tenant-isolated transitively by joining to sku_platform_ids…
     const debtCte = `
       debt AS (
         SELECT

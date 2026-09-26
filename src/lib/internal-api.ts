@@ -4,11 +4,7 @@ import { safeStrEqual } from '@/lib/security/safe-compare';
 export function requireInternalToken(req: NextRequest): NextResponse | null {
   const expected = process.env.INTERNAL_API_TOKEN;
 
-  // Fail CLOSED when no token is configured. Previously this returned null
-  // ("allowed"), so an unset env var silently disabled the only guard on the
-  // replenishment/PO mutation routes. In production a missing secret must mean
-  // "deny", never "open". Local/dev (non-prod, no token) stays permissive so
-  // DX is unchanged.
+  // Fail CLOSED when no token is configured.
   if (!expected) {
     const isProd =
       process.env.VERCEL_ENV === 'production' ||

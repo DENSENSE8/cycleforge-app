@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * The import-exception slot-layout hook — the Review · Missing item number
- * CONFIG on the shared {@link useSlotTableLayout} engine. The tenth family on
- * the engine, and the second queue on one page: two catalogs, two layout
- * documents, one cell map.
- *
- * Compound morph only; a stored `sheet` layout would open `subtitle:N` tracks
- * nothing draws — `paintMorph` coerces, the org write gate
- * (`slotMorphsFor('import-exception')`) refuses.
- */
+/** The import-exception slot-layout hook — the Review · Missing item number CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   IMPORT_EXCEPTION_FIELD_CATALOG,

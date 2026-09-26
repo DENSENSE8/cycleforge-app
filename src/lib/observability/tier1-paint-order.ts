@@ -1,10 +1,4 @@
-/**
- * Tier-1 paint content order — declared LCP surfaces + forbidden `ssr: false`
- * hosts. Product law: Paint content order.
- *
- * Priority ladder (must paint in order):
- *   P0 chrome → P1 primary → P2 context → P3 trailing (strip only; bodies wait)
- */
+/** Tier-1 paint content order — declared LCP surfaces + forbidden `ssr: */
 
 export type PaintPriority = 'chrome' | 'primary' | 'context' | 'trailing';
 
@@ -60,13 +54,7 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     aliases: ['/receiving'],
     label: 'Unbox',
     lcpSurface: 'primary',
-    /**
-     * Route loading cover. Unbox retired its drawn skeletons on 2026-08-20:
-     * `UnboxWorkbenchSkeleton` / `UnboxStationFirstPaint` are gone and the
-     * cover is the house loading field, which owns no geometry to drift.
-     * The SSR stand-in is the field's own token plane (it renders on the
-     * server; only the canvas needs hydration).
-     */
+    /** Route loading cover. */
     skeleton: 'src/design-system/components/UniversalLoader.tsx',
     lcpHosts: [
       'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
@@ -106,14 +94,7 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     path: '/search',
     label: 'Search',
     lcpSurface: 'primary',
-    /**
-     * Header find + the `?sel=` record body. `SearchPrimaryPaintShell` is the
-     * mark's home: it stamps `search:primary` when its cover LIFTS, so the
-     * number names a painted record rather than the blank frame behind it —
-     * `SearchBrowseShell` used to stamp both marks unconditionally on mount,
-     * which meant the `?sel=` path reported nothing at all and the `?q=` path
-     * reported a fake-fast LCP.
-     */
+    /** Header find + the `?sel=` record body. */
     lcpHosts: [
       'src/app/search/page.tsx',
       'src/components/search/SearchPrimaryPaintShell.tsx',

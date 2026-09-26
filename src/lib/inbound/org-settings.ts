@@ -1,29 +1,4 @@
-/**
- * Per-org Universal Incoming settings resolver (plan §9.6).
- *
- * Reads `organizations.settings.inbound` (schema + defaults policed by
- * src/lib/tenancy/settings.ts — the SoT for that jsonb bag) and exposes the
- * tenant's inbound policy: post-merge display source, the Zoho PO fields that
- * carry an eBay order#, which signals may auto-merge, whether a fuzzy match needs
- * review, and which inbound sources are enabled. The Studio publish gate validates
- * bound sources ⊆ `enabledSources`; the merge/matcher read the rest.
- *
- * `enabledSources` resolution (the ONE resolution point — no other reader may
- * re-derive it):
- *   - org persisted an explicit list (even an empty one) → kept verbatim;
- *   - org never chose → CONNECTION-DRIVEN default: 'manual' always, 'zoho' when
- *     the org's inventory capability resolves to the zoho provider (vault row, or
- *     the dogfood env-fallback probe inside capability-connections), 'ebay' when
- *     a connected active buyer account exists. 'amazon' is deliberately absent —
- *     Amazon inbound has no connection precedent yet (see source-registry).
- *   - no org / unreadable settings / probe failure → the legacy compatibility
- *     default ['zoho','ebay'] (what the zod default used to hardcode), so a
- *     transient vault/DB hiccup can never brick Incoming.
- *
- * Deps-injected (default real impls) so tests run DB-free. Tolerant: a missing
- * org / unparseable settings falls back to defaults rather than throwing
- * (mirrors resolveWarrantyDays).
- */
+/** Per-org Universal Incoming settings resolver (plan §9.6). */
 
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -131,14 +106,7 @@ function listHasEbay(sources: readonly string[]): boolean {
   return sources.map((x) => x.toLowerCase()).includes('ebay');
 }
 
-/**
- * Persist `ebay` into `organizations.settings.inbound.enabledSources`.
- *
- * Buyer OAuth and marketplace Import call this so a stale explicit list (or
- * `[]`) cannot leave purchasing connected while Import no-ops. Idempotent:
- * no-op when `ebay` is already present. When the org never chose a list,
- * derives the connection-driven default then forces `ebay` in before write.
- */
+/** Persist `ebay` into `organizations.settings.inbound.enabledSources`. */
 export async function ensureEbayInboundSourceEnabled(
   orgId: OrgId,
   deps: EnsureEbayInboundDeps = defaultEnsureDeps,

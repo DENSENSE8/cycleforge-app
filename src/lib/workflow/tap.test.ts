@@ -1,18 +1,8 @@
-/**
- * tapWorkflow drop-path observability + intended-tap outbox — DB-free unit
- * tests via the injected TapDeps (house Deps pattern, backend-patterns.md).
- *
- * Every silent drop path must emit a `workflow_tap_dropped` ops event with the
- * right reason, the outbox intent must bracket advance() (PENDING before,
- * LANDED/FAILED after), and nothing here may ever throw out of tapWorkflow.
- */
+/** tapWorkflow drop-path observability + intended-tap outbox — DB-free unit tests via the injected TapDeps (house Deps pattern,… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-// Load BEFORE './tap': @/lib/db side-loads dotenv, populating DATABASE_URL so
-// tap.ts's transitive @/lib/drizzle/db module-init (neon()) doesn't throw on a
-// bare shell. Same implicit ordering applyTransition.test.ts gets via its
-// state-machine import. No query is ever issued — the tests are DB-free.
+// Load BEFORE './tap':
 import '@/lib/db';
 import { tapWorkflow, type TapDeps, type WorkflowTapArgs } from './tap';
 import type { AdvanceOutcome } from './advance';

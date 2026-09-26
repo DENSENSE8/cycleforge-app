@@ -11,10 +11,7 @@ export type StationActivityType =
   | 'PACK_SCAN'
   | 'PACK_SHIPPED'
   | 'FBA_READY'
-  // Dock / handoff scan: the package physically left the building. Distinct from
-  // PACK_* (in the box) and from carrier-reported custody on shipping_tracking_numbers.
-  // `station_activity_logs.activity_type`/`station` are free-text VARCHAR, so this
-  // needs no migration — only this union edit.
+  // Dock / handoff scan:
   | 'SHIP_CONFIRM'
   // Dock staging: packed package placed in the outbound staging lane, awaiting scan-out.
   | 'DOCK_STAGED'
@@ -23,12 +20,7 @@ export type StationActivityType =
   | 'WS_RECEIVING_CHANGED'
   | 'WS_FBA_SCAN';
 
-// ─── Activity-type vocabularies (SoT for the SQL lifecycle filters) ─────────────
-// These named groupings replace the literal `activity_type IN (...)` lists that
-// were duplicated across the orders / operations / staff-goals routes. Each set
-// is a deliberate membership — do NOT merge two that happen to overlap (e.g. the
-// orders board's TECH-tested signal is `= 'TRACKING_SCANNED'` only and stays a
-// single literal; it is intentionally NOT the 2-type TECH_TEST set below).
+// ─── Activity-type vocabularies (SoT for the SQL lifecycle filters) ───────────── These named groupings replace the literal…
 
 /** A packer completed/scanned the box (the "packed" signal). */
 export const PACK_ACTIVITY_TYPES = ['PACK_COMPLETED', 'PACK_SCAN'] as const;
@@ -45,37 +37,16 @@ export const VELOCITY_ACTIVITY_TYPES = [
   'FBA_READY',
 ] as const;
 
-/**
- * Render a string vocabulary as the body of a SQL `IN (...)` clause, producing
- * exactly `'A', 'B'` (single-quoted, comma+space) — byte-identical to the
- * literals these constants replace. Values are compile-time constants (never
- * user input), so interpolation is safe.
- */
+/** Render a string vocabulary as the body of a SQL `IN (...)` clause, producing exactly `'A', 'B'` (single-quoted, comma+space) —… */
 export function sqlInList(values: readonly string[]): string {
   return values.map((v) => `'${v}'`).join(', ');
 }
 
-/**
- * @deprecated FROZEN for NEW writer sites — ops-events unification plan, move 1
- * (docs/todo/ops-events-station-workflow-unification-plan.md §3.1/§3.5).
- * `station_activity_logs` is the legacy event spine: its `station` vocabulary is
- * a deploy-time-fixed TS union that can never name a tenant-defined Studio
- * station. Any NEW event-emitting code path MUST use `recordOpsEvent`
- * (src/lib/ops-events.ts), threading `workflowNodeId` when a Studio node is in
- * scope (resolveSurfaceWorkflowNodeId). The ~40 EXISTING call sites are
- * intentionally untouched and keep working unchanged — SAL retirement is the
- * plan's Phase 4, explicitly unscheduled (its `packer_log_enrichments.sal_id`
- * FK makes migration a dedicated project). Do not add new callers.
- */
+/** @deprecated FROZEN for NEW writer sites — ops-events unification plan, move 1 (docs/todo/ops-events-station-workflow-unification-plan.md… */
 export async function createStationActivityLog(
   db: Queryable,
   params: {
-    /**
-     * Phase 3a: tenant scope. Required because station_activity_logs has a
-     * NOT NULL organization_id column. Without this, every scan-time INSERT
-     * fails (manifested as the tech-station scan bar appearing to silently
-     * drop scans).
-     */
+    /** Phase 3a: tenant scope. */
     organizationId: string;
     station: StationName;
     activityType: StationActivityType;

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Discovery CTA for throwing a task — lives in the header's pace-and-next
- * panel, not the account ⋯ menu.
- *
- * Distinct from "Add a task" on the personal `staff_todos` list. This opens
- * {@link ThrowTaskPanel} (scan · pick colleague · send) via the app-wide
- * host so ⌘⇧U and this row share one mount.
- *
- * The panel closes first: stacking the throw overlay on the 290px goal card
- * would hide the scan field behind a popover the operator just left.
- */
+/** Discovery CTA for throwing a task — lives in the header's pace-and-next panel, not the account ⋯ menu. */
 
 import { Send } from '@/components/Icons';
 import {

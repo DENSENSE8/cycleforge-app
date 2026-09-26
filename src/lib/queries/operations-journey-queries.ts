@@ -8,12 +8,7 @@ import type { JourneyEvent, JourneyDimension } from '@/lib/timeline/journey';
  * uses `useInfiniteQuery` with the keyset `cursor` (wired in `useOperationsJourney`).
  */
 
-/**
- * Per-serial provenance for the By-unit band headers (SKU · grade · status ·
- * originating PO). Client mirror of `SerialProvenance` in
- * `@/lib/operations/journey-helpers` — kept structurally local so this client
- * module never imports the server-side journey domain.
- */
+/** Per-serial provenance for the By-unit band headers (SKU · grade · status · originating PO). */
 export interface SerialProvenance {
   serialUnitId: number;
   serial: string;
@@ -71,12 +66,7 @@ export function buildFocusedQueryString(f: JourneyUrlFilters): string {
   return p.toString();
 }
 
-/**
- * Browse query string — the same narrowing filters as focused, but with NO
- * entity value (that's what makes the route serve `mode:'browse'`), plus the
- * opaque keyset `cursor` for the next page. `q` rides along so a browse can be
- * text-narrowed once the unified header search populates it.
- */
+/** Browse query string — the same narrowing filters as focused, but with NO entity value (that's what makes the route serve… */
 export function buildBrowseQueryString(f: JourneyUrlFilters, cursor: string | null): string {
   const p = new URLSearchParams();
   appendFilters(p, f);
@@ -107,12 +97,7 @@ export function operationsJourneyFocusedQuery(f: JourneyUrlFilters) {
   });
 }
 
-/**
- * Browse feed — keyset-paginated `useInfiniteQuery`. `pageParam` is the opaque
- * cursor string (null for the first page); the next page param is the response's
- * `nextCursor` (undefined = no more pages). Monitor archetype: refetch-on-focus
- * keeps it fresh; no realtime patching.
- */
+/** Browse feed — keyset-paginated `useInfiniteQuery`. */
 export function operationsJourneyBrowseInfiniteQuery(f: JourneyUrlFilters) {
   return infiniteQueryOptions({
     queryKey: journeyKeys.browse(f),

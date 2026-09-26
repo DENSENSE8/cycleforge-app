@@ -1,10 +1,4 @@
-/**
- * Pack workbench tabs on `/pack` — URL SoT via `?packview=`.
- * Absent param defaults to Queue (ready-to-pack / TESTED board).
- *
- * Pack *scan* sub-modes (`?packMode=`) live here too — Standard is the default
- * and is usually omitted; fragile / multi are legacy deep-links.
- */
+/** Pack workbench tabs on `/pack` — URL SoT via `?packview=`. */
 
 export type PackWorkspaceTab = 'queue' | 'history';
 
@@ -26,12 +20,7 @@ export const PACK_WORKSPACE_TAB_LABEL: Record<PackWorkspaceTab, string> = {
 
 const VALID: ReadonlySet<string> = new Set(['queue', 'history']);
 
-/**
- * Raw-string form of {@link getPackWorkspaceTabFromSearch}, for callers that hold
- * a value rather than a `URLSearchParams` — notably the `/pack` param spec
- * (`@/lib/routing/query-mode-routes`), which composes this via `paramRoundTrip`
- * so the route contract cannot drift from `VALID`.
- */
+/** Raw-string form of {@link getPackWorkspaceTabFromSearch}, for callers that hold a value rather than a `URLSearchParams` — notably the… */
 export function parsePackWorkspaceTab(raw: string | null): PackWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
   return VALID.has(value) ? (value as PackWorkspaceTab) : 'queue';

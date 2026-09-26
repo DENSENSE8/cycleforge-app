@@ -3,13 +3,7 @@ import { test } from 'node:test';
 import type { PoolClient } from 'pg';
 import { resolveEntity } from './journey';
 
-/**
- * DB-free coverage for the `dim=unit` handoff branch of {@link resolveEntity}
- * (search → Operations ▸ History Trace via `?dim=unit&unit={id}`). The unit hit
- * carries only a numeric `serial_units.id`; the resolver must look up the serial
- * server-side and return serial-shaped anchors, so the search index never needs
- * a serial facet. Fake `PoolClient` dispatches on SQL text and records the calls.
- */
+/** DB-free coverage for the `dim=unit` handoff branch of {@link resolveEntity} (search → Operations ▸ History Trace via `?dim=unit&unit={id}`). */
 
 type Row = Record<string, unknown>;
 

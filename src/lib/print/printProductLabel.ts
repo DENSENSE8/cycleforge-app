@@ -68,12 +68,7 @@ export function resolveTestingLineTitle(
   );
 }
 
-/**
- * Print a product/testing unit label. Renders the same face as the on-screen
- * preview and drives the browser print pipeline: WebUSB/Web Serial raw
- * TSPL/ZPL to the paired thermal printer when silent mode is on, then
- * hidden-iframe dialog fallback.
- */
+/** Print a product/testing unit label. */
 export function printProductLabel(input: PrintProductLabelInput): void {
   if (typeof window === 'undefined') return;
 
@@ -86,10 +81,7 @@ export function printProductLabel(input: PrintProductLabelInput): void {
   const legacyPopup = reserveLegacyPrintPopup();
 
   void (async () => {
-    // Lazy: the print shell + raw-command builders carry the bwip-js barcode
-    // engine (~250 KB gz); this module's light helpers (deriveColorFromTitle,
-    // resolveTestingLineTitle, unitLabelCore re-exports) ride in station
-    // bundles, so only the actual print action loads the heavy modules.
+    // Lazy: the print shell + raw-command builders carry the bwip-js barcode engine (~250 KB gz); this module's light helpers…
     const [{ printLabel, buildLabelHtml }, { buildProductLabelBitmapCommands, buildProductLabelCommands }] =
       await Promise.all([
         import('@/lib/print/printLabel'),

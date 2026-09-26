@@ -1,19 +1,4 @@
-/**
- * Session window + expiry resolution — DB-free.
- *
- * Pins the two halves of "Keep me signed in":
- *
- *   1. resolveSessionWindow — checking the box resolves the PERSISTENT window,
- *      whose idleMs is INFINITE. That infinity is load-bearing: loadSession
- *      only auto-revokes when `Number.isFinite(window.idleMs)`, so a finite
- *      idleMs here is the bug (session revoked overnight) coming back.
- *   2. resolveSessionExpiry — a persistent session ignores shift-end expiry.
- *      A shift-bound expiry would silently defeat the checkbox: the promise is
- *      "signed in no matter what", not "signed in until your shift ends".
- *
- * The per-staff `session_policy` and the per-session flag are an OR, never a
- * replacement — both directions are asserted below.
- */
+/** Session window + expiry resolution — DB-free. */
 
 import { test } from 'node:test';
 import { strictEqual, ok } from 'node:assert';

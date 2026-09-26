@@ -1,16 +1,4 @@
-/**
- * Search-hit slot resolvers — pure.
- *
- * `when` resolves to the ABSOLUTE INSTANT, never to a pre-formatted or
- * relative face: the engine turns a `date` display type into the cell face and
- * keeps the instant behind it, and a resolver whose text depends on `now`
- * would sort and search differently on every render.
- *
- * The identifier precedence lives here rather than in the adapter because BOTH
- * halves need it — the identity chip paints it and the Id header sorts it, and
- * two derivations of one handle is how a column ends up sorting by a string
- * nobody can see.
- */
+/** Search-hit slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
@@ -21,17 +9,7 @@ function str(value: string | number | null | undefined): string | null {
   return s || null;
 }
 
-/**
- * The VERIFIABLE handle an operator reads off this row and keys into a scanner.
- *
- * Precedence is "what a human would quote back": the marketplace order id, the
- * PO, the source order, the serial, the carrier tracking — and only when a hit
- * carries none of those, the internal primary key, which is a real handle on
- * every desk in this product but is nobody's first answer to "which one?".
- *
- * `#` is the identifier-class marker the chip's HashIcon paints, so the string
- * itself never carries one.
- */
+/** The VERIFIABLE handle an operator reads off this row and keys into a scanner. */
 export function searchHitIdentifier(hit: AiSearchHit): string {
   const order = str(orderIdFromHit(hit));
   if (order) return order;

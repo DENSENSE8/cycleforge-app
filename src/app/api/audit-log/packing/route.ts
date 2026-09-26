@@ -6,14 +6,7 @@ import {
   listPackingTrackings,
 } from '@/lib/audit-log/packing-aggregator';
 
-/**
- * GET /api/audit-log/packing
- *   ?tracking=<value>  → full timeline for one tracking
- *   no `tracking`      → most-recent packer events grouped by tracking
- *
- * Shared filters (day/start/end/staffId/sku/q) apply in both modes.
- * Gate: admin.view_logs.
- */
+/** GET /api/audit-log/packing ?tracking=<value> → full timeline for one tracking no `tracking` → most-recent packer events grouped by tracking */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

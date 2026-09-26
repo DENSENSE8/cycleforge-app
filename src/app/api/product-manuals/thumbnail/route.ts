@@ -9,23 +9,7 @@ import {
 // orgId; threading it GUC-wraps the by-id read+write so RLS gates ownership
 // once enforced (NEEDS-COL — product_manuals has no organization_id yet).
 
-/**
- * POST /api/product-manuals/thumbnail
- *
- * Lazy-backfill endpoint. The browser-side viewer (`ManualLibrary`) generates
- * a thumbnail from page 1 of a manual that doesn't yet have one and POSTs
- * it here. We store the image in Vercel Blob and PATCH `thumbnail_url` onto
- * the row, so the next time anyone scans the sidebar they see the preview
- * instead of the generic file icon.
- *
- * Form fields:
- *   id         required — the manual to attach the thumbnail to
- *   thumbnail  required — the JPEG/PNG produced client-side
- *
- * Idempotent: if a manual already has a thumbnail, the caller skips the
- * generation entirely. If it sends one anyway, we overwrite (cheap; the old
- * blob is unreachable but Vercel Blob garbage-collects eventually).
- */
+/** POST /api/product-manuals/thumbnail */
 export const POST = withAuth(
   async (request, ctx) => {
     const orgId = ctx.organizationId ?? undefined;

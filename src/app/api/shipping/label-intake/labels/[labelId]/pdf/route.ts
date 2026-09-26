@@ -5,12 +5,7 @@ import { getShipStationV2 } from '@/lib/shipping/shipstation/config';
 import { readIntakeLabelSource } from '@/lib/shipping/label-intake';
 import { labelIntakeErrorResponse } from '@/lib/shipping/label-intake-errors';
 
-/**
- * GET /api/shipping/label-intake/labels/[labelId]/pdf — one purchased ledger
- * row's label PDF, fetched from ShipStation on the Print click. Covers
- * reference-only rows, which have no order for `/api/orders/[id]/labels/…/pdf`
- * to address. The v2 download URL needs the account key, held only here.
- */
+/** GET /api/shipping/label-intake/labels/[labelId]/pdf — one purchased ledger row's label PDF, fetched from ShipStation on the Print click. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ labelId: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'shipping.view');

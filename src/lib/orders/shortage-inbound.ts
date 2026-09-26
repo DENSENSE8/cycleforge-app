@@ -1,11 +1,4 @@
-/**
- * Earmark inbound / stocked units onto open order-line shortages.
- * FIFO by shortage created_at for a Zoho item.
- *
- * Callers: replenishment createDraftPurchaseOrders, POST /api/receiving/match,
- * allocateOrder, clearOrderLineShortages.
- * Schema: shortage_inbound_links, order_line_shortages, receiving_line_zoho.
- */
+/** Earmark inbound / stocked units onto open order-line shortages. */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';

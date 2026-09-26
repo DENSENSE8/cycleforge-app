@@ -71,30 +71,7 @@ export function parentOrderLineTotals(rows: readonly ShippedOrder[]): {
 
 /**
  * One order group inside a day band.
- *
- * Always-expanded by default. When the fold has more than one line, a thin parent
- * chrome sits above them. A chevron under the select checkbox hides the child
- * lines without dropping the parent identity.
- *
  * ## The parent stays exactly one row tall (operator 2026-09-05)
- *
- * It used to print `N tracking` over one `TrackingNumberMenuChip` per number in
- * the ITEM cell. A stack of chips is taller than the plain two-line cell every
- * leaf paints, so the band bulged out of the sheet's rhythm — a parent that is
- * meant to read as thinner than its children read as heavier instead.
- *
- * The shipment story now lives entirely in the fulfillment cell's second line,
- * at plain text height: one {@link BrandIdentityDot} `variant="ring"` per
- * DISTINCT carrier (USPS blue · UPS brown · FedEx purple, from the carrier
- * brand SoT) followed by the box count. Every cell on this row is pinned to
- * `COMPOUND_ROW_PX`, so nothing here can grow the band.
- *
- * ## Boxes, not lines
- *
- * A tracking number IS a box, and boxes is the word staff use. "Lines" is
- * schema vocabulary and does not belong on the floor. The count on this row is
- * boxes; the only place an item count survives is the checkbox's accessible
- * label, which describes what a click SELECTS rather than what the row says.
  */
 export function QueueGroupRow({
   group,
@@ -161,16 +138,9 @@ function QueueOrderParentRow({
   const orderId = String(lead.order_id || group.key || '').trim();
   const { carriers, boxCount, trackings } = orderCarrierBoxes(group.rows);
   const { qty, amount } = parentOrderLineTotals(group.rows);
+  // Status rollup (operator 2026-09-14, item 1):
   // Status rollup (operator 2026-09-14, item 1): the band pill summarizes its
-  // children instead of blanking the column.
-  //
-  // It rolls up the SAME label the leaves paint — `resolveRowStatus(row,
-  // queueMode)`, the resolved lane stage — not the raw `shipment_status`
   // column. That was the bug the operator reported on 2026-09-15: five
-  // children each reading OUT OF STOCK under a band reading nothing, because a
-  // shortage is a LIFECYCLE stage (`resolveOrderLifecycleStage`) and never a
-  // carrier status word, so every row folded to the empty string. A parent that
-  // is quieter than its own children is worse than no parent.
   const stateRollup = statusWordRollup(
     group.rows.map((row) => resolveRowStatus(row as QueueRowRecord, queueMode)?.label ?? null),
     ordersBandStateTone,

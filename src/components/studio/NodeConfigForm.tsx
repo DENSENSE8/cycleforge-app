@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * NodeConfigForm — a generic, schema-driven node config sheet (Studio ST4, C.1).
- *
- * Renders one input per field declared in a node type's `configSchema` (the
- * JSON-schema-ish shape every NodeDefinition may expose — see
- * src/lib/workflow/contract.ts and STATION_CONFIG_SCHEMA). The field's `type`
- * drives the control:
- *   • number  → number input
- *   • boolean → toggle (checkbox)
- *   • string  → <select> if the field has enum/options (or the host supplies
- *               dynamic options via `optionsFor`), else a text input
- *
- * Changes write back through the standard onChange(nodeId, patch) seam (the
- * provider's onUpdateNodeConfig), so a `null`/`''` value clears the key. This is
- * the SHARED form later reused by the decision-node + station editor, so it is
- * driven purely by the schema (+ an optional option resolver) and knows nothing
- * about any specific node type.
- *
- * Style follows the inspector's existing raw-Tailwind slate inputs (no new color
- * system, no hardcoded hex).
- */
+/** NodeConfigForm — a generic, schema-driven node config sheet (Studio ST4, C.1). */
 
 import type { ReactNode } from 'react';
 import { focusRing } from '@/design-system/tokens/focus-ring';

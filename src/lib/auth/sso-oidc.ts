@@ -1,17 +1,4 @@
-/**
- * Minimal OIDC PKCE helpers.
- *
- * We implement Authorization Code + PKCE by hand against the discovery
- * doc — no SDK pulled in. Enough surface for the common IdPs (Okta,
- * Auth0, Google Workspace, Azure AD) without committing to one vendor's
- * SDK.
- *
- * Per-tenant client_secret lives in the integration credentials vault
- * (`getIntegrationCredentials(orgId, 'stripe')`-style, except provider key
- * is the literal SSO provider row id since one tenant can have several
- * IdPs). The OIDC code only needs the metadata + client_id from the
- * organization_sso_providers row; the secret is fetched lazily.
- */
+/** Minimal OIDC PKCE helpers. */
 
 import { createHash, randomBytes } from 'node:crypto';
 
@@ -157,13 +144,7 @@ export async function fetchUserInfo(args: { endpoint: string; accessToken: strin
   return (await res.json()) as UserInfo;
 }
 
-/**
- * Decode the `email`/`sub` claims out of an id_token without validating
- * signatures — used only as a fallback when userinfo isn't available.
- * Production should validate against the JWKS in jwks_uri; we deliberately
- * defer that to v2 since most IdPs we'll integrate first (Google,
- * Okta, Auth0, Azure) return a usable userinfo endpoint.
- */
+/** Decode the `email`/`sub` claims out of an id_token without validating signatures — used only as a fallback when userinfo isn't available. */
 export function decodeIdTokenClaimsUnsafe(idToken: string): UserInfo | null {
   const parts = idToken.split('.');
   if (parts.length !== 3) return null;
@@ -191,20 +172,7 @@ export class IdTokenError extends Error {
   }
 }
 
-/**
- * Validate the standard claims of an id_token: `iss` matches the configured
- * provider issuer, `aud` contains our client_id, and `exp`/`iat` are within a
- * small clock skew. Throws `IdTokenError` on any mismatch; returns the decoded
- * claims on success.
- *
- * NOTE ON THE SIGNATURE: this validates CLAIMS, not the RS256 signature. In the
- * authorization-code flow the id_token arrives over a direct, server-to-server
- * TLS call to the token endpoint (see `exchangeCode`) — never through the
- * browser — so OIDC Core §3.1.3.7 permits TLS server authentication in place of
- * verifying the JWS signature. Full JWKS (`jwks_uri`) signature verification is
- * the documented v2 hardening (it would also let us accept id_tokens that
- * travel through the front channel); we don't pull a JWS library in for it yet.
- */
+/** Validate the standard claims of an id_token: */
 export function validateIdTokenClaims(
   idToken: string,
   opts: { issuer: string; clientId: string; clockSkewSec?: number },

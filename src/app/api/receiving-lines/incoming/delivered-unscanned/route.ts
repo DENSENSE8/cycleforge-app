@@ -1,26 +1,4 @@
-/**
- * GET /api/receiving-lines/incoming/delivered-unscanned
- *
- * The dependable "delivered but not checked-in" list for the Incoming view.
- *
- * Shipment-anchored (not PO-line-anchored): a carrier-confirmed delivery that
- * the dock hasn't started receiving. Scoped to INBOUND only — a shipment is
- * inbound when it has a `receiving_carton` row OR its source_system is a receiving
- * origin. This deliberately excludes outbound order/packer tracking (which is
- * also "delivered, never scanned" but is not a dock arrival).
- *
- * "Not checked-in" = no operator `receiving_scans` against any linked receiving.
- * Deduped by normalized tracking# (carriers emit master+child numbers for the
- * same box) and windowed so the list stays actionable.
- *
- * Each row carries full PO context (PO#, vendor, expected date, product names)
- * resolved from the tracking# → Zoho PO link, so the "Delivered · not scanned"
- * facet renders them in the main incoming table like any other line. Read-only;
- * no carrier calls (use the Refresh button to re-poll first).
- *
- * Physical-first: Zoho terminal status is returned as enrichment (`zoho_status`)
- * for a badge — it never excludes the row from this list.
- */
+/** GET /api/receiving-lines/incoming/delivered-unscanned */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -47,13 +25,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       CACHE_TTL.rollup,
       [CACHE_TAGS.receivingLines],
       async () => {
-    // SKU/PO enrichment always joins via receiving_line.shipment_id when a
-    // line is stamped (unified inbound model is always-on for this read path).
-    // receiving_line is tenant-owned — scope these PO-resolution subqueries to
-    // this org ($2) so a foreign tenant's line can't supply the PO id / item agg.
-    // Wave-2 reader cutover: the line's zoho PO id reads from
-    // receiving_line_zoho rz (1:1 on receiving_line_id; every line with ANY
-    // zoho field has an rz row). rl.shipment_id stays on the spine.
+    // SKU/PO enrichment always joins via receiving_line.shipment_id when a line is stamped (unified inbound model is always-on for this read…
     const { rows } = await tenantQuery<{
       shipment_id: number;
       carrier: string;

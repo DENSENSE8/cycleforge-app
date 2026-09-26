@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * `/m/pair/[code]` — decide what belongs in an empty location.
- *
- * ## Why this left the bottom sheet
- *
- * Pairing used to happen inside the scan station's capture slot: a search
- * field and a results list sharing 42svh with the OS keyboard, on a surface
- * whose actual job is a control strip. It worked, and it was the wrong
- * furniture — pairing is a multi-step JOB (search, inspect, decide, count),
- * and `SURFACE_LAW` §5 gives a job its own screen.
- *
- * Leaving `/m/scan` for it is a deliberate exception to the rule in
- * `identify-land.ts` that location scans settle on the kernel. That rule
- * prevents a SCAN from navigating away mid-loop; it does not govern an
- * operator tapping a button. Scanning still settles. Only a tap pushes, and
- * Back resumes the loop with the scanner re-armed.
- *
- * ## The idle list is the feature
- *
- * Empty state used to say "type a SKU or product title". A person filling a
- * bay is pairing the same few products across a run of bins, so the products
- * already stocked in THIS ROOM are the likeliest answer — offered as one-tap
- * rows, with the keyboard never opening. Search is the fallback, not the path.
- */
+/** `/m/pair/[code]` — decide what belongs in an empty location. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -62,12 +39,7 @@ export function MobilePairLocation({ code, openException = false }: { code: stri
 
   /**
    * The products already stocked in this location's ROOM — the idle list.
-   *
-   * The response also carries the room's NAME. It is deliberately NOT painted:
-   * an eyebrow over the title said where the operator already knows they are
-   * standing, and it cost a line of chrome on the screen with the least room
    * for one (operator 2026-09-15: *"the room name isn't even needed above pair
-   * location, just pair location"*). The list carries no heading either
    * (operator 2026-09-25): rows start right under the search field.
    */
   const { data: candidates = [] } = useQuery<PairCandidate[]>({

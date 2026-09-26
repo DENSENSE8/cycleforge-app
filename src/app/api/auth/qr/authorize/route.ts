@@ -17,13 +17,7 @@ import { hashQrToken } from '@/lib/realtime/qr-auth-channel';
 
 export const runtime = 'nodejs';
 
-/**
- * Authorize a desktop QR login from the phone.
- *
- * Primary path (`/m/qr-auth`): signed-in phone session + `{ token }`.
- * Client-claimed `verified: true` is rejected. Optional `{ token, response }`
- * WebAuthn; station `{ token, staffId, pin }` when no phone session.
- */
+/** Authorize a desktop QR login from the phone. */
 export async function POST(req: NextRequest) {
   const rl = await checkRateLimitAsync({
     headers: req.headers,

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The tech-bench slot-layout hook — the tech CONFIG on the shared
- * {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law, org
- * capture, Fields-picker data; see its docblock). Config, never a fork.
- *
- * The Tech bench paints the COMPOUND morph only: a bench log is the same
- * two-row scan list Unbox / History / Testing paint, read at a different
- * moment. A stored `sheet` layout would open `subtitle:N` tracks nothing draws
- * — `paintMorph` coerces, and the org write gate (`slotMorphsFor('tech')`)
- * refuses it outright.
- */
+/** The tech-bench slot-layout hook — the tech CONFIG on the shared {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law,… */
 
 import {
   TECH_FIELD_CATALOG,

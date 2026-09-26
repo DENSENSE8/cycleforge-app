@@ -1,13 +1,6 @@
 import { z } from 'zod';
 
-/**
- * POST /api/receiving/link-id — link ANY identifier to a carton.
- *
- * `identifier` is deliberately unconstrained beyond length: it is whatever is
- * printed on the box (Zoho PO#, marketplace order#, RMA, supplier reference).
- * Validating its SHAPE here would re-create the dead end this route exists to
- * remove — the server decides whether it resolves, never the regex.
- */
+/** POST /api/receiving/link-id — link ANY identifier to a carton. */
 export const ReceivingLinkIdBody = z.object({
   receiving_id: z.number().int().positive(),
   /** The line that should carry the purchase identity. Omit for carton-only. */

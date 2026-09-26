@@ -6,12 +6,7 @@ import type { PickedCustomer } from '@/lib/repair/repair-info-edit';
 /** The route refuses shorter queries (a 1-char pattern is a full scan). */
 export const CUSTOMER_SEARCH_MIN_CHARS = 2;
 
-/**
- * Debounced (250ms) `GET /api/customers/search` for the change-customer
- * picker — name, email or phone (last-ten-digit match). Runs only while
- * `enabled` and the query is long enough; aborts the in-flight request on
- * every keystroke and on unmount.
- */
+/** Debounced (250ms) `GET /api/customers/search` for the change-customer picker — name, email or phone (last-ten-digit match). */
 export function useCustomerSearch(enabled: boolean, query: string) {
   const [results, setResults] = useState<PickedCustomer[]>([]);
   const [loading, setLoading] = useState(false);

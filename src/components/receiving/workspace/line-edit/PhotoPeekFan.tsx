@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * PhotoPeekFan — presentational, data-free photo "peek" gesture + Quick Look.
- *
- * A hover-driven, multi-state Motion gesture meant to be layered over a
- * `relative` surface (e.g. the unbox LineEditPanel):
- *
- *   rest      → only the top-left CORNER of the newest photo pokes from the edge
- *   fan       → on hover, the recent photos fan out (staggered spring)
- *   expand    → hold the hover (~holdMs) or click/tap → the fan flies into a
- *               bigger display over a dark-gray backdrop
- *   viewer    → click a fan card (or press Space) → the shared fullscreen
- *               {@link PhotoViewerModal} (zoom/pan, ←/→ nav, filmstrip). This is
- *               the SAME viewer the shipped/packing/receiving galleries use —
- *               there is no separate lightbox to maintain.
- *
- * Pure: give it `cards` (newest first) and it renders. Data/realtime lives in the
- * `ReceivingPhotoPeek` wrapper. It was Playwright-tested in isolation at
- * /design-demo/photo-peek until that harness was deleted (2026-08-20); it is
- * currently UNCOVERED — see docs/kill-list/01-tier1-provably-dead.md.
- */
+/** PhotoPeekFan — presentational, data-free photo "peek" gesture + Quick Look. */
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
@@ -107,10 +88,7 @@ export function PhotoPeekFan({
   const count = cards.length;
   const pendingCount = useMemo(() => cards.filter((c) => c.pending).length, [cards]);
   const peekCards = cards.slice(0, PEEK_COUNT);
-  // The expanded fan + the viewer both show ALL photos chronologically: first
-  // (oldest) on the left, newest on the right — the reverse of the newest-first
-  // peek/fan ordering. The fan card index lines up 1:1 with the gallery index
-  // for committed cards; pending tiles are not openable.
+  // The expanded fan + the viewer both show ALL photos chronologically:
   const chronoCards = useMemo(() => [...cards].reverse(), [cards]);
   const fanItems = useMemo<CardItem[]>(
     () =>
@@ -249,11 +227,7 @@ export function PhotoPeekFan({
 
   return (
     <>
-      {/* Peek — right-edge corner → fan, parked just above the floating
-          notes/send (OmnichannelComposerDock) / terminal dock band. Fixed rem
-          clearance (not %-of-pane) so Unbox / Triage / Testing stay
-          dock-adjacent instead of drifting mid-canvas on tall panes.
-          Hidden while expanded (no edge peek when the display is open). */}
+      {/* Peek — right-edge corner → fan, parked just above the floating notes/send (OmnichannelComposerDock) / terminal dock band. */}
       {!expanded ? (
         <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end">
           <motion.div
@@ -322,10 +296,7 @@ export function PhotoPeekFan({
         </div>
       ) : null}
 
-      {/* Expanded display — a full-viewport overlay portaled to <body> (like the
-          photo viewer), so the fan centers on the absolute middle of the PAGE and
-          sits above the unbox panels/sidebars — not boxed into the right pane.
-          Click backdrop / press Escape / hit × to close. Click a card → viewer. */}
+      {/* Expanded display — a full-viewport overlay portaled to <body> (like the photo viewer), so the fan centers on the absolute middle of the… */}
       {gallery.mounted && typeof document !== 'undefined'
         ? createPortal(
             <AnimatePresence>
@@ -352,12 +323,7 @@ export function PhotoPeekFan({
                     />
                   ) : null}
 
-                  {/* Fan stage — the shared GSAP card-fan carousel (hover to spread,
-                      arrows/dots to page when >7 photos). `isolate` keeps card
-                      stacking in its own context so a mid-hover card can't bleed
-                      above the viewer; `stopPropagation` keeps card/arrow clicks
-                      from closing the backdrop; pointer-events off while the viewer
-                      is up. */}
+                  {/* Fan stage — the shared GSAP card-fan carousel (hover to spread, arrows/dots to page when >7 photos). */}
                   <div
                     className={`isolate w-full ${viewerOpen ? 'pointer-events-none' : ''}`}
                     onClick={(e) => e.stopPropagation()}

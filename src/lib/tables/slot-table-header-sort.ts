@@ -1,15 +1,4 @@
-/**
- * Slot DataTable header-sort law — one chrome vocabulary, every PRODUCT_TABLES peer.
- *
- * A painted DATA track is click-to-sort. Headers that stay inert are
- * structural chrome (`select`, overflow `actions`/`action`, trailing `_fill`,
- * and `thumb` — the Image photo gutter). Freeze ≠ unsortable for facts.
- * The Image column still paints (glyph header on every PRODUCT_TABLES peer);
- * it does not offer click-to-sort. The toolbar sort dropdown lists DATA facts
- * (`queueColumnSortOptions`) so Pick / Status are selectable rows.
- *
- * Graph KEEP: `engine:slot-table-header-sort` + `engine:queueSortForColumnKey`.
- */
+/** Slot DataTable header-sort law — one chrome vocabulary, every PRODUCT_TABLES peer. */
 
 export const SLOT_TABLE_CHROME_TRACK_KEYS = [
   'select',

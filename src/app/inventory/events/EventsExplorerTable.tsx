@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * Admin › Inventory events explorer — the PAGE feed for `/inventory/events`.
- *
- * The family is already registered (`inventory-events`). This file is the
- * mount: it spreads {@link useInventoryEventsSpreadsheet} onto DataTable.
- * Filters, pagination and SQL stay on the server page.
- *
- * ## The find box is the page's `?q=`, not a pass over one offset page
- *
- * Same shape as `@/app/settings/audit/AuditLogTable`, an RSC page whose
- * search is server-answered: the box writes
- * `?q=` through {@link useOptimisticUrlParam} — so the field paints on the
- * keystroke and the table is NOT remounted mid-word — the page reads that param
- * into its SQL and its COUNT, and the rows handed back here ARE the answer.
- * Declaring `answeredBy: 'server'` is what stops the engine running its own
- * substring pass over the hundred rows in hand: that pass could only narrow the
- * server's answer, and the server is matching 8.8k events this page never holds.
- *
- * The placeholder said "Filter this page of events…" and was honest while that
- * was true. It is now a lie, so it is gone with the limitation.
- *
- * ## Why the write deletes `?page=`
- *
- * Paging here is `LIMIT 100 OFFSET page*100` over ONE ordered list, and a
- * different query text is a different list. Keeping `?page=7` across a keystroke
- * would drop the operator 700 rows into a result set that may hold three — the
- * page would paint empty under a header counting matches. Every query write
- * therefore resets to the first page.
- */
+/** Admin › Inventory events explorer — the PAGE feed for `/inventory/events`. */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -55,14 +27,7 @@ export function EventsExplorerTable({
   /** The COMMITTED query — what the rows in hand are the answer for. */
   const urlQuery = searchParams.get(QUERY_PARAM) ?? '';
 
-  /**
-   * Within-route param mutation: clone the current query string, rewrite this
-   * one key, and emit in the route's DECLARED key order so
-   * `SurfaceParamHygiene` (mounted by `app/inventory/layout.tsx`) sees a
-   * canonical URL and fires no second reordering replace. `parseRouteParams`
-   * keeps every other declared key, so the form's `event_type` / `station` /
-   * `sku` / `unit` / `actor` / `since` / `until` survive a keystroke.
-   */
+  /** Within-route param mutation: */
   const replace = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       const params = new URLSearchParams(searchParams.toString());
@@ -86,17 +51,7 @@ export function EventsExplorerTable({
     write,
   });
 
-  /**
-   * Is the server still answering the text in the box?
-   *
-   * `query` is the OPTIMISTIC value (painted the instant the operator types);
-   * `urlQuery` only catches up when the soft-replace lands, which on this
-   * `force-dynamic` page means the new rows have arrived. The gap between them
-   * is the one honest "a request for this value is in flight" the RSC path
-   * offers — there is no client fetch to ask. Compared TRIMMED because the
-   * route's `paramText` schema trims what it writes; comparing raw, a box
-   * holding a trailing space would hang the body in its loading face forever.
-   */
+  /** Is the server still answering the text in the box? */
   const searchPending = query.trim() !== urlQuery.trim();
 
   const search = useMemo<DataTableSearch>(

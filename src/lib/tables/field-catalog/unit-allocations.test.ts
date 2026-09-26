@@ -1,17 +1,4 @@
-/**
- * Unit-allocations catalog guards + resolver/adapter behaviour — Wave D's port
- * of `ByUnitView.tsx`'s allocations table off hand HTML.
- *
- * The guards that matter are the ones raw markup could not have had: that the
- * product layout is a LEGAL document against this family's own vocabulary,
- * that the mounted model is the SHARED skeleton in the engine's order, and
- * that the family is genuinely usable from BOTH allocation desks — the whole
- * reason it exists once instead of twice.
- *
- * Fixtures are the WIRE rows: `/api/serial-units/<ref>?include=full` returns
- * snake_case, and the per-SKU loader selects a different subset of the same
- * columns. A camelCase fixture would test a shape neither desk sends.
- */
+/** Unit-allocations catalog guards + resolver/adapter behaviour — Wave D's port of `ByUnitView.tsx`'s allocations table off hand HTML. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

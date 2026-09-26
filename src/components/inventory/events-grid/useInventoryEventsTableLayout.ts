@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The Inventory-events slot-layout hook — the ledger's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only (2026-09-04): the ledger paints the SAME two-line WMS
- * row as To-ship. A stored `sheet` layout would open `subtitle:N` tracks the
- * compound item cell paints inline — `paintMorph` coerces, and the org write
- * gate (`slotMorphsFor('inventory-events')`) refuses the foreign morph.
- */
+/** The Inventory-events slot-layout hook — the ledger's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   INVENTORY_EVENTS_FIELD_CATALOG,

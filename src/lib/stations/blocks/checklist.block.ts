@@ -1,14 +1,4 @@
-/**
- * Checklist block — the driving example of the station builder: a generic
- * list of rows with check/act affordances. It doesn't know which integration
- * feeds it; bind it to `po_gmail.unmatched_emails` and it's the incoming
- * email to-do, bind it to `receiving.awaiting_tracking_pos` and it's tier 2
- * of the same plan — one drag and four dropdowns, not a second component.
- *
- * Variants live in configSchema, not as sibling block types:
- *   check_only   — manual tick, no required action
- *   check_act    — a row completes when its done_when action succeeds
- */
+/** Checklist block — the driving example of the station builder: */
 
 import { registerBlock } from './registry';
 

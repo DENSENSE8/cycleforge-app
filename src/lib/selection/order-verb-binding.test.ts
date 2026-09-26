@@ -1,18 +1,4 @@
-/**
- * Verbs bind to FIELDS, not to lanes — the mechanical half.
- *
- * `TABLE_ENGINE_LAW.verbsBindToFields`. This is the proof that replaces the
- * deleted `orderBulkActionKeys` assertions: what a surface offers is no longer
- * a list to compare against, it is the family catalog filtered by the facts the
- * rows resolve, with each verb's direction read off the row.
- *
- * The rows below are the two REAL shapes the outbound feeds broadcast — a
- * To-ship `ShippedOrder` (nothing packed, nothing scanned out) and a Shipped
- * `PackerRecord` (packed, SHIP_CONFIRM stamped, carrier in custody). One verb
- * declaration has to answer both, in opposite directions, with no lane input
- * anywhere in this file: there is no `orderView`, no route and no key list to
- * pass in, because there is nowhere left to pass one.
- */
+/** Verbs bind to FIELDS, not to lanes — the mechanical half. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -14,12 +14,7 @@ import { FnskuSearchModal } from './shipment-editor/FnskuSearchModal';
 
 export type { FbaShipmentEditorFormProps } from './shipment-editor/shipment-editor-helpers';
 
-/**
- * FBA shipment editor — thin composition shell. All editor state, the multi-step
- * save, undo, FNSKU search/add, bundle CRUD, and drag-and-drop live in
- * {@link useShipmentEditor}; the drop zone + FNSKU modal are presentational
- * components under `./shipment-editor/`.
- */
+/** FBA shipment editor — thin composition shell. */
 export function FbaShipmentEditorForm(props: FbaShipmentEditorFormProps) {
   const { shipment, stationTheme = 'green', onClose } = props;
   const c = useShipmentEditor(props);

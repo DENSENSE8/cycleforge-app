@@ -1,23 +1,4 @@
-/**
- * Kiosk binding self-heal — the runtime answer to "remove the concept of the
- * kiosk unpairing".
- *
- * A paired tablet used to dead-end silently: if the `cf_kiosk` cookie was lost
- * or the device row revoked mid-shift (settings churn, E2E sweeps, cookie
- * eviction), every kiosk API answered `401 KIOSK_UNPAIRED` and the surface
- * just stopped updating — no path back but a manual reload. The operator
- * ruling is that a counter tablet must never strand: the binding heals
- * itself, in place.
- *
- * ONE chokepoint per failure: any kiosk fetch that sees a 401 calls
- * {@link healKioskBinding} and retries once. The heal is a singleton with a
- * cool-down, so a stampede of failing polls (3s session poll + catalog +
- * realtime token) triggers exactly one re-bind, not one per caller.
- *
- * Dogfood note: the re-bind posts the dev autopair route (org #1). A
- * production tenant replaces this single call with its enrollment path —
- * the retry-around-it contract stays identical.
- */
+/** Kiosk binding self-heal — the runtime answer to "remove the concept of the kiosk unpairing". */
 
 'use client';
 
@@ -50,23 +31,7 @@ export async function healKioskBinding(): Promise<boolean> {
   return healing;
 }
 
-/**
- * A kiosk fetch that self-heals one 401 and retries once.
- *
- * This is THE fetch for every device-authed kiosk path — polls
- * (`/api/kiosk/session`), catalog reads and counter writes alike. Production
- * keeps `withKioskAuth`'s 401 enrollment contract (no server-side re-bind), so
- * on a production dogfood tablet this retry is the ONLY thing between a lost
- * cookie and a dead screen.
- *
- * Retrying a POST is safe: `withKioskAuth` answers 401 BEFORE the handler runs,
- * so the refused call wrote nothing.
- *
- * Non-kiosk URLs pass straight through. A 401 from `/api/repair/...` means the
- * STAFF session expired, and re-binding a device would be answering a question
- * nobody asked — this matters because shared pickers (`ProductSelector`) point
- * at the staff routes or the kiosk twins depending on who mounted them.
- */
+/** A kiosk fetch that self-heals one 401 and retries once. */
 export async function kioskFetchHealed(
   input: string,
   init?: RequestInit,

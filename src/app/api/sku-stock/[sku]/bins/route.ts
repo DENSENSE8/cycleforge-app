@@ -3,13 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { getBinLocationsBySku } from '@/lib/neon/location-queries';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 
-/**
- * GET /api/sku-stock/:sku/bins
- *
- * Reverse lookup: given a SKU, return every bin currently holding it.
- * Powers the "where is this product" surface and the SKU detail panel's
- * location section.
- */
+/** GET /api/sku-stock/:sku/bins */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ sku: string }> },

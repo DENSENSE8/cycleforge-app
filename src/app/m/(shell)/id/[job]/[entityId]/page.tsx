@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Generic tenant JobFace — `/m/id/[job]/[entityId]`.
- *
- * House jobs (`scan-out`, `pick`) keep their more-specific routes. This page
- * loads GET `/api/identification/jobs/[jobId]` and mounts IdentificationJobFace.
- * Unknown published id → miss. No per-tenant `*-face.ts`.
- */
+/** Generic tenant JobFace — `/m/id/[job]/[entityId]`. */
 
 import { useEffect, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';

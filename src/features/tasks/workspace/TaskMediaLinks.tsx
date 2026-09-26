@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Media by LINK inside the task's Media section: paste an unlisted YouTube /
- * Vimeo / Loom / Drive link or a direct image / video file, and it plays or
- * shows in place — no download, no re-upload. Every link is editable (URL
- * and caption), openable at its source and removable: full CRUD.
- *
- * The field previews what the SERVER will store: it runs the same
- * `parseMediaLink` the route stores with, so "YouTube video" under the field
- * is the answer, not a guess.
- */
+/** Media by LINK inside the task's Media section: */
 
 import { useState } from 'react';
 import Image from 'next/image';

@@ -1,10 +1,4 @@
-/**
- *   npx tsx --test src/lib/orders-sync/run-steps.test.ts
- *
- * Drives the shipped ledger fold with the event sequences the REAL emitters
- * produce, including the two that break a naive fold: a phase that repeats
- * (bare, then counted), and a lane that finishes having never touched a step.
- */
+/** npx tsx --test src/lib/orders-sync/run-steps.test.ts */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

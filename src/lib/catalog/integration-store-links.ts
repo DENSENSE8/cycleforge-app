@@ -1,17 +1,4 @@
-/**
- * Aggregator store → catalog placement (`integration_store_links`, migration
- * 2026-09-25_integration_store_links.sql).
- *
- * A ShipStation store sells on ONE existing platform and, optionally, as one
- * of that platform's existing storefront accounts (eBay Dragonhn → eBay ·
- * DRAGON). The link is the single answer to "where does this store's order
- * go": the connector's attribution reads it, the store mirror never creates a
- * platform or account for a linked store, and the order platform picker lists
- * an account only when a store is linked to it.
- *
- * Not `platform_accounts.integration_scope`: an eBay account's scope already
- * holds its eBay vault scope, read by the eBay credential lookup.
- */
+/** Aggregator store → catalog placement (`integration_store_links`, migration 2026-09-25_integration_store_links.sql). */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

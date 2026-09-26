@@ -1,15 +1,4 @@
-/**
- * ops_events CHECK ⇄ code drift-guard (DB-free).
- *
- * The `ops_events.entity_type` CHECK (migration 2026-07-06) is a deploy-time
- * vocabulary that MUST stay byte-identical with the code source of truth
- * `OPS_EVENT_ENTITY_TYPES`, and must cover every value the two live writers can
- * emit — otherwise a CHECK could reject a live write (the worst kind of
- * regression, per the plan's Phase 0 gate). This pins all three together so
- * they can never drift silently (same idea as surfaces/registry.test.ts).
- *
- * Run: npm run test:ops-events
- */
+/** ops_events CHECK ⇄ code drift-guard (DB-free). */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,14 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 
-/**
- * Cache surgery for optimistic writes. `useOptimisticMutation` is the call
- * site; these helpers are the part a test can drive without React.
- *
- * Snapshot → patch → (on failure) restore. Default is one exact key.
- * `match: 'prefix'` patches every live query whose key starts with `queryKey`
- * — parameterized list caches (orders assign). Station-shaped prefix surgery
- * still lives in station-cache-patch.
- */
+/** Cache surgery for optimistic writes. */
 
 export type OptimisticCache<TVars, TCached = unknown> = {
   queryKey: readonly unknown[];

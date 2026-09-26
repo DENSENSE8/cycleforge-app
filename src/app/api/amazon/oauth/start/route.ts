@@ -7,15 +7,7 @@ import { SELLERCENTRAL_HOSTS, isAmazonRegion, type AmazonRegion } from '@/lib/am
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/amazon/oauth/start
- *
- * Multi-tenant connect: redirects the owner to Amazon's Seller Central consent
- * screen. Tenant identity travels in an encrypted (tamper-proof) `state` so the
- * callback — hit by Amazon's server-side redirect without our cookies — can
- * recover the org. Amazon redirects back to the app's configured OAuth Redirect
- * URI with `spapi_oauth_code` + `selling_partner_id`.
- */
+/** GET /api/amazon/oauth/start */
 export const GET = withAuth(async (req, ctx) => {
   // Plan ceiling: connecting a NEW provider must fit the org's maxIntegrations.
   const refusal = await assertCanConnectProvider(ctx.organizationId, 'amazon');

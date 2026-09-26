@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Page-level overlays for the tech dashboard: repair details + testing claim
- * modal + testing assign picker. Carton "look" navigates to `/carton/[id]`
- * (decision 2a) — editable ReceivingDetailsStack is no longer mounted from the
- * inbound feed.
- */
+/** Page-level overlays for the tech dashboard: */
 
 import { AnimatePresence } from '@/design-system/motion';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';

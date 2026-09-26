@@ -1,36 +1,6 @@
 /**
  * The **Daily agenda** row — one table, two stores, banded by TYPE.
- *
  * Operator 2026-09-22: *"consolidate the tasks into one display just under a
- * type, like type daily checklist and type task."*
- *
- * Daily used to answer its question in two tabs, and a tab is a place you have
- * to already be. What is on my plate today is ONE list: the org's shift
- * checklist and the work a colleague handed me, in one scan, with a band
- * saying which is which. The two stores stay separate — they have genuinely
- * different grains — and only the DISPLAY is merged.
- *
- * | Band | Store | Grain |
- * |---|---|---|
- * | Daily checklist | `daily_check_items` + `daily_check_marks` | per-day attestation, roster denominator, cadence |
- * | Task | `work_assignments` `work_type = 'FOLLOW_UP'` | an assignment with an assigner, a deadline and a priority |
- *
- * ## Why a union row and not two tables stacked
- *
- * Two tables is two column models, two sort vocabularies, two search boxes and
- * two empty states on one page — the fork the one-table law exists to refuse.
- * One binding means one header click sorts the whole agenda and one search box
- * matches both halves.
- *
- * ## Absent facts are NULL, and that is the honest answer
- *
- * A checklist item has no deadline and a task has no roster denominator.
- * Neither side borrows the other's fact to fill a cell: the resolver returns
- * null and the cell dashes, exactly as the compound `fulfillment` track dashes
- * on a family with no order.
- *
- * Pure and dependency-free apart from the task vocabulary, so a client picker
- * imports it without dragging a write path into the browser bundle.
  */
 
 import {
@@ -56,27 +26,14 @@ export const DAILY_AGENDA_TYPE_LABEL: Readonly<Record<DailyAgendaType, string>> 
   ticket: 'Ticket',
 };
 
-/**
- * Band order: the checklist leads, and the helpdesk lands last.
- *
- * The checklist is the thing every staffer runs at the start of a shift and
- * the thing the page is named after; an assignment is the exception that
- * arrived. Ordering by volume would put whichever band happened to be busier
- * on top and move the list under the operator day to day.
- */
+/** Band order: the checklist leads, and the helpdesk lands last. */
 export const DAILY_AGENDA_BAND_ORDER: readonly DailyAgendaType[] = [
   'checklist',
   'task',
   'ticket',
 ];
 
-/**
- * One agenda row.
- *
- * `key` — not `id` — is the row identity: two stores number their rows
- * independently, so `daily_check_items.id = 7` and `work_assignments.id = 7`
- * would collide into one React key and one selection entry.
- */
+/** One agenda row. */
 export interface DailyAgendaRow {
   /** `<type>:<id>`. The table's row id; never a bare numeric id. */
   key: string;
@@ -139,13 +96,7 @@ export interface DailyAgendaRow {
   hasTicket: boolean;
 }
 
-/**
- * The checklist facts this module reads, declared STRUCTURALLY.
- *
- * `DailyTaskRow` lives in a feature directory and this module is `src/lib`;
- * importing it would be a boundary crossing for a shape, so the shape is named
- * here and the feature's row satisfies it by structure.
- */
+/** The checklist facts this module reads, declared STRUCTURALLY. */
 export interface ChecklistAgendaSource {
   id: number;
   title: string;
@@ -205,13 +156,7 @@ export function dailyAgendaFromChecklist(item: ChecklistAgendaSource): DailyAgen
   };
 }
 
-/**
- * Both work bands come from ONE store. `work_assignments` `FOLLOW_UP` is the
- * only place a handed-over job lives; what the TYPE says is which record it
- * points at, and a helpdesk thread is a different job from a carton — it is
- * answered, not walked to. Splitting the store to split the band would have
- * been a second task system, which is exactly what this page consolidated.
- */
+/** Both work bands come from ONE store. */
 export function dailyAgendaFromTask(row: TaskDeskRow): DailyAgendaRow {
   const type: DailyAgendaType = row.entityType === 'support_ticket' ? 'ticket' : 'task';
   return {
@@ -251,14 +196,7 @@ export function dailyAgendaFromTask(row: TaskDeskRow): DailyAgendaRow {
   };
 }
 
-/**
- * Agenda order WITHIN a band — the bands themselves are ordered by
- * {@link DAILY_AGENDA_BAND_ORDER}.
- *
- * Checklist rows keep the staffer's own `sortOrder`; tasks lead with the
- * urgent ones and then the nearest deadline. A dateless task sorts after every
- * dated peer at the same urgency, because nobody promised a day for it.
- */
+/** Agenda order WITHIN a band — the bands themselves are ordered by {@link DAILY_AGENDA_BAND_ORDER}. */
 export function sortDailyAgendaRows(rows: readonly DailyAgendaRow[]): DailyAgendaRow[] {
   return [...rows].sort((a, b) => {
     if (a.type !== b.type) {
@@ -277,13 +215,7 @@ export function sortDailyAgendaRows(rows: readonly DailyAgendaRow[]): DailyAgend
   });
 }
 
-/**
- * The bands a surface hands {@link DataTable}, as `[bandKey, rows][]`.
- *
- * A band with no rows is DROPPED, not painted empty: a "Task" caption over
- * nothing asserts that there is a section to look at. The engine's own empty
- * message covers the case where both are empty.
- */
+/** The bands a surface hands {@link DataTable}, as `[bandKey, rows][]`. */
 export function bandDailyAgendaRows(
   rows: readonly DailyAgendaRow[],
 ): Array<[DailyAgendaType, DailyAgendaRow[]]> {
@@ -292,15 +224,7 @@ export function bandDailyAgendaRows(
   ).filter(([, banded]) => banded.length > 0);
 }
 
-/**
- * Is this row WORK handed to a person?
- *
- * Task and Ticket are two bands over ONE store (`work_assignments`
- * `FOLLOW_UP`), so everything that belongs to that store belongs to both: a
- * status, a deadline, a record plane, and an `id` in that store's numbering.
- * Surfaces ask this instead of testing `type === 'task'`, which was true of
- * every work row until the ticket band existed and silently stopped being so.
- */
+/** Is this row WORK handed to a person? */
 export function isDailyAgendaWork(row: Pick<DailyAgendaRow, 'type'>): boolean {
   return row.type !== 'checklist';
 }

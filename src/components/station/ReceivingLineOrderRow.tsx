@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * A single receiving line rendered as a dashboard-style order row. Built from
- * the shared RowTitle / RowMetaColumns / ReceivingIdentityChips primitives so it
- * lines up with the collapsed PO summary. History Unbox/Triage meta clocks use
- * the same `formatOpsStageTime` + `MetaFactSlot` language as OrdersQueue.
- */
+/** A single receiving line rendered as a dashboard-style order row. */
 
 import { Check } from '@/components/Icons';
 import {
@@ -266,10 +261,7 @@ export function ReceivingLineOrderRow({
                   reserve
                 />
               </span>
-              {/* Workflow status icon: shown in the active receive workspace,
-                  hidden in History (received is implied; EXPECTED doesn't apply
-                  since unfound is still received) and in Incoming. This also
-                  drops the testing verdict (FAILED box) from the unbox history. */}
+              {/* Workflow status icon: */}
               {shouldShowWorkflowStatusIcon({ isHistory, isIncoming }) ? (
                 <IconWithTooltip
                   Icon={WorkflowIcon}

@@ -12,16 +12,7 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * GET /api/cron/sourcing/scan  (Vercel cron, daily)
- *
- * Runs runSourcingScanJob — turns lifecycle + stock conditions into the
- * sourcing_alerts auto-flag queue and resolves cleared alerts — then the
- * demand collectors (missing-parts / repair / warranty / pending-SKU /
- * replenishment shortfall) behind a per-org size guard (DEMAND_CAP_PER_ORG;
- * dropped counts are logged + returned, never silent). Both halves are
- * idempotent (live partial unique indexes), so re-running is safe.
- */
+/** GET /api/cron/sourcing/scan (Vercel cron, daily) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {

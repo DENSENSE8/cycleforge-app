@@ -1,22 +1,4 @@
-/**
- * `PartCompatibilityEdgeRow → CompoundRowView` — pure, strings and enums, no
- * JSX.
- *
- * The family's ONLY contribution to how an edge row paints. Every fact it does
- * not name here is a bound SLOT and comes from
- * `part-compatibility-resolve.ts` through the engine.
- *
- * The desk's six cells, as one compound row:
- *   · identity  — the part's SKU (the retired Part cell's second line)
- *   · title     — the part, linked to its catalog page
- *   · subtitle  — the MODEL this part fits, painted by the bound `model`
- *   · state     — the FIT pill, without the `OEM ` prefix it used to carry
- *   · dates     — Hash (start) = when the edge was linked
- *   · status:1…4 — Model # · Role · OEM · Source
- *
- * There is no money, no deadline and no photo on a compatibility claim; all
- * three stay null and the shared cells paint the honest empty face.
- */
+/** `PartCompatibilityEdgeRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -67,10 +49,8 @@ export function partCompatibilityCompoundView(row: PartCompatibilityEdgeRow): Co
     // FALLBACK line only — the product layout binds `model` as the subtitle,
     // and a bound subtitle replaces this. Says what the edge is FOR.
     note: model ? `Fits ${model}` : null,
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(sku, 'SKU'),
     orderId: null,
     tracking: null,

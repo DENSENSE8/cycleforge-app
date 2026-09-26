@@ -1,24 +1,4 @@
-/**
- * First-pass order-number extraction from PO email text.
- *
- * Deterministic regex matching — fast, free, and gives us a baseline to
- * eyeball against real vendor emails before we layer LLM extraction on
- * top. The LLM pass will handle line-items, prices, and vendor name
- * normalization; this just grabs PO/order numbers so the reconciler
- * has something to diff against the Zoho mirror.
- *
- * Strategy:
- *   - Run multiple patterns, each capturing a candidate
- *   - Normalize (uppercase, strip surrounding punctuation)
- *   - Dedupe, preserving first-seen order
- *   - Reject obvious noise (pure digits ≤ 3 chars, words like "PO Box")
- *
- * Patterns are intentionally permissive — false positives are cheap (the
- * reconciler just shrugs at them, since the DB lookup returns nothing
- * AND the Zoho mirror returns nothing → row lands in the "missing" pane
- * where a human eyeballs it). False *negatives* are expensive — a real
- * PO that we miss never gets reconciled. So we bias toward recall.
- */
+/** First-pass order-number extraction from PO email text. */
 
 // Labeled patterns first (more specific → higher confidence). Each must
 // have exactly one capture group containing the candidate.
@@ -77,19 +57,7 @@ export interface ExtractedOrderNumbers {
   all: string[];
 }
 
-// ─── Tracking number extraction ───────────────────────────────────────────
-// Closes the "vendor emailed tracking before / instead of Zoho `reference_number`
-// getting populated" gap. The Incoming view's `AWAITING_TRACKING` bucket
-// drains as soon as these stamp shipment_id on the matched receiving row.
-//
-// Patterns are deliberately conservative — false positives create phantom
-// shipments and pollute the carrier-poll queue. Each pattern matches a
-// carrier-specific format with explicit length + character constraints:
-//
-//   UPS:    1Z + 16 alphanumerics                                  (18 total)
-//   FedEx:  12, 14, 15, 20, or 22 digits (multiple service types)
-//   USPS:   20-22 digits, optionally prefixed by 92/93/94/95
-//   DHL:    10 digits OR JD + 10 digits
+// ─── Tracking number extraction ─────────────────────────────────────────── Closes the "vendor emailed tracking before / instead of Zoho…
 const TRACKING_PATTERNS: ReadonlyArray<{ carrier: string; re: RegExp }> = [
   { carrier: 'UPS',   re: /\b(1Z[0-9A-Z]{16})\b/g },
   // FedEx 12-digit + 14/15/20/22 digit variants. Anchored on word boundary
@@ -103,12 +71,7 @@ const TRACKING_PATTERNS: ReadonlyArray<{ carrier: string; re: RegExp }> = [
   { carrier: 'DHL',   re: /\b(JD\d{10}|\d{10})\b/g },
 ];
 
-/**
- * Pull carrier tracking numbers out of a vendor email body. Dedupes across
- * patterns (UPS first because it's the most distinctive). Returns the raw
- * extracted strings — `registerShipmentPermissive` will normalize and
- * carrier-detect them downstream.
- */
+/** Pull carrier tracking numbers out of a vendor email body. */
 export function extractTrackingNumbers(text: string): string[] {
   if (!text) return [];
   const seen = new Set<string>();
@@ -124,14 +87,7 @@ export function extractTrackingNumbers(text: string): string[] {
   return Array.from(seen);
 }
 
-/**
- * True when an email subject signals a delivery ("ORDER DELIVERED"). eBay's
- * delivery notifications phrase this a few ways ("Your order was delivered",
- * "Order delivered", "Delivered: …"), so we require both tokens rather than an
- * exact phrase — order# extraction from the body is what actually anchors the
- * match, so a loose subject gate is safe (a non-delivery email with both words
- * just yields no new delivery signal once its order# is already scanned).
- */
+/** True when an email subject signals a delivery ("ORDER DELIVERED"). */
 export function isOrderDeliveredSubject(subject: string | null | undefined): boolean {
   if (!subject) return false;
   const s = subject.toLowerCase();

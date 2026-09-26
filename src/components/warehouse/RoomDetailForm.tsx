@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Right-pane room form for /warehouse?tab=rooms.
- *
- * Driven by URL state:
- *   • `?room=<name>` — show + edit an existing room
- *   • `?new=1`       — show the create form
- *   • neither        — empty state with a CTA
- *
- * Replaces the old RoomsBoard. The room *list* now lives in the sidebar
- * (RoomsSidebarList); this surface focuses on a single room's form fields,
- * live bin stats, and the destructive/edit actions for that room.
- *
- * Thin composition shell: URL state + data + mutations live in
- * {@link useRoomDetailForm}; the empty state + edit form are presentational
- * components under `./room-detail/`.
- */
+/** Right-pane room form for /warehouse?tab=rooms. */
 
 import { useRoomDetailForm } from './room-detail/useRoomDetailForm';
 import { EmptyState } from './room-detail/RoomDetailPieces';

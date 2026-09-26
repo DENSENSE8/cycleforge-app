@@ -7,13 +7,7 @@ import {
 // Re-export canonical implementations from tracking-format.ts
 export { normalizeTrackingNumber };
 
-// ─── Shared delivered text-fallback (carrier-agnostic) ───────────────────────
-// One place that knows what "delivered" reads like across carriers, so the
-// per-carrier text fallbacks stay in lock-step (Phase A3). A delivery the
-// carrier phrases without the literal word "delivered" — "Left at front door",
-// "Received by", picked up from a locker — must still map to DELIVERED, because
-// the delivered signal is derived from *any* event in the log (Phase A1) and a
-// missed mapping here means a delivered box never surfaces in the tile.
+// ─── Shared delivered text-fallback (carrier-agnostic) ─────────────────────── One place that knows what "delivered" reads like across…
 const DELIVERED_TEXT_MARKERS = [
   'DELIVERED',
   'LEFT AT',
@@ -222,10 +216,7 @@ function normalizeFedExByText(description: string): NormalizedShipmentStatus {
   if (text.includes('PICKED UP') || text.includes('ACCEPTED')) return 'ACCEPTED';
   if (text.includes('RETURN')) return 'RETURNED';
   if (text.includes('EXCEPTION') || text.includes('DELAY') || text.includes('HELD')) return 'EXCEPTION';
-  // IN_TRANSIT cluster — added: ON THE WAY, DEPARTED, DELIVERY UPDATED.
-  // Empirically the FedEx track API returns these as latestStatusDetail
-  // .statusByLocale + .description when packages are mid-route. Missing
-  // these labels was sending 11+ active FedEx shipments to UNKNOWN.
+  // IN_TRANSIT cluster — added:
   if (
     text.includes('IN TRANSIT') ||
     text.includes('AT LOCAL FEDEX FACILITY') ||
@@ -248,10 +239,7 @@ export function computeNextCheckAt(
   if (status === 'DELIVERED') return null;
 
   const baseOffsets: Record<NormalizedShipmentStatus, number> = {
-    // FedEx push (webhook subscription) is the primary freshness source; this
-    // poll is the fallback / missed-event recovery path. Kept at 2h (was 8h) so
-    // a label-created shipment that isn't yet webhook-subscribed — or whose
-    // events we miss — doesn't sit visibly stale for the better part of a day.
+    // FedEx push (webhook subscription) is the primary freshness source; this poll is the fallback / missed-event recovery path.
     LABEL_CREATED: 2 * 60 * 60 * 1000,
     ACCEPTED: 4 * 60 * 60 * 1000,
     IN_TRANSIT: 2 * 60 * 60 * 1000,

@@ -1,34 +1,4 @@
-/**
- * applyTransition — the unified mutate-and-tap chokepoint (engine Phase 1.1).
- *
- * UNIFIED-ENGINE-MASTER-PLAN §1.1: collapse the "load → decide → guard → write
- * status → record event → tap the engine" shotgun (repeated across ~26 domain
- * handlers) into ONE helper. A domain handler becomes a pure decision fn that
- * picks `{ to, eventType, … }`; applyTransition owns the rest.
- *
- * It does NOT reinvent the guarded writer — it COMPOSES the two pieces that
- * already exist:
- *
- *   transition()   (src/lib/inventory/state-machine.ts)
- *     → FOR UPDATE lock · guard(from→to) · UPDATE serial_units · recordInventoryEvent,
- *       all atomic + org-aware (GUC-wrapped when orgId is passed).
- *   tapWorkflow()  (src/lib/workflow/tap.ts)
- *     → fire-and-forget engine observe: advances the unit's graph position.
- *
- * Idempotency: re-entering the SAME transition (unit already at `to`) is NOT an
- * error — transition() rejects it as an 'identity transition', so we record the
- * inventory event anyway (client_event_id de-dupes a true retry) and still tap,
- * mirroring the legacy hand-rolled paths that skipped the UPDATE but kept the
- * audit + engine signal. The result carries `idempotent: true` for that case.
- *
- * Reversibility/audit: every successful call writes exactly one inventory_event
- * (+ one workflow_runs row via the tap), and serial_units.current_status and the
- * graph position stay coherent. Guard rejections surface as { ok:false, 409 }.
- *
- * Collaborators are injected (defaulting to the real impls) so this is unit
- * testable with in-memory fakes — see applyTransition.test.ts, the same pattern
- * advanceItem() uses.
- */
+/** applyTransition — the unified mutate-and-tap chokepoint (engine Phase 1.1). */
 
 import { transition } from '@/lib/inventory/state-machine';
 import type { SerialState } from '@/lib/inventory/state-machine';
@@ -72,22 +42,11 @@ export interface ApplyTransitionArgs {
   /** Reject if the unit drifted from this state (optimistic concurrency). */
   expectedFrom?: SerialState;
 
-  /**
-   * Tenant id — REQUIRED. Scopes the status write, stamps the event, and
-   * enrolls the tap. Was optional with a `?? DOGFOOD_ORG_ID` fallback in
-   * `defaultDeps.recordEvent`, so an org-less call wrote a real transition and
-   * filed the audit row under the dogfood tenant.
-   */
+  /** Tenant id — REQUIRED. */
   orgId: OrgId;
   /** Who/what triggered this (defaults to 'manual'). */
   source?: WorkflowTapArgs['source'];
-  /**
-   * Suppress the engine tap (still does the guarded status write + atomic
-   * inventory_event + idempotent-identity handling). For call sites that mutate
-   * a unit's status but are NOT the canonical driver of its graph position —
-   * e.g. the receiving line-status route, whose test pass/fail is already
-   * tapped by recordTestVerdict, so a second tap would be redundant.
-   */
+  /** Suppress the engine tap (still does the guarded status write + atomic inventory_event + idempotent-identity handling). */
   skipTap?: boolean;
 }
 
@@ -149,13 +108,7 @@ export async function applyTransition(
     return { ok: true, status: 200, from: result.from, to: result.to, eventId: result.eventId, idempotent: false };
   }
 
-  // 2. Identity (unit already at `to`) → idempotent re-entry. transition()
-  //    classifies from===to as an 'identity transition' (409). We only treat it
-  //    as a re-entry when the caller did NOT request optimistic concurrency:
-  //    transition() runs the expectedFrom drift check BEFORE the guard's identity
-  //    check, so with expectedFrom a 409 (even one where from===to) is a drift
-  //    rejection the caller asked to fail on, not an idempotent re-entry. Record
-  //    the event (client_event_id de-dupes a true retry) and still tap.
+  // 2. Identity (unit already at `to`) → idempotent re-entry.
   if (args.expectedFrom === undefined && result.status === 409 && result.from === args.to) {
     const event = await deps.recordEvent(
       {

@@ -1,47 +1,4 @@
-/**
- * OpenLineage facets over the station/procedure declarations.
- *
- * Pure and client-safe. The smallest phase of the interop lane and the highest
- * leverage: the lineage is ALREADY declared on `ProcedureStep.reads` /
- * `.writes`, and `data-lineage.guard.test.ts` already verifies those
- * declarations against the SQL that actually runs. All that was missing was a
- * shape anyone outside this repo could read — until now it was legible only to
- * the Studio Procedure lens.
- *
- * ## Table-level, and staying that way
- *
- * `data-lineage.guard.test.ts` chose table-level lineage on purpose, and its
- * docblock argues the case at length: column lineage needs a real SQL parser,
- * and a parser that fails open recreates the untrusted map the guard exists to
- * prevent. The industry agrees — dbt's native lineage is table-level, and
- * OpenLineage keeps column lineage an OPTIONAL facet a producer may simply
- * omit. So this emits `columnLineage` never, not `columnLineage: {}`.
- *
- * Do not "upgrade" this to column level. The guard that makes these
- * declarations trustworthy only checks tables; emitting columns would publish
- * a precision nothing verifies.
- *
- * ## Custom facets MUST carry a distinct prefix
- *
- * OpenLineage's extensibility rules are explicit: a custom facet is named
- * `{prefix}{name}{entity}Facet` in PascalCase and keyed `{prefix}_{name}` in
- * snake_case. A facet without a prefix collides with the standard set — and
- * the standard set grows, so today's unprefixed name is tomorrow's conflict.
- * Everything here is prefixed `cycleforge`.
- *
- * ## `_schemaURL` must be IMMUTABLE
- *
- * A branch URL is not a schema pointer: `…/main/facet.json` means "whatever
- * that file says today", so a consumer that stored an event last year cannot
- * recover the shape it was produced against. OpenLineage requires a pinned,
- * immutable location — a git SHA. {@link FACET_SCHEMA_COMMIT} is that pin, and
- * `lineage-facets.test.ts` fails on anything that is not a full 40-hex SHA
- * (branch names, `HEAD`, short SHAs included).
- *
- * **Bump the pin when a facet's SHAPE changes, and only then.** It identifies
- * the schema version, not the current commit — re-pinning it on every unrelated
- * push would make every previously-emitted `_schemaURL` a lie by omission.
- */
+/** OpenLineage facets over the station/procedure declarations. */
 
 import type { TableRef } from '@/lib/stations/contract';
 import type { ProcedureDefinition, ProcedureStep } from '@/lib/stations/procedure';
@@ -84,14 +41,7 @@ export interface LineageDataset {
   facets?: Record<string, unknown>;
 }
 
-/**
- * The dataset namespace for this product's Postgres relations.
- *
- * OpenLineage's naming convention for a database dataset is
- * `{scheme}://{host}/{database}`; a tenant's physical host is not something to
- * publish, so the namespace is logical and stable. It identifies "a Cycle
- * Forge relation" without disclosing infrastructure.
- */
+/** The dataset namespace for this product's Postgres relations. */
 export const LINEAGE_NAMESPACE = 'cycleforge://postgres';
 
 /** A declared table reference becomes a dataset. */
@@ -108,25 +58,14 @@ export function datasetFor(ref: TableRef): LineageDataset {
   return ds;
 }
 
-/**
- * The `cycleforge_procedure` JOB facet — what this step IS to an operator.
- *
- * A job facet rather than a run facet because it describes the step's
- * definition, which is the same on every execution. Run facets are for
- * per-execution facts, and a projection of a static declaration has none.
- */
+/** The `cycleforge_procedure` JOB facet — what this step IS to an operator. */
 export interface CycleforgeProcedureJobFacet extends BaseFacet {
   surface: string;
   stepKey: string;
   label: string;
   summary: string;
   phase: string;
-  /**
-   * True when the station registry drives the step; false when it is
-   * hand-coded UI over a hand-coded route. Published because it tells a
-   * consumer how much of this map is machine-verified declaration versus
-   * hand-maintained claim.
-   */
+  /** True when the station registry drives the step; false when it is hand-coded UI over a hand-coded route. */
   composed: boolean;
   endpoint?: { method: string; path: string };
   sourceIds?: string[];
@@ -142,16 +81,7 @@ export interface LineageJob {
 
 export const LINEAGE_JOB_NAMESPACE = 'cycleforge';
 
-/**
- * Project one procedure step into an OpenLineage job.
- *
- * Returns `null` for a step that declares no lineage at all. A composed step
- * INHERITS its lineage from the registered source/action it binds
- * (`ProcedureStep.reads`/`.writes` are documented as "omit on a composed step
- * — inherited"), so emitting an empty job for one would publish a node that
- * appears to touch nothing — the phantom edge `data-lineage.guard.test.ts`
- * rejects in the other direction.
- */
+/** Project one procedure step into an OpenLineage job. */
 export function jobForStep(
   procedure: ProcedureDefinition,
   step: ProcedureStep,

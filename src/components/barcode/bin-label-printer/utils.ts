@@ -8,13 +8,7 @@ interface PartialSegments {
   position?: number;
 }
 
-/**
- * Build a placeholder-padded location code from partial segments.
- *
- * Placeholder hyphens match the *width* of the segment they replace (two for
- * pad2, one for noPad) so the unfilled label code visually aligns with its
- * filled counterpart — `A-01-01-1-01` ↔ `?---------`.
- */
+/** Build a placeholder-padded location code from partial segments. */
 export function partialCode(s: PartialSegments): string {
   const parts: string[] = [];
   parts.push(s.zone ?? '?');

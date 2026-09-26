@@ -51,18 +51,7 @@ const CreateBody = z
     }
   });
 
-/**
- * POST /api/daily-checks/items — append an item to the daily list.
- *
- * Live from TODAY (warehouse civil day), never retroactively: back-dating
- * `effective_from` would make yesterday's report show a missed item that did
- * not exist when the shift ran. A `once` item additionally closes its window
- * tomorrow (same statement), so it is gone from the list without a sweep job.
- *
- * Audited — unlike the per-day ticks. Changing the LIST changes what every
- * future report measures, and it is rare, so it earns an audit row; a tick is
- * already attributed by the mark itself.
- */
+/** POST /api/daily-checks/items — append an item to the daily list. */
 export const POST = withAuth(
   async (request, ctx) => {
     const parsed = CreateBody.safeParse(await request.json().catch(() => null));
@@ -130,12 +119,7 @@ export const POST = withAuth(
   { permission: 'admin.manage_staff' },
 );
 
-/**
- * Every field optional, at least one present. `dueTime: null` clears the due
- * time AND its reminder; an offset with `dueTime: null` in the same body is a
- * contradiction and refused here, while an offset on an item whose STORED due
- * time is null is refused by the named CHECK (see `updateDailyCheckItem`).
- */
+/** Every field optional, at least one present. */
 const UpdateBody = z
   .object({
     title: z.string().trim().min(1).max(200).optional(),
@@ -158,26 +142,7 @@ const UpdateBody = z
     }
   });
 
-/**
- * PATCH /api/daily-checks/items?id=123 — correct a live item's title, and/or
- * set its due time and reminder.
- *
- * NOT cadence or owner. `kind` and `assignedStaffId` feed the per-staff
- * denominator in `buildDailyCheckReport`, so editing them re-does the
- * arithmetic of every past report, not just its wording; the correction verb
- * for those is retire + add. A title, by contrast, is not versioned on
- * purpose — the marks keep pointing at the same item id, and the audit row
- * below is how a manager sees that last month's wording changed. A due time
- * only moves when the item rings.
- *
- * Audited with BEFORE and AFTER of exactly the fields sent, which is the whole
- * point of auditing an edit: the action alone says nothing a reader can act on.
- *
- * "Live" is the item's WINDOW on today's civil day, not `retired_at IS NULL` —
- * a `once` item is born already carrying tomorrow's `retired_at`, so the
- * null-check spelled in the handoff would 404 every one-off, which is every row
- * the phone's Ticket face writes.
- */
+/** PATCH /api/daily-checks/items?id=123 — correct a live item's title, and/or set its due time and reminder. */
 export const PATCH = withAuth(
   async (request, ctx) => {
     const raw = request.nextUrl.searchParams.get('id');
@@ -249,13 +214,7 @@ export const PATCH = withAuth(
   { permission: 'admin.manage_staff' },
 );
 
-/**
- * DELETE /api/daily-checks/items?id=123 — retire an item from today onward.
- *
- * A RETIRE, not a delete. Marks reference the item, and every past report that
- * included it must keep rendering it — dropping the row would rewrite history
- * to say the check was never on the list.
- */
+/** DELETE /api/daily-checks/items?id=123 — retire an item from today onward. */
 export const DELETE = withAuth(
   async (request, ctx) => {
     const raw = request.nextUrl.searchParams.get('id');

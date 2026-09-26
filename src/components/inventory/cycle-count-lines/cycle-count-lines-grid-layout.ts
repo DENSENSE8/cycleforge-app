@@ -1,22 +1,4 @@
-/**
- * Cycle-count LINES column model — MATERIALIZED from a {@link SlotLayout} onto
- * the SHARED compound skeleton, never a hand array.
- *
- * It replaced `lineColumns`, a page-local `AdminTableColumn[]` literal carrying
- * JSX — a second table engine's column type, with no header sort, no Fields
- * picker and no org binding, because that engine never grew them. Two of its
- * seven objects were not columns at all (an inline number form, and a
- * polymorphic Action cell that alternated buttons with provenance text); where
- * each of those went is in `@/lib/tables/field-catalog/cycle-count-lines`.
- *
- * The skeleton mounts WHOLE — no `.filter`. A count line has no picture, so the
- * photo gutter paints the typed placeholder, exactly as `kiosk-slot-events` and
- * the campaigns desk already do: `COMPOUND_SKELETON_FILTER_DEBT` is documented
- * shrink-only, and a new desk cutting chrome to taste is the fork the law
- * names. Chrome headers are RELABELLED into this family's vocabulary instead
- * (Bin · SKU · Counted at · Status) — a label is family data, geometry is the
- * engine's.
- */
+/** Cycle-count LINES column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -84,19 +66,7 @@ export function cycleCountLinesCompoundColumnsFor(
 export const CYCLECOUNTLINES_COMPOUND_COLUMNS: readonly CycleCountLinesGridColumn[] =
   cycleCountLinesCompoundColumnsFor(CYCLECOUNTLINES_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the three chrome tracks this
- * family paints facts into — a painted DATA header with a dead sort fails
- * `SLOT_TABLE_PAINT_LAW.headerSort`. Chrome that carries no fact (`select`,
- * `thumb`, `_fill`) has no `fieldId` and falls through to null.
- *
- * `dates` sorts by `counted_at`, the Hash (top) line it is named after: a
- * track that paints two instants has to pick one, and the count stamp is both
- * the earlier event and the one present on more rows than the decision stamp.
- * An admin who wants the decision order binds `approved_at` into a slot.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function cycleCountLinesSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

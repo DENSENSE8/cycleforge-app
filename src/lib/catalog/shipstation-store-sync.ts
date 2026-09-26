@@ -1,23 +1,4 @@
-/**
- * ShipStation store → org platform catalog placement.
- *
- * ShipStation aggregates every storefront the warehouse sells on; its `/stores`
- * list carries each store's marketplace ('eBay', 'Amazon', 'Shopify', …). Each
- * store is placed ONCE, as an `integration_store_links` row on a catalog
- * platform (`./integration-store-links.ts`):
- *
- *   • a LINKED store is never touched — the operator's placement (Settings →
- *     Platforms & Types / the ShipStation connection page) is final, and no
- *     platform or account is ever created for it;
- *   • an UNLINKED store is linked to the platform its marketplace names. That
- *     platform is reused when the org already has it (eBay/Amazon/Walmart/Ecwid);
- *     a marketplace the org has never cataloged is added with
- *     `provider='shipstation'` so its orders display, and the operator can
- *     re-point the store later.
- *
- * Never creates `platform_accounts`: a storefront account is only ever one the
- * operator already has and names on the link.
- */
+/** ShipStation store → org platform catalog placement. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -86,12 +67,7 @@ export function storesToPlace<S extends Pick<ShipStationV1Store, 'storeId' | 'ma
   });
 }
 
-/**
- * Link every unlinked store to its marketplace's platform. One tenant
- * transaction; additive only — an existing platform or link is never renamed,
- * recoloured or re-pointed. Fires `invalidateCatalogCache` when it placed
- * anything so every instance's picker cache refreshes.
- */
+/** Link every unlinked store to its marketplace's platform. */
 export async function syncShipStationStoresToCatalog(
   orgId: OrgId,
   stores: ShipStationV1Store[],

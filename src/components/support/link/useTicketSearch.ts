@@ -53,41 +53,13 @@ interface Params {
    * once per enable cycle; operator edits win until the next New→Link / reopen.
    */
   initialQuery?: string | null;
-  /**
-   * Build the candidates URL for the current query, or return null when the
-   * anchor isn't resolvable yet (the hook then idles instead of fetching).
-   *
-   * This is the ONLY anchor-specific part of the search: the receiving claim
-   * flow points it at /api/receiving/zendesk-claim/link, the shipment flow at
-   * /api/support/tickets/link?anchorType=shipment&mode=reference. Everything else
-   * — debounce, abort, error mapping, stale-selection drop — is identical, which
-   * is why it lives here rather than being re-implemented per surface.
-   */
+  /** Build the candidates URL for the current query, or return null when the anchor isn't resolvable yet (the hook then idles instead of… */
   buildUrl: (query: string) => string | null;
-  /**
-   * The fetch used for the candidates call. Defaults to the global — a staff
-   * surface rides its session cookie and needs nothing else.
-   *
-   * The KIOSK does: a device principal's `cf_kiosk` cookie can be stale after
-   * another surface re-bound the row, and production has no server-side
-   * re-bind, so every device-authed client call goes through
-   * `kioskFetchHealed` (`src/lib/kiosk/kiosk-self-heal.ts`). That is a
-   * TRANSPORT difference, not a second search: the debounce, the abort, the
-   * error mapping and the stale-selection drop below are the same rules, which
-   * is why this is one injected function rather than a forked hook.
-   */
+  /** The fetch used for the candidates call. */
   fetcher?: (url: string, init: RequestInit) => Promise<Response>;
 }
 
-/**
- * Link-mode ticket search. Fetches candidate tickets — the most recent ones when
- * the box is empty (the common case: the related ticket was just filed), or a
- * search/id lookup once the operator types / a host seed lands. Debounced
- * (300ms), aborts in flight.
- *
- * Owns the result set + the current selection so a selection that falls out of a
- * refreshed result set is dropped automatically.
- */
+/** Link-mode ticket search. */
 export function useTicketSearch({
   open,
   enabled,
@@ -132,17 +104,9 @@ export function useTicketSearch({
   }, [open, enabled, initialQuery]);
 
   // `buildUrl` is called inside the debounce rather than being an effect dep:
-  // callers pass an inline closure, so depending on the function identity would
-  // re-fire (and re-fetch) on every parent render. The URL it produces is
-  // derived from props the caller already re-renders on.
   const url = enabled && open ? buildUrl(ticketQuery.trim()) : null;
 
-  /*
-   * Held in a ref for the same reason `buildUrl` is not an effect dep: callers
-   * pass an inline closure, so its identity changes every parent render and
-   * naming it as a dep would re-fire the fetch on each one. The transport is
-   * not part of what "the search changed" means.
-   */
+  /* Held in a ref for the same reason `buildUrl` is not an effect dep: */
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 

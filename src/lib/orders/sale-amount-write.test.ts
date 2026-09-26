@@ -1,14 +1,6 @@
 /**
  * First-write-wins for order-line price — the regression suite for the
  * operator ruling of 2026-09-15: *"since the import has no price linked to it,
- * no price should equal no change."*
- *
- * The failure this pins: before the ruling, the ingest writer set
- * `updateValues.saleAmount` whenever the SOURCE carried a number. That made an
- * Ecwid re-sync (which carries prices since the price work landed) overwrite a
- * manual correction on every run — the operator's edit silently reverted.
- *
- * Run: npx tsx --test src/lib/orders/sale-amount-write.test.ts
  */
 
 import assert from 'node:assert/strict';

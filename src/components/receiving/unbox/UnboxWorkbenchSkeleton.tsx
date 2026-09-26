@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Shared Unbox browse skeletons — one anatomy for route loading and in-view
- * Suspense / dynamic() fallbacks so chrome → table cannot drift.
- *
- * Mirrors {@link UnboxWorkspaceView}: DashboardScrollShell, three-row pinned
- * chrome (row 1: tabs · CTA; KPI row: big clickable-filter tiles, its own
- * row; row 2: search · refine filters — the data-table triage band), flush
- * sheet host with house row skeletons. KPI is chrome-pinned, not a body
- * block.
- */
+/** Shared Unbox browse skeletons — one anatomy for route loading and in-view Suspense / dynamic() fallbacks so chrome → table cannot drift. */
 
 import { SkeletonBase, SkeletonList } from '@/design-system/components/Skeletons';
 import { MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';

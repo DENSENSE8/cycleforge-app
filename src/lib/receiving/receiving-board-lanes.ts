@@ -1,11 +1,4 @@
-/**
- * Receiving board lanes (station-table-unification-plan §4.1 / §4.2) — the TS SoT
- * for how a receiving line buckets into an Incoming or a History Pipeline lane.
- * Same Decision-12 discipline as the station lanes: membership is derived here
- * (never re-implemented in SQL for display); dots come from the label-registry
- * tone map. Bucket inputs are minimal structural shapes over `ReceivingLineRow`
- * so they stay pure/testable.
- */
+/** Receiving board lanes (station-table-unification-plan §4.1 / §4.2) — the TS SoT for how a receiving line buckets into an Incoming or a… */
 
 import { TONE_CLASSES } from '@/lib/labels/registry';
 import type { LabelTone } from '@/lib/labels/types';

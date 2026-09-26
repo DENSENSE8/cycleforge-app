@@ -6,13 +6,7 @@ import { recordPackVerificationEvent } from '@/lib/packing/pack-verification';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * POST /api/packing/verification/decide — manager approves or flags a packed
- * order from the Review station (docs/todo/packer-review-station-plan.md §4c).
- * REVIEW_APPROVED / REVIEW_FLAGGED are only legal when the latest outcome is
- * VERIFIED or an ERROR_* (the helper's state machine → 409 otherwise); a flag
- * requires a note. Append-only + idempotent. Gated on `packing.review`.
- */
+/** POST /api/packing/verification/decide — manager approves or flags a packed order from the Review station… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

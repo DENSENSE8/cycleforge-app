@@ -1,16 +1,4 @@
-/**
- * Auto-grid floor-plan layout for the warehouse map.
- *
- * Derives x/y/w/h positions for every bin purely from its `room` /
- * `row_label` / `col_label` (the same grouping the flat table uses), laying
- * one zone rectangle per room left-to-right with wrapping. Org-agnostic:
- * nothing here assumes specific room names, counts, or label formats.
- *
- * Grid math seeded from the deleted design-demo prototype
- * (`warehouse-map-data.ts` @ 34c52758); production Phase 1 is auto-layout only
- * — persisted per-bin coordinates land in Phase 3
- * (docs/todo/warehouse-map-react-flow-plan.md §3/§4).
- */
+/** Auto-grid floor-plan layout for the warehouse map. */
 
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 

@@ -1,41 +1,6 @@
 'use client';
 
-/**
- * Deferred activation — the ONE way a hover/focus surface stops paying for
- * machinery nobody has reached for yet.
- *
- * ## The problem it solves
- *
- * A hover affordance is two different things wearing one component: a TRIGGER
- * (the DOM the operator sees and points at) and an ENGINE (timers, portals,
- * rect clamping, an eviction registry — none of which can produce a pixel until
- * a pointer or a focus ring arrives). A dense queue paints hundreds of triggers
- * and hovers one. Mounting the engine with the trigger charges every row for a
- * surface only one row will ever open: on `/shipping/orders` (62 rows) the
- * hover machinery was 63% of the per-row hook budget and ~248 synchronous
- * `useLayoutEffect`s on first paint, none of which a mobile viewport can even
- * trigger.
- *
- * ## The contract
- *
- * The caller keeps rendering the trigger DOM **unconditionally and unchanged**
- * — same element, same position, same attributes, so `children` never remount
- * (swapping a wrapper in/out drops in-flight clicks) and the box never shifts.
- * The engine is a SIBLING that mounts on the first activating interaction and
- * stays mounted.
- *
- * **The first interaction is carried into the engine, never lost.** The naive
- * shape of this pattern mounts on `pointerenter` and then waits for a *later*
- * event to open — so the very hover that paid for the mount shows nothing. Here
- * {@link DeferredHoverBridge.readIntent} hands the engine the interaction that
- * mounted it, and the engine opens from its own mount effect. The intent is
- * read non-destructively and cleared by {@link DeferredHoverMount.release}, so
- * a StrictMode double-invoke (mount → cleanup → mount) re-applies it instead of
- * swallowing it.
- *
- * Cost to a trigger that is never hovered: `useState` + `useRef`. Two hooks,
- * no effects, no context subscription, no timers.
- */
+/** Deferred activation — the ONE way a hover/focus surface stops paying for machinery nobody has reached for yet. */
 
 import { useLayoutEffect, useRef, useState, type MutableRefObject } from 'react';
 
@@ -126,23 +91,7 @@ export function useDeferredHoverMount<T extends HTMLElement, H>({
   return selfRef.current;
 }
 
-/**
- * Engine side of {@link useDeferredHoverMount} — the mirror of `activate`.
- *
- * Publishes a STABLE façade over the engine's render-fresh handle (so the
- * trigger can hold one object for the engine's whole life while the methods
- * behind it stay current), then applies the interaction that mounted the engine
- * — exactly once, in a layout effect, so the surface lands in the frame the
- * pointer arrived in rather than a paint later.
- *
- * Both hover surfaces need identical semantics here, and getting them subtly
- * different is how "first hover shows nothing" ships: an engine whose handles
- * are re-derived every render would re-run a naive mount effect on every render
- * and re-open behind the operator. One hook, one answer.
- *
- * `handle` must have a fixed key set (a literal object) — the façade is built
- * from the keys present on the first render.
- */
+/** Engine side of {@link useDeferredHoverMount} — the mirror of `activate`. */
 export function useDeferredHoverEngine<
   H extends Record<string, (...args: never[]) => void>,
 >(

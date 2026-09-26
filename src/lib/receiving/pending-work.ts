@@ -8,22 +8,7 @@ import { listPendingNasArchives } from '@/lib/receiving/nas-archive-pending';
 import { cartonReadHref } from '@/lib/receiving/surface-path';
 
 
-/**
- * Follow-up work an operator owes on a carton they have already scanned away
- * from — one registry, one card.
- *
- * WHY A REGISTRY AND NOT A CARD PER FEATURE: every one of these is "a durable
- * fact went stale and the surface that carried it unmounted when the operator
- * scanned the next box". Given a corner each, two features are a pair of
- * competing cards and four are a notification wall on a focus-locked scan
- * bench. One card showing the most recent item and counting the rest keeps the
- * cost flat as sources are added — the same reasoning the house applies to the
- * right edge having exactly two grammars.
- *
- * A new source implements one function returning {@link PendingWorkItem}s and
- * is added to {@link SOURCES}. It must be scoped org + staff: the card follows
- * the operator, so it must only ever show work THEY did.
- */
+/** Follow-up work an operator owes on a carton they have already scanned away from — one registry, one card. */
 interface OpenExceptionRow {
   receiving_id: number;
   order_ref: string | null;
@@ -33,29 +18,10 @@ interface OpenExceptionRow {
   codes: string[];
 }
 
-/**
- * How far back an open exception still counts as "follow-up you owe".
- *
- * This card's premise is work the operator walked away from minutes or hours
- * ago. An all-time backlog is a different product — dogfood carries 38 open
- * exceptions stretching back to mid-July, every one of them RETURN_NO_ORDER,
- * and putting those in a corner card would produce a nag that can never be
- * cleared from the corner and that buries the one exception raised on the
- * carton just scanned. Old ones are real work; they belong on a queue view
- * somebody triages deliberately, not on the bench.
- */
+/** How far back an open exception still counts as "follow-up you owe". */
 const EXCEPTION_RECENCY_DAYS = 7;
 
-/**
- * Cartons carrying receiving exceptions this staffer opened and nobody closed,
- * within {@link EXCEPTION_RECENCY_DAYS}.
- *
- * Gated on `status = 'OPEN'` rather than `resolved_at IS NULL` because that is
- * the column the partial index covers. The two agree on every row in the
- * dogfood tenant today (checked: 38 / 38, zero disagreement), so this is an
- * index choice and not a semantic one — if they ever diverge, `resolved_at` is
- * the fact and `status` is the cache.
- */
+/** Cartons carrying receiving exceptions this staffer opened and nobody closed, within {@link EXCEPTION_RECENCY_DAYS}. */
 async function listOpenReceivingExceptions(
   organizationId: string,
   staffId: number,
@@ -145,12 +111,7 @@ async function listArchiveWork(
   }));
 }
 
-/**
- * Every source has this exact signature, so a new one CANNOT be registered
- * without taking both the org and the staff id. The card follows the operator
- * across cartons, so an org-only source would put a colleague's work in this
- * operator's corner — that is a scoping bug the compiler now refuses.
- */
+/** Every source has this exact signature, so a new one CANNOT be registered without taking both the org and the staff id. */
 type PendingWorkSourceFn = (
   organizationId: string,
   staffId: number,

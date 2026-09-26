@@ -1,26 +1,4 @@
-/**
- * POST /api/receiving/identify-serial
- *
- * Resolve serial string(s) the LAN vision box read off a unit against this
- * carton, so the Unbox bench can pre-fill the serial field and warn about a
- * duplicate before the operator commits.
- *
- * TEXT ONLY — the browser posts the captured frame straight to the box
- * (`NEXT_PUBLIC_VISION_BASE_URL`, full-res never reaches Vercel) and forwards
- * the resulting string(s) here. Exactly the contract `/identify-label` has; no
- * image ever reaches this route.
- *
- * READ-ONLY. Attaching a serial stays `POST /api/receiving/scan-serial`. OCR
- * proposes; the operator commits — a vision system that wrote directly would
- * attribute a scan to a person who never made one.
- *
- * `receiving.view`, not `receiving.edit`: it reads, and gating a read behind an
- * edit permission is how `/api/support/tickets/link` ended up 403-ing the floor
- * operator its surface was built for.
- *
- * Body: `{ receivingLineId: number, reads: string[] }` (or `read: string`)
- * Resp: `{ success, candidates: SerialCandidate[] }`
- */
+/** POST /api/receiving/identify-serial */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -30,12 +8,7 @@ import { resolveSerialReads, type SerialIdentifyDeps } from '@/lib/receiving/ser
 
 const deps: SerialIdentifyDeps = {
   findExisting: async (orgId, normalized) => {
-    // `upper(trim($n))` mirrors the definition of `serial_units.normalized_serial`
-    // (`@/lib/receiving/serial-attach`), so "the same serial" means the same
-    // thing on both sides of this comparison.
-    //
-    // Line membership goes through `serial_unit_provenance`, the same reverse
-    // lookup the attach path uses — `serial_units` has no `receiving_line_id`.
+    // `upper(trim($n))` mirrors the definition of `serial_units.normalized_serial` (`@/lib/receiving/serial-attach`), so "the same serial"…
     const res = await tenantQuery<{ normalized_serial: string; receiving_line_id: number | null }>(
       orgId as OrgId,
       `SELECT su.normalized_serial,

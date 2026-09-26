@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * POST /api/testing/receiving-lines/open
- * Record that the current operator OPENED a receiving line on Quality Control —
- * upserts receiving_line_testing_opens so the Testing sidebar Recent rail lists
- * this staffer's recently-opened lines (newest first). Isolated from
- * receiving_line_views (Unbox Recent). Fire-and-forget from the client.
- *
- * Body: { receiving_line_id: number, receiving_id?: number | null }
- */
+/** POST /api/testing/receiving-lines/open Record that the current operator OPENED a receiving line on Quality Control — upserts… */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     try {

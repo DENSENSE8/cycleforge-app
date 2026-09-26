@@ -1,11 +1,4 @@
-/**
- * GET  /api/admin/po-gmail/missing-orders?status=pending|ignored|resolved
- *   → list rows from email_missing_purchase_orders, newest first.
- *
- * PATCH /api/admin/po-gmail/missing-orders
- *   body: { id: uuid, status: 'pending' | 'ignored' | 'resolved', notes? }
- *   → update a single row (used by Ignore button etc).
- */
+/** GET /api/admin/po-gmail/missing-orders?status=pending|ignored|resolved → list rows from email_missing_purchase_orders, newest first. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';

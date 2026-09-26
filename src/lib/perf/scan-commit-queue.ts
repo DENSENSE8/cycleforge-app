@@ -1,11 +1,4 @@
-/**
- * Serial scan-commit queue — the INP waist between a HID wedge listener and
- * React / routing / sink dispatch.
- *
- * `enqueue` is O(1) and never awaits. Drain happens *after* {@link yieldToInput}
- * so the originating `keydown` stack is gone before `onScan` runs. Consecutive
- * scans stay ordered; a slow `onScan` cannot block the next keydown.
- */
+/** Serial scan-commit queue — the INP waist between a HID wedge listener and React / routing / sink dispatch. */
 
 import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 

@@ -82,14 +82,7 @@ export interface StationScanBarProps {
   submitTraceClassName?: string;
   /** Omit left icon slot and use horizontal padding (e.g. labeled fields in FBA sidebar). */
   leadingIcon?: boolean;
-  /**
-   * Which column the leading icon + typed text align to.
-   *   - `masternav` (default) — icon under the MasterNav mode glyph, text under
-   *     the MasterNav label (deep inset). For benches with no rail below.
-   *   - `rail` — composes {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}: icon in the
-   *     status-dot track, typed text on the row title. For scan-dock bars
-   *     stacked directly above a recent rail.
-   */
+  /** Which column the leading icon + typed text align to. */
   leadingColumn?: 'masternav' | 'rail';
   onInputBlur?: () => void;
   disabled?: boolean;
@@ -103,21 +96,9 @@ export interface StationScanBarProps {
   /** Which mode buttons to render — defaults to both. Pass a single mode to
    *  pin the bar to one page (Plan-only on the plan page, Select-only on combine). */
   visibleModes?: Array<'plan' | 'select'>;
-  /**
-   * Wire the shared focus-scan hotkey: registers this bar as the global key's
-   * focus target and turns the left icon slot into the scan-entry dropdown
-   * (Scan · Preview · focus · Edit hotkey). Default true — every primary scan
-   * bar gets it for free. Set false for secondary/inline fields that shouldn't
-   * steal the hotkey. Needs `leadingIcon` (the dropdown lives in that slot).
-   */
+  /** Wire the shared focus-scan hotkey: */
   hotkey?: boolean;
-  /**
-   * Honour `CMD-*` command stickers typed or scanned into this bar. Default
-   * true — this is what makes the bar universal rather than a receiving
-   * control, so a jump sticker works at every bench without each host wiring
-   * it. Set false only for a field that must take a command string as literal
-   * text (there is no such field today).
-   */
+  /** Honour `CMD-*` command stickers typed or scanned into this bar. */
   navCommands?: boolean;
   /**
    * After a preview decode or a committed scan value, show a read-only face
@@ -125,22 +106,9 @@ export interface StationScanBarProps {
    * `hotkey={false}` or Plan/Select mode buttons are showing.
    */
   displayEdit?: boolean;
-  /**
-   * Preview stance's READ. Hosts hand back what the value actually resolves to
-   * (Unbox: `GET /api/receiving/preview-scan`; Ready to Pack: orders lookup) —
-   * a real lookup against the same tables the scan would open, with none of
-   * its writes. The bar ignores the payload; a miss is the host's to narrate.
-   * Without this the stance is not offered — a bar that cannot preview must
-   * not arm a mode that swallows the next scan.
-   */
+  /** Preview stance's READ. */
   previewLookup?: (value: string) => Promise<unknown>;
-  /**
-   * Identity of the vocabulary a preview would resolve against (the armed type,
-   * or `auto`). Changing it RE-RUNS the open for the value already on the bar:
-   * arming PO after previewing as Tracking asks a different question of the
-   * same number, and leaving the old carton on screen would answer the question
-   * the operator just stopped asking.
-   */
+  /** Identity of the vocabulary a preview would resolve against (the armed type, or `auto`). */
   previewMode?: string;
 }
 
@@ -151,14 +119,7 @@ function assignRef<T>(node: T, forwarded: Ref<T> | undefined): void {
   else (forwarded as unknown as { current: T | null }).current = node;
 }
 
-/**
- * Core scan input — icon slot, scan-entry dropdown, bottom-rule chrome, center-out
- * submit trace, frosted absolute right rail. Prefer {@link ThemedStationScanBar}.
- *
- * The mode rail overlays the trailing edge with a frosted veil so long
- * placeholder / typed text soft-peeks under the glyphs. Clearance is measured
- * from the rail — never magic per-station `pr-*`.
- */
+/** Core scan input — icon slot, scan-entry dropdown, bottom-rule chrome, center-out submit trace, frosted absolute right rail. */
 export function StationScanBar({
   value,
   onChange,
@@ -196,17 +157,7 @@ export function StationScanBar({
   const [railWidthPx, setRailWidthPx] = useState(0);
   const [face, setFace] = useState<'edit' | 'display'>('edit');
   const [committedValue, setCommittedValue] = useState('');
-  /**
-   * A bar with no `previewLookup` HAS no Preview stance.
-   *
-   * The stance store is ONE global key (`scan:station-stance`), so without this
-   * gate an operator who armed Preview on a wired station (Unbox) walks to an
-   * unwired one and finds a bar that accepts scans and does nothing: the wedge
-   * path consumed the scan (`deliverScanValue` returned true) and `runPreview`
-   * bailed on the missing lookup, so it never routed and never reached the
-   * action sink. Falling through to Scan is the honest behaviour — the bar does
-   * what its station wired it to do.
-   */
+  /** A bar with no `previewLookup` HAS no Preview stance. */
   const previewEnabled = Boolean(previewLookup);
   const storedStance = useScanStance();
   const stance: StationScanStance = previewEnabled ? storedStance : 'scan';
@@ -218,12 +169,7 @@ export function StationScanBar({
   const railRef = useRef<HTMLDivElement | null>(null);
   /** Monotonic preview-lookup token — a stale answer must never paint. */
   const previewTokenRef = useRef(0);
-  /**
-   * Latest preview runner, for the wedge `deliver` path. A ref, not the
-   * callback itself: `deliverScanValue` is registered on mount and must not
-   * re-register on every keystroke, but it still has to run the CURRENT
-   * classifier + lookup.
-   */
+  /** Latest preview runner, for the wedge `deliver` path. */
   const previewSubmitRef = useRef<((value: string) => void) | null>(null);
   /**
    * The value the last preview ran for. A hit leaves the band quiet (the pane
@@ -292,10 +238,7 @@ export function StationScanBar({
         return;
       }
       previewedValueRef.current = trimmed;
-      // Preview touches NONE of the scan face state (`committedValue` /
-      // `setFace`). Two stances sharing one piece of state is the linkage the
-      // stance split exists to remove — the bar renders the value it already
-      // holds, and the pane is the whole answer.
+      // Preview touches NONE of the scan face state (`committedValue` / `setFace`).
       if (!previewLookup) return;
       const token = ++previewTokenRef.current;
       void previewLookup(trimmed)
@@ -334,16 +277,7 @@ export function StationScanBar({
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const trimmed = value.trim();
-    // Commands are read HERE, at the one submit every station bar shares, not
-    // per host. A physical scan into a focused input never reaches the global
-    // wedge listener (it stands down over editable targets), so the bar itself
-    // is the only place a typed-or-scanned `CMD-*` can be caught — and catching
-    // it once here is what makes every bench inherit the vocabulary instead of
-    // twenty hosts each remembering to.
-    //
-    // Ordered AFTER the preview check on purpose: Preview means "show me what
-    // this is, change nothing", and a stance that still navigated would not be
-    // a stance.
+    // Commands are read HERE, at the one submit every station bar shares, not per host.
     if (previewEnabled && getScanStance() === 'preview') {
       // Enter RE-PREVIEWS. It never commits: Preview cannot become a Scan from
       // inside Preview, or the two stances are one stance with a shortcut.
@@ -360,13 +294,6 @@ export function StationScanBar({
       return;
     }
     // Not a command — so it may be the NOUN a later command sticker acts on.
-    // Recorded here rather than per host for the same reason the command is
-    // read here: this is the one submit every station bar shares, and a subject
-    // only some benches published would make `CMD-PASS` work at some of them.
-    //
-    // Only a SERIAL qualifies. A tracking number or a carton handle names work,
-    // not a unit, and a verdict sticker landing on one of those would have to
-    // guess which unit inside it was meant.
     if (navCommands && trimmed && detectStationScanType(trimmed) === 'SERIAL') {
       setScanSubject('unit', unwrapScannedSerial(trimmed));
     }

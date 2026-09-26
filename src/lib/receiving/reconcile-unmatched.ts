@@ -1,30 +1,4 @@
-/**
- * Unmatched-receiving reconciliation.
- *
- * Background: when a tracking number scans into receiving with no Zoho PO
- * match, /api/receiving/lookup-po creates a `receiving` row with
- * source='unmatched' and a `tracking_exceptions` row. Later — sometimes
- * minutes, sometimes days — the matching Zoho PO arrives (via cron sync or
- * a vendor uploading the PO). At that point the unmatched receiving COULD
- * be promoted to a Zoho-linked one, but nothing was wired to do that.
- *
- * This helper re-runs the same Zoho tracking search that lookup-po does,
- * and if it now finds a PO, promotes the receiving in place (or absorbs an
- * empty Incoming PO shell onto this carton when the unique index would
- * collide):
- *   • receiving_carton.source           → 'zoho_po'
- *   • receiving_carton.zoho_purchaseorder_id → matched PO id
- *   • receiving_line             → imported from the Zoho PO
- *   • tracking_exceptions        → resolved
- *   • unfound_overlay            → checked (operator can ignore the row)
- *
- * Trigger point: the unfound queue UI's "Retry Zoho lookup" action.
- *
- * Failures are non-fatal — anything that goes wrong leaves the receiving
- * as 'unmatched' (except busy-shell attach, which redirects to the shell)
- * and the helper returns { promoted: false, reason }. The caller decides
- * whether to retry.
- */
+/** Unmatched-receiving reconciliation. */
 
 import {
   searchPurchaseReceivesByTracking,
@@ -175,10 +149,7 @@ export async function reconcileUnmatchedReceiving(
     // Soft failure — fall through to live Zoho search.
   }
 
-  // ─── Re-query Zoho only when mirror missed ──────────────────────────────
-  // Same fallback chain as lookup-po: purchase_receives first, then
-  // purchase_orders. Soft misses stay empty; hard rate-limits surface so the
-  // Auto-match button can toast (not pretend "no match").
+  // ─── Re-query Zoho only when mirror missed ────────────────────────────── Same fallback chain as lookup-po:
   if (zohoPoIds.size === 0) {
     try {
       let receives: Awaited<ReturnType<typeof searchPurchaseReceivesByTracking>> = [];

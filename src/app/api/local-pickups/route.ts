@@ -345,13 +345,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'walk_in.intake' });
 
-/**
- * DELETE /api/local-pickups?receiving_id=N — un-flag a wrongly-marked local
- * pickup, clearing its local_pickup_items detail WITHOUT touching the parent
- * receiving carton (the reverse of the POST/PATCH upsert). Guards that the
- * carton exists and is a LOCAL pickup so a non-pickup carton can't be touched;
- * an already-absent detail row is an idempotent success.
- */
+/** DELETE /api/local-pickups?receiving_id=N — un-flag a wrongly-marked local pickup, clearing its local_pickup_items detail WITHOUT… */
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;

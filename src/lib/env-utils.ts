@@ -27,16 +27,7 @@ export function normalizeMultilineEnvValue(value: string | null | undefined): st
     .trim();
 }
 
-/**
- * Neon compute identity for a postgres DSN: host with the pooler suffix
- * stripped so `ep-foo` and `ep-foo-pooler` compare equal.
- *
- * Used to refuse a `TENANT_APP_DATABASE_URL` that points at a different
- * branch than `DATABASE_URL` (a lane `.env` that inherited production's
- * tenant DSN). That split made `/api/orders` query a schema the worktree
- * had already migrated past — `column o.oos_kind does not exist` — while
- * the owner pool on the lane branch was fine.
- */
+/** Neon compute identity for a postgres DSN: */
 export function postgresDsnComputeKey(url: string): string {
   const trimmed = normalizeEnvValue(url);
   const at = trimmed.indexOf('@');

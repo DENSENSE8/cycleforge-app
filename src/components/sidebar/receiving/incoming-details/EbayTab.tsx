@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Marketplace section of the incoming delivery record (Universal Incoming, plan §7.3).
- *
- * Read-only marketplace identity for a non-Zoho Incoming row — the eBay order#,
- * buyer account, seller, status, payment, listing — plus the bidirectional
- * **Link to Zoho PO** affordance: search the local PO mirror and MERGE the chosen
- * Zoho PO onto this spine row via POST /api/receiving/inbound/link (the same
- * chokepoint the row's Link tab uses). Once a Zoho link exists the panel's "PO"
- * tab renders the accounting side; here it shows as linked.
- */
+/** Marketplace section of the incoming delivery record (Universal Incoming, plan §7.3). */
 
 import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -120,13 +111,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
     }
   };
 
-  /**
-   * The typed id matches no mirrored PO — link it anyway through the ONE
-   * chokepoint (`/api/receiving/link-id`), which imports the order's items if
-   * it resolves anywhere in the system and otherwise records it as pending for
-   * the import to claim. This panel used to dead-end on "No purchase orders
-   * match", which left the id on the box unrecorded.
-   */
+  /** The typed id matches no mirrored PO — link it anyway through the ONE chokepoint (`/api/receiving/link-id`), which imports the order's… */
   const linkTypedIdentifier = async () => {
     const receivingId = data.receiving?.id ?? null;
     if (!trimmed || linkingIdentifier) return;

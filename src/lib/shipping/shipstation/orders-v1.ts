@@ -1,19 +1,4 @@
-/**
- * ShipStation legacy v1 order client — the ORDER-DATA source.
- *
- * Base: https://ssapi.shipstation.com, HTTP Basic auth (apiKey:apiSecret). This
- * is the ONLY ShipStation API that returns orders with line items, SKUs, and
- * per-item + order-level WEIGHT — v2 has no order-list endpoint (see ./client.ts
- * header). Two consumers:
- *   1. the connection sync adapter (connectors/shipstation.ts) — `listOrders`
- *      pulls the org's orders into our `orders` table.
- *   2. the rate/label endpoints — `getOrderByNumber` fetches the order's STORED
- *      weight + ship-to so a v2 rate/label reuses it (the user's chosen weight
- *      source), no local weight column needed.
- *
- * Credential-injected + Zod-validated at the boundary; maps raw v1 JSON into the
- * normalized ./types shapes. No vault/tenant imports — testable with a fake key.
- */
+/** ShipStation legacy v1 order client — the ORDER-DATA source. */
 
 import { z } from 'zod';
 import type { ShipAddress, WeightUnit } from './types';
@@ -72,12 +57,7 @@ export interface ShipStationV1Order {
   orderTotal: number | null;
   /** Order-level parcel weight, normalized. Feeds the v2 rate/label package. */
   weight: { value: number; unit: WeightUnit } | null;
-  /**
-   * The ShipStation store the order belongs to (`advancedOptions.storeId`) and
-   * the marketplace it was placed on (e.g. 'eBay', 'Amazon', 'Shopify'). The
-   * channel identifications the platform catalog sync consumes — null when the
-   * payload omits them (manual orders).
-   */
+  /** The ShipStation store the order belongs to (`advancedOptions.storeId`) and the marketplace it was placed on (e.g. */
   storeId: number | null;
   marketplace: string | null;
   /** ShipStation's own order key (stable across order-number edits). */
@@ -363,10 +343,7 @@ function mapStore(raw: z.infer<typeof V1StoreSchema>): ShipStationV1Store {
   };
 }
 
-/** A label ShipStation generated for an order (v1 `/shipments`). ShipStation
- * lists ONLY labels made in ShipStation — orders merely marked shipped are
- * "external" and never appear here. Dates are ShipStation's offset-less
- * account-local strings, passed through verbatim. */
+/** A label ShipStation generated for an order (v1 `/shipments`). */
 export interface ShipStationV1Shipment {
   shipmentId: number;
   orderId: number | null;

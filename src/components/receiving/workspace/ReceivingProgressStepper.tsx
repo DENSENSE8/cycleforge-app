@@ -2,10 +2,7 @@
 
 import { Fragment } from 'react';
 import { Check } from '@/components/Icons';
-// `ReceivingStepKey` is deliberately NOT re-exported here — its consumers
-// (`derive-unfound-step-states`, the stepper tests) import it from
-// `derive-receiving-step-states` directly, so a second path to the same type is
-// dead weight that knip correctly flags.
+// `ReceivingStepKey` is deliberately NOT re-exported here — its consumers (`derive-unfound-step-states`, the stepper tests) import it from…
 import type { LinearStepState } from './derive-receiving-step-states';
 
 export type { LinearStepState };
@@ -13,21 +10,7 @@ export type LinearStep = { key: string; label: string };
 
 export { deriveReceivingStepStates } from './derive-receiving-step-states';
 
-/**
- * Wizard stepper — position in a FORM, and nothing else. Repair intake is the
- * caller (Service → Issue → Contact → Review): steps are clickable, carry no
- * actor and no timestamp, and the walk is navigation rather than history.
- *
- * The milestone pipelines (order · carton · arrival) are NOT this component.
- * They were, briefly, with `marker` / `body` / `connectorPadClass` slots
- * bending a wizard into a timeline — which is how a component ends up with a
- * prop that replaces its own rendering. They now compose
- * `design-system/components/milestone-pipeline`, whose every stage carries a
- * person and an instant. Two nouns, two components, neither with a slot.
- *
- * (The old docblock also claimed a claim-modal caller. There has never been
- * one.)
- */
+/** Wizard stepper — position in a FORM, and nothing else. */
 export function LinearWorkflowStepper({
   steps,
   states,
@@ -81,11 +64,7 @@ export function LinearWorkflowStepper({
           return (
             <Fragment key={step.key}>
               {idx > 0 ? (
-                // `min-w-6`, not `min-w-0`: a `flex-1` rail with no floor
-                // collapses to nothing the moment the column is narrow, and the
-                // stepper silently becomes three detached blocks. The rail is
-                // the thing that makes them one progression — it must survive
-                // the squeeze even if the labels have to.
+                // `min-w-6`, not `min-w-0`:
                 <li aria-hidden className={`min-w-6 flex-1 self-start ${connectorPt}`}>
                   <span
                     className={`block h-0.5 w-full rounded-full ${
@@ -121,15 +100,7 @@ export function LinearWorkflowStepper({
   );
 }
 
-/**
- * The done / active / pending marker for the dot bar.
- *
- * NOTE: `ProcedureChecklist` (DS) now renders its own visually-identical marker,
- * because a design-system component must not import from `components/receiving`.
- * That is a real duplication — the consolidation is to promote the marker into
- * the design system and have this stepper consume it. Left as a follow-up rather
- * than done in passing, since this stepper has five other consumers.
- */
+/** The done / active / pending marker for the dot bar. */
 function StepDot({
   state,
   compact = false,
@@ -149,11 +120,7 @@ function StepDot({
     );
   }
   if (state === 'active') {
-    // A hollow blue dot, not the step's ordinal. The number was answering a
-    // question nobody asks — the position is already given by where the marker
-    // sits on the bar — while making the live stage the one marker that renders
-    // a glyph instead of a state. Ring + empty centre reads as "here, not yet
-    // done" against the filled check to its left and the grey fill to its right.
+    // A hollow blue dot, not the step's ordinal.
     return (
       <span
         className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card ring-2 ring-blue-500 ${sizeClass}`}

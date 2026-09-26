@@ -1,36 +1,4 @@
-/**
- * recordTestVerdict — the per-unit testing verdict, extracted from
- * POST /api/serial-units/[id]/test so it has a reusable lib entry point
- * (the route keeps HTTP validation, the verdict-gated permission split and
- * the formal audit_logs row; everything domain-side lives here).
- *
- * Transitions a single `serial_units` row through the existing
- * `serial_status_enum` (no new column required):
- *
- *   PASS         → current_status = 'TESTED'   + inventory_event TEST_PASS
- *   TEST_AGAIN   → current_status = 'IN_TEST'  + inventory_event TEST_START
- *   TESTING_FAIL → current_status = 'ON_HOLD'  + inventory_event TEST_FAIL
- *
- * It also writes a `tech_serial_numbers` audit row (station_source='TECH',
- * tester_id, receiving_line_id, serial_unit_id), a `testing_results` feed
- * row, and rolls the parent line's `workflow_status` + `qa_status` up across
- * all serial_units linked to the same receiving_line:
- *
- *   - all units TESTED (count ≥ quantity_expected) → line DONE / PASSED / ACCEPT
- *   - any unit ON_HOLD                            → line FAILED / FAILED_FUNCTIONAL
- *   - otherwise (still-testing)                   → line IN_TEST / PENDING
- *
- * The rollup's qa_status/disposition write is an upsert into the
- * receiving_line_testing facts table (Wave-3 writer inversion); its
- * workflow_status change routes through transitionReceivingLine (skipEvent —
- * the per-unit verdict events already cover the timeline) and is skipped
- * entirely when the status is unchanged, so the coarse-status trigger never
- * re-stamps lifecycle timestamps on a non-transitioning line.
- *
- * Finally it taps the workflow engine (`test_verdict`) so the unit's run
- * advances pass/fail — fire-and-forget, an engine error never fails the
- * verdict (see src/lib/workflow/tap.ts).
- */
+/** recordTestVerdict — the per-unit testing verdict, extracted from POST /api/serial-units/[id]/test so it has a reusable lib entry point… */
 
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -46,12 +14,7 @@ import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig, isTesting
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
 
-/**
- * Thrown when the unified-engine chokepoint refuses a verdict's status
- * transition (the guarded allow-list rejected it — e.g. a held or shipped
- * unit). Only reachable on the UNIFIED_ENGINE_APPLY_TRANSITION path; the legacy
- * raw path force-writes and never throws this. The route maps it to a 409.
- */
+/** Thrown when the unified-engine chokepoint refuses a verdict's status transition (the guarded allow-list rejected it — e.g. */
 export class GuardRejectedError extends Error {
   readonly from: string;
   constructor(message: string, from: string) {
@@ -87,12 +50,7 @@ export function pickVerdictMapping(
   return override?.[verdict] ?? VERDICT_TO_STATUS[verdict];
 }
 
-/**
- * Per-org verdict→status mapping (Wave 2 / Class A). Flag OFF (default) returns
- * the hardcoded map with NO settings read — byte-identical to before. Flag ON
- * reads the org's workflow.verdictStatus override and falls back per-verdict; any
- * failure fail-safes to the hardcoded map (a verdict must never fail to resolve).
- */
+/** Per-org verdict→status mapping (Wave 2 / Class A). */
 async function resolveVerdictMapping(verdict: TestVerdict, orgId: string | null): Promise<VerdictMapping> {
   if (!orgId || !isUnifiedEngineVerdictConfig()) return VERDICT_TO_STATUS[verdict];
   try {
@@ -131,12 +89,7 @@ export interface RecordTestVerdictArgs {
   notes?: string | null;
   clientEventId?: string | null;
   actorStaffId?: number | null;
-  /**
-   * Tenant id (ctx.organizationId) — REQUIRED, un-defaulted. Scopes every
-   * read/write below, stamps the tech_serial_numbers row, and is what
-   * applyTransition / transition need to attribute the status change and its
-   * inventory_events row to the right tenant instead of the dogfood default.
-   */
+  /** Tenant id (ctx.organizationId) — REQUIRED, un-defaulted. */
   organizationId: OrgId;
 }
 
@@ -163,11 +116,7 @@ export async function recordTestVerdict(
   const { serialUnitId, verdict } = args;
   const notes = args.notes ?? null;
   const actorStaffId = args.actorStaffId ?? null;
-  // Tenant scope. When present (every authenticated route call), every read/write
-  // below is org-scoped so a cross-tenant serial_unit id reads as not-found (404)
-  // — `pool` is the BYPASSRLS owner connection, so this explicit predicate, not
-  // RLS, is what isolates tenants here. Mirrors transition()'s `orgId ? …` shape;
-  // omitting org keeps the legacy unscoped SQL for any caller that lacks one.
+  // Tenant scope.
   const orgId = args.organizationId;
   // Verdict→status mapping — hardcoded by default; per-org override behind
   // UNIFIED_ENGINE_VERDICT_CONFIG (flag off ⇒ no settings read, identical behavior).
@@ -191,22 +140,11 @@ export async function recordTestVerdict(
   const prev = existing.rows[0];
   const lineId = prev.origin_receiving_line_id;
 
-  // 2. Apply the unit's new status. Two paths behind UNIFIED_ENGINE_APPLY_TRANSITION:
-  //      ON  → applyTransition(): the single guarded chokepoint does the status
-  //            write + atomic inventory_event + engine tap together (the engine
-  //            reference impl — see UNIFIED-ENGINE-MASTER-PLAN §1.1).
-  //      OFF → the legacy raw UPDATE here + appendInventoryEvent (step 4) +
-  //            end-of-fn tap (step 6), byte-identical to before.
-  //    Either way: skip the actual status change when it's already there
-  //    (idempotent retry) but still leave the audit + tsn + event trail below.
+  // 2. Apply the unit's new status.
   const useChokepoint = isUnifiedEngineApplyTransition();
   let unit = prev;
   let eventId!: number;
-  // True when THIS call produced a brand-new inventory_event; false when the
-  // event already existed (a retry with the same clientEventId — inventory_events
-  // is UNIQUE on client_event_id, so the helper returns the existing row). Used
-  // to skip the testing_results feed insert on a replay so retries don't stack
-  // duplicate feed rows (the event itself is already deduped).
+  // True when THIS call produced a brand-new inventory_event; false when the event already existed (a retry with the same clientEventId —…
   let eventCreated = true;
 
   if (useChokepoint) {
@@ -259,14 +197,7 @@ export async function recordTestVerdict(
     unit = { ...updated.rows[0], origin_receiving_line_id: prev.origin_receiving_line_id };
   }
 
-  // 3. Audit row in tech_serial_numbers. Mirrors receive-line.ts' pattern
-  //    (station_source defaults to TECH for testing). Only written when
-  //    the unit has a parent receiving_line — the table's idempotency
-  //    unique index `ux_tsn_receiving_line_serial` is partial
-  //    `WHERE receiving_line_id IS NOT NULL`, so a line-less insert would
-  //    sidestep the conflict guard and create a duplicate on retry.
-  //    Line-less testing is rare (orphan serials); the inventory_events
-  //    timeline still captures the verdict for those cases.
+  // 3. Audit row in tech_serial_numbers.
   if (lineId != null) {
     try {
       await attachTechSerial({
@@ -278,13 +209,6 @@ export async function recordTestVerdict(
         scanRef: verdict,
         notes,
         // `orgId` is in scope from the top of this function and MUST be bound.
-        // tech_serial_numbers.organization_id is NOT NULL with a
-        // `COALESCE(current_setting('app.current_org'), <dogfood uuid>)` default,
-        // so an unbound insert on the raw pool does not fail — it silently
-        // stamps every non-dogfood tenant's test-verdict row as the dogfood org,
-        // which is what left tsn_links tenant-incomplete. `?? undefined` (never
-        // `null`) because attachTechSerial binds the column only when the value
-        // is not undefined, and NULL would violate the constraint.
         organizationId: orgId,
       });
     } catch (err) {
@@ -292,10 +216,7 @@ export async function recordTestVerdict(
     }
   }
 
-  // 4. inventory_events row for the unit timeline (LEGACY path only — the
-  //    chokepoint already wrote the event inside applyTransition at step 2). The
-  //    event id is surfaced in the result so callers can cross-reference the
-  //    verdict transition back to the timeline entry (mirrors /grade).
+  // 4. inventory_events row for the unit timeline (LEGACY path only — the chokepoint already wrote the event inside applyTransition at step 2).
   if (!useChokepoint) {
     const { event, created } = await appendInventoryEvent({
       eventType: mapping.eventType,
@@ -315,15 +236,7 @@ export async function recordTestVerdict(
     eventCreated = created;
   }
 
-  // 4b. Recently-Tested feed row. References the unit by id only — serial
-  //     number / SKU / condition are JOINed from serial_units at read time
-  //     (single source of truth), never copied here. Authoritative state
-  //     stays on serial_units, so a write failure here is logged, not fatal.
-  //     Skipped on a replay (eventCreated === false): the first call already
-  //     wrote this feed row, so re-inserting would stack a duplicate. The
-  //     event is deduped by client_event_id, but testing_results has no such
-  //     unique key, so the guard lives here. (Favors no-duplicates over the
-  //     rare partial-crash-then-retry case; the feed is non-authoritative.)
+  // 4b. Recently-Tested feed row.
   if (eventCreated) {
     try {
       await pool.query(
@@ -339,26 +252,7 @@ export async function recordTestVerdict(
       console.warn('[recordTestVerdict] testing_results insert failed (non-fatal):', err);
     }
 
-    // "Why" signal (plan §2.3 emitter #3 — tech test-fail reasons). Only
-    // non-PASS verdicts carry a "why"; TESTING_FAILED weighs 2, TEST_AGAIN 1.
-    // Guarded by eventCreated like its neighbors so a clientEventId replay
-    // never double-emits. Free-text tech notes ride `notes`.
-    //
-    // The GOVERNED "why" is a `failure_modes` row tagged on the unit
-    // (`unit_failure_tags`) — written either by the bench's fail gate
-    // (`TestingFailReasonSheet` → POST /api/serial-units/[id]/failure-tags) or
-    // server-side by a failed QC step that names a mode
-    // (`/api/serial-units/[id]/checklist` auto-tag-on-fail). It is deliberately
-    // NOT written here: this function records the verdict, and the fault is a
-    // separate reversible fact with its own lifecycle (a later PASS resolves
-    // it) that must survive a re-test the verdict itself overwrites.
-    //
-    // This comment used to claim the fault was captured "at the route layer
-    // (flow_context=verdict_detail)". It never was: no route read a reason, no
-    // `verdict_detail` reason_codes row was ever seeded, and a bench fail
-    // recorded nothing but prose — which is why the columns built to tell a
-    // dead unit from a scratched one stayed empty. Fire-and-forget; never
-    // fails the verdict.
+    // "Why" signal (plan §2.3 emitter #3 — tech test-fail reasons).
     if (verdict !== 'PASS') {
       await emitEntitySignalSafe({
         organizationId: unit.organization_id,
@@ -402,22 +296,10 @@ export async function recordTestVerdict(
   let lineRollup: TestLineRollup | null = null;
 
   if (lineId != null) {
-    // Run the count-then-write rollup inside ONE transaction that locks the
-    // receiving_line FOR UPDATE *before* counting. Without the lock, two
-    // concurrent verdicts on the same line each read a stale tally and the
-    // last writer clobbers the other — leaving e.g. a fully-passed line stuck
-    // IN_TEST (never advances to the claim flow). Steps 1–4 already committed
-    // the unit status atomically, so once the lock is held the sibling units'
-    // committed statuses are visible to the re-read. Scoped by the unit's own
-    // org (always present; the line shares it).
+    // Run the count-then-write rollup inside ONE transaction that locks the receiving_line FOR UPDATE *before* counting.
     const rollupOrg = unit.organization_id;
     lineRollup = await withTenantTransaction(rollupOrg, async (client) => {
-      // Serialize concurrent rollups on this line. A non-existent / wrong-org
-      // line locks nothing and the tally below returns no row → no rollup.
-      // Also read the current workflow_status so the status half below can
-      // CHECK-AND-SKIP: only rows that actually change status go through the
-      // chokepoint (an identity transition would still list workflow_status in
-      // a SET and re-fire the coarse trigger's COALESCE timestamp stamps).
+      // Serialize concurrent rollups on this line.
       const lockedLine = await client.query<{ workflow_status: string | null }>(
         `SELECT workflow_status::text AS workflow_status
            FROM receiving_line
@@ -457,10 +339,6 @@ export async function recordTestVerdict(
       const inTest = Number(t.in_test_units || 0);
 
       // Rollup rules:
-      //   - All expected units have been TESTED and no failures
-      //     → DONE / PASSED / ACCEPT (line falls off the testing queue).
-      //   - Any unit ON_HOLD → FAILED / FAILED_FUNCTIONAL (claim flow).
-      //   - Otherwise → IN_TEST / PENDING.
       let nextWorkflow: string;
       let nextQa: string;
       let nextDisposition: string | null = null;
@@ -481,15 +359,7 @@ export async function recordTestVerdict(
         nextQa = 'PENDING';
       }
 
-      // Facts half (Wave-3 writer inversion): qa_status (+ optional disposition)
-      // live on receiving_line_testing now — the spine columns are dying, so the
-      // rollup upserts the facts row directly (same tx client as the FOR UPDATE
-      // lock above). Inline UPSERT rather than narrow.ts because the result must
-      // RETURN the post-write qa/disposition pair — including an untouched
-      // disposition_code when this rollup doesn't set one — exactly like the old
-      // spine UPDATE's RETURNING did. Overwrite semantics, as before. The former
-      // "workflow_status never in the SET" trigger concern no longer applies:
-      // this write doesn't touch the spine at all.
+      // Facts half (Wave-3 writer inversion):
       const rolled = nextDisposition
         ? await client.query<Omit<TestLineRollup, 'workflow_status'>>(
             `INSERT INTO receiving_line_testing (
@@ -517,11 +387,7 @@ export async function recordTestVerdict(
       const rolledRow = rolled.rows[0];
       if (!rolledRow) return null;
 
-      // Status half: only rows whose workflow_status actually changes route
-      // through the guarded chokepoint, inside THIS tx (executor mode — the
-      // FOR UPDATE re-lock on the row we already hold is a no-op). skipEvent:
-      // the per-unit verdict events are already written (step 2/4) and the
-      // calling route audits — the rollup must not double-write the timeline.
+      // Status half: only rows whose workflow_status actually changes route through the guarded chokepoint, inside THIS tx (executor mode — the…
       let finalWorkflow = currentWorkflow;
       if (currentWorkflow !== nextWorkflow) {
         const transitioned = await transitionReceivingLine(

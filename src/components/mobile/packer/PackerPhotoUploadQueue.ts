@@ -7,19 +7,7 @@ import {
 } from '@/lib/image/downscale';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-/**
- * Module-singleton store for in-flight PACKER photo uploads — the packing
- * mirror of `receiving/PhotoUploadQueue.ts`. Kept as a separate singleton (own
- * localStorage key, own notifier) so it never shares state with the receiving
- * queue and the "perfect" receiving path stays untouched.
- *
- * Per-photo state machine:   queued → uploading → done | failed
- *
- * Two persistence layers so packers don't lose work:
- *   • blobCache (in-memory)  — original blob ref for the Retry button.
- *   • localStorage           — base64 of the DOWNSCALED blob + metadata for
- *                              every non-`done` entry; a refresh auto-resumes.
- */
+/** Module-singleton store for in-flight PACKER photo uploads — the packing mirror of `receiving/PhotoUploadQueue.ts`. */
 
 export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
@@ -36,13 +24,7 @@ export interface PackerPhotoScope {
    * without a schema change. Defaults to `packer_photo` (the spam-capture path).
    */
   photoType?: string | null;
-  /**
-   * Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs`
-   * — stored as `photos.client_captured_at`, beside (never instead of)
-   * `created_at`. It rides in `scope` so `PersistedEntry.meta` carries it
-   * through a localStorage rehydration; see the receiving queue's `PhotoScope`
-   * for the full rationale. Optional: pre-2026-07-29 persisted entries have none.
-   */
+  /** Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs` — stored as `photos.client_captured_at`, beside (never… */
   capturedAtMs?: number | null;
 }
 
@@ -74,12 +56,7 @@ interface PersistedEntry {
   dataUrl: string;
 }
 
-// ─── State + subscribers ────────────────────────────────────────────────────
-// Fired once per photo the moment it commits (GCS upload + DB attach both
-// succeeded). The capture surface wires this to local query invalidation; the
-// cross-device live refresh comes from the server `packer-photo.changed` Ably
-// publish on /api/photos/upload. Set via configureNotifier(); persists across
-// capture-surface unmounts so background uploads still notify.
+// ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it commits (GCS upload + DB…
 export interface UploadNotice {
   packerLogId: number;
   orderId: string | null;

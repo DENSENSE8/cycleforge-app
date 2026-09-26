@@ -1,11 +1,4 @@
-/**
- * Subscription domain helpers.
- *
- * House shape (backend-patterns.md): pure-ish functions over an injectable
- * `Deps` so unit tests run DB-free; routes stay thin (validate → call → map).
- * Every query is org-scoped through `withTenantTransaction` / `tenantQuery`,
- * never a bare pool query with a WHERE clause.
- */
+/** Subscription domain helpers. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -38,18 +31,7 @@ interface ToggleResult {
   subscription: SubscriptionDto | null;
 }
 
-/**
- * Explicit subscribe / mute for one entity.
- *
- * Three states, not a boolean, and the reason is structural: once Phase 2 adds
- * the implicit watch ("you acted on it, so you follow it"), a boolean would let
- * that auto-subscriber re-add a staffer the instant they touch an entity they
- * just muted. A 'muted' row is RETAINED precisely so it can suppress the
- * auto-add; `state = 'auto'` is reserved in the CHECK for that writer.
- *
- * Idempotent: `clientEventId` is threaded so a retried POST re-enters the same
- * state and returns the same outcome rather than flip-flopping subscribe↔mute.
- */
+/** Explicit subscribe / mute for one entity. */
 export async function toggleEntitySubscription(
   args: {
     orgId: OrgId;
@@ -140,16 +122,7 @@ export async function getEntitySubscription(
   return row ? toDto(row) : null;
 }
 
-/**
- * One inbound watch for Today Watch → Tracking display.
- *
- * TWO ARMS, one list. An `entity` watch points at a carton that is already in
- * the door (`receivingId`); a `rule` watch is the PRE-ARRIVAL kind, which by
- * construction has no carton to point at yet — so `receivingId` is null and
- * the tracking string is the whole identity. A list that showed only the
- * entity arm would answer "you are watching nothing" to the operator who just
- * pasted a number, which is the exact moment they want to see it standing.
- */
+/** One inbound watch for Today Watch → Tracking display. */
 type ReceivingWatchRow = {
   /** Null while the watch is still pre-arrival. */
   receivingId: number | null;
@@ -160,15 +133,7 @@ type ReceivingWatchRow = {
   updatedAtMs: number;
 };
 
-/**
- * Active inbound watches for one staffer — Today Watch list.
- *
- * Entity arm joins STN for the tracking label the operator typed when they
- * started watching; rule arm reads the canonical number off the predicate
- * itself. Muted rows are excluded on both arms, which is also how a FULFILLED
- * pre-arrival watch leaves this list (the fan-out worker mutes it on arrival —
- * see `retireFulfilledTrackingWatches`).
- */
+/** Active inbound watches for one staffer — Today Watch list. */
 export async function listReceivingWatchesForStaff(
   args: { orgId: OrgId; staffId: number; limit?: number },
   deps: SubscriptionDeps = defaultSubscriptionDeps,
@@ -224,29 +189,7 @@ export async function listReceivingWatchesForStaff(
   }));
 }
 
-/**
- * A PRE-ARRIVAL tracking watch — "tell me when this number lands", written
- * before any carton exists.
- *
- * This is a `rule` row, not an `entity` row, and the distinction is the whole
- * point. An entity subscription points at `(entity_type, entity_id)` and
- * therefore cannot be written until the carton is in the door — which is why
- * `POST /api/my-day/watch` used to answer *"This tracking has no inbound
- * carton yet — receive it first, then watch"*, refusing the one case the
- * operator most wants ("I am looking forward to receiving a package").
- *
- * A rule row is a predicate over a CLASS of events (2026-07-28c's header), so
- * it is legal with no referent: `match_event_keys` names the arrival event and
- * `match_tracking_normalized` narrows it to this number. When the carton is
- * finally scanned, the fan-out worker's rule arm resolves this staffer exactly
- * as it resolves a SKU rule.
- *
- * Idempotent by index, not by read-then-write: `ux_staff_subscriptions_rule_tracking`
- * makes a second paste of the same number a no-op rather than a second
- * notification. `state` is reset on conflict so re-watching a number the
- * staffer previously muted turns it back on — the mute suppressed an auto-add,
- * and this is an explicit act.
- */
+/** A PRE-ARRIVAL tracking watch — "tell me when this number lands", written before any carton exists. */
 export async function watchTrackingPreArrival(
   args: {
     orgId: OrgId;
@@ -273,16 +216,7 @@ export async function watchTrackingPreArrival(
   return { created: Boolean((res.rows[0] as { inserted?: boolean } | undefined)?.inserted) };
 }
 
-/**
- * Stop a PRE-ARRIVAL watch — the operator's "Stop" on a number that has not
- * landed yet.
- *
- * Muted rather than deleted, for the same reason `toggleEntitySubscription`
- * retains a muted row: the row is the receipt, and re-pasting the number
- * re-arms it through `watchTrackingPreArrival`'s ON CONFLICT instead of
- * colliding with the unique index. Staff-scoped — one operator dropping a
- * watch never silences a colleague's watch on the same number.
- */
+/** Stop a PRE-ARRIVAL watch — the operator's "Stop" on a number that has not landed yet. */
 export async function stopTrackingPreArrivalWatch(
   args: { orgId: OrgId; staffId: number; trackingNormalized: string },
   deps: SubscriptionDeps = defaultSubscriptionDeps,

@@ -10,23 +10,7 @@ type GridHeaderSortDir = 'asc' | 'desc';
 
 const SORT_MARK_CLASS = 'h-3 w-3 shrink-0';
 
-/**
- * The INSIDE of a ledger grid column header: label (or glyph-only when the
- * track is too narrow / `headerGlyphOnly`) → optional sort arrow to the RIGHT
- * of the title, only while this column is the active sort.
- *
- * Shared INNER label/chevron block. OUTER sticky row/cell chrome lives in
- * {@link LedgerGridColumnHeader}.
- *
- * **Text-first (2026-08-04):** when the word fits, headers are **text only**
- * — no decorative type glyph beside every title. Type glyphs remain only for
- * **glyph-only / narrow tracks** (`!showLabel`).
- *
- * **Sort mark (2026-09-01):** the chevron sits to the right of the title and
- * appears only while THIS column is sorted (`ChevronUp` / `ChevronDown`).
- * Idle sortable headers are the title alone. The title itself is
- * `text-text-default` so it cannot inherit muted chrome gray.
- */
+/** The INSIDE of a ledger grid column header: */
 export function GridHeaderLabel({
   column,
   label,

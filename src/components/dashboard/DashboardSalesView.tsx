@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Dashboard · Sales — front-desk history (Sales · Local Pickup · Repairs).
- *
- * Sibling of the Inbound desk Docked lane: same permission-gate recipe, but
- * the region body is the existing {@link WalkInHistoryHub} (chrome + feeds /
- * RepairTable) — do not fork a second transaction feed. Wire values
- * `?mode=sales` | `?mode=pickup` | `?mode=repairs` all land here
- * (`getDashboardDomainFromSearch` → `sales`).
- *
- * Counter intake stays on `/pickup` + `/repair`; Repairs is the history door
- * onto the shared RepairTable. Sales/Pickup use `WalkInHistorySidebar`; Repair
- * Service is table-only and has no Favorites sidebar.
- */
+/** Dashboard · Sales — front-desk history (Sales · Local Pickup · Repairs). */
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -30,14 +18,7 @@ function DashboardSalesViewInner() {
   const searchParams = useSearchParams();
   useRealtimeInvalidation({ repair: true, walkIn: true });
 
-  // Domain-level gate: the page is `dashboard.view`, but this domain shows
-  // walk-in history, so it carries walk_in's own permission.
-  //
-  // **A domain the operator can't see is ABSENT, not disabled** (dashboard IA
-  // rework C10 / inbound precedent). The L2 pills are already gone for them
-  // (`requires` on Sales / Local Pickup / Repairs in `SIDEBAR_PAGE_NAV`); a
-  // bookmark or hand-typed `?mode=sales` falls back to the dashboard they DO
-  // have. Repairs additionally needs `repair.view` — bounce to Sales Board.
+  // Domain-level gate:
   const { has, isLoaded } = useAuth();
   const repairsMode = isDashboardRepairsMode(searchParams);
   // Sales/Pickup feeds need walk_in.view. Repairs is gated by repair.view

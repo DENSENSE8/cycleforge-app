@@ -110,11 +110,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
     return () => window.removeEventListener('keydown', onKeyDown, true);
   }, [moreOpen, downloadOpen]);
 
-  // The grid-tile → lightbox hero morph (shared `layoutId`) only ever plays for
-  // the photo the viewer opened on. Once the user navigates away it is "spent"
-  // even if they arrow back to this same photo — a matching in-viewer nav
-  // shouldn't re-trigger a travel-from-the-grid animation (motion-crossfade.md:
-  // don't animate keyboard-driven nav).
+  // The grid-tile → lightbox hero morph (shared `layoutId`) only ever plays for the photo the viewer opened on.
   const heroIndexRef = useRef(currentIndex);
   const heroSpentRef = useRef(false);
   useEffect(() => {
@@ -123,10 +119,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const isHeroFrame = !reduceMotion && !heroSpentRef.current && currentIndex === heroIndexRef.current;
   const heroLayoutId = isHeroFrame ? photoHeroLayoutId(photoItems[currentIndex]?.id) : undefined;
 
-  // Click-off to close: only the outer scrim dismisses, and only when the click
-  // lands on the scrim itself. Stage chrome is pointer-events-none so empty
-  // padding falls through; image / thumbs / toolbar / arrows / details re-enable
-  // hits and stopPropagation so they never reach here.
+  // Click-off to close:
   const handleBackdropClick = (e: ReactMouseEvent) => {
     const willClose = e.target === e.currentTarget;
     // #region agent log
@@ -203,9 +196,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   // #endregion
 
   // Portal lives in PhotoViewerPortal — Layer only applies the modal z-token.
-  // `pointer-events-none` on the shell so a fading/exiting scrim cannot leave a
-  // dead hit target; the motion.div re-enables hits while open and drops them
-  // on exit via Framer's pointerEvents style.
   return (
     <Layer level="modal" portal={false} className="pointer-events-none fixed inset-0">
     <motion.div
@@ -244,10 +234,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         ) : null}
       </AnimatePresence>
 
-      {/* Stage — image lane. flex-1 yields width to the details drawer; the
-          drawer animates its own width, so this lane reflows live via flexbox
-          (no `layout` projection needed) in both open and close.
-          pointer-events-none so empty padding falls through to the scrim. */}
+      {/* Stage — image lane. */}
       <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
@@ -404,11 +391,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             </AnimatePresence>
           </div>
 
-          {/* Details toggle — a persistent primary control (industry standard
-              for image viewers: Google/Apple Photos, Lightroom). A view-state
-              toggle like zoom, so it shows a filled active state and never
-              hides in the ⋮ menu. Always rendered, ungated, on every page.
-              Bound to the same `i` hotkey as the panel chevron. */}
+          {/* Details toggle — a persistent primary control (industry standard for image viewers: */}
           <HoverTooltip label={g.panelOpen ? 'Hide details (i)' : 'Show details (i)'} asChild>
             <IconButton
               onClick={(e) => { e.stopPropagation(); g.togglePanel(); }}
@@ -607,10 +590,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             <p className="text-lg font-semibold text-red-300">Failed to load image</p>
           </div>
         ) : photoItems[currentIndex]?.thumbUrl ? (
-          // Instant low-res placeholder while the full image preloads — never a
-          // black/spinner-only stage on a slow (mobile) connection. Shares the
-          // hero layoutId so the grid→lightbox morph starts immediately off this
-          // (already-cached) thumbnail rather than waiting on the full-res fetch.
+          // Instant low-res placeholder while the full image preloads — never a black/spinner-only stage on a slow (mobile) connection.
           <motion.img
             src={photoItems[currentIndex].thumbUrl}
             alt={`Photo ${currentIndex + 1}`}
@@ -715,12 +695,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       )}
       </div>
       </div>
-      {/* Details drawer — flex sibling of the stage; animates its own width
-          (0 ⇄ 20rem), so open and close are one symmetric toggle and the image
-          lane reflows live in both directions. AnimatePresence still gates the
-          teardown: when the viewer closes with the drawer open, we wait for the
-          width-collapse exit before unmounting the lightbox (`deferViewerClose`
-          in usePhotoGallery). */}
+      {/* Details drawer — flex sibling of the stage; animates its own width (0 ⇄ 20rem), so open and close are one symmetric toggle and the image… */}
       <AnimatePresence
         initial={false}
         onExitComplete={() => {

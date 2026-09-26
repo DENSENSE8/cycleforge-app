@@ -1,14 +1,4 @@
-/**
- * POST /api/auth/account/passkey/authenticate/finish  (PUBLIC)
- *
- * Body: { response: AuthenticationResponseJSON, organizationId? }
- *
- * Verifies the assertion → resolves the account → its memberships → mints a
- * session for one workspace. The challenge is single-use, so we can't pause for
- * an org picker the way password login does; we sign into `organizationId` if
- * supplied, else the first membership (alphabetical) — the user can switch from
- * Settings → Organization afterward.
- */
+/** POST /api/auth/account/passkey/authenticate/finish (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

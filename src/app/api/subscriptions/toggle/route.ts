@@ -1,15 +1,4 @@
-/**
- * POST /api/subscriptions/toggle — follow / mute one entity.
- *
- * House skeleton (backend-patterns.md): withAuth → Zod validate → domain
- * helper → status map → recordAudit. The handler holds no business logic; the
- * three-state subscribe/mute machine lives in lib/notifications/subscriptions.ts
- * behind an injectable `Deps` so it unit-tests DB-free.
- *
- * Entity-kind only, deliberately. A `toggle` verb cannot express a rule
- * subscription's six predicate fields or an SLA's arm/disarm pair — those get
- * their own create/update route in Phase 2 rather than an overloaded body here.
- */
+/** POST /api/subscriptions/toggle — follow / mute one entity. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

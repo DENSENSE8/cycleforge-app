@@ -14,16 +14,7 @@ export type UnlinkReceivingClaimPhotosFromTicketDeps = {
   }) => Promise<number>;
 };
 
-/**
- * Reverse of claim dual-linking for a carton/line: drop `ZENDESK_TICKET`
- * rows on photos that still belong to this receiving carton (or any of its
- * lines).
- *
- * Load-bearing for unlink UX — `getPrimarySupportTicketForReceiving` falls
- * through to photo entity links after `ticket_links` / display columns clear,
- * so leaving these rows would resurrect the orange ticket chip on the next
- * by-entity refetch. Photos themselves stay; only the ticket dual-link goes.
- */
+/** Reverse of claim dual-linking for a carton/line: */
 export async function unlinkReceivingClaimPhotosFromTicket(
   args: {
     orgId: string;

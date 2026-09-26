@@ -1,18 +1,4 @@
-/**
- * GET /api/interop/asn/:shipmentId — one shipment as an EDI 856 hierarchy.
- *
- * READ-ONLY. Emits the HL hierarchy as JSON, not an X12 envelope — see
- * `@/lib/interop/asn-projection` for why this repo must not grow a segment
- * serializer.
- *
- * `shipmentId` is `shipping_tracking_numbers.id`. Scope is enforced by
- * reachability through this org's cartons (`fetchAsnShipment`), so another
- * tenant's shipment id 404s exactly like a nonexistent one.
- *
- * The param is read from the pathname rather than a route context because
- * `withAuth` does not forward the second Next argument — the same idiom as
- * `/api/orders/lookup/[orderId]`.
- */
+/** GET /api/interop/asn/:shipmentId — one shipment as an EDI 856 hierarchy. */
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

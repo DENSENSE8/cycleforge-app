@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Local Pickup right pane — the LCPU product spreadsheet. The status tabs and
- * the find field are {@link DataTable}'s, passed as data; the page owns only
- * the feed and the record plane. Mounted over
- * the pickup-native {@link LedgerGridSurface} adapter (mounted via
- * {@link NonlinearTableHost}), products condensed under their LCPU order number
- * (one-to-many fold).
- *
- * Data is the LCPU pickup dataset (`usePickupLines`), NOT the receiving-lines
- * pipeline — LCPU orders are a distinct entity (draft pickup orders in
- * `local_pickup_orders`), so this reuses the grid *primitives* without inheriting
- * any receiving edit/serial/receive side-effects.
- */
+/** Local Pickup right pane — the LCPU product spreadsheet. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -62,12 +50,7 @@ function pickupFoldKey(line: PickupLine): string {
   return po || `order:${line.order_id}`;
 }
 
-/**
- * Row comparator keyed by SORT FACT — the structural facts (`title`/`order`)
- * plus catalog field ids (`pickupSortFactFor` maps a mounted column to one).
- * A `?colsort=` header key resolves through the mounted model, so rebinding a
- * slot re-points the sort with it.
- */
+/** Row comparator keyed by SORT FACT — the structural facts (`title`/`order`) plus catalog field ids (`pickupSortFactFor` maps a mounted… */
 function comparePickupRows(
   a: PickupLine,
   b: PickupLine,
@@ -113,13 +96,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const statusTab = parsePickupStatusTab(searchParams.get('status'));
   const query = searchParams.get('q') ?? '';
 
-  // The find text rides the FETCH KEY, not a client pass. `/pickup` already
-  // writes it to `?q=` (this surface keeps that — the URL is where its find
-  // text has always lived), and the route now ANSWERS it. The in-memory
-  // substring pass that used to stand here re-filtered the server's answer
-  // against the mounted tracks only, so a line the server matched on its
-  // reference number vanished before it reached the grid — and nothing past
-  // the 500-row window could be found at all.
+  // The find text rides the FETCH KEY, not a client pass.
   const { data: lines, isLoading, isError, isFetching } = usePickupLines(query);
   const allRows = useMemo(() => lines ?? [], [lines]);
 
@@ -164,14 +141,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     [allRows, statusTab],
   );
 
-  // Status lives in the ONE filter control (operator ruling 2026-08-30 —
-  // selection tabs are filters; the bottom strip carries counts only). The
-  // options stay mutually exclusive on ?status; picking the active one clears
-  // — "all" is the absence of a filter, never an option.
-  //
-  // Under a search these counts are counts OF THE MATCHES, because `allRows` is
-  // now the server's answer for `?q=`. That is the promise a faceted count has
-  // to keep: a tab reading 3 has to produce 3 rows when clicked.
+  // Status lives in the ONE filter control (operator ruling 2026-08-30 — selection tabs are filters; the bottom strip carries counts only).
   const statusFilter = useMemo(
     () => ({
       options: [
@@ -228,11 +198,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     }
   }, [customerName, queryClient, setParams]);
 
-  // Three settled answers, not one string (`display/workbench.md` → the four
-  // settled states). Absence invites waiting for the next order; no-match invites
-  // clearing the filter; a load failure is neither. The grid picks between the
-  // first two itself from `isSearching`, so the branch that stays here is only
-  // the failure case.
+  // Three settled answers, not one string (`display/workbench.md` → the four settled states).
   const emptyMessage = isError
     ? 'Could not load local pickup orders.'
     : statusTab === 'process'
@@ -240,14 +206,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
       : 'No local pickup orders yet.';
   const searchEmptyMessage = 'No local pickup items match this search.';
 
-  // Grid adapter (was `PickupGridView`): the workspace mounts the registry host
-  // directly, products condensed under their LCPU order number (one-to-many
-  // fold). Column sort is DURABLE on `?colsort=`/`?coldir=`.
-  //
-  // The COLUMNS are the effective slot layout's materialization (staff ?? org
-  // ?? product — Wave-2 hand-model kill): the second family on the slot
-  // engine, sheet morph. Sort keys are the mounted track keys; each resolves
-  // to its bound field's fact through `pickupSortFactFor`.
+  // Grid adapter (was `PickupGridView`):
   const { effectiveLayout, fields } = usePickupTableLayout();
   const columns = useMemo(() => pickupSheetColumnsFor(effectiveLayout), [effectiveLayout]);
   const sortFactByKey = useMemo(
@@ -264,10 +223,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     defaultDir: (key) => defaultDirForPickupColumn(columns, key),
   });
 
-  // One-shot "settle" re-render after the grid first has data — the virtualized
-  // LedgerGrid mounts its scroll element in the same commit the data arrives,
-  // and its re-measure can miss on first paint when nothing else re-renders this
-  // subtree, leaving the body blank until the first interaction.
+  // One-shot "settle" re-render after the grid first has data — the virtualized LedgerGrid mounts its scroll element in the same commit the…
   const [, settleTick] = useState(0);
   const hasRows = statusRows.length > 0;
   useEffect(() => {

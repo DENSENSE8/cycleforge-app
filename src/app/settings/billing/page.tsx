@@ -1,12 +1,4 @@
-/**
- * /settings/billing — tenant billing dashboard.
- *
- * Server component. Loads the org + subscription, renders a card-per-plan
- * with the current one highlighted, and surfaces the Stripe billing portal
- * link for everything Stripe owns (payment method, invoices, cancel).
- *
- * Gated by admin.view at the page level — non-admins shouldn't see billing.
- */
+/** /settings/billing — tenant billing dashboard. */
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeader';

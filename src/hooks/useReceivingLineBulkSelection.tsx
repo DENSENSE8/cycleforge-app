@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Shared bulk-selection for the receiving-line history feeds (left-gutter
- * checkboxes + contextual action bar). Both the Receiving dashboard's History /
- * Incoming list and the Tech dashboard's testing browse list select
- * `ReceivingLineRow`s with the IDENTICAL action set — Copy / Print / Create
- * support ticket / Send to staff / Send to phone — and the same single-line
- * claim modal. They differ only in the selection scope and the per-row copy
- * format. Selection is always on while `active`; this hook owns the clear +
- * bulk actions so neither dashboard hand-rolls its own copy.
- *
- * **Always-on select is the GUTTER, not the row.** `selectMode` means the
- * left-gutter checkboxes are live — the same contract
- * `useDashboardBulkSelection` carries on the outbound grid, where a row click
- * still opens the order. It must never be read as "the row body now belongs to
- * the bulk plane": `useReceivingRowSelection.handleSelectRow` did read it that
- * way, and since every `isTableOnlyMode` surface pins this ON, `/incoming`'s row
- * click never dispatched `receiving-select-line` and its details inspector had
- * no reachable trigger at all. See that hook's header for the split.
- *
- * Consolidates the previously-duplicated bulk-selection blocks from
- * TechDashboard and ReceivingDashboard.
- */
+/** Shared bulk-selection for the receiving-line history feeds (left-gutter checkboxes + contextual action bar). */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTableSelection } from '@/hooks/useTableSelection';

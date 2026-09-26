@@ -1,28 +1,4 @@
-/**
- * Per-staff and per-role mobile UI configuration.
- *
- * The mobile shell (everything under /m/*) reads the resolved config from
- * AuthContext and uses it to decide:
- *   - whether to render the bottom nav at all
- *   - which tabs to show, in what order
- *
- * Source of truth is the database (staff.mobile_display_config JSONB layered
- * over roles.mobile_defaults JSONB). This file owns the TypeScript shape,
- * defaults, and the merge resolver used by both server and client.
- *
- * Resolution order (each later step wins for the fields it sets):
- *   1. DEFAULT_MOBILE_DISPLAY_CONFIG (everyone — bottom nav off)
- *   2. roles.mobile_defaults — UNION across every assigned role (later role
- *      keys in the input order take precedence; callers pass roles already
- *      sorted by position ASC so the primary role wins).
- *   3. staff.mobile_display_config — per-row override.
- *
- * Missing top-level keys inherit. Inside a top-level group (e.g. bottomNav)
- * we treat the whole object as one unit: if the override specifies bottomNav
- * at all, it fully replaces the inherited bottomNav. Keeps the merge
- * obviously-correct and matches how admins reason about it ("set bottom nav
- * for this staff" is one decision, not a per-field decision).
- */
+/** Per-staff and per-role mobile UI configuration. */
 
 export type MobileNavTabId = 'home' | 'scan' | 'receiving' | 'packing' | 'picks' | 'signout';
 
@@ -45,14 +21,7 @@ export const MOBILE_NAV_CENTER_TAB_IDS: ReadonlyArray<MobileNavTabId> = ['scan']
 /** Default center tab when none is configured — the universal scanner. */
 const DEFAULT_CENTER_TAB: MobileNavTabId = 'scan';
 
-/**
- * The single, canonical bottom-nav layout rendered for every signed-in staffer:
- * Recent · Picks · [Scan centre] · Unbox · Packing. The bar must look the same
- * regardless of which roles a staffer holds, so {@link RedesignedBottomNav}
- * renders this fixed list rather than the per-row `tabs` blob (which could drift
- * between roles / stale rows). 'signout' is intentionally absent — sign-out
- * lives in the account FAB.
- */
+/** The single, canonical bottom-nav layout rendered for every signed-in staffer: */
 export const CANONICAL_MOBILE_NAV_TABS: ReadonlyArray<MobileNavTabId> = [
   'home',
   'picks',
@@ -155,12 +124,7 @@ function mergeOver(
   return next;
 }
 
-/**
- * Resolve the effective mobile config for one staff. Pass every role assigned
- * to the staff (ordered by position ASC, so the primary role's defaults win
- * within the role tier) and the per-staff override blob from
- * staff.mobile_display_config.
- */
+/** Resolve the effective mobile config for one staff. */
 export function resolveMobileDisplayConfig(args: {
   roles: ReadonlyArray<{ key?: string | null; mobile_defaults?: unknown }>;
   staffOverride: unknown;

@@ -1,16 +1,4 @@
-/**
- * `reports.dead-stock` — the table definition, capabilities and surface
- * descriptor for the dead-stock (90d+) report.
- *
- * Re-declares nothing: columns are the family SoT by reference.
- *
- * Its OWN tableId, never shared with the other two reports: three different
- * row shapes cannot share one layout document, and the Fields menu keys off
- * `tableId` — so hiding `Stock` here must not touch Bin utilization or
- * Velocity. It is a SIBLING of `report-velocity`, never a merge: both rows are
- * keyed by SKU, but one answers "what is moving" over a 30-day window and the
- * other "what has not moved in 90+ days", and they carry different facts.
- */
+/** `reports.dead-stock` — the table definition, capabilities and surface descriptor for the dead-stock (90d+) report. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -27,14 +15,7 @@ import {
   type ReportDeadStockGridColumn,
 } from './report-dead-stock-grid-layout';
 
-/**
- * Nothing on this desk writes. A dead-stock row is a projection over
- * `sku_stock` and the ledger — no row verbs, no cell editing, no triage flags.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting a run of dormant SKUs into a clearance list is the reason this
- * report is opened at all.
- */
+/** Nothing on this desk writes. */
 export const REPORT_DEAD_STOCK_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

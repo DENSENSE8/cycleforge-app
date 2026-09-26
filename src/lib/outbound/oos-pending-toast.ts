@@ -1,14 +1,4 @@
-/**
- * Bottom-right toast after marking order(s) out of stock.
- *
- * Pending is the Shipping peer desk `/shipping/shortage` (sidebar label
- * Pending) — not To-ship `?stage=pending`. Do not auto-navigate; the CTA is
- * how the operator identifies the move.
- *
- * Callers: MorphingRowActionMenu (after OOS commit).
- * Affected: AppToaster bottom-right via @/lib/toast; navigates to SHIPPING_SHORTAGE_PATH.
- * User: "Implement the plan as specified... Out of stock identity + Pending-tab toast"
- */
+/** Bottom-right toast after marking order(s) out of stock. */
 
 import { toast } from '@/lib/toast';
 import { SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';

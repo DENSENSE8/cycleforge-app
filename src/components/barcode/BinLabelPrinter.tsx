@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Location (bin) Label Printer. Five-step location builder that outputs a 2×1
- * thermal sticker. Single mode = one face; Bulk = LabelPrintRunPanel.
- *
- * Callers: LabelPrintWorkspace, WarehouseSidebarPanel. No data schemas.
- * User: single/bulk toggle; remove configure; reset away from slider.
- */
+/** Location (bin) Label Printer. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { Printer } from '@/components/Icons';

@@ -1,18 +1,4 @@
-/**
- * Onboarding step catalog — the single source of truth for activation
- * (onboarding-foundational-plan §4/§5).
- *
- * Steps are READ-TIME DERIVED, never stored: a step is complete iff the data
- * that proves it exists (`doneWhen` over {@link OnboardingStats} from
- * GET /api/onboarding/stats). This self-heals — an org that connected a channel
- * before onboarding shipped already shows that step done — and there is nothing
- * to migrate.
- *
- * Plan gating: steps are filtered by the tenant's plan entitlements
- * (`entitlementsForPlan`, src/lib/billing/plans.ts) via the optional `showWhen`
- * predicate, so a plan never surfaces a step it can't act on. This module is
- * pure (no server imports) so client components can consume it directly.
- */
+/** Onboarding step catalog — the single source of truth for activation (onboarding-foundational-plan §4/§5). */
 
 import { entitlementsForPlan, type Entitlements } from '@/lib/billing/plans';
 import type { PlatformPlan } from '@/lib/tenancy/constants';
@@ -32,16 +18,7 @@ export interface OnboardingStats {
   firstScanDone: boolean;
   /** True once the org has an active workflow_definitions row (its ops SOP is chosen). */
   hasActiveWorkflow: boolean;
-  /**
-   * ISO instant the org answered the two GS1 compliance questions, or null.
-   *
-   * The one step whose completion is a persisted ANSWER rather than derived
-   * activity data — deliberately, because "we stock no new inventory and do not
-   * sell on Amazon" is a fact no row in this database can prove. It is still
-   * read-time derived like every sibling: the value lives in
-   * `organizations.settings.compliance.answeredAt`, stamped server-side by
-   * PATCH /api/admin/organization/settings, and this step only reads it.
-   */
+  /** ISO instant the org answered the two GS1 compliance questions, or null. */
   complianceAnsweredAt: string | null;
 }
 

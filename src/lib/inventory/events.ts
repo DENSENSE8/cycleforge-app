@@ -86,36 +86,13 @@ export interface InventoryEventRow {
   client_event_id: string | null;
   notes: string | null;
   payload: Record<string, unknown>;
-  /**
-   * Actor display name, resolved by `readTimeline` via a LEFT JOIN to `staff`.
-   * Null for system / unknown actors. Only the read path populates this — the
-   * `inventory_events` table itself has no `actor_name` column (the writer
-   * returns it absent), so it's optional on the row.
-   */
+  /** Actor display name, resolved by `readTimeline` via a LEFT JOIN to `staff`. */
   actor_name?: string | null;
 }
 
 // ── Writer ─────────────────────────────────────────────────────────────────
 
-/**
- * Insert one row into inventory_events. Returns the inserted row, or the
- * pre-existing row when a client_event_id collision is detected (idempotent
- * retry support).
- *
- * Pass `db` to share a transaction with the caller; otherwise uses the pool
- * directly.
- *
- * Tenancy (backward-compatible): pass `orgId` to scope the write to a tenant.
- * - When `orgId` is OMITTED the behavior is unchanged — the raw `db`/pool
- *   insert runs exactly as before and `organization_id` falls to the column
- *   default (USAV backfill / GUC, depending on the DB). All existing callers
- *   keep compiling and behaving identically.
- * - When `orgId` is PRESENT the row is stamped with `organization_id`. If a
- *   caller `db` (existing transaction client) was supplied, the GUC is set on
- *   that client first (so the table's GUC default + RLS see the right tenant);
- *   otherwise the insert runs via `tenantQuery(orgId, …)` (a single, self-
- *   contained GUC-scoped statement).
- */
+/** Insert one row into inventory_events. */
 export async function recordInventoryEvent(
   input: RecordInventoryEventInput,
   db?: Pick<PoolClient, 'query'>,
@@ -140,10 +117,7 @@ export async function recordInventoryEvent(
     JSON.stringify(input.payload ?? {}),
   ];
 
-  // ── Org-scoped path: stamp organization_id explicitly. ────────────────────
-  // ON CONFLICT requires a unique constraint; client_event_id has one (UNIQUE),
-  // so the upsert is safe. When no client_event_id is supplied the ON CONFLICT
-  // clause is unreachable and we get a fresh insert.
+  // ── Org-scoped path:
   if (orgId) {
     const orgParams = [...baseParams, orgId];
     const orgSql = `INSERT INTO inventory_events (
@@ -216,14 +190,7 @@ export interface TimelineFilter {
   actor_staff_id?: number | null;
   since?: string | null;        // ISO timestamp
   limit?: number;
-  /**
-   * Find text, answered in SQL. The columns are the facts a LEDGER ROW PAINTS
-   * (`inventory-events-resolve.ts`): the SKU and its catalog title, the serial,
-   * both bin names, the actor, the station, the event type, the status
-   * transition and the note. Four of those live in other tables, which is why
-   * a searching read joins — matching only the columns `inventory_events`
-   * happens to carry would miss the product title the row uses as its TITLE.
-   */
+  /** Find text, answered in SQL. */
   q?: string | null;
 }
 
@@ -238,10 +205,7 @@ export async function readTimeline(
     clauses.push(sql.replace('$?', `$${params.length}`));
   };
 
-  // Tenant scope (only when orgId is supplied — keeps the legacy raw path
-  // byte-identical for callers that don't yet thread org). Columns are
-  // qualified with `ie.` because the read LEFT JOINs `staff` to resolve the
-  // actor display name (see below).
+  // Tenant scope (only when orgId is supplied — keeps the legacy raw path byte-identical for callers that don't yet thread org).
   if (orgId) push('ie.organization_id = $?', orgId);
 
   if (filter.receiving_id != null)       push('ie.receiving_id = $?',        filter.receiving_id);
@@ -283,20 +247,11 @@ export async function readTimeline(
   }
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-  // A SEARCH IS NOT A PAGE. `limit` is the caller's display window; honouring
-  // it while `q` narrows would answer "no match" for an event one row past the
-  // bound — a bounded search is the same lie one layer down. A searching read
-  // opens to this reader's hard ceiling. The SUBJECT filters above are not
-  // touched: `serial_unit_id` is the unit the operator picked, which is a scope
-  // they chose rather than a page they fell off.
+  // A SEARCH IS NOT A PAGE.
   const limit = q ? 1000 : Math.min(Math.max(filter.limit ?? 100, 1), 1000);
   params.push(limit);
 
-  // Resolve the actor display name in the read (the table has no actor_name
-  // column). Additive: `ie.*` keeps every existing field; the LEFT JOIN only
-  // appends a nullable `actor_name`, so the row set is otherwise unchanged.
-  // This is the root-cause fix for unit timelines that showed when/what but
-  // never WHO (the lightweight `events` feed had no actor name).
+  // Resolve the actor display name in the read (the table has no actor_name column).
   const sql = `SELECT ie.*, s.name AS actor_name
        FROM inventory_events ie
        LEFT JOIN staff s ON s.id = ie.actor_staff_id

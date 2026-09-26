@@ -39,17 +39,7 @@ const dynamicThemeColors: StationThemeColors = {
   shadow: 'shadow-accent-shadow',
 };
 
-/**
- * Single entry point for station theme resolution.
- *
- * @example
- *   // From a known theme string
- *   const { theme, colors } = useStationTheme('purple');
- *
- * @example
- *   // From a staff ID — resolves dynamically via staff-colors lookup tables
- *   const { theme, colors, inputBorder } = useStationTheme({ staffId: 3 });
- */
+/** Single entry point for station theme resolution. */
 export function useStationTheme(input: StationTheme | StaffInput): ResolvedTheme {
   // Re-resolve when the module-level color cache flips (localStorage hydration
   // on cold boot + the fresh /api/staff fetch from StaffColorsProvider).

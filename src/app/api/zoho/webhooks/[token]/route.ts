@@ -6,17 +6,7 @@ export const runtime = 'nodejs';
 
 type RouteCtx = { params: Promise<{ token: string }> };
 
-/**
- * Per-tenant Zoho webhook receiver (Wave 3, production multi-tenant path).
- *
- *   POST /api/zoho/webhooks/{token}
- *
- * The opaque `token` (minted when the org connected Zoho) maps O(1) to exactly
- * one org via organization_integrations.webhook_token, and the delivery is
- * authenticated with THAT org's signing secret — so events resolve to the
- * correct tenant and a body forged with another tenant's key is rejected. All
- * logic lives in the shared pipeline.
- */
+/** Per-tenant Zoho webhook receiver (Wave 3, production multi-tenant path). */
 export async function POST(request: NextRequest, ctx: RouteCtx) {
   const { token } = await ctx.params;
   return processZohoWebhook(request, { token });

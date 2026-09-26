@@ -1,10 +1,4 @@
-/**
- * Grid / station-log → TSV copy formatters.
- * Bulk "Copy" actions serialize selected rows to tab-separated lines (paste into
- * a sheet). Pure + column-stable so the output is predictable regardless of row
- * order. Station history (Tech / Packer) plus Workbench multi-select grids
- * (bins · catalog) share {@link toTsvBlock}.
- */
+/** Grid / station-log → TSV copy formatters. */
 import type { TechRecord } from '@/hooks/useTechLogs';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';

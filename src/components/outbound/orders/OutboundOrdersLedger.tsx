@@ -1,34 +1,9 @@
 'use client';
 
 /**
- * Outbound › To ship — the industrial record ledger (BRIEF §4 industrial,
- * `docs/design-system/HANDOFF-outbound-to-ship-ledger.md`).
- *
- * Deliberately NOT the slot `DataTable`. Every order is a flush, full-width
- * record separated by a 1px ink rule — no column header, no gutters, no card:
- *
- *   spine │ photo │ context   CODE · BIN location · platform · order # ···│ date / date · nD
- *         │       │ identity  title ···········································│ QTY n
- *         │       │ facts     ☐ · condition · $price · SKU · Pick · Pack · note · LISTING ↗ │ → next
- *   (the photo opens Unbox's viewer on every item # + SKU photo)
- *
- *   seed parent: fold · ☐ · CODE n/n · BIN (all lines) · platform · order # ·
- *                boxes · lines · Pick · Pack · QTY · $total · → next (worst line)
- *   ─────────────────────────────────────────────────────────── (no column beside it)
- *
- * Presentation only. The feed (`useOrdersQueueFeed`) is the same one the slot
- * table reads: rows + grouping + URL sort, the selection / cursor / inspector
- * plane, the one assignment waist for every inline edit. The open record is
+ * Outbound › To ship — the industrial record ledger (BRIEF §4 industrial, `docs/design-system/HANDOFF-outbound-to-ship-ledger.md`).
  * {@link OrderRecordView}, placed by `DeskRecordPlane` (owner 2026-09-25): in
- * place of the rows by default — the list keeps the whole fixed stage and stays
- * mounted under the record — and list-left / record-right when the staffer
- * turns fullscreen on. Never the right rail, never an evidence aside. The
- * plane owns Esc; this surface owns J / K (the record cursor). The open
- * order's verbs live in ONE strip under the toolbar (`OrderRecordActionStrip`,
  * owner 2026-09-25) — toolbar + strip are the list anchor the in-place record
- * opens below; the record carries no verbs. Colour comes
- * from the industrial mode (`*-mode-*`) and from `LIFECYCLE`; geometry from
- * `outbound-orders-ledger-geometry.ts`. No motion anywhere on this surface.
  */
 
 import {
@@ -815,10 +790,7 @@ const LedgerGroupRecord = memo(function LedgerGroupRecord({
       >
         {folded ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
-      {/* One band carries the whole order, on the records' columns: the lead
-          (☐ · state · platform · order #) as band 1, then where + how much under
-          the buyer / SKU, then pick · pack · next on band 3's lanes. The state
-          code spans the record's state + note slots (11 + 3 + 11 = 25). */}
+      {/* One band carries the whole order, on the records' columns: */}
       <div className={cn('flex min-w-0 flex-1 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
         <span className={LEDGER_LEAD_CLASS}>
           <GridRowCheckbox
@@ -917,15 +889,8 @@ function LedgerNextStep({ next }: { next: { label: string; tip?: string; blocked
   );
 }
 /**
- * The row's note slot toggles an inline note editor under it: the amber NOTE
- * badge when the order has a note, the grey `+ NOTE` face when it has none
+ * The row's note slot toggles an inline note editor under it:
  * (owner 2026-09-25: add a note in place). Open state lives on the ledger (one
- * overlay at a time); only a click on the slot opens or closes it — hover and
- * focus never hold it open. Escape or a press anywhere outside closes it, and
- * closing autosaves the note.
- *
- * The overlay portals out of the virtualized list, so no row — hovered,
- * focused or transformed — can paint over it, and the scroll box never clips it.
  */
 function LedgerNoteEditor({
   orderId,
@@ -1151,11 +1116,7 @@ const LedgerRecord = memo(function LedgerRecord({
       className={cn(LEDGER_HIT_CLASS, 'w-8 items-center pt-0')}
     />
   );
-  // The buyer, from the customer book (`/api/orders` joins it), in band 1's
-  // free span; S has no free span, so it reads in the order record only.
-  // Display-only: a click lands on the row's open target, which opens the
-  // record whose identity column carries the full Customer block. It is the
-  // band's one elastic span, so it truncates first (full text on hover).
+  // The buyer, from the customer book (`/api/orders` joins it), in band 1's free span; S has no free span, so it reads in the order record only.
   const customerName = record.customer ? customerFullName(record.customer) : '';
   const customerWhere = record.customer ? customerPlace(record.customer) : '';
   const customerFace =
@@ -1183,12 +1144,7 @@ const LedgerRecord = memo(function LedgerRecord({
         (open || checked) && 'outline outline-2 -outline-offset-2 outline-mode-ink',
       )}
     >
-      {/*
-        The row's open target: a stretched button under the record, so the whole
-        row opens the order record and keyboard / AT get one stop per record. The
-        record sits above it with pointer-events off; controls turn them back on
-        and stop propagation, so a check or an edit never also opens.
-      */}
+      {/* The row's open target: */}
       <button
         type="button"
         data-ledger-open=""
@@ -1317,11 +1273,10 @@ const LedgerRecord = memo(function LedgerRecord({
               />
             </span>
           </div>
-          {/* Band 3 — execution: condition · BIN · SKU ··· pick · pack · next. What the
-              hands do, with the physical lookup pair (where it is, what it is) side by
-              side (owner 2026-09-25). Price is not here: it is noise on the floor and
-              reads in the order record. The buyer note is the NOTE badge on band 1
-              and its full text leads the record. */}
+          {/*
+ * Band 3 — execution:
+ * side (owner 2026-09-25). Price is not here: it is noise on the floor and
+ */}
           <div className={cn('flex min-w-0 items-center gap-3', LEDGER_BAND_CLASS[zoom])}>
             <span className={cn(LEDGER_LEAD_CLASS, 'pl-2')}>
               <span className="pointer-events-auto w-20 shrink-0">{condition}</span>
@@ -1345,14 +1300,7 @@ const LedgerRecord = memo(function LedgerRecord({
   );
 });
 
-/**
- * The order's WHERE — every live allocation's warehouse breadcrumb, from the
- * server (`storage_locations`) through the formatter `/m/work` uses, so the
- * desk and the handheld print the same path. With nothing allocated it falls
- * back to the SKU's home bin (`resolveOrderBin`), tagged `HOME` so it never
- * passes for an allocation. Neither reads UNASSIGNED in the warn ink: an order
- * with nowhere to pick from is a floor problem.
- */
+/** The order's WHERE — every live allocation's warehouse breadcrumb, from the server (`storage_locations`) through the formatter `/m/work`… */
 export function LedgerLocation({
   path,
   source = path ? 'allocation' : null,

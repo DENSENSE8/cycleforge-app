@@ -2,16 +2,7 @@
 
 /**
  * Right-rail panel lifecycle — singleton dismiss / draft cache / resume.
- *
- * Occupancy (`store.ts`) still answers "who is registered for the slot".
- * This store answers the operator gesture the host owns:
- *
- *   open → paint · →| / Esc → unmount + cache draft · Resume / Mod+Shift+R → remount
- *
  * Park is silent (no "Draft saved." toast) — operator 2026-09-01.
- *
- * House store shape (subscribe/emit + cached snapshot), not Zustand — same
- * idiom as `store.ts` / `overlay-stack`. `usePanelStore` is the React waist.
  */
 
 import { useEffect, useSyncExternalStore } from 'react';

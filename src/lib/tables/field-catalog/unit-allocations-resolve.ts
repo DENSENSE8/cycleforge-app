@@ -1,17 +1,4 @@
-/**
- * Unit-allocations slot resolvers — pure. Row + fieldId → the fact a slot cell
- * paints. No React, no hooks, no clock.
- *
- * Dates resolve to the ABSOLUTE INSTANT, never to a relative face: the engine
- * turns a `date` display type into the age face and keeps the instant in the
- * hover, and a pre-relativized string would also sort by the letter `m`.
- *
- * A field the feed does not carry resolves to `{ kind: 'value', text: null }`
- * and the cell dashes — which is the honest answer for the per-SKU feed's
- * missing release columns and for the unit-detail feed's missing
- * `serial_unit_id`. A field id from another family resolves to `null`;
- * bindings never cross families.
- */
+/** Unit-allocations slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { UnitAllocationTableRow } from '@/lib/inventory/unit-allocation-row';
@@ -30,12 +17,7 @@ export function resolveUnitAllocationsSlotValue(
 ): CompoundSlotValue | null {
   switch (fieldId) {
     case 'unit-allocations.order':
-      /**
-       * The bare number, not `#123`. The retired cell printed the `#` itself;
-       * the engine's `id` face carries the chip, and a resolver that baked the
-       * sigil in would sort `#9` after `#10` as text and make the search box
-       * miss a query typed without it.
-       */
+      /** The bare number, not `#123`. */
       return { kind: 'value', text: str(row.order_id) };
     case 'unit-allocations.unit':
       return { kind: 'value', text: str(row.serial_unit_id) };

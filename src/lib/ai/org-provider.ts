@@ -1,23 +1,4 @@
-/**
- * org-provider — per-org AI provider resolution (AI search, BYOK + metered
- * platform default; docs/ai-search-modernization-plan.md).
- *
- * Supersedes env-only resolution for TENANT-facing AI search calls. Chain,
- * most-specific wins:
- *
- *   1. The org's connected provider from the integrations vault
- *      (organization_integrations, KMS-encrypted, 5-min cached via
- *      getIntegrationCredentials). Priority when several are connected:
- *      ai_gateway → openai → anthropic (chat only) → ollama/self-hosted.
- *   2. The platform-metered default: the AI_CHAT_* / AI_EMBED_* env sets
- *      (Vercel AI Gateway key owned by the platform). Usage is metered per
- *      org either way; margin billing applies only to platform-carried usage.
- *   3. null — capability unavailable; callers degrade (search = keyword-only,
- *      Ask-AI = classic chat deep-link). NEVER an error on the hot path.
- *
- * All four BYOK providers speak the OpenAI wire format (Anthropic via its
- * OpenAI-compat layer, chat only — no embeddings API).
- */
+/** org-provider — per-org AI provider resolution (AI search, BYOK + metered platform default; docs/ai-search-modernization-plan.md). */
 
 import type {
   AiGatewayCredentials,
@@ -42,16 +23,7 @@ export interface OrgAiConfig extends AiProviderConfig {
   source: IntegrationProvider | 'platform';
 }
 
-/**
- * Injectable collaborators (house `Deps` pattern — backend-patterns.md), so
- * the resolution CHAIN is unit-testable with zero DB.
- *
- * The vault import is deliberately `import type` + a lazy `await import()`
- * inside the default: `@/lib/integrations/credentials` pulls `@/lib/db`, which
- * carries `server-only` and throws the moment it is loaded under node:test.
- * A top-level value import here would make this module untestable, which is
- * how the chain came to have no coverage in the first place.
- */
+/** Injectable collaborators (house `Deps` pattern — backend-patterns.md), so the resolution CHAIN is unit-testable with zero DB. */
 export interface OrgAiDeps {
   getIntegrationCredentials: <T>(orgId: OrgId, provider: IntegrationProvider) => Promise<T | null>;
   isAiConfigured: (capability: AiCapability) => boolean;
@@ -90,15 +62,7 @@ const DEFAULT_CHAT_MODEL_OPENAI = 'gpt-4o-mini';
 const DEFAULT_EMBED_MODEL_OPENAI = 'text-embedding-3-small';
 const DEFAULT_CHAT_MODEL_ANTHROPIC = 'claude-haiku-4-5';
 
-/**
- * Build ONE candidate config for a given vault provider, or null when that
- * provider is not connected / cannot serve the capability.
- *
- * Split out of the old first-match cascade so the ORDER lives in one place
- * (`aiProviderSequence`) instead of being implied by the sequence of `if`
- * blocks — which is how the chain came to be hardcoded cloud-first with no
- * way for a tenant to say otherwise.
- */
+/** Build ONE candidate config for a given vault provider, or null when that provider is not connected / cannot serve the capability. */
 async function candidateFor(
   orgId: OrgId,
   provider: IntegrationProvider,
@@ -151,10 +115,7 @@ async function candidateFor(
       if (!c?.baseUrl) return null;
       const model = capability === 'chat' ? c.model : c.embedModel;
       if (!model) return null;
-      // A self-hosted endpoint is usually reached through a tunnel fronted by
-      // Cloudflare Access, whose service token is an endpoint property and so
-      // cannot ride on `apiKey` (that is the model's bearer). Omit the field
-      // entirely when unconfigured so callers can spread it unconditionally.
+      // A self-hosted endpoint is usually reached through a tunnel fronted by Cloudflare Access, whose service token is an endpoint property and…
       const cfHeaders = {
         ...(c.cfAccessClientId ? { 'CF-Access-Client-Id': c.cfAccessClientId } : {}),
         ...(c.cfAccessClientSecret ? { 'CF-Access-Client-Secret': c.cfAccessClientSecret } : {}),
@@ -172,20 +133,7 @@ async function candidateFor(
   }
 }
 
-/**
- * The ordered candidate chain for an org + capability, most-preferred first.
- *
- * Order comes from the org's stored preference (local-first by default —
- * `provider-order.ts`), NOT from the sequence of branches in this file. The
- * platform-metered default is always last: it is the fallback of last resort,
- * never something a tenant's own connected provider loses to.
- *
- * Providers currently demoted by `provider-health` are moved to the BACK
- * rather than dropped — a chain that silently shortened itself would turn a
- * transient timeout into "AI is not configured for this workspace".
- *
- * Never throws: a vault failure yields whatever the platform default offers.
- */
+/** The ordered candidate chain for an org + capability, most-preferred first. */
 export async function resolveOrgAiChain(
   orgId: OrgId,
   capability: AiCapability,
@@ -209,9 +157,6 @@ export async function resolveOrgAiChain(
   }
 
   // Demoted providers keep their relative order but sink below healthy ones.
-  // Guarded: the health cache is best-effort, and this function's contract is
-  // that it NEVER throws on the lookup path. An unreadable cache means "assume
-  // healthy" — one wasted timeout, not a dead AI surface.
   try {
     const healthy = chain.filter((c) => !deps.isDemoted(orgId, c.source, capability));
     const demoted = chain.filter((c) => deps.isDemoted(orgId, c.source, capability));
@@ -221,13 +166,7 @@ export async function resolveOrgAiChain(
   }
 }
 
-/**
- * The provider a call should try FIRST, or null when nothing can serve it.
- *
- * Unchanged contract for every existing caller: it is the head of the chain.
- * Callers that can retry should use `resolveOrgAiChain` (or the failover
- * helper) so a timeout demotes rather than fails.
- */
+/** The provider a call should try FIRST, or null when nothing can serve it. */
 export async function resolveOrgAiConfig(
   orgId: OrgId,
   capability: AiCapability,
@@ -237,24 +176,7 @@ export async function resolveOrgAiConfig(
   return chain[0] ?? null;
 }
 
-/**
- * Resolve the Anthropic-native brain behind the assistant agent loop.
- *
- * **This is deliberately NOT `resolveOrgAiChain`.** That chain resolves
- * OpenAI-wire endpoints; the agent loop uses Anthropic's native tool-use API,
- * which an Ollama or Vercel-Gateway endpoint does not implement. Handing it a
- * chain entry it cannot speak to would fail at the first tool call — so the
- * brain resolves only providers that can actually serve it.
- *
- * Precedence mirrors the rest of the resolver: the org's OWN vault key first,
- * the platform key last. Before this existed the loop read
- * `process.env.ANTHROPIC_API_KEY` directly, so every tenant's assistant ran on
- * one platform key and one hardcoded model — the same single-tenant leak
- * hermes-client had, in a surface the Phase 1 sweep did not cover.
- *
- * Returns null when neither is configured; the caller degrades to its
- * OpenAI-wire fallback rather than throwing.
- */
+/** Resolve the Anthropic-native brain behind the assistant agent loop. */
 export async function resolveOrgAnthropicBrain(
   orgId: OrgId,
   deps: OrgAiDeps = defaultDeps,

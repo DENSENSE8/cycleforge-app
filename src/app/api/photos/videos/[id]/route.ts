@@ -7,13 +7,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { uploadPermissionFor } from '@/lib/photos/entity-permissions';
 import { deleteVideo, getVideo } from '@/lib/photos/videos';
 
-/**
- * DELETE /api/photos/videos/[id] — remove one entity video (row + GCS object,
- * the object best-effort). The video twin of `DELETE /api/photos/[id]`: the
- * permission is the upload gate of the entity the video hangs off
- * (`uploadPermissionFor`), so whoever may add a task's / repair's video may
- * also take it back, and nobody else.
- */
+/** DELETE /api/photos/videos/[id] — remove one entity video (row + GCS object, the object best-effort). */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -1,13 +1,4 @@
-/**
- * Shipping · To-ship desk — `/shipping/orders`.
- *
- * Canonical home for the outbound orders queue (Pending · Tested · Packed ·
- * Shipped). Support › Inquiries is a nav alias onto the same desk with
- * `?context=support` (ticket affordances on order focus), not a second mount.
- *
- * Twin of `inbound-lane.ts`: one door, optional context lane, redirects from
- * `/dashboard` (bare outbound) and `/support?mode=orders`.
- */
+/** Shipping · To-ship desk — `/shipping/orders`. */
 
 export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 
@@ -16,23 +7,9 @@ export const SHIPPING_ORDERS_PATH = '/shipping/orders';
  * out-of-stock lines are the procurement queue. Reads as Pending in the tab.
  */
 export const SHIPPING_SHORTAGE_PATH = '/shipping/shortage';
-/**
- * The order-exception workbench. A Shipping PEER, not a To-ship lens: caged and
- * unpaired orders are excluded from the To-ship queue by predicate, so its
- * queue semantics genuinely cannot express them.
- *
- * Deliberately NOT under the `(desk)` route group — that group's stage caps at
- * `DESK_STAGE_MAX_PX` (1152px) and this is a master/detail workbench whose
- * detail pane alone is wider than that.
- */
+/** The order-exception workbench. */
 export const SHIPPING_EXCEPTIONS_PATH = '/shipping/exceptions';
-/**
- * Label intake — the V1 label-ingestion ledger (upload/watch a carrier label
- * PDF → exact order match or quarantine → apply to packed units). A row in the
- * Outbound LANE beside Shipping, like FBA: its queue is ingestions, not
- * orders, so it is not a To-ship facet. Outside the `(desk)` group on purpose —
- * the ledger is an edge-to-edge terminal surface, not a capped desk stage.
- */
+/** Label intake — the V1 label-ingestion ledger (upload/watch a carrier label PDF → exact order match or quarantine → apply to packed units). */
 export const SHIPPING_LABEL_INTAKE_PATH = '/shipping/label-intake';
 
 /** Wire value that selects Support Inquiries context on the shared desk. */

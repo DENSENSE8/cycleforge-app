@@ -1,12 +1,6 @@
 /**
- * Every photo of the thing on an order line — the catalog hero, the listing's
- * catalog gallery (the item # resolves to its `sku_catalog` row on the order),
- * and every photo linked to the SKU (catalog links, serialized units' test /
+ * Every photo of the thing on an order line — the catalog hero, the listing's catalog gallery (the item # resolves to its `sku_catalog`…
  * pack shots, receiving lines' item shots). Owner 2026-09-24.
- *
- * Client-side, fetched on press. Shared by the desk ledger (Unbox's
- * `PhotoViewerPortal`) and the phone record (`MobileSwipePhotoViewer`); each
- * maps {@link LinePhoto} onto its own viewer's input.
  */
 
 export interface LinePhotoSubject {

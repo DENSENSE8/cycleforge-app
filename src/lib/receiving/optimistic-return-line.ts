@@ -1,10 +1,4 @@
-/**
- * Client helpers for the unfound empty-carton return-serial scan path:
- * optimistic line + serial chip before the create-line → scan-serial chain
- * resolves, then remap / confirm / rollback.
- *
- * Pure + DB-free so unit tests and the UI controller share one SoT.
- */
+/** Client helpers for the unfound empty-carton return-serial scan path: */
 
 import {
   mintOptimisticSerialId,
@@ -112,18 +106,7 @@ export function shouldPreserveCachedSerials(
 
 type LineWithSerials = { id: number; serials?: LineSerial[] | null };
 
-/**
- * Merge a `GET /api/receiving/:id` lines snapshot into local unfound state
- * without wiping in-flight optimistic serial chips (Testing paints from this
- * local array — unlike Unbox, which reads the siblings cache).
- *
- * - Empty `incoming` is never authoritative over a non-empty `prev` (mid-create
- *   race / degrade-not-fail 404). Intentional clears use `setLines` directly.
- * - Per-id: keep `prev.serials` when {@link shouldPreserveCachedSerials} says so.
- * - Orphan temp (negative-id) lines: if the server already returned real rows,
- *   fold their serials onto the first empty-serial incoming line; otherwise
- *   they survive via the empty-incoming keep-prev path above.
- */
+/** Merge a `GET /api/receiving/:id` lines snapshot into local unfound state without wiping in-flight optimistic serial chips (Testing… */
 export function mergeUnfoundLinesWithPreserve<L extends LineWithSerials>(
   prev: L[],
   incoming: L[],

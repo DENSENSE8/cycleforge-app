@@ -1,19 +1,4 @@
-/**
- * Assistant READ tools for moving receiving photos between orders.
- *
- * These exist because the agent could already *talk* about an order and could
- * already *move* a photo, but had no way to get from one to the other: the
- * domain speaks `RECEIVING` / `RECEIVING_LINE` ids while an operator speaks
- * "order 12-34567-89012", and no tool listed the photos hanging off a line.
- *
- * Two tools, deliberately narrow:
- *   • resolve_receiving_line_for_order — (carton, order id) → line id(s)
- *   • list_receiving_line_photos       — line/carton → the photo ids to move
- *
- * Both are READS. The move itself goes through `propose_mutation` with
- * `receiving_photo.reassign`, so it stays behind the one AI write chokepoint
- * (trust class, audit, revert) rather than becoming a second write path.
- */
+/** Assistant READ tools for moving receiving photos between orders. */
 
 import { z } from 'zod';
 import { tenantQuery } from '@/lib/tenancy/db';

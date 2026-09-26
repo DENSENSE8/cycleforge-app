@@ -5,14 +5,7 @@ import { detectCarrier } from './normalize';
 import { getShipmentByTracking, healShipmentOrganizationId } from './repository';
 import { registerAndSyncShipment } from './sync-shipment';
 
-/**
- * READ-ONLY resolution — never registers or syncs a shipment. For a raw scan
- * input, returns the shipment id if a matching `shipping_tracking_numbers` row
- * already exists, else a scanRef. Use this on GET / read paths (e.g.
- * `GET /api/sku/by-tracking`) so a lookup can be safely cached — it has no side
- * effects. The write path (`resolveShipmentId`, which registers-on-miss) is for
- * genuine scan POSTs only.
- */
+/** READ-ONLY resolution — never registers or syncs a shipment. */
 export async function lookupShipmentId(
   rawInput: string,
   orgId?: OrgId,
@@ -54,27 +47,10 @@ async function maybeHealResolvedShipment(
   }
 }
 
-/**
- * For a raw scan input, returns:
- * - { shipmentId: number, scanRef: null }  — recognized carrier tracking number
- * - { shipmentId: null, scanRef: string }  — non-carrier scan (SKU, FNSKU, garbage)
- *
- * For unknown carriers the function still queries shipping_tracking_numbers by
- * normalized value so that orders previously registered through import scripts
- * (which may have created the row via a different code path) are found even
- * when the live carrier API cannot be used for syncing.
- *
- * ⚠️ WRITES: registers + syncs a shipment on a carrier-recognized miss. Use only
- * on genuine scan WRITE paths (POST). For read paths use {@link lookupShipmentId}.
- */
+/** For a raw scan input, returns: */
 export async function resolveShipmentId(
   rawInput: string,
-  // OPTIONAL tenant scope. When present, the shipping_tracking_numbers /
-  // shipment_tracking_events lookups + register/sync run under the org GUC by
-  // threading orgId through to the sibling helpers (both tables are
-  // tenant-owned-NEEDS-COL → GUC-scoped, no inline org column to filter on).
-  // When omitted, behavior is byte-identical to before (raw pool path) so the
-  // many un-migrated callers keep working unchanged.
+  // OPTIONAL tenant scope.
   orgId?: OrgId,
 ): Promise<{
   shipmentId: number | null;

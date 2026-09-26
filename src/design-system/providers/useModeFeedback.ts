@@ -12,13 +12,8 @@ function toSeconds(value: string): number {
 }
 
 /**
- * The enclosing region's state-change duration, in seconds, for the motion
- * engine — the JS face of `duration-mode-feedback` (`--mode-motion-feedback`).
- *
+ * The enclosing region's state-change duration, in seconds, for the motion engine — the JS face of `duration-mode-feedback`…
  * 0 under reduced motion (BRIEF §8: all motion off, the colour change is
- * instant) and 0 outside every region, so a surface without a declared mode
- * never animates on a guessed duration. Lives outside `ModeRegion.tsx` so the
- * motion engine is not pulled into every route that merely declares a mode.
  */
 export function useModeFeedbackSeconds(): number {
   const mode = useMode();

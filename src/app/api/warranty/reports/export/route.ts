@@ -4,13 +4,7 @@ import { isWarrantyLogger } from '@/lib/feature-flags';
 import { buildWarrantyReportRows, toCsv, WARRANTY_REPORT_COLUMNS } from '@/lib/warranty/reports';
 import { WarrantyReportQuery } from '@/lib/schemas/warranty';
 
-/**
- * GET /api/warranty/reports/export
- *
- * Supplier-escalation export: claims rolled up with denial reason, repair
- * outcome + parts/labor cost, and RMA / repair links. CSV by default (?format=json
- * for the raw rows). Filters: status, sku, from, to, outcome. Gated by WARRANTY_LOGGER.
- */
+/** GET /api/warranty/reports/export */
 export const GET = withAuth(async (request, ctx) => {
   if (!isWarrantyLogger()) {
     return NextResponse.json(
@@ -30,10 +24,7 @@ export const GET = withAuth(async (request, ctx) => {
   }
 
   try {
-    // Tenant isolation: thread the caller's org so the report query runs through
-    // the GUC-wrapped tenant pool with an explicit `wc.organization_id = $6`
-    // predicate (plus org-aligned reason_codes join + org-scoped repair-attempts
-    // LATERAL). Without it the CSV would leak every tenant's claims.
+    // Tenant isolation:
     const rows = await buildWarrantyReportRows(
       {
         status: parsed.data.status ?? null,

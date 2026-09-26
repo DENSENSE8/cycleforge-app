@@ -1,17 +1,6 @@
 import type { ThemePalette } from './registry';
 
-/**
- * Dark — low-light theme. Values are byte-for-byte the ones previously
- * hand-curated in src/styles/globals.css `html[data-theme='dark']`.
- *
- * `scheme: 'dark'` stamps `data-color-scheme="dark"` on <html>, which scopes
- * the raw-Tailwind-neutral compatibility remap in src/styles/globals.css, the
- * dark staff-accent overrides, and `color-scheme: dark` for native widgets.
- *
- * The `accent` block is the signed-out / fallback accent (blue); per-staff
- * accents win via the generated `html[data-color-scheme='dark'] .theme-*`
- * overrides.
- */
+/** Dark — low-light theme. */
 export const darkPalette: ThemePalette = {
   name: 'dark',
   label: 'Dark',

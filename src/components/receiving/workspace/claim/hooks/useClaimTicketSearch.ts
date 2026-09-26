@@ -37,17 +37,7 @@ export function buildClaimTicketSearchParams(args: {
   return params;
 }
 
-/**
- * Receiving claim-flow ticket search — a thin anchor adapter over the shared
- * {@link useTicketSearch}.
- *
- * The debounce / abort / error-mapping / stale-selection machinery moved to
- * `@/components/support/link/useTicketSearch` so the shipment-link surface
- * reuses it instead of re-implementing the same effect. The ONLY receiving-
- * specific part left is the URL: this flow uses the claim-scoped route
- * (gated by `receiving.mark_received`, so floor operators can link without the
- * broader `integrations.zendesk` permission the universal waist requires).
- */
+/** Receiving claim-flow ticket search — a thin anchor adapter over the shared {@link useTicketSearch}. */
 export function useClaimTicketSearch({
   open,
   enabled,

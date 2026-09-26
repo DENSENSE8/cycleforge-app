@@ -90,15 +90,7 @@ export async function GET(
   }
 }
 
-/**
- * PATCH /api/locations/[barcode]
- * Actions: take, put, set, count
- *
- * take:  { action: "take",  sku, qty, reason? }  — subtract from bin + sku_stock
- * put:   { action: "put",   sku, qty, reason? }  — add to bin + sku_stock
- * set:   { action: "set",   sku, qty, minQty?, maxQty? }   — set absolute bin qty
- * count: { action: "count", sku }                           — mark bin as physically counted
- */
+/** PATCH /api/locations/[barcode] Actions: */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },
@@ -238,10 +230,7 @@ export async function PATCH(
     };
 
     if (action === 'set' && typeof qty === 'number') {
-      // Optimistic concurrency: when the caller supplies an expectedUpdatedAt
-      // timestamp from their prior GET, we only apply the write if the row
-      // hasn't moved since. Two devices racing to change min/max on the same
-      // row no longer silently overwrite each other.
+      // Optimistic concurrency:
       if (typeof expectedUpdatedAt === 'string' && expectedUpdatedAt.trim()) {
         const versioned = await upsertBinContentIfVersion({
           locationId: loc.id,
@@ -315,13 +304,7 @@ export async function PATCH(
   }
 }
 
-/**
- * DELETE /api/locations/[barcode] — soft-delete a single bin (is_active=false).
- *
- * Uses session-derived auth (requireRoutePerm). Refuses to delete a bin that
- * still holds stock (409) so
- * inventory can't silently vanish; empty it or move it first.
- */
+/** DELETE /api/locations/[barcode] — soft-delete a single bin (is_active=false). */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },

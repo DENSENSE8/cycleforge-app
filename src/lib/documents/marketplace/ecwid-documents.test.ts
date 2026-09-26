@@ -1,9 +1,4 @@
-/**
- * DB-free unit tests for Ecwid outbound packing-slip adapter.
- * Run (with server-only shim):
- *   node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     src/lib/documents/marketplace/ecwid-documents.test.ts
- */
+/** DB-free unit tests for Ecwid outbound packing-slip adapter. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {

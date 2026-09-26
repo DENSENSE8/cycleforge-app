@@ -2,46 +2,8 @@
 
 /**
  * Mint an on-hold placeholder for a product the catalog has never heard of.
- *
- * ## The name is required, the barcode is not
- *
- * The name is what a human reads on the rack today, so it is the one required
- * field. The barcode is what a LATER merge matches on — worth having, but a box
- * with no label, a torn label or a label nobody can find must still be counted
- * now, not left on the floor until someone locates a code. Leave the barcode
- * empty and the placeholder is keyed by a per-sheet `sourceRef` instead (one
- * `safeRandomUUID()` per mount, so a double tap joins its own placeholder
- * rather than minting a twin); the real barcode is scanned onto it later from
- * its `/m/on-hold/[sku]/info` edit (attach-once).
- *
- * The search query the operator already typed seeds whichever field it looks
- * like, so the common path is one field plus Create. A wedge scanner firing
- * into the focused barcode field works for the same reason the station's
- * manual-entry field works — it is just keystrokes ending in Enter.
- *
- * ## This is a sheet, and should be
- *
- * It interrupts to ask a few questions and goes away — the `dock-verb` sheet
  * of the pair screen's "SKU exception" verb (operator 2026-09-25: a triage
- * sheet with its corner radius is correct here). The pair screen stays under
- * it, so the location being filled is never out of mind; the sheet repeats
- * it in its Put-away band anyway.
- *
- * ## Three bands: identify · triage · put away
- *
- * The questions answer three different people, so the sheet splits them
  * (operator 2026-09-25: "the identification and triageability and
- * operational split"): IDENTIFY is what the thing is (name, barcode — camera
- * or wedge); TRIAGE is what whoever merges it into a real SKU later needs
- * (notes, photos); PUT AWAY is the operational fact this creates — on hold,
- * in THIS location, counted on the next screen.
- *
- * ## Description and photos are optional, and follow the SKU
- *
- * The person holding the box is the only one who can see it; whoever pairs it
- * to the real SKU later is working from what they wrote and shot. Photos
- * upload AFTER the placeholder exists (they attach to its `sku_stock` row), so
- * a failed upload is a toast, never a lost SKU.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -69,12 +31,7 @@ interface StagedFile extends StagedPhoto {
   file: File;
 }
 
-/**
- * Does this look like something a scanner produced rather than something a
- * person typed? Digits and dashes, long enough to be a real symbology — UPC-A
- * is 12, EAN-13 is 13, and the shortest thing worth treating as a code is an
- * EAN-8.
- */
+/** Does this look like something a scanner produced rather than something a person typed? */
 function looksLikeBarcode(value: string): boolean {
   const compact = value.trim().replace(/[\s-]/g, '');
   return compact.length >= 8 && /^[0-9]+$/.test(compact);

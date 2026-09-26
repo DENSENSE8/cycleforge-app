@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The repair record's right-column facts — ticket #, customer, links — split
- * out of {@link RepairRecordView} like the order record's
- * `order-record-sections`. Read-only: the verbs that change them live in the
- * desk's action strip (`repair-record-verbs`).
- */
+/** The repair record's right-column facts — ticket #, customer, links — split out of {@link RepairRecordView} like the order record's… */
 
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';

@@ -1,34 +1,4 @@
-/**
- * sync-legacy-pack.ts
- * ────────────────────────────────────────────────────────────────────
- * Phase 3 deliverable #2 — inverse dual-write.
- *
- * When one of the legacy packer_logs INSERT sites runs, this helper mirrors the
- * PACKED state into the v2 system for any order whose units have
- * open allocations:
- *
- *   1. Find every orders.id linked to the packer_log's shipment_id.
- *   2. For each linked order, find allocations in any open state
- *      (ALLOCATED, PICKING, PICKED, PACKED, LABELED, STAGED).
- *   3. For each open allocation: transition serial_units → PACKED,
- *      flip order_unit_allocations.state = 'PACKED', emit a PACKED
- *      inventory_event tagged with the legacy packer_log id.
- *
- * Properties:
- *   - Idempotent. Deterministic client_event_id
- *     `legacy-pack-mirror:pl-{packerLogId}:unit-{unitId}` prevents
- *     double-write on retry.
- *   - Non-blocking. The caller awaits this but should not let mirror
- *     errors break the original packer_logs insert — call sites wrap
- *     in try/catch.
- *   - No-op when:
- *       - flag is OFF
- *       - shipmentId is null
- *       - no linked orders have open allocations
- *
- * Carrier scan-out uses the separate terminal wrapper at the end of this file;
- * that is the only legacy mirror allowed to transition to SHIPPED.
- */
+/** sync-legacy-pack.ts ──────────────────────────────────────────────────────────────────── Phase 3 deliverable #2 — inverse dual-write. */
 
 import pool from '@/lib/db';
 import { transition } from '@/lib/inventory/state-machine';
@@ -50,25 +20,7 @@ export type MirrorResult =
 
 type LegacyMirrorStage = 'PACKED' | 'SHIPPED';
 
-/**
- * Mirrors SHIPPED state from a legacy packer_logs row into the v2
- * allocation system. See file header for full semantics.
- *
- * Tenancy (additive, backward-compatible): pass `orgId` to scope every read
- * (orders / order_unit_allocations) to a single tenant, thread the org into the
- * `transition()` calls, and stamp the org predicate on the allocation UPDATE.
- *   - When `orgId` is OMITTED, behavior is byte-identical to before: raw pool,
- *     no org predicate, no GUC — the un-migrated callers keep working as today.
- *   - When `orgId` is PROVIDED, the orders/allocation reads get an explicit
- *     `AND organization_id = $n`, the per-unit transaction sets the
- *     `app.current_org` GUC (transaction-local) on its client, `transition()`
- *     receives `orgId` (scoping the serial_units read/UPDATE + inventory_events
- *     attribution), and the `order_unit_allocations` UPDATE gets an
- *     `AND organization_id = $n` ownership predicate. orgId is never required.
- *   All four touched tables (orders, order_unit_allocations, serial_units,
- *   inventory_events) are tenant-owned (carry organization_id) per
- *   docs/tenancy/org-id-coverage.generated.md.
- */
+/** Mirrors SHIPPED state from a legacy packer_logs row into the v2 allocation system. */
 async function mirrorLegacyShipmentToAllocations(
   input: MirrorInput,
   /**
@@ -90,10 +42,7 @@ async function mirrorLegacyShipmentToAllocations(
 
   let mirrored = 0;
   try {
-    // 1. Resolve orders linked to this shipment. orders is tenant-owned; when
-    //    orgId is present, run via tenantQuery (GUC-wrapped) + explicit org
-    //    predicate so a cross-tenant shipment id resolves to zero orders. When
-    //    omitted, byte-identical legacy raw-pool SQL.
+    // 1. Resolve orders linked to this shipment.
     const ordersQ = orgId
       ? await tenantQuery<{ id: number }>(
           orgId,
@@ -109,11 +58,7 @@ async function mirrorLegacyShipmentToAllocations(
     }
     const orderIds = ordersQ.rows.map((r) => r.id);
 
-    // 2. Resolve open allocations for those orders. order_unit_allocations is
-    //    tenant-owned. orderIds were already org-scoped above, but we still add
-    //    an explicit org predicate when orgId is present (defense in depth +
-    //    GUC-wrapped read). The order_id = ANY($1) join is on an integer
-    //    surrogate PK so no string-key org alignment is needed.
+    // 2. Resolve open allocations for those orders.
     const allocQ = orgId
       ? await tenantQuery<{
           id: string;
@@ -153,12 +98,7 @@ async function mirrorLegacyShipmentToAllocations(
       try {
         await client.query('BEGIN');
 
-        // Executor pattern: this short-lived txn is caller-owned by us. When
-        // orgId is present, set the transaction-local GUC on this client before
-        // any writes so the inventory_events INSERT (whose organization_id
-        // default reads current_setting('app.current_org')) and any RLS-enforced
-        // table attribute to the right tenant. is_local=true → auto-clears on
-        // this client's COMMIT/ROLLBACK.
+        // Executor pattern:
         if (orgId) {
           await client.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
         }
@@ -182,10 +122,7 @@ async function mirrorLegacyShipmentToAllocations(
             },
           },
           client,
-          // Thread org into the state machine: scopes the serial_units
-          // read/UPDATE to this tenant (404 on cross-tenant) and keeps the GUC
-          // set on the same caller-owned client (transition re-sets it when
-          // orgId+db are both passed, which is idempotent). undefined when omitted.
+          // Thread org into the state machine:
           orgId,
         );
         if (!txResult.ok) {

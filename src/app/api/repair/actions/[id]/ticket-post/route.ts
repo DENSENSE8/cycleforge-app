@@ -2,14 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { postRepairActionToTicket } from '@/lib/repair/repair-action-ticket-post';
 
-/**
- * POST /api/repair/actions/[id]/ticket-post
- *
- * Retry posting a bench-log entry to its repair's linked helpdesk ticket (the
- * timeline's "Failed — Retry"). Idempotent: an entry already posted, or one
- * whose post is still in flight, is answered 200 with `skipped` and nothing is
- * sent. Same gate as logging the entry.
- */
+/** POST /api/repair/actions/[id]/ticket-post */
 export const POST = withAuth(
   async (req, ctx) => {
     // withAuth doesn't forward Next's route ctx; the id is the segment before `ticket-post`.

@@ -1,28 +1,4 @@
-/**
- * "Watch a tracking number", client side — the ONE implementation of the three
- * verbs, so the desk row and the phone face cannot drift.
- *
- * The desk asked for this control first ({@link InboxTrackingWatchRow}, inside
- * the header inbox panel), and `SURFACE_LAW` §1 immediately owes it a `/m`
- * twin. Two faces of one verb is exactly how a repo ends up with two slightly
- * different refusals for the same bad tracking number, so the fetch, the wire
- * shape and the error wording live HERE and both faces render them.
- *
- * It sits in `src/lib` rather than beside the desk row because of the boundary
- * law (`.dependency-cruiser.cjs` → `mobile-no-desktop-surface-components`):
- * `src/components/mobile/**` and `src/app/m/**` may not import
- * `src/components/quick-access/*`. `src/lib` is sanctioned for both surfaces,
- * which is what makes a shared verb possible at all.
- *
- * Deliberately React-free and DOM-free — no hook, no store, no `server-only`
- * import. A caller wraps these in whatever it already uses (`useState` on the
- * desk, `@tanstack/react-query` on the phone).
- *
- * API: `POST /api/my-day/watch` `{ kind: 'tracking', value }` (start),
- * the same route with `desired: 'muted'` (stop), and `GET /api/my-day/watch`
- * (list). The route answers in operator words already ("Enter a full tracking
- * number"), so a failure carries the SERVER's sentence, not a status code.
- */
+/** "Watch a tracking number", client side — the ONE implementation of the three verbs, so the desk row and the phone face cannot drift. */
 
 /** One standing watch, as `GET /api/my-day/watch` reports it. */
 export interface TrackingWatchRow {

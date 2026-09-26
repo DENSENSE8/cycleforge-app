@@ -1,25 +1,4 @@
-/**
- * Order lifecycle — the SINGLE canonical projection of an order's pre‑dock
- * (sold → label → test → pack → stage) lifecycle stage.
- *
- * **Why this module exists.** The order/fulfillment lane shown on the
- * Unshipped + testing boards used to be re‑derived in three unrelated places
- * (`deriveFulfillmentState` in a lib, a `has_tech_scan` SQL projection in the
- * orders route, and lane/icon literals inlined in the board component). Three
- * spines had to agree by coincidence for a row to change lane. This module is
- * the one place the **precedence rules** and the **lane vocabulary** live, so
- * every board, count, and route reads the same projection.
- *
- * This is step W2 of `docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md`:
- * collapse the parallel read‑models onto one projection. The rule set is
- * declared as **data** (`UNSHIPPED_LIFECYCLE_RULES`) so it can later be sourced
- * from `workflow_nodes.config` / a decision node and edited in Studio (W4),
- * with `serial_units`/`item_workflow_state` taps feeding the signals (W5).
- *
- * Pure + isomorphic (no React, no DOM, no Date.now): safe on client and server.
- * Presentation (label/dot/pill colors) stays in `unshipped-state.ts`'s
- * `*_STATE_META`; this module is logic + vocabulary only.
- */
+/** Order lifecycle — the SINGLE canonical projection of an order's pre‑dock (sold → label → test → pack → stage) lifecycle stage. */
 
 import type { LifecycleState } from '@cycleforge/design-tokens';
 import type { OutboundWarehouseStage } from '@/lib/outbound/work-contract';
@@ -65,14 +44,7 @@ function hasLabel(s: OrderLifecycleSignals): boolean {
   return s.shipmentId != null && String(s.shipmentId) !== '';
 }
 
-/**
- * Ordered, first‑match‑wins rule set — the SINGLE place pre‑dock precedence
- * lives. Declared as data (`id` + `stage` + a typed predicate) so the
- * precedence is inspectable and portable into Studio config / a decision node
- * (W4) without rewriting consumers. Precedence: a completed PACK wins outright
- * (the stock question is moot once it is physically staged), then exception‑
- * first within the not‑yet‑packed stages.
- */
+/** Ordered, first‑match‑wins rule set — the SINGLE place pre‑dock precedence lives. */
 interface OrderLifecycleRule {
   id: string;
   stage: OrderLifecycleStage;
@@ -97,32 +69,14 @@ export function resolveOrderLifecycleStage(signals: OrderLifecycleSignals): Orde
   return DEFAULT_LIFECYCLE_STAGE;
 }
 
-/**
- * Resolve the fulfillment LANE for orders already in the labeled‑not‑packed
- * scope (Dashboard · Unshipped board). This scope never carries a PACK event,
- * so the lane is exception‑first then tested‑vs‑pending — using the same shared
- * predicates as the full stage so the precedence can never drift between the
- * two. (Behaviourally identical to the former `deriveFulfillmentState`.)
- */
+/** Resolve the fulfillment LANE for orders already in the labeled‑not‑packed scope (Dashboard · Unshipped board). */
 export function resolveFulfillmentLane(signals: OrderLifecycleSignals): FulfillmentLane {
   if (isOutOfStock(signals)) return 'BLOCKED';
   if (signals.hasTechScan) return 'TESTED';
   return 'PENDING';
 }
 
-/**
- * Pre‑dock stage (+ the order's expedite flag) → the cross‑platform
- * {@link LifecycleState} key whose code, word and tone every industrial row
- * paints (`LIFECYCLE` in `@cycleforge/design-tokens`). The ONE place an order
- * is mapped onto that vocabulary.
- *
- * Precedence follows the stage rules above, then the floor terminal's
- * (`v1-outbound` desktop `workState`): a hold outranks everything, an
- * expedite outranks progress, a packed carton reads packed. AWAITING_LABEL,
- * PENDING and TESTED all read `ready` — `LIFECYCLE` has no finer word for
- * "in the building, not packed", and the row's next action (→ Label / → Pick
- * / → Pack) carries the difference.
- */
+/** Pre‑dock stage (+ the order's expedite flag) → the cross‑platform {@link LifecycleState} key whose code, word and tone every industrial… */
 export function orderLifecycleState(
   stage: OrderLifecycleStage,
   flags: { urgent?: boolean | null } = {},
@@ -133,16 +87,7 @@ export function orderLifecycleState(
   return 'ready';
 }
 
-/**
- * The server's outbound warehouse stage (`OutboundWorkItem.warehouseStage`,
- * `/api/v1/outbound/work`) + the order's expedite flag → the same
- * {@link LifecycleState} vocabulary. The ONE mapping for a record that reads
- * the projection instead of the pre-dock signals (the phone order hub).
- *
- * Precedence: shipped is terminal, out of stock is the exception, an expedite
- * outranks progress, a packed or labeled carton reads packed, everything
- * earlier (READY, PICKED) reads ready.
- */
+/** The server's outbound warehouse stage (`OutboundWorkItem.warehouseStage`, `/api/v1/outbound/work`) + the order's expedite flag → the… */
 export function workStageLifecycleState(
   stage: OutboundWarehouseStage,
   flags: { urgent?: boolean | null } = {},
@@ -163,26 +108,14 @@ interface FulfillmentLaneDescriptor {
   iconClass: string;
 }
 
-/**
- * Lane order (top → bottom = progress; Blocked/exception last) + per‑lane icon
- * binding for the Unshipped board. Was three inlined component literals
- * (`SHELF_ORDER`, `STATE_ICON`, `STATE_ICON_CLASS`); now one descriptor list so
- * the lane set is data the board renders, not logic it owns.
- */
+/** Lane order (top → bottom = progress; Blocked/exception last) + per‑lane icon binding for the Unshipped board. */
 export const FULFILLMENT_BOARD_LANES: readonly FulfillmentLaneDescriptor[] = [
   { id: 'PENDING', iconKey: 'clock', iconClass: 'text-yellow-500' },
   { id: 'TESTED', iconKey: 'check', iconClass: 'text-green-500' },
   { id: 'BLOCKED', iconKey: 'alert', iconClass: 'text-red-500' },
 ];
 
-// ════════════════════════════════════════════════════════════════════════════
-// POST‑DOCK (outbound) lifecycle — pack → leave‑the‑building → carrier custody →
-// delivered. The mirror of the pre‑dock half above; the two models meet at the
-// shared `PACKED_STAGED` seam (terminal unshipped / initial outbound). Folded
-// in here (was `outbound-state.ts`) so ALL order lifecycle display derivation
-// lives in one projection; `outbound-state.ts` keeps only the color META and
-// delegates its derivation here. Same W2 consolidation as the pre‑dock half.
-// ════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════ POST‑DOCK (outbound) lifecycle — pack → leave‑the‑building…
 
 export type OutboundStage =
   | 'PACKED_STAGED' // packed, sitting in staging, not yet scanned out
@@ -209,12 +142,7 @@ export interface OutboundSignals {
   stalled?: boolean | null;
 }
 
-/**
- * The full normalized carrier status-category vocabulary
- * (`shipping_tracking_numbers.latest_status_category`). Single SoT for the
- * 8 categories — the orders route's status-category filter validates against
- * this instead of an inline literal tuple.
- */
+/** The full normalized carrier status-category vocabulary (`shipping_tracking_numbers.latest_status_category`). */
 export const SHIPMENT_STATUS_CATEGORIES = [
   'LABEL_CREATED',
   'ACCEPTED',

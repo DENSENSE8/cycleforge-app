@@ -2,15 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * POST /api/receiving-lines/view
- * Record that the current operator OPENED a receiving line in the workspace —
- * upserts receiving_line_views so the unbox sidebar's "Viewed" pill can list
- * each staff member's recently-opened lines (newest first), per-staff and
- * cross-device. Fire-and-forget from the client; failures are non-fatal.
- *
- * Body: { receiving_line_id: number, receiving_id?: number | null }
- */
+/** POST /api/receiving-lines/view Record that the current operator OPENED a receiving line in the workspace — upserts receiving_line_views… */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const staffId = Number(ctx?.staffId);

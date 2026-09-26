@@ -1,9 +1,4 @@
-/**
- * Advisory grade signals — NEVER blocking (docs/condition-grading-repair-qc-plan
- * §5.1). Surfaces warnings when a chosen grade is more optimistic than the
- * unit's open failures allow. The grade write always succeeds; the UI shows
- * these as a soft "grade anyway?" confirm.
- */
+/** Advisory grade signals — NEVER blocking (docs/condition-grading-repair-qc-plan §5.1). */
 
 import type { ConditionGrade } from './qualityScore';
 

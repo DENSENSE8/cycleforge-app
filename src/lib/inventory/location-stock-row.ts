@@ -1,26 +1,6 @@
-/**
- * One Inventory › Stock record — a single (location, SKU, source) pairing
- * holding stock anywhere in the warehouse, wire-safe (instants are ISO strings
- * so the row survives the RSC boundary unchanged).
- *
- * Field names stay snake_case — the wire names.
- */
+/** One Inventory › Stock record — a single (location, SKU, source) pairing holding stock anywhere in the warehouse, wire-safe (instants are… */
 
-/**
- * Where a row's stock comes from — the two ways this warehouse pairs a SKU to
- * a location, and they are genuinely different physical things.
- *
- * - `bin` — LOOSE stock counted into a bin (`bin_contents`). Written by the
- *   scan gun and the counts (`/api/locations/[barcode]` put/take). Carries
- *   bounds and a count stamp, because somebody counted it — and it is the only
- *   source a desk count (±) can write.
- * - `unit` — SERIALIZED units standing at a location
- *   (`serial_units.current_location`). Its qty is a COUNT of units; nobody
- *   counts a serial — it is either there or it is not.
- *
- * One row per (location, sku, source): merging the two into one number would
- * add a counted quantity to a unit count and hide which half a picker can scan.
- */
+/** Where a row's stock comes from — the two ways this warehouse pairs a SKU to a location, and they are genuinely different physical things. */
 export type LocationStockSource = 'bin' | 'unit' | 'exception';
 
 /** The one inventory list can be narrowed by operational state. */

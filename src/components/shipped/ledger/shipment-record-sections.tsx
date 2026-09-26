@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The leaf parts of the package record ({@link ShipmentRecordView}): one item
- * line, one action row, one sibling box, and the aside's fact stack. Every
- * instant is ISO-with-offset, painted in the warehouse zone; a missing fact
- * paints what its absence MEANS.
- */
+/** The leaf parts of the package record ({@link ShipmentRecordView}): */
 
 import type { ReactNode } from 'react';
 import {

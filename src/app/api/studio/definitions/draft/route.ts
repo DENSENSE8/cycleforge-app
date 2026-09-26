@@ -8,15 +8,7 @@ import { StudioDraftCreateBody } from '@/lib/schemas/studio';
 import { copyDefinitionToDraft } from '@/lib/studio/definitions';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/definitions/draft
- *
- * Creates a DRAFT workflow definition by copying a source definition
- * (default: the org's active one) into the next version number for that
- * name, is_active = FALSE. Node ids are re-minted (they are global TEXT
- * PKs); edges are remapped accordingly. All Studio editing targets a draft —
- * the active version is never mutated in place (Studio law #6).
- */
+/** POST /api/studio/definitions/draft */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

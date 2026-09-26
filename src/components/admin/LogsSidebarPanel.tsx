@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /operations?mode=logs — picker for the unified audit + SAL log feed.
- *
- * URL-state contract:
- *   ?search=<q>                  — text search (action/source/entity/notes)
- *   ?logKind=audit|sal           — filter chip (default: all)
- *   ?actorStaffId=<id>           — actor filter
- *   ?eventId=<id>                — selected event (read by main pane)
- */
+/** Sidebar for /operations?mode=logs — picker for the unified audit + SAL log feed. */
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

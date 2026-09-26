@@ -314,21 +314,7 @@ export async function linkTicketToAnchor(args: {
   };
 }
 
-/**
- * Append a ticket link/unlink moment to `ops_events` — the OPERATOR-facing
- * timeline spine (`audit_logs` is the admin field-diff spine, and
- * `resolveBrowseSources` drops it for anyone without `admin.view_logs`, so an
- * audit row would be invisible to the very people doing the linking).
- *
- * This is what makes `ticketLinkEventsToTimeline`'s 'unlinked' branch reachable
- * at all: the support hub derived link moments from `ticket_links` ROW STATE,
- * and state cannot express a detach — the row is gone. Only an append-only event
- * can. `ops_events.entity_type` already permits 'shipment' and `event_type` is
- * unconstrained, so this needs no migration.
- *
- * Best-effort by design: a timeline row must never fail a link the operator
- * actually completed. The `ticket_links` row is the record of truth.
- */
+/** Append a ticket link/unlink moment to `ops_events` — the OPERATOR-facing timeline spine (`audit_logs` is the admin field-diff spine, and… */
 /** Map ticket_links entity types that emit append-only link moments onto
  *  `ops_events.entity_type`. RECEIVING / RECEIVING_LINE stay on row state in
  *  the support hub (history already lives on those rows). */
@@ -364,22 +350,9 @@ async function recordTicketLinkEvent(args: {
   }
 }
 
-// ───────────────────────────────────────────────────────────────────────────
-// Shipment REFERENCES — the many-STN-per-ticket surface.
-//
-// An ANCHOR (is_primary) answers "what is this ticket about"; a REFERENCE
-// answers "which other shipments does it touch". `linkTicketToAnchor` above owns
-// the anchor and deliberately keeps its already-linked-elsewhere conflict guard:
-// re-anchoring must stay an explicit act. Adding an extra STN is NOT re-anchoring,
-// so it routes through here and never trips that guard.
-// ───────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────── Shipment REFERENCES — the many-STN-per-ticket surface.
 
-/**
- * Not exported: consumers get this shape by inference from
- * {@link listTicketShipmentReferences}. Export it the moment a caller needs to
- * name it (a support-side STN list component will) — an exported-but-unimported
- * type is dead code the knip gate rightly rejects.
- */
+/** Not exported: */
 interface TicketShipmentReference {
   shipmentId: number;
   trackingNumber: string | null;
@@ -469,23 +442,7 @@ const defaultAddTicketShipmentReferenceDeps: AddTicketShipmentReferenceDeps = {
     }),
 };
 
-/**
- * Reference an STN from a ticket. Accepts a resolved shipment id or a raw
- * tracking number (which mints the STN on demand, as the tracking anchor does).
- *
- * Primary-vs-reference is decided IN SQL rather than by a read-then-write: the
- * row becomes the anchor only when the ticket has none yet, so the first STN on a
- * fresh ticket anchors it and every later one is a reference. Computing it inline
- * keeps the decision inside one statement; if two callers race, the loser trips
- * ux_ticket_links_support_anchor rather than silently creating a second anchor.
- *
- * Keyed on `support_ticket_id` (2026-07-21 re-key): the anchor guard and the
- * ON CONFLICT arbiter both use the support-led natural key, so this stays correct
- * for Zendesk tickets AND works for internal tickets (NULL zendesk id). Requires
- * the 2026-07-21 expand migration (ux_ticket_links_support_entity) to be applied.
- *
- * Idempotent: re-referencing the same STN is a no-op (natural-key conflict).
- */
+/** Reference an STN from a ticket. */
 export async function addTicketShipmentReference(
   args: {
     orgId: OrgId;
@@ -505,10 +462,7 @@ export async function addTicketShipmentReference(
     shipmentId = Number(stn.id);
   }
 
-  // upsertSupportTicket via linkTicket is NOT reused here: that helper writes an
-  // anchor. Resolve the registry row directly so a reference still carries
-  // support_ticket_id — which is also the arbiter, so the conflict resolves on
-  // the same row family the anchor guard reads.
+  // upsertSupportTicket via linkTicket is NOT reused here:
   const supportTicket = await deps.resolveSupportTicket(
     args.ticketId,
     args.orgId,
@@ -554,13 +508,7 @@ export async function addTicketShipmentReference(
   return { shipmentId, isPrimary: existing.rows[0]?.is_primary ?? false, added: false };
 }
 
-/**
- * After anchoring a ticket to a receiving carton/line, also reference the
- * carton's STN on `ticket_links` (non-primary when RECEIVING is already the
- * anchor). Idempotent; best-effort callers should catch.
- *
- * Returns null when the carton has no shipment_id (nothing to pair).
- */
+/** After anchoring a ticket to a receiving carton/line, also reference the carton's STN on `ticket_links` (non-primary when RECEIVING is… */
 const defaultPairFromReceivingDeps: PairTicketShipmentFromReceivingDeps = {
   lookupCartonShipmentId: async (orgId, receivingId) => {
     const res = await tenantQuery<{ shipment_id: number | null }>(
@@ -673,16 +621,7 @@ export async function pairTicketShipmentFromEntity(
   return pairTicketShipmentFromEntityCore(args, deps);
 }
 
-/**
- * Drop one STN reference from a ticket.
- *
- * When the removed row was the ANCHOR and other rows survive, the oldest
- * survivor is promoted. Without that, a ticket would be left holding references
- * but no primary — and every ticket→entity reader (getTicketEntity,
- * resolveSupportTicketToReceiving, the candidates map) filters on is_primary, so
- * the ticket would read as UNLINKED while still carrying rows. The partial index
- * permits zero primaries, so nothing in the schema would catch it.
- */
+/** Drop one STN reference from a ticket. */
 export async function removeTicketShipmentReference(args: {
   orgId: OrgId;
   ticketId: number;
@@ -747,27 +686,11 @@ export async function unlinkTicketFromAnchor(args: {
   removed: boolean;
   entityType: TicketLinkEntityType;
   entityId: number;
-  /**
-   * Set when the carton's tracking (STN) reference could not be cleared —
-   * the ticket_links RECEIVING/RECEIVING_LINE row is gone, but a stale
-   * SHIPMENT reference can survive and keep the ticket resolving via the
-   * tracking number. Best-effort: the caller should surface this rather than
-   * silently reporting a clean unlink.
-   */
+  /** Set when the carton's tracking (STN) reference could not be cleared — the ticket_links RECEIVING/RECEIVING_LINE row is gone, but a stale… */
   shipmentUnpairWarning: string | null;
 }> {
   let resolved = await resolveTicketLinkAnchor(args.orgId, args.anchor);
-  // Target the entity ACTUALLY linked to this ticket, not a freshly re-derived
-  // guess. `pickTicketLinkAnchor` prefers RECEIVING_LINE whenever a lineId is
-  // present — but a carton originally claimed at the RECEIVING (package) level
-  // can gain a real line later (an unfound carton gets matched to a PO), so a
-  // later unlink call that still passes that lineId resolves to a DIFFERENT
-  // (entityType, entityId) than what's stored on `ticket_links`. The DELETE
-  // then matches zero rows: the ticket_links row survives, the chip keeps
-  // showing "linked", and the STN unpair below (keyed off the real ticketId)
-  // can drift out of sync with it too. Ground truth beats re-derivation.
-  // Same for order anchors: a no-STN ORDER link must not be re-resolved to a
-  // SHIPMENT that appeared later (or vice versa) — detach what's stored.
+  // Target the entity ACTUALLY linked to this ticket, not a freshly re-derived guess.
   if (args.anchor.type === 'receiving') {
     const actual = await getTicketEntity(args.orgId, args.ticketId);
     if (actual && (actual.type === 'RECEIVING' || actual.type === 'RECEIVING_LINE')) {
@@ -919,16 +842,7 @@ const defaultPromoteShipmentTicketDeps: PromoteShipmentTicketDeps = {
   },
 };
 
-/**
- * When a carton adopts an STN that already carries a ticket_links SHIPMENT row,
- * promote the primary entity to RECEIVING so unbox resolves the ticket on the
- * carton. Best-effort; never throws.
- *
- * Routes through {@link linkSupportTicketEntity} on the platform-agnostic
- * `support_ticket_id` (2026-07-21 re-key), so an INTERNAL ticket anchored to the
- * STN promotes onto the carton too — the pre-re-key path required a Zendesk id
- * and silently skipped internal tickets.
- */
+/** When a carton adopts an STN that already carries a ticket_links SHIPMENT row, promote the primary entity to RECEIVING so unbox resolves… */
 export async function promoteShipmentTicketToReceiving(
   args: {
     orgId: OrgId;
@@ -941,11 +855,7 @@ export async function promoteShipmentTicketToReceiving(
   try {
     const existing = await deps.runQuery(
       args.orgId,
-      // `AND is_primary` is load-bearing: an STN may now be referenced by MANY
-      // tickets (the many-STN-per-ticket feature). Only a ticket ANCHORED to
-      // this STN describes the shipment itself and may legitimately be re-anchored
-      // onto the carton. Promoting a ticket that merely *references* this STN
-      // among several would yank it off the entity it is actually about.
+      // `AND is_primary` is load-bearing:
       `SELECT zendesk_ticket_id, support_ticket_id
          FROM ticket_links
         WHERE organization_id = $1

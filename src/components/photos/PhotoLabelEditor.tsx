@@ -33,12 +33,7 @@ function initialState(photos: LibraryPhoto[], labelId: number): TriState {
   return 'some';
 }
 
-/**
- * Label editor — applies labels to one photo (PUT replace) or many (bulk
- * add/remove diff). Vocabulary toggles as chips; a label already on ALL targets
- * shows checked, on SOME shows indeterminate (left untouched unless toggled).
- * Scoped to the active image type's labels + globals.
- */
+/** Label editor — applies labels to one photo (PUT replace) or many (bulk add/remove diff). */
 export function PhotoLabelEditor({
   photos,
   scopeImageType,
@@ -81,13 +76,7 @@ export function PhotoLabelEditor({
     });
   };
 
-  /**
-   * Inline create — the same DS input path `MediaSavedViewsSection` and the
-   * Band-1 media-type cube use. It replaced a `window.prompt` (2026-08-09): a
-   * native dialog is unstyleable, untestable, and steals keyboard-wedge focus,
-   * which is why the house bans them outright. Pinned by
-   * `media-library-chrome.guard.test.ts`.
-   */
+  /** Inline create — the same DS input path `MediaSavedViewsSection` and the Band-1 media-type cube use. */
   const addLabel = async () => {
     const name = newLabel.trim();
     if (!name || creatingLabel) return;

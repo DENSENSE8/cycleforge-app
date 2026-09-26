@@ -1,22 +1,4 @@
-/**
- * Escalate an entity thread to a support ticket (D6 — the attach seam).
- *
- * Two modes, both ending in `attachSupportTicket` (which sets
- * entity_threads.support_ticket_id, idempotent same-ticket / 409 different):
- *
- *   • 'internal' — the first real writer of the dead `provider='internal'`
- *     capability (src/lib/support/tickets.ts). Creates an internal
- *     support_tickets row and attaches it. Never touches ticket_links, so it
- *     sidesteps that table's NOT NULL zendesk_ticket_id — an internal ticket
- *     has no Zendesk id by definition.
- *   • 'zendesk' — creates a live helpdesk ticket via the capability facade
- *     (requireHelpdeskProvider → createTicket), then linkTicket() upserts the
- *     zendesk support_tickets row + the ticket_links polymorphic row, and we
- *     attach the resulting support ticket to the thread.
- *
- * Deps-injected (default real impls) so unit tests run DB-free and without a
- * live Zendesk connector.
- */
+/** Escalate an entity thread to a support ticket (D6 — the attach seam). */
 
 import { withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -27,10 +9,7 @@ import {
 } from './threads';
 import type { EntityThread } from './types';
 
-// NOTE: the helpdesk / support-ticket / zendesk-links modules are server-only,
-// so they are lazily imported *inside* the default dep impls below — never at
-// module top level. That keeps the pure `escalateThreadToTicket` orchestration
-// import-safe for DB-free unit tests (which inject fakes and never hit these).
+// NOTE: the helpdesk / support-ticket / zendesk-links modules are server-only, so they are lazily imported *inside* the default dep impls…
 
 export type EscalateMode = 'internal' | 'zendesk';
 
@@ -48,12 +27,7 @@ export interface EscalateThreadInput {
 export interface EscalateThreadDeps {
   /** Resolve the thread by id (entity anchor + current ticket link). */
   loadThread: (orgId: OrgId, threadId: number) => Promise<EntityThread | null>;
-  /**
-   * Create an internal support ticket AND link it to the thread's entity in
-   * ticket_links; returns its registry id. Internal tickets are now first-class
-   * in the polymorphic hub (2026-07-21 re-key made zendesk_ticket_id nullable +
-   * keyed the anchor on support_ticket_id).
-   */
+  /** Create an internal support ticket AND link it to the thread's entity in ticket_links; returns its registry id. */
   createInternalTicket: (args: {
     orgId: OrgId;
     entityType: string;

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Global header `+` — the always-visible door into shipping-label intake.
- *
- * Opens `LabelIntakeDesk` (`/search?entry=label`): type an order number, it
- * pairs to its order or stays a reference-only number, and the return /
- * replacement label is bought on that one surface.
- */
+/** Global header `+` — the always-visible door into shipping-label intake. */
 
 import { useRouter } from 'next/navigation';
 import { Plus } from '@/components/Icons';

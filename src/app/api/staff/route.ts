@@ -393,13 +393,7 @@ async function handleDelete(request: NextRequest) {
     }
 }
 
-// ─── Auth-gated exports ─────────────────────────────────────────────────────
-// Phase 2d: this route used to ship as plain exports — meaning any signed-in
-// user (a viewer, a packer) could POST/PUT/DELETE staff rows. Now:
-//   GET    — any authenticated user (staff list is widely used by UI code)
-//   POST   — requires admin.manage_staff
-//   PUT    — requires admin.manage_staff
-//   DELETE — requires admin.manage_staff
+// ─── Auth-gated exports ───────────────────────────────────────────────────── Phase 2d:
 
 export const GET = withAuth(handleGet);
 export const POST = withAuth(handlePost, { permission: 'admin.manage_staff' });

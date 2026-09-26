@@ -1,11 +1,4 @@
-/**
- * POST /api/counter/session/{id}/status — park, resume, or void the visit (D8).
- *
- * `submitted` is NOT reachable here. A visit becomes submitted only by going
- * through the submit orchestrator (P8), which is what writes the transaction;
- * letting a status PATCH claim it would produce a "submitted" session with no
- * money behind it.
- */
+/** POST /api/counter/session/{id}/status — park, resume, or void the visit (D8). */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

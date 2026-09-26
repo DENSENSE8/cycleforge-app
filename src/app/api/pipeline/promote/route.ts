@@ -1,16 +1,4 @@
-/**
- * POST /api/pipeline/promote
- *
- * Auto-promote the latest completed training run if it improved on the
- * current model. Called by the Jetson after training, or manually.
- *
- * Promotion logic:
- *   - If no model is currently promoted → promote unconditionally
- *   - If a model is promoted → only promote if new loss < current loss
- *
- * After promotion, the caller should reload the MLX server with the
- * new adapter (e.g. via the Crush Code router or manually).
- */
+/** POST /api/pipeline/promote */
 
 import { trainingRuns, modelVersions } from '@/lib/drizzle/schema';
 import { and, eq, desc } from 'drizzle-orm';

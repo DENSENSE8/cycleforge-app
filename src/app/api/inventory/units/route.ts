@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// GET /api/inventory/units
-// Paginated serial_units list for the ByFilter view on /inventory.
-//
-// Query params:
-//   state       repeatable / comma-separated — serial_status_enum values
-//   condition   repeatable / comma-separated — condition_grade_enum values
-//   sku         exact SKU code (case-insensitive)
-//   location    exact bin name OR barcode (case-insensitive)
-//   q           substring match against serial_number or product_title
-//   limit       default 100, max 500
-//   offset      default 0
-//
-// Returns:
-//   { items: UnitRow[], total: number, limit, offset }
+// GET /api/inventory/units Paginated serial_units list for the ByFilter view on /inventory.
 export const GET = withAuth(async (req: NextRequest, ctx) => {
     try {
         const { searchParams } = new URL(req.url);
@@ -93,10 +80,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         `;
         const countParams = params.slice(0, params.length - 2);
 
-        // tenantQuery sets the org GUC + runs against the tenant pool. The
-        // sku_catalog join is aligned on organization_id (the `sc.sku = su.sku`
-        // disjunct is a string key that collides across tenants), and the
-        // serial_units rows are org-filtered via the WHERE clause above.
+        // tenantQuery sets the org GUC + runs against the tenant pool.
         const [listResult, countResult] = await Promise.all([
             tenantQuery(ctx.organizationId, listSql, params),
             tenantQuery(ctx.organizationId, countSql, countParams),

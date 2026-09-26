@@ -1,10 +1,4 @@
-/**
- * Local vision box client — config resolution precedence, response normalization
- * (damage derivation, caps, caption fallback), and the fetch contract incl. every
- * degrade-to-null failure mode. DB-free, fake fetch.
- *
- * Run: npx tsx --test src/lib/photos/local-vision-client.test.ts
- */
+/** Local vision box client — config resolution precedence, response normalization (damage derivation, caps, caption fallback), and the… */
 
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';

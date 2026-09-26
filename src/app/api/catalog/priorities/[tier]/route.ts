@@ -12,15 +12,7 @@ import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { recordAudit } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * The path segment is a TIER (0..3), not a row id.
- *
- * Its siblings address `/[id]` because a platform or type row is the thing
- * itself. Here the thing is a rung of a fixed ladder and the row is an optional
- * skin over it, so the row may not exist when the first edit arrives. Keying
- * the URL on tier makes that first write an upsert instead of forcing the
- * client to create-then-update.
- */
+/** The path segment is a TIER (0..3), not a row id. */
 function parseTier(raw: string): number | null {
   const tier = Number(raw);
   return Number.isInteger(tier) && tier >= 0 && tier <= 3 ? tier : null;
@@ -89,15 +81,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ ti
   }
 }
 
-/**
- * DELETE /api/catalog/priorities/[tier] — reset the rung to its built-in
- * label / short / tone.
- *
- * A hard DELETE, unlike the soft `is_active = false` its siblings use: absence
- * of a row IS the default state here, so removing the override restores the
- * built-in exactly. The rung itself never goes away, and no carton is stranded
- * — `receiving.priority_tier` still holds the same number either way.
- */
+/** DELETE /api/catalog/priorities/[tier] — reset the rung to its built-in label / short / tone. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ tier: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');

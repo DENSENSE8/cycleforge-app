@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * URL ⇄ state for the /support sidebar's mode switcher.
- *
- * Keeps `?mode=` as the single source of truth so a refresh / deep-link is
- * preserved and the page body can react to the same param. On a mode switch we
- * clear the mode-scoped params (selection, search, filters…) so each mode opens
- * clean. Mirrors `useOperationsMode`.
- */
+/** URL ⇄ state for the /support sidebar's mode switcher. */
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

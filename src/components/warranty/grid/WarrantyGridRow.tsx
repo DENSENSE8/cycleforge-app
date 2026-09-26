@@ -29,17 +29,7 @@ const dataCell = (col: WarrantyGridColumn, rule = true) =>
 
 export { warrantyClaimItemLabel } from '@/lib/tables/field-catalog/warranty-resolve';
 
-/**
- * One warranty claim — CSS-grid columns matching the MOUNTED model (a
- * `SlotLayout` materialization since the wave 1.4 hand-model kill). The fact
- * tracks switch on the bound FIELD ID; `select · title · claim · ticket` are
- * structural and keep their own cases.
- *
- * Read-only: no inline editor and no fold. The row opens the claim at the
- * RECORD plane (`?open=`); the only row-scoped control is the ticket link,
- * which stops propagation so linking a ticket never also swaps the detail panel
- * out from under the operator.
- */
+/** One warranty claim — CSS-grid columns matching the MOUNTED model (a `SlotLayout` materialization since the wave 1.4 hand-model kill). */
 export const WarrantyGridRow = memo(function WarrantyGridRow({
   claim,
   isSelected,

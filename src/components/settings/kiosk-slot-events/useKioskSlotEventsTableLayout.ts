@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Gate preamble (Fact-Forcing):
- * Importers: useKioskSlotEventsSpreadsheet; SLOT_TABLE_ENGINE_LAYOUT_HOOKS entry.
- * Affected API: none. Schemas: SlotTableLayout for tableId kiosk-slot-events.
- * User instruction: Continue to the next phase (register PRODUCT_TABLES peer).
- */
+/** Gate preamble (Fact-Forcing): */
 
 import {
   KIOSKSLOTEVENTS_FIELD_CATALOG,

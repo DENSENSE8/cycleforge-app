@@ -11,13 +11,7 @@ interface IconWithTooltipProps {
   className?: string;
 }
 
-/**
- * Compact icon with a meaning/help tooltip.
- *
- * Uses {@link HoverTooltip} (sans-serif, wraps, viewport-clamped) — not
- * SiteTooltipProvider, which is reserved for copyable values (monospace +
- * nowrap). Workflow / delivery status glyphs are meaning text, not copy chips.
- */
+/** Compact icon with a meaning/help tooltip. */
 export function IconWithTooltip({
   Icon,
   label,

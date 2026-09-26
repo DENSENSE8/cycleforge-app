@@ -3,18 +3,6 @@
 /**
  * The carton record's verbs — handed to the record action strip under the
  * list's search bar (owner 2026-09-25: record verbs live ONLY in that strip,
- * armed for the open row; never in the record header or its right column).
- *
- *   run verbs      Resolve unfound · Open in Unbox · Print labels (the lead
- *                  one picked by readiness) · Copy details (overflow)
- *   display verbs  Claim · Move photos · Add task · Send to staff as task —
- *                  the strip morphs into the verb's own form
- *   isolated       Delete carton (danger, confirm first)
- *
- * Every verb is an existing receiving path: the Unbox bench / pairing
- * (`receiving-select-line`), `printReceivingLineLabels`, the claim wizard
- * (`/api/receiving/zendesk-claim`), `reassignPhotoToReceiving`,
- * `POST /api/tasks` (`receiving` is a task entity), `DELETE /api/receiving-logs`.
  */
 
 import { useCallback, useMemo, useState, type ReactNode } from 'react';

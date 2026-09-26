@@ -1,18 +1,6 @@
 import { latticeStyle } from './universal-loader-field';
 
-/**
- * Zero-JS loading field — the same dot lattice {@link UniversalLoader} paints
- * before its canvas hydrates, as a server-renderable standalone.
- *
- * For loading boundaries on THROTTLED profiles (`/signin`, `/m/*`): the live
- * canvas field integrates springs on the main thread exactly while a phone is
- * hydrating the shell (2026-08-27 sweep: TBT ~340–395ms across the mobile
- * tree, `/m/scan` 76 → 63 after the field landed there), and a loading
- * boundary lives a couple of seconds — the static lattice is what the canvas
- * shows pre-paint anyway, so the visual is identical until the moment the
- * live field would start moving. Desk loading boundaries keep
- * {@link UniversalLoader}; this is the Band 0/1 face of the same chrome.
- */
+/** Zero-JS loading field — the same dot lattice {@link UniversalLoader} paints before its canvas hydrates, as a server-renderable standalone. */
 export function LoaderFieldStatic({ label = 'Loading…' }: { label?: string }) {
   return (
     <div

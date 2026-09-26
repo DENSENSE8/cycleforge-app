@@ -1,13 +1,4 @@
-/**
- * Unit coverage for `looksLikeReceivingCode` — the synchronous predicate the
- * receiving scan bar uses to decide whether to run the canonical-code resolver
- * even when the dash auto-classify heuristic armed Order# mode.
- *
- * The contract that matters: every canonical internal handle (which all carry
- * a dash, so `classifyUnboxScan` would otherwise route them to the PO lookup)
- * returns true, while genuine PO / order / tracking values return false so
- * their existing lookup-po routing is left untouched.
- */
+/** Unit coverage for `looksLikeReceivingCode` — the synchronous predicate the receiving scan bar uses to decide whether to run the… */
 
 import { test } from 'node:test';
 import { strictEqual, equal, deepEqual } from 'node:assert';
@@ -51,11 +42,7 @@ test('PO / order / tracking values are NOT codes (keep lookup-po routing)', () =
 });
 
 test('a PRINTED carton label is a code — every form the encoder can mint', () => {
-  // The regression this closes: the predicate used a bare `^(R|RCV)-\\d+$`
-  // regex, so it answered FALSE for the exact payload the app prints (an
-  // absolute Digital Link). The unbox bar therefore skipped the canonical-code
-  // resolver and sent a scanned carton down carrier-tracking intake, minting a
-  // duplicate carton per scan.
+  // The regression this closes:
   for (const v of [
     'https://usav.app.cycleforge.ai/m/r/51189', // what encodePrintMatrix emits
     '/m/r/51189',                               // bare path (proxy rewrite)

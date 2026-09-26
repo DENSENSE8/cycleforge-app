@@ -37,22 +37,7 @@ function parseTicketId(raw: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-/**
- * Filed-ticket chip for the carton identity row. Renders the same
- * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone).
- * Menu drops flush-square under the chip (same grammar as Photos). Menu: Open →
- * Message (Ticket push column) → Seller → Archive → Unlink. Outside Unbox
- * there is no Message row. Seller opens the seller draft. Neither pulses the
- * chip face — the ticket id stays visible (no `editing` flash). Archive is the
- * manual NAS claim-folder sync (same waist as Photos display / photo-library
- * ticket leaf); auto-archive after capture does not replace this row.
- *
- * Row copy names WHAT OPENS, not the mechanism: the first row is the ticket's
- * message thread (it read "History", which described a log rather than the
- * conversation an operator goes there to read), the second composes to the
- * seller. Handler / testid names keep `ticketHistory` — the push column's own
- * vocabulary is unchanged.
- */
+/** Filed-ticket chip for the carton identity row. */
 export function ReceivingTicketChip({
   value,
   display,
@@ -176,10 +161,7 @@ export function ReceivingTicketChip({
   };
 
   return (
-    // `items-stretch` + `h-full`, not `items-center`: the chip's own box is the
-    // menu's anchor, so a centred (shorter) box opened the dropdown ABOVE the
-    // bar cell's bottom edge — visibly less top padding than Photos / listing,
-    // whose faces are `h-full`. Stretching lands every carton-bar menu on one Y.
+    // `items-stretch` + `h-full`, not `items-center`:
     <div ref={anchorRef} className="flex h-full shrink-0 items-stretch">
       <IdentityLinkChip
         openHref={openHref}

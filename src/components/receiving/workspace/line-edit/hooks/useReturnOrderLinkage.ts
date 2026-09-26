@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * useReturnOrderLinkage — resolve a scanned/returned serial to its OUTBOUND order
- * via the closed-loop linkage SoT (`/api/order-linkage`, backed by
- * `src/lib/order-linkage.ts`). When the unit was previously shipped (i.e. it is a
- * return), this returns the outbound order number so the unbox identity row can
- * show it in the PO#/order chip — as last-8, exactly like an imported-return
- * order#. Silent (`null`) for normal, never-shipped units.
- *
- * This is the replacement for the standalone LINKAGE panel: the resolved order
- * identity now lands in the top identity row (reusing the PO#/order slot), not a
- * separate section — so a SKU-linked and a serial-linked return read identically.
- */
+/** useReturnOrderLinkage — resolve a scanned/returned serial to its OUTBOUND order via the closed-loop linkage SoT (`/api/order-linkage`,… */
 
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

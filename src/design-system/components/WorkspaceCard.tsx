@@ -16,16 +16,7 @@ const GLASS_RAISED_DEFAULT: RaisedIntensity = 'default';
 /** Body padding recipe — `nested` matches stacked overview Notes + Label preview. */
 type WorkspaceCardBodyDensity = 'default' | 'nested';
 
-/**
- * White inset inside a glass worksheet — Notes textarea + Label face frame.
- * Pair with `variant="glass"` + `bodyDensity="nested"` so stacked overview cards
- * share one left edge.
- *
- * Radius is flush (`rounded-none`): the WorkspaceCard shell is now zero-radius
- * industrial, so a nested field is flush too — concentric-corner math collapses
- * to flush and the field sits square inside the flush shell. PO line rows
- * themselves are a flat hairline list (`QUEUE_ROW` selection) — not card islands.
- */
+/** White inset inside a glass worksheet — Notes textarea + Label face frame. */
 export const WORKSPACE_NESTED_FIELD =
   'rounded-none border border-border-soft bg-surface-card';
 
@@ -50,12 +41,7 @@ interface WorkspaceCardProps {
   actions?: ReactNode;
   /** Accent tone for the optional left rail; defaults to no rail. */
   tone?: WorkspaceCardTone;
-  /**
-   * Body padding density. `default` is `px-5 py-4`. `nested` is `p-3` — use for
-   * stacked overview cards that host a white nested field (Notes composer,
-   * Label preview) so their left edges align.
-   * Overridden when `bodyClassName` is set.
-   */
+  /** Body padding density. */
   bodyDensity?: WorkspaceCardBodyDensity;
   /** Extra class on the body wrapper (override padding, etc.). */
   bodyClassName?: string;
@@ -67,22 +53,9 @@ interface WorkspaceCardProps {
    * hover popover anchored to a row inside the card.
    */
   overflow?: 'hidden' | 'visible';
-  /**
-   * Surface treatment. `solid` (default) is the classic white card. `glass` is
-   * the frosted workspace surface: translucent themed card color +
-   * backdrop-blur over the pane's ambient wash, hairline ring, depth elevation
-   * ({@link elevationClass}), and a light-catch top hairline. The blur lives
-   * on an INSET SPAN, not the section, so the card never becomes a stacking
-   * context — local hover menus (chip action menus) keep painting over later
-   * sibling cards exactly as they do on the solid variant.
-   */
+  /** Surface treatment. */
   variant?: WorkspaceCardVariant;
-  /**
-   * Raised intensity for `variant="glass"` only (ignored on solid). Defaults to
-   * `default` — primary work cards. Use `soft` for quieter secondary glass;
-   * flush bookmark chrome uses `elevationClass('raised', 'soft')` via
-   * station identity chrome SoT (not this prop).
-   */
+  /** Raised intensity for `variant="glass"` only (ignored on solid). */
   elevation?: RaisedIntensity;
   children: ReactNode;
 }
@@ -96,20 +69,7 @@ const TONE_RAIL: Record<WorkspaceCardTone, string> = {
   gray: 'bg-surface-strong',
 };
 
-/**
- * Floating white card surface used across the receiving workspace. Mirrors
- * the local `WorkspaceCard` in `src/components/MultiSkuSnBarcode.tsx` so the
- * two surfaces share a visual language; promoted here for reuse.
- *
- * The optional left rail picks up the receiving variant tone (PO → blue,
- * RETURN → red, etc.) — useful for visually grouping cards by record kind.
- *
- * Stacked overview Label / content tabs: use `variant="glass"`,
- * `bodyDensity="nested"`, and {@link WORKSPACE_NESTED_FIELD} /
- * {@link WORKSPACE_NESTED_FIELD_PAD} on the inner white field. Overlay chrome:
- * {@link WORKSPACE_NESTED_OVERLAY_CORNER}. Carton notes use
- * `OmnichannelComposerDock` in the Unbox dock band.
- */
+/** Floating white card surface used across the receiving workspace. */
 export function WorkspaceCard({
   label,
   actions,

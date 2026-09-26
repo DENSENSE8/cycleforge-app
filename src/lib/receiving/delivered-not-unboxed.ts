@@ -1,17 +1,4 @@
-/**
- * "Delivered · not unboxed" — carrier delivered, warehouse has not finished
- * unboxing. Broader than delivered-unscanned: includes dock-scanned cartons
- * that still have unboxed_at NULL / qty=0.
- *
- * Dedicated list feed because view=incoming excludes SHIPMENT_SCANNED rows, so
- * scanned-but-not-unboxed would never appear in the main lines table.
- *
- * Each row carries TWO independent clocks, and they must not be conflated:
- *   - `age_band`      — internal dwell SLA (dock-to-stock), shared bands from
- *                       delivered-unscanned. Applies to every row.
- *   - `claim_by_date` — an EXTERNAL hard deadline that expires whether or not the
- *                       warehouse acts. eBay-only; NULL elsewhere.
- */
+/** "Delivered · not unboxed" — carrier delivered, warehouse has not finished unboxing. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -22,41 +9,14 @@ import {
 } from '@/lib/receiving/delivered-unscanned';
 import { NO_OPEN_LOSS_EXCEPTION_PREDICATE } from '@/lib/receiving/exception-codes';
 
-/**
- * Feed window — deliberately WIDER than {@link EBAY_CLAIM_WINDOW_DAYS}.
- *
- * At the previous 30 days these two numbers were equal, so a carton aged out of
- * this feed on exactly the day its eBay claim expired: the last chance to act was
- * never on screen while it was still actionable. The extra 15 days keep the
- * expired-claim tail visible and auditable.
- */
+/** Feed window — deliberately WIDER than {@link EBAY_CLAIM_WINDOW_DAYS}. */
 export const DELIVERED_NOT_UNBOXED_WINDOW_DAYS = 45;
 export const DELIVERED_NOT_UNBOXED_CAP = 100;
 
-/**
- * eBay Money Back Guarantee: an item-not-received must be reported within 30 days
- * of the latest estimated delivery date. A vendor PO has no equivalent hard
- * deadline, so the claim clock is eBay-only (NULL elsewhere) rather than a blanket
- * +30d stamped on every inbound line.
- */
+/** eBay Money Back Guarantee: */
 export const EBAY_CLAIM_WINDOW_DAYS = 30;
 
-/**
- * SQL for the eBay claim deadline (aliases `rl`, `mirror`, `stn`) — NULL on any
- * non-eBay line.
- *
- * Anchors on the vendor-promised delivery date when one exists and otherwise on
- * the actual carrier delivery instant, converted to the WAREHOUSE civil day.
- * Never a bare `stn.delivered_at::date`: that buckets by UTC and shifts every
- * late-afternoon Pacific delivery a day forward, which on a 30-day deadline is a
- * silent off-by-one (Dates & times).
- *
- * An eBay line normally has no `zoho_po_mirror` row, so in practice this resolves
- * to delivered-day + N; the COALESCE keeps the estimated-delivery preference
- * correct for the case where a mirror row does exist.
- *
- * @param daysParam positional placeholder carrying the window (e.g. `'$4'`)
- */
+/** SQL for the eBay claim deadline (aliases `rl`, `mirror`, `stn`) — NULL on any non-eBay line. */
 export function ebayClaimByDateSql(daysParam: string): string {
   return `CASE WHEN rl.inbound_source_type = 'ebay' THEN (
              COALESCE(
@@ -66,13 +26,7 @@ export function ebayClaimByDateSql(daysParam: string): string {
            )::date::text ELSE NULL END`;
 }
 
-/**
- * Shared not-unboxed guard (aliases `rl`, `r`). Wave-2 reader cutover: the
- * unboxed milestone reads from the receiving_unbox street table (ru.unboxed_at,
- * 1:1 with the carton) via a correlated NOT EXISTS, so importers need no join —
- * a carton with no street row (or a NULL ru.unboxed_at) is "not unboxed",
- * exactly matching the old NULL spine value.
- */
+/** Shared not-unboxed guard (aliases `rl`, `r`). */
 export const NOT_UNBOXED_PREDICATE = `COALESCE(rl.quantity_received, 0) = 0
            AND (r.id IS NULL OR NOT EXISTS (
              SELECT 1 FROM receiving_unbox ru_nu

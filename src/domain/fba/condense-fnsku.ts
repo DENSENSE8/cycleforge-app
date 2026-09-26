@@ -14,22 +14,7 @@ interface AddFnskuToPlanParams {
   sku?: string | null;
 }
 
-/**
- * Add an FNSKU to a plan with automatic condensing.
- *
- * Rules:
- *   1. If the FNSKU exists in another **unshipped** plan, move it to the target
- *      plan and merge quantities ("condense").
- *   2. If the FNSKU already exists in the target plan, increment its expected_qty.
- *   3. Otherwise, create a new item row.
- *
- * This enforces the constraint: one FNSKU can only live in one unshipped plan.
- *
- * Must be called inside an existing transaction (caller manages BEGIN/COMMIT).
- * The caller must run that transaction inside `withTenantConnection(orgId)` so
- * the `app.current_org` GUC is live (it backs the INSERT default + RLS), and
- * must pass the same `orgId` here for the explicit tenant filters.
- */
+/** Add an FNSKU to a plan with automatic condensing. */
 export async function addFnskuToPlan(
   client: PoolClient,
   orgId: OrgId,

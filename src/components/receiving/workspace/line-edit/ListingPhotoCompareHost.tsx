@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Unbox Displays → Photos → Compare — listing gallery vs carton/item evidence.
- *
- * Reference only: the dock still owns capture (`ItemPhotoDockControl`). This
- * leaf shares the procedure pointer via the parent (auto-open on `item_photos`);
- * it never derives a second step state.
- */
+/** Unbox Displays → Photos → Compare — listing gallery vs carton/item evidence. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -149,10 +143,7 @@ export function ListingPhotoCompareHost({ row }: { row: ReceivingLineRow }) {
             <Button
               variant="ghost"
               size="sm"
-              // Station chrome is square. This button sits on the Displays
-              // column beside flush scan-station faces, and the desk default
-              // (`cornerClass('surface')`) rounded it alone — one soft corner in
-              // a flush stack reads as a stray control.
+              // Station chrome is square.
               className={cornerClass('flush')}
               icon={<ExternalLink className="h-3.5 w-3.5" />}
               onClick={() => window.open(listingHref, '_blank', 'noopener,noreferrer')}

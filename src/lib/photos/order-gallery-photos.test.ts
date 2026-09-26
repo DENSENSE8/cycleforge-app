@@ -1,11 +1,4 @@
-/**
- *   node --import tsx --test src/lib/photos/order-gallery-photos.test.ts
- *
- * Pins the mapper extracted from `/search`'s station hook (2026-08-21). The
- * three behaviours a rewrite silently loses are the ones asserted here: the
- * cross-spine url dedupe, the two accepted shapes of the legacy blob, and the
- * stage caption.
- */
+/** node --import tsx --test src/lib/photos/order-gallery-photos.test.ts */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

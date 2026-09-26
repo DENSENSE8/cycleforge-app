@@ -32,32 +32,12 @@ import {
   type SidebarRailShellProps,
 } from './rail-shell/sidebar-rail-shared';
 
-/**
- * Generic sidebar "recent activity" rail skeleton. Owns the reusable shell —
- * data fetch, optimistic patch, query invalidation, top-N + pinned-selection,
- * package grouping, keyboard nav, and the hover-preview popover positioning —
- * and pushes all domain-specific rendering out to render-prop slots.
- *
- * Receiving/Testing consume this via RecentActivityRailBase (which supplies the
- * ReceivingLineRow renderers); FBA supplies its own row + popover content.
- *
- * Thin composition shell: the engine lives in {@link useSidebarRail}; rows /
- * group headers / popover are presentational components under `./rail-shell/`.
- */
+/** Generic sidebar "recent activity" rail skeleton. */
 
 export { railRelativeTime, type SidebarRailRowContext, type SidebarRailShellProps } from './rail-shell/sidebar-rail-shared';
 export { RailPopover } from './rail-shell/RailPopover';
 
-/**
- * Rails that have already played their first-load reveal THIS SESSION, keyed by a
- * stable rail identity. The first-load cascade must be a genuine one-shot: a rail
- * subtree can REMOUNT shortly after its first paint (a parent Suspense boundary or
- * dynamic-import chunk resolving, a query-key churn), and a fresh mount would
- * otherwise replay `initial="hidden" animate="show"` and re-flash every row. We
- * freeze "already revealed" at mount from this registry, so any later mount
- * renders rows at rest instead. Cleared only by a full reload — exactly when a
- * fresh cascade is wanted.
- */
+/** Rails that have already played their first-load reveal THIS SESSION, keyed by a stable rail identity. */
 const revealedRails = new Set<string>();
 
 export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
@@ -83,13 +63,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     selectedRow, getGroupId,
   } = props;
 
-  // Carton-aware selection (SoT default): a recent rail grouped by a parent
-  // (`getGroupId` = carton `receiving_id`) must keep the parent's row lit while
-  // the active CHILD moves between siblings — matching only `getId(row) ===
-  // selectedId` drops the glow the moment a sibling (whose line id is not the
-  // rail's representative row) becomes active. Whenever the surface exposes both
-  // a `selectedRow` and a `getGroupId`, we also match by group; a rail that
-  // exposes neither is unchanged (strict per-row id highlight).
+  // Carton-aware selection (SoT default):
   const selectedGroupId =
     selectedRow != null && getGroupId ? getGroupId(selectedRow) : null;
   const rowSelected = useCallback(
@@ -107,10 +81,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   // optimistic stub and its resolved row as the SAME element so the swap is an
   // in-place update, not a remount. Defaults to the numeric id.
   const rowKey = (row: TRow): string | number => (getReconcileId ? getReconcileId(row) : getId(row));
-  // Operator-facing row identity — the SAME chain the parked collapse-pin peek
-  // uses, so the ⋮ trigger's accessible name ("Actions for …") and an action's
-  // own feedback name the row the way every other surface names it. Never a
-  // bare "More", which hands a screen-reader user twenty-five identical buttons.
+  // Operator-facing row identity — the SAME chain the parked collapse-pin peek uses, so the ⋮ trigger's accessible name ("Actions for …")…
   const rowLabel = (row: TRow): string =>
     getCollapsePinLabel?.(row) ?? getStatusDotLabel?.(row) ?? String(getId(row));
 
@@ -142,9 +113,6 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   }, [rows, onVisibleRowsChange]);
 
   // Parked mid-strip MRU peek — same visible top-N the open rail paints.
-  // Pin hover always opens a RailPopover card: the rail's own `renderPopover`
-  // when it has one (Receiving), else the shared `RailPeekCard` built from the
-  // feed's typed identity facts. Never a text-only twin.
   const collapseMru = useMemo(() => {
     if (!publishCollapseMru) return null;
     const top = rows.slice(0, CONTEXT_PANEL_COLLAPSE.mruPinCount);
@@ -207,19 +175,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   ]);
   usePublishCollapsePins(collapseMru);
 
-  // Latches TRUE the moment this feed first paints rows, and stays true for the
-  // component's whole life. Two jobs: (1) keep the list host mounted for the last
-  // row's exit slide after the feed empties, and (2) let the host mount FRESH the
-  // moment rows first arrive so it carries `initial="hidden" animate="show"` on
-  // mount — which is what actually orchestrates the cascade. A host that mounted
-  // empty first (snapshot rails skip the skeleton) never runs the mount-time
-  // stagger for its late-arriving children, so it sat frozen at `hidden`.
-  //
-  // Deliberately NOT reset on a queryKey change: a feed's key can churn shortly
-  // after mount (a staff/filter param resolving) with a transient 0-row window,
-  // and resetting the latch there unmounted + remounted the whole `motion.ul`,
-  // replaying the cascade from `hidden` (a full re-flash). A genuine feed switch
-  // remounts this component from its parent key, so the latch re-inits anyway.
+  // Latches TRUE the moment this feed first paints rows, and stays true for the component's whole life.
   const [listPainted, setListPainted] = useState(false);
   useEffect(() => {
     if (rows.length > 0) setListPainted(true);
@@ -234,20 +190,11 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     if (staggerReveal) revealedRails.add(revealKey);
   }, [staggerReveal, revealKey]);
 
-  // The container drives the cascade for the whole mount and then simply HOLDS
-  // `show` — it is never disarmed. Rows inherit `show` and rest there; a scan-in
-  // row entering the same AnimatePresence slides in from `hidden`, and a dismiss
-  // exits via the variant `exit`. Nothing swaps the row's contract mid-mount, so
-  // there is no settle-time flicker. Rows never carry Framer `layout` —
-  // projection rubber-bands the feed on every context-column resize (see RailRow).
+  // The container drives the cascade for the whole mount and then simply HOLDS `show` — it is never disarmed.
   const staggerActive = staggerReveal && rows.length > 0 && !showSkeleton && !alreadyRevealed;
 
   const reduceMotion = useReducedMotion();
-  // STABLE identity across renders. A fresh variants object each render makes
-  // framer treat a mid-cascade re-render (e.g. the authoritative fetch replacing
-  // the snapshot rows) as a NEW animation target and restart the reveal from
-  // `hidden` — flashing every row to opacity 0 for a frame. Memoizing pins the
-  // identity so a re-render never re-triggers the container's `show` orchestration.
+  // STABLE identity across renders.
   const staggerItemVariants = useMemo<Variants | undefined>(() => {
     if (!staggerReveal) return undefined;
     if (reduceMotion) {
@@ -267,31 +214,13 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   // washes edge-to-edge. Content column pad lives inside each RailRow / the
   // dense scan bar (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW).
   const listInsetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
-  // scanDock rails sit directly under a scan band (`receivingScanBandClass`),
-  // which already paints its own bottom hairline (`receivingHeaderHairlineClass`
-  // — an inset shadow in `--ds-color-border-default`). This section's own
-  // `border-t` used a DIFFERENT token (`--ds-color-border-hairline`), so the two
-  // stacked into a visible double line right under the band (2026-08-24). Drop
-  // it for scanDock only — every other `railInset` still needs its own top rule,
-  // since nothing above those rails is guaranteed to paint one.
+  // scanDock rails sit directly under a scan band (`receivingScanBandClass`), which already paints its own bottom hairline…
   const sectionTopRule = railInset === 'scanDock' ? null : 'border-t border-border-hairline';
-  // HARD CONSTRAINTS (2026-08-24): (1) zero padding between the scan band and
-  // the first row — the list carries no top pad of its own; (2) every row
-  // (RailRow / PkgGroupHeader) renders identical `py-1` regardless of position
-  // or selection — no row is ever a special shape. Together that means there
-  // is exactly ONE gutter under the band: the first row's own (uniform) top
-  // pad, same as every other row's. Nothing here adds a second one on top of
-  // it — that was the mistake in the last two passes.
+  // HARD CONSTRAINTS (2026-08-24):
 
   return (
-    // No eyebrow band. Every rail used to open with a `TITLE · N` strip carrying
+    // No eyebrow band.
     // an edit pencil at its right; the operator removed it 2026-08-22. It spent a
-    // full `h-6` of a scrolling column on a label the surrounding chrome already
-    // gives (the station names its own rail) and a count nobody acts on, and it
-    // was the last home of the pencil — which moved up into the scan band, where
-    // the rail's other controls already live. `eyebrowTitle` survives as the
-    // listbox's ACCESSIBLE name (below) and the reveal-registry key; it is no
-    // longer painted.
     <section className={cn('min-w-0', sectionTopRule, appSurfaceFillClass('chrome'))}>
       {showSkeleton ? (
         // Column-scoped: the field sizes to the rail, so the rail sweeps on its
@@ -302,14 +231,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         </div>
       ) : (
         <>
-          {/*
-            Mount the list host only once rows have painted (`listPainted` latches
-            on the first non-empty render and stays true so the last carton can
-            still finish its exit slide after the feed empties). Mounting FRESH at
-            the first rows — rather than mounting empty at render 0 and gaining
-            children later — is what lets `initial="hidden" animate="show"`
-            actually orchestrate the first-load cascade. Empty copy sits below.
-          */}
+          {/* Mount the list host only once rows have painted (`listPainted` latches on the first non-empty render and stays true so the last carton… */}
           {listPainted || rows.length > 0 ? (
           <motion.ul
             ref={listRef}
@@ -326,10 +248,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
               ? { initial: 'hidden' as const, animate: 'show' as const, variants: staggerContainerVariants }
               : {})}
           >
-            {/* `initial` enabled only for the reveal so the first-load cascade plays;
-                otherwise AnimatePresence suppresses the initial mount animation.
-                `sync` (not popLayout) — popLayout runs layout projection and
-                rubber-bands the feed when the column width changes mid-session. */}
+            {/* `initial` enabled only for the reveal so the first-load cascade plays; otherwise AnimatePresence suppresses the initial mount animation. */}
             <AnimatePresence initial={staggerActive} mode="sync">
               {rows.flatMap((row, idx) => {
                 const g = grouped[idx];

@@ -1,16 +1,4 @@
-/**
- * Warranty ↔ Zendesk — server-side linking. Persists the claim → ticket
- * mapping (warranty_claims.zendesk_ticket_id for cheap display/joins, plus the
- * universal ticket_links row the support workspace resolves) and appends the
- * matching warranty_claim_events rows.
- *
- * Sync model: read-time fetch, no webhook. The Zendesk thread stays the source
- * of truth for the conversation — the popover pulls comments live whenever it
- * opens (GET /api/warranty/claims/[id]/zendesk/comments), so there is nothing
- * to keep in sync in the background. This matches the tracking-live-sync
- * decision (polling over paid/managed webhooks) and avoids exposing + wiring a
- * Zendesk webhook target for marginal freshness gains.
- */
+/** Warranty ↔ Zendesk — server-side linking. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -30,10 +18,7 @@ export async function recordClaimZendeskEvent(args: {
   actorStaffId: number | null;
 }): Promise<void> {
   await pool.query(
-    // organization_id is derived from the parent claim so the row is org-stamped
-    // even on the raw (non-GUC) pool — warranty_claim_events.organization_id is
-    // NOT NULL with a loud-fail GUC default, so omitting it here previously
-    // inserted NULL and violated the constraint on every write.
+    // organization_id is derived from the parent claim so the row is org-stamped even on the raw (non-GUC) pool —…
     `INSERT INTO warranty_claim_events (claim_id, event_type, payload, actor_staff_id, organization_id)
      VALUES ($1, $2, $3::jsonb, $4,
        (SELECT organization_id FROM warranty_claims WHERE id = $1))`,
@@ -41,16 +26,7 @@ export async function recordClaimZendeskEvent(args: {
   );
 }
 
-/**
- * Stamp a Zendesk ticket onto its claim. The column write is authoritative (it
- * gates "already linked" checks); the ticket_links upsert and the timeline event
- * are best-effort — the ticket already exists in Zendesk, so a mapping hiccup
- * must not turn the link into an error.
- *
- * `eventType` distinguishes a freshly-created ticket (`ZENDESK_TICKET_CREATED`,
- * the default, used by POST .../zendesk) from linking an EXISTING ticket
- * (`ZENDESK_LINKED`, used by POST .../zendesk/link) so the timeline reads true.
- */
+/** Stamp a Zendesk ticket onto its claim. */
 export async function recordClaimTicketLink(args: {
   claimId: number;
   zendeskTicketId: number;
@@ -92,21 +68,7 @@ export async function recordClaimTicketLink(args: {
   }
 }
 
-/**
- * Detach a Zendesk ticket from a claim — the clean inverse of
- * {@link recordClaimTicketLink}. Full revert (operator-confirmed default):
- *   1. null `warranty_claims.zendesk_ticket_id` (only when it still points at
- *      this ticket, so a stale unlink can't clear a since-relinked ticket),
- *   2. remove the entity-scoped `ticket_links` row,
- *   3. clear the dangling `external_id` on the Zendesk ticket (only when it
- *      still resolves to THIS claim) so a later getTicketEntity can't re-attach
- *      it via the external_id fallback,
- *   4. append a `ZENDESK_UNLINKED` timeline event.
- *
- * The Zendesk ticket itself is never deleted — unlinking only severs our
- * reference. Steps 2–4 are best-effort; the authoritative column write (1) is
- * what flips the claim back to "no ticket". Returns whether anything detached.
- */
+/** Detach a Zendesk ticket from a claim — the clean inverse of {@link recordClaimTicketLink}. */
 export async function unlinkClaimTicket(args: {
   claimId: number;
   zendeskTicketId: number;

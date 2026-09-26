@@ -1,15 +1,4 @@
-/**
- * Bins field catalog — the bindable warehouse-bin facts, as DATA. Wave 1.4's
- * second family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `bins` row:
- * "location/occupancy facts. Same skeleton as every other browse table.").
- *
- * Every entry names a fact `BinsOverviewRow` already carries. Resolution is
- * `./bins-resolve.ts`, kept separate so this module stays a LEAF.
- *
- * Bins is a SHEET morph. `bins.barcode` is the IDENTITY fact — the bin's own
- * scannable handle, which the structural frozen Barcode track paints.
- */
+/** Bins field catalog — the bindable warehouse-bin facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -83,14 +72,7 @@ export const BINS_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default bins layout — visual parity with the retired hand model
- * (`select · barcode · location · SKUs · qty · fill · counted · status`): every
- * track answers a question the warehouse operator asks while scanning the floor
- * map — which bin, where, how full, when last counted, what flags. The whole
- * set shipped ON, so the whole set is bound.
- * Guard: `bins.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default bins layout — visual parity with the retired hand model (`select · barcode · location · SKUs · qty · fill · counted… */
 export const BINS_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'bins.barcode',

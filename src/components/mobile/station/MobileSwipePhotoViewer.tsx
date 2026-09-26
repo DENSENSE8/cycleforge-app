@@ -73,19 +73,7 @@ export interface MobileSwipePhotoViewerProps {
 
 type Axis = 'none' | 'x' | 'y';
 
-/**
- * Full-screen swipeable photo viewer.
- *
- * Real finger-following paging: every photo lives side-by-side on a track that
- * tracks the drag and settles with a no-overshoot spring; a fast flick pages
- * even under the distance threshold, and the ends rubber-band. Pull the photo
- * down to dismiss — the scrim fades and the image scales with the pull. Tap
- * toggles the chrome (counter + dismiss affordance) for edge-to-edge viewing.
- * `presentation="sheet"` slides up from the bottom on enter (gallery route);
- * `presentation="overlay"` (default) fades + scales in (camera / in-sheet preview).
- * Photos are shown whole (object-contain) on a near-black field; neighbours
- * preload so a swipe never flashes. Portals to document.body.
- */
+/** Full-screen swipeable photo viewer. */
 export function MobileSwipePhotoViewer({
   slides,
   open,
@@ -205,10 +193,7 @@ export function MobileSwipePhotoViewer({
   // Disarm delete when paging.
   useEffect(() => setDeleteArmed(false), [index]);
 
-  // Warm the HTTP + decode cache for the active photo and its neighbours so a
-  // settle never lands on an undecoded image — that late paint is the flash you
-  // see "select" the photo on finger-release. Decoding the same URL primes the
-  // browser cache the in-DOM <img> then reads from, so the swipe lands painted.
+  // Warm the HTTP + decode cache for the active photo and its neighbours so a settle never lands on an undecoded image — that late paint is…
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const NEIGHBOURS = 2;
@@ -477,11 +462,7 @@ export function MobileSwipePhotoViewer({
               <span
                 className={`${GLASS_CHROME} flex h-11 items-center justify-center gap-2 px-3 text-sm font-semibold tabular-nums tracking-wider text-white`}
               >
-                {/* Who pressed the shutter. `StaffAvatar` resolves name, colour
-                    and photo from the staff identity cache by id alone, so the
-                    feed needs no staff join. Absent on pre-auth / imported
-                    rows, where `taken_by_staff_id` is null — the counter then
-                    renders exactly as it did before. */}
+                {/* Who pressed the shutter. */}
                 {active?.uploadedBy != null ? (
                   <StaffAvatar staffId={active.uploadedBy} size="xs" ring={false} />
                 ) : null}

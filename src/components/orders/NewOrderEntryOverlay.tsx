@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * New-order intake in the shared right detail-stack rail (RightRailHost).
- * Non-modal float — same metric as `detail:order` / `detail:receiving`
- * (no scrim, queue stays live). Esc close via the host; header X still works
- * through the form shell.
- */
+/** New-order intake in the shared right detail-stack rail (RightRailHost). */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';

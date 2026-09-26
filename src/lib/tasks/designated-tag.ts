@@ -1,39 +1,4 @@
-/**
- * `designated_michael` → **the staffer that names**.
- *
- * A helpdesk agent who wants a ticket handled by one person today does the one
- * thing their tool makes cheap: they tag it. `designated_michael` is a string a
- * human typed into Zendesk — not a foreign key, not an id, and not necessarily
- * a person this workspace employs. Turning it into an assignee is therefore a
- * RULE, and this module is the whole of it.
- *
- * ## The grammar
- *
- *   designated<sep><handle>       sep ∈ { `_`, `-`, `:` }
- *
- * Case-insensitive on both halves, because Zendesk lowercases tags and an
- * operator typing one into the admin UI will not. The handle keeps whatever
- * separators it contains (`designated_mary-jo` → `mary-jo`): collapsing them
- * would make two different tags name the same person by accident, which is the
- * opposite of what a designation is for.
- *
- * Diacritics are folded (`Hoàng` → `hoang`) on BOTH sides. Zendesk tags are
- * effectively ASCII, so a staffer whose name carries a combining mark could
- * otherwise never be designated — the rule would silently exclude them.
- *
- * ## Why an ambiguous tag resolves to NOTHING
- *
- * Two staffers named Michael make `designated_michael` unanswerable. The
- * tempting fallbacks — lowest id, most recently active, first match — all
- * produce a task on the WRONG person's list, and a task on the wrong list is
- * worse than no task: the right person never learns the ticket exists, and the
- * wrong person has to decide whether to touch a ticket that was never theirs.
- * So ambiguity is a refusal, surfaced in the cron summary's `ambiguous` count
- * where an operator can see it and disambiguate the tag.
- *
- * Pure and dependency-free: the rule is a unit test, not something a bench
- * discovers at 4pm.
- */
+/** `designated_michael` → **the staffer that names**. */
 
 /** The tag family this module owns, before the separator. */
 const DESIGNATED_PREFIX = 'designated';
@@ -81,13 +46,7 @@ export interface DesignatedMatch {
   tag: string;
 }
 
-/**
- * What a ticket's tag set says about who should own it.
- *
- * `none` and `ambiguous` are deliberately different answers: an untagged ticket
- * is not a problem, an unanswerable tag is. Only the second belongs in a count
- * an operator is asked to look at.
- */
+/** What a ticket's tag set says about who should own it. */
 export type DesignatedVerdict =
   | { kind: 'none' }
   | { kind: 'ambiguous'; tags: string[] }
@@ -106,14 +65,7 @@ function staffMatching(handle: string, staff: readonly DesignatedStaff[]): numbe
   return [...ids];
 }
 
-/**
- * Resolve a ticket's tags against the roster.
- *
- * A tag naming nobody is IGNORED rather than fatal — helpdesks accumulate
- * tags for departed staff, and one stale `designated_someone` must not veto a
- * live `designated_michael` on the same ticket. Ambiguity is fatal in both of
- * its forms: one tag naming two people, and two tags naming two people.
- */
+/** Resolve a ticket's tags against the roster. */
 export function classifyDesignatedTags(
   tags: readonly string[],
   staff: readonly DesignatedStaff[],

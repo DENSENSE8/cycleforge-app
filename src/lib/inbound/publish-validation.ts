@@ -1,17 +1,4 @@
-/**
- * Studio publish validation for Universal Incoming (plan §8.3, §9.6).
- *
- * When a tenant publishes a station whose blocks bind the inbound data sources,
- * this gate enforces:
- *   1. eBay-binding sources require the org's `incoming_universal` flag AND at
- *      least one connected, active buyer account (no dead eBay checklist);
- *   2. every source a block pins to a specific inbound source_type must be in the
- *      org's `enabledSources` policy (organizations.settings.inbound).
- *
- * Pure over the config + a small set of injected async facts (flag, buyer-account
- * presence, enabled sources) so it runs DB-free in tests. Called from
- * POST /api/stations/publish AFTER the registry-shape validation.
- */
+/** Studio publish validation for Universal Incoming (plan §8.3, §9.6). */
 
 import type { StationConfig } from '@/lib/stations/contract';
 

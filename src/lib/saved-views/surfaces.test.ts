@@ -23,12 +23,7 @@ const MIGRATIONS_DIR = fileURLToPath(new URL('../migrations/', import.meta.url))
 const SURFACE_CHK_RE =
   /saved_views_surface_chk[\s\S]*?CHECK\s*\(\s*surface\s+IN\s*\(([\s\S]*?)\)\s*\)/i;
 
-/**
- * The **effective** CHECK: a constraint is redefined, never appended to, so the
- * live definition is the one in the LAST-SORTING migration that defines it.
- * Reading only the birth migration would fail the moment a follow-up legitimately
- * widened the union — and, worse, would keep passing if a follow-up narrowed it.
- */
+/** The **effective** CHECK: */
 function effectiveSurfaceCheck(): { file: string; values: string[] } {
   const hits = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
@@ -54,12 +49,7 @@ test('SAVED_VIEW_SURFACES includes ops, media, dashboard_*, and *_history', () =
   assert.ok(SAVED_VIEW_SURFACES.includes('receiving_incoming'));
   assert.ok(SAVED_VIEW_SURFACES.includes('testing_history'));
   assert.ok(SAVED_VIEW_SURFACES.includes('home_today'));
-  // No length assertion. It was `=== 11`, and it went red on 2026-08-29 when
-  // twelve legitimate surfaces were admitted — a count pins a snapshot, and the
-  // thing it was standing in for is already tested twice below: the set is
-  // compared to the effective DB CHECK, and no historical value may be dropped.
-  // What a count CAN still catch that those cannot is a duplicate, which would
-  // make one surface silently shadow another in the storage-key map.
+  // No length assertion.
   assert.equal(
     new Set(SAVED_VIEW_SURFACES).size,
     SAVED_VIEW_SURFACES.length,
@@ -67,12 +57,7 @@ test('SAVED_VIEW_SURFACES includes ops, media, dashboard_*, and *_history', () =
   );
 });
 
-/**
- * The TS list and the DB CHECK are two halves of one discriminator. The
- * inclusion test above passes if a surface is added to only one of them — and
- * the failure mode is invisible until the first insert on the new surface is
- * rejected by `saved_views_surface_chk` in production. Compare the sets.
- */
+/** The TS list and the DB CHECK are two halves of one discriminator. */
 test('SAVED_VIEW_SURFACES matches the saved_views_surface_chk CHECK exactly', () => {
   const { file, values } = effectiveSurfaceCheck();
   assert.ok(values.length > 0, `parsed an empty CHECK value list from ${file}`);
@@ -84,12 +69,7 @@ test('SAVED_VIEW_SURFACES matches the saved_views_surface_chk CHECK exactly', ()
   );
 });
 
-/**
- * A follow-up must re-state the WHOLE union, so no value may be silently
- * dropped by a later redefinition. Fold every historical definition together and
- * assert the effective one is a superset — this is the exact regression
- * `.claude/rules/polymorphic-tables.md` records for `reason_codes_flow_context_chk`.
- */
+/** A follow-up must re-state the WHOLE union, so no value may be silently dropped by a later redefinition. */
 test('the effective CHECK never drops a value an earlier migration admitted', () => {
   const { file, values } = effectiveSurfaceCheck();
   const effective = new Set(values);

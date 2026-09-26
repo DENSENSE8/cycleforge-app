@@ -39,10 +39,7 @@ export function useImageZoom(): UseImageZoom {
     setRotation(0);
   }, []);
 
-  // End the pan on ANY mouseup — including releases outside the image or after
-  // the viewer has unmounted (e.g. Esc pressed mid-drag). Without this, closing
-  // mid-drag strands `isDragging`/`grabbing` state. The listener lives in this
-  // hook (mounted with the gallery), so it fires even once the modal is gone.
+  // End the pan on ANY mouseup — including releases outside the image or after the viewer has unmounted (e.g.
   useEffect(() => {
     if (!isDragging) return;
     const onUp = () => setIsDragging(false);

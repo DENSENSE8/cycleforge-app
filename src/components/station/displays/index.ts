@@ -1,25 +1,4 @@
-/**
- * Station Displays — Root Index + push column SoT for scan-station right-edge
- * triage.
- *
- * **Index→leaf waist (propagates to desk rails):** {@link DisplaysIndexLeafStage}
- * — composed by {@link StationDisplaysPushStack} and desk
- * `DeskInspectorIndexShell` (`components/right-rail/`). Upgrade the stage /
- * {@link StationDisplayIndexList} here; desk peeks must not fork twins.
- *
- * Action Plane densify (Station Action vs Context planes):
- *   StationDenseFactStrip · StationActionDossierShell · useStationActionKeyBindings
- *
- * ```ts
- * import {
- *   StationDisplaysPushStack,
- *   DisplaysIndexLeafStage,
- *   StationActionDossierShell,
- *   STATION_DISPLAYS_HOST_PAD_CLASS,
- *   type DisplayIndexRow,
- * } from '@/components/station/displays';
- * ```
- */
+/** Station Displays — Root Index + push column SoT for scan-station right-edge triage. */
 
 export { STATION_DISPLAY_INDEX, STATION_LOOK_DISPLAY_ID } from './display-index';
 export type { DisplayIndexGroup, DisplayIndexRow } from './display-index';

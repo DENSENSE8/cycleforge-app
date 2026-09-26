@@ -1,17 +1,4 @@
-/**
- * Unit tests for the loss write-off domain (Phase 3 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md). DB-free via injected fakes.
- *
- * The load-bearing assertions:
- *   1. the narrow vocabulary — an OS&D code cannot write a carton off,
- *   2. absence is an ERROR here (unlike the photo-policy override),
- *   3. the justification is server-assembled; the body cannot supply it,
- *   4. reopen resolves ONLY loss codes, never a sibling DAMAGED/SHORT finding,
- *   5. the feed's exit predicate keys on OPEN status, which is what makes the
- *      write-off reversible.
- *
- * Run: `npx tsx --test src/lib/receiving/loss-writeoff.test.ts`
- */
+/** Unit tests for the loss write-off domain (Phase 3 of docs/todo/ebay-delivered-not-unboxed-PLAN.md). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

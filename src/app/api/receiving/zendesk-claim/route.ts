@@ -45,24 +45,11 @@ interface ClaimRequest {
    * instead of the default internal note (`public: false`).
    */
   notePublic?: boolean;
-  /**
-   * Operator "Test create": assemble the ticket exactly as it would be filed
-   * and BUILD THE PHOTO SHARE PACK, but create no Zendesk ticket, run no NAS
-   * archive, and write nothing to the receiving record. The pack is real
-   * because it is what the dry run exists to verify.
-   */
+  /** Operator "Test create": */
   dryRun?: boolean;
 }
 
-/**
- * Create a Zendesk ticket for a receiving claim (damage / missing / wrong
- * item / vendor defect) directly via the Zendesk REST API
- * (`createTicket` in src/lib/zendesk.ts).
- *
- * If the operator edited the subject/body in the modal, those values are
- * sent verbatim. Otherwise the template builder fills them from PO/tracking/
- * photos/line context.
- */
+/** Create a Zendesk ticket for a receiving claim (damage / missing / wrong item / vendor defect) directly via the Zendesk REST API… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = (await req.json().catch(() => null)) as ClaimRequest | null;
@@ -102,10 +89,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         ? body.ccEmails.filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim())).length
         : 0;
 
-      // The share pack IS built — it is the thing under test, and a dry run
-      // that skipped it would prove nothing about the link the vendor gets.
-      // It is a read-only public view of photos that already exist; no Zendesk
-      // ticket, no NAS archive, no receiving writes happen on this path.
+      // The share pack IS built — it is the thing under test, and a dry run that skipped it would prove nothing about the link the vendor gets.
       const sharePack = await buildClaimSharePack({
         orgId: ctx.organizationId,
         staffId: ctx.staffId,

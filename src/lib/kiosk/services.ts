@@ -1,21 +1,4 @@
-/**
- * Front-desk service SoT — the `/kiosk/v2` command menu.
- *
- * Two KINDS live here, and the difference is load-bearing:
- *
- * - `kind: 'command'` — the center work surfaces. These map 1:1 onto
- *   `KioskCommandId`, which is also a subset of the CHECK vocabulary on
- *   `counter_sessions.active_command`, so a command tile is a session state.
- * - `kind: 'staff'` — a tool the counter STAFF opens on top of whatever
- *   command is running (History, Custom amount). It sets no `active_command`
- *   and survives being closed: the session underneath is untouched. It is
- *   therefore NOT a command id and must never reach `serviceIdToCommand`,
- *   which is why the parameter of that function is the narrow
- *   {@link KioskCommandServiceId} — a staff tile cannot be passed to it
- *   without the compiler saying so.
- *
- * Buyback and Pickup were deleted 2026-09-23 — see `commands.ts`.
- */
+/** Front-desk service SoT — the `/kiosk/v2` command menu. */
 
 import { History, ReceivingModeRepair, Receipt, SalesPrice } from '@/components/Icons';
 import type { KioskCommandId } from './commands';
@@ -37,23 +20,13 @@ export interface KioskServiceTile {
   status: 'live' | 'wip';
   icon: KioskServiceIcon;
   /**
-   * Command ink — ONE semantic text token per command, so the glyph reads as
-   * that command everywhere it mounts (dropdown trigger, dropdown option, any
-   * future rail) without a per-call-site colour.
-   *
+   * Command ink — ONE semantic text token per command, so the glyph reads as that command everywhere it mounts (dropdown trigger, dropdown…
    * Operator 2026-09-14: "repair orange and sales green and more colors for
-   * other". Mapped onto the theme's semantic ink, never a raw hex — these
-   * resolve per theme (`src/design-system/themes/registry.ts`) so the commands
-   * stay legible on dark / ember / cyberpunk too.
    */
   iconTone: string;
   /**
-   * THE name of this command — the one word the mode menu, the Settings
-   * picker and every other surface print. Sales is "Sales" everywhere
+   * THE name of this command — the one word the mode menu, the Settings picker and every other surface print.
    * (operator 2026-09-23); it used to be `Buy / Sell` on the tile, `Retail`
-   * here and a hard-coded `Sales` override in the menu — three names for one
-   * mode. The tile's separate `label` (the retired welcome-screen caption)
-   * went with it.
    */
   commandLabel: string;
 }
@@ -82,9 +55,7 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
   {
     id: 'custom-amount',
     kind: 'staff',
-    // Square's Keypad (Square's own word). A tool over the running command,
-    // not a product: it adds a line to the ONE cart (a sale in Sales, a
-    // typed-in device in Repair), so it lives in this menu rather than as a
+    // Square's Keypad (Square's own word).
     // tile in the catalog (operator 2026-09-24).
     commandLabel: 'Keypad',
     blurb: 'Ring up an amount the catalog does not carry',
@@ -118,13 +89,7 @@ export function isKioskCommandServiceId(id: KioskServiceId): id is KioskCommandS
   return id === 'sales' || id === 'repair';
 }
 
-/**
- * Live commands as CHOOSER options — the org's default-command select in
- * Settings, sourced from this tile SoT so the words on the picker are the words
- * on the counter. Only `live` COMMANDS: an org cannot default to a `wip` pane
- * that would render nothing, and it cannot default to a staff tool at all —
- * History sets no `active_command`, so there would be nothing to store.
- */
+/** Live commands as CHOOSER options — the org's default-command select in Settings, sourced from this tile SoT so the words on the picker… */
 export function kioskCommandOptions(): {
   command: KioskCommandId;
   label: string;

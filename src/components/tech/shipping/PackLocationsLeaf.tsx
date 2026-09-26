@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * @domain-job Ready-to-Pack Displays → Locations, bound to the pack-placement
- *   writer (`order_pack_placements`).
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse UnboxLocationsLeaf — same leaf, different
- *   storage, and this port declares `canPlaceMinted: false` because a minted
- *   shelf BIN is not a placeable packing desk.
- *
- * Ready-to-Pack Displays → Locations: the shared station leaf on the pack
- * placement writer.
- *
- * Adapter boundary only — the leaf is `StationLocationsDisplay`. Place / Print
- * run over the packing benches; **New** mints and prints a shelf address but
- * does not offer Create & place, because `order_pack_placements` accepts only
- * DESK / STAGING rows and a minted BIN would bounce
- * (`canPlaceMinted: false` — see the port docs).
- */
+/** @domain-job Ready-to-Pack Displays → Locations, bound to the pack-placement writer (`order_pack_placements`). */
 
 import { useMemo } from 'react';
 import {

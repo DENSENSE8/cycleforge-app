@@ -16,53 +16,17 @@ export interface DeriveReceivingStepStatesInput {
   serialCount: number;
   quantityExpected: number;
   labelPrinted: boolean;
-  /**
-   * Operator waived the serial for this line (no serial: cable / bulk / return
-   * with none). A first-class COMPLETION of the Serial step — not missing data —
-   * so it satisfies the gate exactly like a captured serial does. Durable, from
-   * `receiving_line_testing.serial_absent` via `row.serial_absent`.
-   */
+  /** Operator waived the serial for this line (no serial: */
   serialAbsent?: boolean;
-  /**
-   * Count of per-unit waivers on this line (`receiving_line_unit.serial_absent`).
-   * Accounts toward the Serial step alongside scanned serials. Independent of
-   * {@link serialAbsent} — do not back-fill one from the other
-   * (per-unit-no-serial-EXECUTION-PROMPT.md §3).
-   */
+  /** Count of per-unit waivers on this line (`receiving_line_unit.serial_absent`). */
   perUnitAbsentCount?: number;
 }
 
-/**
- * Pure step-state derivation for the unbox progress stepper.
- *
- * Each step is done only when its own gate passes — never short-circuited by
- * workflow-complete status, which previously marked Condition/Print done while
- * Photos was still the active step on reopened lines.
- *
- * Two steps are deliberately absent because they carry no signal — both are
- * always effectively done by the time the operator reads the bar, so a dot for
- * them only diluted the "you are here" marker:
- *   • `scan`      — reaching the unbox workspace *is* the scan (that's how the
- *                   line got populated); the PO/carton identity in the header
- *                   already encodes it.
- *   • `condition` — `condition_grade` is NOT NULL with a default, so the pill
- *                   always shows a grade (the auto-A UX). It's an assumed
- *                   default disposition operators only override for exceptions,
- *                   not a per-line decision gate. `condition_set_at` still
- *                   tracks explicit overrides for recommendations/analytics —
- *                   it is just no longer a stepper gate. (This removed the
- *                   frontend↔backend mismatch where the pill read "A selected"
- *                   but the dot read "not set".)
- *
- * Every remaining step reflects real, varying operator work.
- */
+/** Pure step-state derivation for the unbox progress stepper. */
 export function deriveReceivingStepFlags(input: DeriveReceivingStepStatesInput): Record<ReceivingStepKey, boolean> {
   const expected = input.quantityExpected ?? 0;
   const perUnitAbsent = Math.max(0, Math.floor(Number(input.perUnitAbsentCount ?? 0)) || 0);
   // Precedence (stated once — plan §3):
-  //   1. whole-line waiver → done
-  //   2. per-unit accounting: scanned + per-unit waived ≥ expected
-  //   3. expected===0 with at least one scanned serial (overage / unknown qty)
   const isSerialDone =
     !!input.serialAbsent ||
     (expected > 0
@@ -82,18 +46,7 @@ export interface LinearStepFlag {
   done: boolean;
 }
 
-/**
- * The shared completeness-checklist walk for EVERY receiving-family stepper
- * (matched unbox, unfound). A step is `done` when its own gate passes; the FIRST
- * incomplete step is `active` (the operator's next job); the rest are `pending`.
- * Order matters only for which incomplete step wears the active marker — a later
- * done step still reads done, never masked behind an incomplete prior.
- *
- * Compose this; never re-implement the walk per stepper. A new receiving flow
- * grows its own step *vocabulary* (its `LinearStepFlag[]`) and feeds it here —
- * that is a sibling flow over the shared primitive, not a forked stepper
- * (AGENTS.md → Compose → grow the SoT → compound).
- */
+/** The shared completeness-checklist walk for EVERY receiving-family stepper (matched unbox, unfound). */
 export function deriveLinearStepStates(
   flags: ReadonlyArray<LinearStepFlag>,
 ): Record<string, LinearStepState> {
@@ -112,15 +65,7 @@ export function deriveLinearStepStates(
   return states;
 }
 
-/**
- * Completeness checklist, not a wizard: every step reflects its OWN data gate.
- * The active step is the first incomplete one (the operator's next job), but a
- * later step whose gate already passes still shows done — printing a label
- * before capturing a serial must read as Print ✓ / Serial active, never
- * Print "pending". (The previous chain-gated walk masked own-gate-passing
- * steps behind incomplete priors, so the bar misreported real data state on
- * exactly the lines where operators work out of order.)
- */
+/** Completeness checklist, not a wizard: */
 export function deriveReceivingStepStates(
   input: DeriveReceivingStepStatesInput,
 ): Record<ReceivingStepKey, LinearStepState> {

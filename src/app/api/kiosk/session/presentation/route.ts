@@ -1,10 +1,4 @@
-/**
- * POST /api/kiosk/session/presentation — Show proposal from the tablet.
- *
- * Callers: `useKioskSharedSession` writer `setPresentation`.
- * Schema: `counter_sessions.consult_presentation` jsonb.
- * User: continue to Phase 3 Show + browser confirm. No duplicate cart.
- */
+/** POST /api/kiosk/session/presentation — Show proposal from the tablet. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Send-photos-to-ticket — chrome-free panel body.
- *
- * Forwards photos already captured on THIS purchase order to a Zendesk ticket —
- * either as a private internal note or as a public reply.
- *
- * Hosted by Unbox Displays Photos→Send or {@link SendPhotoNoteRail}.
- */
+/** Send-photos-to-ticket — chrome-free panel body. */
 
 import { useEffect, useState } from 'react';
 import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';

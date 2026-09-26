@@ -1,13 +1,4 @@
-/**
- * Shared types + constants for the /support master-page sidebar.
- *
- * Support is one contextual sidebar + a mostly-visual right pane (the house
- * sidebar-mode contract). Three top-level modes; `?mode=` in the URL is the
- * single source of truth — never a local `useState`. The default mode
- * (`tickets`) stays on the bare `/support` path for deep-link back-compat.
- *
- * Mirrors `operations-sidebar-shared.ts`. Pure data only — no JSX.
- */
+/** Shared types + constants for the /support master-page sidebar. */
 
 import {
   Bell,
@@ -34,23 +25,7 @@ export type SupportMode =
   | 'issues'
   | 'orders';
 
-/**
- * - tickets   → recent dock in sidebar + full queue workbench in the right pane
- *   (Orders/Unbox recipe); `?ticket=` opens Station focus. Default mode —
- *   stays on bare `/support`, no `?mode=`.
- * - voicemail → voicemail / missed-call follow-up to-do list (Workbench):
- *   pick a voicemail → detail + linked case → act (call back, done, assign…).
- * - calls     → org call log (Monitor): observe inbound/outbound/missed,
- *   newest-first, filter-only, no durable selection.
- * - warranty  → Warranty Logger (Workbench): coverage lookup + claims queue +
- *   claim detail (`?open=`). Phone-support home for “is this still covered?”.
- * - issues    → Reported-Issues console (Workbench + Monitor KPI rollup):
- *   pick an in-app feedback row → fact stack (`?issueId=`).
- * - orders    → aliases Shipping · To ship (`/shipping/orders?context=support`);
- *   ticket focus when `?openOrderId=`. Nav + proxy redirect; not a second board.
- *
- * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
- */
+/** - tickets → recent dock in sidebar + full queue workbench in the right pane (Orders/Unbox recipe); `?ticket=` opens Station focus. */
 
 export const DEFAULT_SUPPORT_MODE: SupportMode = 'tickets';
 

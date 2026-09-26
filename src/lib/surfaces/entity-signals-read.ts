@@ -1,13 +1,4 @@
-/**
- * Org-scoped read of the `entity_signals` spine for the history surfaces
- * (universal-feed plan Phase 5). Powers both the Monitor timeline and the
- * Workbench master-detail. Filters: trailing `sinceDays` window (occurred_at),
- * `signalKind`, `entityType`, and full-text `q` over `notes_tsv` (the GIN index).
- *
- * Reads the tenant's OWN signals only (Monitor rule: never cross-tenant), via
- * tenantQuery (GUC-scoped). Deps-injected (default tenantQuery) so it unit-tests
- * DB-free.
- */
+/** Org-scoped read of the `entity_signals` spine for the history surfaces (universal-feed plan Phase 5). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -89,12 +80,7 @@ export interface EntitySignalDetail extends EntitySignalTimelineRow {
   workflow_definition_id: number | null;
   node_id: string | null;
   created_at: string | null;
-  /**
-   * The History-trace coordinates for this signal's entity, resolved for the
-   * entity types that map to a journey dimension (SERIAL_UNIT → the unit's
-   * serial number, ORDER → the order number). Null for other entity types (no
-   * trace target). Feeds the Signals→History "Full event trace" cross-link.
-   */
+  /** The History-trace coordinates for this signal's entity, resolved for the entity types that map to a journey dimension (SERIAL_UNIT → the… */
   entity_dim: 'serial' | 'order' | null;
   entity_ref: string | null;
 }

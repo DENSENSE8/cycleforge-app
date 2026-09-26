@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * UnitPrintHistory — compact reader for a serial unit's `label_print_jobs`
- * ledger (serial↔label pairing plan §5.1). Shows the last N prints newest-first
- * with a first-issue / reprint marker and the exact identity that was encoded —
- * proving reprint-vs-first-issue at a glance. Reusable: wired into the box panel
- * unit rows now; drop it behind the serial-chip ⋯ overflow when that lands.
- */
+/** UnitPrintHistory — compact reader for a serial unit's `label_print_jobs` ledger (serial↔label pairing plan §5.1). */
 
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';

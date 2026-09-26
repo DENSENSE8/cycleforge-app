@@ -42,10 +42,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     ? (carrierInput as CarrierCode)
     : undefined;
 
-  // Session-authed route (withAuth + permission) — the only caller is the
-  // ShipmentTab UI, so the tenant comes from ctx. (The tracking-poll cron uses
-  // the syncShipment lib directly, not this endpoint.) syncShipment runs its
-  // shipping-table reads/writes GUC-scoped (app.current_org) under this org.
+  // Session-authed route (withAuth + permission) — the only caller is the ShipmentTab UI, so the tenant comes from ctx.
   const orgId = ctx.organizationId;
 
   const result = await syncShipment({ shipmentId, trackingNumber, carrier }, orgId);

@@ -10,12 +10,7 @@ import {
   setCursorLabelHost,
 } from './cursor-label';
 
-// LANE ADAPTATION (2026-09-15): this tree ported the cursor-FOLLOW tooltip
-// (`CursorLabelLayer`) WITHOUT the custom cursor (operator: "do not use the
-// custom cursor, just use the follow tooltip"). Mainline's MorphCursorLayer,
-// scrub, native-title lifting, chord keycaps and SiteTooltipProvider laws
-// resume when the mainline merge brings those components; the channel laws
-// below are untouched.
+// LANE ADAPTATION (2026-09-15):
 
 test('only a short single-line string may ride the cursor', () => {
   assert.equal(canRideCursor('Copy tracking'), true);
@@ -41,7 +36,4 @@ test('a leave clears only the label it owns; the host going dark clears all', ()
   assert.equal(readCursorLabel(), null, 'host dark clears every label');
 });
 
-// NOT PORTED to this lane (resume at mainline merge): the hotkey-chord hint
-// law (HotkeyTooltip + KeyboardChord + ComposerModeRow cursor kinds) and the
-// native-title lifting law — both depend on MorphCursorLayer machinery this
-// tree deliberately left behind with the custom cursor.
+// NOT PORTED to this lane (resume at mainline merge):

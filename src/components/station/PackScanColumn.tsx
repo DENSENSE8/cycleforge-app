@@ -69,13 +69,7 @@ interface PackScanColumnProps {
   onComplete?: () => void;
   /** Current pack mode selected in the sidebar mode rail. */
   packMode?: PackMode;
-  /**
-   * Recent-activity rail rendered below the scan band (the sidebar's
-   * `PackRecentPacksRail`). When set, the rail — not a compact card — is this
-   * station's activity surface: the active order shows as the rail's selected
-   * row and its detail lives in the workbench right pane. Matches the Unbox /
-   * Testing / Shipping sidebar anatomy.
-   */
+  /** Recent-activity rail rendered below the scan band (the sidebar's `PackRecentPacksRail`). */
   railSlot: ReactNode;
   /**
    * Pinned band below the rail's scroll port — the rail's client-side filter
@@ -113,15 +107,9 @@ export default function PackScanColumn({
     return () => window.removeEventListener(PACKER_FOCUS_SCAN_EVENT, handler);
   }, []);
 
-  // The pack checklist + policy fetches that used to sit here fed the sidebar's
-  // own `OrderPackChecklist`, which was dead under `railSlot` and is now gone.
-  // `PackOrderPanel` runs the same `useOrderPackChecklist` read in the
-  // workspace, so this column was paying for a second copy of it per scan.
+  // The pack checklist + policy fetches that used to sit here fed the sidebar's own `OrderPackChecklist`, which was dead under `railSlot`…
 
-  // Mutual exclusion between the order and FBA panes is owned by
-  // `usePackerOrderPane` (one dispatch clears the other), so this effect only
-  // has to publish its own entity — it no longer needs to know an FBA scan
-  // exists. Two places deciding "which entity wins" is how they disagree.
+  // Mutual exclusion between the order and FBA panes is owned by `usePackerOrderPane` (one dispatch clears the other), so this effect only…
   useEffect(() => {
     if (!activeOrder) {
       dispatchPackActiveOrder(null);
@@ -165,10 +153,7 @@ export default function PackScanColumn({
       typeof eventOrRaw === 'string' ? eventOrRaw.trim() : inputValue.trim();
     if (!scan || isLoading) return;
 
-    // §1b dual-link: a unit QR scanned while an ORDERS/SKU pack is still active
-    // links its phone photos to that pack's packer_log (not a fresh prepack); a
-    // first-scan / prepack-only unit stays unlinked (null). Read before the
-    // reset below — the closure still holds the prior scan's active order.
+    // §1b dual-link:
     const priorPackerLogId =
       activeOrder &&
       (activeOrder.scanType === 'ORDERS' || activeOrder.scanType === 'SKU') &&
@@ -267,10 +252,7 @@ export default function PackScanColumn({
         // SKU (has `:`) and special commands (clean/FBA-) pass through raw.
         const isTrackingInput = !scan.includes(':') && !/^(clean|fba-)/i.test(scan);
 
-        // FBA combined-shipment ship-on-scan: a UPS tracking number OR an FBA
-        // shipment ID resolves to the same combined (LABEL_ASSIGNED) shipment
-        // and marks the whole package SHIPPED. A 404 means it isn't an FBA
-        // shipment, so fall through to the regular orders packing flow.
+        // FBA combined-shipment ship-on-scan:
         if (isTrackingInput) {
           const shipRes = await fetch('/api/fba/shipments/mark-shipped', {
             method: 'POST',
@@ -437,12 +419,7 @@ export default function PackScanColumn({
           />
         </ScanBandShell>
 
-        {/* Pack mode — the `?packMode=` child page, spelled out. This is a
-            MODE label, not an entity identity, so it belongs in the scan column
-            (it says how to pack whatever arrives next, and it is true before
-            anything is scanned). It rendered only under `!embedded` until
-            2026-08-02, which meant never: the sole caller always embeds, so the
-            one visible effect of picking Fragile / Multi-Item was dead code. */}
+        {/* Pack mode — the `?packMode=` child page, spelled out. */}
         {packMode !== 'standard' ? (
           <div className="border-b border-border-hairline bg-amber-50 px-3 py-2">
             <p className="rounded-none text-role-caption font-semibold text-amber-800">
@@ -451,10 +428,7 @@ export default function PackScanColumn({
           </div>
         ) : null}
 
-        {/* Phone photo-request STATUS panels used to live here. The request is
-            still published to the operator's phone on a unit scan (and the
-            toast confirms it) — only the sidebar readout is gone, so the column
-            is scan band → transient feedback → rail. */}
+        {/* Phone photo-request STATUS panels used to live here. */}
 
         {/* Transient scan feedback. With a rail below it this band is
             content-height (`shrink-0`) and the rail owns the scroll port —
@@ -473,16 +447,7 @@ export default function PackScanColumn({
             )}
           </AnimatePresence>
 
-          {/* The FBA scan card and the active-order card BOTH left this column
-              on 2026-08-02. Pack papers / Reprint left on 2026-08-04 — they
-              live under PackOrderPanel identity so a pointer control never
-              sits in the focus-locked scan column.
-
-              A Station renders its active entity in exactly ONE region — the
-              middle — and this is the scan column (`display/station.md`;
-              Unbox is the control). What stays here is TRANSIENT SCAN
-              FEEDBACK only: the error banner above. It answers "did the scan
-              I just fired work?" — which is the scan bar's own question. */}
+          {/* The FBA scan card and the active-order card BOTH left this column on 2026-08-02. */}
         </div>
 
         {/* Recent-activity rail — the single scroll port of this column. Its

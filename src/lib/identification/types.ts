@@ -1,10 +1,4 @@
-/**
- * Identification kernel — job-agnostic result + JobFace.
- *
- * Pure types. No `@/lib/db`. Writers stay on the job APIs (scan-out POST is
- * the scan_out writer). This module names the face the operator sees after a
- * scan or a list-claim.
- */
+/** Identification kernel — job-agnostic result + JobFace. */
 
 export const IDENTIFICATION_JOBS = ['scan_out', 'pick'] as const;
 export type HouseIdentificationJob = (typeof IDENTIFICATION_JOBS)[number];

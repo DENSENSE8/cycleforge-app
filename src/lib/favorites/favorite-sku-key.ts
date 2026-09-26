@@ -1,26 +1,6 @@
-/**
- * The favorites KEY — SKU identity as `favorite_skus.sku_normalized` stores it,
- * plus the pure selection helpers both the catalog routes and the picker use.
- *
- * DB-free on purpose. `sku-favorites.ts` opens a tenant connection, and the
- * catalog picker is a client component that must paint a star on a tile without
- * dragging the pool into the bundle; a shared normalizer is the only way the
- * two halves can agree on whether `00128-RS` and `00128 rs` are the same
- * favorite. Never re-spell this expression at a call site — the SQL twin lives
- * in `catalog-search.ts` (`FAVORITE_SKU_KEY_SQL`) and is pinned by test.
- *
- * Callers: `sku-favorites.ts`, `catalog-search.ts`, `/api/repair/ecwid-products`,
- * `ProductSelector`. Affected API: none. Schemas: `favorite_skus.sku_normalized`.
- */
+/** The favorites KEY — SKU identity as `favorite_skus.sku_normalized` stores it, plus the pure selection helpers both the catalog routes… */
 
-/**
- * Workspace a favorite belongs to — a curated quick-pick list, one per rail.
- *
- * `repair` / `sales` are the two kiosk catalog rails (and the staff repair
- * intake picker); `sku-stock` and `fba` are staff-only lists managed from
- * Inventory › Favorites. The DB mirrors this set in
- * `favorite_sku_workspaces_workspace_key_check`.
- */
+/** Workspace a favorite belongs to — a curated quick-pick list, one per rail. */
 export const FAVORITE_WORKSPACE_KEYS = ['repair', 'sales', 'sku-stock', 'fba'] as const;
 
 export type FavoriteWorkspaceKey = (typeof FAVORITE_WORKSPACE_KEYS)[number];
@@ -59,18 +39,7 @@ export function isFavoriteSku(keys: ReadonlySet<string>, sku: string | null | un
   return key.length > 0 && keys.has(key);
 }
 
-/**
- * Narrow a catalog page to the favorited rows, IN FAVORITES ORDER.
- *
- * For the one catalog source that cannot filter in SQL: the staff repair route
- * walks the live Ecwid storefront (`fetchRepairRootProductsCached`) and has no
- * query grammar. The kiosk routes filter in `searchKioskCatalog` instead, and
- * both must agree on order — a favorite pinned first by `sort_order` is first
- * on every surface, not "first on the tablet, alphabetical on the desk".
- *
- * A favorited SKU with no catalog row simply does not appear: the listing is
- * the product, and a tile with no price or photo is not a product.
- */
+/** Narrow a catalog page to the favorited rows, IN FAVORITES ORDER. */
 export function selectFavoriteCatalogProducts<T extends { sku: string }>(
   products: readonly T[],
   orderedFavoriteKeys: readonly string[],

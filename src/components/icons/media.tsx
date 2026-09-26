@@ -68,12 +68,7 @@ export const ClipboardList = ({ className = "w-6 h-6" }: { className?: string })
 
 /**
  * ListChecks — the DAILY CHECKLIST glyph (Home → Daily).
- *
  * The LUCIDE glyph itself (operator ruling 2026-09-14: the nav mark for Daily
- * is the lucide-react checklist icon, not a house drawing) — ticks + lines, no
- * clipboard body: a list you run, not a document you carry. Same wrapper shape
- * as the other lucide ports in this barrel (`Warehouse`, `DoorOpen`), so nav
- * stroke-weight overrides keep applying through the className pass-through.
  */
 export const ListChecks = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideListChecks className={className} />
@@ -121,10 +116,7 @@ export const MessageSquare = ({ className = "w-6 h-6" }: { className?: string })
     </svg>
 );
 
-/** Support / helpdesk ticket — straight/flat Lucide `ticket` (side notches +
- *  perforation dashes). Single house ticket glyph; the capability-noun icon for
- *  tickets that replaces the Zendesk brand mark on product surfaces (Integrations
- *  hub / deep links keep {@link ZendeskMark}). */
+/** Support / helpdesk ticket — straight/flat Lucide `ticket` (side notches + perforation dashes). */
 export const Ticket = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg
         className={className}

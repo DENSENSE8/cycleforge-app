@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Cross-viewer realtime bridge for a carton's classify facts (platform · type ·
- * priority).
- *
- * The editor hooks (useSourcePlatform / useReceivingType /
- * useReceivingLineCore.handlePrioritySelect) PATCH the carton and broadcast a
- * `receiving-package-updated` WINDOW event — which only reaches surfaces in the
- * SAME tab. The server also publishes `receiving-log.changed` on the org's Ably
- * station channel (every viewer, every machine), but until now that event
- * carried no fields, so another operator with the same carton open kept stale
- * pills until a refetch.
- *
- * This hook closes that loop for the workspace panel family: when the Ably
- * event for THIS carton carries the changed classification fields (`row`), it
- * re-dispatches the same `receiving-package-updated` event locally — every
- * existing listener (pill mirrors, claim-composer identity seed, pane row
- * merge) updates exactly as it does for a same-tab edit — and refetches the
- * carton's sibling-lines query so the feed row agrees with the pills.
- *
- * Echo-safe: the publishing client receives its own Ably echo a beat after its
- * optimistic local event; the values are identical, so the mirror setStates and
- * the refetch are no-ops. It never fires a PATCH, so there is no loop.
- */
+/** Cross-viewer realtime bridge for a carton's classify facts (platform · type · priority). */
 
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

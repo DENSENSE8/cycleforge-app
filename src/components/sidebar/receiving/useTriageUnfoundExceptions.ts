@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * B3 — read-only Zoho-sync exception context for triage Unfound rows. Reuses the
- * EXISTING receiving tracking-exception feed (no new server view) and indexes it
- * by receiving_id, so each unfound carton row can show "Zoho still hasn't synced
- * this PO" as a dot + tooltip. Degrades to an empty map on fetch failure (it's
- * secondary context — never blocks the rail).
- *
- * Behavior hook: owns the query only and returns the indexed map; the component
- * decides how to render it.
- */
+/** B3 — read-only Zoho-sync exception context for triage Unfound rows. */
 
 import { useQuery } from '@tanstack/react-query';
 import {

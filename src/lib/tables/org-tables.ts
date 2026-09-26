@@ -1,18 +1,4 @@
-/**
- * The per-org sheet catalog — which tables an organization runs, in what order.
- *
- * Pure resolution logic, kept out of the query module so it can be unit-tested
- * without a database. The rule it encodes is the one thing about this feature
- * that is easy to get subtly wrong:
- *
- *   **No rows means ALL, not none.**
- *
- * A catalog whose absence meant "nothing enabled" would blank every existing
- * tenant's tab strip the moment the table shipped, and the fix would be a data
- * migration seeding a row per org per table. So opting OUT is what gets stored;
- * the product default survives an empty table. `enabled: false` is a real,
- * distinct answer — it is how an org says "not this one".
- */
+/** The per-org sheet catalog — which tables an organization runs, in what order. */
 
 /** One stored catalog decision. */
 export interface OrgTableRow {
@@ -34,18 +20,7 @@ export interface ResolvedCatalogEntry extends CatalogEntry {
   explicit: boolean;
 }
 
-/**
- * Resolve the product's offering against one org's stored decisions.
- *
- * Returns EVERY offered table — enabled and not — because the picker needs to
- * show what could be turned on, and the strip filters to `enabled` itself. A
- * function that returned only the enabled set would force the picker to do this
- * join a second time, differently.
- *
- * Order: stored `sortOrder` first, then the product's own order for anything
- * unstored, then `tableId` so ties are total. An org that has never reordered
- * anything therefore sees exactly the order the product ships.
- */
+/** Resolve the product's offering against one org's stored decisions. */
 export function resolveOrgCatalog(
   offered: readonly CatalogEntry[],
   stored: readonly OrgTableRow[],
@@ -76,14 +51,7 @@ export function enabledOrgTables(
   return resolveOrgCatalog(offered, stored).filter((entry) => entry.enabled);
 }
 
-/**
- * A stored row naming a table the product no longer offers is DROPPED, not
- * surfaced.
- *
- * Surfaces get renamed and retired; a catalog row outliving its table would put
- * an unopenable tab in the strip. Reporting them separately lets a caller clean
- * up without the strip ever showing one.
- */
+/** A stored row naming a table the product no longer offers is DROPPED, not surfaced. */
 export function orphanedOrgTables(
   offered: readonly CatalogEntry[],
   stored: readonly OrgTableRow[],

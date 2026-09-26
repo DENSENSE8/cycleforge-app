@@ -14,13 +14,7 @@ import {
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 
-/**
- * Carton add action — a `+` button (same shape as the unfound "+ Add item"
- * CTA) that opens the shared CartonAddPopover (Item · Web · Box). On a matched
- * carton, Item/Web add an **off-PO** line (an extra item in the box the Zoho PO
- * doesn't list — see add-unmatched-line `allow_off_po`); Box groups the
- * carton's units into a handling unit + prints its LPN label.
- */
+/** Carton add action — a `+` button (same shape as the unfound "+ Add item" CTA) that opens the shared CartonAddPopover (Item · Web · Box). */
 export function CartonAddAction({ receivingId, unitIds }: { receivingId: number; unitIds: number[] }) {
   const [open, setOpen] = useState(false);
   const [box, setBox] = useState<AssignedBox | null>(null);

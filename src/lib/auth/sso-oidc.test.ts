@@ -1,10 +1,4 @@
-/**
- * id_token claim validation — the dependency-free half of OIDC SSO.
- *
- * `validateIdTokenClaims` validates the standard claims (iss / aud / exp / iat)
- * that the auth-code callback relies on. Pure + DB-free; the signature is
- * covered by the direct-TLS token exchange (OIDC §3.1.3.7), not asserted here.
- */
+/** id_token claim validation — the dependency-free half of OIDC SSO. */
 
 import { test } from 'node:test';
 import { ok, strictEqual, throws, doesNotThrow } from 'node:assert';

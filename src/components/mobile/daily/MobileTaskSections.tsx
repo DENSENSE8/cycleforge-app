@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * The task sheet's LEAVES — media, documents, linked records and one open
- * document — each a presentational face of what `use-task-workspace` already
- * read. {@link MobileTaskSheet} is the shell (state, verbs, the viewer); these
- * only paint and report taps, so the shell reads top to bottom as the order the
- * operator meets the job in: what to do, what it looks like, what to read,
- * which records it touches.
- *
- * Doors follow the ONE declaration each record kind already has:
- * `taskDeskRecordHref(…, 'phone')` for orders and cartons, `/m/t/<provider #>`
- * for a ticket (only when the viewer may read the helpdesk — a door that 403s
- * is worse than an absent one), and the carrier's page for tracking.
- */
+/** The task sheet's LEAVES — media, documents, linked records and one open document — each a presentational face of what… */
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
@@ -47,12 +35,7 @@ const ROW = cn(
   MOBILE_ROW_CORNER,
 );
 
-/**
- * One piece of task media on one timeline (oldest first): uploaded photos and
- * videos, plus PHOTO media links — a hosted image is a photo like any other and
- * swipes in the same viewer. Video links play in place (see
- * `MobileTaskMediaLinks`), so they never join the grid.
- */
+/** One piece of task media on one timeline (oldest first): */
 export type TaskMediaItem =
   | { kind: 'photo'; photo: TaskMediaPhoto }
   | { kind: 'video'; video: TaskMediaVideo }

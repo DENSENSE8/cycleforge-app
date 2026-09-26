@@ -1,10 +1,4 @@
-/**
- * GET /api/admin/staff/list
- *
- * Tenant-scoped staff directory for the admin UI. Returns the columns the
- * staff-management table needs: name, role, status, has_pin, last_login.
- * Never returns pin_hash or anything from the integrations vault.
- */
+/** GET /api/admin/staff/list */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

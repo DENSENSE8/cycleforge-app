@@ -3,14 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { RequesterProfile } from '@/lib/support/requester-profile';
 
-/**
- * Who opened this ticket, for the thread's `RequesterDetailBand`.
- *
- * Deliberately a SEPARATE query from the ticket bundle and the support-context
- * bundle: it reaches the helpdesk search API, which is the slowest and the most
- * rate-limited thing on this surface. Folding it into either bundle would make
- * the conversation wait on a customer's ticket count.
- */
+/** Who opened this ticket, for the thread's `RequesterDetailBand`. */
 export function useRequesterProfile(ticketId: number | null | undefined, enabled = true) {
   return useQuery<RequesterProfile, Error>({
     queryKey: ['support-requester', ticketId ?? null],

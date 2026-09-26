@@ -1,16 +1,4 @@
-/**
- * DB-free validation tests for the handling-unit (LPN) CRUD request schemas
- * (docs/handling-unit-lpn-plan.md "(+ tests)"). These guard the Zod contract the
- * /api/handling-units routes validate against BEFORE any domain helper runs:
- *
- * 1. unitRefs — the shared operator-ref coercion: accepts ids / `U-{id}` /
- *    unit_uid / serial as numbers or strings, trims, enforces 1..500, and
- *    transforms every entry to a string so the resolver speaks one type.
- * 2. HandlingUnitCreateBody — all-optional mint body; `.strict()` rejection of
- *    unknown keys; code/notes trimming + length bounds; positive-int locationId.
- * 3. HandlingUnitAssign/UnassignBody — units is REQUIRED (min 1), idempotencyKey
- *    optional, unknown keys rejected.
- */
+/** DB-free validation tests for the handling-unit (LPN) CRUD request schemas (docs/handling-unit-lpn-plan.md "(+ tests)"). */
 
 import { test } from 'node:test';
 import { ok, equal, deepEqual } from 'node:assert';

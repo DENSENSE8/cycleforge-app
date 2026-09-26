@@ -1,35 +1,4 @@
-/**
- * The **task desk** view model — one `work_assignments` row as the desk,
- * the phone and the report all read it.
- *
- * ## Why this module exists at all
- *
- * `work_assignments` is read by six surfaces with six different questions, and
- * the task desk asks the one none of them did: *what has been handed to a
- * person, by whom, due when, at what priority, and against which record*. The
- * first columns already existed (R-A, 2026-09-22); the shared-task membership
- * table and project label extend that answer without duplicating assignment
- * rows. One assembled answer keeps the desk, phone, composer and reports
- * consistent as those records change.
- *
- * A VIEW MODEL, assembled once per row (kinetic-ledger law 4). Derived facts —
- * urgency from `priority`, openness from `status` — are computed HERE so two
- * cells on one row can never disagree.
- *
- * ## Every task points at a record, and that is the store's shape
- *
- * `work_assignments.entity_type` / `entity_id` are NOT NULL and the enum names
- * real records (ORDER · RECEIVING · SUPPORT_TICKET). There is no "standalone
- * task" row to represent, so the composer resolves a target before it can
- * throw — the same `(entityType, entityId)` pair `POST /api/tasks` has always
- * taken, via {@link resolveThrowTargets}. Inventing a self-referential TASK
- * kind would be a new polymorphic parent (enum value + delete-integrity
- * trigger family) for a row the operator already describes as *"pair a ticket
- * to it"*.
- *
- * Pure and dependency-free apart from the task vocabulary, so a client picker
- * imports it without dragging a write path into the browser bundle.
- */
+/** The **task desk** view model — one `work_assignments` row as the desk, the phone and the report all read it. */
 
 import {
   taskUrgencyFromPriority,
@@ -152,12 +121,7 @@ export interface TaskDeskRow {
   docCount: number;
 }
 
-/**
- * The row as it crosses the wire. Timestamps are ISO strings because that is
- * what `JSON.stringify` does to a Date and what `pg` hands back — the epoch-ms
- * conversion happens once, in {@link taskDeskRowFromWire}, rather than in
- * every consumer's `new Date(...)`.
- */
+/** The row as it crosses the wire. */
 export interface TaskDeskWireRow {
   id: number;
   entityType: TaskEntityType | null;
@@ -225,13 +189,7 @@ export function taskDeskRowFromWire(wire: TaskDeskWireRow): TaskDeskRow {
   };
 }
 
-/**
- * Desk order: urgent first, then the nearest deadline, then newest handoff.
- *
- * A task with no deadline is not "due last" by accident — it sorts after every
- * dated peer at the same urgency, because a dateless task is the one nobody
- * promised a day for.
- */
+/** Desk order: urgent first, then the nearest deadline, then newest handoff. */
 export function sortTaskDeskRows(rows: readonly TaskDeskRow[]): TaskDeskRow[] {
   return [...rows].sort((a, b) => {
     if (a.priority !== b.priority) return a.priority - b.priority;
@@ -262,27 +220,7 @@ export type TaskRecordRef = Pick<TaskDeskRow, 'entityType' | 'entityId'> & {
   ticket?: TaskDeskTicket | null;
 };
 
-/**
- * The PROVIDER ticket number for a ticket task — `#48120`, the number an
- * operator quotes — or null when this row has none.
- *
- * **A ticket task carries two different numbers and they are not
- * interchangeable.** `entity_id` is the LOCAL `support_tickets.id`: migration
- * `2026-08-08a` says the enum arm "keys on the LOCAL support_tickets.id …
- * never a bare Zendesk id", and `list-tasks.ts` joins `st.id = wa.entity_id`
- * on it. Every HELPDESK reader speaks the other number — `/api/zendesk/
- * tickets/[id]` proxies the provider API verbatim, so `SupportTicketDetail`,
- * `useZendeskTicketBundle`, `/support?ticket=` and `/m/t/[ticketId]` all want
- * `external_ticket_id`.
- *
- * The translation lives HERE, next to the row that carries both, rather than
- * inside the bundle route: that route is reached by a dozen call sites already
- * holding a provider id, and teaching it to also accept local ids would make
- * `48120` ambiguous for every one of them.
- *
- * Null on an `internal` ticket with no provider mirror — there is no helpdesk
- * thread to open, and an invented number would open someone else's.
- */
+/** The PROVIDER ticket number for a ticket task — `#48120`, the number an operator quotes — or null when this row has none. */
 export function taskDeskTicketNumber(row: TaskRecordRef): number | null {
   if (row.entityType !== 'support_ticket') return null;
   const external = row.ticket?.externalId?.trim();
@@ -310,23 +248,7 @@ export function taskDeskRecordLabel(row: TaskRecordRef): string | null {
  */
 export type TaskDeskSurface = 'desk' | 'phone';
 
-/**
- * The record a task points at, as a route.
- *
- * One declaration for both surfaces so a task row cannot link one place on the
- * desk and another on the phone by accident — but the two are not always the
- * same string, and each divergence below is named:
- *
- * - **Ticket** — the phone has its own thread at `/m/t/[ticketId]`; `/support`
- *   is a desk console. Both take the PROVIDER number
- *   ({@link taskDeskTicketNumber}), never `entityId`. No provider mirror means
- *   no door: null, and the caller paints no link.
- * - **Carton** — `/m/r/[id]` keys on the same numeric receiving id `/unbox`
- *   does, so the phone gets its own door.
- * - **Order** — `/m/orders/[orderId]` keys on the PUBLIC order number, which a
- *   task row does not carry (`entityId` is `orders.id`). The phone keeps the
- *   desk route until `/m` grows a numeric-id order door.
- */
+/** The record a task points at, as a route. */
 export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface): string | null {
   switch (row.entityType) {
     case 'order':
@@ -346,12 +268,7 @@ export function taskDeskRecordHref(row: TaskRecordRef, surface: TaskDeskSurface)
 /** Leading markdown block syntax: heading, quote, bullet / task box, ordered item. */
 const MARKDOWN_LINE_LEAD = /^\s*(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)/;
 
-/**
- * A task's ONE-LINE face — its human project label when present, otherwise
- * the first line of its instructions with markdown syntax removed
- * (`# Reship steps` → `Reship steps`), or the anchor record when it has no
- * words. Every surface reading a task title uses this same precedence.
- */
+/** A task's ONE-LINE face — its human project label when present, otherwise the first line of its instructions with markdown syntax removed… */
 export function taskDeskTitle(row: TaskRecordRef & { note: string | null; projectName?: string | null }): string {
   const projectName = row.projectName?.trim();
   if (projectName) return projectName;

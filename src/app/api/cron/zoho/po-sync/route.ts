@@ -1,22 +1,4 @@
-/**
- * GET /api/cron/zoho/po-sync?mode=delta|full
- *
- * Vercel-cron-triggered sync of Zoho purchase orders into the
- * zoho_po_mirror table. The mirror feeds the PO email reconciler and the
- * Incoming/triage zoho_status reads. The sync also runs one follow-up
- * workflow write (inside syncZohoPoMirror): door-scanned receiving_lines
- * whose PO Zoho now reports received/billed/closed are marked received
- * locally, so they drop off the triage Prioritize queue without an
- * operator manually receiving each one.
- *
- * Modes:
- *   - delta: passes last_modified_time so Zoho returns only changed POs
- *   - full:  no filter; brings everything (nightly safety net)
- *
- * Auth: requires Authorization: Bearer ${CRON_SECRET}. Vercel injects
- * this header automatically when CRON_SECRET env var is set in the
- * project. We hard-require the secret in every environment.
- */
+/** GET /api/cron/zoho/po-sync?mode=delta|full */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { syncZohoPoMirror } from '@/lib/zoho/po-mirror-sync';
@@ -40,15 +22,9 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode') === 'full' ? 'full' : 'delta';
 
-  // Delta window is resolved PER ORG inside the sweep (below). A single shared
-  // cursor advanced only when EVERY org succeeded is what let one failing org
-  // freeze the watermark for everyone: prod sat on the 2026-07-11 cursor for
-  // two months and replayed it every 15 minutes.
+  // Delta window is resolved PER ORG inside the sweep (below).
 
-  // Distributed lock so an overlapping tick / manual trigger / Vercel retry
-  // can't double-run. Fan out per Zoho-connected org (plus USAV while it still
-  // uses env creds): each org mirrors under its own credential + tenant GUC, and
-  // resolves its OWN email worklist against its OWN mirror rows.
+  // Distributed lock so an overlapping tick / manual trigger / Vercel retry can't double-run.
   const locked = await withCronLock('zoho.po_sync', () =>
     withCronRun('zoho.po_sync', async () => {
       const perOrg = await forEachOrgWithProvider(

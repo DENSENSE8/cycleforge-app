@@ -23,33 +23,13 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Org-level settings the admin UI edits, managed by StationNasFoldersTab:
- *   • stationNasPhotoFolders — per-station default folder for the photo picker.
- *   • nasPhotoServers        — the test/prod NAS base URLs + which is active.
- *   • nasStorageTargets      — workflow roots/folders for receiving, labels,
- *                              and claim archives.
- * Reads/writes go through the tenancy helpers so the in-process org cache stays
- * consistent. PATCH merges only the keys present in the body.
- *
- * Also carries the GS1 identity + compliance answers (added 2026-08-02) — see
- * docs/todo/gs1-compliance-onboarding-PLAN.md. Those two blocks existed in
- * `OrgSettingsSchema` and were read by the interop projections and the print
- * ladder, but nothing in the product ever WROTE them; this route is that gap.
- *
- * GET   → { stationNasPhotoFolders, nasPhotoServers, nasStorageTargets,
- *           photoAnalysis, gs1, compliance, gs1Requirement, support }
- * PATCH → body may contain any subset of keys; merged into jsonb settings.
- */
+/** Org-level settings the admin UI edits, managed by StationNasFoldersTab: */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const org = await getOrganization(ctx.organizationId as OrgId);
   const photoAnalysis = org
     ? getPhotoAnalysisSettings(org.settings)
     : { localVisionBaseUrl: '' };
-  // RAW on purpose: the admin editing this field must see the digits they typed,
-  // including a value the resolver would drop. `gs1Requirement` beside it is the
-  // resolved verdict, so the UI can say "we are not using this" without the form
-  // silently blanking the input.
+  // RAW on purpose:
   const gs1 = org
     ? getGs1SettingsRaw(org.settings)
     : { companyPrefix: '', gln: '', cbvUriForm: 'urn' as const };
@@ -235,14 +215,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // ── gs1 (the tenant's licensed identity) ────────────────────────────────
-  //
-  // Validated through the SAME refusal the rest of the app gates minting on —
-  // `isPlaceholderGs1Prefix` / `isLicensedGln` — rather than a second validator
-  // here. A borrowed prefix or a bad check digit must be rejected at the point
-  // an admin types it, not silently accepted and then dropped by
-  // `resolveGs1Identity` at read time, which would show a saved value the
-  // product never uses. Empty string is always allowed: it means "we hold none",
-  // which is the honest answer for almost every reseller.
   if ('gs1' in body) {
     const raw = (body as Record<string, unknown>).gs1;
     if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -306,11 +278,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // ── compliance (the two onboarding answers) ─────────────────────────────
-  //
-  // `answeredAt` is stamped SERVER-side and never read from the body: it is what
-  // the onboarding step derives completion from, so a client-supplied value is a
-  // completion claim the client does not get to make. Fields stay nullable —
-  // "has not answered" and "answered no" must not collapse.
   if ('compliance' in body) {
     const raw = (body as Record<string, unknown>).compliance;
     if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -361,11 +328,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // ── support (vision lane + reply persona vertical) ──────────────────────
-  //
-  // jsonb `||` replaces the whole `support` key, so merge over the CURRENT
-  // value — a visionLane-only patch must not clobber `vertical`. The value
-  // stored is the org's REQUEST; the vision-lane resolver remains the only
-  // place precedence (org → env → local-only) and cloud-availability gating live.
   if ('support' in body) {
     const raw = (body as Record<string, unknown>).support;
     if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
@@ -410,12 +372,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   }
 
   // ── ai (provider order preference) ───────────────────────────────────────
-  //
-  // Same merge-over-current shape as `support` above: jsonb `||` replaces the
-  // whole `ai` key, so a providerOrder-only patch must not clobber anything
-  // else stored under it. The value is the org's REQUEST — `provider-order.ts`
-  // remains the only place precedence (org → env → local-first) lives, and the
-  // chain builder remains the only thing that decides what is actually usable.
   if ('ai' in body) {
     const raw = (body as Record<string, unknown>).ai;
     if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {

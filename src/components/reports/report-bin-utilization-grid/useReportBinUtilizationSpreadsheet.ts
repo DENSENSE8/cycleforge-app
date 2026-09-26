@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * **Bin-utilization spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useReportBinUtilizationSpreadsheet({ rows, loading });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else. `/reports` mounts one of
- * THREE such hooks per tab and never a component that swaps column sets; a
- * single host taking three column arrays is the fork this port removed.
- *
- * ## Why sort is local state and the FIND TEXT is not
- *
- * A header click writing `?sort=` would round-trip a URL nothing else reads,
- * so the header sorts the page in hand. The server query's own narrowing
- * (`?room=`, `?minFill=`) is untouched.
- *
- * The find text is different in kind, because the page in hand is a WINDOW:
- * this warehouse has more bins than the route's 500-row page, and the page is
- * ordered by FILL — so a browser-side filter could never reach the emptiest
- * bins, which are exactly the ones an operator goes looking for by name. The
- * text therefore rides the fetch (`?q=`) and the engine is told the rows it
- * receives are already the answer.
- */
+/** **Bin-utilization spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

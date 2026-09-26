@@ -1,17 +1,4 @@
-/**
- * Server-only: intended putaway location from the **most recent staged
- * carton that is not the open one**.
- *
- * SoT for Unbox notes-composer **Last entry**:
- *   1. Walk `receiving_line_putaway` newest-first ACROSS THE ORG, skipping the
- *      open line's carton — never scoped to `staged_by = me`. Same ruling as
- *      the note twin ({@link ./recent-label-note-server}): the bench is shared,
- *      so "prefer my own" answers with MY stalest stage instead of the bench's
- *      newest one, and staleness is what puts a carton on the wrong shelf.
- *   2. First row with a non-null `staged_location_id` wins
- *
- * Never device-local storage / last-clicked bin.
- */
+/** Server-only: intended putaway location from the **most recent staged carton that is not the open one**. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

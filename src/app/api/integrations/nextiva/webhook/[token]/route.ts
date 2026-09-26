@@ -10,18 +10,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/integrations/nextiva/webhook/:token
- *
- * Nextiva call/voicemail webhook receiver. Unauthenticated (no session) but
- * gated by:
- *   1. token → org      (O(1) via the indexed webhook_token column)
- *   2. HMAC signature    (per-tenant secret; raw body)
- * then a thin, idempotent upsert (UNIQUE(org, provider, external_*_id)) so a
- * re-delivery is a no-op. Returns 2xx fast; the realtime nudge is fire-and-forget.
- *
- * Anonymous-but-gated is the canonical webhook shape (mirrors the Zoho receiver).
- */
+/** POST /api/integrations/nextiva/webhook/:token */
 
 function tokenFromUrl(req: NextRequest): string {
   const segs = req.nextUrl.pathname.split('/').filter(Boolean);

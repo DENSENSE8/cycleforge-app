@@ -1,23 +1,4 @@
 // Station + floor-mode semantic icon wrappers (nav-icon SoT extension).
-//
-// Product chrome imports these names — not the underlying primitives — so a
-// glyph can be swapped without touching sidebar-navigation, mode rails, or mobile
-// nav. Each export documents its layer:
-//   • Station*     — data/SoT page icon (MasterNav L1 + SIDEBAR_PAGE_NAV)
-//   • *Mode*       — L2 child-page chrome (rails, dropdowns, MRU, header “now”)
-//
-// Hard law: every MODE glyph key must be unique across floor stations
-// (see STATION_GLYPH_KEYS in station-nav-icons.ts). Pages may share a glyph
-// with their default mode. Primitives stay generic for timelines / badges
-// unless aliased here.
-//
-// STROKE IS NOT BAKED IN HERE, and must never be again. These exports were
-// wrapped in `withNavIconPageStroke` / `withNavIconModeStroke` until 2026-08-19,
-// which made a weight travel with the glyph — so the same icon could not be
-// drawn at two altitudes, and on the nav beam the wrapper's 2.25 silently beat
-// the surface's own 1.5 on emission order. Glyphs ship BARE; the surface
-// applies `NAV_ICON_STROKE_CLASS` (icons/nav-weight.tsx). The layer comment
-// above is about NAMING and glyph uniqueness, not weight.
 
 import {
   Box,

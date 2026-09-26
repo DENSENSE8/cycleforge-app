@@ -1,25 +1,4 @@
-/**
- * Cron: refresh each connected org's local catalog projection.
- *
- * GET /api/cron/catalog-projection?maxOrgs=10
- *
- * The projection is what lets the counter total a mixed cart offline. Readers
- * fall back to the live vendor walk when nothing is projected, so a missed run
- * degrades to "slow" rather than "broken" — but the whole point of the projection
- * is that the slow path is never on a customer-facing form, so this is what keeps
- * it off.
- *
- * Cadence is deliberately low (hourly): a storefront's prices and category tree
- * change on human timescales, the walk is expensive, and the staleness contract
- * already says the provider — not this mirror — is authoritative for money.
- *
- * Only orgs that actually have a catalog provider connected are visited;
- * `projectEcwidCatalog` returns a soft error for the rest rather than throwing,
- * so one unconnected tenant never fails the run for the others.
- *
- * Auth: CRON_SECRET bearer — the same gate as the other
- * /api/cron routes, which are session-less by design.
- */
+/** Cron: refresh each connected org's local catalog projection. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

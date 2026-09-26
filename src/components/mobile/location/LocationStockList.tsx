@@ -13,17 +13,7 @@ import { useBinQtyCommit } from '@/components/mobile/scan/use-bin-qty-commit';
 import { locationRecordQueryKey } from '@/components/mobile/scan/location-bind-api';
 import type { LocationBindContent, LocationRecord } from '@/components/mobile/scan/location-bind-types';
 
-/**
- * Every SKU in the location with its live count and the ± strip — the
- * location hub's working set.
- *
- * Taps coalesce into ONE write per burst ({@link useBinQtyCommit}); the number
- * moves under the thumb through the hub's React Query cache, and the server's
- * `binQty` reconciles it. A quick − carries the chosen take reason
- * (FBA · Orders · Custom…); choosing a different reason commits the open burst
- * first so one ledger row never straddles two reasons. The `123` key opens the
- * keypad for a typed number, returning here.
- */
+/** Every SKU in the location with its live count and the ± strip — the location hub's working set. */
 export function LocationStockList({ record, returnTo }: { record: LocationRecord; returnTo: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();

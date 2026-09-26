@@ -2,13 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { cn } from './_cn';
 
-/**
- * Guards the spacing-intent registration in cn()/tailwind-merge (spacing
- * token-leakage plan Phase 2.2). Without the 'cf-inset'/'cf-stack'/'cf-row'
- * class groups, twMerge treats the intent utilities as unknown classes and
- * keeps BOTH of two same-kind intents, so stylesheet order (not call order)
- * silently decides the padding.
- */
+/** Guards the spacing-intent registration in cn()/tailwind-merge (spacing token-leakage plan Phase 2.2). */
 
 test('two intents of one kind conflict-resolve — last wins', () => {
   assert.equal(cn('inset-field', 'inset-card'), 'inset-card');

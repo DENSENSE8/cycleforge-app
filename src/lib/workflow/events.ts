@@ -1,13 +1,4 @@
-/**
- * Workflow engine — event emitter.
- *
- * Bridges the engine's WorkflowEvent to the existing realtime layer. Reuses
- * publishDbEvent (the generic Ably db-row publisher), which already no-ops
- * gracefully when no Ably key is configured — so this is safe in dev/test.
- *
- * The ItemTracker overlay (Phase F) subscribes to item_workflow_state row
- * events to animate a unit moving across the canvas.
- */
+/** Workflow engine — event emitter. */
 
 import { publishDbEvent } from '@/lib/realtime/db-events';
 import type { WorkflowEvent } from './contract';

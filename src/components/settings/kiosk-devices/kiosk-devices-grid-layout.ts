@@ -1,11 +1,4 @@
-/**
- * Kiosk devices column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced hand-written `AdminTableColumn` objects carrying JSX — a second
- * table engine's column type, with no header sort, no Fields picker and no org
- * binding, because that engine never grew them.
- */
+/** Kiosk devices column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {

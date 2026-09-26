@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /settings/roles — vertical role list with drag-to-reorder
- * priority and a "+ Create role" button at the top.
- *
- * Selection drives `?roleId=<id>` in the URL. Listens for `admin-roles-refresh`
- * to refetch after a mutation in the main area.
- */
+/** Sidebar for /settings/roles — vertical role list with drag-to-reorder priority and a "+ Create role" button at the top. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

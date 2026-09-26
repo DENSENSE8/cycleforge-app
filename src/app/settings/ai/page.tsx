@@ -1,20 +1,4 @@
-/**
- * /settings/ai — the tenant's AI & Search dashboard.
- *
- * Server component, gated admin.view (billing-page pattern). Everything is
- * resolved from the caller's org in the DB — the connected provider comes
- * from organization_integrations (vault rows), usage from ai_usage_events,
- * the margin from organizations.settings — never code constants.
- *
- * Shows: the provider CHAIN for chat/embeddings (preferred first, with the
- * fallbacks behind it), the order preference driving it, the usage + price
- * breakdown for the window, and where to connect providers.
- *
- * The card names the provider a call TRIES FIRST, not the one that served the
- * last turn — with failover those differ whenever the preferred provider is
- * demoted. Per-turn attribution is the `source` column in the usage table
- * below, which records whichever provider actually answered.
- */
+/** /settings/ai — the tenant's AI & Search dashboard. */
 
 import Link from 'next/link';
 import { requirePermission } from '@/lib/auth/page-guard';

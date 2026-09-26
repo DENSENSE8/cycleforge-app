@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * What has already come through the door, from the server.
- *
- * The station's tape is a SESSION tape — the right shape while scanning and the
- * wrong one the moment the phone reloads, is handed to the next shift, or comes
- * back from a break. An arrival station that opens on empty canvas makes "did
- * somebody already scan this pallet in?" unanswerable without walking to a desk,
- * which is the question the door asks most.
- *
- * So the tape starts seeded from the SAME feed the desktop recent-arrivals rail
- * reads — `view=scanned&sort=priority`, keyed by `mobileFeedQueryKey('triage')`.
- * Reusing that key is what keeps the server paint seed
- * (`seedMobileReceivingFeed('triage')`, mounted by `/m/triage`) working: the
- * first HTML already carries these rows, so the tape paints without a fetch.
- *
- * One row per CARTON, not per line. The feed is line-level — a five-line PO is
- * five rows of one box — and a tape that listed each line would report five
- * arrivals for one delivery.
- */
+/** What has already come through the door, from the server. */
 
 import { useQuery } from '@tanstack/react-query';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

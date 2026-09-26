@@ -1,12 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/read-visit.test.ts
- *
- * DB-free. Every Deps method is a fake keyed off fixtures registered by
- * `fakes()`, so these assert the JOIN SHAPE `loadCounterVisit` assembles —
- * not any particular SQL — and that org isolation and the no-N+1 contract
- * hold at the call-count level.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/read-visit.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgId } from '@/lib/tenancy/constants';

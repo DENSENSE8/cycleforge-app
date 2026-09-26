@@ -6,12 +6,7 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/assistant/mutations/[id]/revert — undo an applied, revertable
- * mutation (universal-feed plan §2.6). studio.manage (same gate as draft
- * editing); org/staff from ctx. Maps 404/409/200; audit + ops_event + Ably
- * fire inside revertAgentMutation's side-effects.
- */
+/** POST /api/assistant/mutations/[id]/revert — undo an applied, revertable mutation (universal-feed plan §2.6). */
 export async function POST(req: NextRequest) {
   const gate = await requireRoutePerm(req, 'studio.manage');
   if (gate.denied) return gate.denied;

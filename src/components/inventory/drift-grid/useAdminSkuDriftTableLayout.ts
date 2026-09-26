@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The SKU-drift slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline under the title — `paintMorph` coerces,
- * and the org write gate (`slotMorphsFor('admin-sku-drift')`) refuses the
- * foreign morph.
- */
+/** The SKU-drift slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   ADMIN_SKU_DRIFT_FIELD_CATALOG,

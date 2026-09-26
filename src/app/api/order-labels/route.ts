@@ -17,18 +17,7 @@ import type { OutboundDocument } from '@/lib/documents/types';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * DEPRECATED — thin wrapper over src/lib/documents/outbound-documents.ts
- * (docs/outbound-documents-plan.md §8.2). Kept only so existing NAS
- * browser-PUT label callers keep working; new code should call
- * `/api/orders/[id]/documents` (documentType='shipping_label') directly,
- * which also returns packing slips and dual-links ORDER + SHIPMENT.
- *
- * Response shape is unchanged from the pre-migration route so no client
- * update is required for this release. URL allowlist / order-ownership /
- * dupe checks now live once in the domain layer instead of being
- * hand-rolled per caller (see outbound-documents.ts).
- */
+/** DEPRECATED — thin wrapper over src/lib/documents/outbound-documents.ts (docs/outbound-documents-plan.md §8.2). */
 
 const DEPRECATION_HEADERS = {
   Deprecation: 'true',

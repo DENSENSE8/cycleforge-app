@@ -1,12 +1,4 @@
-/**
- * POST /api/auth/passkey/authenticate/begin
- *
- * Body: { staffId?: number }
- *
- * If staffId is given, returns options scoped to that staff's passkeys
- * (UX hint: "sign in as Joe"). If omitted, returns options with no
- * allowCredentials so a discoverable resident credential can pick the user.
- */
+/** POST /api/auth/passkey/authenticate/begin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { buildAuthenticationOptions, PASSKEY_CHALLENGE_COOKIE } from '@/lib/auth/webauthn';

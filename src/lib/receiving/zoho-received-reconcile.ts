@@ -1,23 +1,4 @@
-/**
- * Zoho-received reconciliation — closes the loop the PO-mirror sync opens.
- *
- * The mirror sync refreshes `zoho_po_mirror.status`, but until now nothing
- * propagated a terminal "received" status back onto the local
- * `receiving_line`, so a PO received directly in Zoho sat forever in the
- * triage SCANNED/Prioritize queue at 0/N. This helper marks those lines
- * received locally — the same field writes /api/receiving/mark-received does
- * (qty up to expected, workflow → DONE) — so they drop off the queue on the
- * next read.
- *
- * Scope is exactly the scanned-queue state (door-scanned carton, not unboxed,
- * nothing received yet): EXPECTED-only rows that were never scanned stay
- * untouched — the Incoming view already hides Zoho-terminal POs via
- * NOT_ZOHO_RECEIVED_PREDICATE. Only received-like statuses qualify;
- * cancelled/rejected POs must not be recorded as received.
- *
- * Runs inside syncZohoPoMirror (cron + Sync Zoho button + per-PO sync), so
- * every mirror refresh takes care of this automatically.
- */
+/** Zoho-received reconciliation — closes the loop the PO-mirror sync opens. */
 
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -56,20 +37,7 @@ export async function reconcileZohoReceivedLines(
     zoho_purchaseorder_id: string | null;
   };
 
-  // org-scoped: only this tenant's mirror rows drive its own receiving_line,
-  // and every write runs under the tenant GUC (FORCE-ready) inside ONE
-  // transaction.
-  //
-  // Step D fold (receiving state-machine chokepoint): was a single set-based
-  // CTE UPDATE that set quantity_received + workflow_status='DONE' together.
-  // Now: locked candidates SELECT (same predicates) → raw
-  // quantity_received-only UPDATE (does NOT list workflow_status, so the
-  // coarse trigger fires only on the real transition) → per-row
-  // transitionReceivingLine to DONE. skipEvent: this reconciler never emitted
-  // inventory_events; the per-row recordAudit below stays the observability.
-  // Candidates with workflow_status IS NULL hit the chokepoint's permissive
-  // unmodeled-edge guard (warn + proceed) — acceptable: legacy NULL-status
-  // rows were always force-completed here, and the warn surfaces them.
+  // org-scoped: only this tenant's mirror rows drive its own receiving_line, and every write runs under the tenant GUC (FORCE-ready) inside…
   const rows = await withTenantTransaction<ReconciledRow[]>(orgId, async (client) => {
     const candidates = await client.query<{
       id: number;
@@ -173,9 +141,6 @@ export async function reconcileZohoReceivedLines(
   if (rows.length === 0) return { updated: 0 };
 
   // Audit each reconciled line (system actor — no operator drove this).
-  // Cron/domain caller with no request: ctx/req are null and the tenant is
-  // stamped via organizationIdOverride. recordAudit never throws, so a failed
-  // audit insert can't fail the sync.
   await Promise.all(
     rows.map((row) =>
       recordAudit(pool, null, null, {

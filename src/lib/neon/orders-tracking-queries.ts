@@ -1,24 +1,4 @@
-/**
- * orders-tracking-queries.ts
- * ─────────────────────────────────────────────────────────────────
- * Shipment-backbone tracking writes for orders. The order's tracking
- * number is NOT a column on `orders`; it lives in
- * `shipping_tracking_numbers` (normalized + carrier-detected) and is
- * reached via `orders.shipment_id` and the `order_shipment_links`
- * table. These helpers own all of that reconciliation.
- *
- * The low-level helpers (`upsertOrderTracking`, `updateShipmentTrackingById`,
- * `createAdditionalShipmentLink`, `deleteShipmentTrackingLink`) take an
- * external pg client and run NO transaction of their own — the caller
- * owns the BEGIN/COMMIT. They are shared between the legacy
- * `/api/orders/assign` route (which owns a larger transaction) and the
- * canonical `/api/orders/[id]/tracking` sub-resource.
- *
- * `applyOrderTrackingOps` is a self-managed wrapper that connects,
- * opens its own transaction, runs a batch of ops, and commits — used by
- * the sub-resource which has no surrounding transaction.
- * ─────────────────────────────────────────────────────────────────
- */
+/** orders-tracking-queries.ts ───────────────────────────────────────────────────────────────── Shipment-backbone tracking writes for orders. */
 import type { PoolClient } from 'pg';
 import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
 import { resolveStoredCarrier, UNKNOWN_CARRIER } from '@/lib/shipping/carrier-resolution';
@@ -31,21 +11,7 @@ import { healShipmentOrganizationId, healShipmentOrganizationIdByTracking } from
 /** Minimal pg client surface the helpers need (a pool client mid-transaction). */
 type Tx = Pick<PoolClient, 'query'>;
 
-/**
- * Carrier + trackability for one pasted tracking number.
- *
- * Two facts, deliberately separate. This file used to collapse them: it read
- * the THREE-carrier `detectCarrier` and stored `'UNKNOWN'` for anything else,
- * so every Amazon, DHL, OnTrac and GSO paste lost its identity — 1,002 rows on
- * the lane DB, each unpollable and indistinguishable from a genuinely
- * unreadable barcode.
- *
- * - IDENTITY comes from the full pattern list (`resolveStoredCarrier`).
- * - TRACKABILITY is whether we have a live integration for that identity.
- *
- * "Unknown" to an operator means "we cannot follow this", which is equally true
- * of a carrier we can name but cannot call — so the message says which.
- */
+/** Carrier + trackability for one pasted tracking number. */
 function resolveTrackingCarrier(normalizedTracking: string, reportedCarrier?: string | null): {
   carrierForStorage: string;
   isUnknownCarrier: boolean;
@@ -63,20 +29,6 @@ function resolveTrackingCarrier(normalizedTracking: string, reportedCarrier?: st
 }
 
 // ─── Tenancy note ─────────────────────────────────────────────────────────────
-//
-// These helpers run on a caller-owned `Tx` (a raw-pool client mid-transaction),
-// NOT inside withTenantTransaction — so there is no `app.current_org` GUC to
-// auto-stamp `organization_id`. Both tenant-owned tables written here carry the
-// column with a `usav-fallback` default (an unstamped INSERT silently misroutes
-// to the USAV org rather than crashing). To make multi-tenant correct we thread
-// an OPTIONAL `organizationId` and STAMP it explicitly on every INSERT:
-//   - shipping_tracking_numbers (tenant-owned, has organization_id)
-//   - order_shipment_links      (tenant-owned, has organization_id)
-// When the caller doesn't thread one we fall back to transitionalDogfoodOrgId(),
-// which preserves today's single-tenant (USAV) behavior exactly while letting
-// multi-tenant callers pass their real `ctx.organizationId`. All current callers
-// (orders/assign, orders/[id]/tracking, shipped/scan-out) have ctx.organizationId
-// in scope and now pass it through.
 
 /**
  * Is this shipment currently owned by any order — via `orders.shipment_id` or an
@@ -179,10 +131,7 @@ export async function upsertOrderTracking(
 
   if ((existingSTN.rowCount ?? 0) > 0) {
     const existingId = Number(existingSTN.rows[0].id);
-    // Is the existing shipment owned by this order — or by no order at all? An
-    // orphan STN (a packer scan registers the tracking before any order carries
-    // it; a prior delete leaves one behind) is claimable, the same rule
-    // createAdditionalShipmentLink applies. Only another order's row rejects.
+    // Is the existing shipment owned by this order — or by no order at all?
     if (currentShipmentIds.includes(existingId) || !(await isShipmentOwnedByAnyOrder(existingId, client))) {
       // Re-point orders.shipment_id to this shipment. Heal a NULL org stamp
       // so tenant RLS can see the row on later reads.
@@ -307,10 +256,7 @@ export async function upsertOrderTracking(
       // Undo the failed statement so the surrounding transaction stays usable
       // whether we retry or rethrow.
       await client.query('ROLLBACK TO SAVEPOINT stn_upsert');
-      // 42501 here means the ON CONFLICT matched a legacy NULL-org row the
-      // visibility pre-check above could not see (FORCE RLS hides it from
-      // app_tenant), and the DO UPDATE branch then failed the policy check.
-      // Heal that invisible row to this org on the owner pool and retry once.
+      // 42501 here means the ON CONFLICT matched a legacy NULL-org row the visibility pre-check above could not see (FORCE RLS hides it from…
       const rlsViolation =
         typeof err === 'object' && err !== null && 'code' in err && err.code === '42501';
       if (!rlsViolation) throw err;
@@ -500,11 +446,7 @@ export async function createAdditionalShipmentLink(
         [orderIds, shipmentId],
       );
       if ((ownershipCheck.rowCount ?? 0) === 0) {
-        // Not linked to THIS order. Only reject if some OTHER order owns it; an
-        // orphan STN (e.g. left behind by a prior delete — we never hard-delete
-        // shipping_tracking_numbers rows) is claimable and falls through to the
-        // link insert below. This is what lets a just-deleted tracking number be
-        // re-added without a spurious "already exists on another shipment".
+        // Not linked to THIS order.
         const otherOwner = await isShipmentOwnedByAnyOrder(shipmentId, client);
         if (otherOwner) {
           throw new Error('Tracking number already exists on another shipment');
@@ -628,12 +570,7 @@ export async function deleteShipmentTrackingLink(
     );
   }
 
-  // Idempotent: if the shipment is already unlinked, the desired end-state is
-  // achieved — no-op rather than throw. This matters inside a batch: clearing
-  // the primary tracking (`upsertOrderTracking(null)`) already nulls
-  // orders.shipment_id and removes its link, so a subsequent explicit delete of
-  // that same shipment would otherwise throw and roll back the whole batch.
-  // That was the cause of "can't delete the primary / only tracking number".
+  // Idempotent: if the shipment is already unlinked, the desired end-state is achieved — no-op rather than throw.
   if ((primaryOrders.rowCount ?? 0) === 0 && deletedLinks === 0) {
     return;
   }
@@ -643,13 +580,7 @@ export async function deleteShipmentTrackingLink(
 
 export interface ApplyOrderTrackingOps {
   orderIds: number[];
-  /**
-   * Desired-state: the full ordered set of tracking numbers the order should
-   * have. When provided, links are reconciled to match (additions linked,
-   * removals unlinked) and the legacy primary/edits/creates/deletes fields are
-   * ignored. The first entry becomes the internal representative
-   * (`orders.shipment_id`); `[]` clears all tracking.
-   */
+  /** Desired-state: */
   setTrackingNumbers?: string[];
   /** Primary tracking (slot 0). Routed through upsertOrderTracking; '' / null clears it. */
   primaryTrackingNumber?: string | null;
@@ -676,17 +607,7 @@ export interface ApplyOrderTrackingResult {
   primaryShipmentId: number | null;
 }
 
-/**
- * Desired-state reconcile: make the order's linked tracking set exactly match
- * `desiredRaw` (ordered). Tracking already owned is kept; new tracking is
- * linked; owned tracking no longer in the list is unlinked. The first entry
- * becomes the internal representative (`orders.shipment_id`) — there is no
- * user-facing "primary"; this pointer just satisfies single-value consumers
- * (shipped table, status dot, marketplace confirm). `[]` clears all tracking.
- *
- * Runs against a caller-owned transaction (no BEGIN/COMMIT of its own), like
- * the other low-level helpers in this file.
- */
+/** Desired-state reconcile: */
 export async function reconcileOrderTrackingSet(
   orderIds: number[],
   desiredRaw: string[],
@@ -783,11 +704,7 @@ export async function applyOrderTrackingOps(
 ): Promise<ApplyOrderTrackingResult> {
   const { orderIds, setTrackingNumbers, primaryTrackingNumber, primaryCarrier, edits, creates, deletes, setPrimaryShipmentId, organizationId } = ops;
   const orgId = organizationId ?? transitionalDogfoodOrgId();
-  // Run the whole multi-statement batch on the tenant pool inside ONE
-  // GUC-scoped transaction (SET LOCAL app.current_org). The low-level helpers
-  // receive this same tenant client, so every write is RLS-subject and
-  // organization_id auto-stamps from the GUC (explicit stamps are kept too).
-  // withTenantTransaction owns BEGIN/COMMIT/ROLLBACK/release.
+  // Run the whole multi-statement batch on the tenant pool inside ONE GUC-scoped transaction (SET LOCAL app.current_org).
   return withTenantTransaction(orgId, async (client) => {
     // Desired-state path: when the caller sends the full set, reconcile to it
     // and skip the legacy primary/edits/creates/deletes ops entirely.

@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * "Complete carton" — the phone's receive action.
- *
- * Posts ONE carton-scoped request to `/api/receiving/mark-received-po`
- * (`receiving_id`), not a per-line loop. That route already owns the whole
- * receive: every open line under the carton, the photo-policy gate, audit, and
- * the realtime fan-out the desktop bench listens to. A per-line QA verdict
- * (pass / fail) is a different job — on the phone that is the QC scan kernel
- * (`/m/r/[id]/qc` → `/m/qc/line/[id]`) — so receiving composes the bulk route
- * instead of looping `mark-received` per line.
- *
- * Two things this shell exists to get right (the request/response decisions
- * themselves live in `./complete-carton`, pure and tested):
- *
- * 1. **One idempotency key, reused across retries.** The route reserves the
- *    claim up front, so a network blip + retry replays the prior response
- *    instead of double-calling Zoho. The key is minted once per carton attempt
- *    and deliberately survives a PHOTO_POLICY block — that path RELEASES the
- *    claim server-side precisely so the same key can retry once the operator
- *    adds the missing photos. It resets only after a success.
- *
- * 2. **A 200 means the receive committed.** The inventory purchase receive is
- *    no longer part of this request: the scheduled receive backfill drains it
- *    and owns its own backlog surface. So the carton settles the moment the
- *    response lands — there is nothing external left to wait on, and no
- *    per-line sync signal to render.
- */
+/** "Complete carton" — the phone's receive action. */
 
 import { useCallback, useRef, useState } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -51,15 +25,7 @@ export function useCompleteCarton(row: CompleteCartonRow | null) {
     setState(COMPLETE_CARTON_IDLE);
   }, []);
 
-  /**
-   * Receive the carton.
-   *
-   * `photoPolicyOverride` is how a blocked carton gets through, and it is
-   * passed ONLY by the surface that just showed the operator the waiver sheet.
-   * Absent = no waiver = the gate keeps hard-blocking, which is the safe
-   * default; there is deliberately no way to make a plain retry carry a code it
-   * inherited from an earlier attempt.
-   */
+  /** Receive the carton. */
   const run = useCallback(async (photoPolicyOverride?: PhotoPolicyOverrideCode | null) => {
     const receivingId = row?.receiving_id;
     if (!row || !receivingId || inFlightRef.current) return;

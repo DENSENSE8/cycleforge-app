@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * `RecordLedger` — the industrial record ledger as a design-system primitive:
- * the To-ship desk's frame (`OutboundOrdersLedger`) with the orders feed taken
- * out, for every page that adopts the ledger after it
- * (HANDOFF-industrial-record-ledger).
- *
- *   ┌ toolbar (page slot) ··· tally · ⤢ ┐
- *   │ record                             │
- *   │ record   virtual, fixed 97px rows  │
- *   │ …                                  │
- *   └ footer (page slot) ────────────────┘
- *
- * - Deliberately NOT the slot `DataTable`: no column header, no gutters, no
- *   card. Records are {@link IndustrialRecord}s the page renders.
- * - Rows are virtualized at a FIXED height ({@link RECORD_ROW_PX}); the
- *   virtualizer never measures.
- * - The open record is placed by {@link DeskRecordPlane} (operator
- *   2026-09-25): in place of the list by default, list-left / record-right
- *   split when the staffer turns on fullscreen with the toolbar's ⤢. The
- *   ledger paints no evidence column of its own.
- * - Nothing open: the split pane reads the list as a whole ({@link
- *   RecordLedgerSummary}); in place, the facts that are not already on the
- *   page are tallied at the toolbar's right end.
- * - Keys: J / K step the open record (never inside a field, and never when a
- *   menu or dialog already handled the key). Esc belongs to the plane.
- * - The URL is the page's business: `openKey` comes in, `onOpenKey` /
- *   `onClose` go out.
- */
+/** `RecordLedger` — the industrial record ledger as a design-system primitive: */
 
 import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';

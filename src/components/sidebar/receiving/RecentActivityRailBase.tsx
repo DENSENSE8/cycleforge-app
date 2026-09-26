@@ -90,12 +90,7 @@ export interface RecentActivityRailBaseProps {
   refreshEvents: string[];
   /** prev/next CustomEvent name that steps rail selection — drives header chevrons. */
   navigateEvent?: string;
-  /**
-   * Per-row ⋮ menu. Unset falls back to the receiving verbs WITHOUT Dismiss —
-   * see {@link readOnlyReceivingRowActions}. `ReceivingFeedRail` passes its own,
-   * because it is the one node that knows whether the mounted rail has a
-   * `staff_rail_exclusions` feed key to dismiss into.
-   */
+  /** Per-row ⋮ menu. */
   rowActions?: RailRowActionsResolver<ReceivingLineRow>;
 
   /** Rail name — the listbox's accessible name; no longer painted as a band. */
@@ -119,13 +114,7 @@ export interface RecentActivityRailBaseProps {
   /** Dev/observability: stamp paint timing once the rail leaves skeleton. */
   contentPaintSurface?: PaintSurface;
 
-  /**
-   * Timestamp the row's relative-time label reads. MUST match the feed's sort
-   * axis or the rail's times read shuffled (e.g. sorted by unbox activity but
-   * labeled with door-scan time). Defaults to last_activity_at → created_at.
-   * Pass a module-scope (stable-identity) function — the shell wires it into
-   * a listener effect.
-   */
+  /** Timestamp the row's relative-time label reads. */
   getActivityAt?: (row: ReceivingLineRow) => string | null | undefined;
   getStatusDot: (row: ReceivingLineRow) => string;
   getStatusDotLabel?: (row: ReceivingLineRow) => string;
@@ -139,12 +128,7 @@ export interface RecentActivityRailBaseProps {
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
   /** Row title axis — default `line`; unbox Recent uses `po-group`. */
   rowTitleMode?: ReceivingRailRowTitleMode;
-  /**
-   * Flag rows that already have a filed claim/ticket (`row.zendesk_ticket`) with
-   * an inline ticket chip on the collapsed row + a "Claim ticket" badge in the
-   * hover popover — so the operator can scan the rail for POs that already have
-   * a problem/ticket applied. Additive; defaults on. Set false to hide.
-   */
+  /** Flag rows that already have a filed claim/ticket (`row.zendesk_ticket`) with an inline ticket chip on the collapsed row + a "Claim… */
   showTicketFlag?: boolean;
 }
 
@@ -155,20 +139,7 @@ function railTicketNumber(row: ReceivingLineRow): string | null {
   return t.startsWith('#') ? t : `#${t}`;
 }
 
-/**
- * Compact ticket flag on the META (qty) row — inline after qty.
- *
- * Boxed at `h-3` (12px) to match `text-role-micro`'s own computed line-height
- * (`0.625rem` / 1.2 ≈ 12px) — the meta line's actual content height. It used
- * to carry the `h-4` (16px) hit-box sized for the TITLE line's
- * `text-role-caption` (line-height ≈ 16px), a leftover from before the flag
- * moved down to the meta row; a 16px box inline with 12px text stretched
- * every ticketed row 4px taller than its ticket-less neighbours (confirmed in
- * DevTools 2026-08-24: 32.2px vs 28.2px). Every rail row must render at the
- * same height regardless of content — see {@link RailRowBody}'s "one tight
- * recent-rail scale" — so the flag now fits the line it sits on instead of
- * growing it.
- */
+/** Compact ticket flag on the META (qty) row — inline after qty. */
 function TicketRailFlag({ ticket }: { ticket: string }) {
   return (
     <HoverTooltip label={`Claim ticket ${ticket} filed`} asChild focusable={false}>
@@ -179,11 +150,7 @@ function TicketRailFlag({ ticket }: { ticket: string }) {
   );
 }
 
-// Stable module-scope callbacks. The shell wires `getId` into its optimistic-
-// patch listener effect; passing a fresh arrow each render made that effect
-// tear down and re-add its window listener on every parent re-render (a window
-// where a `receiving-line-updated` event could be dropped). Hoisting pins the
-// identity so the effect subscribes once.
+// Stable module-scope callbacks.
 const getRowId = (r: ReceivingLineRow) => r.id;
 // Durable render key: carton identity (`client_event_id` / `carton:{receiving_id}`)
 // survives stub→real swaps so AnimatePresence updates in place instead of remounting.
@@ -207,13 +174,7 @@ function railStatusBadgeTone(dot: string, fallbackWorkflowStatus: string): strin
   return WORKFLOW_BADGE[fallbackWorkflowStatus] ?? 'bg-surface-sunken text-text-muted';
 }
 
-/**
- * Receiving row verbs for a rail mounted OUTSIDE `ReceivingFeedRail` — today
- * just the Testing dock. Read verbs only: Hide needs a
- * `staff_rail_exclusions` feed key (`railExclusionFeedKey` covers the two scan
- * surfaces only) and Delete needs the permission gate that lives one level up,
- * so neither is offered here rather than offered broken.
- */
+/** Receiving row verbs for a rail mounted OUTSIDE `ReceivingFeedRail` — today just the Testing dock. */
 const readOnlyReceivingRowActions: RailRowActionsResolver<ReceivingLineRow> = (row) => {
   const cartonId = Number(row.receiving_id);
   const hasCarton = Number.isFinite(cartonId) && cartonId > 0;
@@ -390,11 +351,7 @@ function ReceivingRowMain({
   const techId = row.assigned_tech_id ?? null;
   const techColor = techId ? stationThemeColors[getStaffThemeById(techId)].text : 'text-text-faint';
 
-  // Render identical content whether or not the row is selected — selection is
-  // a pure ring/background highlight (see SidebarRailShell). Any size/content
-  // difference here would change the row's height and shove its neighbors.
-  // Shared row anatomy via `RailRowBody` (`rail` density) — the same primitive
-  // the tech Up-Next `OrderCard` renders; only the slot content differs.
+  // Render identical content whether or not the row is selected — selection is a pure ring/background highlight (see SidebarRailShell).
   return (
     <RailRowBody
       vm={{
@@ -485,10 +442,7 @@ function ReceivingPopoverContent({
               <span className="rounded bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-widest text-text-soft ring-1 ring-inset ring-border-soft">No PO</span>
             </HoverTooltip>
           ) : null}
-          {/* Phase 2: a physically-present box whose Zoho PO already reads
-              billed/closed stays in the queue (not hidden) with this badge,
-              surfacing the physical-vs-financial mismatch instead of vanishing.
-              Skip `received` — it duplicates the green workflow RECEIVED chip. */}
+          {/* Phase 2: a physically-present box whose Zoho PO already reads billed/closed stays in the queue (not hidden) with this badge, surfacing… */}
           {['billed', 'closed', 'cancelled', 'rejected'].includes(
             String(row.zoho_status || '').toLowerCase(),
           ) ? (

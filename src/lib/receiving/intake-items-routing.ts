@@ -1,13 +1,4 @@
-/**
- * PO vs return vs unfound — which workspace "items" surface to mount.
- *
- * Returns and sales-order pairings (serial autolink, Ecwid order #) must NOT use
- * the Zoho PO accordion (`PoLinesAccordion`). Only cartons with a real
- * `zoho_purchaseorder_id` and a non-RETURN intake kind use that path.
- *
- * SoT for UI routing — import this instead of branching on `receiving_source`
- * alone (returns masquerade as `source = 'zoho_po'` with a null Zoho PO id).
- */
+/** PO vs return vs unfound — which workspace "items" surface to mount. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
@@ -40,18 +31,7 @@ export function isSalesOrderDerivedCarton(carton: {
   return carton.source === 'zoho_po' && !hasRealZohoPoId(carton);
 }
 
-/**
- * A receiving line's source lane. Post-unification BOTH lanes render the same
- * one-row surface (`PoLinesAccordion` — the matched carton mounts it directly,
- * the unfound carton mounts it inside `UnmatchedAccordionSurface`), so this is a
- * **source classifier**, not a surface switch: it selects which sibling
- * controller layer drives the shared row surface
- * (receiving-condition-serial-unification-plan.md, Phase 3).
- *
- *   - `'unmatched'` → `useUnmatchedItems` layer (serial scan → create line,
- *      Ecwid add, return lines, door classification, unlink).
- *   - `'po'`        → `useUnboxLineController` layer (Zoho PO receive/print).
- */
+/** A receiving line's source lane. */
 export type LineSource = 'po' | 'unmatched';
 
 /** Classify a line's source lane (drives which controller layer, not the surface). */

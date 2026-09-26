@@ -1,26 +1,4 @@
-/**
- * recordDataWipe — the per-unit secure data-erasure / factory-reset action, the
- * compliance gate that defines ELECTRONICS/AV refurb (see the electronics-av-refurb
- * workflow template + src/lib/workflow/nodes/data-wipe.node.ts).
- *
- * UNLIKE recordTestVerdict, a wipe does NOT change serial_units.current_status —
- * the unit is already TESTED and stays sellable-pending; the wipe is a recorded
- * compliance fact + a graph advance, not a lifecycle status transition. So this
- * helper has no state-machine/guard path: it
- *
- *   1. records a DATA_WIPED inventory_event (idempotent on clientEventId), and
- *   2. taps the workflow engine `data_wiped` so the run advances
- *        wipeSuccess === true  → 'wiped'  → grade-route
- *        wipeSuccess === false → 'failed' → repair (a non-wipeable device is
- *                                            usually itself faulty → diagnose).
- *
- * The tap carries `expectNodeType: 'data_wipe'` so a stray event can't advance a
- * unit that isn't actually at the wipe node, and is fire-and-forget (drops
- * unenrolled units; never throws — an engine error never fails the wipe record).
- *
- * Deps-injected (default real impls) so the unit test runs DB-free
- * (backend-patterns.md → "Dependency injection for testability").
- */
+/** recordDataWipe — the per-unit secure data-erasure / factory-reset action, the compliance gate that defines ELECTRONICS/AV refurb (see… */
 
 import pool from '@/lib/db';
 import { appendInventoryEvent } from '@/lib/repositories/inventory/inventoryEvents';

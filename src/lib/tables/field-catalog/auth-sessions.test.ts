@@ -1,17 +1,4 @@
-/**
- * Auth-sessions catalog guards + resolver behaviour — Wave D's port of
- * `/settings/sessions` off `AdminTable`.
- *
- * The guards that matter here are the two the old desk could not have had:
- * that the product layout is a LEGAL document against this family's own
- * vocabulary, and that the mounted column model is the SHARED skeleton in the
- * engine's order rather than five hand-written cells in whatever order somebody
- * typed them.
- *
- * Fixtures are the WIRE row: `/api/admin/sessions` returns the SQL row
- * verbatim (snake_case), so a camelCase fixture here would test a shape that
- * never reaches the desk.
- */
+/** Auth-sessions catalog guards + resolver behaviour — Wave D's port of `/settings/sessions` off `AdminTable`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

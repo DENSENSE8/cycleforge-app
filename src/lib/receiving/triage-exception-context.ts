@@ -1,18 +1,4 @@
-/**
- * Triage unfound exception context (Initiative B3).
- *
- * Pure, DB-free presentation layer over the EXISTING `tracking_exceptions`
- * feed (`GET /api/tracking-exceptions?domain=receiving&status=open`). An unfound
- * triage carton (`v_unfound_queue` kind=`unmatched_receiving`) is keyed by its
- * `receiving` id; the open receiving tracking-exception for that same id carries
- * the Zoho re-sync state (retry count, last check time, reason, last error). This
- * module indexes those rows by `receiving_id` and turns one into the read-only
- * status dot + tooltip the triage popover shows — so staff can see "Zoho still
- * hasn't synced this PO" without any new server view.
- *
- * Single source of truth for the unfound exception dot tone + label; never inline
- * the tone/label mapping in a component.
- */
+/** Triage unfound exception context (Initiative B3). */
 
 /** The subset of a tracking-exception row this module reads (route-shaped). */
 export interface ReceivingExceptionRow {
@@ -46,13 +32,7 @@ const EXCEPTION_DOT_CLASS: Record<ExceptionDotTone, string> = {
   danger: 'bg-rose-500',
 };
 
-/**
- * Index the OPEN receiving exceptions by their `receiving_id`. Resolved /
- * discarded rows and rows with no receiving link are skipped (they carry no
- * actionable "still waiting" signal for the triage carton). When more than one
- * open exception points at the same carton, the first wins (the route already
- * orders open-first, newest-first).
- */
+/** Index the OPEN receiving exceptions by their `receiving_id`. */
 export function indexReceivingExceptions(
   rows: ReadonlyArray<ReceivingExceptionRow>,
 ): Map<number, ReceivingExceptionContext> {

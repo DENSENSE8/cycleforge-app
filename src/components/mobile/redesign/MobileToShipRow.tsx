@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * `/m/work` to-ship card — a thin `WorkOrderRow` adapter over the shared
- * {@link ItemCardRow}.
- *
- * The card's anatomy (photo, location-first context, SKU, ship-by, and pinned
- * quantity) is the ONE item card both queues paint. This adapter only maps
- * canonical outbound facts and closes typed triage/assignment commands. Its
- * only secondary row control is the governed SKU-adjacent listing trigger;
- * it cannot add a page-local Pick/Pack CTA.
- */
+/** `/m/work` to-ship card — a thin `WorkOrderRow` adapter over the shared {@link ItemCardRow}. */
 
 import { memo } from 'react';
 import { ItemCardRow } from '@/components/mobile/redesign/ItemCardRow';

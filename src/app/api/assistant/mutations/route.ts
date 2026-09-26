@@ -5,12 +5,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/assistant/mutations — the AI-edits tray feed (universal-feed plan
- * §-2.1). Recent agent_mutations for the org, newest-first, optionally scoped
- * to one draft definition via ?definitionId= (matched through
- * agent_mutation_affects). Read-only; org from ctx.
- */
+/** GET /api/assistant/mutations — the AI-edits tray feed (universal-feed plan §-2.1). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const limit = Math.max(1, Math.min(50, Number(searchParams.get('limit')) || 20));
@@ -19,10 +14,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
   try {
     const rows = definitionId
-      ? // Draft edits (workflow_draft.*, node_surface.*) all carry definitionId
-        // in the payload — filter on that (the affects target_ref carries the
-        // node/edge id, not the definition, so a target_ref LIKE would miss
-        // add_node/add_edge). Cast the jsonb value to int to compare.
+      ? // Draft edits (workflow_draft.*, node_surface.*) all carry definitionId in the payload — filter on that (the affects target_ref carries…
         await tenantQuery(
           ctx.organizationId,
           `SELECT id, mutation_kind, status, applied_at::text AS applied_at,

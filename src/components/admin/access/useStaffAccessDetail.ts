@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Server state for the StaffAccessDetail view: the detail envelope (one GET)
- * plus every mutation the cards trigger. Replaces ~200 lines of hand-rolled
- * `useState`/`fetch`/`setBusy`/`await refresh()`/`notifyList()` plumbing with
- * a query + `useResourceMutation`s that invalidate the shared cache.
- *
- * Mutations that change something the sidebar roster shows (name, role,
- * status, PIN) also re-emit the legacy `admin-access-refresh` window event,
- * because AccessSidebarPanel still listens for it. Once that panel reads the
- * `qk.staffAccess.list` cache directly the event can be dropped.
- */
+/** Server state for the StaffAccessDetail view: */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {

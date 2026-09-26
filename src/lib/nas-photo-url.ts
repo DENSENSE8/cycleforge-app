@@ -1,10 +1,4 @@
-/**
- * Normalize stored photo URLs for browser display.
- *
- * Production browsers must load through the same-origin `/api/nas` proxy (session
- * cookie). Direct `https://nas-photos…` or dev-only `/api/nas-dev/` URLs fail
- * to render in PhotoGallery / <img> on Vercel.
- */
+/** Normalize stored photo URLs for browser display. */
 
 const NAS_TUNNEL_HOSTS = new Set(['nas-photos.michaelgarisek.com']);
 

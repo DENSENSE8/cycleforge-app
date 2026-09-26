@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The write primitive. Edits paint first; the server catches up; failure
- * rolls back and `toast.error`s why, bottom-right (AppToaster).
- *
- * `useResourceMutation` is the sibling for creates / fire-and-forget work
- * that has no cached row to patch. Do not use it for an inline edit.
- */
+/** The write primitive. */
 
 import {
   useMutation,

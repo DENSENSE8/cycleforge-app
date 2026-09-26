@@ -1,12 +1,4 @@
-/**
- * DB-free unit tests for AI provider failover.
- *
- * This is the half of local-first that makes the inversion safe, so the policy
- * (what is retried, what is not, what gets demoted) is pinned here rather than
- * discovered in production.
- *
- * Run: node --import tsx --test src/lib/ai/failover.test.ts
- */
+/** DB-free unit tests for AI provider failover. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AiFailoverError, postToAiProvider } from './failover';

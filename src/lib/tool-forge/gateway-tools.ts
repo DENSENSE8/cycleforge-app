@@ -1,27 +1,4 @@
-/**
- * The four MCP Gateway tools.
- *
- * They register as ordinary AssistantToolDef entries, which is what makes them
- * MCP tools: src/lib/mcp/tool-server.ts builds tools/list from the same
- * registry and dispatches tools/call through the same runAssistantTool
- * chokepoint (unknown-tool → permission → Zod → run). There is no second
- * gateway and no second tool dialect; a fourth would be the page-local twin the
- * house rules exist to prevent.
- *
- * ─── ORG NEVER COMES FROM THE MODEL ────────────────────────────────────────
- * The specification for this pipeline writes the first tool as
- * `search_tool_registry(prompt, tenant_id)`. That signature inverts this repo's
- * core tenancy invariant — organizationId comes from the authenticated context
- * and never from model or client input, which src/lib/mcp/tool-server.test.ts
- * pins with a literal `// org NOT from client` assertion. A model-supplied
- * tenant id is a cross-tenant read with extra steps.
- *
- * So `tenant_id` is accepted in the schema (a model trained on the documented
- * signature will send it, and rejecting the call outright would just look like
- * a broken tool) and then IGNORED. The response says so explicitly, so the
- * model learns the parameter is inert rather than concluding the search is
- * broken. ctx.organizationId is the only org that reaches SQL.
- */
+/** The four MCP Gateway tools. */
 
 import { z } from 'zod';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';

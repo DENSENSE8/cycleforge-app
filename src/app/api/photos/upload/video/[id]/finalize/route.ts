@@ -10,15 +10,7 @@ import { getVideo, markVideoReady } from '@/lib/photos/videos';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/photos/upload/video/{id}/finalize — step 2 of a video upload.
- *
- * Gated like the create step, by `uploadPermissionFor` of the entity the
- * pending row names. Reads what GCS actually stored (never the client's claim),
- * flips the row to `ready`, and announces it through the same per-entity
- * realtime dispatch a photo upload uses. Idempotent: finalizing a ready video
- * returns it again without re-publishing.
- */
+/** POST /api/photos/upload/video/{id}/finalize — step 2 of a video upload. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const parts = req.nextUrl.pathname.split('/').filter(Boolean);

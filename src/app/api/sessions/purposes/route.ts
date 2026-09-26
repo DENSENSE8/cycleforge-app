@@ -1,10 +1,4 @@
-/**
- * GET /api/sessions/purposes — the org's L1 catalog.
- *
- * System rows are ensured on read so a new tenant is never empty. Custom
- * purposes are created at session-start (POST /api/sessions), not here.
- * Gate rationale (no per-session permission): ../route.ts.
- */
+/** GET /api/sessions/purposes — the org's L1 catalog. */
 
 import { NextResponse } from 'next/server';
 

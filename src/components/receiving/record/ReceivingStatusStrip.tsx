@@ -3,16 +3,6 @@
 /**
  * The receiving record's AT-A-GLANCE head — the first thing a staffer reads on
  * a carton or incoming delivery record (owner 2026-09-25: "triage information
- * and overall statuses very fast"):
- *
- *   RCV · Received   3 items ····························· → next step
- *   ▲ Unfound — no purchase order paired                    (alerts, loudest first)
- *   ✓ Door scan   ✓ Unboxed   ◐ Condition 2/3   ○ Labels   …  (pipeline, who · when)
- *
- * Steps and alerts come from the record's builder (`carton-record-status.ts`);
- * only the steps that apply to the record are passed, so nothing is faked.
- * Industrial record face, tokens only; the step grid reflows by the record
- * plane's CONTAINER (two columns in the split pane, five on the fixed stage).
  */
 
 import type { ComponentType, ReactNode } from 'react';

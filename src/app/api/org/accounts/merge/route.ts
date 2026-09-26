@@ -1,18 +1,4 @@
-/**
- * POST /api/org/accounts/merge — fold a duplicate account into a survivor.
- *
- * The admin half of the multi-org enabler: when the same human exists as two
- * accounts (commonly the Phase-1 backfill that made each per-org staff its own
- * account), an admin merges the duplicate into the survivor. The domain helper
- * (mergeAccounts) re-points memberships, staff profiles, federated identities,
- * and passkeys, then soft-marks the merged account — all in one transaction,
- * idempotent on re-run, and guarded by the verified-email same-human gate.
- *
- * Gated by admin.manage_staff (same as invitations). The merge touches GLOBAL
- * identity tables; ctx.organizationId scopes the transaction envelope only.
- *
- * See docs/identity-layer-plan.md.
- */
+/** POST /api/org/accounts/merge — fold a duplicate account into a survivor. */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

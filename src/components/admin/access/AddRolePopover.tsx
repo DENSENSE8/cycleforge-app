@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Portal-rendered "+ Add role" popover, anchored to a trigger button.
- *
- * Why a portal: this used to live inline inside the Roles sub-card of
- * `StaffAccessDetail`. The card creates a stacking context that swallowed
- * the popover under the Page access card below it. Rendering through
- * `createPortal` to document.body escapes every parent stacking context
- * and a z-panelPopover keeps us above the FAB (z-40) and SwitchStaffSheet (z-80).
- *
- * Re-anchors on resize and scroll. Closes on outside-click and Escape.
- */
+/** Portal-rendered "+ Add role" popover, anchored to a trigger button. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';

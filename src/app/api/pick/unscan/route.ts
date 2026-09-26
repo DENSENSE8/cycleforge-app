@@ -5,19 +5,7 @@ import { parseScannedUrl } from '@/lib/scan-resolver';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { transition } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/pick/unscan — clean inverse of /api/pick/scan.
- *
- * Reverses ONE mis-picked unit: serial_units PICKED → ALLOCATED (via the
- * declared state-machine back-edge) and the order_unit_allocations row
- * PICKED → ALLOCATED — so the unit stays reserved to the same order, just
- * un-picked. No information is lost (the allocation row is state-flipped, not
- * released), unlike whole-order release which frees the unit to STOCKED.
- *
- * Body (one of): { scan } | { serial_unit_id }, optional { order_id, client_event_id }.
- * Guarded: the allocation must be in state PICKED (not PACKED/SHIPPED/RELEASED)
- * and the unit must currently be PICKED — else 409. Permission: orders.view.
- */
+/** POST /api/pick/unscan — clean inverse of /api/pick/scan. */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const scan = String(body?.scan ?? '').trim();
@@ -114,10 +102,7 @@ export const POST = withAuth(async (request, ctx) => {
     });
 
     if (!result.ok) return NextResponse.json(result, { status: result.status });
-    // Un-picking rolls the Pick column back, so it is as much a desk repaint as
-    // the forward scan — publish the same event with its own source (ruling
-    // 2026-09-14). Off the response path, errors swallowed: realtime must never
-    // fail a committed un-pick.
+    // Un-picking rolls the Pick column back, so it is as much a desk repaint as the forward scan — publish the same event with its own source…
     const changedOrderId = result.orderId;
     if (changedOrderId != null) {
       after(() =>

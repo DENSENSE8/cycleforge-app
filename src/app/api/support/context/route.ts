@@ -6,14 +6,7 @@ import { resolveSupportContext } from '@/lib/support/context';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/support/context
- *   ?order=…&tracking=…&ticket=…&receivingId=…&lineId=…
- *
- * One read for the Support Context Hub: linkage loop, primary ticket, entity
- * thread, connections, and merged activity timeline. Anchor-agnostic so
- * GlobalHeaderSearch can deep-link later without API changes.
- */
+/** GET /api/support/context ?order=…&tracking=…&ticket=…&receivingId=…&lineId=… */
 
 const Query = z.object({
   order: z.string().trim().min(1).optional(),

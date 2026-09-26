@@ -5,15 +5,7 @@ import {
   listReceivingAuditPOs,
 } from '@/lib/audit-log/receiving-aggregator';
 
-/**
- * GET /api/audit-log/receiving
- *   ?po=<zoho_purchaseorder_id>  → full timeline for one PO
- *   no `po`                       → most-recently-touched POs (paged)
- *   ?q=<search>                   → matches PO id, PO number, sku, item name
- *   ?limit=&offset=               → pagination
- *
- * Gate: admin.view_logs.
- */
+/** GET /api/audit-log/receiving ?po=<zoho_purchaseorder_id> → full timeline for one PO no `po` → most-recently-touched POs (paged)… */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

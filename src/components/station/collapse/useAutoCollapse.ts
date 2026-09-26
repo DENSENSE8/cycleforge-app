@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * React binding over {@link autoCollapseReducer} — the station centre's
- * "expanded until the operator starts working" behaviour.
- *
- * Wire it up as:
- *   const c = useAutoCollapse();
- *   <div onScroll={c.onScroll}>            // the centre scrollport
- *     <Block collapsed={c.collapsed} onToggle={c.toggle} />
- *     <Composer onFocus={c.engage} onBlur={c.disengage} />
- *
- * `onScroll` is throttled to one resolve per animation frame: a scrollport fires
- * dozens of events per gesture and every one of them would otherwise dispatch
- * through React. The rules themselves live in the pure reducer — nothing here
- * decides anything.
- */
+/** React binding over {@link autoCollapseReducer} — the station centre's "expanded until the operator starts working" behaviour. */
 
 import { useCallback, useEffect, useReducer, useRef } from 'react';
 import {

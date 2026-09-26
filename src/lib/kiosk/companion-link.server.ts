@@ -1,26 +1,6 @@
 import 'server-only';
 
-/**
- * The phone companion's meeting point — one `kiosk_companion_links` row per
- * counter tablet.
- *
- * The TABLET stays the authority for its repair visit (the cart is local until
- * a desk holds it). It opens a link (a token it shows as a QR), pushes its
- * device snapshot on every sync, and takes the serials a phone scanned since
- * the last one. A staff PHONE reads the snapshot by token and queues serials.
- * Neither side ever writes the other's field: devices are the tablet's,
- * pending serials are the phone's until the tablet consumes them.
- *
- * Only a SHA-256 of the token is stored. Every query is org-scoped under the
- * tenant GUC (`withTenantTransaction` / `tenantQuery`) and stamps the org from
- * the caller's auth context, never the request.
- *
- * Callers: `/api/kiosk/companion` (open), `/api/kiosk/companion/sync`,
- * `/api/counter/companion` (phone read + scan).
- * Schema: `kiosk_companion_links` (2026-09-24c).
- * User: "a QR code that you would be able to scan on your phone to join the
- *   same repair service session and then scan something like a serial number".
- */
+/** The phone companion's meeting point — one `kiosk_companion_links` row per counter tablet. */
 
 import { createHash, randomBytes } from 'node:crypto';
 import { z } from 'zod';

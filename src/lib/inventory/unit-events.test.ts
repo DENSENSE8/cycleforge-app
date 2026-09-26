@@ -1,19 +1,4 @@
-/**
- * Orchestration guards for recordUnitEvent() — the transactional unit
- * lifecycle façade (relational-reuse plan, §2).
- *
- * The façade now routes STATUS CHANGES through the guarded transition() state
- * machine instead of stamping current_status via upsertSerialUnit({target_status}).
- * These tests inject in-memory fakes (no DB) and assert:
- *   • an EXISTING unit's status change is driven through transition(), with the
- *     upsert neutralized (target_status = priorStatus) so it only backfills
- *     identity, and the ledger row linked into the transition event;
- *   • a BRAND-NEW unit create stays explicit — recordInventoryEvent directly,
- *     no transition() (there is no from-state to guard);
- *   • an existing unit with NO status change records its event directly;
- *   • a rejected transition (404/409) throws (caller txn rolls back);
- *   • the optional tech/ledger composite writes fire / skip as requested.
- */
+/** Orchestration guards for recordUnitEvent() — the transactional unit lifecycle façade (relational-reuse plan, §2). */
 
 import { test } from 'node:test';
 import { equal, ok } from 'node:assert/strict';

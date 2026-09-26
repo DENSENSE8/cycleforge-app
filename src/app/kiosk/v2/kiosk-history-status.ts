@@ -1,21 +1,4 @@
-/**
- * Status → chip tone, for the History rail AND its detail.
- *
- * Callers: `KioskHistoryRail`, `KioskHistoryDetail`. Affected API: none.
- * Schemas: none — it reads the free-text `repair_service.status` and
- * `counter_transactions.status` strings as they are stored.
- *
- * ONE table, because the operator reads the rail's chip and the detail's chip
- * as the same mark. Two tables is how `Awaiting Parts` ends up amber in a list
- * and grey on the record it opens, which teaches the counter that the colour
- * means nothing.
- *
- * Both books share it on purpose: a repair's `Awaiting Parts` and a
- * transaction's `staged` say the same thing to the person at the counter —
- * *not finished* — so they get the same tone. The return values are
- * `KioskChip` tones: the desk `badge` is square and 18px tall, and the kiosk
- * chip law (`design-system/pinned.json` → KioskChip) bans it on a tablet face.
- */
+/** Status → chip tone, for the History rail AND its detail. */
 
 import type { KioskChipTone } from '@/components/kiosk/KioskChip';
 

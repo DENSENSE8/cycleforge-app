@@ -1,11 +1,4 @@
-/**
- * Kiosk-devices family verb catalog — declare once, resolve per row.
- *
- * Revoke is a credential verb (`face: 'trailing'`), not a catalog field and not
- * a remounted compound `actions` track. Pair stays on the title-hover menu.
- *
- * Callers: KioskDevicesSection → useKioskDevicesSpreadsheet.rowActions.
- */
+/** Kiosk-devices family verb catalog — declare once, resolve per row. */
 
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';

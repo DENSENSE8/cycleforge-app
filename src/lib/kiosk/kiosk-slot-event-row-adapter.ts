@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * - Importers: useKioskSlotEventsSpreadsheet adapter; unit tests.
- * - Affected API: none (pure CompoundRowView adapter).
- * - Schemas: KioskSlotEventTableRow → CompoundRowView.
- * - User: "Continue to the next phase" (history peer, no Revoke).
- */
+/** Gate preamble (Fact-Forcing): */
 
 import type {
   CompoundRowView,
@@ -39,10 +33,8 @@ export function kioskSlotEventCompoundView(row: KioskSlotEventTableRow): Compoun
     thumbUrl: null,
     title: device,
     note: slot ? `Slot ${slot}` : null,
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(row.kioskDeviceId ? String(row.kioskDeviceId) : null, 'Device id'),
     orderId: null,
     tracking: null,

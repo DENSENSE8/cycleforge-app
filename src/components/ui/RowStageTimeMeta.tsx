@@ -6,12 +6,7 @@ import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { cn } from '@/utils/_cn';
 import { formatDateTimePST, formatOpsStageTime } from '@/utils/date';
 
-/**
- * Dense row stage clock — same language as OrdersQueue / Shipped / Receiving
- * history: `formatOpsStageTime` in a fixed {@link META_REST_COL.stageTime} track.
- * Tooltip carries absolute warehouse time (+ optional extra). Omit when no stamp
- * (pending work) unless `reserve` keeps the column aligned.
- */
+/** Dense row stage clock — same language as OrdersQueue / Shipped / Receiving history: */
 export function RowStageTimeMeta({
   instant,
   label,

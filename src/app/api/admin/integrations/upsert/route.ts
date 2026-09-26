@@ -1,22 +1,4 @@
-/**
- * POST /api/admin/integrations/upsert
- *
- * Creates or replaces a per-tenant integration credential. Body shape:
- *   { provider: 'zoho', scope?: string, displayLabel?: string, payload: object }
- *
- * `payload` is whatever the integration module expects — see
- * src/lib/integrations/credentials.ts for the per-provider type shapes.
- * It's encrypted server-side with the org's vault key; the client never
- * sees ciphertext.
- *
- * Gated by admin.manage_features (these are global-impact credentials)
- * plus step-up to prevent CSRF-style replays.
- *
- * Self-hosted AI endpoints are PROBED before persisting — a hand-typed URL is
- * the one credential whose "works on my machine" and "works from the server"
- * routinely differ, and saving an unreachable one fails later as a mysterious
- * "AI is not working" with nothing pointing back at the URL.
- */
+/** POST /api/admin/integrations/upsert */
 
 import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
@@ -106,13 +88,7 @@ export const POST = withAuth(async (req, ctx) => {
     );
   }
 
-  // Verify the endpoint ACTUALLY answers before persisting (integration-connector
-  // skill: "verify the connection works before persisting").
-  //
-  // Only the self-hosted slot is probed. The cloud providers are fixed, known-good
-  // hosts whose only failure mode is a bad key — which their own first call
-  // surfaces — whereas a self-hosted URL is typed by hand and is the one case
-  // where "works from my laptop" and "works from the server" routinely differ.
+  // Verify the endpoint ACTUALLY answers before persisting (integration-connector skill:
   let probeNote: string | null = null;
   if (provider === 'ollama') {
     const cfg = validated.payload as Record<string, string | undefined>;

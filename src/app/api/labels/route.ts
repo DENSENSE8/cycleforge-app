@@ -9,16 +9,7 @@ import { loadLabelOverrides } from '@/lib/labels/load';
 import { upsertLabelOverride, deleteLabelOverride } from '@/lib/labels/store';
 import type { LabelKind } from '@/lib/labels/types';
 
-/**
- * Tenant-customizable lifecycle LABELS — the Studio editor backend.
- *
- * The label LAYER lets a reseller rename / recolor a lifecycle stage's display
- * label without touching the stable `code` the engine + analytics key on
- * (docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md). Overrides
- * persist as `reason_codes` rows in a `lifecycle_<kind>` vocabulary; defaults
- * live in src/lib/labels/registry.ts. Reads gate on studio.view, writes on
- * studio.manage (the same permissions as the rest of Studio authoring).
- */
+/** Tenant-customizable lifecycle LABELS — the Studio editor backend. */
 
 const KINDS = Object.keys(LABEL_DEFAULTS) as LabelKind[];
 function parseKind(v: unknown): LabelKind | null {

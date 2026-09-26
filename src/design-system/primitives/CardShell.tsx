@@ -18,19 +18,7 @@ import { staggerRevealRiseItem } from './StaggerReveal';
 
 type CardTone = 'emerald' | 'red' | 'orange' | 'purple' | 'teal' | 'gray';
 
-/**
- * Visual treatment when `isSelected` is true on desktop.
- * - `stripe` (default, legacy): left 3px accent + bottom border, in-line with the row stack.
- * - `framed`: full perimeter ring + rounded corners + soft lift. Card visually
- *   detaches from the row stack on selection.
- * - `linear`: Linear/Superhuman-style row. Left 3px accent on selection, subtle
- *   bg on hover, no ring or lift. Preserves vertical row rhythm; the selected
- *   card never visually jumps out of the stack.
- * - `rail`: recent-activity rail row. Flat row, `bg-blue-50 ring` selection (the
- *   house selection treatment — always blue, ignores `tone`), `hover:bg-surface-hover`,
- *   no border/lift. Matches `RailRow` so the /tech Up Next list reads as the same
- *   primitive as the receiving/testing recent rail.
- */
+/** Visual treatment when `isSelected` is true on desktop. */
 type CardShellVariant = 'stripe' | 'framed' | 'linear' | 'rail';
 
 interface CardShellProps {
@@ -47,14 +35,7 @@ interface CardShellProps {
   isStock?: boolean;
   /** Desktop selected-state treatment. Defaults to `stripe`. */
   variant?: CardShellVariant;
-  /**
-   * Mount entrance.
-   * - `self` (default): the card runs its own fade/slide on mount.
-   * - `stagger`: the card inherits a parent stagger-reveal container's timeline
-   *   (see {@link staggerRevealRiseItem}) instead, so a list of cards cascades
-   *   upward together. Standalone (no orchestrating parent) it simply renders
-   *   in place.
-   */
+  /** Mount entrance. */
   entrance?: 'self' | 'stagger';
   onClick?: () => void;
   /** Hover passthrough — wired by callers that anchor a hover preview to the card. */
@@ -103,11 +84,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   // states stack: a selected card that's also expanded still reads as "open".
   const showActiveBorder = isExpanded || isSelected;
 
-  // Desktop: flat row separator. Mobile: rounded card.
-  // `stripe`: left 3px accent strip on selected, in-stack row.
-  // `framed`: full perimeter ring + rounded corners on selected, lifted out
-  //   of the row stack. Idle rows still get the bottom-border separator so
-  //   the unselected list reads as a continuous stack.
+  // Desktop: flat row separator.
   const desktopStripeClasses = `border-b-2 px-0 py-3 transition-colors relative cursor-pointer ${
     isSelected
       ? `${selected.bg} ${selected.accent} before:absolute before:inset-y-0 before:left-0 before:w-[3px]`
@@ -121,18 +98,12 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
     // Idle: continues to act as a row in the stack — bottom separator + hover.
     : `relative cursor-pointer px-0 py-3 transition-colors bg-surface-card border-b-2 ${border.idle} hover:${border.active}`;
 
-  // `linear`: row stays in the stack at all times. Selected = left 3px accent
-  // bar + tinted bg, no ring, no lift, no rounding. Hover = subtle bg only,
-  // no border change so neighbours never shift. The trailing-action slot in
-  // children should reserve its own width so opacity reveals don't jump.
+  // `linear`: row stays in the stack at all times.
   const desktopLinearClasses = isSelected
     ? `relative cursor-pointer px-3 py-2.5 transition-colors ${selected.bg} ${selected.accent} before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-r-full`
     : `relative cursor-pointer px-3 py-2.5 transition-colors bg-surface-card hover:bg-surface-hover`;
 
-  // `rail`: flat recent-activity rail row. Always-blue house selection
-  // (`bg-blue-50 ring-1 ring-inset ring-blue-400`), tone is ignored. Tighter
-  // padding than `linear` to match `RailRow`; hover is bg-only so neighbours
-  // never shift.
+  // `rail`: flat recent-activity rail row.
   const desktopRailClasses = `relative cursor-pointer rounded-none px-2 py-1.5 transition-colors ${
     isSelected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'bg-surface-card hover:bg-surface-hover'
   }`;
@@ -165,10 +136,7 @@ export const CardShell = forwardRef<HTMLDivElement, CardShellProps>(function Car
   const hoverGesture =
     shouldReduce || (!isMobile && flatRow) ? undefined : framerGesture.cardHover;
 
-  // `stagger`: omit own initial/animate/transition so the card inherits the
-  // parent stagger-reveal container's hidden→show timeline (vertical rise —
-  // desk tables / full-bleed queues must not wipe left→right). `self`: the
-  // card's original standalone entrance.
+  // `stagger`: omit own initial/animate/transition so the card inherits the parent stagger-reveal container's hidden→show timeline (vertical…
   const entranceProps =
     entrance === 'stagger'
       ? { variants: staggerRevealRiseItem, exit: 'exit' as const }

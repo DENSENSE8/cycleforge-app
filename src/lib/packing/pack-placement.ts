@@ -1,10 +1,4 @@
-/**
- * Pack placement SoT — labeled outbound orders at packing DESK / STAGING
- * locations on the warehouse `locations` map.
- *
- * Phase 1: orders only. Units/prepack share the same DESK/STAGING rows later.
- * Does not overload staff_stations, localStorage workstation, or PACKED_STAGED.
- */
+/** Pack placement SoT — labeled outbound orders at packing DESK / STAGING locations on the warehouse `locations` map. */
 
 import type { PoolClient } from 'pg';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
@@ -68,15 +62,7 @@ export class PackPlacementError extends Error {
   }
 }
 
-/**
- * Open unshipped / pre-pack membership — mirrors queue-counts scope.
- *
- * Requires `$1` = organization_id and a `LEFT JOIN shipping_tracking_numbers stn
- * ON stn.id = <alias>.shipment_id` in the surrounding query. Exported so
- * view-monitor value resolution reuses this exact predicate rather than adding a
- * 5th hand-inlined copy of it (the fragment is already inlined in the
- * queue-counts route, /api/orders?fulfillmentScope, and feed-membership-projection).
- */
+/** Open unshipped / pre-pack membership — mirrors queue-counts scope. */
 export function prepackMembershipSql(orderAlias = 'o'): string {
   return `
     ${orderAlias}.organization_id = $1
@@ -393,19 +379,7 @@ export interface RecentPackPlacement {
   placedAt: string | null;
 }
 
-/**
- * The desk this operator last put an order on — the Ready-to-Pack twin of
- * Unbox's Last entry.
- *
- * Read from `order_pack_placement_events` rather than the live placements
- * table, because the answer must survive the order being packed and cleared:
- * the operator's last bench is a fact about the OPERATOR, and a placements-only
- * read would forget it the moment the board drained.
- *
- * The open order is excluded — "put this where I put the last one" is
- * meaningless if the last one IS this one. Prefers this operator's own history
- * and falls back to the floor's, so a fresh badge still gets a sane default.
- */
+/** The desk this operator last put an order on — the Ready-to-Pack twin of Unbox's Last entry. */
 export async function fetchRecentPackPlacement(
   orgId: OrgId,
   args: { excludeOrderId?: number | null; staffId?: number | null } = {},

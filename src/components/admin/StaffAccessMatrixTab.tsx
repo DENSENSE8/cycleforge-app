@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Settings → Access — thin shell.
- *
- * The picker now lives in the sidebar (AccessSidebarPanel). This component
- * just reads `?staffId=` from the URL and renders the StaffAccessDetail for
- * that staff, or an empty state if nothing is selected.
- */
+/** Settings → Access — thin shell. */
 
 import { useSearchParams } from 'next/navigation';
 import { StaffAccessDetail } from './access/StaffAccessDetail';

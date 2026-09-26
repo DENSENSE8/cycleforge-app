@@ -1,11 +1,4 @@
-/**
- * Receiving scan — the effectful APPLY layer.
- *
- * Once a rung resolves (see the pure pipeline in `src/lib/receiving/scan`), these
- * two functions perform every side-effect needed to OPEN the carton: PO context,
- * row hydration, optimistic select, rail upsert (replacing the pending `scan:`
- * stub), and phone-camera nudge. Live Zoho promote is operator/cron only.
- */
+/** Receiving scan — the effectful APPLY layer. */
 
 import {
   deferInvalidateTriageAndUnboxQueueFeeds,
@@ -41,20 +34,8 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { photoStageForScanIntakeSurface } from '@/lib/receiving/photo-intent';
 
-/**
- * Announce that this scan was an INSPECTION of finished work, not work.
- * The right pane listens and shows a read-only receipt instead of the editor —
- * the "already done" state, per the Station rule that an outcome is a big card
- * state, never a corner toast. Routed through the TYPED bus (`emitReceiving`),
- * not a raw CustomEvent — see `receiving-events.ts`.
- */
-/**
- * Read the lookup verdict off a lookup-po response.
- *
- * Returns `{}` on a work scan so a spread adds nothing — `applyUnboxCartonOpened`
- * announces on a truthy `unboxedAt`, which is exactly the condition the server
- * uses to call it a lookup, so the two can't disagree.
- */
+/** Announce that this scan was an INSPECTION of finished work, not work. */
+/** Read the lookup verdict off a lookup-po response. */
 function lookupScanFieldsFrom(d: LookupPoData): {
   unboxedAt?: string | null;
   unboxedByName?: string | null;
@@ -85,19 +66,7 @@ export function refocusScanInput(
   setTimeout(() => window.dispatchEvent(new CustomEvent('receiving-focus-scan')), 60);
 }
 
-/**
- * The single client chokepoint for "a scan OPENED this carton on the Unbox
- * surface". Every Unbox open path — the internal-code / Phase-0 cache /
- * local-tracking short-circuits and both lookup-po applies — funnels here so
- * the open side-effects can never drift apart per rung:
- *   1. drop the pre-resolve `scan:{tracking}` pending stub (no-op if none),
- *   2. upsert the carton onto the Unboxed rail under its durable carton key
- *      (`railRow` omitted when the row is already cached — Phase-0),
- *   3. purge the triage rails so Arrival never keeps phantom dock inventory,
- *   4. optionally fire the lightweight touch-scan stamp (`touchScan`) — the
- *      client short-circuit rungs only; lookup-po paths already stamped
- *      server-side and must not double-post.
- */
+/** The single client chokepoint for "a scan OPENED this carton on the Unbox surface". */
 export function applyUnboxCartonOpened(
   queryClient: QueryClient,
   args: {
@@ -107,13 +76,7 @@ export function applyUnboxCartonOpened(
     railRow?: ReceivingLineRow | null;
     /** Fire touch-scan; `tracking` overrides the scanned value (Phase-0 uses the carton's own). */
     touchScan?: { tracking?: string };
-    /**
-     * The resolved carton's `unboxed_at`, when the rung already knows it (the
-     * cache / local-tracking / internal-code rungs all resolve a real row).
-     * Non-null means the work is already done, so this scan is an INSPECTION —
-     * announce it optimistically so the pane shows a receipt instead of the
-     * work editor. The server is authoritative and confirms below.
-     */
+    /** The resolved carton's `unboxed_at`, when the rung already knows it (the cache / local-tracking / internal-code rungs all resolve a real… */
     unboxedAt?: string | null;
     /** Receipt facts, when the rung's payload already carries them. */
     unboxedByName?: string | null;
@@ -130,17 +93,7 @@ export function applyUnboxCartonOpened(
     }),
   );
 
-  // Sweep the pre-resolve stub — OUR optimistic artifact, so clearing it is
-  // cleanup, not a mutation of the operator's rail. Both candidate keys go
-  // (legacy `scan:` and the shipment key).
-  //
-  // ONE key is spared, and only when a row is about to take its place: the work
-  // path's own `cartonKey`. On the common tracking scan that IS the stub's key,
-  // so sparing it is what lets the upsert below UPDATE the row instead of
-  // removing and re-adding it — the flicker this whole ladder exists to remove.
-  // Nothing is spared on a LOOKUP (read-only against the rail, so no upsert
-  // follows) or when there is no `railRow`; sparing there would strand the stub
-  // on the rail forever.
+  // Sweep the pre-resolve stub — OUR optimistic artifact, so clearing it is cleanup, not a mutation of the operator's rail.
   const sparedKey = !args.unboxedAt && args.railRow ? cartonKey : null;
   for (const stale of [
     pendingScanReconcileKey(args.trackingNumber),
@@ -150,12 +103,7 @@ export function applyUnboxCartonOpened(
   }
 
   if (args.unboxedAt) {
-    // READ-ONLY against the rail. A lookup claimed nothing server-side, so it
-    // must not reshape the operator's rail either: upserting the carton bumps a
-    // weeks-old box to the top of Unboxed as if it had just been opened, and
-    // the synthetic rail row paints it with the freshly-arrived `0/?` face.
-    // Purging the triage rails is worse — it evicts a carton from Arrival on
-    // the strength of someone merely *looking* at it.
+    // READ-ONLY against the rail.
     announceUnboxLookupScan({
       receivingId: args.receivingId,
       trackingNumber: args.trackingNumber,
@@ -250,12 +198,7 @@ function buildUnboxRailMatchedRow(
   };
 }
 
-/**
- * Open a MATCHED carton from a lookup-po response: set PO context, hydrate full
- * rows, open the line. Shared by the instant local-match path and the background
- * Zoho follow-up that upgrades an unfound carton to found in place (so a late
- * Zoho match needs no re-scan).
- */
+/** Open a MATCHED carton from a lookup-po response: */
 export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   const recvId = Number(d.receiving_id);
   const poIds = Array.isArray(d.po_ids) ? (d.po_ids as string[]) : [];
@@ -298,10 +241,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     );
     ctx.setArmedLineId(openLines.length === 1 ? openLines[0].id : null);
 
-    // Optimistic OPEN: drop into a matched stub immediately so the Unbox
-    // empty-pane-first unmatched flash upgrades to PO chrome (header / lines /
-    // label) without waiting on include=serials hydration. Multi-line cartons
-    // still refine selection after hydration via the scan-line picker rows.
+    // Optimistic OPEN:
     const pickForOpen = openLines[0] ?? poCtx.lines[0];
     if (pickForOpen) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
@@ -337,11 +277,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
 
   const unboxRailLine = pickPoLineSummary(poCtx.lines);
   if (ctx.intakeSurface === 'unbox') {
-    // Server already stamped unbox_opened (lookup-po intakeSurface): run the
-    // open chokepoint — pending-stub drop, Unboxed upsert, Arrival purge.
-    // `lookupScanFieldsFrom` is why a lookup that resolves through lookup-po
-    // (rather than the touch-scan short-circuits) shows the receipt at all —
-    // this path posts no touch-scan, so the response IS the only signal.
+    // Server already stamped unbox_opened (lookup-po intakeSurface):
     applyUnboxCartonOpened(ctx.queryClient, {
       receivingId: poCtx.receiving_id,
       trackingNumber: ctx.trackingNumber,
@@ -380,17 +316,9 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
 
   // Fetch full ReceivingLineRow[] so the unified LineEditPanel can open directly.
-  // Single open line → auto-select; multiple → the scan-line picker renders above
-  // LineEditPanel. Surface every matched line at the top of the History table and
-  // refresh every receiving feed atomically.
   void (async () => {
     try {
-      // include=serials matches PoLinesAccordion's own query exactly, so the cache
-      // this seeds is a drop-in — the accordion mounts with full data (serials
-      // included) and never does a cold fetch. Routed through queryClient.fetchQuery
-      // on the SAME ['receiving-siblings', receivingId] key PoLinesAccordion uses,
-      // so concurrent identical requests dedupe into one round-trip. retry:false
-      // keeps the one-shot behavior.
+      // include=serials matches PoLinesAccordion's own query exactly, so the cache this seeds is a drop-in — the accordion mounts with full data…
       const linesData = await ctx.queryClient.fetchQuery({
         queryKey: receivingSiblingsQueryKey(poCtx.receiving_id),
         queryFn: async () => {
@@ -485,12 +413,7 @@ export function applyMatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   })();
 }
 
-/**
- * Open an UNMATCHED (unfound) carton from a lookup-po response: echo the result,
- * announce the new entry, optimistically open the workspace from a synthetic
- * stub, reconcile to the real row in the background (triage only). Live Zoho /
- * Amazon lookups are operator-initiated via {@link UnfoundMatchStrip}.
- */
+/** Open an UNMATCHED (unfound) carton from a lookup-po response: */
 export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
   const exceptionId = typeof d.exception_id === 'number' ? d.exception_id : null;
   const exceptionReason = typeof d.exception_reason === 'string' ? d.exception_reason : null;
@@ -548,10 +471,7 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
         photoStageForScanIntakeSurface(ctx.intakeSurface),
       );
     }
-    // Optimistic open: drop the operator into the unfound carton's workspace
-    // INSTANTLY from a synthetic stub — no round-trip wait before they can start
-    // adding items. receiving-scan-resolved fires now so the scan loader clears
-    // immediately. The carton is already in the feed (receiving-entry-added).
+    // Optimistic open:
     if (ctx.isCurrent()) {
       ctx.setLineAccordionBootstrap(ctx.accordionBootstrapRef.current);
       ctx.setSelectedLine(
@@ -565,9 +485,6 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
     window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
 
     // Triage only: background reconcile when the carton already has lines.
-    // Same siblings key + include=serials as applyMatchedCarton so Arrival
-    // PoLinesAccordion / UnmatchedAccordionSurface paint warm chips (never a
-    // cold metadata-only fetch that blanks serial projection).
     if (!isUnbox) {
       void (async () => {
         try {
@@ -602,14 +519,7 @@ export function applyUnmatchedCarton(ctx: ScanApplyCtx, d: LookupPoData): void {
       })();
     }
 
-    // SPEED-FIRST: no mid-scan integration ping. The first lookup-po was
-    // localOnly (no Zoho), so this carton is unfound only against LOCAL data —
-    // but we deliberately do NOT run a synchronous/background Zoho search on the
-    // scan path. Live integration lookups are operator-initiated only (the
-    // UnfoundMatchStrip "Zoho" button promotes this carton in place via
-    // applyMatchedCarton), with the reconcile/incoming-PO-sync crons as the
-    // crons as the passive backstop. `d.zoho_pending` is intentionally ignored
-    // here on the tracking path.
+    // SPEED-FIRST: no mid-scan integration ping.
   } else {
     window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
   }

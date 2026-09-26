@@ -1,11 +1,4 @@
-/**
- * The number every repair paperwork mount states (Review & sign sheets and the
- * Paperwork panel). A LINKED ticket is a fact — `ATTACH_TICKET` stamps it onto
- * `repair_service.ticket_number` — so it must outrank the projection, or the
- * sheet the customer signs disagrees with the paper that prints.
- *
- *   npx tsx --test src/lib/kiosk/use-next-ticket-preview.test.ts
- */
+/** The number every repair paperwork mount states (Review & sign sheets and the Paperwork panel). */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { paperworkTicketNumber } from './use-next-ticket-preview';

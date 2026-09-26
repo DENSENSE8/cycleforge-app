@@ -29,12 +29,7 @@ export interface PackActiveOrderPane {
   isUnknownOrder?: boolean;
 }
 
-/**
- * An FBA scan is the OTHER active entity this bench resolves — a shipment /
- * FNSKU, not an order — so it gets its own pane rather than being flattened
- * into `PackActiveOrderPane`. Shape mirrors what `/api/fba/items/scan` and the
- * ship-on-scan path already return.
- */
+/** An FBA scan is the OTHER active entity this bench resolves — a shipment / FNSKU, not an order — so it gets its own pane rather than… */
 export interface PackActiveFbaPane {
   fnsku: string;
   productTitle: string;
@@ -54,9 +49,6 @@ export function usePackerOrderPane() {
       const detail = (e as CustomEvent<PackActiveOrderPane | null>).detail;
       setActiveOrderPane(detail || null);
       // One entity in the operator's hands at a time (`display/station.md` §5).
-      // An order scan retires a standing FBA card and vice versa — otherwise the
-      // bench holds two active entities and the pane has to pick a winner every
-      // render, which is the "two things that can disagree" shape.
       if (detail) setActiveFbaPane(null);
     };
     window.addEventListener('pack-active-order-changed', handler);

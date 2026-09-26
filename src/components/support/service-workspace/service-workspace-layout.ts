@@ -1,10 +1,4 @@
-/**
- * Layout tokens for the Workbench branch `service-workspace`.
- *
- * Law:. Geometry lives here so the
- * shell and its panes cannot drift apart, and so a second Support surface
- * composes the numbers instead of re-typing them.
- */
+/** Layout tokens for the Workbench branch `service-workspace`. */
 
 /** Root row — the three panes are flex siblings on the work canvas. */
 export const SERVICE_WORKSPACE_ROOT_CLASS =
@@ -21,13 +15,4 @@ export const SERVICE_WORKSPACE_LIST_CLASS =
 export const SERVICE_WORKSPACE_THREAD_CLASS =
   'relative flex min-h-0 min-w-0 flex-1 flex-col';
 
-/**
- * There is deliberately NO context-column token here.
- *
- * One existed (`SERVICE_WORKSPACE_CONTEXT_CLASS`, a hand-rolled
- * `w-[20rem] shrink-0 … border-l`) until 2026-08-01. Ticket context is a
- * `RightRailHost` occupant — `SupportContextDetailPanel` — and that host owns
- * the width, the resize grip, the collapse strip and the push tween. A geometry
- * token for a second right column is how a surface grows a competing right edge,
- * so its absence is the point rather than an omission.
- */
+/** There is deliberately NO context-column token here. */

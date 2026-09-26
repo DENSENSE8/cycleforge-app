@@ -1,21 +1,4 @@
-/**
- * Operator-driven carton UNPAIR — the explicit revert of a Package-Pairing link.
- *
- * "I linked the wrong order/PO to this box by accident" → this fully reverts the
- * carton to its unmatched/Unfound state: it strips the per-line source-order
- * linkage (`source_order_id` / `is_repair_service` / `source_system`) AND the
- * carton's PO representative, dropping `source` back to `'unmatched'` and clearing
- * `source_platform`, so the box re-surfaces on the Unfound queue.
- *
- * Like {@link relinkReceivingPo}, this is a sanctioned, audited operator override
- * of the upgrade-only guard the general `PATCH /api/receiving/[id]` enforces — but
- * in the DOWNGRADE direction. It is deliberately deterministic (it does not lean on
- * `recomputeCartonSourceLink`'s ecwid-only revert guard) so it works for BOTH an
- * Ecwid-derived pairing and a real Zoho-PO link. Confirm-then-commit on the client;
- * the audit `before` snapshot makes it re-linkable.
- *
- * Inject `Deps` so unit tests run DB-free.
- */
+/** Operator-driven carton UNPAIR — the explicit revert of a Package-Pairing link. */
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { TxClient } from './relink-po';
 
@@ -88,10 +71,7 @@ export async function unpairReceivingCarton(
       [receivingId, orgId],
     );
 
-    // Line zoho identity lives on receiving_line_zoho (W3 writer inversion — the
-    // spine zoho columns are dead): clear it there. Targeted UPDATE, not an
-    // upsert — a line with no rz row has nothing to clear. Norm follows the
-    // number (it was GENERATED on the old spine column).
+    // Line zoho identity lives on receiving_line_zoho (W3 writer inversion — the spine zoho columns are dead):
     await client.query(
       `UPDATE receiving_line_zoho rz
           SET zoho_purchaseorder_id = NULL,
@@ -117,11 +97,7 @@ export async function unpairReceivingCarton(
       [receivingId, orgId],
     );
 
-    // ── Revert the carton header to Unfound (explicit sanctioned downgrade) ──
-    // Also clears listing_url: the listing was the pairing's (the Ecwid product),
-    // so a full revert resets it — the chip falls back to empty for an unfound box.
-    // Return-specific columns are cleared so a serial-unlinked box cannot stay
-    // classified as RETURN while `source` reads unmatched.
+    // ── Revert the carton header to Unfound (explicit sanctioned downgrade) ── Also clears listing_url:
     await client.query(
       `UPDATE receiving_carton
           SET zoho_purchaseorder_id = NULL,

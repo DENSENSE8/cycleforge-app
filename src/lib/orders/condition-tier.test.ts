@@ -1,16 +1,4 @@
-/**
- * Sold-tier gate tests.
- *
- * These pin the two decisions that cost real money if they flip:
- *   1. bare "USED" (2869 of 4581 live orders) promises NO tier, so it must not
- *      block allocation — mapping it to a concrete grade would strand the
- *      majority of the book;
- *   2. a PARTS unit may never satisfy a non-parts sale, which is the INAD /
- *      order-defect case that can end an eBay Refurbished or Amazon Renewed
- *      account.
- *
- * Run: npx tsx --test src/lib/orders/condition-tier.test.ts
- */
+/** Sold-tier gate tests. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

@@ -1,11 +1,4 @@
-/**
- * GET /api/cron/zoho/orders-ingest-drain  (Vercel cron, every minute)
- *
- * Drains order_ingest_queue — the DB outbox that replaced the QStash event
- * queue for external order ingest. Claims a batch of pending rows
- * (FOR UPDATE SKIP LOCKED via an atomic UPDATE…RETURNING), ingests each via
- * orderSyncService, and marks it done/failed.
- */
+/** GET /api/cron/zoho/orders-ingest-drain (Vercel cron, every minute) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

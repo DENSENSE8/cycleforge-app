@@ -15,13 +15,7 @@ function flagOff() {
   );
 }
 
-/**
- * GET /api/warranty/claims
- *
- * Lists warranty claims, newest first. Filter via ?status, ?search,
- * ?expiringWithinDays, ?provisionalOnly, ?limit, ?offset.
- * Gated by WARRANTY_LOGGER.
- */
+/** GET /api/warranty/claims */
 export const GET = withAuth(async (request, ctx) => {
   if (!isWarrantyLogger()) return flagOff();
 
@@ -52,14 +46,7 @@ export const GET = withAuth(async (request, ctx) => {
   }
 }, { permission: 'warranty.view', feature: 'repair' });
 
-/**
- * POST /api/warranty/claims
- *
- * Logs a new warranty claim. Resolves the order's customer / SKU / carrier
- * delivered date / packed date to stamp the warranty clock, generates a
- * WC-YYYY-NNNNN number, and snapshots the per-org term. Gated by WARRANTY_LOGGER.
- * Idempotent via `Idempotency-Key` header or `idempotencyKey` body field.
- */
+/** POST /api/warranty/claims */
 export const POST = withAuth(async (request, ctx) => {
   if (!isWarrantyLogger()) return flagOff();
   if (typeof ctx.staffId !== 'number' || ctx.staffId <= 0) {

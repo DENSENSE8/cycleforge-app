@@ -1,24 +1,8 @@
 'use client';
 
 /**
- * Device-authed PIN step-up on the counter tablet — Pay-at-register, and the
- * History face's door.
- *
- * ## One picker, every surface
- *
- * The roster is `StaffPickerList`, the SAME component `/signin` and the
+ * Device-authed PIN step-up on the counter tablet — Pay-at-register, and the History face's door.
  * desktop `SwitchStaffSheet` mount (operator 2026-09-22: *"for the staff id for
- * history reuse the same component for the switching staff on desktop"*). Only
- * its inputs differ: the endpoint is the device-authed
- * `/api/kiosk/staff-for-stepup` (org from the device row, PIN-holders only) and
- * the transport is `kioskFetchHealed`, so a tablet that lost its `cf_kiosk`
- * cookie re-binds instead of showing an empty roster. The bespoke row list that
- * used to live here — its own fetch, its own avatar row, its own error copy —
- * is deleted: it was a second staff picker that could drift from the one every
- * other surface shows.
- *
- * Card data never enters this sheet — a PIN authorizes an ACT, and the act is
- * named by {@link KioskPaymentStepUpSheetProps.blurb}.
  */
 
 import { useCallback, useState } from 'react';
@@ -48,20 +32,9 @@ interface KioskPaymentStepUpSheetProps {
     creds: KioskPaymentStepUpResult,
   ) => Promise<{ ok: true } | { ok: false; error?: string }>;
   title?: string;
-  /**
-   * The sentence under the roster. It defaults to the payment wording this
-   * sheet was born with, and every other caller MUST pass its own: the sheet
-   * now gates History as well, and telling a staffer their PIN "authorizes
-   * payment at the register" when it is about to open the customer book is a
-   * consent prompt that names the wrong act.
-   */
+  /** The sentence under the roster. */
   blurb?: string;
-  /**
-   * Which roster the pad offers: payment holders (default) or holders of
-   * `walk_in.adjust_price` for a line's price verbs. The server re-checks the
-   * permission on the PIN either way; this only keeps a pad from offering a
-   * staffer whose PIN would be refused.
-   */
+  /** Which roster the pad offers: */
   scope?: 'payment' | 'adjust_price';
 }
 

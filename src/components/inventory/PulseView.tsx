@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Inventory › Ledger activity — the last 50 inventory events, on the ONE table.
- *
- * This was a hand-rolled `<ul>` of `EventRow` cards: fixed spans, no header, no
- * sort, no Fields picker, no org binding — a second table display. Every fact
- * the card painted is a bound field in `INVENTORY_EVENTS_FIELD_CATALOG`. This
- * file is the FEED; the display is {@link useInventoryEventsSpreadsheet} →
- * DataTable. `PulseWorkspace` points the same family at a different feed.
- *
- * Refresh is the desk header CTA (`DeskHeaderAction`), same altitude as every
- * other page verb — not a second title row under Inventory.
- *
- * ## The find text is part of the FETCH, not a pass over what arrived
- *
- * 50 rows is a window onto a ledger with hundreds of thousands of events, so a
- * browser-side filter answered "no match" for anything older than about an
- * hour, and it narrowed even the rows it had to the facts the mounted tracks
- * paint. `?q=` is answered in SQL across the joined catalog title, serial, bin
- * names and actor; a searching read also drops the 50-row page bound, because
- * a bounded search is the same lie one layer down.
- */
+/** Inventory › Ledger activity — the last 50 inventory events, on the ONE table. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from '@/components/Icons';

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The tracking-exceptions slot-layout hook — the CONFIG on the shared
- * {@link useSlotTableLayout} engine. The nineteenth family on the engine.
- *
- * Sheet morph only — `paintMorph` coerces a stored `compound` document, and the
- * org write gate (`slotMorphsFor('tracking-exceptions')`) refuses one.
- */
+/** The tracking-exceptions slot-layout hook — the CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   TRACKING_EXCEPTIONS_FIELD_CATALOG,

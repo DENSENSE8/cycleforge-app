@@ -6,13 +6,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * One-row corner control for a label editor: a value input on the left and the
- * mode pills on the right (Order # / Ticket # / Tracking # for receiving; reused
- * for the testing label's color/other corner). Replaces the old two-row layout
- * (pills above, input below). Presentational — the parent owns which field the
- * value maps to and any per-mode sanitizing.
- */
+/** One-row corner control for a label editor: */
 export function CornerField({
   items,
   mode,

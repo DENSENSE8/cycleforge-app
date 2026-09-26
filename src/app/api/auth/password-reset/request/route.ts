@@ -1,11 +1,4 @@
-/**
- * POST /api/auth/password-reset/request  (PUBLIC)
- *
- * Body: { email }. Looks up the GLOBAL account by verified email; if found, mints
- * a one-time reset token (30-min, hashed) and emails the reset link. ALWAYS
- * returns { ok: true } — it MUST NOT enumerate which emails are registered.
- * Per-IP + per-email rate limited.
- */
+/** POST /api/auth/password-reset/request (PUBLIC) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

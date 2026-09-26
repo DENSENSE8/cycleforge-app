@@ -1,11 +1,6 @@
 import type { Bundle, ManualRow, UnitResult } from './sku-testing-types';
 
-/**
- * Pure network layer for the SKU testing panel. Plain fetch (no React Query) so
- * it never refetches on window focus and clobbers an in-progress edit. Mutations
- * throw with the server's error message (or a status fallback); reads return
- * normalized data.
- */
+/** Pure network layer for the SKU testing panel. */
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 

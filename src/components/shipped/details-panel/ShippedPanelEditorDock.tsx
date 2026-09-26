@@ -31,19 +31,7 @@ export interface ShippedPanelEditorDockProps {
   embedded?: boolean;
 }
 
-/**
- * Fixed footer region for header-action editors (mark shipped, out-of-stock
- * flag toggle, notes). Queue rows show icons for the same flags.
- *
- * The Notes region used to be a `ShippedNotesComposer` bound to the legacy
- * scalar `orders.notes`. It now mounts {@link OrderNotesTrail}, the single
- * writable home for an order annotation — see that file's header for why the
- * scalar became read-only.
- *
- * `showNotes={false}` means this dock carries no composer at all — use it when
- * a surface already mounts {@link OrderNotesTrail} at the record plane so the
- * same store does not get two composers.
- */
+/** Fixed footer region for header-action editors (mark shipped, out-of-stock flag toggle, notes). */
 export function ShippedPanelEditorDock({
   shipped,
   activeInput,
@@ -61,10 +49,7 @@ export function ShippedPanelEditorDock({
   const [packerOptions, setPackerOptions] = useState<StaffRecipient[]>([]);
 
   const orderId = Number(shipped.id);
-  // "Already carries annotations" now spans BOTH stores — the append-only trail
-  // (`note_count`) and whatever legacy scalar the row still holds. Reading only
-  // the scalar would have hidden the region on every order whose notes live in
-  // `order_notes`, which is every note written since 2026-07-31.
+  // "Already carries annotations" now spans BOTH stores — the append-only trail (`note_count`) and whatever legacy scalar the row still holds.
   const legacyNote = String(shipped.notes || '').trim();
   const hasSavedNotes = legacyNote.length > 0 || Number(shipped.note_count ?? 0) > 0;
   const showOutOfStockRegion =

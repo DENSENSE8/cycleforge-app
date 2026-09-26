@@ -1,22 +1,6 @@
 import type { OperationalStateSpec } from './state';
 
-/**
- * Lifecycle states — the one meaning, code, word and colour of each outbound
- * lifecycle state, on every platform. A surface that colours a lifecycle
- * state reads its `tone` here and resolves the colour through STATE_TONES
- * (web: the tone's theme-registry classes; iOS: `DesignTokens.State`); it
- * never picks a colour for the state itself.
- *
- *   code   3-letter mono code on industrial rows (read aloud as `label`)
- *   label  the full word
- *   tone   the functional state colour (`STATE_TONES` key)
- *   icon   the shape drawn before the code (Lucide name; iOS maps it to an
- *          SF Symbol) — the second carrier after colour, so a state reads by
- *          shape for colour-blind staff and at a glance down a long list
- *
- * Packed is `fulfillment` (purple) and shipped is `success` (green) —
- * everywhere, with no per-surface exceptions.
- */
+/** Lifecycle states — the one meaning, code, word and colour of each outbound lifecycle state, on every platform. */
 export type LifecycleIcon = 'circle-dot' | 'alarm-clock' | 'package' | 'package-x' | 'truck' | 'circle-pause';
 
 export interface LifecycleSpec extends OperationalStateSpec {

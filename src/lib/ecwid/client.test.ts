@@ -1,9 +1,4 @@
-/**
- * DB-free unit tests for Ecwid REST helpers (invoice-pdf).
- * Run (with server-only shim):
- *   node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     src/lib/ecwid/client.test.ts
- */
+/** DB-free unit tests for Ecwid REST helpers (invoice-pdf). */
 import { afterEach, mock, test } from 'node:test';
 import assert from 'node:assert/strict';
 

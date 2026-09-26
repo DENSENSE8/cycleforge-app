@@ -19,15 +19,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * The Operations → History BROWSE filter panel (plan Phase 3). Renders the
- * saved-view presets + station / type / source / date / staff refinements as
- * house-style chips, each driving a setter on the URL-state hook (Monitor: all
- * filter state lives in the URL). Shown only when the browse feed is active.
- *
- * The `audit` source spine is admin-only (`admin.view_logs`, plan §3.2 Option
- * B), so its chip is hidden for non-admins — the server also enforces this.
- */
+/** The Operations → History BROWSE filter panel (plan Phase 3). */
 
 const SOURCE_LABELS: Record<JourneySource, string> = {
   sal: 'Scans',
@@ -110,10 +102,7 @@ export function HistoryBrowseFilters({ url }: { url: OperationsTimelineUrlState 
   const { views: userViews, create, creating } = useOperationsSavedViews();
 
   const datePreset = activeDatePreset(url.from);
-  // 'thread' is entity/Trace-mode only (buildBrowseQuery has no thread arm),
-  // so its chip is hidden here — a browse filter that can never match would
-  // read as broken.
-  // thread + ticket are entity/Trace-only (no browse UNION arm).
+  // 'thread' is entity/Trace-mode only (buildBrowseQuery has no thread arm), so its chip is hidden here — a browse filter that can never…
   const sourceItems = JOURNEY_SOURCES.filter(
     (s) => s !== 'thread' && s !== 'ticket' && (s !== 'audit' || canViewAudit),
   );

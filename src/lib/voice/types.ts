@@ -1,9 +1,4 @@
-/**
- * Voice (Nextiva) domain types — the lib-side DTOs returned by the query/ingest
- * helpers and serialized verbatim by the API routes. The frontend
- * `voice-presentation.ts` declares structurally-identical view types; keeping
- * the DTOs here (lib) avoids a components→lib import inversion.
- */
+/** Voice (Nextiva) domain types — the lib-side DTOs returned by the query/ingest helpers and serialized verbatim by the API routes. */
 
 export type CallDirection = 'inbound' | 'outbound' | 'missed';
 export type VoicemailStatus = 'open' | 'snoozed' | 'done' | 'no_action';

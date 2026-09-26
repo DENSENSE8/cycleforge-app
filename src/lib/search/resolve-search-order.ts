@@ -1,10 +1,4 @@
-/**
- * Resolve a Search identifier (human order # or carrier tracking) to a
- * ShippedOrder. Typed digits are marketplace order numbers, never `orders.id`.
- * tracking token) to a ShippedOrder. Lookup success must not collapse to
- * "not found" when the dashboard queue row is missing — Search detail is an
- * overall order display, not a queue-scoped view.
- */
+/** Resolve a Search identifier (human order # or carrier tracking) to a ShippedOrder. */
 
 import type { ShippedOrder } from '@/types/orders';
 import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';

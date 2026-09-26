@@ -1,28 +1,4 @@
-/**
- * execute_build_sandbox — syntax/type validation of generated tool code, in a
- * throwaway VM.
- *
- * ─── THE COMMANDS ARE DATA, AND THEY DO NOT COME FROM THE MODEL ────────────
- * VALIDATION_STEPS below is frozen and exhaustive. The generated payload
- * supplies FILES ONLY; it never supplies, extends, or influences a command
- * line. This is not caution for its own sake — this repo has already shipped
- * the other design. .cycle_forge_ops/scripts/forge.sh awk-extracts a
- * `### VERIFY` line out of model output and evals it, after sourcing every
- * managed secret into the environment, with an unanchored pattern — so a
- * manifest line that merely MENTIONS a command runs it. Anything that reads a
- * command out of the payload here recreates that defect inside the app.
- *
- * ─── THE FILES ARE JAILED ──────────────────────────────────────────────────
- * Every path is normalized and must stay under WORKDIR: no absolute paths, no
- * `..`, no symlink-ish games, and a cap on both file count and total bytes. A
- * payload that writes /etc or node_modules is rejected before the VM starts,
- * because a rejected payload costs nothing and a booted VM costs a minute.
- *
- * ─── NO SECRETS TRAVEL WITH IT ─────────────────────────────────────────────
- * The sandbox gets no environment from this process. Type-checking a candidate
- * file needs no database URL, no API key, and no Vercel token, so it is handed
- * none — the blast radius of a malicious payload is a VM that can compile.
- */
+/** execute_build_sandbox — syntax/type validation of generated tool code, in a throwaway VM. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 

@@ -1,17 +1,4 @@
-/**
- *   npx tsx --test src/lib/orders-sync/run-stream.test.ts
- *
- * The claim this file defends: the "Demo sync" button and the real
- * `Accept: application/x-ndjson` sync produce the SAME ledger (operator
- * 2026-09-15 — "when I press the input button that's real it would display
- * exactly the same").
- *
- * It proves it the only way that cannot rot: replay the demo script as actual
- * NDJSON through the shipped `streamNdjson` client, fold it with the shipped
- * `applySyncRunEvent`, and compare against the demo driver's own fold. If the
- * two paths ever diverge — a client that drops `detail` lines, a lane that is
- * folded differently — this fails.
- */
+/** npx tsx --test src/lib/orders-sync/run-stream.test.ts */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

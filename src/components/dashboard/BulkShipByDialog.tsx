@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Bulk ship-by picker for the table-foot selection strip — one date onto N orders.
- *
- * Compact DateRangePickerField: month grid, click commits, no X, no year.
- * The dialog only names the batch ("applies to N"); the field owns the day.
- *
- * Writes through `useOrderAssignment`, which already accepts `orderIds[]`.
- */
+/** Bulk ship-by picker for the table-foot selection strip — one date onto N orders. */
 
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {

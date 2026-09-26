@@ -1,10 +1,4 @@
-/**
- * Kiosk-devices field catalog — the bindable facts of one enrolled tablet.
- *
- * Off `AdminTable` 2026-09-05. Pairing verbs moved from a trailing ACTIONS cell
- * to row verbs (`face: 'trailing'` Revoke in `_fill`). Fleet ROIs: enrolled_by,
- * dwell, hardware.
- */
+/** Kiosk-devices field catalog — the bindable facts of one enrolled tablet. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';

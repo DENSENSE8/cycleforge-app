@@ -2,19 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-/**
- * Sidebar rail "edit mode" — the pencil-toggle multi-select flow.
- *
- * A panel that owns rails (e.g. ReceivingSidebarPanel) provides this context;
- * every {@link SidebarRailShell} underneath renders a pencil toggle in its
- * eyebrow row and, while `active`, switches from open-on-click to checkbox
- * selection. Rails rendered with no provider (FBA, Testing, …) see the
- * disabled default and behave exactly as before.
- *
- * Selection state lives in the providing panel — the panel renders the bulk
- * action bar (SelectionActionBar) and runs the bulk mutations; the shell only
- * reads `selectedIds`, calls `toggle`, and flips `active` via `toggleActive`.
- */
+/** Sidebar rail "edit mode" — the pencil-toggle multi-select flow. */
 export interface RailEditMode {
   /** Provider mounted — rails surface the eyebrow pencil toggle. */
   enabled: boolean;

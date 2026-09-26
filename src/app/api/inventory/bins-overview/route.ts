@@ -8,14 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/inventory/bins-overview?room=…&q=…
- *
- * Aggregated bins list for the inventory hub. Returns one row per bin with
- * fill / stale / low / over-capacity flags pre-computed, plus the global
- * count buckets for the filter chips. Includes special bare-barcode bins
- * (RETURNS-TEST / TECH-PARTS / UNSORTED) even without row/col labels.
- */
+/** GET /api/inventory/bins-overview?room=…&q=… */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const room = req.nextUrl.searchParams.get('room');

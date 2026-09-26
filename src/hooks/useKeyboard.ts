@@ -26,15 +26,7 @@ interface UseKeyboardOptions {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-/**
- * Universal mobile keyboard detection hook.
- *
- * Uses the Visual Viewport API to detect when the on-screen keyboard
- * appears / disappears. On desktop browsers (or when Visual Viewport is
- * unavailable), `isKeyboardOpen` stays `false`.
- *
- * Provides a `scrollToCenter` helper for manual centering of any element.
- */
+/** Universal mobile keyboard detection hook. */
 export function useKeyboard(options: UseKeyboardOptions = {}) {
   const { centerOnFocus = false, threshold = 150 } = options;
 

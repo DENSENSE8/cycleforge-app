@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Rail dismiss mechanics, shared by the two things that can dismiss a row: the
- * per-row ⋮ menu ({@link useRailRowDismiss}) and the row-menu-triggered
- * bulk-select flow ({@link useRailEditMode}). Both write the same
- * `staff_rail_exclusions` rows, so both must drop the same cache entries and
- * fire the same events — a second hand-rolled copy of this is how the two
- * models would silently diverge while they coexist.
- *
- * A dismiss hides a row for THIS staffer only; the record still exists for
- * everyone else, and the rail's read filter (`useRailExclusions` →
- * `excludedIds`) keeps it hidden on the next refetch.
- */
+/** Rail dismiss mechanics, shared by the two things that can dismiss a row: */
 
 import type { QueryClient } from '@tanstack/react-query';
 import {
@@ -25,24 +14,13 @@ import {
 export const RAIL_ENTRY_RESTORED_EVENT = 'receiving-entry-restored';
 export const RAIL_LINE_RESTORED_EVENT = 'receiving-line-restored';
 
-/**
- * What a dismiss actually removed, so an Undo can un-suppress exactly the same
- * ids. The rail engine's delete-suppression is deliberately sticky (a refetch
- * must not resurrect a deleted row), which for a REVERSIBLE dismiss means the
- * row would be fetched back and filtered straight out again unless we clear it.
- */
+/** What a dismiss actually removed, so an Undo can un-suppress exactly the same ids. */
 export interface RailDismissEcho {
   /** Carton ids echoed on `receiving-entry-deleted`. */
   cartonIds: number[];
   /** Line ids echoed on `receiving-line-deleted`. */
   lineIds: number[];
-  /**
-   * The rail rows as they stood before the drop, so an Undo can put them back
-   * WITHOUT waiting on a refetch. Clearing the suppression and invalidating is
-   * not enough on its own: the rail renders from a local mirror of the query
-   * data, and the reconciling refetch that would refill it lands a beat later —
-   * long enough for an Undo to look like it did nothing.
-   */
+  /** The rail rows as they stood before the drop, so an Undo can put them back WITHOUT waiting on a refetch. */
   snapshots: ReturnType<typeof snapshotReceivingRailByCarton>[];
 }
 
@@ -73,14 +51,7 @@ function cartonIdForLine(queryClient: QueryClient, lineId: number): number | nul
   return null;
 }
 
-/**
- * Drop dismissed rows from every mounted rail immediately — no global refresh,
- * which would only un-hide them before the read filter catches up.
- *
- * Prefers the carton-level remove + `receiving-entry-deleted` so Unboxed
- * (`listenLineDelete: false`, one row per carton) still exits the row via the
- * cache mirror. Returns what it echoed, for {@link restoreRailRows}.
- */
+/** Drop dismissed rows from every mounted rail immediately — no global refresh, which would only un-hide them before the read filter… */
 export function dropRailRows(queryClient: QueryClient, ids: number[]): RailDismissEcho {
   const echo: RailDismissEcho = { cartonIds: [], lineIds: [], snapshots: [] };
   /** Snapshot BEFORE the remove — afterwards the rows are gone from the cache. */
@@ -105,20 +76,7 @@ export function dropRailRows(queryClient: QueryClient, ids: number[]): RailDismi
   return echo;
 }
 
-/**
- * Undo half, in the order that actually works:
- *
- *  1. clear the sticky suppression the drop installed, or every later step is
- *     filtered back out at render time;
- *  2. write the snapshotted rows back into the rail caches, so the row is
- *     visible on the same frame the operator pressed Undo;
- *  3. invalidate, so the authoritative refetch reconciles order and content.
- *
- * Step 2 is not belt-and-braces. Relying on step 3 alone made Undo a no-op: the
- * refetch does land, but the rail paints from a local mirror written by an
- * effect, and by the time that mirror caught up the operator had already read
- * "nothing happened".
- */
+/** Undo half, in the order that actually works: */
 export function restoreRailRows(queryClient: QueryClient, echo: RailDismissEcho): void {
   for (const receivingId of echo.cartonIds) {
     window.dispatchEvent(new CustomEvent(RAIL_ENTRY_RESTORED_EVENT, { detail: receivingId }));

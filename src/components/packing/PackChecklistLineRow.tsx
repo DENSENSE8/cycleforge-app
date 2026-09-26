@@ -51,31 +51,7 @@ const PART_TYPE_TAG: Record<string, string> = {
   ADAPTER: 'Adapter',
 };
 
-/**
- * Reference-document disclosure — the paper this part puts in the box.
- *
- * Candidate B of the 2026-08-01 ruling (docs/todo/step-document-reveal-RULING.md):
- * a SMALL fixed-height strip in the row that names the insert, with the full
- * read handed off to the 640px `DocumentSlideOver`. Deliberately NOT the
- * requested split-reveal — a PDF page at this width is ~6pt equivalent body
- * text, unreadable at 3ft standing, and displacing the row's neighbours at
- * bench cadence is the disorientation that killed the mid-canvas capture stack.
- *
- * MOTION. `framerPresence.collapseHeight` is the sanctioned low-frequency
- * expand/collapse, and this fires at most twice per part, on the operator's own
- * tap — never on a scan. The strip is present while the part is UNCONFIRMED and
- * collapses when it is ticked, because at that point the operator has the paper
- * and the reference has done its job.
- *
- * The clip is RELEASED once settled: `overflow-hidden` is needed while the
- * height tweens, but the View control's focus ring is outward and would be
- * sheared off by a permanent clip (same trap as the auth step panel —
- *
- *
- * EVIDENCE. Print is the durable path (spool intent at the bench); View is
- * recognition-only; the parent row's checkbox remains the advisory
- * acknowledgement override (§3 of the ruling).
- */
+/** Reference-document disclosure — the paper this part puts in the box. */
 function KitPartDocumentStrip({
   // Aliased: `document` is a browser global, and shadowing it inside a
   // component that also renders DOM is a debugging trap.

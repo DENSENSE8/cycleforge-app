@@ -1,22 +1,4 @@
-/**
- * Sheet print — render the whole filtered view to paper.
- *
- * ## Why an iframe and not `window.print()` on the page
- *
- * The page cannot print itself. The grid is virtualized: at any moment about
- * thirty of nine hundred rows exist in the DOM, and `window.print()` would put
- * exactly those thirty on paper with no indication the rest were dropped — a
- * silently wrong document, which is worse than no print button. It also carries
- * the app shell, the sidebar and the toolbar onto the page.
- *
- * So printing builds a **separate document** from the same
- * `SheetDataSource` the clipboard uses: every filtered row, no chrome, no
- * virtualization, and a `<thead>` that repeats on each sheet.
- *
- * A hidden same-origin iframe rather than `window.open`: a popup is blocked by
- * default in Electron and on the kiosk tablets, and a blocked print is a button
- * that does nothing.
- */
+/** Sheet print — render the whole filtered view to paper. */
 
 /** Escape for interpolation into the print document. */
 function escapeHtml(value: string): string {
@@ -35,13 +17,7 @@ export interface SheetPrintInput {
   subtitle?: string;
 }
 
-/**
- * Build the print document.
- *
- * Exported separately from {@link printSheet} so the markup is unit-testable
- * without a DOM — the part that can silently produce a wrong document is the
- * markup, not the iframe plumbing.
- */
+/** Build the print document. */
 export function buildSheetPrintDocument({
   title,
   columns,

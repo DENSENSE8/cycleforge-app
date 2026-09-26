@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * /kiosk/v2 client runtime — landscape consult shell.
- *
- * Callers: `src/app/kiosk/v2/page.tsx`, `/m/consult`.
- * Affected API: POST `/api/kiosk/dev-autopair` before the shell fetches catalog.
- * Data schemas: none.
- * User: "Whenever you open a kiosk or a tablet page, I must see it automatically
- * connected to organization one for dog food testing".
- */
+/** /kiosk/v2 client runtime — landscape consult shell. */
 
 import dynamic from 'next/dynamic';
 import { KioskCatalogFirstPaint } from '../KioskCatalogFirstPaint';
@@ -32,25 +24,14 @@ export function KioskV2Runtime({
   brandColor = null,
 }: {
   seed?: KioskCatalogSeed | null;
-  /**
-   * The org's opening command, resolved server-side from
-   * `OrgSettings.kiosk.defaultCommand`. Applied here rather than in
-   * `KioskShell` because the shell is behind the bind gate below: by the time
-   * it mounts the store must already hold the right command, or the first
-   * frame is the wrong pane.
-   */
+  /** The org's opening command, resolved server-side from `OrgSettings.kiosk.defaultCommand`. */
   defaultCommand?: KioskCommandId;
   /** The org's comp reason chips (`OrgSettings.kiosk`), delivered with the HTML likewise. */
   lineReasons?: KioskLineReasons;
   /** The org's brand colour (`OrgSettings.brand.primaryColor`) for the counter mode; null ⇒ registry default. */
   brandColor?: string | null;
 }) {
-  /*
-   * `applyDefaultCommand` is pristine-only (see the store), so re-running it is
-   * safe and an operator's own pick always wins. It runs in an effect rather
-   * than at module scope because the store is a client singleton shared with
-   * the customer face.
-   */
+  /* `applyDefaultCommand` is pristine-only (see the store), so re-running it is safe and an operator's own pick always wins. */
   useEffect(() => {
     kioskSessionStore.applyDefaultCommand(defaultCommand);
   }, [defaultCommand]);
@@ -60,13 +41,7 @@ export function KioskV2Runtime({
   }, [lineReasons]);
 
   const bound = useDogfoodKioskBind();
-  /*
-   * The bind gate is why the SEED lands here and not in the picker: until the
-   * device is bound this component renders the skeleton, which means the
-   * skeleton IS the server HTML. Putting the first screen's image URLs in it is
-   * what makes them discoverable at parse time (lcp-discovery), and the live
-   * grid then paints the same `src` values.
-   */
+  /* The bind gate is why the SEED lands here and not in the picker: */
   if (!bound) return <KioskCatalogFirstPaint seed={seed} />;
 
   // The counter task mode wraps the whole shell (staff AND customer face); the

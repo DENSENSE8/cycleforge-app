@@ -1,11 +1,4 @@
-/**
- * Types for the receiving-triage right panel.
- *
- * Triage job: an inbound customer-return (or other non-PO) package arrives and
- * the operator pairs it against real integration data so the order's status can
- * be updated. These types model only what we can derive from REAL signals —
- * there is deliberately no fabricated "confidence score" field.
- */
+/** Types for the receiving-triage right panel. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 

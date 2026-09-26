@@ -1,22 +1,4 @@
-/**
- * eBay Marketplace Account Deletion / Closure notifications.
- *
- * Required to unlock Production application keysets in the eBay Developer
- * Portal (Application Keys → Marketplace account deletion/closure). Without a
- * verified HTTPS endpoint, eBay hard-blocks new Production keysets.
- *
- * Contract (developer.ebay.com/marketplace-account-deletion):
- *   GET  ?challenge_code=…  → { challengeResponse: sha256(code+token+url) }
- *   POST                    → verify X-EBAY-SIGNATURE, purge user data, 200
- *
- * This is an APP-level webhook (shared Cycle Forge eBay app), not per-tenant.
- * Notifications carry an eBay userId/username; we purge every matching
- * ebay_accounts row across orgs — seller and buyer roles alike
- * (`account_role` is irrelevant for GDPR erasure).
- *
- * Challenge hash + signature verification match eBay's official
- * event-notification-nodejs-sdk (sequential SHA-256 updates; ssl3-sha1 verify).
- */
+/** eBay Marketplace Account Deletion / Closure notifications. */
 import { createHash, createVerify } from 'node:crypto';
 import { normalizeEnvValue } from '@/lib/env-utils';
 import pool from '@/lib/db';
@@ -120,12 +102,7 @@ export function parseEbaySignatureHeader(header: string): EbaySignatureHeader | 
   }
 }
 
-/**
- * Match eBay event-notification-nodejs-sdk `formatKey`: always force a newline
- * after BEGIN / before END. Returning a one-line PEM (common when the API
- * already embeds the markers) makes OpenSSL verify fail → perpetual 412s
- * even with valid App ID / Cert / verification token.
- */
+/** Match eBay event-notification-nodejs-sdk `formatKey`: */
 function formatPemPublicKey(key: string): string {
   const trimmed = key.trim();
   const withBegin = trimmed.replace(
@@ -206,12 +183,7 @@ async function fetchNotificationPublicKey(
   return data.key;
 }
 
-/**
- * Verify X-EBAY-SIGNATURE over the exact raw request body bytes eBay signed.
- * Re-serializing parsed JSON changes key order/whitespace and fails verification
- * (eBay Notification SDK issue #2). Falls back to JSON.stringify(parsed) only
- * when raw-body verify fails (legacy SDK parity).
- */
+/** Verify X-EBAY-SIGNATURE over the exact raw request body bytes eBay signed. */
 export async function verifyEbayNotificationSignature(
   rawBody: string,
   signatureHeader: string,

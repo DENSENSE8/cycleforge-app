@@ -1,9 +1,4 @@
-/**
- * Unit tests for linkReturnedSerial — the shipped↔returned loop on the unbox
- * serial scan. DB-free: the transaction runner + every collaborator is injected,
- * and a fake client records the SQL issued so we can assert the linkage/promotion
- * decisions without a database.
- */
+/** Unit tests for linkReturnedSerial — the shipped↔returned loop on the unbox serial scan. */
 
 // Dummy connection string so importing the module's transitive pool deps
 // (@/lib/db) doesn't complain — every DB call here is faked, none connects.
@@ -175,10 +170,7 @@ test('unfound carton + resolved v2 order → full link, allocation flip, promote
   assert.ok(
     !calls.some((c) => c.sql.includes('UPDATE receiving_line') && /SET[\s\S]*workflow_status\s*=/.test(c.sql)),
   );
-  // The return is advanced to UNBOXED (received) via transitionReceivingLine
-  // (skipEvent — the RETURNED event is the richer record), and the carton is
-  // stamped unboxed (off the scanned queue) via the receiving_unbox street
-  // writer — NOT the spine (Wave-3 writer inversion).
+  // The return is advanced to UNBOXED (received) via transitionReceivingLine (skipEvent — the RETURNED event is the richer record), and the…
   assert.equal(captured.transitions.length, 1);
   assert.equal(captured.transitions[0].to, 'UNBOXED');
   assert.equal(captured.transitions[0].skipEvent, true);

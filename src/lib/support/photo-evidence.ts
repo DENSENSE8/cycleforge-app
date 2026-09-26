@@ -1,32 +1,4 @@
-/**
- * Photo evidence for the support assistant — the DETERMINISTIC half of the
- * vision loop, and the whole differentiator.
- *
- * ```
- * analyze (local-first)  →  ocr_text / labels / damage / caption
- *          ↓
- * routeScan(token)       →  the ONE decoder: normalizes a printed handle,
- *                           a GS1 Digital Link or a mobile URL to its value
- *          ↓
- * hybridSearch(value)    →  the ONE search engine: SearchHit[] from OUR data
- * ```
- *
- * An OCR'd serial that resolves to a real `serial_units` row is the difference
- * between *"a chatbot looked at a photo"* and *"our system recognised this
- * unit."* Skipping straight to a multimodal model because it can read text
- * itself is the cheap wrong answer: it throws away the persisted
- * `photo_analysis` row that makes the photo searchable afterwards, and it burns
- * cloud tokens reading a barcode a local box already read.
- *
- * **Never a second matching engine.** `routeScan` is the only decoder and
- * `hybridSearch` the only search — this module composes both and matches
- * nothing itself. It deliberately does not SYNTHESIZE a hit for a token that
- * decoded but matched nothing: a fabricated title on a customer-facing draft is
- * worse than an honest absence, so a decode with no row is simply not evidence.
- *
- * Pure + DI'd ({@link PhotoEvidenceDeps}) so it unit-tests with zero network and
- * zero database — the server bindings live in `photo-evidence-deps.ts`.
- */
+/** Photo evidence for the support assistant — the DETERMINISTIC half of the vision loop, and the whole differentiator. */
 
 import type { PhotoAnalysisMetadata } from '@/lib/photos/analyze-types';
 import type { ScanType } from '@/lib/barcode-routing';
@@ -84,15 +56,7 @@ const MIN_TOKEN_LENGTH = 4;
 
 const URL_RE = /^https?:\/\//i;
 
-/**
- * Identifier candidates from OCR output.
- *
- * The filter is **"contains a digit"**, not a shape whitelist: every identifier
- * this app prints or scans carries digits (`R-1234`, `A0101101`, a GS1 Digital
- * Link, a tracking number, a serial), and prose read off a box does not. A
- * shape whitelist would have to name every format and would silently stop
- * finding the next one.
- */
+/** Identifier candidates from OCR output. */
 export function extractEvidenceTokens(ocrText: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];

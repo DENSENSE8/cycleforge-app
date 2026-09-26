@@ -30,12 +30,7 @@ interface FbaScanRoutingDeps {
   handleFnskuSelectFlow: (raw: string) => void;
 }
 
-/**
- * Raw-scan classification + routing for the FBA station bar, split out of
- * {@link useFbaStationInput}: form-submit gating (FNSKU-only validation) and the
- * change handler's auto-submit / batch-paste detection that dispatches to the
- * plan or select flow. Owns no state — `inputValue` and every setter flow in.
- */
+/** Raw-scan classification + routing for the FBA station bar, split out of {@link useFbaStationInput}: */
 export function useFbaScanRouting({
   inputValue,
   setInputValue,

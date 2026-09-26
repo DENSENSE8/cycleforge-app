@@ -17,12 +17,7 @@ export function normalizeAllocations(raw: unknown): AllocationPayload[] {
   return Array.from(byItem.entries()).map(([shipmentItemId, quantity]) => ({ shipmentItemId, quantity }));
 }
 
-/**
- * No-op — denormalized counters (ready_item_count, packed_item_count, shipped_item_count)
- * have been removed from fba_shipments. Counts are now computed inline via
- * COUNT(*) FILTER (...) in read queries. This function is retained for call-site
- * compatibility and can be deleted once all callers are cleaned up.
- */
+/** No-op — denormalized counters (ready_item_count, packed_item_count, shipped_item_count) have been removed from fba_shipments. */
 export async function refreshShipmentAggregateCounts(
   _client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
   _shipmentId: number,

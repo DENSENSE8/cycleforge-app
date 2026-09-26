@@ -1,31 +1,4 @@
-/**
- * What the ONE search box matches — engine law for every PRODUCT_TABLES peer.
- *
- * `DataTable`'s search claims to cover "exactly what the operator can see", and
- * for a while it did not: it read the `fieldId` of each mounted column, which
- * is narrower than what a compound row PAINTS in two ways.
- *
- * 1. **Structural facts carry no `fieldId`.** A compound row's title, its
- *    identity chip, its state pill and its date stamp are painted by chrome
- *    tracks the skeleton owns (`item` / `fulfillment` / `state` / `dates`), and
- *    a family fills them by declaring a fact in {@link sortFactFor}. So typing
- *    a product title matched nothing on the very cell being read. The mapping
- *    already exists because those headers must click-sort
- *    (`SLOT_TABLE_PAINT_LAW.headerSort`) — a header that sorts a fact the
- *    search box cannot find is one fact with two different answers.
- * 2. **Subtitle facts are not tracks.** Compound paints the under-title band
- *    inside the item cell and `materializeTracks` opens `subtitle:N` columns
- *    for the SHEET morph only, so the line qty — the most-read number on a
- *    countable row — was unsearchable on every compound peer.
- *
- * The union of the three sources is the vocabulary. Still keyed to the LAYOUT
- * and never to a hardcoded list: an org that binds notes searches notes, and
- * one that unbinds a fact stops matching on it.
- *
- * A pure function rather than an inline `useMemo` body because this IS the law
- * and it is the same law on 47 peers — `slot-table-search-vocabulary.test.ts`
- * pins it, which an expression inside a hook cannot be.
- */
+/** What the ONE search box matches — engine law for every PRODUCT_TABLES peer. */
 /** The minimum column shape this law reads — every family's model satisfies it. */
 export interface SlotTableSearchColumn {
   key: string;
@@ -43,16 +16,7 @@ export interface SlotTableSearchVocabularySource<C extends SlotTableSearchColumn
   sortFactFor: (col: C) => string | null;
   /** Bound under-title field ids — painted inside the item cell, not as tracks. */
   subtitleFieldIds?: readonly string[];
-  /**
-   * Facts the family's ADAPTER paints that no track and no subtitle names —
-   * the fourth and last source.
-   *
-   * The Id track stacks TWO identifiers and `sortFactFor` can only name one,
-   * so a family using `identitySubFace` (Inventory › Stock puts the SKU under
-   * the bin code) has a visible, copyable handle the search box would
-   * otherwise never match. Same rule as the other three: name the FACT, not
-   * the text, so the resolver stays the single source for search and sort.
-   */
+  /** Facts the family's ADAPTER paints that no track and no subtitle names — the fourth and last source. */
   adapterPaintedFieldIds?: readonly string[];
 }
 

@@ -1,13 +1,4 @@
-/**
- * /settings/staff — tenant staff directory + invite UI.
- *
- * Server component for the table; client island for the invite form. The
- * shape intentionally mirrors /settings/billing and /settings/integrations
- * so the three pages feel like one product, not three.
- *
- * Gated by admin.manage_staff at the page level — only admins can manage
- * their teammates.
- */
+/** /settings/staff — tenant staff directory + invite UI. */
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
@@ -15,13 +6,7 @@ import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeade
 import { StaffTable } from './StaffTable';
 import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 
-/**
- * The SQL row this page selects. Wider than the desk's wire row on purpose —
- * `default_home_path` and `color_hex` are read by the query and painted by no
- * track, so they stop here rather than crossing the RSC boundary (see
- * `staff-directory-row.ts`; the staff colour reaches the avatar through the
- * identity cache, keyed on the id).
- */
+/** The SQL row this page selects. */
 interface StaffQueryRow {
   id: number;
   name: string;

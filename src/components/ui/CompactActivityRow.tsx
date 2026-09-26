@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Compact two-row activity face — **status mark · title · one fact · short age**.
- *
- * Staff scan order: what is it (title) → how far along / what state (meta) →
- * how stale (`4h` / `30m` / `3d` via {@link formatLaneAgeCompact}). Golden host:
- * station recent rails (`RailRow`). Portable host: GlobalHeader inbox
- * (`ActivityInboxPopover`).
- *
- * Distinct from {@link StackedRowIdentity} (title → typed `CopyChip` keys for
- * pickers / subjects / drill parents). This face is an **ops activity feed**:
- * one scannable fact on row 2, never a tone-pill parade, never `4 hrs ago`,
- * never a large kind glyph as the leading mark. Inbox tech-queue ready/return
- * rows may paint house `OrderIdChip` / `TrackingChip` via
- * {@link joinStackedIdentityKeys} on meta (identity SoT), not mono prose.
- *
- * Detail: Compact activity row.
- * Guard: `compact-activity-row.guard.test.ts`.
- */
+/** Compact two-row activity face — **status mark · title · one fact · short age**. */
 
 import type { ReactNode } from 'react';
 import {
@@ -46,14 +29,7 @@ export function CompactActivityRow({
    * Formats via {@link formatLaneAgeCompact} — never a prose relative string.
    */
   activityAt?: string | Date | number | null;
-  /**
-   * Pre-formatted age, overriding {@link activityAt}. Same COMPACT shape the
-   * row's own formatter produces (`5m` · `3h` · `2d`) — still never `4 hrs ago`
-   * — for a feed whose band runs longer than `formatLaneAgeCompact` reaches:
-   * that one tops out in days, so a three-month-old header recent read `92d`.
-   * Supply this only when your feed genuinely spans weeks; otherwise pass
-   * `activityAt` and let the row format it, so every rail agrees.
-   */
+  /** Pre-formatted age, overriding {@link activityAt}. */
   ageText?: string | null;
   /** Keep the age column so titles do not jump when one row lacks a stamp. */
   showAgeColumn?: boolean;

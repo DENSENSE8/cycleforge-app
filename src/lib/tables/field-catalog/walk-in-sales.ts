@@ -1,14 +1,4 @@
-/**
- * Walk-in sales field catalog — bindable facts of one completed counter visit.
- *
- * Callers: `useWalkInSalesTableLayout` + `SLOT_LAYOUT_TABLES`.
- * Affected API: `/api/walk-in/sales` (row source only).
- * Data schemas: `SaleRow` in `@/lib/walk-in/transactions`.
- * User: completed visit appears as history on the Sales board slot table.
- *
- * Replaces `WalkInFeedPane` / `SalesTransactionsFeed` on dashboard Sales —
- * one PRODUCT_TABLES peer, not a second feed engine.
- */
+/** Walk-in sales field catalog — bindable facts of one completed counter visit. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';

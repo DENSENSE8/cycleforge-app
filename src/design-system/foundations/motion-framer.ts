@@ -40,68 +40,21 @@ export const framerDuration = {
   edgeMarkPulse: 4.2,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
-  /**
-   * Progress-meter fill settle — a VALUE changed, so it is a state transition
-   * and takes the shortest token the house ships (`motionDurations.micro`,
-   * 100ms), not a feedback-pulse budget. Was an inline 0.5 on `ProgressBar`
-   * animating `width`; the property is now `scaleX` (law M1 bans layout
-   * tweens, and permits transform since the 2026-08-25 amendment).
-   */
+  /** Progress-meter fill settle — a VALUE changed, so it is a state transition and takes the shortest token the house ships… */
   progressFill: 0.1,
-  /*
-   * `spineBodySwap` (0.12) is DELETED (2026-08-08) with its presence +
-   * transition twins. It crossfaded the MasterNav body between the map, the
-   * Scan Stations drill, and ranked search results.
-   *
-   * It was opacity-only and cheap, and it still lost: it ran under
-   * `AnimatePresence mode="wait"`, so the outgoing list had to finish fading
-   * before the incoming one mounted — ~240ms round trip with an EMPTY column
-   * visible in between. On a bench navigator that sits directly between a
-   * click and the destination being reached for.
-   *
-   * `SidebarNavList` now imports NO motion at all. Do not re-add a preset for
-   * it; see the ruling in that file's docblock.
-   */
-  /**
-   * Master-nav row cascade step — ONE ladder for drill page rows AND mode rows.
-   * 15ms × index: an 8-row section finishes its last row's 120ms mount at
-   * 225ms, so the whole list resolves inside a quarter second. The old 40ms
-   * step applied only to modes, which made a 6-mode page feel slower than the
-   * 12-page section it lived in — the cascade read as lag, not as order.
-   */
+  /* `spineBodySwap` (0.12) is DELETED (2026-08-08) with its presence + transition twins. */
+  /** Master-nav row cascade step — ONE ladder for drill page rows AND mode rows. */
   spineRowStagger: 0.015,
   /** Master-nav row mount (paired with {@link spineRowStagger}). */
   spineRowMount: 0.12,
-  /*
-   * `spineActiveWash` (0.15) is DELETED (2026-08-08). It was a one-shot
-   * opacity settle on the master-nav's selected row, audited and deliberately
-   * kept the day before — on the assumption the row underneath it filled with
-   * a saturated section hue, where a settle has something to settle.
-   *
-   * The monochrome pass removed that fill: a selected row is now a plane step
-   * of a few percent, and a 150ms fade between two nearly-identical neutrals
-   * is imperceptible. It was paying a React render and an AnimatePresence
-   * branch for something no operator can see, which is the opposite of the
-   * craft it was defending. Selection is instant.
-   *
-   * The spine's ONE surviving motion is `spineRowStagger*` on nest expand,
-   * where rows genuinely mount and an instant five-row insert under the
-   * cursor is a jarring frame. Do not reintroduce a selection settle without
-   * a fill loud enough to justify one — and re-read the monochrome ruling in
-   * `src/lib/nav/spine-section-accent.ts` before proposing that fill.
-   */
+  /* `spineActiveWash` (0.15) is DELETED (2026-08-08). */
   /** Table row enter/exit */
   tableRowMount: 0.22,
   /** Sidebar rail CRUD enter/exit — small left slide (scan in / dismiss out) */
   sidebarRailRowMount: 0.2,
   /** Workbench right-pane / detail crossfade */
   workbenchPaneMount: 0.18,
-  /**
-   * Omnichannel composer dock mount. Equal to {@link workbenchPaneMount} today,
-   * and deliberately its own constant rather than a reference: the dock is
-   * region-plural chrome (Station Unbox notes + Workbench Support reply), so it
-   * must be tunable without retiming every focus-surface swap in the app.
-   */
+  /** Omnichannel composer dock mount. */
   composerDockMount: 0.18,
   /** Photo viewer details column — one symmetric drawer toggle (open == close reversed) */
   photoContextPanelMount: 0.22,
@@ -125,45 +78,17 @@ export const framerDuration = {
   overlaySearchIn: 0.2,
   /** Copy-to-clipboard feedback flash */
   chipCopyFeedback: 0.15,
-  /**
-   * Armed-list leaf-commit hit-marker — opacity / inset-rail / micro-scale
-   * acknowledge. Snappier than {@link chipCopyFeedback} (150ms); stays ≤150ms
-   * hard cap. Pair with `framerTransition.hitMarker` /
-   * `motionRole.feedback.hitMarker`.
-   */
+  /** Armed-list leaf-commit hit-marker — opacity / inset-rail / micro-scale acknowledge. */
   hitMarker: 0.1,
-  /**
-   * Live VALUE change on a collection row — a status chip whose fact was
-   * changed by someone else (a scan at another station, an Ably push) while
-   * the operator was looking somewhere else on the table.
-   *
-   * Longer than every other feedback duration on purpose, and that is not
-   * drift: `chipCopyFeedback` / `hitMarker` acknowledge something the operator
-   * DID, under their own cursor, where 100-150ms is plenty because they are
-   * already looking at the target. This one has to be caught in peripheral
-   * vision across 40 rows, which is why it is a DOUBLE pulse — a single flash
-   * at this size reads as a repaint artifact, two reads as a signal. 420ms is
-   * the whole envelope (two 130ms pulses + a settle tail), still under the
-   * house's sub-500ms ceiling for a one-shot.
-   */
+  /** Live VALUE change on a collection row — a status chip whose fact was changed by someone else (a scan at another station, an Ably push)… */
   liveValueChange: 0.42,
-  /**
-   * Armed-list ↑↓ selection geometry — binary cut (one frame). Pair with
-   * `framerTransition.armedSnap`. Not a motionRole: arm snap ≠ `push.rail`
-   * (column width) and ≠ `feedback.hitMarker` (commit juice). Displays Root
-   * Index golden; next armed-list cohort composes the same preset.
-   */
+  /** Armed-list ↑↓ selection geometry — binary cut (one frame). */
   armedSnap: 0,
   /** Station scan-band glow — idle ⇄ focused fade */
   scanBandGlow: 0.2,
   /** Station scan-band glow — submit / click pulse flash */
   scanBandGlowPulse: 0.26,
-  /**
-   * Procedure Focus Deck layout settle — face height, pull-up margin, peek
-   * geometry when the step pointer advances. Soft + slow (Smart Stack notch
-   * commit). Single-channel Motion `layout` FLIP — no competing CSS
-   * margin/height tween. Pair with crown scrub (transform-only) + `swap.scan`.
-   */
+  /** Procedure Focus Deck layout settle — face height, pull-up margin, peek geometry when the step pointer advances. */
   procedureStackLayout: 0.55,
   /** Auth card shell — first paint mount */
   signInCardMount: 0.26,
@@ -205,15 +130,7 @@ export const framerTransition = {
    */
   routeHistoryMount: springSnappy,
 
-  /**
-   * Omnichannel composer dock mount — pair with `framerPresence.composerDock`.
-   *
-   * `OmnichannelComposerDock` used to rebuild this inline from
-   * `framerDuration.workbenchPaneMount` + `motionBezier.easeOut` and then `void`
-   * the pane preset names so a text guard saw them referenced. It is named here
-   * instead: the dock is not a focus-surface swap (see the presence docblock),
-   * so it owns its own entry rather than borrowing the pane's.
-   */
+  /** Omnichannel composer dock mount — pair with `framerPresence.composerDock`. */
   composerDockMount: {
     duration: framerDuration.composerDockMount,
     ease: motionBezier.easeOut,
@@ -230,27 +147,13 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Nav spine push column — the left navigator's own width toggle, which
-   * reflows the whole content region (`SidebarNavColumn`).
-   *
-   * A tween, deliberately, where the old slide-OVER used a spring: a spring on a
-   * width overshoots past its target, and here the target is the width every
-   * sibling lays out against — the workspace would visibly rubber-band on every
-   * open. `motionBezier.layout` is the softer curve the house reserves for
-   * geometry (see `detailStackOverlayMount` / `sidebarExpand`).
-   */
+  /** Nav spine push column — the left navigator's own width toggle, which reflows the whole content region (`SidebarNavColumn`). */
   sidebarNavColumnMount: {
     duration: framerDuration.sidebarNavColumnMount,
     ease: motionBezier.layout,
   } satisfies Transition,
 
-  /**
-   * Procedure Focus Deck layout settle — margin pull-up, face height, peek
-   * geometry on step pointer advance via Motion `layout` FLIP (transform).
-   * Law: `display/motion-crossfade.md` → sanctioned layout #2; role:
-   * `motionRole.procedure.advance`. Tween never spring — soft overlap, not snap.
-   */
+  /** Procedure Focus Deck layout settle — margin pull-up, face height, peek geometry on step pointer advance via Motion `layout` FLIP… */
   procedureStackLayout: {
     duration: framerDuration.procedureStackLayout,
     ease: motionBezier.layout,
@@ -273,13 +176,7 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Station carton→carton swap (scan cadence). The ENTER half only — the exit
-   * is zero-duration via `framerPresence.stationCartonSwap`, so `mode="wait"`
-   * introduces no empty-canvas gap between two physically different boxes.
-   * Pair with `framerPresence.stationCartonSwap`; consume through
-   * `useMotionTransition`. See `display/motion-crossfade.md`.
-   */
+  /** Station carton→carton swap (scan cadence). */
   stationCartonSwapMount: {
     duration: framerDuration.stationCartonSwap,
     ease: motionBezier.easeOut,
@@ -314,15 +211,7 @@ export const framerTransition = {
     opacity: fadeInstant,
   } satisfies Transition,
 
-  /**
-   * Welded peel-up hinge — pair with `framerPresence.weldedPanelPeel`.
-   *
-   * Height and rotation share `springSnappy` so the box and the tilt settle as
-   * ONE gesture; a tween on either half makes the panel arrive before (or
-   * after) the space it occupies. Opacity stays `fadeInstant` — the panel is
-   * carrying a state verdict the operator needs to read, not a decoration to
-   * ease in.
-   */
+  /** Welded peel-up hinge — pair with `framerPresence.weldedPanelPeel`. */
   weldedPanelPeel: {
     height: springSnappy,
     rotateX: springSnappy,
@@ -341,13 +230,7 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Capture-stack row push-up. A SPRING, not a tween, and deliberately so: rows
-   * arrive at scan cadence and every arrival reflows its siblings under
-   * `layout="position"`, which is a physical settle rather than a discrete view
-   * swap. Physics = `springSnappy` (house utilitarian spring). Pair with
-   * `framerPresence.captureStackRow*`.
-   */
+  /** Capture-stack row push-up. */
   captureStackRowMount: springSnappy,
 
   /**
@@ -419,13 +302,7 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Media-library thumbnail → fullscreen viewer hero morph (`layoutId`-driven).
-   * Spring with no overshoot — same rationale as `viewerPaging`: a bounce on a
-   * photo's own edges reads as tacky. Only ever pairs a grid tile with the
-   * viewer's *first* shown image (see PhotoViewerModal) — never used for
-   * in-viewer prev/next, which stays a plain crossfade.
-   */
+  /** Media-library thumbnail → fullscreen viewer hero morph (`layoutId`-driven). */
   photoHeroMorph: {
     type: 'spring' as const,
     visualDuration: 0.45,
@@ -445,24 +322,13 @@ export const framerTransition = {
     ease: motionBezier.easeOut,
   } satisfies Transition,
 
-  /**
-   * Armed-list ↑↓ geometry snap — lead nudge `x` + traveling `layoutId` marker.
-   * `duration: 0` (binary cut). Prefer {@link armedTrack} for the sliding
-   * underline FLIP (WMS research — high-stiffness spring on transform only).
-   * Keep this preset for reduced-motion / hard-cut cohorts. Never inline
-   * `{ duration: 0 }` at call sites.
-   */
+  /** Armed-list ↑↓ geometry snap — lead nudge `x` + traveling `layoutId` marker. */
   armedSnap: {
     type: 'tween' as const,
     duration: framerDuration.armedSnap,
   } satisfies Transition,
 
-  /**
-   * Armed-list traveling track / underline — Shared Layout FLIP via `layoutId`.
-   * Physics = {@link springArmedTrack} (GPU transform only; selection state
-   * updates sync in React). Pair with absolute inset track — never animate
-   * border-width / padding / row height.
-   */
+  /** Armed-list traveling track / underline — Shared Layout FLIP via `layoutId`. */
   armedTrack: springArmedTrack,
 
   /**
@@ -475,26 +341,7 @@ export const framerTransition = {
     ease: [0, 0, 0.2, 1] as const,
   } satisfies Transition,
 
-  /**
-   * Live VALUE change on a collection row — the "attention pulse & morph" a
-   * status chip runs when its fact was changed remotely.
-   *
-   * Transform + opacity ONLY (scale on the chip, opacity+scale on an absolute
-   * ring overlay, opacity dip on the label). Never box-shadow, never width —
-   * a chip in a ruled grid band must not reflow its neighbours to say a word
-   * changed.
-   *
-   * `times` is the phase map from the originating ruling, compressed to the
-   * house's one-shot envelope:
-   *   0.00 rest → 0.14 pulse 1 peak → 0.30 trough → 0.45 pulse 2 peak
-   *   → 0.62 trough → 1.00 settle
-   * Two `easeOut` peaks with an `easeInOut` middle so the second pulse reads
-   * as a deliberate beat rather than a bounce tail.
-   *
-   * Interruptible: call sites lead their keyframe arrays with `null` (keyframe
-   * wildcard) so a second scan mid-pulse restarts from the CURRENT value
-   * instead of snapping back to rest.
-   */
+  /** Live VALUE change on a collection row — the "attention pulse & morph" a status chip runs when its fact was changed remotely. */
   liveValueChange: {
     type: 'tween' as const,
     duration: framerDuration.liveValueChange,
@@ -502,13 +349,7 @@ export const framerTransition = {
     ease: 'easeOut' as const,
   } satisfies Transition,
 
-  /**
-   * The label half of {@link liveValueChange} — the MORPH. A short opacity dip
-   * so the word visibly changes rather than teleporting under the pulse. Runs
-   * inside the first pulse, not after it: the chip already carries the new
-   * truth by the time React paints, and holding the old word for 300ms to
-   * "reveal" it would be chrome telling a story the data no longer supports.
-   */
+  /** The label half of {@link liveValueChange} — the MORPH. */
   liveValueMorph: {
     type: 'tween' as const,
     duration: 0.18,
@@ -661,24 +502,7 @@ export const framerPresence = {
     animate: { height: 'auto', opacity: 1 },
     exit: { height: 0, opacity: 0 },
   },
-  /**
-   * Peel-up hinge — a panel WELDED to the top edge of the surface below it
-   * (the Unbox receive feedback panel over the notes composer). It is
-   * `collapseHeight` plus one rotation: the panel tilts back on its bottom
-   * edge and swings up, so it reads as hinging out of the composer rather
-   * than as a separate card that faded in above it.
-   *
-   * `transformOrigin: 'bottom'` is the anchor and belongs on the element's
-   * style, not this shape — a presence shape carries animated values, and a
-   * transform origin is static geometry. `transformPerspective` rides here so
-   * the tilt has depth without a `perspective` wrapper; it is in the bridge's
-   * stripped-key set, so reduced motion drops it with the rotation.
-   *
-   * Pair with `framerTransition.weldedPanelPeel`. Under reduced motion
-   * {@link useMotionPresence} strips `rotateX` / `transformPerspective` and
-   * keeps `height` + `opacity`, degrading it to exactly `collapseHeight` —
-   * the one sanctioned layout animation.
-   */
+  /** Peel-up hinge — a panel WELDED to the top edge of the surface below it (the Unbox receive feedback panel over the notes composer). */
   weldedPanelPeel: {
     initial: { height: 0, opacity: 0, rotateX: -15, transformPerspective: 900 },
     animate: { height: 'auto', opacity: 1, rotateX: 0, transformPerspective: 900 },
@@ -689,20 +513,7 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -4 },
   },
-  /**
-   * Capture-stack rows — two shapes, one per row variant.
-   *
-   * The EXPANDED row is the current task: it rises further and scales in, so a
-   * new active card reads as arriving. A COLLAPSED ledger line only slides up —
-   * it is history, and history must not compete with the task above the input.
-   *
-   * `exit` carries its OWN transition deliberately. The mount is a spring, but a
-   * departing row should collapse its vacated height on a short fixed tween so
-   * the gap closes predictably instead of settling. Under reduced motion the
-   * bridge strips y/scale and the `MotionConfig` floor snaps `height` (a
-   * positional key), leaving the house-correct reduced form — an opacity
-   * crossfade, not a hard cut.
-   */
+  /** Capture-stack rows — two shapes, one per row variant. */
   captureStackRowExpanded: {
     initial: { opacity: 0, y: 24, scale: 0.98 },
     animate: { opacity: 1, y: 0, scale: 1 },
@@ -797,68 +608,25 @@ export const framerPresence = {
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
   },
-  /**
-   * Workbench right-pane / detail crossfade — the canonical transition when a
-   * selected record's detail pane swaps (the LIST stays put; only the pane
-   * crossfades). Opacity + small y. Consume via `useMotionPresence(...)` so
-   * `prefers-reduced-motion` collapses it to opacity-only automatically — never
-   * hand-branch on reduced motion at the call site. See
-   */
+  /** Workbench right-pane / detail crossfade — the canonical transition when a selected record's detail pane swaps (the LIST stays put; only… */
   workbenchPane: {
     initial: { opacity: 0, y: 6 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
   },
-  /**
-   * Route history / desk TABLE surface first paint — rises into place (opacity +
-   * y). Never left→right: a horizontal wipe on a full-bleed queue reads as the
-   * sheet expanding sideways. Shared by `RouteShell` (shipping · receiving ·
-   * tech · support · sourcing desks) and `PackerPageContent`. Pair with
-   * `framerTransition.routeHistoryMount`; consume via `useMotionPresence` /
-   * `useMotionTransition`.
-   */
+  /** Route history / desk TABLE surface first paint — rises into place (opacity + y). */
   routeHistory: {
     initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 8 },
   },
-  /**
-   * Omnichannel composer dock mount — the "type a message here" shell arriving
-   * with its host surface. Single primitive consumer:
-   * `OmnichannelComposerDock` (Unbox carton notes · Support ticket reply).
-   *
-   * WHY THIS IS NOT `motionRole.swap.focus` / `workbenchPane`. Two reasons, and
-   * the second is the decisive one:
-   *
-   *   1. It is a CARD MOUNT, not a focus-surface swap. No consumer wraps the
-   *      dock in its own `AnimatePresence` keyed on a selection — it enters when
-   *      its host surface enters. Enter travel is therefore the house card-mount
-   *      idiom (`y: 8`, same as `stationCard` / `signInCard`), not the pane's 6.
-   *   2. The dock is REGION-PLURAL. It renders on the Unbox **station** bench
-   *      and in the Support **workbench** thread from one shell, and no role
-   *      spans both: `swap.focus` is declared `workbench | monitor | canvas`,
-   *      and `swap.scan` is scan-cadence with a zero-duration exit. Adopting
-   *      either would put a documented out-of-contract region on half the
-   *      call sites — a false intent claim, which is exactly why
-   *      `motionRole.feedback.pulse` — PoLineRow match acknowledgement.
-   *
-   * The exit drifts DOWN (`y: 4`), toward the edge the dock sits on — same
-   * reasoning as {@link chatScrollToLatest}, and deliberately opposite to
-   * `workbenchPane`'s upward lift (which clears the way for the next pane to
-   * rise in). Pair with `framerTransition.composerDockMount`; consume via
-   * `useMotionPresence` / `useMotionTransition`.
-   */
+  /** Omnichannel composer dock mount — the "type a message here" shell arriving with its host surface. */
   composerDock: {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: 4 },
   },
-  /**
-   * AI chat "jump to latest" floating pill — rises from just below its rest
-   * position (mirrors `statusMessage`, but that one drops from above; this
-   * affordance sits at the bottom edge of the scroll port so it rises
-   * instead). Single consumer: `AiChatConversation`.
-   */
+  /** AI chat "jump to latest" floating pill — rises from just below its rest position (mirrors `statusMessage`, but that one drops from… */
   chatScrollToLatest: {
     initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
@@ -866,80 +634,31 @@ export const framerPresence = {
   },
   /* `spineBodySwap` deleted 2026-08-08 — see `framerDuration`. */
   /* `spineActiveWash` deleted 2026-08-08 — see `framerDuration`. */
-  /**
-   * Global detail-stack overlay — floating card near the top-right edge.
-   * Slides IN from the right (translating left into view) and OUT back to the
-   * right; opacity + x transform only (GPU-composited). Pair with
-   * `framerTransition.detailStackOverlayMount` + `useMotionPresence` (which
-   * collapses x→0 under reduced motion, leaving a pure fade).
-   */
+  /** Global detail-stack overlay — floating card near the top-right edge. */
   detailStackOverlay: {
     initial: { opacity: 0, x: 48 },
     animate: { opacity: 1, x: 0 },
     exit: { opacity: 0, x: 48 },
   },
-  /**
-   * Detail stack in PUSH mode (`RightRailHost` as an in-flow column).
-   *
-   * Opacity-only, deliberately: the column's own width tween owns arrive and
-   * leave, so an `x` translate here — the 48px the overlay preset above uses
-   * correctly — would slide the card out of the very slot it just reserved in
-   * the flow, leaving a visible empty gutter beside the work surface.
-   *
-   * Pair with `framerTransition.sidebarNavColumnMount` (the sanctioned push
-   * tween, never a spring), exactly as `ContextPanelLayout` does on the left
- * edge. → the deliberate PUSH
-   * toggle.
-   */
+  /** Detail stack in PUSH mode (`RightRailHost` as an in-flow column). */
   detailStackPush: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
   },
-  /**
-   * Heavy right-pane WORKSPACE overlay crossfade (the receiving line workspace
-   * swapping carton→carton). PURE opacity — no y on enter or exit — so two
-   * full-bleed heavy panes can never slide in opposite directions (the old
-   * double-image jitter); they simply cross-dissolve. The "settle" personality
-   * lives one level in, as the panel's staggered card rise
-   * (`staggerRevealRiseItem`), so the pane fade and the card rise never compound
-   * on the same element. Opacity is GPU-composited, so a big subtree only fades
-   * (no per-frame layout). Pair with `framerTransition.workbenchPaneSettle` and
- * consume via `useMotionPresence`..
-   */
+  /** Heavy right-pane WORKSPACE overlay crossfade (the receiving line workspace swapping carton→carton). */
   workbenchPaneSettle: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
   },
-  /**
-   * Station carton→carton swap — a SIBLING of `workbenchPaneSettle`, not a
-   * replacement. The settle preset serves pointer-driven detail swaps (Review,
-   * Outbound, FBA, Packer, Triage); this one serves a scanner-driven bench,
-   * where the operator has already physically swapped the box and every
-   * millisecond of chrome is throughput cost.
-   *
-   * The exit carries its own zero-duration transition so `mode="wait"` — which
-   * must stay, since two absolutely-positioned panes running concurrently
-   * double-image — completes the exit immediately and the next carton paints
-   * on the following frame. Net: ~0.6s of empty canvas per scan becomes ~0.12s
-   * of enter fade, with no gap.
-   *
-   * Pair with `framerTransition.stationCartonSwapMount`; consume via
-   * `useMotionPresence` (which returns a plain opacity shape under reduced
-   * motion, where `useMotionTransition` already zeroes the duration).
-   */
+  /** Station carton→carton swap — a SIBLING of `workbenchPaneSettle`, not a replacement. */
   stationCartonSwap: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0, transition: { duration: 0 } },
   },
-  /**
-   * Procedure Focus Deck — active evidence body swap on step advance.
-   * Opacity-only with a short exit (NOT carton `swap.scan` exit:0) so body
-   * height can settle under `procedure.advance` without an instant collapse.
-   * Pair with `framerTransition.procedureFocusBodyMount`.
-   */
+  /** Procedure Focus Deck — active evidence body swap on step advance. */
   procedureFocusBody: {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
@@ -1066,14 +785,7 @@ export const framerTransitionMobile = {
   /** Bottom sheet — utilitarian spring settle */
   sheetSlide: springSnappy,
 
-  /**
-   * Fullscreen photo viewer paging / dismiss settle — duration-locked spring
-   * (visualDuration + bounce: 0), NOT `springSnappy`. Physics springs vary their
-   * perceived duration with distance + release velocity; paging must land in the
-   * SAME visual time whether the finger barely nudged or hard-flicked. Bounce
-   * reads as tacky on a photo. Inherited flick `velocity` (call site) is still
-   * respected.
-   */
+  /** Fullscreen photo viewer paging / dismiss settle — duration-locked spring (visualDuration + bounce: */
   viewerPaging: {
     type: 'spring' as const,
     visualDuration: 0.32,
@@ -1281,23 +993,7 @@ export const framerVariants: Record<string, Variants> = {
       },
     },
   },
-  /**
-   * Master-nav row cascade — ONE ladder for BOTH drill page rows and the mode
-   * rows nested under them. Two different steps for two altitudes of the same
-   * list read as two different systems; 15ms × index resolves an 8-row section
-   * at 225ms and a 4-mode page at 165ms, so both feel like one motion.
-   *
-   * Parent: `initial={staggerInitial} animate="visible"` and a `key` bound to
-   * the SECTION id — never to the filter query or the filtered array. Typing in
-   * the drill filter must update rows in place; a container that remounts per
-   * keystroke replays the whole cascade under the operator's cursor. Pass
-   * `initial={false}` while a filter is active so rows that mount mid-type
-   * inherit `visible` instead of fading in one at a time.
-   *
-   * `y: 2` is the entire travel — under the `MotionConfig` reduced-motion floor
-   * the transform snaps and the opacity fade survives, which is the correct
-   * reduced form (crossfade, not cut).
-   */
+  /** Master-nav row cascade — ONE ladder for BOTH drill page rows and the mode rows nested under them. */
   spineRowStaggerContainer: {
     hidden: {},
     visible: {

@@ -1,27 +1,4 @@
-/**
- * POST /api/kiosk/repair/{id}/label-printed — device-authed reprint stamp for a
- * repair that never became a counter transaction.
- *
- * Callers: KioskHistoryDetail "Reprint label" on a `repair:` row (after
- * `printRepairLabel` has already opened the print dialog).
- * Affected API: this route (device cookie + the pinless staff sign-in).
- * Data schemas: repair_service.label_printed_at (first print wins).
- * User 2026-09-23: *"It must have action buttons for printing out a label if
- * you need to reprint out the same label."*
- *
- * ## Why this exists beside the visit twin
- *
- * `/api/kiosk/visit/[id]/label-printed` scopes the write by requiring the
- * repair to belong to the visit on screen. Most repairs in this org have NO
- * visit — Ecwid drop-offs, inbound shipments, desk tickets — so that check can
- * never pass for them and the tablet had no way to stamp a reprint at all.
- *
- * The scope this route puts in its place is the same one the History list
- * already grants: org membership. A device that can list and open this ticket
- * can print its label, and the stamp is monotonic (`markRepairLabelPrinted`
- * writes only when NULL — a reprint never moves the first-print instant) and
- * audited against the repair itself. Nothing here moves money or status.
- */
+/** POST /api/kiosk/repair/{id}/label-printed — device-authed reprint stamp for a repair that never became a counter transaction. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

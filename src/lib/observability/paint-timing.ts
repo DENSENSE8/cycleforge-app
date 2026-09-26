@@ -1,12 +1,4 @@
-/**
- * Paint-timing helpers — User Timing marks + web-vitals for dev HUD and
- * optional Speed Insights custom metrics. Safe to call from any client surface;
- * no-ops when `window.performance` is unavailable.
- *
- * Mark vocabulary follows Tier-1 paint content order (P0–P3):
- * `{route}:{chrome|primary|context|trailing}`. Legacy Unbox marks
- * (`unbox:kpi` · `unbox:table` · …) remain accepted aliases.
- */
+/** Paint-timing helpers — User Timing marks + web-vitals for dev HUD and optional Speed Insights custom metrics. */
 
 import { useEffect } from 'react';
 import {

@@ -1,44 +1,4 @@
-/**
- * People-lens coverage assembly (Operations Studio ST6 / Phase E1).
- *
- * The People lens overlays, per workflow node, WHICH STAFF are scoped to that
- * node's station — so an owner sees staffing coverage on the same graph. It is
- * strictly READ-ONLY (Studio law #7): it reads staff access and deep-links to
- * the staff editor; it never writes grants.
- *
- * ── The node → station → staff mapping (the load-bearing decision) ──
- *
- * There are TWO independent station vocabularies in this codebase:
- *
- *   1. node.config.station — the operations-catalog STATIONS *department* key
- *      (RECEIVING · TECH · PACK · LABELS · FBA · ADMIN). EVERY process node
- *      carries it; it already drives L0 business-map grouping.
- *   2. staff_stations.station — the per-staff assignment enum
- *      (TECH · PACK · UNBOX · SALES · FBA), set in the admin Stations card.
- *
- * They overlap only on TECH/PACK/FBA, so a direct string join would silently
- * drop coverage for receiving/label nodes. This module owns the ONE crosswalk
- * (DEPARTMENT_TO_STAFF_STATION) from the node department key to the staff
- * enum, chosen from the clearest real-world signal:
- *
- *   RECEIVING → UNBOX   (the receiving floor staff station is "UNBOX")
- *   TECH      → TECH
- *   PACK      → PACK
- *   LABELS    → PACK    (label printing happens at the pack bench — see the
- *                        operations-catalog LABELS blurb + the shipping flow,
- *                        where PACK owns the LABEL_PRINTED step)
- *   FBA       → FBA
- *   ADMIN     → (none)  (back-office / SYSTEM actors — no floor staff station)
- *
- * `node.config.station` is the primary join because it is dense (present on
- * every node) and is the same key L0 already groups on, keeping the lens a pure
- * repaint of the laid-out graph. `station_definitions.workflow_node_id` (the
- * Phase-D node→station binding) is sparse and orthogonal, so it is NOT used as
- * the staffing signal here — a node with no department key simply reads as a
- * coverage gap, which is exactly the owner-facing signal we want.
- *
- * Pure + DB-free so it unit-tests with plain objects; the route does the SQL.
- */
+/** People-lens coverage assembly (Operations Studio ST6 / Phase E1). */
 
 import { asStation, type StationKey } from '@/lib/neon/staff-stations-queries';
 
@@ -115,14 +75,7 @@ export interface AssemblePeopleInput {
   assignments: StaffStationAssignment[];
 }
 
-/**
- * Assemble per-node staffing coverage from the graph's nodes and the org's
- * staff↔station assignments. Pure — no DB, no clock.
- *
- * Each node maps (via staffStationForNodeDepartment) to one staff_stations enum;
- * its coverage is every staffer assigned to that station. Nodes whose department
- * doesn't map (ADMIN / unknown / absent) read as uncovered.
- */
+/** Assemble per-node staffing coverage from the graph's nodes and the org's staff↔station assignments. */
 export function assemblePeopleCoverage(input: AssemblePeopleInput): StudioPeopleResponse {
   // staff_stations enum → its assigned staff (primary first, then name).
   const byStation = new Map<StationKey, StaffStationAssignment[]>();

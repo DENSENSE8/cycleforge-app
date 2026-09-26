@@ -1,12 +1,6 @@
 /**
+ * The hard gate for the MOBILE-FIRST law (operator 2026-09-14):
  * The hard gate for the MOBILE-FIRST law (operator 2026-09-14): *"everything
- * must be mobile friendly. If it is not mobile friendly, then it should not
- * even display anywhere within the front end … first of all, just hide the
- * operations, support, and sales, and keep the products, inventory, outbound,
- * and inbound."*
- *
- * Runs in verify's **Unit tests** gate. `LANE_MOBILE_FIRST` is the porting
- * ledger; this file is what stops it from being decorative.
  */
 import assert from 'node:assert/strict';
 import test from 'node:test';
@@ -20,15 +14,7 @@ import { buildCommandBarNavGroups } from './command-bar-nav-groups';
 import { LANE_MOBILE_FIRST, isLaneVisible } from './lanes';
 import { migrateSpineSlots, resolveSpineMapEntries } from './spine-slots';
 
-// Read from the ledger everywhere EXCEPT this constant, which names the set
-// for readable failure messages. Sales returned to the desktop spine
-// 2026-09-16; its absent mobile-registry entry keeps it off the phone.
-// `studio` LEFT this set 2026-09-23: the ruling *"the cron drop to assign
-// tasks from designated tags should be included in the automations display in
-// the sidebar"* gave the lane a desk door. It is `desk-only`, not `ported` —
-// `MOBILE_RESTRICTED_SIDEBAR_IDS` still refuses it on a phone, which the
-// mobile-drawer assertions below enforce. The deepEqual is the guard that
-// catches an accidental un-hide, so it — not this comment — is the truth.
+// Read from the ledger everywhere EXCEPT this constant, which names the set for readable failure messages.
 const HIDDEN_LANE_IDS = ['monitor', 'support'] as const;
 
 /** The registry row behind a palette / spine id, for lane attribution. */
@@ -104,11 +90,7 @@ test('the ROUTE survives the hidden door — hiding is not deleting', () => {
 });
 
 test('the ⌘K palette reads the gate on BOTH paths — no-arg build included', () => {
-  // The leak this pins: `buildCommandBarNavGroups` used to fall back to the raw
-  // `APP_SIDEBAR_NAV` whenever it got no permission set, which bypassed the
-  // gate that lives inside `getSidebarNavItems`. A no-arg call is the
-  // unauthenticated / shadow-mode path, so the palette shipped Sales · Support ·
-  // Operations bands to exactly the session with the least right to them.
+  // The leak this pins:
   const hidden = new Set<string>(HIDDEN_LANE_IDS);
   for (const groups of [buildCommandBarNavGroups(), buildCommandBarNavGroups(new Set())]) {
     for (const group of groups) {
@@ -125,11 +107,7 @@ test('the ⌘K palette reads the gate on BOTH paths — no-arg build included', 
 });
 
 test('a stale saved spine order cannot resurrect a hidden lane', () => {
-  // `prefs.spineSlots` is persisted, so a staffer who arranged the spine before
-  // the gate landed still has `sales` / `support` / `monitor` ids in storage.
-  // The render path must drop them from the ORDER too, not just from the
-  // catalog — otherwise the hidden door comes back for the operators who have
-  // been here longest.
+  // `prefs.spineSlots` is persisted, so a staffer who arranged the spine before the gate landed still has `sales` / `support` / `monitor`…
   const items = getSidebarNavItems();
   const stale = [...HIDDEN_LANE_IDS, 'sales', 'support', 'operations', ...items.map((i) => i.id)];
   const { slots } = migrateSpineSlots(stale, items, null);

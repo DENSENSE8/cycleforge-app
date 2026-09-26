@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * Hover-beside-chip secondary action menu — SoT for dense table identity chips
- * and (via thin adapters) unbox carton chips.
- *
- * Pattern (IdentityLinkChip / SerialChipWithMenu):
- *   • Chip click = primary (copy or open) — parent supplies the chip child.
- *   • Hover the group → menu beside the chip (prefer trailing/right; flip left).
- *   • stopPropagation so table rows don't open detail on menu clicks.
- *
- * Side placement is load-bearing for LedgerGrid / queue sheets: a below-chip
- * menu sits in the vertical row-scan path and blocks travel to the next row.
- * Default `placement` stays `auto` (side flyout). Carton identity may pass
- * `placement="bottom"` + `avoidCollisions={false}` + `itemPad="chip"`.
- *
- * The full-ID SiteTooltip stays above (`pointer-events-none`); OPEN/EDIT exit
- * horizontally so the column stays traversable.
- *
- * The menu renders in a **body portal** (like {@link HoverTooltip}) positioned
- * from the trigger's rect via {@link clampPortalSideMenuPosition}. This is also
- * load-bearing: dashboard order rows apply a `transform` to the chip cluster on
- * row-hover, and `transform` creates a stacking context — an in-flow `absolute`
- * menu would be trapped inside it and painted over by the next row (a later DOM
- * sibling), regardless of its `z-index`. A body portal escapes every row
- * stacking context so the menu is never clipped or covered.
- *
- * {@link CopyChipHoverMenuPanel} is a thin ADAPTER over the one row renderer
- * ({@link ChipHoverMenuPanel}) — it maps this module's item shape onto the
- * shared rows and picks the roomier LedgerGrid pad. It used to re-implement the
- * rows, which meant the grid flyout and the carton bar drew the same anatomy
- * from two places. Hosts that already own hover (e.g. the photo launcher
- * toolbar) still compose it in place.
- */
+/** Hover-beside-chip secondary action menu — SoT for dense table identity chips and (via thin adapters) unbox carton chips. */
 
 import {
   useCallback,
@@ -71,15 +40,7 @@ export type CopyChipHoverMenuItem = {
   tone?: 'default' | 'accent' | 'danger';
 };
 
-/**
- * Adapter: this module's item shape → the shared row renderer.
- *
- * `denseLabel` (carton chips / photo toolbar) drops the dashboard's semibold
- * label emphasis so a row reads as the chip face that opened it. It does NOT
- * shout — the `uppercase tracking-widest` this flag once carried is banned on
- * chip menus (`carton-chrome-type-unity.guard.test.ts`): pick "Medium" off a
- * menu and it becomes a pill, so the word must not change voice on the way.
- */
+/** Adapter: this module's item shape → the shared row renderer. */
 export function CopyChipHoverMenuPanel({
   items,
   menuLabel,
@@ -207,17 +168,7 @@ type ChipMenuHandle = {
   scheduleClose: () => void;
 };
 
-/**
- * The menu machinery — hover registry, trigger rect, portal clamp, scroll and
- * resize teardown. ~25 hooks and a module-scope registry subscription, none of
- * which can paint before a pointer arrives, so it mounts on the first hover
- * (carrying that hover in) and stays mounted.
- *
- * The subscription is the reason this split is worth more than its hook count:
- * every mounted `useHoverSurface` re-renders when ANY surface opens anywhere.
- * At 62 order rows that was 62 re-renders per hover; now it is one per row the
- * operator has actually reached for.
- */
+/** The menu machinery — hover registry, trigger rect, portal clamp, scroll and resize teardown. */
 function ChipMenuPortal({
   bridge,
   triggerRef,
@@ -256,12 +207,7 @@ function ChipMenuPortal({
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  /**
-   * Timing + eviction come from {@link useHoverSurface} — the ONE hover engine
-   * (0ms open, 150ms close, one surface open anywhere). This component keeps
-   * only what is genuinely its own: capturing the trigger rect and clamping the
-   * portal into view. It owns no timers.
-   */
+  /** Timing + eviction come from {@link useHoverSurface} — the ONE hover engine (0ms open, 150ms close, one surface open anywhere). */
   const hover = useHoverSurface({ disabled: !enabled });
 
   const open = useCallback(() => {
@@ -282,25 +228,10 @@ function ChipMenuPortal({
 
   const scheduleClose = hover.scheduleClose;
 
-  // Publish the handle, then act on the hover that mounted us — the first reach
-  // must open the menu, not merely pay for it. `readIntent` is non-destructive;
-  // the trigger's `release` is what clears it, so a StrictMode remount
-  // re-applies rather than swallows it.
+  // Publish the handle, then act on the hover that mounted us — the first reach must open the menu, not merely pay for it.
   useDeferredHoverEngine(bridge, { open, scheduleClose }, (_intent, h) => h.open());
 
-  // Evicted by another hover surface (a rail peek, a classify menu) — drop the
-  // rect so the portal unmounts. Without this the registry would say "closed"
-  // while this menu stayed painted.
-  //
-  // `isActive()` (the registry) rather than `isOpen` alone (React state).
-  // `isOpen` lags the registry by a commit, and the mount effect above now opens
-  // from a layout effect rather than from a pointer handler — so whether this
-  // watcher ever observes the window where the registry says "ours" and `isOpen`
-  // still says "no" depends on when React flushes the passive effect that
-  // subscribes. Today's React flushes it first and the window never opens; this
-  // guard is what keeps that an implementation detail instead of the reason the
-  // first hover closes itself. Eviction by another surface is pinned in
-  // `deferred-hover-activation.test.ts`.
+  // Evicted by another hover surface (a rail peek, a classify menu) — drop the rect so the portal unmounts.
   const isRegistryActive = hover.isActive;
   useEffect(() => {
     if (anchor && !hover.isOpen && !isRegistryActive()) {
@@ -364,10 +295,7 @@ function ChipMenuPortal({
         visibility: pos ? 'visible' : 'hidden',
         zIndex: zIndex.panelPopover,
       }}
-      // No appear transition. The bench reads the panel the instant it
-      // exists; a 100ms fade is latency between the reach and the answer,
-      // and it made this menu behave differently from every other hover
-      // surface on the same row.
+      // No appear transition.
       onClick={(e) => e.stopPropagation()}
       {...hover.surfaceProps}
     >

@@ -1,10 +1,4 @@
-/**
- * POST /api/admin/staff/[id]/enroll-token
- *
- * Generates a one-time enrollment token for the given staff and returns the
- * QR target URL. Admin shows this QR; staff scans it on their phone, sets a
- * PIN, optionally registers a passkey.
- */
+/** POST /api/admin/staff/[id]/enroll-token */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -23,10 +17,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
   }
 
-  // Org-scoped enrollment: createEnrollment gates the INSERT on the staff
-  // PARENT's org (staff_enrollments has no organization_id of its own), so a
-  // staffId in another org never produces a row — surface that as NOT_FOUND
-  // rather than a 500.
+  // Org-scoped enrollment:
   let enr: EnrollmentToken;
   try {
     enr = await createEnrollment(

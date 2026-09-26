@@ -1,15 +1,4 @@
-/**
- * Per-workstation "silent printing" switch.
- *
- * ON (default): label prints go straight to the paired WebUSB / Web Serial
- * printer with no dialog when a profile is configured.
- *
- * OFF: those silent paths are skipped and the label is handed to the browser's
- * normal print dialog (via the hidden iframe + `window.print()`), so an operator
- * can pick a printer / preview. Stored per-origin-per-device in localStorage,
- * which makes it inherently per-workstation (the same place printer profiles
- * live — see {@link ./browserPrint}).
- */
+/** Per-workstation "silent printing" switch. */
 
 import { readMigratedItem } from '@/lib/storage/migrate-key';
 

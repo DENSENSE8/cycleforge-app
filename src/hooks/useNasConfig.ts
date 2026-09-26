@@ -3,15 +3,7 @@
 import { useEffect, useState } from 'react';
 import { setNasBaseUrl } from '@/lib/nas-photos';
 
-/**
- * Fetch the runtime NAS config (active base URL + this operator's folder) from
- * GET /api/nas-config and push the base URL into the nas-photos module so every
- * consumer (picker listing, thumbnails, capture PUT) targets the admin-selected
- * test/prod NAS without a rebuild.
- *
- * Module-memoized: the endpoint is hit once per page load and shared across all
- * callers. Returns null until the first fetch resolves.
- */
+/** Fetch the runtime NAS config (active base URL + this operator's folder) from GET /api/nas-config and push the base URL into the… */
 export interface NasConfig {
   baseUrl: string;
   folder: string;

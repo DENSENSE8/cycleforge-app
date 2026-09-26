@@ -2,51 +2,7 @@
 
 /**
  * The seam between a desk's **body** and its **chrome's right slot**.
- *
- * {@link DeskPageChrome} is mounted by the shared desk layout, one level above
- * the page — so the page cannot hand it an `addSlot` prop, and the layout must
- * not import one desk's intake button (a shared frame that knows about To-ship's
- * Add is no longer shared). This is the registration channel between them: the
- * layout provides, the active desk registers, the band renders whatever it got.
- *
- * ```tsx
- * // layout (once)                       // the desk that has a CTA
- * <DeskActionSlotProvider>               <DeskActionSlotRegistrar>
- *   <DeskPageChrome addSlot={node} …>      <DeskHeaderAction>Add</DeskHeaderAction>
- * </DeskActionSlotProvider>              </DeskActionSlotRegistrar>
- * ```
- *
- * **Radius is locked.** The page-header CTA is {@link DeskHeaderAction} —
- * the house {@link Button} with `radius="pill"` (`cornerClass('pill')`). A
- * split intake (To-ship) is {@link DeskHeaderSplitAction}, which paints that
- * same token. Do not pass `radius` on a raw Button here, and do not round the
- * slot with a `rounded-*` class.
- *
- * **The industrial bar wears segments.** Inside `DeskPageChrome`
- * `stage="flush"` the bar provides the `segment` face
- * ({@link DeskHeaderFaceProvider}): every header action renders as a flush
- * mono cell at full bar height, no gap and no padding between neighbours, a
- * 1px edge between them, pressed = ink fill — the same cell the desk's modes
- * wear on the left end, so both ends of the bar work one way (owner
- * 2026-09-24). The registering desk does not choose the face; the bar does.
- *
- * **Three roles, one row.** Paint order: `overall` (collection, e.g. Media
- * Export) · `leading` (To-ship Labels display toggle, immediately left of
- * Sync) · `primary` (create / Sync, rightmost). Last writer wins *per role*.
- * Print, filter, columns, zoom and fullscreen stay off this row — they act
- * on chosen rows or on how the sheet is drawn
- * (`docs/todo/seller-table-program-PLAN.md` §05). To-ship Export is not an
- * `overall` button: it lives in the Sync ShipStation dropdown
  * ({@link DeskExportMenuRegistrar}), operator 2026-09-01. Labels is a
- * display toggle for the paperwork walk, not a per-row print verb.
- *
- * A desk with no CTA registers nothing — so the slot empties on unmount and a
- * stale button can never outlive the page that owns it. That unmount cleanup
- * is the whole reason this is a registrar and not a module-level store.
- *
- * Not a portal: the node has no DOM home of its own to escape, and rendering it
- * through context keeps it inside the band's own flex row where its sizing and
- * focus order belong.
  */
 
 import {
@@ -92,10 +48,7 @@ export function useDeskHeaderFace(): DeskHeaderFace {
 }
 
 /**
- * One industrial bar cell — mode tab or page action. Full bar height, square,
- * mono 11 heavy uppercase, no outer margin: neighbours share a 1px edge.
- * 11px, not the 10px record label: the active cell is light ink on the
- * grained ink fill, and at 10px its strokes broke up against the grain
+ * One industrial bar cell — mode tab or page action.
  * (owner 2026-09-25, "TO SHIP" readability).
  */
 export const DESK_BAR_SEGMENT_CLASS = cn(
@@ -113,12 +66,7 @@ export function deskBarSegmentTone(active: boolean): string {
     : 'text-mode-muted enabled:hover:bg-mode-hover enabled:hover:text-mode-ink';
 }
 
-/**
- * Page-header CTA. Same {@link Button} every other ops action uses; radius is
- * not a call-site choice. A desk that wants a different corner is asking for
- * a second header language. On the industrial bar it renders as a bar
- * segment ({@link DESK_BAR_SEGMENT_CLASS}); `aria-pressed` drives the ink fill.
- */
+/** Page-header CTA. */
 export function DeskHeaderAction(props: DeskHeaderActionProps) {
   const face = useDeskHeaderFace();
   if (face === 'segment') return <DeskHeaderSegmentAction {...props} />;
@@ -268,21 +216,7 @@ function setterForRole(
   return ctx.setPrimary;
 }
 
-/**
- * Register this subtree's content as a desk chrome header action.
- *
- * `role="primary"` (default) is the create verb, rightmost. `role="overall"`
- * is a collection action (Media Export, etc.) further left. `role="leading"`
- * sits immediately left of primary (To-ship Labels, left of Sync). Last writer
- * wins per role. To-ship CSV export uses {@link DeskExportMenuRegistrar}.
- *
- * Renders nothing where it is written. Memoize the children (or keep them
- * cheap) — a fresh element identity on every render re-registers on every
- * render, which is a re-render loop through the provider.
- *
- * A no-op outside a {@link DeskActionSlotProvider}, so a desk body still mounts
- * on a route that has no desk chrome (e.g. the Support alias).
- */
+/** Register this subtree's content as a desk chrome header action. */
 export function DeskActionSlotRegistrar({
   children,
   role = 'primary',

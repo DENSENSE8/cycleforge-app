@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * PageContextSection — the "recently active page details" readout at the top of
- * the context rail. Read-only (Monitor region per contextual-display.md): shows
- * the page the operator is on plus its station / mode / durable selection, from
- * the same context store the assistant sends with each turn. No edit
- * affordances — the rail observes, it never mutates the page.
- */
+/** PageContextSection — the "recently active page details" readout at the top of the context rail. */
 
 import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';

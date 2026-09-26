@@ -1,17 +1,4 @@
-/**
- * Tech shipping-history board lanes (station-table-unification-plan §4.3) — the
- * TS single source of truth for how a tech record buckets into a Pipeline lane.
- * Per Decision 12, lane MEMBERSHIP is derived here (never re-implemented in SQL
- * for display); a counts endpoint may aggregate raw columns but the lane LABELS
- * come from this module. Mirrors the `FULFILLMENT_BOARD_LANES` +
- * `FULFILLMENT_STATE_META` split (descriptor list = order + icon; meta = label/
- * dot/description). Dots come from the label-registry tone map so they stay on
- * the theme palette (no raw neutrals).
- *
- * v1 lanes (O2 resolved): TODAY / THIS_WEEK / FBA. FBA is a distinct stream and
- * wins over day-banding; the "in-progress" lane is deferred (it needs scan-station
- * state, not history rows).
- */
+/** Tech shipping-history board lanes (station-table-unification-plan §4.3) — the TS single source of truth for how a tech record buckets… */
 
 import { toPSTDateKey } from '@/utils/date';
 import { TONE_CLASSES } from '@/lib/labels/registry';

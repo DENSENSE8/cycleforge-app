@@ -1,19 +1,4 @@
-/**
- * DB-free unit tests for the assistant read-tool registry (plan §3.1).
- * Fake `deps.query` captures every SQL + params; asserts org threading,
- * permission gating, Zod validation, and graceful tool-error surfacing.
- * Search/ticket tools use injectable deps (no SQL).
- *
- * As of 2026-08-22 the registry is no longer read-only: the four tool-forge
- * gateway tools live in the same map, because that map is what MCP's
- * tools/list and tools/call are built from. They are swept by the composition
- * and permission assertions below like everything else, and skipped by the
- * SQL-threading sweep for the same reason the domain adapters are — they reach
- * their own injectable collaborators rather than deps.query. Their behaviour
- * (denial, org handling, fail-closed) is proven in
- * src/lib/tool-forge/gateway-denial.test.ts.
- * Run: npm run test:assistant
- */
+/** DB-free unit tests for the assistant read-tool registry (plan §3.1). */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -53,12 +38,7 @@ const DOMAIN_TOOL_NAMES = new Set([
   'list_receiving_line_photos',
 ]);
 
-/**
- * Tool-forge gateway tools. Skipped by the SQL-threading sweep because they
- * reach toolForgeDedupe / toolForgeDecide / toolForgeValidate / toolForgeHandoff
- * rather than deps.query — the same reason DOMAIN_TOOL_NAMES are skipped. They
- * are NOT skipped by the composition or permission assertions.
- */
+/** Tool-forge gateway tools. */
 const GATEWAY_TOOL_NAMES = new Set([
   'search_tool_registry',
   'submit_approval_decision',

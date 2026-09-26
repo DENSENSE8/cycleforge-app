@@ -1,16 +1,4 @@
-/**
- * Normalized shipping-engine domain contract.
- *
- * The app talks to a label-buying carrier engine (ShipStation v2 / ShipEngine)
- * ONLY through these normalized shapes — the raw provider JSON is mapped into
- * them inside `client.ts` and never leaks past the lib boundary. Endpoints and
- * UI consume these dumb, presentation-ready shapes ("format in lib, render
- * dumb";).
- *
- * These types are provider-agnostic on purpose: if the engine is ever swapped
- * (or a second engine added), only the mapping in `client.ts` changes, not the
- * endpoints, the UI, or the shipment/document plumbing they feed.
- */
+/** Normalized shipping-engine domain contract. */
 
 /** A postal address in the engine's neutral shape. Built from the order's
  *  customer (ship-to) or the org's warehouse (ship-from). */

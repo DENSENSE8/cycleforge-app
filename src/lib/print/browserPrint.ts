@@ -1,22 +1,4 @@
-/**
- * Browser-native silent printing — WebUSB / Web Serial — with named PROFILES.
- *
- * A workstation can pair several printers, each saved as a PrinterProfile with a
- * role (label / paper / receipt), a connection (usb / serial / os), a command
- * language (tspl / zpl / escpos / none), a paper size, and a copy count. Job
- * sites resolve a profile by role (`getProfileForRole('label')`) and never sniff
- * the device — the operator assigns roles once in Settings.
- *
- * Profiles persist per-origin/per-device in localStorage, which means they are
- * inherently per-workstation (a printer is wired to one PC). Chromium only; HTTPS
- * (or localhost) only — guard with `isBrowserPrintSupported()`.
- *
- * Connection kinds:
- *   - usb / serial → raw bytes (TSPL/ZPL/ESC-POS) straight to a thermal printer.
- *     Fully silent. This is the WebUSB / Web Serial path.
- *   - os → a regular OS/office printer. Browsers cannot silently drive these via
- *     WebUSB; callers fall back to the HTML iframe + `window.print()` dialog.
- */
+/** Browser-native silent printing — WebUSB / Web Serial — with named PROFILES. */
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 

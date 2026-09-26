@@ -1,10 +1,4 @@
-/**
- * Cross-remount handoff for "Edit serial from a non-active accordion row".
- *
- * Controllers still call {@link takeSerialEditHandoff} after a line remount.
- * Collapsed PO meta opens the Units display for edit (serial preview button);
- * take returns null unless a future affordance stashes a target.
- */
+/** Cross-remount handoff for "Edit serial from a non-active accordion row". */
 export interface PendingSerialEdit {
   id?: number;
   serial_number: string;

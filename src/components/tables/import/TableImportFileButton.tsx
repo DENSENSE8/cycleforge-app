@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The ONE control that starts a table import.
- *
- * A workbench chrome mounts this with its family's descriptor; the control owns
- * the file input, the parse, and arming `?import=csv` — so a second family
- * never re-implements "pick a file, then open staging", and the entry point
- * stops being hardcoded to one desk's Sync popover.
- *
- * Presentation stays with the caller (label, helper copy, disabled): the Sync
- * popover wants a full-width secondary button, a Band-1 chrome cluster wants a
- * flush pill. Only the MECHANISM is shared.
- */
+/** The ONE control that starts a table import. */
 
 import { useId, useRef, useState, type ReactNode } from 'react';
 import { FileText } from '@/components/Icons';

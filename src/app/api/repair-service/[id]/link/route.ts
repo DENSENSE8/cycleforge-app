@@ -12,14 +12,7 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * Manual pairing for a repair_service ticket. POST sets the linkage reference
- * fields (order id / inbound tracking / serial / catalog SKU); DELETE clears
- * them (a full unlink, or a subset via `?fields=`). Both are fully reversible
- * — the ticket row is untouched beyond these reference columns, and the prior
- * values are captured in the audit `before`. Org-scoped: a cross-tenant id
- * resolves to 404 (no disclosure). Permission: repair.intake.
- */
+/** Manual pairing for a repair_service ticket. */
 
 const linkBodySchema = z
   .object({

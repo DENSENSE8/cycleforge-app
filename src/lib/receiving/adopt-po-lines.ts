@@ -1,21 +1,4 @@
-/**
- * Adopt / claim Zoho PO receiving lines onto a carton.
- *
- * Scan and Package Pairing open a `zoho_po` carton by PO id, then need the
- * local `receiving_line` rows on that carton. Incoming sync often already
- * created them — sometimes unattached (`receiving_id IS NULL`), sometimes
- * stuck on an unmatched tracking carton (door scan missed the PO). This
- * helper:
- *   1. Adopts unattached lines for the PO.
- *   2. Claims lines whose Zoho PO id matches and whose current carton is
- *      `source = 'unmatched'` (never steals from another `zoho_po` carton).
- *   3. Optionally live-imports from Zoho when the carton still has zero lines
- *      for that PO (Package Pairing / empty local adopt).
- *
- * Lookup-po keeps its local-only hot-path guard by never importing
- * `zoho-receiving-sync` in the route file — this module owns the optional
- * import branch. Default deps are lazy-loaded so unit tests stay DB-free.
- */
+/** Adopt / claim Zoho PO receiving lines onto a carton. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { TxClient } from '@/lib/receiving/relink-po';

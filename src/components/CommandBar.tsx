@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * CommandBar — centered ⌘K find palette. Records search only (orders, serials,
- * tracking, titles) via `/api/global-search`. The header icon dispatches
- * {@link COMMAND_BAR_OPEN_EVENT}; this component owns chord + dialog state.
- *
- * `shouldFilter={false}` — server already filtered the hits.
- */
+/** CommandBar — centered ⌘K find palette. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -72,12 +66,7 @@ interface RecentItem {
   subtitle?: string;
   href?: string;
   entityType?: string;
-  /**
-   * Stored `source_platform` for the record this recent points at. Persisted
-   * with the recent because the row is rendered from localStorage with no hit
-   * behind it — without this the channel colour would vanish the moment a
-   * search closed, which is exactly when the recents list matters.
-   */
+  /** Stored `source_platform` for the record this recent points at. */
   platform?: string | null;
 }
 
@@ -99,20 +88,7 @@ interface SearchResult {
 
 
 const RECENT_KEY = 'command-bar-recent';
-/**
- * How many hits the palette fetches AND shows. One number, because they are the
- * same number: everything retrieved is rendered, so a result can never be
- * fetched and then hidden behind a control.
- *
- * It is still a cap on the SERVER side, and that is the other half of the
- * contract: a query matching forty records returns twelve, and the palette used
- * to say nothing about the other twenty-eight. The operator read twelve rows as
- * "that is all there is" and retyped the query narrower to find a record that
- * was already matched. The overflow row below is the fix — it never hides a
- * fetched hit (that was the old per-type "See all", deliberately deleted), it
- * announces the hits the fetch never asked for and hands them to `/search`,
- * which asks for fifty.
- */
+/** How many hits the palette fetches AND shows. */
 const PALETTE_LIMIT = 12;
 const MAX_RECENT = 6;
 
@@ -249,19 +225,13 @@ export function CommandBar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [toggleDialogOpen]);
 
-  // Alt + the scope's own letter (I/O/T/S/#) switches axis without leaving the
-  // field. The letters are the ones already published by `searchByShortcut`, so
-  // the chip legend and the chord can never drift apart. Alt is the modifier
-  // because the palette's own ⌘K and plain typing both have to keep working.
+  // Alt + the scope's own letter (I/O/T/S/#) switches axis without leaving the field.
   useEffect(() => {
     if (!open) return;
     function onScopeKey(e: globalThis.KeyboardEvent) {
       if (e.metaKey || e.ctrlKey) return;
 
-      // ← / → step through the method pills, but ONLY while the field is
-      // empty. The moment there is text, those keys belong to the caret —
-      // stealing them would make the query uneditable, which is a far worse
-      // trade than one extra keystroke to change method.
+      // ← / → step through the method pills, but ONLY while the field is empty.
       if (!e.altKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
         if (query.trim()) return;
         e.preventDefault();
@@ -297,10 +267,7 @@ export function CommandBar() {
     };
   }, [setDialogOpen]);
 
-  // Close on an *actual* route change. The guard has to be the pathname, not
-  // `open`: this effect also re-runs when the palette opens, and it used to
-  // schedule the close on that run too — so ⌘K painted for one frame and shut
-  // itself. That was the flash.
+  // Close on an *actual* route change.
   const lastPathRef = useRef(pathname);
   useEffect(() => {
     if (lastPathRef.current === pathname) return;
@@ -420,10 +387,7 @@ export function CommandBar() {
 
   const previewGroups = useMemo(() => {
     if (!trimmedQuery || previewHits.length === 0) return [];
-    // Every hit the fetch returned, grouped but never truncated. The palette
-    // used to cap 4 per type behind a "See all results for …" row, so a search
-    // matching six orders showed four and a button — the operator had to ask
-    // twice for something already in memory. The fetch limit is the only cap.
+    // Every hit the fetch returned, grouped but never truncated.
     return groupHitsForPreview(previewHits, {
       perGroup: PALETTE_LIMIT,
       total: PALETTE_LIMIT,
@@ -442,12 +406,7 @@ export function CommandBar() {
   const navigate = useCallback(
     (item: RecentItem) => {
       setRecents(saveRecent(item));
-      // Close the telemetry loop: which record answered which query. A search
-      // with no open is the abandonment signal, so this call is what makes the
-      // difference between the two visible. Fire-and-forget by construction —
-      // `keepalive` lets it survive the navigation that follows.
-      // Recent ids are shaped `result:<type>:<id>` / `resolve:<id>` / `open:<href>`,
-      // so the trailing integer is the entity id wherever there is one.
+      // Close the telemetry loop:
       const entityId = Number(/(\d+)$/.exec(item.id)?.[1]);
       if (trimmedQuery && item.entityType && Number.isFinite(entityId) && entityId > 0) {
         void fetch('/api/search/opened', {
@@ -486,19 +445,7 @@ export function CommandBar() {
     [navigate],
   );
 
-  /**
-   * Hand the typed query to the full find surface.
-   *
-   * Deliberately NOT routed through `navigate`: that writer stamps a
-   * `RecentItem` into `localStorage['command-bar-recent']`, and the recents
-   * rail is a list of RECORDS the operator opened. A "See all results for …"
-   * entry there is not a record — it would push a real order off the six-slot
-   * rail and then reopen as a query, not a thing.
-   *
-   * `?q=` is `/search`'s own published contract (`SearchFindSurface` reads it,
-   * `SearchResultsSurface` refetches at limit 50), so this is an entry point
-   * that already exists rather than a new one.
-   */
+  /** Hand the typed query to the full find surface. */
   const seeAllResults = useCallback(() => {
     const href = `/search?q=${encodeURIComponent(trimmedQuery)}`;
     setDialogOpen(false);
@@ -537,24 +484,7 @@ export function CommandBar() {
   const showRecents = open && !trimmedQuery && recents.length > 0;
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
-  /**
-   * The fetch came back FULL, so the server had at least one more it was not
-   * asked for. Three conjuncts, each stopping a specific wrong row:
-   *
-   *  - `trimmedQuery` — the empty/recents state must stay exactly as it was;
-   *    there is no query to see all of.
-   *  - `!searching` — mid-keystroke the previous query's saturated set is
-   *    still in state, so the row would flicker in under a query it does not
-   *    describe.
-   *  - `searchResults.length >= PALETTE_LIMIT` — a three-hit query shows all
-   *    three; offering a trip to `/search` for the same three rows is the
-   *    "ask twice for what is already in memory" defect the per-type "See all"
-   *    was deleted for.
-   *
-   * Measured on the RAW fetch, not `previewHits`: the type/channel facets are
-   * client-side narrowing of this same set, and whether the server truncated
-   * is a fact about the fetch, not about which chip is lit.
-   */
+  /** The fetch came back FULL, so the server had at least one more it was not asked for. */
   const showAllResultsRow =
     Boolean(trimmedQuery) && !searching && searchResults.length >= PALETTE_LIMIT;
 
@@ -568,27 +498,10 @@ export function CommandBar() {
           placeholder={axis ? searchByPlaceholder(axis) : 'Order #, serial, tracking…'}
           data-testid="global-find-input"
         />
-        {/* One control zone, ONE rule under it. Each strip used to draw its own
-            `border-b`, so a palette showing pills + type facets + channel facets
-            + a relaxed notice stacked four hairlines under the input and read as
-            a stack of trays rather than one panel. */}
+        {/* One control zone, ONE rule under it. */}
         <div className="border-b border-border-hairline">
-        {/* Method pills — the search axis as a segmented toggle, not a row of
-            typed labels. `IdentifierToggle` is the house segmented control and
-            is deliberately preferred over `TabSwitch` here: TabSwitch animates
-            its sliding pill's `left`/`width`, which are reflow properties that
-            AGENTS.md bans outright, and the ⌘K field is the hottest keyboard
-            path in the product.
-
-            ← / → step between methods while the field is empty, so choosing one
-            costs no click; Alt+letter still jumps straight to a method. */}
-        {/* `flex`, not a bare block. `IdentifierToggle` is `inline-flex`, so in a
-            block parent it sits on the text baseline of a 24px line box and the
-            strip ends up 13px from the top and 9.8px from the bottom despite a
-            symmetric 8px padding — the leftover leading lands above it. Making
-            the wrapper a flex container takes the line box out of the picture,
-            so the padding is the whole story. (The facet strips below never had
-            this: they were already `flex`.) */}
+        {/* Method pills — the search axis as a segmented toggle, not a row of typed labels. */}
+        {/* `flex`, not a bare block. */}
         <div className="flex px-3 py-2">
           <IdentifierToggle
             ariaLabel="Search method"
@@ -599,10 +512,7 @@ export function CommandBar() {
           />
         </div>
 
-        {/* Entity-type facets over the current result set. Counts are of the
-            unfiltered set so they stay usable while a filter is on, and each
-            chip wears its entity's own tone — the same ENTITY_TONE the /search
-            feed paints, so a type reads the same colour everywhere. */}
+        {/* Entity-type facets over the current result set. */}
         {typeCounts.length > 1 ? (
           <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
             <button
@@ -751,12 +661,7 @@ export function CommandBar() {
               ))}
             </CommandGroup>
           ))}
-          {/* Overflow exit. A CommandItem, not a footer button, because the
-              whole palette is driven from the keyboard: ArrowDown off the last
-              hit lands here and Enter takes it. A control parked outside
-              `CommandList` is unreachable without leaving the home row, which
-              is the same as not existing for the operator this surface is for.
-              Last in DOM order so it is last in the ring. */}
+          {/* Overflow exit. */}
           {showAllResultsRow ? (
             <CommandGroup>
               <CommandItem

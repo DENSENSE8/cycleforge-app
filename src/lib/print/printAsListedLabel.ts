@@ -20,12 +20,7 @@ export interface AsListedLabelPayload {
   /** Prefer line handle `L-{id}` when set; else carton `R-{id}`; else corner text. */
   receivingLineId?: number | null;
   receivingId?: number | null;
-  /**
-   * Tenant slug, carried for the encode SoT. Unused today — `/m/l/*` is a proxy
-   * REWRITE onto a staff page, so it has no anonymous landing and minting a URL
-   * would send a consumer phone to `/signin`. The moment that path gets a
-   * dual-audience landing, this is already threaded.
-   */
+  /** Tenant slug, carried for the encode SoT. */
   orgSlug?: string | null;
   /** Override the encoded matrix value. */
   qrValue?: string | null;

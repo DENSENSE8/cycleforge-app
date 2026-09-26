@@ -19,13 +19,7 @@ interface DeviceInfo {
   isTouchPrimary: boolean;
   /** True if the device has a camera (async — false until checked). */
   hasCamera: boolean;
-  /**
-   * The resolved mode. Uses the manual override from localStorage when set,
-   * otherwise falls back to auto-detection (device + viewport + touch).
-   *
-   * `'mobile'` → render mobile UX (bottom bars, camera flows, larger targets)
-   * `'desktop'` → render desktop UX (sidebars, tables, keyboard-first)
-   */
+  /** The resolved mode. */
   mode: 'mobile' | 'desktop';
   /** Set a manual override that persists across sessions, or `null` to return to auto. */
   setModeOverride: (override: 'mobile' | 'desktop' | null) => void;
@@ -35,12 +29,7 @@ interface DeviceInfo {
 
 const OVERRIDE_KEY = 'cf-device-mode';
 
-/**
- * Phones only — same intent as `MOBILE_UA_RE` in `src/proxy.ts`.
- * Exclude iPad / Android tablets so they keep the desktop shell (no
- * mobile-shell `safe-area-padding` bottom band). Android phones include
- * "Mobile"; tablets omit it. Bare `iPad` must not force mobile mode.
- */
+/** Phones only — same intent as `MOBILE_UA_RE` in `src/proxy.ts`. */
 const MOBILE_UA_RE = /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
 
 /** Detect actual mobile (phone) hardware via Client Hints → UA fallback. */
@@ -64,15 +53,7 @@ async function detectCamera(): Promise<boolean> {
   }
 }
 
-/**
- * Layered device detection hook.
- *
- * Priority: manual override (localStorage) → device detection → viewport + touch.
- *
- * Use `mode` to branch between mobile/desktop UX.
- * Use `hasCamera` to gate camera-dependent flows (packer photos).
- * Use `setModeOverride('desktop')` to let users force desktop mode on a tablet, etc.
- */
+/** Layered device detection hook. */
 export function useDeviceMode(): DeviceInfo {
   const isNarrowViewport = useMediaQuery(MOBILE_BREAKPOINT);
   const isTouchPrimary = useMediaQuery('(hover: none) and (pointer: coarse)');
@@ -132,10 +113,7 @@ export function useMediaQuery(query: string): boolean {
     const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
 
     sync();
-    // MediaQueryList.addEventListener landed in Safari 14 / iOS 14. On older
-    // engines (iOS ≤13.3, old Edge) it's undefined and calling it throws,
-    // aborting the effect and freezing the value at its SSR default. Fall
-    // back to the legacy MediaQueryList.addListener API for those clients.
+    // MediaQueryList.addEventListener landed in Safari 14 / iOS 14.
     if (typeof mql.addEventListener === 'function') {
       mql.addEventListener('change', handler);
       return () => mql.removeEventListener('change', handler);

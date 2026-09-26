@@ -1,14 +1,4 @@
-/**
- * In-website assignment of a Zendesk ticket to one of OUR staff — independent of
- * the Zendesk-side `assignee_id`. Backs POST/GET /api/zendesk/tickets/[id]/assign.
- *
- * Pure DB helpers (get / upsert / clear). The route owns the side-effects
- * (notifying the assignee via staff_messages + audit), per the house route
- * skeleton in
- *
- * Tenant-scoped via withTenantTransaction / tenantQuery — organization_id
- * auto-stamps from the app.current_org GUC (see the migration).
- */
+/** In-website assignment of a Zendesk ticket to one of OUR staff — independent of the Zendesk-side `assignee_id`. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

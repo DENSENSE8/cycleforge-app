@@ -1,21 +1,4 @@
-/**
- * Pure gating logic for showing the fulfillment-substitution section on the
- * `/tech` shipping station (docs/todo/tech-substitution-wiring-plan.md §5
- * Phase 1.1). DB-free and framework-free so it unit-tests without a server.
- *
- * The section is HIDDEN whenever any of these holds:
- *   - the org policy doesn't allow substitution from the tech bench
- *     (`!policy?.canSubstitute` — flag off, 'test' not in allowedNodes, or the
- *     operator lacks tech.substitute_unit / packing.substitute_unit),
- *   - the session is an exception source (orders_exceptions path),
- *   - the session is FBA / FNSKU (substitution is an order re-allocation;
- *     FBA staging has no order allocation to amend),
- *   - the session is a repair (RS-# tracking or sourceType 'repair'),
- *   - there is no valid numeric order id (active mode: activeOrder.id;
- *     preview mode: previewOrderId — §8 decision: preview substitution is
- *     allowed when previewOrderId is valid),
- *   - the order lookup came back not-found (`orderFound === false`).
- */
+/** Pure gating logic for showing the fulfillment-substitution section on the `/tech` shipping station… */
 
 /** Response shape of GET /api/fulfillment/substitution-policy. */
 export interface SubstitutionPolicy {

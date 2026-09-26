@@ -10,12 +10,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zendesk/agents
- * Lists assignable helpdesk agents + admins for the assignee dropdown (via the
- * org's HelpdeskProvider). Server-side cached (5 min) in the adapter's client —
- * the roster rarely changes.
- */
+/** GET /api/zendesk/agents Lists assignable helpdesk agents + admins for the assignee dropdown (via the org's HelpdeskProvider). */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Unbox overview label preview — workspace label-type switcher (carton / unit /
- * As Listed / ticket) with editors matching Testing's hover overlays.
- *
- * Visibility is the Label band itself. There is no nested Show / Hide CTA —
- * opening the Label row shows the sticker, closing it hides it. Notes going
- * empty → non-empty, and Print · Receive "Edit label", ask the host to open
- * that row via {@link onReveal}.
- *
- * **No height tween** (AGENTS.md). The band unmounts this body instantly.
- *
- * Open sticker slots come from the labels SoT:
- *   carton → {@link useLabelFaceReceivingSlots}
- *   unit → {@link useLabelFaceProductSlots} (inside WorkspaceLabelPreviewCard)
- */
+/** Unbox overview label preview — workspace label-type switcher (carton / unit / As Listed / ticket) with editors matching Testing's hover… */
 
 import { useEffect, useRef, useState } from 'react';
 import { WorkspaceLabelPreviewCard } from '@/components/labels/WorkspaceLabelPreviewCard';
@@ -74,10 +60,7 @@ export function UnboxLabelPreview({
     },
     {
       onPlatformChange: ({ label, slug }) => {
-        // Print face follows the pick, and so does the RECORD: the label slot
-        // is a classify surface, not a print-only override. Slug-less picks
-        // (a platform the catalog has never seen) stay print-only rather than
-        // writing a value the PATCH validator would reject.
+        // Print face follows the pick, and so does the RECORD:
         patchOverride?.({ platform: label });
         if (slug != null && slug !== '') {
           c.setSourcePlatform?.(slug);

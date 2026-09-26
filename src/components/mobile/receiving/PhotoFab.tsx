@@ -11,15 +11,7 @@ interface PhotoFabProps {
   hideOnScroll?: boolean;
 }
 
-/**
- * Labeled camera FAB pinned to the bottom-right of the viewport so it stays
- * inside the thumb zone for one-handed use. Pill-shape (icon + label) is more
- * discoverable than an icon-only circular FAB; the explicit "Add Photo" copy
- * is the entire point of the receiving pipeline on mobile.
- *
- * The FAB hides when the user scrolls down (gets out of the way of content)
- * and reappears on scroll-up, mirroring native iOS/Android conventions.
- */
+/** Labeled camera FAB pinned to the bottom-right of the viewport so it stays inside the thumb zone for one-handed use. */
 export function PhotoFab({ href, label = 'Add Photo', hideOnScroll = true }: PhotoFabProps) {
   const [visible, setVisible] = useState(true);
   const lastY = useRef(0);

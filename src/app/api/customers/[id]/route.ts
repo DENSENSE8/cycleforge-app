@@ -38,17 +38,7 @@ export const GET = withAuth(async (req, ctx) => {
   return NextResponse.json({ ok: true, customer: rows[0] });
 }, { permission: 'orders.view' });
 
-/**
- * PATCH /api/customers/[id] — correct a customer's contact (name, phone,
- * email) from the phone repair workbench. Body: `CustomerContactPatchBody`.
- * Writes only the columns that change; an unchanged body writes nothing and
- * returns `changed: []`.
- *
- * Every repair joined to this row shows its name · phone (`getRepairById`), so
- * a real change publishes `repair.changed` for those repairs. Permission:
- * `repair.intake` — the tier that already creates repair customers; the
- * `orders.view` reads above are read-only strings and must not gate a write.
- */
+/** PATCH /api/customers/[id] — correct a customer's contact (name, phone, email) from the phone repair workbench. */
 export const PATCH = withAuth(async (req, ctx) => {
   const id = Number(req.nextUrl.pathname.split('/').filter(Boolean).pop());
   if (!Number.isInteger(id) || id <= 0) {

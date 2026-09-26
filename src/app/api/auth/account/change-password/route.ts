@@ -1,15 +1,4 @@
-/**
- * POST /api/auth/account/change-password
- *
- * Self-service password change for the signed-in account. Requires the current
- * password when one is already set (proves possession, resists a hijacked
- * session silently rotating the credential); a PIN-only account with no password
- * yet may set one directly (it is already authenticated by session).
- *
- * Body: { currentPassword?, newPassword }
- * Auth: any authenticated staff (session cookie). No permission gate — you can
- *   only ever change YOUR OWN account (resolved from the session, never the body).
- */
+/** POST /api/auth/account/change-password */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

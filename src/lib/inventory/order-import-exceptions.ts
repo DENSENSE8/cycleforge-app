@@ -1,17 +1,4 @@
-/**
- * Review · Missing item number — list/resolve/ignore for
- * `/review?mode=catalog-link`.
- *
- * Rows were enqueued by the Google Sheets order import on a `noItemNumber`
- * skip. That import was removed 2026-09-24, so no new rows arrive; the queue
- * stays so the open ones can still be resolved or ignored.
- *
- * "Resolve" does not hand-build an order: it splices the operator-supplied
- * Item Number into the ORIGINAL stored sheet row and re-runs the exact same
- * mapSheetRowsToCanonicalLines + ingestCanonicalOrders path a normal sync
- * uses, so a resolved row can never diverge from what a real import would
- * have produced.
- */
+/** Review · Missing item number — list/resolve/ignore for `/review?mode=catalog-link`. */
 
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -234,10 +221,7 @@ export async function resolveImportException(
     return { ok: false, error: 'Exception is not open', status: 409 };
   }
 
-  // Ingest already fired order.imported for a newly inserted order. When the
-  // resolve path only backfills an existing row, ingest's item_number backfill
-  // arm also fires order.item_number_set. If orderId is known, fire once more
-  // defensively for the resolve actor (idempotent when already assigned).
+  // Ingest already fired order.imported for a newly inserted order.
   if (orderId != null) {
     try {
       const { applyListingAssignment, loadOrderListingFacts } = await import(

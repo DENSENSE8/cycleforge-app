@@ -9,14 +9,7 @@ function loadStorageCtor(): typeof import('@google-cloud/storage').Storage {
   return (require('@google-cloud/storage') as typeof import('@google-cloud/storage')).Storage;
 }
 
-/**
- * A service-account `private_key` pasted into the Vercel dashboard frequently
- * arrives with literal `\n` sequences instead of real newlines, which makes the
- * PEM invalid and causes v4 URL signing (and object reads) to throw — the exact
- * failure this used to hit silently. Route every key through the house
- * `normalizeMultilineEnvValue` helper (same fix `src/lib/google-auth.ts` applies
- * to the Sheets JWT) so signing always gets a well-formed PEM.
- */
+/** A service-account `private_key` pasted into the Vercel dashboard frequently arrives with literal `\n` sequences instead of real… */
 function normalizeCredentialKey<T extends { private_key?: unknown }>(credentials: T): T {
   if (typeof credentials.private_key === 'string') {
     credentials.private_key = normalizeMultilineEnvValue(credentials.private_key);
@@ -149,15 +142,7 @@ export const gcsAdapter: PhotoStorageAdapter = {
   },
 };
 
-/**
- * V4 signed PUT for one object the browser uploads directly (phone videos are
- * too big to stream through a function). The signature binds the content type
- * and `x-goog-content-length-range`, so GCS itself refuses a different type or
- * an oversized body; the client must send exactly `headers`.
- *
- * Browser PUTs need a bucket CORS rule allowing PUT with these two headers
- * from the app origin.
- */
+/** V4 signed PUT for one object the browser uploads directly (phone videos are too big to stream through a function). */
 export async function signGcsUploadUrl(input: {
   bucket: string;
   objectKey: string;

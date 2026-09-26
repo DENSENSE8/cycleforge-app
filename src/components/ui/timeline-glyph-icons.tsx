@@ -1,12 +1,4 @@
-/**
- * Timeline rail icon map — resolves {@link TimelineGlyphId} → house Icons.
- * Lives next to EventTimeline (client); the pure id/tooltip SoT is
- * `src/lib/timeline/timeline-glyphs.ts`.
- *
- * Use raw primitives at rail size (h-4) — nav mode-stroke wrappers muddy
- * 14–16px glyphs when weight climbs past ~2.25. Floor identity still comes from
- * the same icon shapes operators learn in MasterNav.
- */
+/** Timeline rail icon map — resolves {@link TimelineGlyphId} → house Icons. */
 import type { TimelineGlyphId } from '@/lib/timeline/timeline-glyphs';
 import {
   Activity,

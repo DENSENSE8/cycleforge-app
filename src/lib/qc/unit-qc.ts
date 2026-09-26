@@ -1,11 +1,6 @@
 import { formatMonthDayTimePST } from '@/utils/date';
 
-/**
- * One unit's QC checklist as `GET /api/serial-units/[id]/checklist` returns it:
- * every published template step for the unit's SKU merged with this unit's
- * recorded result. Result fields are null until a tech records the step, and
- * `verified_at` is the server's clock.
- */
+/** One unit's QC checklist as `GET /api/serial-units/[id]/checklist` returns it: */
 export interface UnitQcStep {
   step_id: number;
   step_label: string;

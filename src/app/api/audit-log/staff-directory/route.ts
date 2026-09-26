@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/audit-log/staff-directory
- *   ?q=<text>          — case-insensitive name typeahead
- *   ?sinceDays=<int>   — only staff active in the last N days (default 90)
- *   ?includeAll=true   — bypass sinceDays
- *
- * Returns staff who have any audit_logs.actor_staff_id ∪
- * station_activity_logs.staff_id activity in the window, with name + role +
- * last_seen + event_count. Used by the audit-log sidebar's staff combobox.
- */
+/** GET /api/audit-log/staff-directory ?q=<text> — case-insensitive name typeahead ?sinceDays=<int> — only staff active in the last N days… */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

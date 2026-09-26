@@ -1,23 +1,6 @@
 /**
  * The triage gate — the one place a build request's fate is decided.
- *
- * `triageBuildRequest` is a PURE function of a dedupe measurement. No DB, no
  * network, no model. That is deliberate and it is the security property:
- *
- *   • Purity makes the rule provable. The test beside this file asserts the
- *     >90% denial directly, without a database, a provider key, or a fixture
- *     org — so the proof runs on every `npm run verify`, not just when someone
- *     remembers to point it at a live DB.
- *
- *   • Taking a MEASUREMENT rather than a prompt means the model has no seam to
- *     reach into. It cannot supply the similarity, cannot re-run the search
- *     with friendlier wording, and cannot be asked politely to overlook a
- *     match — by the time this function runs, the number is already fixed.
- *
- * This is door one. Door two is in the migration: build_requests_duplicate_is_denied
- * and approval_reviews_duplicate_must_deny reject the INSERT itself, so even a
- * code path that never calls this function cannot record an approved duplicate.
- * A rule implemented in one door is a suggestion.
  */
 
 import {
@@ -35,14 +18,7 @@ export interface ToolMatch {
   similarity: number;
 }
 
-/**
- * The result of trying to dedupe a prompt against the registry.
- *
- * The two-armed shape is the point. A single `{ best: ToolMatch | null }` would
- * force "we could not check" and "we checked and found nothing" into the same
- * value, and the safe reading of those two is opposite: the first must deny,
- * the second must approve.
- */
+/** The result of trying to dedupe a prompt against the registry. */
 export type DedupeOutcome =
   | { measured: true; best: ToolMatch | null; candidatesConsidered: number }
   | { measured: false; reason: string };
@@ -58,19 +34,9 @@ export interface TriageDecision {
   similarity: number | null;
 }
 
-/**
- * Apply the duplicate rule to a dedupe measurement.
- *
- * Denies when: the best match exceeds DUPLICATE_DENY_THRESHOLD, or the search
- * could not be measured at all. Approves only on a real measurement that found
- * nothing close enough.
- */
+/** Apply the duplicate rule to a dedupe measurement. */
 export function triageBuildRequest(outcome: DedupeOutcome): TriageDecision {
-  // ── Fail closed ───────────────────────────────────────────────────────────
-  // An unmeasured dedupe is not a clean dedupe. The embedding provider being
-  // down must not become a window during which every duplicate request is
-  // approved — which is exactly what happens if this branch returns 'approved'
-  // or if the caller passes similarity 0 for "unknown".
+  // ── Fail closed ─────────────────────────────────────────────────────────── An unmeasured dedupe is not a clean dedupe.
   if (!outcome.measured) {
     return {
       decision: 'denied',

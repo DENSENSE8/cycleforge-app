@@ -1,11 +1,4 @@
-/**
- * Shared-account (umbrella) staff picker — the same roster email+password
- * sign-in returns, reused after Google/Apple so federated login is per-org,
- * not per IdP person email.
- *
- * The umbrella staff row is the front door and is excluded from the list.
- * A per-email (`individual`) org returns null and signs straight in.
- */
+/** Shared-account (umbrella) staff picker — the same roster email+password sign-in returns, reused after Google/Apple so federated login is… */
 
 import pool from '@/lib/db';
 import { parseOrgSettings, isSharedStaffAccountOrg } from '@/lib/tenancy/settings';

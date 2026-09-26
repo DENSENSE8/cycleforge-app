@@ -10,18 +10,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { QcResultBody } from '@/lib/schemas/qc-checks';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * Per-unit testing checklist (execution layer).
- *
- * The checklist *template* is per-SKU and authored in the SKU catalog admin
- * (qc_check_templates). This endpoint resolves the unit's SKU → its checklist
- * steps, and records/reads the tester's per-step results in tech_verifications
- * (source_kind='serial_unit', source_row_id=<serial_units.id>, step_id=<qc
- * step id>). Each result carries the staff id who completed it.
- *
- * No verdict gating yet — this is the record-and-track layer. The Pass+Print
- * verdict (testing_results) stays independent for now.
- */
+/** Per-unit testing checklist (execution layer). */
 
 const SOURCE_KIND = 'serial_unit';
 const STEP_TYPE = 'QC';
@@ -112,14 +101,7 @@ export const GET = withAuth(async (request, ctx) => {
   }
 }, { permission: 'tech.qc_pass' });
 
-/**
- * POST — record (or re-mark) one step result for this unit.
- * Body: { stepId, passed?, valueNum?, valueText?, notes? }
- *
- * When the step has a numeric pass band (pass_min/pass_max), the recorded
- * `valueNum` decides pass/fail server-side; otherwise the explicit `passed`
- * boolean is used (defaulting to true to preserve the legacy tap-to-pass UX).
- */
+/** POST — record (or re-mark) one step result for this unit. */
 export const POST = withAuth(async (request, ctx) => {
   const serialUnitId = unitIdFromPath(request.nextUrl.pathname);
   if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
@@ -196,10 +178,7 @@ export const POST = withAuth(async (request, ctx) => {
     // Auto-tag-on-fail: a failed step that names a failure mode opens a tag on
     // the unit (idempotent per open mode). Best-effort — never fails the record.
     let autoTag: Awaited<ReturnType<typeof tagUnitFailure>> | null = null;
-    // Auto-resolve-on-pass (reversibility 5.9): the reverse of the trigger
-    // above — a later PASS on the same step resolves the open tag its earlier
-    // fail opened, so a false-fail corrected by re-test clears. Same org
-    // scoping (via serial_units), same best-effort contract.
+    // Auto-resolve-on-pass (reversibility 5.9):
     let autoResolvedTag: Awaited<ReturnType<typeof resolveOpenUnitFailureTagByMode>> = null;
     if (passed === false && failureModeId != null) {
       try {

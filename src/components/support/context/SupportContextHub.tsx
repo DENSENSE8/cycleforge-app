@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * SupportContextHub — unified linkage + Customer | Team | Activity perspectives
- * (flush child-mode combobox via SupportContextSegments) for ticket↔STN
- * context. Composed on Support console, Unbox, and packing (rollup) — one SoT,
- * density variants only.
- */
+/** SupportContextHub — unified linkage + Customer | Team | Activity perspectives (flush child-mode combobox via SupportContextSegments) for… */
 import { useEffect, useState } from 'react';
 import { Spinner } from '@/design-system/primitives';
 import { useSupportContext, type SupportContextAnchor } from '@/hooks/useSupportContext';

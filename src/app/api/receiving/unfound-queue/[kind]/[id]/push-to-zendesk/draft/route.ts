@@ -1,17 +1,4 @@
-/**
- * POST /api/receiving/unfound-queue/[kind]/[id]/push-to-zendesk/draft
- *
- * Returns a ticket subject + body for the operator to review/edit BEFORE
- * pushing (roadmap A2). Two modes:
- *   { ai: false }  → the deterministic humanized template (for prefill)
- *   { ai: true }   → the same template, rewritten by the local Hermes model
- *
- * Nothing is filed here — this only produces text. The push endpoint creates
- * the ticket once the operator confirms (and accepts these as overrides).
- *
- * Fact safety (ai mode): the rewrite must keep the source Reference id. If the
- * model drops it, we fall back to the template and flag `degraded`.
- */
+/** POST /api/receiving/unfound-queue/[kind]/[id]/push-to-zendesk/draft */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

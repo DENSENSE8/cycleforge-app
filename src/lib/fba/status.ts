@@ -1,26 +1,6 @@
 /**
  * Canonical FBA shipment/item status vocabulary — the single source of truth.
- *
- * Replaces the three drifting vocabularies that existed before:
- *   - FbaBoardTable STATUS_SORT_ORDER (READY_TO_GO/PACKING/PLANNED/…)
- *   - components/fba/types.ts FbaWorkflowMode (PLAN/PACKING/PRINT_READY/NONE)
- *   - shared/FbaStatusBadge TOKENS (PLANNED/READY_TO_GO/LABEL_ASSIGNED/…)
- *
  * Operator-facing lifecycle (see 2026-05-28_fba_status_rename_tested_packed.sql):
- *
- *   PLANNED → TESTED → PACKED → LABEL_ASSIGNED → SHIPPED
- *
- *   PLANNED        — planning/inventory + staff acknowledge today's FBA items
- *   TESTED         — technician scanned the FNSKU; passed, ready to be packed
- *   PACKED         — packer scanned the FNSKU; ready to combine
- *   LABEL_ASSIGNED — combined under one FBA shipment ID (multi-UPS tracking)
- *   SHIPPED        — UPS tracking scanned; whole package handed to carrier
- *
- * OUT_OF_STOCK and CLOSED are off-the-happy-path side states.
- *
- * This module is framework-agnostic (no React / no JSX) so API routes and
- * components can both import it. Badge rendering lives in
- * components/fba/shared/FbaStatusBadge.tsx, which sources labels + order here.
  */
 
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
@@ -47,14 +27,7 @@ export const FBA_STATUS_LABEL: Record<string, string> = {
   CLOSED: 'Closed',
 };
 
-/**
- * Status-pill background+text classes (single source of truth, beside the
- * labels). Consolidates the inline `STATUS_PILL_COLOR` map formerly in
- * FbaBoardTable. PACKED / SHIPPED read LIFECYCLE (packed = fulfillment,
- * shipped = success); CLOSED intentionally falls back
- * to neutral gray (matching prior behavior). Classes are plain strings so this module stays
- * framework-agnostic; src/lib is in Tailwind's content globs.
- */
+/** Status-pill background+text classes (single source of truth, beside the labels). */
 const FBA_STATUS_PILL: Record<string, string> = {
   PLANNED: 'bg-amber-100 text-amber-700',
   TESTED: 'bg-emerald-100 text-emerald-700',

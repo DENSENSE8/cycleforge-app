@@ -1,14 +1,4 @@
-/**
- * Classify pill option builders — Urgency / Platform / Type as identity faces.
- *
- * Shared by the carton bookmark (`InlinePillPicker` menu) and the Classify
- * Displays checklist so both surfaces render the same tone-coded faces.
- * Bookmark chrome uses {@link InlinePillOption.shortLabel}; Classify keeps
- * full `label`.
- *
- * Platform / type color lives in a left-hand dot only. Labels stay black on
- * white — same treatment as the copy-chip identity dots.
- */
+/** Classify pill option builders — Urgency / Platform / Type as identity faces. */
 
 import { type CSSProperties } from 'react';
 import { Flag } from '@/components/Icons';
@@ -97,17 +87,7 @@ export function urgencyClassifyOptions(args: {
   ];
 }
 
-/**
- * The resolved identity dot for ONE catalog row — the single ladder every
- * surface that paints a platform / type mark descends:
- *
- *   org accent (`color_hex`) → built-in registry tone → neutral
- *
- * Exported because the catalog MANAGER lists the same rows and must show the
- * same dot the carton bar will paint; a second resolver there would drift the
- * moment a registry tone changed. Returns a Tailwind class OR an inline style
- * (never both) — a derived hex has no class to name it.
- */
+/** The resolved identity dot for ONE catalog row — the single ladder every surface that paints a platform / type mark descends: */
 export function catalogIdentityDot(args: {
   kind: 'platform' | 'type' | 'priority';
   /** Platform slug (lowercase), type slug (uppercase), or priority tier (0..3). */

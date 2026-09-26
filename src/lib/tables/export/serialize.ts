@@ -1,30 +1,4 @@
-/**
- * The ONE table serializer — CSV and TSV as a parameter, never two code paths.
- *
- * The repo had three hand-written `csvCell` functions (`DataTable`,
- * `lib/warranty/reports`, `lib/dashboard/order-export-csv`) plus a private
- * `toTsv` for the clipboard. They agreed — which is the point: three copies that
- * agree today are three copies, and the next quoting fix lands in one of them.
- *
- * ## Format is a radio, not a fork
- *
- * The plan's line, and it is load-bearing. A `toTsv` that lives beside `toCsv`
- * is a second serializer with its own escaping rules, and the moment one learns
- * about a BOM or a ` ` the other does not. Here the only difference is a
- * delimiter and how a cell that contains one is made safe.
- *
- * ## Why the two formats escape differently
- *
- * CSV is a FILE, and RFC 4180 quoting is lossless: a comma, a quote or a
- * newline inside a product title survives the round trip. TSV is the CLIPBOARD
- * shape a spreadsheet expects on paste, and spreadsheets do not read quoted
- * TSV — so a tab or a newline in a value has to be flattened to a space or it
- * silently becomes a new column or a new row. Losing a line break on paste is
- * the correct trade; inventing a column is not.
- *
- * Pure and dependency-free: no DOM, no fetch. The download half lives with the
- * control that triggers it.
- */
+/** The ONE table serializer — CSV and TSV as a parameter, never two code paths. */
 
 export type ExportFormat = 'csv' | 'tsv';
 
@@ -78,13 +52,7 @@ export function serializeRows(
   return out.join(terminator);
 }
 
-/**
- * Keyed convenience for the report shapes that carry `{ key, label }` columns
- * (warranty, packing) rather than a positional extractor.
- *
- * Same serializer underneath — this only maps records to arrays, so a report
- * and a desk export cannot disagree about quoting.
- */
+/** Keyed convenience for the report shapes that carry `{ key, label }` columns (warranty, packing) rather than a positional extractor. */
 export function serializeRecords<T>(
   rows: readonly T[],
   columns: readonly { key: keyof T; label: string }[],

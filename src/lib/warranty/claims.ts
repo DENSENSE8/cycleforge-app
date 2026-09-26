@@ -1,14 +1,4 @@
-/**
- * Warranty claims — read domain module (Phase 1).
- *
- * Lists and fetches warranty claims for the Support "Warranty Logger"
- * mode. Write/lifecycle verbs land in Phase 2 (createClaim, submit, approve,
- * deny, repair, close) alongside the matching routes.
- *
- * Org scoping follows the rma_authorizations precedent: reads rely on the
- * (forthcoming) RLS hook on organization_id rather than a hand-rolled WHERE,
- * so a single shared pool session behaves correctly once RLS is enforced.
- */
+/** Warranty claims — read domain module (Phase 1). */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -184,12 +174,7 @@ type RawDetailRow = RawListRow & {
   repair_ticket: string | null;
 };
 
-/**
- * `orgId` is optional ONLY transitionally: the request routes pass it (and get
- * a hard organization_id filter), while the in-process write helpers
- * (mutations.ts / linkage.ts) still call without it. Make it required once the
- * write path is org-threaded — that's also the precondition for FORCE.
- */
+/** `orgId` is optional ONLY transitionally: */
 export async function getClaim(id: number, orgId?: OrgId): Promise<WarrantyClaimDetail | null> {
   const sql = `SELECT ${LIST_COLUMNS},
             wc.purchase_proof_url,

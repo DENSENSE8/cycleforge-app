@@ -73,12 +73,7 @@ interface Props {
    * re-graded via {@link onSetUnitGrade}).
    */
   onConditionChange?: (grade: string) => void;
-  /**
-   * Fires with the effective condition grade of the currently-selected unit
-   * (saved grade → pending grade → line default). Lets the parent print/preview
-   * a label that matches the selected item rather than the line-level grade, so
-   * a multi-qty PO with mixed conditions gets one correct label per unit.
-   */
+  /** Fires with the effective condition grade of the currently-selected unit (saved grade → pending grade → line default). */
   onActiveConditionChange?: (grade: string | null) => void;
   /** Header chip Edit — routes into the matching unit's scan input. */
   serialEditTarget?: UnitSerial | null;
@@ -107,16 +102,7 @@ interface Props {
   activeRowLeading?: ReactNode;
 }
 
-/**
- * Multi-quantity receiving display.
- *
- * Adaptive modes (see {@link resolveLineReceiveMode}):
- *  - **Qty roll-up** — high-qty identical commodities: grade + count, zero unit rows.
- *  - **Unit track** — per-unit identity: capped {@link UnitSlotList} (+ manage overlay).
- *
- * Per-unit condition lives on `receiving_line_unit.condition_grade` — durable
- * across reload. Caps are UI-only; DB materialisation stays one row per expected unit.
- */
+/** Multi-quantity receiving display. */
 export function ReceivingUnitRows({
   lineId,
   saved,

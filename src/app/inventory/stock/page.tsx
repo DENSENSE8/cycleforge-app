@@ -12,22 +12,7 @@ import { StockLedger } from '@/components/inventory/stock/StockLedger';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * `/inventory/stock` — Inventory › **Stock**.
- *
- * Every (location, SKU) pair holding stock, warehouse-wide, as a record ledger
- * with a triage evidence column (count ± at a location, open the SKU, the SKU
- * exception for a `TMP-` placeholder).
- *
- * This file is the loader: `?q=` is answered in SQL (so the find box reaches
- * past the row cap) and `?room=` over the matched set, and the rows arrive as
- * props — no second client fetch. The client island writes the URL and
- * re-reads this loader (`router.refresh()`) when a count lands anywhere.
- *
- * Tenant scoping: `orgId` comes from the auth ctx, never from a param; the
- * read goes through `tenantQuery` with an explicit `organization_id`
- * predicate on every table.
- */
+/** `/inventory/stock` — Inventory › **Stock**. */
 export default async function InventoryStockPage({
   searchParams,
 }: {

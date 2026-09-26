@@ -1,25 +1,10 @@
-/**
- * Shared color-mode logic for the warehouse map surfaces.
- *
- * Single source of truth for the bin tone (Tailwind class string) and display
- * value per map view mode, consumed by BOTH renderers so they can never drift:
- *   - the flat table map  (WarehouseMap.tsx)
- *   - the React Flow floor plan (WarehouseFloorPlan.tsx)
- *
- * Extracted from WarehouseMap.tsx per docs/todo/warehouse-map-react-flow-plan.md §6.1.
- * No React / React Flow imports here on purpose — just strings and numbers.
- */
+/** Shared color-mode logic for the warehouse map surfaces. */
 
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 
 export type MapViewMode = 'fill' | 'age' | 'issues';
 
-/**
- * Bin color per view mode:
- *   fill   — green (low) → amber (high) → red (over)
- *   age    — green (recent) → amber → purple (stale)
- *   issues — gray (ok), amber (low), red (over), purple (stale), slate (empty)
- */
+/** Bin color per view mode: */
 export function cellTone(row: BinsOverviewRow, mode: MapViewMode): string {
   if (mode === 'fill') {
     const p = row.fill_pct;

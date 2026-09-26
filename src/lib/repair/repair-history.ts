@@ -1,11 +1,4 @@
-/**
- * Readers over `repair_service.status_history` — the server-stamped state
- * trail. The mobile workbench screens (hub, bench log, record) all need the
- * same two answers, so they live here once.
- *
- * Timestamps are PST wall-clock strings written by the server
- * (`formatPSTTimestamp`); format them with `formatMonthDayTimePST`.
- */
+/** Readers over `repair_service.status_history` — the server-stamped state trail. */
 import type { RepairStatusHistoryEntry, RSRecord } from '@/lib/neon/repair-service-queries';
 
 /** Latest entry that put the repair into its CURRENT status — the stamp for "since when". */

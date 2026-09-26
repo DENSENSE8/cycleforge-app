@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Top-of-strip mini scan cell for the parked left-dock.
- *
- * Height matches the open-rail scan band / StationContextBar top row
- * ({@link PRIMARY_CHROME_ROW_FACE} / `h-7`).
- * Idle: Plus face with staff-themed hover wash.
- * Focused: same bottom-up {@link ScanBandGlowHost} chromatic glow as the
- * open-rail band + visible caret (no placeholder text in the w-8 strip).
- *
- * Session comes from {@link usePublishCollapseScan} (primary StationScanBar).
- */
+/** Top-of-strip mini scan cell for the parked left-dock. */
 
 import {
   useCallback,

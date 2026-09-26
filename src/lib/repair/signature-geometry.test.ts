@@ -1,12 +1,4 @@
-/**
- * Signature geometry — the capture side of the printed signature band.
- *
- * What these defend is the operator's report: ink drawn high on the pad must
- * still print seated on the ruled line, and no consumer may be handed a PNG
- * whose shape breaks its own layout.
- *
- *   npx tsx --test src/lib/repair/signature-geometry.test.ts
- */
+/** Signature geometry — the capture side of the printed signature band. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

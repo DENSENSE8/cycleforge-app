@@ -10,14 +10,7 @@ import { qk } from '@/queries/keys';
 
 /**
  * Reads shared by the workbench screens (`/m/rs/[id]` and its sub-screens).
- *
- * All of them go through the app QueryClient under
- * `qk.repairs.workbench(id, facet)`, so moving hub ↔ sub-screen paints from
- * cache instead of refetching the repair, ticket link, photos and print log on
  * every mount (operator 2026-09-24). Freshness comes from three places, not a
- * short cache: each write refetches the facet it changed, `repair.changed`
- * realtime invalidates `qk.repairs.all` (see `rs/[id]/layout.tsx`), and a
- * stale query revalidates in the background while the cached copy shows.
  */
 
 export const validRepairId = (id: number) => Number.isFinite(id) && id > 0;
@@ -85,12 +78,7 @@ export function useRepairActions(repairId: number) {
   return { actions: query.data ?? [], loading: query.isPending, error: errorText(query.error), reload };
 }
 
-/**
- * The helpdesk ticket this repair may talk to (`ticket_links`, never the
- * free-typed ticket number). Only `linked` opens the thread with a draft.
- * Links change rarely (a desk link/unlink publishes `repair.changed`), so the
- * cached answer holds for 10 minutes.
- */
+/** The helpdesk ticket this repair may talk to (`ticket_links`, never the free-typed ticket number). */
 export function useRepairTicketLink(repairId: number) {
   const query = useQuery({
     queryKey: qk.repairs.workbench(repairId, 'ticket-link'),
@@ -118,13 +106,7 @@ export function ticketBlockedReason(link: RepairTicketLink): string | null {
   }
 }
 
-/**
- * The phone ticket thread (`/m/t/[ticketId]`) for a linked repair, optionally
- * carrying a prepared reply: a bare string is the editable draft; an object
- * can also stage photos and pick the channel (`TicketThreadHandoff`). Nothing
- * is sent — the thread only seeds its composer. Null unless the link is
- * unambiguous.
- */
+/** The phone ticket thread (`/m/t/[ticketId]`) for a linked repair, optionally carrying a prepared reply: */
 export function ticketThreadHref(
   link: RepairTicketLink | null,
   handoff?: string | TicketThreadHandoff,

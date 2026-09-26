@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Debounced FNSKU catalog search for the shipment editor.
- *
- * Replaces the editor's hand-rolled trio (fnskuQuery/fnskuResults/fnskuSearching)
- * + a manual setTimeout-ref debounce effect + raw fetch with a debounced
- * `useQuery`. The caller still owns the input value (it's form state); this hook
- * just turns a query string into results.
- */
+/** Debounced FNSKU catalog search for the shipment editor. */
 
 import { useQuery } from '@tanstack/react-query';
 import { useDebounce } from '@/hooks';

@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * The one identity mark — org workspace and staff both wear it. Circular by
- * default; `shape="square"` for industrial (radius-0) surfaces.
- *
- * Geometry, ring, type role and the image-vs-initials fallback live here so the
- * MasterNav top band and the spine footer cannot drift apart again (the org
- * mark shipped as a `rounded-md` square beside a `rounded-full` staff mark, and
- * nothing in code tied the two together).
- *
- * It renders a mark, never a control: hosts own the button/menu semantics and
- * mark it `aria-hidden` because the accessible name always lives on the row.
- *
- * Photo → initials is a RUNTIME fallback, not just a prop check — a 404 on the
- * photo content route (deleted row, revoked access) flips back to the coloured
- * initials rather than leaving a broken-image box in the chrome.
- *
- * Compose {@link StaffAvatar} for staff — it resolves the photo id and colour
- * from the staff identity cache. Use this directly only for the org mark.
- */
+/** The one identity mark — org workspace and staff both wear it. */
 
 import { useEffect, useState } from 'react';
 import { cn } from '@/utils/_cn';
@@ -27,13 +9,7 @@ import { blackOrWhiteInk } from '@/lib/color-contrast';
 
 export type IdentityMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
-/**
- * Box + type role per size. `sm` (28px) is the shared spine density — the org
- * top band and the staff footer both use it, which is the whole point of the
- * extraction. `xl`/`2xl` are the sign-in scales (the signing-in card and the
- * PIN pad hero); they live here rather than as page-local boxes so the four
- * sign-in surfaces cannot drift from each other again.
- */
+/** Box + type role per size. */
 const SIZE_CLASS: Record<IdentityMarkSize, string> = {
   xs: 'h-5 w-5 text-role-micro',
   sm: 'h-7 w-7 text-role-micro',
@@ -63,11 +39,9 @@ interface IdentityMarkProps {
    */
   ringHex?: string | null;
   /**
-   * `round` (default) — the spine / nav mark. `square` — industrial surfaces
-   * (radius 0), where a circle beside square cells reads as a foreign part
+   * `round` (default) — the spine / nav mark.
    * (To-ship ledger pick / pack, owner 2026-09-24). The square mark is the
    * terminal face (owner 2026-09-25): no hairline ring — the hard edge of the
-   * fill is the shape — and the initials in the mono bold uppercase label face.
    */
   shape?: 'round' | 'square';
   className?: string;

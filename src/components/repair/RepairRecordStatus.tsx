@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The repair record's STATUS STRIP — the at-a-glance head of
- * {@link RepairRecordView}: current status and since when / by whom, price,
- * the Zendesk link, loud alerts, and the pipeline with each step's who / when
- * from the row's own stamps and `status_history`. Unstamped steps read `—`.
- */
+/** The repair record's STATUS STRIP — the at-a-glance head of {@link RepairRecordView}: */
 
 import type { RepairStatusHistoryEntry, RSRecord } from '@/lib/neon/repair-service-queries';
 import { STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';

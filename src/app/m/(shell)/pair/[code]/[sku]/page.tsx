@@ -1,14 +1,7 @@
 import { MobilePairQty } from '@/components/mobile/pair/MobilePairQty';
 import { mobileJobReturn } from '@/lib/mobile/nav-trail';
 
-/**
- * `/m/pair/[code]/[sku]` — how many of this product are going into this
- * location. The second half of pairing, and the surface a paired row taps
- * into when the count needs more than the ±1 strip.
- *
- * `?return=/m/loc/…` — opened from the location record; Back and Confirm
- * return to it. `?mode=take` opens on − TAKE.
- */
+/** `/m/pair/[code]/[sku]` — how many of this product are going into this location. */
 export default async function MobilePairQtyPage({
   params,
   searchParams,

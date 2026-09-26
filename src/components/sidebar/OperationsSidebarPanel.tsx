@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Operations master-page sidebar — the single contextual panel for `/operations`.
- *
- * L2 modes (Live · Analytics · Insights · History · Signals) live in GlobalHeader
- * (`HeaderPageSwitcher`). Per mode, this panel owns local filters / quick-nav
- * (History paste-a-number, Signals note filter). Cross-entity search lives in the
- * global header → Dashboard Search. The right pane (OperationsWorkspace) is purely
- * visual and reacts to the same `?mode=` / `?range=` / `?section=` URL params.
- */
+/** Operations master-page sidebar — the single contextual panel for `/operations`. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -56,14 +48,7 @@ import { StaffScheduleSidebarPanel } from '@/components/admin/StaffScheduleSideb
 import { LogsSidebarPanel } from '@/components/admin/LogsSidebarPanel';
 
 
-/*
- * `ANALYTICS_RANGES` / `ANALYTICS_SECTIONS` and `AnalyticsSidebar` were
- * deleted 2026-09-16 with the mode they steered. The range selector was one of
- * the three clocks that made that page unreadable — a `24h/7d/30d` rail over
- * sections whose KPI strip was fixed to "today" and whose packing block walked
- * a PST day. The packer read now lives on `/reports?tab=packer`, which has ONE
- * day and says which one.
- */
+/* `ANALYTICS_RANGES` / `ANALYTICS_SECTIONS` and `AnalyticsSidebar` were deleted 2026-09-16 with the mode they steered. */
 
 const INSIGHTS_CAPABILITIES = [
   { icon: PackageCheck, title: 'Throughput & pace', detail: 'Velocity, tested, FBA intake vs. yesterday' },
@@ -102,10 +87,7 @@ export function OperationsSidebarPanel() {
 
 function LiveSidebar() {
   const [q, setQ] = useState('');
-  // Read-only view of the shared dashboard cache. The right-pane
-  // OperationsDashboard owns the fetch + Ably subscription (Live mode mounts
-  // both); a second `useOperationsDashboardData` here would double-poll and
-  // double-prepend realtime activity (prependActivityEvent does not dedup).
+  // Read-only view of the shared dashboard cache.
   const { data } = useQuery<DashboardData>({
     queryKey: OPERATIONS_QUERY_KEY,
     queryFn: () => Promise.reject(new Error('operations dashboard cache is produced by the right pane')),
@@ -114,15 +96,7 @@ function LiveSidebar() {
   });
   const isLoading = !data;
 
-  /*
-   * The rail's four tiles, renamed to what their queries COUNT and carrying
-   * the window in words (2026-09-16). They used to sit under a `DeltaPill`
-   * whose number was today-so-far ÷ all-of-yesterday — a comparison of the
-   * clock, not the floor — and `/api/dashboard/operations` no longer returns a
-   * delta at all, so there is nothing to paint. Titles mirror
-   * `PRIMARY_KPI_CARDS`; the rail and the right pane must not name the same
-   * number two ways.
-   */
+  /* The rail's four tiles, renamed to what their queries COUNT and carrying the window in words (2026-09-16). */
   const kpis = useMemo(
     () =>
       [
@@ -474,9 +448,3 @@ function ChecksSidebar() {
 }
 
 // ── Shared bits ───────────────────────────────────────────────────────────────
-//
-// `DeltaPill` was DELETED 2026-09-16 with the comparison it painted. It read
-// `summary[key].delta`, which `/api/dashboard/operations` computed as
-// today-so-far ÷ all-of-yesterday — so the arrow pointed at the clock. Its
-// `!delta` branch printed "No change", which is how three hardcoded zeros read
-// as a measurement. The rail's tiles now carry a window line instead.

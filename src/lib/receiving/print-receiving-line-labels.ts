@@ -1,14 +1,4 @@
-/**
- * Print one product label per receiving line — serial-level when serials are
- * loaded on the row, else a single SKU label. Same pipeline as the Unbox
- * bench's Pass + Print; shared by the receiving bulk bar and the carton record.
- *
- * Before printing, every serial's canonical `unit_uid` is resolved in ONE batch
- * call and threaded as the qrPayload, so a reprint encodes the SAME minted id
- * the unit was born with — not a bare `U-{serial}` fallback. A serial with no
- * minted uid degrades to the bare-serial encoding; a failed resolve never
- * blocks the print. Known units are recorded in `label_print_jobs` (best-effort).
- */
+/** Print one product label per receiving line — serial-level when serials are loaded on the row, else a single SKU label. */
 
 import { printProductLabel, printProductLabels } from '@/lib/print/printProductLabel';
 import { toast } from '@/lib/toast';

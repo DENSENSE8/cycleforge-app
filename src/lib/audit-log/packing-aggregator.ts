@@ -1,14 +1,4 @@
-/**
- * Read-only aggregator for the Packing audit-log section.
- *
- * Sources:
- *   • packer_logs                — one row per pack event (FK → shipping_tracking_numbers, staff)
- *   • station_activity_logs      — granular events tagged with packer_log_id
- *   • audit_logs                 — entity_type='PACKER_LOG' diffs, or station_activity_log_id matches
- *   • orders                     — SKU summary per tracking (multi-SKU orders aggregated)
- *   • shipping_tracking_numbers  — canonical tracking text
- *   • staff                      — actor names
- */
+/** Read-only aggregator for the Packing audit-log section. */
 
 import 'server-only';
 import pool from '@/lib/db';
@@ -17,12 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { AuditLogFilters } from './filters';
 import { readInventorySpine } from './inventory-spine';
 
-/**
- * Tenant-aware query helper. When an orgId is supplied the read runs through
- * `tenantQuery` (GUC-scoped on the non-bypass app_tenant role + explicit
- * predicates baked into the SQL by the caller); when omitted it falls back to
- * the raw shared pool so the many un-migrated callers stay byte-identical.
- */
+/** Tenant-aware query helper. */
 function runQuery<T extends Record<string, unknown> = Record<string, unknown>>(
   orgId: OrgId | undefined,
   text: string,
@@ -105,10 +90,7 @@ export async function listPackingTrackings(
     "pl.completion_state = 'COMPLETED'",
   ];
 
-  // Tenant scope: packer_logs carries organization_id. The LEFT-JOINed
-  // shipping_tracking_numbers (stn) has no organization_id column (NEEDS-COL),
-  // so it is scoped transitively through this org-bearing parent. Correlated
-  // orders subqueries below also carry the explicit org predicate.
+  // Tenant scope:
   let orgParam: string | null = null;
   if (orgId) {
     params.push(orgId);
@@ -201,10 +183,6 @@ export async function getPackingTrackingDetail(
   orgId?: OrgId,
 ): Promise<PackingTrackingDetail | null> {
   // Resolve shipment_id from the tracking text (case/punctuation tolerant).
-  // shipping_tracking_numbers has no organization_id column (NEEDS-COL) and no
-  // org-bearing parent in this query, so when orgId is present we GUC-wrap the
-  // read AND require an org-owned referencer (packer_logs/orders by shipment_id)
-  // to exist — that is the org-ownership gate (foreign tenants resolve to null).
   const trackingOrgGate = orgId
     ? ` AND (
           EXISTS (SELECT 1 FROM packer_logs pl
@@ -347,12 +325,7 @@ export async function getPackingTrackingDetail(
     ],
   );
 
-  // ── Outbound lifecycle spine (inventory_events) ──────────────────────────
-  // Units allocated to orders on this shipment carry PICKED/PACKED/SHIPPED/…
-  // events on the shared inventory_events spine. Surface them so the packing
-  // timeline reflects the real fulfillment lifecycle, not just the packer_logs
-  // row + SAL scans. Resolved via order_unit_allocations → orders.shipment_id
-  // (inventory_events has no shipment column of its own).
+  // ── Outbound lifecycle spine (inventory_events) ────────────────────────── Units allocated to orders on this shipment carry…
   const allocUnitsRes = await runQuery(
     orgId,
     `SELECT DISTINCT oua.serial_unit_id

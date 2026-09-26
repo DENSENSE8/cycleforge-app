@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The incoming delivery record's leaf sections — one purchase-order line with
- * its own status chain ({@link IncomingItem}) and the right column (purchase,
- * shipment, notes, verbs, tasks, remove). Composed by `IncomingDeliveryEvidence`;
- * each reads only the details / row fields it paints.
- */
+/** The incoming delivery record's leaf sections — one purchase-order line with its own status chain ({@link IncomingItem}) and the right… */
 
 import type { ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';

@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getSerialTrace } from '@/lib/audit-log/trace-aggregator';
 
-/**
- * GET /api/audit-log/trace?serial=<value>
- *
- * First-Trace (P1-TRACE-03): the full cross-station lifecycle of ONE physical
- * unit, anchored on its serial (or minted unit_uid) — receiving → testing →
- * putaway → pick → pack → label → ship → return, each with actor + timestamp.
- *
- * Read-only, org-scoped (a serial never resolves another tenant's unit).
- * Gate: admin.view_logs (matches the rest of the audit-log surface).
- */
+/** GET /api/audit-log/trace?serial=<value> */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const serial = req.nextUrl.searchParams.get('serial')?.trim() || '';

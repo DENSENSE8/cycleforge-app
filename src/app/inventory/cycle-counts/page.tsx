@@ -12,16 +12,7 @@ import { CycleCountsTableSection } from './CycleCountsTableSection';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/cycle-counts
- *
- * Campaign list + creation. Each row links to the detail page where
- * counts get submitted and pending_review lines get approved/rejected.
- *
- * The create form is a server action that calls createCampaign() from
- * src/lib/inventory/cycle-count.ts. On success it redirects to the new
- * campaign's detail page.
- */
+/** /inventory/cycle-counts */
 
 interface CampaignRow {
   id: number;
@@ -108,12 +99,7 @@ export default async function CycleCountsAdminPage({
   const errorCode = params.error ?? null;
   const campaigns = await loadCampaigns(user.organizationId);
 
-  /**
-   * The wire row for the client island. `closed_at` and `created_by` are
-   * selected by the query and were never painted, so they do not cross — the
-   * port restores no columns. `created_at` crosses as an ISO string because
-   * the row shape is plain and serializable by contract.
-   */
+  /** The wire row for the client island. */
   const campaignRows: CycleCountCampaignRow[] = campaigns.map((c) => ({
     id: c.id,
     name: c.name,

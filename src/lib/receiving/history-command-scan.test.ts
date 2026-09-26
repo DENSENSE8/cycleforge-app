@@ -43,10 +43,7 @@ describe('classifyHistoryCommandScan', () => {
 });
 
 test('ordinary find text is NOT swallowed as a handle', () => {
-  // `routeScan` guesses `bin` for any unrecognised string, and this classifier
-  // read that guess as a handle — so a product name, a part number and a plain
-  // serial all returned `passthrough` and the find never ran. Only a carrier
-  // number (which guesses `sku`) reached `find` at all.
+  // `routeScan` guesses `bin` for any unrecognised string, and this classifier read that guess as a handle — so a product name, a part…
   for (const raw of ['Dell Latitude 7420', 'HP-PSU-450', 'CN1A2B3XYZ', '1Z999AA10123456784']) {
     assert.deepEqual(classifyHistoryCommandScan(raw), { kind: 'find', raw }, raw);
   }

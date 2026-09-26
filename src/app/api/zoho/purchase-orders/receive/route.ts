@@ -36,25 +36,7 @@ export const dynamic = 'force-dynamic';
 const IDEMPOTENCY_ROUTE = 'zoho.purchase-orders.receive';
 const VALID_CONDITIONS = new Set(['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS']);
 
-/**
- * POST /api/zoho/purchase-orders/receive
- *
- * Receive a Zoho PO into the warehouse. Local SoT, Zoho sync via after():
- *  0. Idempotency replay on Idempotency-Key / client_event_id.
- *  1. INSERT receiving_carton + receiving_line (+ optional work_assignments) in
- *     one transaction. Sets source='zoho_po' and zoho_purchaseorder_id so
- *     the carton is identifiable while Zoho is still pending.
- *  2. Return 200 immediately with `zoho.pending: true` so the operator
- *     never waits on the Zoho roundtrip.
- *  3. after() runs the Zoho work:
- *       getPurchaseOrderById → assertReceivable → fill missing item_ids →
- *       createPurchaseReceive → UPDATE receiving_carton + receiving_line with
- *       zoho_purchase_receive_id → invalidate caches + publish realtime.
- *
- * Body unchanged: purchaseorder_id, warehouse_id, receive_date, received_by,
- * needs_test, assigned_tech_id, condition_grade, target_channel, notes,
- * line_items, plus optional client_event_id, zoho_bill_id, zoho_bill_number.
- */
+/** POST /api/zoho/purchase-orders/receive */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);
   if (!body || typeof body !== 'object') {
@@ -164,10 +146,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const receivingCols = new Set<string>(columnsRes.rows.map((r) => r.column_name));
 
     const valuesByColumn: Record<string, unknown> = {
-      // PO identity lives in zoho_purchaseorder_id / source='zoho_po' (below);
-      // the legacy receiving_tracking_number text column has been dropped.
-      // received_at/received_by moved to the triage street table — stamped via
-      // upsertReceivingTriage right after the INSERT (Wave-3 writer inversion).
+      // PO identity lives in zoho_purchaseorder_id / source='zoho_po' (below); the legacy receiving_tracking_number text column has been dropped.
       carrier: 'ZOHO_PO',
       qa_status: 'PENDING',
       is_return: false,
@@ -379,10 +358,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const purchaseReceiveId = getPurchaseReceiveIdFromCreateResponse(zohoReceive) ?? '';
 
       if (purchaseReceiveId) {
-        // One tx for the whole linkage: the carton half stays on the spine
-        // (carton-level zoho_* is Wave-4 scope); the line half is a zoho FACT and
-        // lives on receiving_line_zoho (Wave-3 inversion). Every line under this
-        // carton has an rz row from birth, so the per-line upsert is a plain update.
+        // One tx for the whole linkage:
         await withTenantTransaction(orgId, async (client) => {
           await client.query(
             `UPDATE receiving_carton

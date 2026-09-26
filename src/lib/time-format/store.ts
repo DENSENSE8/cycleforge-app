@@ -1,21 +1,4 @@
-/**
- * Time-format preference — a tiny framework-agnostic store that decides whether
- * the app renders clock times as 12-hour (h:mm AM/PM) or 24-hour (HH:mm).
- *
- * Modeled on scan-hotkey/store.ts (and the theme module): the value is
- *   1. Hydrated SYNCHRONOUSLY from localStorage so the very first render already
- *      shows the user's format with no 12h→24h flash.
- *   2. Reconciled from the server (staff_preferences) in the background by
- *      <TimeFormatSync/> — the durable cross-device SoT.
- *
- * The display formatters in src/utils/date.ts read `getTimeFormat()` as their
- * default `hour12` resolution, so every existing timestamp call site becomes
- * format-aware with no per-call-site change. Storage/API timestamp formats
- * (formatPSTTimestamp, normalizePSTTimestamp, formatApiInstant, …) are NOT
- * affected — this is a display concern only.
- *
- * Pure module, no React imports — consumed via useTimeFormat() (useSyncExternalStore).
- */
+/** Time-format preference — a tiny framework-agnostic store that decides whether the app renders clock times as 12-hour (h:mm AM/PM) or… */
 
 import { DEFAULT_TIME_FORMAT, TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences-constants';
 
@@ -75,10 +58,7 @@ export function setTimeFormat(value: TimeFormat): void {
   emit();
 }
 
-/** Adopt a server value WITHOUT writing it back (hydration only). Null /
- * garbage leave the localStorage-backed value alone — same contract as
- * {@link hydrateHotkey}. Sync bridges must be one-shot; a missing field on a
- * concurrent prefs write must never snap the clock back to 12h. */
+/** Adopt a server value WITHOUT writing it back (hydration only). */
 export function hydrateTimeFormat(value: string | null | undefined): void {
   if (!isTimeFormat(value) || value === format) return;
   format = value;

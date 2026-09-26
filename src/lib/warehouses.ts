@@ -48,14 +48,7 @@ export async function getDefaultWarehouse(orgId?: OrgId): Promise<Warehouse | nu
   return all.find((w) => w.is_default) ?? all[0] ?? null;
 }
 
-/**
- * Resolve warehouse_id for a write. Caller may pass:
- *   • explicit override (request header or body field)
- *   • a staffId — we look up staff.default_warehouse_id
- *   • neither — falls back to the active default warehouse
- *
- * Always returns a valid id when at least one warehouse exists.
- */
+/** Resolve warehouse_id for a write. */
 export async function resolveWarehouseId(
   opts: {
     override?: number | null;

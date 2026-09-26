@@ -1,22 +1,4 @@
-/**
- * POST /api/receiving/[id]/contents-confirm
- *
- * Stamp that a human confirmed this carton's contents against its line list
- * (`receiving_unbox.contents_confirmed_at`) — the gate for the Unbox procedure's
- * `contents` step. `{ confirmed: false }` retracts it (reopen to edit).
- *
- * PERMISSION. The plan for this route named `receiving.edit`, which does not
- * exist in `permission-registry.ts`. Rather than mint one nobody's role grants —
- * the `integrations.zendesk` failure, where an ADMIN_ONLY permission 403'd the
- * floor operator the surface was built for — it reuses the gate of its sibling
- * carton-acknowledgement route (`acknowledge-unbox`): anyone who can finish a
- * carton can say they read its line list.
- *
- * AUDIT. The stamp is clearable, so a reopen leaves no trace in the column.
- * `audit_logs` is therefore the only place the original claim survives, and
- * confirm/reopen are two distinct actions so a rollup cannot count a retraction
- * as a confirmation.
- */
+/** POST /api/receiving/[id]/contents-confirm */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

@@ -1,21 +1,5 @@
 /**
- * Staff-ID silent print bridge — phone publishes a job; ONE named print
- * station (a computer signed in as that staff ID) prints it on its paired
- * USB/serial profile.
- *
- * Port of the packer/phone handshake grammar (subscribe-before-publish ACK),
- * not a Pack clone. Channel: {@link getStaffPrintBridgeChannelName}.
- *
- * Station targeting: every host status carries its `stationId` + `stationName`;
- * every job and options patch carries a REQUIRED `targetStationId`. A wire
- * message without a target is junk (parsers return null), so no job is ever
- * broadcast to every computer signed in as the staffer. Status requests stay
- * broadcast — every station answers, which is how the phone lists them.
- *
- * Callers: StaffPrintBridgeHost (desktop), useStaffPrintBridgeClient (mobile
- * /m/print, repair paperwork /m/rs/[id]/paperwork, and the FNSKU hub's Reprint
- * /m/fnsku/[fnsku]). No DB schema — Ably is
- * ephemeral (same D3 as send-to-device). User: staff ID ↔ silent USB;
+ * Staff-ID silent print bridge — phone publishes a job; ONE named print station (a computer signed in as that staff ID) prints it on its…
  * operator 2026-09-24 "you should be able to pick one named print station."
  */
 
@@ -64,12 +48,7 @@ export type StaffPrintTotePayload = {
 /** Which repair document a `repair` job prints — the role follows from it. */
 export type StaffPrintRepairDocument = 'receipt' | 'label' | 'manual';
 
-/**
- * One repair document on the station's printer. `receipt` is the repair paper
- * (`/api/repair-service/print/[id]`, intake + pickup signature bands) on the
- * paper printer; `label` is the 2×1 `REP-{id}` sticker on the label printer;
- * `manual` is a product manual (`/api/product-manuals/[manualId]/content`).
- */
+/** One repair document on the station's printer. */
 export type StaffPrintRepairPayload = {
   repairId: number;
   document: StaffPrintRepairDocument;
@@ -81,13 +60,7 @@ export function repairDocumentRole(document: StaffPrintRepairDocument): StaffPri
   return document === 'label' ? 'label' : 'paper';
 }
 
-/**
- * Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the
- * station's label printer. The wire carries only the key and how many; the
- * station reads the catalog row itself so the sticker is the org's current
- * catalog, never a phone's copy of it. `copies` is 1..`MAX_LABEL_COPIES`
- * stickers — plates in the run, never a printer repeat count.
- */
+/** Amazon FBA unit labels (Code 128 FNSKU · title · condition) on the station's label printer. */
 export type StaffPrintFnskuPayload = { fnsku: string; copies: number };
 
 /** A catalog key the station may look up: A-Z/0-9, as `fba_fnskus.fnsku` stores it. */
@@ -414,12 +387,7 @@ export const STAFF_PRINT_STATION_STALE_MS = 40_000;
 /** A station the phone has heard from, and when it last answered. */
 export type StaffPrintStation = { status: StaffPrintStatus; lastSeenAt: number };
 
-/**
- * Whether a host is a print station at all: it can print a label or paper
- * (USB/serial, or the desk browser's own print — Chrome silent printing), or
- * has a printer paired. A phone with nothing paired is not one, and its host
- * stays silent so it never shadows a desk tab that shares its station id.
- */
+/** Whether a host is a print station at all: */
 export function isPrintStation(status: StaffPrintStatus): boolean {
   return status.profiles.length > 0 || status.label.ready || status.paper.ready;
 }

@@ -1,16 +1,4 @@
-/**
- * Platform display SoT — the org catalog (`platforms` + `platform_accounts`)
- * resolved into the three faces every surface paints:
- *
- *   label           full display name   (evidence, tooltips, pickers)
- *   shortLabel      dense face          (2x1 label, ledger band 1, phone band 1)
- *   connectionName  the storefront      (evidence, when it says more than the label)
- *
- * Pure: the client hooks in `src/hooks/useCatalog.ts` build these once per
- * catalog snapshot; the carton printer reads the same short-label ladder.
- * The static order-id inference (Amazon 3-7-7 / eBay 2-5-5) stays the
- * fallback path, and still beats a stale `account_source`.
- */
+/** Platform display SoT — the org catalog (`platforms` + `platform_accounts`) resolved into the three faces every surface paints: */
 
 import type { PlatformAccountRow, PlatformRow } from '@/lib/neon/catalog-queries';
 import type { StoreLinkRow } from '@/lib/catalog/integration-store-links';
@@ -49,12 +37,7 @@ export function platformShortLabelOverride(
   return row.short_label?.trim() || builtinPlatformShortLabel(row.slug);
 }
 
-/**
- * Catalog-aware {@link SourcePlatformMeta} for one platform row: the catalog
- * label wins, `color_hex` drives the accent, else catalog `tone` overrides the
- * text tone; the pinned hue, mark and border come from the built-in registry.
- * A custom slug with no built-in match reads its own label + neutral border.
- */
+/** Catalog-aware {@link SourcePlatformMeta} for one platform row: */
 export function catalogPlatformMeta(
   row: Pick<PlatformRow, 'slug' | 'label' | 'tone' | 'color_hex'>,
 ): SourcePlatformMeta {
@@ -97,14 +80,7 @@ export type OrderChannelResolver = (
 
 const lower = (s: string) => s.trim().toLowerCase();
 
-/**
- * `account_source` → the catalog account + platform it names, or nulls. The
- * column is hybrid-grain — a connection slug ('ebay-mk'), a platform slug
- * ('ecwid'), or a connection / platform NAME ('Amazon USAV') — so it is matched
- * by connection slug, then platform slug, then connection label, then platform
- * label, all case-insensitive. No order-number inference: that is the display
- * resolver's override, not a fact about the source string.
- */
+/** `account_source` → the catalog account + platform it names, or nulls. */
 export function buildAccountSourceLookup(
   platforms: readonly PlatformRow[],
   accounts: readonly PlatformAccountRow[],
@@ -128,12 +104,7 @@ export function buildAccountSourceLookup(
   };
 }
 
-/**
- * Build the order-channel resolver for one catalog snapshot: the catalog match
- * of {@link buildAccountSourceLookup}, except that an Amazon 3-7-7 / eBay 2-5-5
- * order number overrides a match that names a different platform (a Zoho slug
- * must not repaint a marketplace order).
- */
+/** Build the order-channel resolver for one catalog snapshot: */
 export function buildOrderChannelResolver(
   platforms: readonly PlatformRow[],
   accounts: readonly PlatformAccountRow[],
@@ -175,12 +146,7 @@ export function buildOrderChannelResolver(
   };
 }
 
-/**
- * `lookup(platformText)` → the org's dense face for a platform named by slug
- * OR display label (the carton label draft holds the label), else null. Only
- * org overrides — the printer applies the built-in compact itself so a label
- * printed before the catalog loads still reads `AMZ`.
- */
+/** `lookup(platformText)` → the org's dense face for a platform named by slug OR display label (the carton label draft holds the label),… */
 export function buildPlatformShortLabelLookup(
   platforms: readonly Pick<PlatformRow, 'slug' | 'label' | 'short_label'>[],
 ): (value: string | null | undefined) => string | null {
@@ -216,14 +182,7 @@ export interface OrderPlatformChoice {
   label: string;
 }
 
-/**
- * The order platform picker's options, flat. Every active platform once — the
- * same set the receiving pickers list — each followed by its storefront
- * accounts, where a storefront is an active, non-default account that a
- * ShipStation store is LINKED to (eBay · DRAGON). Unlinked accounts (buyer
- * logins, retired mirrors, Zoho scopes) are not places an order is sold, so
- * they stay out.
- */
+/** The order platform picker's options, flat. */
 export function orderPlatformChoices(
   platforms: readonly Pick<PlatformRow, 'id' | 'slug' | 'label' | 'is_active'>[],
   accounts: readonly Pick<PlatformAccountRow, 'id' | 'platform_id' | 'slug' | 'label' | 'is_active'>[],

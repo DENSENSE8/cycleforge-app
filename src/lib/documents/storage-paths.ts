@@ -1,10 +1,4 @@
-/**
- * Path convention for server-fetched outbound documents (docs/outbound-documents-plan.md §5.2).
- * Pure string builder — no I/O. Phase 4 marketplace adapters write bytes at
- * this path (NAS agent proxy or org GCS prefix, per storage-strategy §5.1);
- * Phase 1 only needs the naming rule to exist so the domain layer + tests can
- * be authored against it ahead of the adapters.
- */
+/** Path convention for server-fetched outbound documents (docs/outbound-documents-plan.md §5.2). */
 
 export interface OutboundDocumentPathInput {
   orgSlug: string;

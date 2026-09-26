@@ -21,28 +21,7 @@ interface StableSkuSlice {
   kitParts: Array<{ id: number; name: string; type: string; qty: number; critical: boolean }>;
 }
 
-/**
- * GET /api/get-title-by-sku?sku=<value>
- *
- * Resolves a SKU to {title, stock, location, imageUrl, skuCatalogId, gtin}
- * by probing four tables and merging in priority order:
- *
- *   items              — the Zoho items mirror. The Zoho product display is the
- *                        SOURCE OF TRUTH for the title, so it wins over every
- *                        other table. `items` uses an independent SKU numbering
- *                        that collides with sku_catalog/sku_stock on the same
- *                        string (e.g. SKU 00016 is a different product in each),
- *                        so the title MUST come from here to match the Zoho
- *                        product picker.
- *   sku_platform_ids   — Ecwid platform mappings (display_name + image_url).
- *                        May be unlinked (sku_catalog_id NULL), so we never skip
- *                        this even when sku_catalog also matches.
- *   sku_catalog        — canonical SKU id + GTIN + sometimes image_url.
- *   sku_stock          — stock & location.
- *
- * All matches are case-insensitive, whitespace-trimmed, and leading-zero
- * tolerant in both directions (e.g. '1103' ↔ '01103').
- */
+/** GET /api/get-title-by-sku?sku=<value> */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
     try {
         const orgId = ctx.organizationId;
@@ -66,10 +45,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
         const normSku = trimmedSku.toUpperCase().replace(/^0+(?=.)/, '');
         const condKey = condition ?? '';
 
-        // ── STABLE slice (cached) — everything except live stock/location. ──────
-        // Cached on (org, normSku, condition); tagged so any catalog/kit/qc write
-        // busts it (§4 item 1). The volatile sku_stock stock/location is fetched
-        // live below and merged on top (item 1b — never cache decrementing stock).
+        // ── STABLE slice (cached) — everything except live stock/location.
         const stablePromise = getOrSet<StableSkuSlice>(
             CACHE_NS.titleBySku,
             orgId,

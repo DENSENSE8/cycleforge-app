@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The Unfound slot-layout hook — the CONFIG on the shared
- * {@link useSlotTableLayout} engine. The sixteenth family on the engine.
- *
- * Sheet morph only — `paintMorph` coerces a stored `compound` document, and the
- * org write gate (`slotMorphsFor('unfound')`) refuses one.
- */
+/** The Unfound slot-layout hook — the CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   UNFOUND_FIELD_CATALOG,

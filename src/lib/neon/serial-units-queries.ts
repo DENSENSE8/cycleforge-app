@@ -172,19 +172,7 @@ export interface SerialUidRow {
   sku: string | null;
 }
 
-/**
- * Batch reprint resolver: given many manufacturer serials, return each matched
- * unit's canonical `unit_uid` in ONE indexed lookup (`normalized_serial = ANY`).
- * Powers bulk / history label print so a reprint encodes the SAME minted uid the
- * unit was born with (the reprint guarantee) instead of a bare serial.
- *
- * Read-only — never mints. A serial with no row, or a row not yet stamped with a
- * uid, is simply absent / has `unit_uid: null`, letting the caller keep its bare
- * -serial fallback. Org-scoped: `normalized_serial` is a string key that collides
- * across tenants, so the explicit org predicate + GUC-wrapped connection keep a
- * serial from resolving another tenant's unit. Inputs are de-duped after
- * normalization; the result is one row per DISTINCT matched normalized serial.
- */
+/** Batch reprint resolver: */
 export async function findUnitUidsBySerials(
   serials: string[],
   orgId?: OrgId,
@@ -214,12 +202,7 @@ export async function findUnitUidsBySerials(
   return result.rows;
 }
 
-/**
- * Resolve a unit by its minted unit_uid ({SKU_SHORT}-{YYWW}-{SEQ6}). This is
- * the indexed lookup behind scanning a printed label's QR and behind reprint
- * (so a trashed label re-prints the exact same id). Org scoping is enforced by
- * the RLS GUC on the connection. Trims/uppercases to match how the id is stored.
- */
+/** Resolve a unit by its minted unit_uid ({SKU_SHORT}-{YYWW}-{SEQ6}). */
 export async function findByUnitUid(
   unitUid: string,
   orgId?: OrgId,
@@ -247,19 +230,7 @@ export async function findByUnitUid(
   return result.rows[0] ?? null;
 }
 
-/**
- * The shipped order a serial unit was last allocated to. Joins
- * `order_unit_allocations` (the inventory-v2 link written by `/api/pack/ship`)
- * back to `orders` and the carton's tracking. Used by the RETURN receiving
- * flow: when a scanned serial belongs to something we shipped, this resolves
- * the original sales order so the workspace can pair the return with it and
- * pre-fill a claim.
- *
- * Prefers a SHIPPED allocation, then the most recently allocated one. Scoped to
- * the caller's organization so a serial can't leak another tenant's order.
- * Returns null for serials that were never allocated to an order (e.g. legacy
- * tech_serial_numbers ships that pre-date allocations).
- */
+/** The shipped order a serial unit was last allocated to. */
 export interface MatchedOrderForSerial {
   order_pk: number;
   order_id: string | null;
@@ -318,15 +289,7 @@ export async function findShippedOrderForSerialUnit(
   return result.rows[0] ?? null;
 }
 
-/**
- * Legacy ship path: resolve the sales order a serial shipped on via
- * `tech_serial_numbers.shipment_id → orders.shipment_id`. Most serials we
- * shipped before inventory-v2 (and FBA/tech ships today) are recorded only in
- * `tech_serial_numbers`, never in `serial_units` — so `findByNormalizedSerial`
- * misses them. This is the fallback the RETURN lookup uses when the v2
- * allocation path comes up empty. A serial with a `shipment_id` was attached to
- * an outbound shipment ⇒ it shipped ⇒ scanning it at receiving is a return.
- */
+/** Legacy ship path: */
 export async function findShippedOrderByTsnSerial(
   serial: string,
   options?: { organizationId?: string | null; executor?: Queryable },
@@ -339,10 +302,7 @@ export async function findShippedOrderByTsnSerial(
   const effectiveOrg = orgId ?? options?.organizationId ?? null;
   const params = [normalized, effectiveOrg];
 
-  // Tenant-scoped path: t.serial_number is a string key that collides across
-  // tenants, so we pin t to the same org as the order it joins (Rule 3) AND
-  // wrap the read in a GUC-bound connection. Used only when the route sweep
-  // threads orgId without supplying its own (already-GUC'd) executor.
+  // Tenant-scoped path:
   if (orgId && !options?.executor) {
     const scoped = await tenantQuery<MatchedOrderForSerial & { serial_number: string }>(
       orgId,
@@ -419,17 +379,7 @@ export async function findShippedOrderByTsnSerial(
   return result.rows[0] ?? null;
 }
 
-/**
- * "Reverse-link on inbound" — given a unit that just re-entered the building
- * (return, RMA, RTV, warranty, repair check-in), resolve the outbound order it
- * was last shipped on. Tries the inventory-v2 allocation path first
- * (order_unit_allocations), then falls back to the legacy tech_serial_numbers
- * shipment link. Reusable across the returns intake, the RMA receive path, and
- * repair intake — anywhere we need to pair an inbound serial back to its trip.
- *
- * Pass `executor` to run inside an open transaction (so the resolve + the
- * subsequent allocation flip / link write commit atomically).
- */
+/** "Reverse-link on inbound" — given a unit that just re-entered the building (return, RMA, RTV, warranty, repair check-in), resolve the… */
 export interface PriorOutbound {
   orderPk: number;
   orderId: string | null;
@@ -491,23 +441,7 @@ export async function resolvePriorOutbound(
   return null;
 }
 
-/**
- * The receiving_line each serial is CURRENTLY associated with — resolved from
- * the unit's most recent `inventory_events` row carrying a `receiving_line_id`
- * (falling back to `origin_receiving_line_id` for a unit with no such event,
- * e.g. legacy rows pre-dating the event log).
- *
- * Deliberately NOT `serial_units.origin_receiving_line_id` alone: that column
- * is a birth fact — `upsertSerialUnit`'s UPDATE path COALESCEs it, so it is
- * set once on first attach and never advances. A unit that ships, returns,
- * and is re-received under a different PO/carton gets a NEW receiving_lines
- * row, but `origin_receiving_line_id` keeps pointing at the very first one
- * forever — every "which PO is this serial on" display that joined on it
- * directly showed stale, first-ever data instead of the latest. (Other call
- * sites, e.g. "was this carton ever opened" and the detach safety-scope
- * check, correctly WANT the immutable origin and must keep reading that
- * column directly — this resolver is only for "current" lookups.)
- */
+/** The receiving_line each serial is CURRENTLY associated with — resolved from the unit's most recent `inventory_events` row carrying a… */
 export async function resolveCurrentReceivingLineIds(
   serialUnitIds: number[],
   orgId: OrgId,
@@ -516,10 +450,7 @@ export async function resolveCurrentReceivingLineIds(
   if (serialUnitIds.length === 0) return map;
   const result = await tenantQuery<{ serial_unit_id: number; receiving_line_id: number | null }>(
     orgId,
-    // Phase 3 (serial_unit_provenance): the frozen-origin fallback now comes
-    // from the reconstruction view (vo.origin_receiving_line_id), not the
-    // serial_units.origin_receiving_line_id column (dropped in Phase 4). The
-    // view join is bounded to the passed id-set, so no full-table scan.
+    // Phase 3 (serial_unit_provenance):
     `SELECT su.id AS serial_unit_id,
             COALESCE(cur.receiving_line_id, vo.origin_receiving_line_id) AS receiving_line_id
        FROM serial_units su
@@ -605,37 +536,13 @@ export async function countByReceivingLine(
 
 // ─── Upsert (the single writer) ─────────────────────────────────────────────
 
-/**
- * Find-or-create a serial_units row. This is the ONLY place code should
- * write to serial_units. Every caller (receiving, tsn, sku, backfill,
- * manual) funnels through here so lifecycle transitions and return
- * detection stay centralized.
- *
- * Relaxed: never throws on valid input. Missing origin context is fine.
- * Returns null only if the serial number is empty.
- */
+/** Find-or-create a serial_units row. */
 export interface UpsertSerialUnitOptions {
-  /**
-   * Run on an existing pooled connection that's already inside an explicit txn
-   * (caller issued BEGIN). Omit to acquire a dedicated client + BEGIN/COMMIT.
-   * Required when callers hold locks (e.g. receiving_lines FOR UPDATE) that FK
-   * checks must see — opening a second connection would self-block waiting on
-   * the first txn and hit Neon "Query read timeout".
-   */
+  /** Run on an existing pooled connection that's already inside an explicit txn (caller issued BEGIN). */
   dbClient?: import('pg').PoolClient;
 }
 
-/**
- * Phase 4: record serial-unit origin provenance edges app-side — the replacement
- * for the dropped serial_units.origin_* columns + the dual-write trigger
- * (fn_sync_serial_unit_provenance). Mirrors the 2026-07-01n backfill / trigger
- * mapping exactly: independent concrete edges for a receiving line / tech serial
- * / sku import, else a text-only edge derived from origin_source. FIRST-WINS per
- * origin_type (NOT EXISTS guard) reproduces the old COALESCE-once column
- * semantics — the FOR UPDATE lock on the serial_units row serializes concurrent
- * upserts of the same unit. Runs on the caller's txn client so it commits/rolls
- * back atomically with the unit write. Best-effort per edge (idempotent).
- */
+/** Phase 4: record serial-unit origin provenance edges app-side — the replacement for the dropped serial_units.origin_* columns + the… */
 export async function recordOriginProvenance(
   client: Queryable,
   orgId: OrgId,
@@ -701,15 +608,7 @@ export async function upsertSerialUnit(
   const nowIso = new Date().toISOString();
   const isReceivingTouch = input.origin_source === 'receiving';
 
-  /**
-   * The SQL body of the upsert, parametrized so it can run on any open client.
-   * Always org-scoped (orgId is required): it pins the FOR UPDATE lookup to the
-   * org (normalized_serial is a string key that collides across tenants), stamps
-   * organization_id on the INSERT, and constrains the UPDATE WHERE to the org.
-   * This is the only path — there is no unscoped fork, so the loud-fail
-   * organization_id default under FORCE RLS can never bite an un-threaded write.
-   * BEGIN/COMMIT/ROLLBACK/release are owned by the dispatcher below, never here.
-   */
+  /** The SQL body of the upsert, parametrized so it can run on any open client. */
   const runUpsert = async (
     client: Queryable,
   ): Promise<UpsertSerialUnitResult> => {
@@ -721,13 +620,7 @@ export async function upsertSerialUnit(
     );
     const existingRow = existing.rows[0] ?? null;
 
-    // Mint a unit_uid at birth (Phase 2) when the caller didn't supply one and
-    // the row doesn't already have one — given a catalog id + a non-legacy
-    // origin. Explicit input.unit_uid always wins (e.g. the label path). The
-    // allocation runs on THIS txn's client (not a second pooled connection,
-    // which would risk self-blocking under the FOR UPDATE lock), so a rolled-
-    // back upsert also rolls back the sequence — no gaps. Best-effort: a mint
-    // failure must never break the core upsert.
+    // Mint a unit_uid at birth (Phase 2) when the caller didn't supply one and the row doesn't already have one — given a catalog id + a…
     let resolvedUnitUid = trimmedUnitUid;
     if (
       !resolvedUnitUid &&
@@ -866,10 +759,7 @@ export async function upsertSerialUnit(
 
   const externalClient = options?.dbClient;
 
-  // Always tenant-aware: orgId is required, so every statement stamps/scopes the
-  // org. There is no unscoped raw-pool fallback anymore — that path was the
-  // FORCE-RLS footgun (it relied on the column default, which loud-fails when the
-  // executing client has no app.current_org GUC).
+  // Always tenant-aware:
   if (externalClient) {
     // Executor pattern: the caller owns the transaction. Set the org GUC on
     // THIS client (transaction-scoped via is_local=true) so RLS/loud-fail
@@ -898,19 +788,7 @@ export interface TsnRowForSync {
   source_sku_id?: number | null;
 }
 
-/**
- * After a tech_serial_numbers row is inserted anywhere in the app, call this
- * to register / update the master serial_units row and stamp the FK back
- * onto the TSN row. Never throws — the master registry is relaxed, so a
- * sync failure never prevents the original TSN row from existing.
- *
- * Infers origin/status from TSN fields:
- *   station_source='RECEIVING' → origin=receiving, status=RECEIVED
- *   shipment_id or fba_shipment_id set → origin=tsn, status=SHIPPED
- *   otherwise → origin=tsn, status=TESTED
- *
- * Callers can override via options.
- */
+/** After a tech_serial_numbers row is inserted anywhere in the app, call this to register / update the master serial_units row and stamp… */
 export async function syncTsnToSerialUnit(
   tsnRow: TsnRowForSync,
   options: {
@@ -970,12 +848,7 @@ export async function syncTsnToSerialUnit(
   }
 }
 
-/**
- * Idempotent stamp of serial_unit_id on every matching TSN row for a
- * receiving-side scan. Useful when the caller already has the serial_unit_id
- * from a prior upsertSerialUnit call and just needs to backfill the FK (e.g.
- * when the INSERT used ON CONFLICT DO NOTHING and we don't have the id back).
- */
+/** Idempotent stamp of serial_unit_id on every matching TSN row for a receiving-side scan. */
 export async function stampReceivingTsnSerialUnitId(params: {
   serial_unit_id: number;
   serial_number: string;

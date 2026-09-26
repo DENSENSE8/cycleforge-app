@@ -10,12 +10,7 @@ import {
 } from '@/lib/realtime/channels';
 import type { ReceivingPhotoChangedPayload } from '@/utils/events';
 
-/**
- * Invalidate receiving photo queries when uploads land via either realtime path:
- *   • `receiving_photo_uploaded` on the phone bridge (mobile capture queue)
- *   • `receiving-photo.changed` on the station channel (NAS attach, /api/photos/upload)
- *   • `receiving-photo.changed` window event (same-tab PhotoViewerModal / library delete)
- */
+/** Invalidate receiving photo queries when uploads land via either realtime path: */
 export function useReceivingPhotosRealtimeRefresh(
   receivingId: number | null | undefined,
   staffId: number,

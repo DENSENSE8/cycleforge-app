@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * useKioskCartSync — writes the tablet's ONE cart to `kiosk_carts` and keeps the
- * Recent carts list. Mounted once, by `KioskShell`.
- *
- * - A cart gets its `#id` the moment it holds something (a line or a customer
- *   field): POST, then `attachCart`.
- * - Every later change is saved ~500ms after the typing stops (PATCH with the
- *   version it expects).
- * - 409 = another tablet opened this cart since (single writer, see
- *   `kiosk-carts.server`): say so and start a fresh cart — the lines now live
- *   on the other device.
- * - The store announces how a cart ENDS (`onCartEnded`): Clear cart deletes the
- *   row, a submit (`completeCart` / Next customer) closes it as done.
- *
- * Every write goes through ONE queue, so a save can never overtake the create
- * it depends on and a cart switch never races the save of the cart being left
- * (`openCart` / `newCart` flush first). Nothing syncs while a desk mirror holds
- * the tablet: those lines are the desk's session, not a cart of ours.
- *
- * Callers: `KioskShell` (list → `KioskRecentCarts`, count → chrome badge).
- * Affected API: GET/POST `/api/kiosk/carts`, PATCH/DELETE `/api/kiosk/carts/[id]`,
- *   POST `/api/kiosk/carts/[id]/open`, POST `/api/kiosk/carts/[id]/done`
- *   (all `kioskFetchHealed`).
- * Schemas: `kiosk_carts` (2026-09-24d), `KioskCartSnapshot`.
- * User 2026-09-24: "recent carts for juggling multiple customers at the same
- * time, IDed for multiple devices".
- */
+/** useKioskCartSync — writes the tablet's ONE cart to `kiosk_carts` and keeps the Recent carts list. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';

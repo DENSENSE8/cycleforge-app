@@ -26,20 +26,7 @@ export interface SignatureData {
 interface SignaturePadProps {
   onSignatureChange: (data: SignatureData | null) => void;
   label?: string;
-  /**
-   * Legacy STAFF fill: the pad's box takes its parent's height instead of its
-   * own aspect ({@link REPAIR_SIGNATURE_PAD_CLASS}). Kept for the staff mounts
-   * that size the pad from a fixed-height wrapper (`RepairIntakeForm`, mobile
-   * `RepairPickupSheet` — a 5:1 box is ~70px tall
-   * on a phone) so the 2026-09-15 kiosk geometry change does not relayout
-   * surfaces it was not about.
-   *
-   * It is NOT an escape from the print law: the export is cropped to the ink
-   * either way (`exportSignaturePng`), which is what actually seats the
-   * signature on the ruled line. This prop only decides the on-screen box.
-   *
-   * Ignored while `expanded` — see the Dialog below.
-   */
+  /** Legacy STAFF fill: */
   fillHeight?: boolean;
   /** `dropoff` — square corners, matches printed drop-off signature line. */
   variant?: 'default' | 'dropoff';
@@ -79,35 +66,12 @@ export function SignaturePad({
   const padRef = useRef<SignaturePadLib | null>(null);
   /** Survives fullscreen remount (Dialog portal) so strokes restore after expand/collapse. */
   const strokesRef = useRef<PointGroup[]>([]);
-  /**
-   * The CSS box `strokesRef` was drawn in. Points are canvas pixels, and the
-   * inline pad (~480px) and the fullscreen pad (~1100px) are different boxes:
-   * replaying raw points put fullscreen ink off the right edge of the inline
-   * pad. Restore goes through {@link fitStrokes} from this box to the new one.
-   */
+  /** The CSS box `strokesRef` was drawn in. */
   const boxRef = useRef<StrokeBox | null>(null);
   const [signed, setSigned] = useState(false);
   const [expanded, setExpanded] = useState(false);
 
-  /**
-   * The pad binds to the CANVAS NODE, not to `expanded`.
-   *
-   * `expanded` is only a proxy for "a canvas exists", and in the fullscreen
-   * branch it is a WRONG one: `@radix-ui/react-portal` renders `null` on its
-   * first render and mounts its children from a layout effect
-   * (`useLayoutEffect(() => setMounted(true), [])`). So the commit that flips
-   * `expanded` unmounts the inline canvas and mounts nothing — an effect keyed
-   * on `[expanded]` runs against a null ref, bails, and never runs again
-   * because `expanded` does not change when the portal's second commit finally
-   * attaches the canvas. The result was a fullscreen pad with no `signature_pad`
-   * bound to it: no ink, a dead Clear, and no stroke restore.
-   *
-   * Element state + stable callback refs fire exactly on attach/detach, so the
-   * pad follows the canvas across both commits and across either branch.
-   * `useCallback` identity is load-bearing — an inline `ref={(n) => …}` is a
-   * new function every render, which detaches and re-attaches on every render
-   * and would tear the pad down mid-signature.
-   */
+  /** The pad binds to the CANVAS NODE, not to `expanded`. */
   const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const canvasRef = useCallback((node: HTMLCanvasElement | null) => setCanvasEl(node), []);
@@ -225,14 +189,7 @@ export function SignaturePad({
   }, []);
 
   const isDropoff = variant === 'dropoff';
-  /**
-   * The legacy staff fill, DELIBERATELY not extended to fullscreen.
-   *
-   * `expanded` used to set this too, which is how the Dialog produced a
-   * viewport-tall canvas — the same dead-space defect as the old 200px pad,
-   * one altitude up. Fullscreen now takes the aspect law like every other
-   * kiosk mount; only the two fixed-height staff wrappers still fill.
-   */
+  /** The legacy staff fill, DELIBERATELY not extended to fullscreen. */
   const fill = Boolean(fillHeight) && !expanded;
 
   const labelRow = (
@@ -291,13 +248,7 @@ export function SignaturePad({
     </div>
   );
 
-  /**
-   * The pad box. On the kiosk its geometry is a RATIO on the kiosk axis
-   * ({@link REPAIR_SIGNATURE_PAD_CLASS}), never a fixed height: it is mounted at
-   * four measures and a height means a different aspect at each one. The
-   * `fill` branch is the staff wrappers' own height (see {@link fill}); the
-   * border follows it because a filled pad is already inside a bordered box.
-   */
+  /** The pad box. On the kiosk its geometry is a RATIO on the kiosk axis ({@link REPAIR_SIGNATURE_PAD_CLASS}), never a fixed height: */
   const canvasArea = (
     <div
       ref={containerRef}
@@ -331,15 +282,9 @@ export function SignaturePad({
       {allowFullscreen && (
         <Dialog open={expanded} onOpenChange={setExpanded}>
           {/*
-            Bottom-anchored (operator 2026-09-25): the customer's wrist rests
-            on the tablet's bottom edge, so the pad sits flush against it and
-            the controls stack directly above. `justify-end` puts the spare
-            height ABOVE the header — never between the pad and the edge the
-            hand is on. The pad still keeps its aspect (see {@link fill});
-            only its position changed. `pb` is the safe-area inset alone, so
-            it is 0 on a plain tablet and clears a home indicator where one
-            exists.
-          */}
+ * Bottom-anchored (operator 2026-09-25):
+ * Bottom-anchored (operator 2026-09-25): the customer's wrist rests
+ */}
           <DialogContent
             hideClose
             overlayClassName="bg-surface-canvas"

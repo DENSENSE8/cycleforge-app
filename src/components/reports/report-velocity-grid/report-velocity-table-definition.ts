@@ -1,16 +1,4 @@
-/**
- * `reports.velocity` — the table definition, capabilities and surface
- * descriptor for the 30-day SKU-velocity report.
- *
- * Re-declares nothing: columns are the family SoT by reference.
- *
- * Its OWN tableId, never shared with the other two reports: three different
- * row shapes cannot share one layout document, and the Fields menu keys off
- * `tableId` — so hiding `In` here must not touch Bin utilization or Dead
- * stock. It is also a SIBLING of `report-dead-stock`, never a merge: both rows
- * are keyed by SKU, but one answers "what is moving" over a 30-day window and
- * the other "what has not moved in 90+ days", and they carry different facts.
- */
+/** `reports.velocity` — the table definition, capabilities and surface descriptor for the 30-day SKU-velocity report. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -27,14 +15,7 @@ import {
   type ReportVelocityGridColumn,
 } from './report-velocity-grid-layout';
 
-/**
- * Nothing on this desk writes. A velocity row is an aggregate projection over
- * the stock ledger — no row verbs, no cell editing, no triage flags.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting the top movers into a purchasing plan is the reason this report is
- * opened at all.
- */
+/** Nothing on this desk writes. */
 export const REPORT_VELOCITY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

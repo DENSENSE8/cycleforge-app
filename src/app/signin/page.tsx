@@ -1,44 +1,11 @@
 'use client';
 
-/**
- * /signin — unified SMB login.
- *
- * Primary flow is **email + password** (POST /api/auth/account/signin) — the
- * cross-workspace owner/staff entry point. Secondary: magic sign-in link,
- * account passkey, and (collapsed) a shared-station PIN flow that reuses the
- * StaffPickerList + StaffPinPad bricks.
- *
- * Apex vs workspace: on load we fetch the workspace NAME only
- * (GET /api/auth/workspace) — never the staff list. Station (PIN) mode is only
- * offered once a workspace is resolved; on the apex host we point the user at
- * their workspace URL instead of leaking any tenant's staff.
- *
- * We deliberately do NOT call GET /api/auth/staff-picker on initial load — the
- * picker mounts (and self-fetches) only when the user opens station mode.
- *
- * DISPLAY CONTRACT — this page looks like the product, not a marketing splash.
- * One calm canvas, one card, house tokens only. The only foreign brand color on
- * the page lives inside ProviderSignInButton, where Google/Microsoft require it.
- * Scan order: QR hero on the right → "or" → Sign in with email (the two-step
- * form opens on demand) → everything else behind a disclosure, with the method
- * you used last promoted out of it. There is NO "keep me signed in" control:
- * sessions are always persistent because switching staff is one tap.
- */
+/** /signin — unified SMB login. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-/**
- * WebAuthn, the QR dialog's renderer and the whole shared-station (PIN) tree are
- * loaded ON DEMAND, not with the page.
- *
- * This is the app's one public route and the only one measured on the mobile
- * profile, so everything in its initial bundle is paid for by every signed-out
- * visitor on a phone. None of these is on the primary path — the primary path is
- * email + password. `@simplewebauthn/browser` runs only when someone picks a
- * passkey, `react-qr-code` only inside a dialog that has to be opened, and the
- * PIN bricks only after station mode is disclosed.
- */
+/** WebAuthn, the QR dialog's renderer and the whole shared-station (PIN) tree are loaded ON DEMAND, not with the page. */
 type StartAuthentication = typeof import('@simplewebauthn/browser')['startAuthentication'];
 const startAuthentication: StartAuthentication = async (...args) => {
   const mod = await import('@simplewebauthn/browser');
@@ -51,13 +18,7 @@ const startRegistration: StartRegistration = async (...args) => {
 };
 import { toast } from '@/lib/toast';
 import { flushSync } from 'react-dom';
-// Deliberately NO `@/design-system/motion` import here. `/signin` is the one
-// public route, and the motion barrel statically carries the whole engine
-// (`motion/react`) — ~48KB gz on the critical JS graph of a password card.
-// Under the mobile profile Lantern charges simulated LCP/TBT against that
-// graph (measured 2026-08-28: LCP 4975ms simulated vs ~2.0s observed, TBT
-// 320-426ms, Perf 73). Section/step swaps render conditionally and cut —
-// house law: show it or do not.
+// Deliberately NO `@/design-system/motion` import here.
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
 import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
@@ -92,13 +53,7 @@ const MobileSignInQrChooser = dynamic(
 );
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
-// Deep paths, NOT the `@/design-system/primitives` barrel. The barrel
-// re-exports every primitive, seven of which import the motion engine
-// (CardShell, StaggerReveal, ChevronToggle, SlicedActionDock, Popover,
-// OmnichannelComposerDock, ProgressBar) — and a local barrel is not covered by
-// `optimizePackageImports`, so the whole engine rode into the one public
-// route's critical graph behind three unrelated primitives. Deep imports are
-// the established house shape here (108 existing call sites).
+// Deep paths, NOT the `@/design-system/primitives` barrel.
 import { CheckCircle2, Fingerprint } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
@@ -216,10 +171,7 @@ export default function SignInPage() {
   const next = params.get('next') || '';
   const isMobileSigninPath = pathname?.startsWith('/m/signin') ?? false;
 
-  // A phone can reach this route after a successful sign-in via a stale link
-  // or an app retry. Confirm the standing session instead of presenting login
-  // methods again. `/m/qr-auth` intentionally owns desktop authorization and
-  // does not pass through this page.
+  // A phone can reach this route after a successful sign-in via a stale link or an app retry.
   const [mobileSession, setMobileSession] = useState<MobileSessionIdentity | null | undefined>(
     isMobileSigninPath ? undefined : null,
   );
@@ -253,16 +205,10 @@ export default function SignInPage() {
   // ── Account (email + password) ────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Chooser face first (QR + providers + passkey are the fast paths); "Sign in
-  // with email" opens the credential face, which shows BOTH fields at once —
-  // the identifier does not pick the method here, so the old email→password
-  // split (retired 2026-09-07) only cost a press and defeated password
-  // managers. See SignInAuthStepPanels.
+  // Chooser face first (QR + providers + passkey are the fast paths); "Sign in with email" opens the credential face, which shows BOTH…
   const [authStep, setAuthStep] = useState<'choose' | 'credentials'>('choose');
 
-  // No Google/Apple providers and no SSO on this workspace (and the fetch has
-  // RESOLVED - the skeleton tier covered the in-flight window)? Email is the
-  // front door: open the credential face instead of hiding it behind a press
+  // No Google/Apple providers and no SSO on this workspace (and the fetch has RESOLVED - the skeleton tier covered the in-flight window)?
   // (operator 2026-09-08, re-affirmed 2026-09-09).
   useEffect(() => {
     const federated =
@@ -272,9 +218,6 @@ export default function SignInPage() {
     }
   }, [workspace, authStep]);
   // Sessions are ALWAYS persistent — there is no "keep me signed in" option.
-  // The safety valve is staff switching: on shared-account orgs and stations
-  // the roster is one tap away, so a standing session is corrected by
-  // switching staff, not by having signed out.
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -320,12 +263,7 @@ export default function SignInPage() {
   const [recentReady, setRecentReady] = useState(false);
   const [pinless, setPinless] = useState(false);
   const [showPhoneQr, setShowPhoneQr] = useState(false);
-  // Phone /m shell or UA-CH mobile → no desk companion QR (phone cannot scan
-  // itself). Both start false on server AND client so hydration matches; the
-  // effect below decides after mount. Reading `window` in the initializer made
-  // the desk client render the QR card the server never sent — a hydration
-  // failure that regenerated the whole tree and tripped React's "script tag"
-  // error on the root layout's boot scripts.
+  // Phone /m shell or UA-CH mobile → no desk companion QR (phone cannot scan itself).
   const [mobileSignInFace, setMobileSignInFace] = useState(false);
   const [showDeskQr, setShowDeskQr] = useState(false);
   useEffect(() => {
@@ -460,10 +398,7 @@ export default function SignInPage() {
         setStaffChoiceOrg(data.organizationName ?? null);
         return;
       }
-      // Password worked on a Face ID-capable device and they haven't saved a
-      // passkey (or asked us to stop asking): hold the redirect for ONE
-      // question. This is the industry upgrade moment — ask at success, never
-      // at rest — and every path out of the prompt still finishes the sign-in.
+      // Password worked on a Face ID-capable device and they haven't saved a passkey (or asked us to stop asking):
       if (platformPasskey && !window.localStorage.getItem('cf.passkeyPrompt.dismissed')) {
         setPasskeyPrompt({ proceed: () => finish(null, null, null, null), saving: false });
         return;
@@ -1270,11 +1205,7 @@ function AuthCard({ children, qrPanel }: { children: React.ReactNode; qrPanel?: 
 
           <div className="hidden md:block w-px bg-border-hairline self-stretch my-4" />
 
-          {/* Desktop-only, and a PEER ROW of the left column — same height,
-              same padding, so the QR tile reads as one card with two equal
-              halves, not an appendix bolted on the right. A phone cannot scan
-              a QR that is ON the phone; pairing is the desk showing the code
-              for the phone to scan. */}
+          {/* Desktop-only, and a PEER ROW of the left column — same height, same padding, so the QR tile reads as one card with two equal halves, not… */}
           <div className="cf-auth-qr hidden md:flex self-stretch bg-surface-sunken/30 p-5 md:p-6 flex-col items-center justify-center">
             {qrPanel}
           </div>
@@ -1385,20 +1316,7 @@ function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
   );
 }
 
-/**
- * Page canvas. Deliberately plain: one flat surface, no ambient gradients, no
- * texture overlay, no glass. The card is the design.
- *
- * iOS/iPadOS geometry — two rules, both learned the hard way:
- *  1. The inner column is `min-h-full`, NOT `min-h-dvh`. Root layout pins <body>
- *     to the visual viewport with `overflow-hidden` (see app/layout.tsx) — a
- *     `100dvh` child inside this already-viewport-sized `fixed inset-0` box
- *     overflows it whenever Safari's chrome collapses, and the page scrolls past
- *     the painted area.
- *  2. A dedicated `fixed inset-0` paint layer sits behind the content, so
- *     rubber-band overscroll and any sub-pixel rounding still reveal the canvas
- *     color rather than the body underneath.
- */
+/** Page canvas. Deliberately plain: */
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-modal overflow-y-auto overscroll-none bg-surface-canvas text-text-default antialiased">
@@ -1410,16 +1328,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         displacement={0.35}
       />
       <div className="relative z-sticky flex min-h-full flex-col items-center justify-center px-6 py-12">
-        {/*
-          NO mount entrance here. The card is the LCP element of the one public
-          route, and it server-renders. A framer mount fade SSRs it at
-          `opacity: 0` and only reveals it once hydration runs the animation, so
-          LCP stopped tracking the HTML (~0.4s) and started tracking hydration
-          (~8.7s simulated on the mobile profile) — a 24-point Lighthouse hit
-          for a 260ms fade. First-paint content shows immediately. (2026-08-28:
-          the motion engine itself was evicted from this page's whole graph —
-          see the import note at the top of the file.)
-        */}
+        {/* NO mount entrance here. */}
         <div className="flex w-full justify-center">{children}</div>
       </div>
     </div>

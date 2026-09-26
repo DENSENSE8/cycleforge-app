@@ -1,12 +1,6 @@
 import type { ThemePalette } from './registry';
 
-/**
- * Slate — cool industrial. A deeper steel canvas than light (cards float on a
- * visible slate field), text pulled toward blue-gray, functional tones one
- * step deeper so they hold contrast on the busier canvas.
- *
- * No `accent` block: staff accents apply as in light.
- */
+/** Slate — cool industrial. */
 export const slatePalette: ThemePalette = {
   name: 'slate',
   label: 'Slate',

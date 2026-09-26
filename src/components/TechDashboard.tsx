@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Tech dashboard — thin composition layer.
- *
- * Logic lives in focused hooks under `@/components/tech/`:
- *   - useTechRightView ........... `?view=` → right-pane mode
- *   - useTechTestingSelection .... Testing workbench rail multi-select + actions
- *   - useTechOrderPanes .......... active-order + Up Next preview (event bridges)
- *   - useTechDetailOverlays ...... selected log + repair panel (event bridges)
- *
- * Multi-select opens `ReceivingLineRailShell` on RightRailHost (Unbox History
- * SoT) — no bottom ContextualSelectionBar. Claim modal suppresses the shell
- * while it owns the right edge (receiving R7).
- */
+/** Tech dashboard — thin composition layer. */
 
 import { useState } from 'react';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
@@ -34,10 +22,7 @@ interface TechDashboardProps {
 export default function TechDashboard({ techId }: TechDashboardProps) {
   const { rightViewMode, isTestingMode } = useTechRightView();
 
-  // Currently-selected receiving line id for the testing pane. Lives at dashboard
-  // level so the sidebar's recent rail (rendered in TechSidebarPanel) can
-  // highlight the same row the workspace shows, and so bulk Select is gated
-  // to the history browse (no line open).
+  // Currently-selected receiving line id for the testing pane.
   const [testingLineId, setTestingLineId] = useState<number | null>(null);
 
   const browseActive = isTestingMode && testingLineId === null;

@@ -1,13 +1,4 @@
-/**
- * Server-side QA Console capability resolver.
- *
- * Two independent gates, both required:
- *   1. Organization environment === 'sandbox'
- *   2. A developer.qa_tools.* permission (admin short-circuit grants the
- *      strings, but a customer org still fails gate 1)
- *
- * A client-side hide is never enough. Routes call assertQaCapability().
- */
+/** Server-side QA Console capability resolver. */
 
 type OrgEnvironment = 'sandbox' | 'customer';
 

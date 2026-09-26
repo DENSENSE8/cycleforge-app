@@ -12,20 +12,7 @@ type SqlClient = {
   ) => Promise<{ rows: T[]; rowCount?: number | null }>;
 };
 
-/**
- * Shared core for the multi-tracking → PO feature (docs/multi-tracking-po-plan.md).
- *
- * `attachBoxToReceiving` attaches a carrier tracking number to a receiving carton
- * as a box in the `receiving_shipments` junction. Used by BOTH attach routes:
- *   • POST /api/receiving/[id]/attach-box        (carton-level — unbox/triage)
- *   • POST /api/receiving/po/[poId]/attach-box   (PO-level — Incoming pre-arrival)
- *
- * `ensureReceivingForPo` get-or-creates the PO's carton (no Zoho round-trip) so a
- * tracking can be attached before the box physically arrives.
- *
- * `ensureReceivingForEbayOrder` is the eBay parallel — keyed by source_order_id
- * under source='ebay' (ux_receiving_ebay_order).
- */
+/** Shared core for the multi-tracking → PO feature (docs/multi-tracking-po-plan.md). */
 
 export interface AttachedBox {
   id: number;
@@ -72,13 +59,7 @@ export async function listBoxesForReceiving(
   return boxesRes.rows;
 }
 
-/**
- * Attach a tracking number to a receiving carton as a box. Registers the tracking
- * through the shipping backbone (idempotent), self-heals the primary junction row
- * (mirrors receiving_carton.shipment_id), inserts the extra box as the next box_seq, and
- * returns the full box list. When the carton has no anchor yet, the first attached
- * box becomes the primary and stamps receiving_carton.shipment_id.
- */
+/** Attach a tracking number to a receiving carton as a box. */
 export async function attachBoxToReceiving(params: {
   receivingId: number;
   trackingNumber: string;
@@ -192,17 +173,7 @@ export async function attachBoxToReceiving(params: {
   });
 }
 
-/**
- * Get-or-create the receiving carton for a PO — local only, no Zoho round-trip —
- * so a tracking can be attached BEFORE the box physically arrives (Incoming-tab
- * attach). Deliberately does NOT link the PO's receiving_line or advance their
- * workflow: they stay EXPECTED / receiving_id NULL so the PO REMAINS in the
- * Incoming view. The carton just gives the tracking somewhere to anchor; lookup-po
- * adopts this same row (ON CONFLICT) when the box is physically scanned.
- *
- * `received_at` is intentionally left NULL — the box is not received yet; the dock
- * scan (and its receiving_scans row) is the authoritative "arrived" signal.
- */
+/** Get-or-create the receiving carton for a PO — local only, no Zoho round-trip — so a tracking can be attached BEFORE the box physically… */
 export async function ensureReceivingForPo(params: {
   poId: string;
   poNumber?: string | null;
@@ -225,17 +196,7 @@ export async function ensureReceivingForPo(params: {
   return Number(result.rows[0].id);
 }
 
-/**
- * Get-or-create the receiving carton for an eBay purchase order — local only —
- * so a tracking can be registered BEFORE the box physically arrives (same role
- * as ensureReceivingForPo for Zoho). Keyed by (organization_id, source_order_id)
- * under source='ebay' (ux_receiving_ebay_order). Optionally stamps shipment_id
- * on first create / when the carton has none yet.
- *
- * Deliberately does NOT advance receiving_line workflow: lines stay EXPECTED
- * so the order remains in Incoming. Soft-join via source_order_id (or a later
- * receiving_id stamp from ingestPurchase) surfaces carrier status.
- */
+/** Get-or-create the receiving carton for an eBay purchase order — local only — so a tracking can be registered BEFORE the box physically… */
 async function ensureReceivingForEbayOrder(params: {
   sourceOrderId: string;
   shipmentId?: number | null;
@@ -264,12 +225,7 @@ async function ensureReceivingForEbayOrder(params: {
   return Number(result.rows[0].id);
 }
 
-/**
- * Get-or-create a pre-arrival carton for an inbound marketplace / manual order
- * so tracking can soft-join on Incoming before the door scan. eBay keeps its
- * partial unique index; amazon / manual use select-then-insert (no dedicated
- * unique index yet).
- */
+/** Get-or-create a pre-arrival carton for an inbound marketplace / manual order so tracking can soft-join on Incoming before the door scan. */
 export async function ensureReceivingForInboundOrder(params: {
   sourceType: 'ebay' | 'amazon' | 'manual';
   sourceOrderId: string;

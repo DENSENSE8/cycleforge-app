@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Throw one named record task to a team — scan or paste, pick members, send.
- *
- * ## Why one panel and not a wizard
- *
- * Record, team, project name and instructions stay visible together. A stepped
- * wizard would hide the record while the operator picks people, and hide the
- * team while they write instructions; this panel avoids that extra navigation.
- *
- * ## This file is CHROME
- *
- * The sequence — resolve the record server-side, load the roster, POST the
- * task, report a degraded amplifier honestly — moved to {@link useThrowTask}
- * when the task desk grew a composer that needed the same four steps with a
- * different layout and a deadline. The phone sheet uses that same sequence,
- * so all three surfaces report the actual notification outcome.
- */
+/** Throw one named record task to a team — scan or paste, pick members, send. */
 
 import { useEffect, useRef } from 'react';
 import { AlertTriangle, Check, Inbox, Loader2, Package, Search, Send, Zap } from '@/components/Icons';

@@ -13,12 +13,7 @@ export interface PairingQueueItem {
   /** Whether the canonical catalog row is active. Inactive rows only surface via
    *  search (the default backlog is active-only) and get an "inactive" badge. */
   isActive?: boolean;
-  /**
-   * When the row surfaced because the search term matched an account-source
-   * identifier (rather than the canonical SKU/title), this carries which one —
-   * so the operator can confirm "yes, that's the Amazon ASIN I pasted". Null on
-   * canonical matches and on the default backlog view.
-   */
+  /** When the row surfaced because the search term matched an account-source identifier (rather than the canonical SKU/title), this carries… */
   matchedVia?: {
     platform: string;
     platformSku: string | null;

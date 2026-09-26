@@ -1,16 +1,4 @@
-/**
- * Param ownership for the surfaces that still switch mode via `?mode=`.
- *
- * These routes have NOT moved to segments, and they do not need to in order to
- * be isolated — Slice 1's whole point. A spec here is enough: `applyChildTarget`
- * constructs the destination for any route it can resolve a spec for, so the
- * mode delta is all that survives a switch and the per-surface "clear these
- * fifteen keys" literals become dead weight.
- *
- * `mode` is an OWNED param on these routes, unlike on a migrated family where
- * being on the path is the mode. That asymmetry is the migration state showing
- * through, and it disappears when the surface graduates.
- */
+/** Param ownership for the surfaces that still switch mode via `?mode=`. */
 
 import { parseLabelsView } from '@/components/labels/labels-view';
 import { PAIRING_SORTS } from '@/components/products/pairing/types';
@@ -60,13 +48,7 @@ import {
 /** Operator-level bits every workbench accepts on arrival. */
 const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
 
-/**
- * `/support` — Tickets · Orders · Voicemail · Calls · Warranty · Issues.
- *
- * Replaces `SUPPORT_MODE_CLEAR_PARAMS`, a 20-key null-map spread into all six
- * mode targets so that each mode "opens clean". Constructing the target URL
- * makes opening clean the default rather than a thing each target re-states.
- */
+/** `/support` — Tickets · Orders · Voicemail · Calls · Warranty · Issues. */
 const SUPPORT_ROUTE_PARAMS = defineRouteParams({
   route: '/support',
   owns: {
@@ -105,22 +87,11 @@ const SUPPORT_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/dashboard` — Search · Receiving · Outbound.
- *
- * Each mode target used to null out a dozen sibling keys inline so a Search
- * handoff never bled into Receiving/Shipping. Constructing does that by
- * omission.
- */
+/** `/dashboard` — Search · Receiving · Outbound. */
 const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
   route: '/dashboard',
   owns: {
-    /**
-     * Domain axis: `sales` / `pickup` / `repairs` (front-desk history) · legacy
-     * `inbound` / `receiving` / `search` / `outbound` (redirected). Bare outbound
-     * 308s to `/shipping/orders`; inbound → `/incoming?lane=docked`.
-     * Round-trip {@link parseDashboardModeWire} — never a hand-copied twin.
-     */
+    /** Domain axis: `sales` / `pickup` / `repairs` (front-desk history) · legacy `inbound` / `receiving` / `search` / `outbound` (redirected). */
     mode: paramRoundTrip(parseDashboardModeWire),
     /**
      * Sales-domain history tabs (`WalkInHistoryHub`) — Pickup Draft/Completed,
@@ -136,12 +107,7 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
     q: paramText,
     map: paramText,
     openOrderId: paramPositiveInt,
-    /**
-     * HAND-OFF keys — read on this route only to be forwarded, never rendered.
-     * Outbound lifecycle tabs moved to `/shipping/orders`; these remain so
-     * retired front-door redirects (`?warranty=`, `?fba`) still see what the
-     * bookmark asked for before client-redirecting to Support / FBA.
-     */
+    /** HAND-OFF keys — read on this route only to be forwarded, never rendered. */
     warranty: paramPresence,
     fba: paramPresence,
     /** Support warranty deep-link: open claim id. */
@@ -171,25 +137,12 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 });
 
 
-/**
- * `/` (Daily) — the per-staff daily checklist, single surface.
- *
- * Shrank again on 2026-09-14 with the mode list: Today and Tasks are
- * unmounted from Home, so their params (`task`, `open`, `scope`, `staff`,
- * `watch`) left with them. `mode` stays declared so a stale
- * `?mode=today|tasks|forge` round-trip DROPS the token instead of
- * round-tripping a mode that no longer exists.
- */
+/** `/` (Daily) — the per-staff daily checklist, single surface. */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
     mode: paramRoundTrip(parseHomeModeWire),
-    /**
-     * Daily's civil day (`YYYY-MM-DD`) — the durable state that makes a past
-     * checklist linkable to a colleague. Undeclared until 2026-08-19, so a
-     * mode switch through `buildRouteUrl` silently dropped it (unknown keys
-     * are dropped at the boundary — that is the whole contract).
-     */
+    /** Daily's civil day (`YYYY-MM-DD`) — the durable state that makes a past checklist linkable to a colleague. */
     date: paramDateKey,
     /**
      * Daily checklist inspector selection (`HomeDailyMode`'s right-rail
@@ -221,14 +174,7 @@ const FORGE_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/operations` — Live · Analytics · Insights · History · Signals · Plans.
- *
- * Replaces `OPERATIONS_MODE_SCOPED_PARAMS`, the largest of the denylists at 26
- * keys: six modes' worth of filters, the Master Operations Journey's focus set,
- * and the Signals timeline, all listed in one array so that switching mode could
- * delete them one by one.
- */
+/** `/operations` — Live · Analytics · Insights · History · Signals · Plans. */
 const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/operations',
   owns: {
@@ -267,25 +213,7 @@ const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/products` — Manuals · SKU Barcodes · Pairing · QC Checklist.
- *
- * Reference and Kit Parts were removed 2026-09-15 (operator ruling). With
- * `?view=catalog` out of `PRODUCTS_VIEWS`, the seven keys that only the
- * Reference chrome ever wrote — `platform`, `linkFilter`, `pending`,
- * `inactive`, `noChannels`, `noManuals`, `noQc` — went with it: an undeclared
- * key is stripped at the boundary, so leaving them would have kept a dead
- * vocabulary alive in every shared link.
- *
- * Never had a denylist, and that is exactly why it leaked: `handleViewChange`
- * copied the whole query string and flipped one key, so a QC selection
- * (`?skuId=`), a Pairing sort and a Labels history row all rode into Catalog. It
- * is the same defect the nine deleted denylists were written to paper over —
- * this surface just never got the paper.
- *
- * Every vocabulary here composes its existing parser rather than re-listing the
- * values, so a new view / platform / sub-tab cannot drift the spec.
- */
+/** `/products` — Manuals · SKU Barcodes · Pairing · QC Checklist. */
 export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
   route: '/products',
   owns: {
@@ -301,30 +229,13 @@ export const PRODUCTS_ROUTE_PARAMS = defineRouteParams({
     /** Labels sub-tab (Products · Recent · History) and its focused unit. */
     labelsView: paramRoundTrip(parseLabelsView),
     historyId: paramText,
-    /**
-     * Selected manual on the Manuals view — `product_manuals.id`.
-     *
-     * Undeclared until 2026-08-01, which broke manual selection outright:
-     * `useManualNavigation` writes `?id=`, then `SurfaceParamHygiene` rebuilt
-     * the query string from `declaredKeys(spec)` alone and dropped it, so the
-     * detail pane snapped straight back to empty. The fork at
-     * `/manuals/library` appeared to work only because it mounts no hygiene.
-     */
+    /** Selected manual on the Manuals view — `product_manuals.id`. */
     id: paramPositiveInt,
   },
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/sourcing` — Queue · Scout · Watchlist · Searches · Suppliers · Analytics.
- *
- * Had a clear list in two places and both were incomplete, which is the whole
- * argument for constructing. `SourcingSidebarPanel.goMode` deleted `q`, `status`
- * and `type`; the nav targets in `sidebar-navigation.ts` deleted `mode`, `q` and
- * `status`. Neither deleted `by` or `range`, so Scout's search-field toggle
- * (`?by=serial`) and the Analytics window (`?range=1y`) rode into every sibling
- * mode — two lists to keep in sync, both missing the same two keys.
- */
+/** `/sourcing` — Queue · Scout · Watchlist · Searches · Suppliers · Analytics. */
 export const SOURCING_ROUTE_PARAMS = defineRouteParams({
   route: '/sourcing',
   owns: {
@@ -350,34 +261,13 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
      * Text, not int: `new` is a valid value.
      */
     supplier: paramText,
-    /**
-     * Models CRUD editor door (`<id>` or `new`) — the Models mode's twin of
-     * `supplier`, read by `BoseModelsManagementTab` (admin dissolution). It
-     * arrived with the mode and the spec did not, so the boundary parse swept
-     * it and every model click opened an empty editor. Text, not int: `new`.
-     */
+    /** Models CRUD editor door (`<id>` or `new`) — the Models mode's twin of `supplier`, read by `BoseModelsManagementTab` (admin dissolution). */
     model: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/test` — the Testing station's Workbench half (Shipping | Testing).
- *
- * The route is `/test`; `/tech` is a legacy alias the proxy redirects, so it
- * deliberately gets no spec of its own — a second spec would double-own `ship`
- * and `testTab` and force two new `SHARED_OWNED_KEYS` entries for a route that
- * only exists to redirect.
- *
- * **`ship` and `testTab` are why this surface needed a careful enumeration.**
- * Both are read through a CONSTANT (`searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)`)
- * from a module outside every surface tree (`@/utils/*-workspace-state`), so the
- * `.get('literal')` grep in the migration method finds neither — and neither does
- * the ownership guard, whose regex also only matches literals. They were found by
- * reading `useTechRightView`'s docblock and then confirming it against the code.
- * Enumerate constant-keyed reads separately; see the method note in
- * `docs/todo/nav-routing-refactor-FINISH-PROMPT.md` §3.1.
- */
+/** `/test` — the Testing station's Workbench half (Shipping | Testing). */
 export const TEST_ROUTE_PARAMS = defineRouteParams({
   route: '/test',
   owns: {
@@ -406,19 +296,7 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/walk-in` — retired Sales-history front door (redirects to
- * `/dashboard?mode=sales|pickup|repairs`). Spec kept so legacy deep-link keys
- * survive boundary parse until `useWalkInTaskRedirect` /
- * `retiredWalkInHistoryTarget` / proxy repair redirects consume them.
- *
- * The nav targets nulled `tab` and `category` by hand. `category` is NOT declared
- * here on purpose: it is a dead legacy key that only `proxy.ts`
- * (`resolveWalkInRepairModeRedirect`) still reads, server-side and before this
- * spec ever applies — browse → Sales `?mode=repairs`, task keys → `/repair` —
- * after which it deletes the key itself. Nothing on the client reads it, so
- * declaring it would preserve a param with no reader.
- */
+/** `/walk-in` — retired Sales-history front door (redirects to `/dashboard?mode=sales|pickup|repairs`). */
 export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
   route: '/walk-in',
   owns: {
@@ -437,13 +315,7 @@ export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
         ? raw
         : null,
     ),
-    /**
-     * Legacy task deep-links, read by `useWalkInTaskRedirect` / proxy and
-     * forwarded to `/repair`. **They must be declared even though this page never
-     * renders them** — the redirect reads them from the URL, so dropping them at
-     * the boundary would silently turn a `?new=true` link into a plain history
-     * page.
-     */
+    /** Legacy task deep-links, read by `useWalkInTaskRedirect` / proxy and forwarded to `/repair`. */
     openRepair: paramPositiveInt,
     new: paramEnum(['true'] as const),
     search: paramText,
@@ -451,27 +323,7 @@ export const WALK_IN_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/inventory` — Ledger · Triage · Pulse · Graph · Replenish.
- *
- * One spec covers the sub-routes too (`/inventory/triage`, `/inventory/pulse`,
- * `/inventory/graph`): the registry prefix-matches, and all of them share
- * `useInventoryUrlState`, so they genuinely read one param set rather than four.
- *
- * Replaces the `{ mode, section, open }` null-map repeated across all five nav
- * targets — which, like every other clear list this refactor has opened, was
- * incomplete: it never nulled `sku`, `bin`, `unit`, `state`, `condition`, `q`,
- * `field` or `filter`, so a Ledger selection and its whole filter set rode into
- * Graph.
- *
- * Five of these keys are legitimately shared with a sibling route and are
- * declared in `SHARED_OWNED_KEYS`; each is the same question over a different
- * vocabulary, which is what that list exists for.
- *
- * `open` is `paramText`, NOT `paramPositiveInt` — `useInventoryUrlState` documents
- * it as a "pending detail-panel selection key" and reads it as an opaque string,
- * so the id-shaped schema every other route uses for `open` would drop it.
- */
+/** `/inventory` — Ledger · Triage · Pulse · Graph · Replenish. */
 export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory',
   owns: {
@@ -492,24 +344,13 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
     /** Comma-separated multi-selects read through `parseList`. */
     state: paramText,
     condition: paramText,
-    /**
-     * SKU-graph direction. `parents`/`children`/`tree` are `SkuGraphMode`; `parts`
-     * is the fourth live value, read by `InventoryGraphRouter` to swap in the
-     * parts view — it is absent from the type, so a round-trip on `SkuGraphMode`
-     * would silently drop it.
-     */
+    /** SKU-graph direction. */
     view: paramEnum(['parents', 'children', 'tree', 'parts'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/inventory/locations` — Bin Tags · Bays · Rooms · Bins · Map (former `/warehouse` desk).
- *
- * Longer prefix than `/inventory`, so location facets (`tab`, map `view`, bin
- * filters) do not collide with Ledger/Graph ownership of `view` / `q` on the
- * parent inventory spec. Legacy `/warehouse` permanently redirects here.
- */
+/** `/inventory/locations` — Bin Tags · Bays · Rooms · Bins · Map (former `/warehouse` desk). */
 const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/locations',
   owns: {
@@ -529,20 +370,7 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/inventory/stock` — the warehouse-wide (location, SKU) stock ledger.
- *
- * Longer prefix than `/inventory`, so its facets cannot collide with the
- * Ledger's ownership of `q` (the sidebar search, a different feed) or leak a
- * room selection into the bucket multi-select the Ledger reads out of
- * `filter`. `q` and `room` are answered on the SERVER (the loader reads them),
- * so the find box reaches past the feed's row cap.
- *
- * All three keys are declared in `SHARED_OWNED_KEYS`: `q` is "narrow this
- * list", `room` is the warehouse room facet Locations asks with the same
- * vocabulary, and `open` is the focused record — here a stock pair's key
- * (`<locationId|name>:<sku>:<source>`), opened in the evidence column.
- */
+/** `/inventory/stock` — the warehouse-wide (location, SKU) stock ledger. */
 export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/stock',
   owns: {
@@ -560,15 +388,7 @@ export const INVENTORY_STOCK_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/inventory/sku-exceptions` — the floor-minted placeholder SKU (`TMP-…`)
- * record ledger.
- *
- * Longer prefix than `/inventory`, so `q` here is this queue's find box, not
- * the Ledger's sidebar search. `sku` is the open RECORD — the URL staff share
- * ("look at this one") — and is the same identifier `SHARED_OWNED_KEYS.sku`
- * already names: a focused SKU string.
- */
+/** `/inventory/sku-exceptions` — the floor-minted placeholder SKU (`TMP-…`) record ledger. */
 export const INVENTORY_SKU_EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/sku-exceptions',
   owns: {
@@ -590,14 +410,7 @@ const SPECIAL_BIN_PRINT_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * The ex-`/admin/inventory` operations desks, re-homed under the desk that owns
- * their data (admin dissolution). Each is a LONGER prefix than `/inventory`, so
- * its own vocabulary (`error` / `status` / `page` / `range` / the events
- * filters) cannot collide with the Ledger's ownership of `sku` / `unit` / `view`
- * on the parent spec — and, more importantly, `SurfaceParamHygiene` no longer
- * strips those keys as unknown the moment the desk moved under `/inventory`.
- */
+/** The ex-`/admin/inventory` operations desks, re-homed under the desk that owns their data (admin dissolution). */
 const INVENTORY_HEALTH_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/health',
   owns: {},
@@ -663,15 +476,7 @@ export const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
     actor: paramText,
     since: paramDateKey,
     until: paramDateKey,
-    /**
-     * The table's find box — the same "narrow this list" question `q` already
-     * answers on `/inventory/sku-exceptions`, over every fact an event row paints.
-     * Declared because the desk mounts `SurfaceParamHygiene` (via
-     * `app/inventory/layout.tsx`): an undeclared key is stripped on the next
-     * param change, which would empty the box mid-search.
-     *
-     * Distinct from `sku` above, which is the form's EXACT-match facet.
-     */
+    /** The table's find box — the same "narrow this list" question `q` already answers on `/inventory/sku-exceptions`, over every fact an event… */
     q: paramText,
     /** Zero-indexed offset page. */
     page: paramText,
@@ -679,13 +484,7 @@ export const INVENTORY_EVENTS_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/review` — Packing · Pairing · Catalog link (the Packer Review Station).
- *
- * Replaces the widest of the remaining clear lists: all three nav targets nulled
- * `rtab`, `packerLogId`, `orderId` and `choreId` inline, so each mode "opened
- * clean" only because someone had listed its siblings' keys four times.
- */
+/** `/review` — Packing · Pairing · Catalog link (the Packer Review Station). */
 const REVIEW_ROUTE_PARAMS = defineRouteParams({
   route: '/review',
   owns: {
@@ -710,18 +509,7 @@ const REVIEW_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/pack` — the packing station workbench.
- *
- * The route is `/pack`; `/packer` is a legacy alias the proxy normalizes (same
- * shape as `/test` vs `/tech`), so it deliberately gets no spec of its own.
- *
- * `packview` is read through a CONSTANT (`PACK_WORKSPACE_TAB_PARAM`) from
- * `@/utils/pack-workspace-state`, outside every surface tree — the same blind
- * spot that hid `?ship=` / `?testTab=` on `/test`. It was excused in the
- * ownership guard's `UNDECLARED_PARAM_CONSTANTS` only because `/pack` had no
- * spec; declaring it here is what lets that entry go.
- */
+/** `/pack` — the packing station workbench. */
 const PACK_ROUTE_PARAMS = defineRouteParams({
   route: '/pack',
   owns: {
@@ -735,13 +523,7 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/warehouse` — orphan children only (`/warehouse/rma`, `/warehouse/replenishment`).
- * The main desk permanently redirects to `/inventory/locations`.
- *
- * Kept so those child routes still boundary-parse; the Locations desk owns the
- * same facet vocabulary under {@link INVENTORY_LOCATIONS_ROUTE_PARAMS}.
- */
+/** `/warehouse` — orphan children only (`/warehouse/rma`, `/warehouse/replenishment`). */
 export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   route: '/warehouse',
   owns: {
@@ -759,16 +541,7 @@ export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   carries: WORKBENCH_CARRIES,
 });
 
-/**
- * `/search` — the cross-entity results surface Phase 1 of the dashboard IA
- * rework evicted out of `?mode=search`.
- *
- * `?q=` is the query; Phase 2 adds client refine over the top-50 via
- * `?etype=` / `?hstat=` (namespaced away from `/support`'s `type`/`status`)
- * and display sort via carried ambient `?colsort=` (`relevance` default |
- * `date`). Declaring them here means a collision is a build failure rather
- * than a filter that quietly does nothing.
- */
+/** `/search` — the cross-entity results surface Phase 1 of the dashboard IA rework evicted out of `?mode=search`. */
 const SEARCH_ROUTE_PARAMS = defineRouteParams({
   route: '/search',
   owns: {
@@ -796,13 +569,7 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * Deliberately NOT `status` — `/support` (and others) already own that key.
      */
     hstat: paramText,
-    /**
-     * Client channel refine against `facets.source_platform`, holding the
-     * STORED value (`ebay` / `amazon` / `ecwid`) rather than a display label so
-     * a deep link survives a catalog rename. Deliberately NOT `platform` —
-     * short key, and it keeps the search surface's params in one short family
-     * (etype · hstat · chan).
-     */
+    /** Client channel refine against `facets.source_platform`, holding the STORED value (`ebay` / `amazon` / `ecwid`) rather than a display… */
     chan: paramText,
   },
   carries: ['staff', 'colsort', 'coldir'],

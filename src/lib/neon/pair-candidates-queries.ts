@@ -1,19 +1,7 @@
 import { tenantQuery } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';
 
-/**
- * What to offer an operator standing at an EMPTY location.
- *
- * The honest default is not "type something". A bay is filled with like items
- * — a person putting away a pallet pairs the same handful of products across a
- * whole run of bins — so the products already stocked in THIS ROOM are the
- * likeliest next pairing by a wide margin, and offering them turns the common
- * case into one tap with no keyboard at all.
- *
- * Derived from `bin_contents` + `locations.room`; no new table and no history
- * log, because "what is stocked near here, most recently touched" is already a
- * fact the warehouse records.
- */
+/** What to offer an operator standing at an EMPTY location. */
 
 export interface PairCandidate {
   sku: string;
@@ -24,19 +12,7 @@ export interface PairCandidate {
   binCount: number;
 }
 
-/**
- * Products stocked elsewhere in the same room as `locationId`, most recently
- * touched first.
- *
- * `DISTINCT ON (bc.sku)` collapses a product stocked in six bins to one row —
- * this is a pick-a-product list, not a stock report. The scanned location is
- * excluded: it is empty, which is why we are here.
- *
- * A room of `NULL` (locations seeded before rooms existed) matches other
- * NULL-room locations via `IS NOT DISTINCT FROM` rather than returning
- * nothing, so the feature degrades to "the rest of the unroomed warehouse"
- * instead of to an empty screen.
- */
+/** Products stocked elsewhere in the same room as `locationId`, most recently touched first. */
 export async function listRoomPairCandidates(
   input: { locationId: number; room: string | null; limit?: number },
   orgId: OrgId,
@@ -99,13 +75,7 @@ export interface SkuStockedAt {
   qty: number;
 }
 
-/**
- * Where else this product already lives, for the detail sheet.
- *
- * The question it answers at pairing time is "am I about to scatter this
- * across a third bin when two already hold it" — which is the one fact that
- * changes the decision, and the reason the detail view exists at all.
- */
+/** Where else this product already lives, for the detail sheet. */
 export async function listSkuStockedAt(
   sku: string,
   orgId: OrgId,

@@ -1,48 +1,6 @@
 'use client';
 
-/**
- * SearchBrowseShell — `/search` body when no `?sel=` is active.
- *
- * Find lives only in {@link GlobalHeaderSearch}. This shell never mounts a
- * locked-width stage field. While an identifier resolves or retrieve runs it
- * publishes pending via {@link setGlobalSearchPending} so the header paints
- * {@link SearchPendingBar} — the body never invents “Opening…” / gray overlay
- * holds.
- *
- * ## The results plane is a CARD on a DESK, and FLUSH in a HAND
- *
- * It used to bleed to both edges of the canvas, which made the results look
- * like the page itself rather than like a thing sitting on it. On a desk it is
- * now a floating stage: centered at the desk measure, rounded on all four
- * corners, raised off a `surface-canvas` ground.
- *
- * On a phone that same card is three costs and no benefit — the 1152 cap never
- * binds, the 16px gutters come out of the only column anyone reads, and a
- * raised shadow has no plane behind it to fall on. So the compact measure is
- * FLUSH, and the whole decision (ground · measure · gutter · corner · depth)
- * arrives as ONE record from {@link FIND_STAGE_BY_DENSITY} in
- * `@/design-system/tokens/desk-stage`. This file spreads it and picks nothing:
- * a `px-4` chosen here is how the phone got a desk gutter in the first place.
- *
- * The refine toolbar lives INSIDE the plane at either measure, because it acts
- * on the rows in it — a band above the card would be chrome for an object it
- * is not attached to.
- *
- * ## Auto-open is ARMED, not unconditional
- *
- * Two paths open a record without being asked: an identifier query that
- * resolves (`?q=` is a tracking number) and a sole hit. Both are right on
- * ARRIVAL and both were wrong on RETURN — pressing "Results" in the dossier
- * cleared `?sel=`, this shell remounted, the warm resolve cache answered
- * instantly and it set `?sel=` straight back. The button looked dead because
- * the plane it opened was closed again in the same frame.
- *
- * So `autoOpen` is the caller's (`SearchFindSurface`) statement of intent: it
- * is false for exactly the query the operator just chose to browse, and arms
- * again the moment the query changes. Never gate this on a ref or a
- * "hasOpenedOnce" flag — a remount resets those, which is the same bug with
- * more state.
- */
+/** SearchBrowseShell — `/search` body when no `?sel=` is active. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -130,21 +88,7 @@ export function SearchBrowseShell({
   /** Deep-link `/search?q=` with zero hits — hand feedback to header dropdown. */
   const [zeroHits, setZeroHits] = useState(false);
 
-  /**
-   * Opening a resolved identifier. Held in a REF, and the arrival effect below
-   * calls it through the ref rather than depending on it.
-   *
-   * `setSel` comes from `useSearchSelParam`, whose writer closes over
-   * `searchParams` — so this callback gets a new identity on EVERY url write,
-   * including a client-side refine. As a dependency of the arrival effect that
-   * meant picking a scope re-ran arrival, which calls `setRetrieveSettled(false)`,
-   * which unmounts `showRefineChrome`: the refine control vanished the moment
-   * it was used, at both measures. On a phone that is a dead end, because the
-   * collapsed trigger is the only way back to `All`.
-   *
-   * A refine starts no retrieval, so it must not re-arm arrival. The effect is
-   * keyed to arrival FACTS only — the query, and how it resolved.
-   */
+  /** Opening a resolved identifier. */
   const selectOrderId = useCallback(
     (orderId: number) => {
       setSel({ entityType: 'order', id: orderId });
@@ -156,11 +100,7 @@ export function SearchBrowseShell({
     selectOrderIdRef.current = selectOrderId;
   }, [selectOrderId]);
 
-  // The `?q=` body is deliberately hold-free — the header `SearchPendingBar`
-  // owns loading here — so release the shell's cover as soon as this mounts.
-  // The paint marks themselves live on the shell, anchored to the moment the
-  // cover lifts; stamping `search:primary` from here reported a fast LCP for a
-  // blank plane.
+  // The `?q=` body is deliberately hold-free — the header `SearchPendingBar` owns loading here — so release the shell's cover as soon as…
   const primaryPaint = useSearchPrimaryPaintOptional();
   useEffect(() => {
     primaryPaint?.onPrimaryPainted();
@@ -174,14 +114,7 @@ export function SearchBrowseShell({
     dispatchGlobalSearchFocus();
   }, [q]);
 
-  /**
-   * Identifier resolve goes through the SHARED query waist
-   * (`searchOrderResolveQuery`), not a hand-rolled `getQueryData` +
-   * `resolveSearchOrder` + `cancelled` flag. The warm-cache read, the
-   * de-duplication of two surfaces asking for the same token, and the 45s
-   * `staleTime` are all the factory's — this file was re-deriving each of them
-   * one branch at a time.
-   */
+  /** Identifier resolve goes through the SHARED query waist (`searchOrderResolveQuery`), not a hand-rolled `getQueryData` +… */
   const isIdentifier = q.length >= 2 && looksLikeIdentifier(q);
   const resolveQuery = useQuery({
     ...searchOrderResolveQuery(q),
@@ -192,13 +125,7 @@ export function SearchBrowseShell({
   // v5, which would pin the header pulse on for every non-identifier query.
   const idResolving = isIdentifier && resolveQuery.isLoading;
 
-  /**
-   * Alias-seed the numeric pk key once a token resolves. This is NOT part of
-   * the waist — it is the same cross-key write `GlobalFindCombobox` does, and
-   * it is what lets `SearchOrderDossier` (keyed by `sel=order:{pk}`, a
-   * different token than the operator typed) paint from memory instead of
-   * re-fetching the order it was just handed.
-   */
+  /** Alias-seed the numeric pk key once a token resolves. */
   useEffect(() => {
     if (!isIdentifier || !resolved) return;
     setSearchOrderResolveCache(queryClient, q, resolved);
@@ -352,12 +279,7 @@ export function SearchBrowseShell({
             stage.gutter,
           )}
         >
-          {/* The PLANE. One object: the refine toolbar is inside it because it
-              acts on the rows inside it, and `overflow-hidden` is what clips
-              the toolbar's band and the rows to the shoulders instead of
-              letting either square off a corner. Corner and depth are the
-              stage's, so the phone measure flattens both without this file
-              knowing what a shadow is. */}
+          {/* The PLANE. One object: */}
           <div
             className={cn(
               'flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card',

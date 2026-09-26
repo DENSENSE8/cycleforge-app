@@ -1,18 +1,4 @@
-/**
- * Walk-in visit triage — ONE model of "what is wrong with this ticket".
- *
- * The kiosk had exactly one consumer of this knowledge: a `blockReason` string
- * computed inside `KioskCartLedger` that returned the FIRST problem and threw
- * the rest away. An operator with three incomplete lines got one sentence, fixed
- * it, and was told about the next one — with no way to see the whole list, and
- * no way to tell WHICH line the sentence was about.
- *
- * This is that knowledge as data: every open issue, attributed to the line (or
- * to the customer block) that owns it, ordered worst-first. The submit gate and
- * the Triage panel both read it, so the button and the list can never disagree.
- *
- * Pure over the session snapshot — no store, no network, no React.
- */
+/** Walk-in visit triage — ONE model of "what is wrong with this ticket". */
 
 import {
   cartIsEmpty,
@@ -217,20 +203,7 @@ export function collectKioskTriage(session: KioskTriageSession): KioskTriageItem
     });
   }
 
-  /*
-   * There used to be a cart-level BLOCKER here — "Only one repair per visit is
-   * submitted — remove N extra." It existed because the submit path kept the
-   * first repair and silently discarded the rest, so refusing the visit was the
-   * least-bad option: better to make the operator delete a device than to take
-   * it in and lose the record.
-   *
-   * Removed 2026-08-21 with SQ6: `submitCounterTransaction` now writes one
-   * `repair_service` row per device (the DB always allowed it —
-   * repair_service.counter_transaction_id is many→one). A second device is a
-   * normal visit, and each one raises its own per-line blockers (serial, price,
-   * signature) from `repairIssues` above, so nothing is under-checked by
-   * dropping the cap.
-   */
+  /* There used to be a cart-level BLOCKER here — "Only one repair per visit is submitted — remove N extra." It existed because the submit… */
 
   const lineLevel = session.lines.flatMap((line) => [
     ...repairIssues(line),

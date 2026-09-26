@@ -1,49 +1,4 @@
-/**
- * Kiosk v2 session store — cart is the session root.
- *
- * Module-scoped `useSyncExternalStore` singleton (same idiom as the deleted
- * `salesCartStore`). Commands (Repair / Retail) swap the
- * center work surface only — they never clear lines. Customer face is a view
- * layer over the same snapshot.
- *
- * ### Two transports, one API (plan P4)
- *
- * **local** (the default, unchanged): the tablet owns its own cart, exactly as
- * before this comment existed.
- *
- * **shared**: a desk has claimed this device, so the cart is a MIRROR of the
- * server's session. `mirrorSharedSession()` writes the projected snapshot in;
- * the local line mutators become no-ops for as long as it is attached.
- *
- * Every existing consumer — `KioskCartLedger`, `KioskCustomerFace`, the panes —
- * keeps calling `useKioskSession()` and the same actions. Nothing in the public
- * API moved, which is the point: the transport changed, not the store.
- *
- * **Mirrored edits WRITE THROUGH (revised 2026-08-20).** The first cut made the
- * local mutators no-ops while mirroring. That was wrong twice over: the counter
- * is a form staff and customer fill at the same time, and a silent no-op is the
- * worst possible way to say no — the tablet's own line editor called
- * `updateLine` and simply did nothing, with no error and no feedback.
- *
- * So a mutator with a shared writer attached applies OPTIMISTICALLY and sends
- * the edit to the server; the next mirror reconciles it. Without a writer it
- * stays local, exactly as before. Money edits are refused server-side (price,
- * void, submit are staff verbs) — the door that matters is the API's, not a
- * disabled button.
- *
- * **The phone is masked in a mirror** (`sharedCustomerPhoneMasked`), and
- * deliberately does NOT land in `customerPhone`. The masked string is display
- * copy; if it reached the identity field, a local submit would post `••• •••
- * 4567` as a customer's phone number.
- *
- * **Recent carts (2026-09-24).** A local cart is also written to a
- * `kiosk_carts` row (`cartId`, shown as `#42`) so the counter can juggle
- * several customers and any paired tablet can open one. The store stays
- * fetch-free: it names the cart (`loadCart`, `startNewCart`, `attachCart`) and
- * announces how one ENDS (`onCartEnded`); `useKioskCartSync` does the network.
- * Operator: "recent carts for juggling multiple customers at the same time,
- * IDed for multiple devices".
- */
+/** Kiosk v2 session store — cart is the session root. */
 
 'use client';
 
@@ -100,20 +55,7 @@ interface KioskSessionSnapshot {
   sharedCustomerPhoneMasked: string;
   /** Repair lines the customer still has to sign — the tablet's actual job. */
   sharedAwaitingSignatureLineIds: string[];
-  /**
-   * Create a new helpdesk ticket for this visit, or attach it to an existing
-   * one. `null` = nobody has answered yet, which is what the repair flow's
-   * last step gates on (PG6 — see `repair-ticket-choice.ts`).
-   *
-   * A VISIT fact, like the contact trio above: `ticketWork` is
-   * transaction-level on `CounterTransactionInput`, so there is exactly one
-   * per submit however many devices the customer dropped off.
-   *
-   * Local only — deliberately NOT mirrored. A desk-held session's ticket
-   * linkage is the desk's to state, and there is no server field for it on
-   * `counter_sessions`; a tablet inventing one would be writing a fact the
-   * mirror cannot round-trip.
-   */
+  /** Create a new helpdesk ticket for this visit, or attach it to an existing one. */
   ticketChoice: KioskTicketChoice | null;
   /** The org's comp reason list (`OrgSettings.kiosk`). Survives a reset. */
   lineReasons: KioskLineReasons;
@@ -159,13 +101,7 @@ const INITIAL: KioskSessionSnapshot = {
 let snapshot: KioskSessionSnapshot = INITIAL;
 const listeners = new Set<() => void>();
 
-/**
- * How a mirrored edit reaches the server.
- *
- * Injected by `useKioskSharedSession` rather than imported, so this module stays
- * fetch-free and unit-testable: a test attaches a recording writer and asserts
- * what the tablet TRIED to send, with no network.
- */
+/** How a mirrored edit reaches the server. */
 export interface KioskSharedWriter {
   addLine(line: KioskCartLine): void | Promise<void>;
   updateLine(id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>): void | Promise<void>;
@@ -176,32 +112,16 @@ export interface KioskSharedWriter {
 
 let sharedWriter: KioskSharedWriter | null = null;
 
-/**
- * Has a human picked a command on this tablet? Gates `applyDefaultCommand`:
- * the org's default is a STARTING point, and an operator's pick outranks it
- * for the rest of the visit. Cleared by `resetSession` — the next customer
- * walks up to a counter that has made no choices.
- */
+/** Has a human picked a command on this tablet? */
 let commandChosen = false;
 
-/**
- * The org's opening command once the server has stated it
- * (`OrgSettings.kiosk.defaultCommand`, delivered with the `/kiosk/v2` HTML).
- * Held here so `resetSession` returns to the ORG's choice rather than to the
- * module fallback — "Next customer" and a fresh page load must agree.
- */
+/** The org's opening command once the server has stated it (`OrgSettings.kiosk.defaultCommand`, delivered with the `/kiosk/v2` HTML). */
 let defaultCommand: KioskCommandId = KIOSK_FALLBACK_COMMAND;
 
 /** The org's comp reasons once the server has stated them; see `applyLineReasons`. */
 let lineReasons: KioskLineReasons = DEFAULT_LINE_REASONS;
 
-/**
- * How a persisted cart ENDED, told to `useKioskCartSync` so the row follows:
- * `cleared` deletes it, `done` closes it. Switching carts is not an ending —
- * the cart left behind stays open in Recent carts, which is the whole point.
- * An event rather than a snapshot diff because "cartId went null" cannot tell
- * a clear from a switch.
- */
+/** How a persisted cart ENDED, told to `useKioskCartSync` so the row follows: */
 export interface KioskCartEnding {
   id: number;
   how: 'done' | 'cleared';
@@ -299,12 +219,7 @@ export const kioskSessionStore = {
     endCart('done');
     setSnapshot({ ...snapshot, cartDone: true });
   },
-  /**
-   * `+ New cart`: an empty visit. The cart being left is NOT ended — it stays
-   * open (and held here) in Recent carts for when that customer is back.
-   * Also where a tablet lands when another device took its cart. No-op under
-   * a desk mirror: that visit is not this tablet's to swap out.
-   */
+  /** `+ New cart`: */
   startNewCart(): void {
     if (snapshot.sharedSessionId !== null) return;
     cartEpoch += 1;
@@ -379,15 +294,7 @@ export const kioskSessionStore = {
       // It also never resets consult stance (Work · Show · Verify).
     });
   },
-  /**
-   * Adopt the ORG's default command (`OrgSettings.kiosk.defaultCommand`).
-   *
-   * PRISTINE ONLY. The default answers "what does this counter open on", never
-   * "what is it showing now", so it must lose to anything that has already
-   * happened: a staffer's own pick, a cart with lines in it, or a desk-held
-   * mirror whose command is the server's to state. Without that the setting
-   * would yank an operator mid-visit on any re-render that re-ran it.
-   */
+  /** Adopt the ORG's default command (`OrgSettings.kiosk.defaultCommand`). */
   applyDefaultCommand(command: KioskCommandId): void {
     // Recorded unconditionally: even when it cannot land NOW (mid-visit, or a
     // desk holds the tablet), `resetSession` must return to the org's choice.
@@ -441,13 +348,7 @@ export const kioskSessionStore = {
       customerAddress: fields.address ?? snapshot.customerAddress,
     });
   },
-  /**
-   * Record the visit's helpdesk decision (create vs attach).
-   *
-   * No write-through: see the field's note on the snapshot — there is no
-   * mirrored counterpart for it, so a bound tablet keeps it locally rather
-   * than posting a fact the server has nowhere to put.
-   */
+  /** Record the visit's helpdesk decision (create vs attach). */
   setTicketChoice(choice: KioskTicketChoice | null): void {
     setSnapshot({ ...snapshot, ticketChoice: choice });
   },
@@ -467,13 +368,7 @@ export const kioskSessionStore = {
     sharedWriter = writer;
   },
 
-  /**
-   * Attach the shared transport and write one server projection in.
-   *
-   * Idempotent by version: an older projection (a poll answering after a newer
-   * event already landed) is dropped rather than rolling the customer's screen
-   * backwards mid-visit.
-   */
+  /** Attach the shared transport and write one server projection in. */
   mirrorSharedSession(input: {
     sessionId: number;
     version: number;
@@ -482,12 +377,7 @@ export const kioskSessionStore = {
     customerPhoneMasked: string;
     awaitingSignatureLineIds: string[];
     activeCommand?: KioskCommandId;
-    /**
-     * Card-present state from the server (SQ2). This is what finally drives
-     * `awaitingCardSinceMs`, which has existed here since v2 with nothing
-     * behind it — the customer face already knows how to render the calm
-     * decaying wait, it just never had a real prompt to render.
-     */
+    /** Card-present state from the server (SQ2). */
     awaitingCardSinceMs?: number | null;
     consultStance?: ConsultStance;
     presentation?: ConsultPresentation;
@@ -521,12 +411,7 @@ export const kioskSessionStore = {
     });
   },
 
-  /**
-   * Return to the local transport — the desk released this tablet, or the visit
-   * finished. The mirrored lines go with it: they were never this device's
-   * cart, and leaving them on screen would show the next customer the last
-   * one's basket.
-   */
+  /** Return to the local transport — the desk released this tablet, or the visit finished. */
   detachSharedSession(): void {
     sharedWriter = null;
     if (snapshot.sharedSessionId === null) return;

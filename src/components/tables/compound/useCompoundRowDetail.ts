@@ -1,14 +1,4 @@
-/**
- * Shared open-set for compound leaf detail bands.
- *
- * No JSX. VirtualGroupedSections reads {@link compoundRowDetailEstimatePx}
- * (48 vs 96) and {@link subscribeCompoundRowDetailOpen} so first paint and
- * measureElement stay in sync with the chevron.
- *
- * Callers: CompoundRow, OrdersQueueTableRow, VirtualGroupedSections.
- * User: restore SLOT_TABLE_ENGINE_CONTRACT leafDetailBand without changing
- * CompoundItem paint.
- */
+/** Shared open-set for compound leaf detail bands. */
 
 import { useCallback, useSyncExternalStore } from 'react';
 import {

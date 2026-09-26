@@ -1,27 +1,4 @@
-/**
- * POST /api/kiosk/visit/{id}/label-printed — device-authed reprint stamp for
- * one repair label.
- *
- * Callers: KioskHistoryPane "Print label" (after `printRepairLabel`).
- * Affected API: this route (device cookie + the pinless staff sign-in).
- * Data schemas: repair_service.label_printed_at (first print wins).
- * User: "print the label again" — and the plan's rule that *a reprint that
- * does not record itself is a lie.*
- *
- * ## Why not the staff route
- *
- * `POST /api/repair-service/[id]/label-printed` is `requireRoutePerm(
- * 'repair.intake')` and 401s on a tablet, which has no staff session. This is
- * its device-principal twin and it calls the SAME domain helper
- * (`markRepairLabelPrinted`) — there is one stamp implementation, not two.
- *
- * ## Why it hangs off the VISIT, not the repair
- *
- * The id in the path is the visit the History face has open, and the repair
- * must be one of THAT visit's devices. A bare `/api/kiosk/repair/{id}/…`
- * would let any device-authed caller walk the whole repair book by id; here
- * the visit scopes the blast radius to the paper already on screen.
- */
+/** POST /api/kiosk/visit/{id}/label-printed — device-authed reprint stamp for one repair label. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

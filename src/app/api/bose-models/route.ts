@@ -40,13 +40,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'sourcing.view' });
 
-/**
- * POST /api/bose-models — Create a Bose model catalog entry.
- *
- * `modelNumber` is the natural unique key. A retried create with the same
- * `Idempotency-Key` replays the original 201; a genuinely new create for an
- * already-active model number is a 409.
- */
+/** POST /api/bose-models — Create a Bose model catalog entry. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Main pane for /sourcing?mode=models.
- *
- * Reads ?model=<id|'new'> from the URL (set by BoseModelsSidebarPanel):
- *   - 'new'    → create form
- *   - <id>     → editable model fields + inline compatible-parts manager
- *   - (none)   → empty state
- *
- * Compatibility edits go through /api/part-compatibility; model edits through
- * /api/bose-models. All mutations invalidate the broad qk prefixes so the
- * sidebar counts + lookup stay coherent.
- */
+/** Main pane for /sourcing?mode=models. */
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

@@ -1,11 +1,4 @@
-/**
- * Ticket conversation chrome — compatibility aliases over the hard DS SoT
- * {@link conversation-chrome} / {@link ConversationMessageCard}.
- *
- * Prefer importing from `@/design-system/primitives` for new code. These
- * `TICKET_*` names remain so existing helpdesk hosts keep compiling while
- * call sites migrate.
- */
+/** Ticket conversation chrome — compatibility aliases over the hard DS SoT {@link conversation-chrome} / {@link ConversationMessageCard}. */
 export {
   CONVERSATION_BODY as TICKET_BUBBLE_BODY,
   CONVERSATION_DAY_HEADER as TICKET_BUBBLE_DAY_HEADER,

@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * ShortPickSheet — collects a reason when the picker confirms fewer units than
- * planned for an order line. Reusable for both pick and pack short-completes.
- *
- * Why a sheet, not a toast or inline form: short-picks are decisions that
- * change inventory math (a release of allocated units back to STOCKED), so
- * they need a deliberate confirmation surface — not something the worker can
- * tap through by accident.
- *
- * The sheet does NOT call any API itself — the parent decides what to do with
- * the (qty, reason, note) tuple. That keeps it usable in both the pick flow
- * (release the unallocated remainder) and the pack flow (write a packer_log
- * exception and continue).
- */
+/** ShortPickSheet — collects a reason when the picker confirms fewer units than planned for an order line. */
 
 import { useEffect, useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';

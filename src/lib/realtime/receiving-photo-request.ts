@@ -1,14 +1,4 @@
-/**
- * Desktop → phone photo-capture request over the `staffstation:{staffId}`
- * bridge channel. One payload shape for every publisher (carton pill, sidebar
- * scan flow, unbox line camera, claim picker) so the phone-side router
- * (`ReceivingPhotoRequestCamera`) can stage-route without sniffing senders.
- *
- * Payload v2 adds `stage` + `receiving_line_id` + `po_ref` (item captures route
- * to the PO item page). Backward compatible: consumers treat a missing `stage`
- * as `arrival_package` (see `normalizeReceivingPhotoRequest` in
- * `@/lib/receiving/photo-scope`), so in-flight v1 messages keep working.
- */
+/** Desktop → phone photo-capture request over the `staffstation:{staffId}` bridge channel. */
 
 import { getStaffStationBridgeChannelName, safeChannelName } from './channels';
 import { safeRandomUUID } from '@/lib/safe-uuid';

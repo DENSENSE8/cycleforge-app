@@ -19,14 +19,7 @@ export const maxDuration = 60;
 
 const STATE_TTL_MS = 15 * 60 * 1000;
 
-/**
- * GET /api/integrations/google-drive/callback
- *
- * Google's server-side redirect after consent. No session cookie is present, so
- * tenant scope is recovered purely from the encrypted `state` (AES-GCM = tamper
- * proof, 15-min freshness window). Exchanges the code for a refresh token,
- * creates a backup folder in the user's Drive, and stores both in the org vault.
- */
+/** GET /api/integrations/google-drive/callback */
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   const back = (q: string) => NextResponse.redirect(`${origin}/settings/integrations?${q}`);

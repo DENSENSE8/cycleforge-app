@@ -1,14 +1,4 @@
-/**
- * GET /api/cron-runs            — admin observability for cron/job runs.
- *
- *   ?view=summary  (default) → latest run per job, merged with the registry
- *                              (incl. never-run jobs) + computed health +
- *                              an aggregate health roll-up. Powers the header.
- *   ?view=list&job=&status=&limit=&offset=  → paginated run history. Powers
- *                              the admin tab.
- *
- * Gated by `admin.view`.
- */
+/** GET /api/cron-runs — admin observability for cron/job runs. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

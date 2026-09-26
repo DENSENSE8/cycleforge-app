@@ -1,24 +1,4 @@
-/**
- * Carton inspector — the pure read model.
- *
- * The inspector is the READ view of a carton; `/unbox` is the WORK view.
- * Shares this read model + atoms with the work surface; assembly
- * may diverge. This module derives display facts and nothing else — no
- * fetching, no writes, no component imports.
- *
- * Shape mirrors `GET /api/receiving/[id]`, which already returns the whole
- * carton read model (identity + milestones + lines + serials + events). The
- * inspector adds no endpoint.
- *
- * **Timestamp discipline.** The carton milestone fields come back from
- * `to_char(ts::timestamp, 'YYYY-MM-DD HH24:MI:SS')` with the DB session on
- * `America/Los_Angeles` — i.e. they are **warehouse wall-clock strings, not
- * instants**. `formatDateTimePST` parses that naive shape purely (no `Date`
- * reparse), so it renders identically under any host TZ. Do NOT hand these to
- * anything that constructs a `Date` from them — that is the banned host-local
- * reparse in Dates. `events[].occurred_at`
- * IS a real ISO instant; the same formatter branches correctly for it.
- */
+/** Carton inspector — the pure read model. */
 
 /** Carton header as returned by `GET /api/receiving/[id]` (`receiving`). */
 export interface CartonInspectorReceiving {
@@ -108,12 +88,7 @@ export interface CartonInspectorEvent {
   id: string;
   occurred_at: string;
   event_type: string | null;
-  /**
-   * Required for the avatar. `StaffAvatar` resolves a photo BY STAFF ID and
-   * must never guess one from a display name — two people share a name and the
-   * row would attribute the work to the wrong face (`source-of-truth.md` →
-   * Staff profile photo). The API already sent this; only the type lagged.
-   */
+  /** Required for the avatar. */
   actor_staff_id: number | null;
   actor_name: string | null;
   station: string | null;
@@ -153,33 +128,7 @@ export function cartonEventTitle(
   return present(event.event_type) ?? 'Event';
 }
 
-/**
- * What an ACTIVITY row DID — the fact that separates it from the row above.
- *
- * Measured on carton 50354: one unfound-return scan writes two
- * `inventory_events` in the same second, and the row rendered them as twins
- * because it discarded both distinguishing facts.
- *
- *   `RECEIVED` · next_status `RECEIVED` · notes "Serial 049331F81860251AE"
- *   `NOTE`     · no status              · notes "Unmatched return serial … — no order match"
- *
- * Two independent causes:
- *   1. the title is `notes || event_type`, so whenever notes exist the event
- *      TYPE never rendered at all;
- *   2. the status trail was gated on `prev && next && prev !== next` — and a
- *      unit's FIRST status has no prev, so the one row that actually moved the
- *      unit to RECEIVED showed nothing. Exactly backwards.
- *
- * **A first status IS a transition**: `null → RECEIVED` reads `→ RECEIVED`.
- *
- * `kind` is suppressed when something else already said it — the status equals
- * the type (`RECEIVED` + `→ RECEIVED` is one fact printed twice), or the title
- * already IS the type because the event carried no notes.
- *
- * **Workflow-stage notes** (`Stage Matched → Unboxed` / `Matched → Unboxed`)
- * already ARE the trail in human labels — never also print `NOTE` +
- * `MATCHED → UNBOXED` under them.
- */
+/** What an ACTIVITY row DID — the fact that separates it from the row above. */
 export function cartonEventSignature(
   event: Pick<CartonInspectorEvent, 'event_type' | 'prev_status' | 'next_status' | 'notes'>,
 ): { kind: string | null; trail: string | null } {
@@ -220,18 +169,7 @@ export interface CartonInspectorPayload {
   events?: CartonInspectorEvent[];
 }
 
-/**
- * A displayable fact, with the presentation kind it must be resolved through.
- *
- * The model decides WHICH facts exist and what kind each is; the view resolves
- * `kind` against the matching SoT (`conditionLabel`, `sourcePlatformMeta`,
- * `receivingTypeMeta`, `qaStatusMeta`, `receivingSourceLabel`, carrier-brand).
- * Keeping presentation paint out of the fact rows themselves is what lets this
- * module stay import-free and testable, and it is the house rule either way —
- * views assemble RESOLVED facts, they never invent maps, and the model never
- * hardcodes a label a SoT already owns (except the small QA / source maps
- * owned here as the first consumers).
- */
+/** A displayable fact, with the presentation kind it must be resolved through. */
 export type CartonFactKind =
   | 'text'
   | 'condition'
@@ -252,13 +190,7 @@ export interface CartonFact {
   kind: CartonFactKind;
 }
 
-/**
- * Carton QA status presentation — NOT a receiving workflow stage.
- *
- * `qa_status` is its own small vocabulary (PENDING / PASSED / FAILED…). Routing
- * it through `workflowStage*` used to print "Unknown" for a valid PENDING.
- * Badge classes follow the same pastel chip language as `workflow-stages.ts`.
- */
+/** Carton QA status presentation — NOT a receiving workflow stage. */
 interface QaStatusMeta {
   /** Canonical uppercased token, or the raw trimmed value when unknown. */
   status: string;
@@ -340,16 +272,7 @@ function present(value: string | null | undefined): string | null {
   return v.length > 0 ? v : null;
 }
 
-/**
- * The at-a-glance fact set.
- *
- * **Absent facts are omitted, never rendered as `—`.** A carton legitimately has
- * most of these empty, and a grid of dashes reads as "the system lost the data"
- * rather than "this step does not apply here" — the same reasoning that omits
- * unstamped milestones. The consequence is that the strip's length varies by
- * carton, which is correct: a returned unit with a disposition genuinely has
- * more to say than a plain PO carton.
- */
+/** The at-a-glance fact set. */
 export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
   const out: CartonFact[] = [];
   const add = (key: string, label: string, value: string | null, kind: CartonFactKind = 'text') => {
@@ -372,14 +295,7 @@ export function cartonFacts(receiving: CartonInspectorReceiving): CartonFact[] {
   return out;
 }
 
-/**
- * Exception flags — the states a reader must not have to infer from a fact grid.
- *
- * Only genuinely notable states appear. `triage_complete: true` is the normal
- * case and says nothing, so it is silent; `false` on a carton that has already
- * been unboxed is a real inconsistency and is surfaced. This is the difference
- * between a status readout and a signal.
- */
+/** Exception flags — the states a reader must not have to infer from a fact grid. */
 interface CartonFlag {
   key: string;
   label: string;
@@ -400,56 +316,19 @@ function cartonHasLinkedPo(
   return Boolean(lines?.some((l) => present(l.zoho_purchaseorder_number)));
 }
 
-/**
- * A RETURN has no PO to find, so "unpaired" is not a finding about it.
- *
- * This mirrors `isTriagePaired` in `src/lib/receiving/triage-focus.ts`, which
- * has counted a return as paired since C6 — the receiving domain already knew
- * this rule and only Triage was reading it. The read surface used raw
- * `pairing_state === 'UNFOUND'` and so kept telling an operator to go match a
- * PO for a box that can never have one.
- *
- * It also covers the rows the write path cannot reach retroactively: cartons
- * created before `settleReturnPairing` (`returned-serial-link.ts`) started
- * recording `WAIVED` have no `receiving_triage` row at all.
- */
+/** A RETURN has no PO to find, so "unpaired" is not a finding about it. */
 function isReturnCarton(receiving: CartonInspectorReceiving): boolean {
   if (receiving.is_return) return true;
   return present(receiving.intake_type)?.toUpperCase() === 'RETURN';
 }
 
-/**
- * "This carton arrived without a PO" — grounded in a RECORDED fact.
- *
- * Two facts say it, and either is enough:
- *   - `receiving_triage.pairing_state = 'UNFOUND'` — the pairing hub looked and
- *     came back empty. That is an *answer*.
- *   - `receiving_carton.source = 'unmatched'` — the intake scan could not match
- *     the tracking number to a PO. Stamped on the carton itself, at scan time.
- *
- * What is NOT enough is the ABSENCE of a `receiving_triage` row. 751 of 2790
- * dogfood cartons have none, and `/api/receiving/[id]` used to `COALESCE` that
- * hole to `'UNFOUND'` — so a box nobody had triaged yet reported a search that
- * had failed, and the record footer printed "Pairing state: UNFOUND" as a fact.
- *
- * Reading `source` instead costs nothing and says something true: measured
- * across the whole dogfood tenant, this predicate raises the finding on exactly
- * the same 1192 cartons the COALESCE did — zero disagreement — because every
- * carton the default used to catch is a `source = 'unmatched'` row.
- */
+/** "This carton arrived without a PO" — grounded in a RECORDED fact. */
 function isCartonUnmatched(receiving: CartonInspectorReceiving): boolean {
   if (present(receiving.pairing_state)?.toUpperCase() === 'UNFOUND') return true;
   return present(receiving.source)?.toLowerCase() === 'unmatched';
 }
 
-/**
- * The whole "No matched PO" question, asked once.
- *
- * `cartonFlags` and `cartonExceptions` both need it and must never drift apart:
- * the flag is the chip and the exception is what stops the header claiming the
- * carton is settled, so a carton showing one without the other is the surface
- * contradicting itself.
- */
+/** The whole "No matched PO" question, asked once. */
 function cartonLacksMatchedPo(
   receiving: CartonInspectorReceiving,
   lines?: ReadonlyArray<Pick<CartonInspectorLine, 'zoho_purchaseorder_number'>> | null,
@@ -490,14 +369,7 @@ export function cartonFlags(
   return flags;
 }
 
-/**
- * Header identity for the carton read chrome — raw parts only.
- *
- * The view composes the lead title (platform label · PO, or sole product name,
- * or carton id) and mounts PoChip · TrackingChip from `poNumber` / `tracking`
- * (order#/PO# before tracking#, matching CartonContextCard).
- * Platform stays raw so the view resolves it through `sourcePlatformLabel`.
- */
+/** Header identity for the carton read chrome — raw parts only. */
 export interface CartonHeaderIdentity {
   cartonId: number;
   /** Raw `source_platform` token — view resolves the display label. */
@@ -548,11 +420,7 @@ export function cartonRecordMeta(receiving: CartonInspectorReceiving): CartonFac
   ) => {
     if (value) out.push({ key, label, value, kind });
   };
-  // NO 'Carton' and NO 'Shipment' row. Both are internal row handles — the
-  // carton id already addresses this page (URL, audit rail, Unbox) and the
-  // shipment id names a grouping nobody on the floor quotes. Printing them as
-  // facts spent two of the record grid's cells on numbers that answer no
-  // question an operator arrives with.
+  // NO 'Carton' and NO 'Shipment' row.
   add('source', 'Source', present(receiving.source), 'source');
   // Omitted entirely when nobody recorded a pairing answer — `add` skips a null.
   // That honest absence is the point: this row used to print "UNFOUND" for every
@@ -575,19 +443,7 @@ interface CartonMilestone {
   byName: string | null;
 }
 
-/**
- * The carton's provenance, in lifecycle order.
- *
- * This is the question a lookup scan is actually asking — "what happened to
- * this box, and who did it?" — so it is the inspector's lead content, not a
- * footnote. Milestones with no timestamp are omitted rather than rendered as
- * `—`: an absent stamp means the step did not happen, and a column of dashes
- * reads as missing data instead of an incomplete lifecycle.
- *
- * Scanned is a TRIAGE (door) stamp while Opened / Unboxed are UNBOX stamps —
- * they are independent by design, so a carton can legitimately have the later
- * ones without the earlier.
- */
+/** The carton's provenance, in lifecycle order. */
 export function buildCartonMilestones(
   receiving: Pick<
     CartonInspectorReceiving,
@@ -612,14 +468,7 @@ export function buildCartonMilestones(
     .map((c) => ({ key: c.key, label: c.label, at: c.at, byName: c.byName?.trim() || null }));
 }
 
-/**
- * Lifecycle states a carton can be in, least → most advanced.
- *
- * The read view's FIRST job is answering "is this done?" (the reason the
- * operator scanned a finished box at all). Deriving that from the milestone
- * stamps here — rather than making the operator infer it from four timestamp
- * rows — is what lets the surface lead with an answer instead of an audit log.
- */
+/** Lifecycle states a carton can be in, least → most advanced. */
 type CartonLifecycleState = 'expected' | 'scanned' | 'opened' | 'unboxed' | 'received';
 
 interface CartonLifecycle {
@@ -664,14 +513,7 @@ export function cartonContentsSummary(totals: CartonInspectorTotals | undefined 
   return `${unitPart} · ${complete}/${lines} complete`;
 }
 
-/**
- * Exception codes that outrank lifecycle "done" on the read surface.
- *
- * A carton can be stamped received and still be unsettled — UNFOUND pairing,
- * triage never finished after open, opened with zero lines, or needs-test with
- * QA still PENDING. The header must never say "complete" while any of these
- * hold (acceptance: disposition truth).
- */
+/** Exception codes that outrank lifecycle "done" on the read surface. */
 export type CartonExceptionKey =
   | 'unfound'
   | 'no_lines'
@@ -700,13 +542,7 @@ export function cartonExceptions(
     });
   }
 
-  // NO 'triage_incomplete' FINDING. `triage_complete = false` on an opened
-  // carton is an internal bookkeeping flag, not something wrong with the box:
-  // it fires on cartons whose contents, photos and receipt are all complete, so
-  // on the read surface it was a permanent amber band telling the reader to go
-  // do work in Unbox that nobody had asked for. A findings list that cries wolf
-  // costs the findings that are real (no contents recorded, QA pending). The
-  // flag still exists on the row and still drives the Unbox/Triage queues.
+  // NO 'triage_incomplete' FINDING.
 
   const opened = present(receiving.unbox_opened_at) || present(receiving.unboxed_at);
   if (opened && (!totals || totals.lines === 0)) {
@@ -730,13 +566,7 @@ export function cartonExceptions(
   return out;
 }
 
-/**
- * Operator-facing disposition — the answer the header leads with.
- *
- * `complete` only when lifecycle says done AND there are zero exceptions.
- * Otherwise: unmatched (UNFOUND with no linked PO), needs_action (other
- * exceptions), or in_progress (lifecycle not done, no blocking exceptions yet).
- */
+/** Operator-facing disposition — the answer the header leads with. */
 export type CartonDispositionState = 'complete' | 'unmatched' | 'needs_action' | 'in_progress';
 
 export interface CartonDisposition {

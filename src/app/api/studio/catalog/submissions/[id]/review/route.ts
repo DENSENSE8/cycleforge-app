@@ -7,19 +7,7 @@ import { StudioTemplateReviewBody } from '@/lib/schemas/studio';
 import { reviewSubmittedTemplate } from '@/lib/studio/review-template';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/catalog/submissions/[id]/review
- *
- * A curator approves or rejects a submitted catalog template (Template Platform
- * Phase 4). approve → public/approved (enters the curated catalog); reject →
- * private/rejected. The transition is guarded to review_status='submitted' rows,
- * so a re-review is a no-op (409), never a silent re-flip.
- *
- * studio.catalog.review — blessing another org's submission for every tenant is a
- * platform-curator privilege, distinct from studio.manage (author your OWN
- * graphs). orgId is not used to scope the row: catalog templates are GLOBAL, and
- * only a curator reaches this route.
- */
+/** POST /api/studio/catalog/submissions/[id]/review */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

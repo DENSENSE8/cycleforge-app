@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Ticket subject — the ONE click-to-edit subject control.
- *
- * Click the title to edit; blur or Enter commits; Escape discards. No save /
- * cancel buttons — those fought the inline affordance and duplicated the
- * keyboard / click-off path.
- *
- * Identity owns the subject on `/support`, the chat header suppresses it
- * there (`hideTitle`), and BOTH compose this field, so the subject stays
- * editable wherever it is the one on screen.
- *
- * Density follows the host: `compact` is the dense caption used inside a station
- * rail or a pane-header identity row; the default is the console's body size.
- * Never a wrapping hero title — rail identity is capped at caption density
- * (`display/right-rail-inspector.md`), which is why the label truncates rather
- * than wraps in both.
- *
- * The house {@link Ticket} glyph sits leftmost, top-aligned with the title.
- * Optional {@link headline} is the stacked second row (ticket # · date) under
- * the subject — same grammar as {@link StackedRowIdentity}.
- */
+/** Ticket subject — the ONE click-to-edit subject control. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Ticket } from '@/components/Icons';

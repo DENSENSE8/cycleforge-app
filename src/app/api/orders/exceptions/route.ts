@@ -11,19 +11,7 @@ import {
 } from '@/lib/orders/order-exceptions';
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/orders/exceptions — the order-exception worklist.
- *
- * Read-only. The editor links an existing catalog item and writes only the
- * order's pairing fields; SKU creation/modification remains with Inventory
- * Management / Accounting. Other exception actions stay on their owning desks.
- *
- * Query:
- *   ?scope=actionable|all   default `actionable` (excludes shipped)
- *   ?q=                     order # / item # / SKU / title
- *   ?limit=                 1–500, default 200
- *   ?orderId=               single row (the editor's read-after-write)
- */
+/** GET /api/orders/exceptions — the order-exception worklist. */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     try {

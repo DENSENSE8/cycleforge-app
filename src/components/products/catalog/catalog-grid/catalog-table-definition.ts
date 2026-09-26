@@ -1,10 +1,4 @@
-/**
- * `products.catalog` — Catalog table definition (plan Phase 1, wave 3).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry.
- */
+/** `products.catalog` — Catalog table definition (plan Phase 1, wave 3). */
 
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

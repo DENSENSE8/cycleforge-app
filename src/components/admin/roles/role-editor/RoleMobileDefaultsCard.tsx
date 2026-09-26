@@ -11,11 +11,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button, Switch } from '@/design-system/primitives';
 
 // ─── Mobile defaults card ───────────────────────────────────────────────
-//
-// Sets the role-level mobile UI defaults. Every staff with this role
-// inherits these values unless they have a per-staff override (set from
-// /settings/access). "Reset" clears the role's defaults; the
-// resolver then falls back to the system defaults (bottom nav disabled).
 
 const TAB_LABELS: Record<MobileNavTabId, string> = {
   home: 'Home',

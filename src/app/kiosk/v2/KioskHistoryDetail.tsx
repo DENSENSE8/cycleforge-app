@@ -1,77 +1,6 @@
 'use client';
 
-/**
- * History DETAIL — one past record, read the way a point-of-sale reads one.
- *
- * Callers: `KioskHistoryPane`.
- * Affected API: GET `/api/kiosk/visit/[id]`, GET `/api/kiosk/repair/[id]`
- *   (through the pane), GET `/api/kiosk/visit/[id]/receipt`, GET
- *   `/api/kiosk/repair/[id]/paperwork`, POST
- *   `/api/kiosk/visit/[id]/label-printed`, POST
- *   `/api/kiosk/repair/[id]/label-printed`, PATCH `/api/kiosk/visit/[id]`.
- * Data schemas: `CounterVisit` OR `KioskRepairHeader`, plus
- *   `VisitRepairProvenance`.
- * User 2026-09-23: *"the UI is terrible … make it an exact copy of Square Point
- *   of Sale and Shopify Point of Sale. It must have action buttons for printing
- *   out a label if you need to reprint the same label, print out the receipt
- *   paperwork, and more actions as well."*
- *
- * ## The anatomy is Square's, because the question is Square's
- *
- * A POS transaction detail answers four things in a fixed order, and both
- * Square and Shopify order them the same way:
- *
- *   1. **WHAT IS THIS** — identity and money, loud, at the top. Square leads
- *      with the amount in display type and the status beneath it; Shopify leads
- *      with the order name and its badges. This header does both: identity left,
- *      amount right, status chips under them.
- *   2. **WHAT WAS SOLD** — the itemization, then the money it rolls up to:
- *      subtotal, tax, total, then the TENDER. The old pane printed a flat
- *      `Total  $161.00` fact row with no itemization above it, which is the one
- *      thing a counter dispute is always about.
- *      The way BACK to the listing rides on the LINE it describes: each repair
- *      line carries its own storefront link, keyed on that device's own SKU, so
- *      a two-device visit links each device to the listing it was sold from.
- *   3. **WHO** — the customer block.
- *   4. **WHAT HAPPENED TO IT** — the device cards: status, technician, parts,
- *      both signatures. This is the part a general POS does not have, and it is
- *      why History exists at all.
- *
- * The old pane rendered all four as one undifferentiated `<dl>` stack of
- * label/value rows at the same weight — no hierarchy, no money summary, no
- * status colour, and the actions were three equal grey buttons in a row. That
- * is a debug dump of `CounterVisit`, not a receipt. This is the fix.
- *
- * ## Actions: one primary, one reprint, one overflow
- *
- * Square's detail ends in a fixed action bar and hides everything but the
- * likely act behind **⋯ More**. Same here:
- *
- * - **Primary** — `Print receipt` on a visit, `Print paperwork` on a ticket
- *   that never became one.
- * - **Reprint label** — the 2×1 REP sticker, surfaced whenever there is exactly
- *   one device to aim it at (with two or more, each device card owns its own).
- * - **More** — staff copy, per-device paperwork, edit, and the copy-to-clipboard
- *   verbs an operator reads out over the phone.
- *
- * Every entry is WIRED. An action whose route cannot serve this record's shape
- * is absent, never rendered dead: `Edit` and `Print receipt` post to
- * `/api/kiosk/visit/…` and a standalone ticket has no visit id to aim at.
- *
- * ## The signature rule
- *
- * The Blob PNG is preferred; the stored strokes are the fallback, because
- * `submit-repair-intake.ts` records a signature two ways ON PURPOSE and an
- * upload failure must not read as "the customer never signed". Both faces are
- * labelled with WHICH signature they are — intake and pickup are different
- * promises and a counter dispute turns on which one exists.
- *
- * ## Edit is a mode, not a scatter of inline fields
- *
- * The pane is a record first. Edit opens the same rows as fields, saves once,
- * and every field it offers is one the PATCH route will accept — the tablet
- * never renders an input for something the server answers 403 to.
- */
+/** History DETAIL — one past record, read the way a point-of-sale reads one. */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
@@ -123,21 +52,7 @@ const QRCode = dynamic(() => import('react-qr-code'), {
   loading: () => <div className="h-[84px] w-[84px] animate-pulse rounded bg-surface-sunken" />,
 });
 
-/**
- * Scan the record onto the phone in your hand.
- *
- * Destination is `/m/rs/<repairId>` — the mobile repair-service detail that
- * already exists (`src/app/m/(shell)/rs/[id]/page.tsx`), not a print route: a
- * phone has no device cookie, and `/api/kiosk/**` answers 401 to it. `/m/rs`
- * is staff-authed, so an unsigned phone lands on `signin?next=…` and arrives
- * on the record one tap later.
- *
- * The origin is the DESK'S OWN (`window.location.origin`), never
- * `NEXT_PUBLIC_APP_URL`. That variable pins one canonical host, so on a lane —
- * or on localhost — it would send the phone to a different server than the one
- * the tablet is talking to. `/api/auth/qr/handoff/begin` learned this the hard
- * way; the note is in its route.
- */
+/** Scan the record onto the phone in your hand. */
 function PhoneQr({ repairId, label }: { repairId: number; label: string }) {
   const [href, setHref] = useState<string | null>(null);
   useEffect(() => {
@@ -165,24 +80,7 @@ function formatCents(cents: number | null | undefined): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-/**
- * The intake chip, in the counter's words — or nothing.
- *
- * The header used to print the raw enums `pickup` and `ecwid`, and both
- * misread at a glance. `pickup` is the DB's word for "carried in at the
- * counter", but beside `Pending Repair` it reads as "waiting for the customer
- * to collect it". `ecwid` only means the repair was priced from a catalog
- * `-RS` SKU (`submit-repair-intake.ts` sets it whenever a SKU is present),
- * yet it reads as "this customer ordered online" — measured 2026-09-23, none
- * of the 43 `ecwid` walk-ins has a `source_order_id`, and the storefront has
- * no order under their tickets or buyers. The SKU and its storefront link
- * already ride the item line, so the source chip is gone.
- *
- * History is scoped to walk-ins (`list-kiosk-visits.ts`), so a `Walk-in` chip
- * would be printed on every record and tell the operator nothing. A chip
- * appears only for an intake that CHANGES what happens at the counter; an
- * unknown channel prints humanized rather than vanishing.
- */
+/** The intake chip, in the counter's words — or nothing. */
 function intakeChip(channel: string | null | undefined): string | null {
   const key = (channel ?? '').trim().toLowerCase();
   switch (key) {
@@ -204,24 +102,10 @@ function intakeChip(channel: string | null | undefined): string | null {
   }
 }
 
-/**
- * The RECEIPT MEASURE — how wide one record is allowed to be.
- *
- * Square's transaction detail is a narrow receipt column centred in the pane,
- * not a full-bleed table, and that is the whole reason its rows are readable at
- * arm's length: an item title and its price are ~30 characters apart, not the
- * width of an iPad. This pane is `md:flex-row` beside a rail, so unconstrained
- * it renders ~750px rows. Everything in the record — header, itemization,
- * facts, device cards — sits inside this one column.
- */
+/** The RECEIPT MEASURE — how wide one record is allowed to be. */
 const RECEIPT_MEASURE = 'mx-auto w-full max-w-[34rem]';
 
-/**
- * One width for every text key in the action bar, and one square for the
- * overflow. `max-w-none` is load-bearing: `KIOSK_POS_CTA_SECONDARY` carries
- * `max-w-40`, which would silently clamp the shared width back to 10rem and
- * re-introduce the ragged bar this exists to remove.
- */
+/** One width for every text key in the action bar, and one square for the overflow. */
 const ACTION_KEY = 'w-44 max-w-none';
 const ACTION_OVERFLOW = 'w-12 max-w-none px-0';
 
@@ -233,21 +117,7 @@ const TECHNICIAN_PREFIX: Record<NonNullable<VisitRepairProvenance['technicianSou
   assignment: 'Assigned to',
 };
 
-/**
- * One fact, label STACKED over value — never label-left / value-right.
- *
- * The label/value row is the thing this pane got wrong: at pane width the
- * label sat at x=0 in 10px condensed and its value at x=750, and the operator's
- * eye had to traverse a quarter-metre of blank counter to pair them. Neither
- * Square nor Shopify does that. Square's transaction detail is a narrow RECEIPT
- * column; Shopify's order card is a grid of stacked pairs (Polaris
- * `DescriptionList`). Both keep the label within a few millimetres of its value,
- * because pairing them is the reading task.
- *
- * So: stacked, left-aligned, two per row ({@link FactGrid}), label at
- * `text-role-caption` — 12px in the normal family, not the 10px condensed
- * `role-micro` this face was using for chrome AND for content.
- */
+/** One fact, label STACKED over value — never label-left / value-right. */
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
@@ -262,15 +132,7 @@ function FactGrid({ children }: { children: ReactNode }) {
   return <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-4 py-3">{children}</dl>;
 }
 
-/**
- * One line of the money roll-up — the ONE place a left/right pair is right,
- * because the column of figures is the thing being compared. It shares the
- * itemization's width ({@link RECEIPT_MEASURE}), so `$24.00` in the roll-up
- * lands in the same column as the `$24.00` on the line it came from.
- *
- * `strong` is the TOTAL — Square gives it the only rule above it and the only
- * bold weight, so the eye lands there first.
- */
+/** One line of the money roll-up — the ONE place a left/right pair is right, because the column of figures is the thing being compared. */
 function MoneyRow({
   label,
   value,
@@ -332,10 +194,7 @@ function SignatureFace({
       ) : (
         <p className="mt-1 text-role-body text-text-soft">Not signed</p>
       )}
-      {/* WHEN it was gathered — a signature with no instant proves the customer
-          agreed, but not to which version of the ticket. Said only when there
-          IS ink: "no timestamp" under "Not signed" is two ways of saying the
-          same nothing. */}
+      {/* WHEN it was gathered — a signature with no instant proves the customer agreed, but not to which version of the ticket. */}
       {signed ? (
         <p className="mt-1 text-role-caption tabular-nums text-text-soft">
           {signedAt ? kioskHistoryStamp(signedAt) : 'Signed — no timestamp recorded'}
@@ -443,12 +302,7 @@ export function KioskHistoryDetail({
     );
   }
 
-  /**
-   * This is no longer "select a record" — the pane auto-opens the newest row
-   * and re-points on every result set, so a null detail can only mean the rail
-   * itself has nothing to open. Saying "select a record" there asked the
-   * operator to do something the face had already made impossible.
-   */
+  /** This is no longer "select a record" — the pane auto-opens the newest row and re-points on every result set, so a null detail can only… */
   if (!detail) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center px-6">
@@ -481,14 +335,7 @@ export function KioskHistoryDetail({
     <div className="flex min-h-0 flex-1 flex-col" data-testid="kiosk-history-detail">
       <header className="shrink-0 border-b border-border-soft px-4 py-3">
         <div className={RECEIPT_MEASURE}>
-          {/* HIERARCHY. The top line answers "which record am I looking at" —
-              the ticket on the left, WHEN it happened on the right, because
-              those are the two facts an operator matches against the paper in
-              their hand. Money is not an identity: it moved out of the display
-              slot (where it out-shouted the ticket) down to the caption line in
-              the money token, and the authoritative figure lives in the
-              roll-up directly below, where it is beside what it is a sum OF.
-              Seconds are dropped — no counter question is answered by `:08`. */}
+          {/* HIERARCHY. The top line answers "which record am I looking at" — the ticket on the left, WHEN it happened on the right, because those… */}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h2 className="truncate text-role-display text-text-default tabular-nums">
@@ -563,14 +410,7 @@ export function KioskHistoryDetail({
           ))}
 
           {provenance.map((device) => {
-            // Full reversibility, on the line it belongs to (operator
-            // 2026-09-23: *"you should be able to have full reversibility in
-            // terms of a link to the Ecwid website via the SKU"*). Per DEVICE,
-            // not per record: a repair's SKU is a fact about that unit, and
-            // hanging one link off the record would attribute one device's
-            // listing to both. The SKU is used AS TYPED — see
-            // `repair-storefront-url` for why the old `-RS` → `-W` rewrite
-            // pointed at a white unit nobody bought.
+            // Full reversibility, on the line it belongs to (operator 2026-09-23:
             const storefrontHref = repairStorefrontUrl(device.sourceSku);
             return (
               <div
@@ -615,11 +455,7 @@ export function KioskHistoryDetail({
           <div className="pb-4 pt-2">
             {visit ? (
               <>
-                {/* `subtotalCents` is the SALES subtotal — the counter models
-                    device quotes as their own summand, and a bare "Subtotal
-                    $24.00" under a $149.00 device line reads as an arithmetic
-                    error to the person holding the paper. Name both summands,
-                    in the mode's own word (Sales, not Retail). */}
+                {/* `subtotalCents` is the SALES subtotal — the counter models device quotes as their own summand, and a bare "Subtotal $24.00" under a… */}
                 {lines.length > 0 ? (
                   <MoneyRow label="Sales" value={formatCents(visit.subtotalCents)} />
                 ) : null}
@@ -710,10 +546,7 @@ export function KioskHistoryDetail({
             </div>
           ) : (
             <FactGrid>
-              {/* NEVER "Walk-in". That word asserts an intake channel, and on a
-                  ticket whose channel is `shipment` it is simply false — the
-                  name row would contradict the chip two lines above it. An
-                  unknown name is an em dash. */}
+              {/* NEVER "Walk-in". */}
               <Fact label="Name" value={customer?.name ?? '—'} />
               <Fact label="Phone" value={customer?.phone ?? '—'} />
               <Fact label="Email" value={customer?.email ?? '—'} />
@@ -729,16 +562,8 @@ export function KioskHistoryDetail({
               : 'No technician recorded';
           const rsNumber = device.rsNumber || `RS-${device.repairId}`;
           /**
+           * THE TICKET NUMBER IS PRINTED ONCE (operator 2026-09-23).
            * THE TICKET NUMBER IS PRINTED ONCE (operator 2026-09-23). It is the
-           * record's identity and it lives in the header, in display type. It
-           * was also the itemization's caption and this section's label, so a
-           * one-device ticket said `RS-4548` three times on one screen and none
-           * of the repeats answered a question the header had not.
-           *
-           * It survives HERE only when it is not a repeat: a visit carrying two
-           * devices has two different RS numbers and the header can only show
-           * one, so the section label is the only thing telling the operator
-           * which unit the parts and signatures below belong to.
            */
           const repeatsHeader = provenance.length === 1 && rsNumber === title;
           return (
@@ -853,11 +678,7 @@ export function KioskHistoryDetail({
                 </ul>
               ) : null}
 
-              {/* Signatures are their own GROUP, not two loose images at the
-                  tail of the facts: they are the evidence half of the record,
-                  they are the only rows a dispute turns on, and each one is
-                  captioned with the instant it was gathered — an unstamped
-                  signature proves nothing about WHEN the customer agreed. */}
+              {/* Signatures are their own GROUP, not two loose images at the tail of the facts: */}
               <h3 className={cn(KIOSK_SECTION_LABEL_ROW, 'mt-2 px-0')}>Signatures</h3>
               <div className="grid grid-cols-2 gap-x-6">
                 <SignatureFace
@@ -918,18 +739,7 @@ export function KioskHistoryDetail({
         })}
       </div>
 
-      {/* Fixed-width keys, seated in the RECORD's column.
-
-          Two faults, both of alignment. First, a flex bar that let each key
-          size to its own label moved every button whenever the record changed —
-          `Print receipt` and `Print paperwork` are different lengths, so the
-          primary key slid under the operator's thumb between two rows. One
-          width for every text key, one square for the overflow.
-
-          Second, the bar was flush to the PANE's right edge while everything it
-          acts on sits in the receipt column — the keys hung off the side of the
-          record, past its right margin. `RECEIPT_MEASURE` puts them on the same
-          two edges as the itemization, the facts and the device cards. */}
+      {/* Fixed-width keys, seated in the RECORD's column. */}
       <div className="shrink-0 border-t border-border-soft px-4 py-3">
         <div className={cn(RECEIPT_MEASURE, 'flex items-center justify-end gap-2')}>
         {editing ? (
@@ -966,10 +776,7 @@ export function KioskHistoryDetail({
           <>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                {/* Three dots, no word. Square and Shopify both give the
-                    overflow a glyph-only square — the label "More" costs a key's
-                    width to say nothing, and the vertical ellipsis is the mark
-                    the operator already reads as "everything else". */}
+                {/* Three dots, no word. */}
                 <Button
                   variant="secondary"
                   size="lg"

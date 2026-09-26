@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Keyboard / sidebar navigation for the receiving-lines table:
- *   - `receiving-navigate-table` (sidebar chevrons / arrow keys) steps the LINE
- *     selection prev/next through the visible rows (single-select only).
- *   - keeps the active row scrolled into view when selection changes.
- * Extracted from ReceivingLinesTable.
- *
- * Observe openers (Share / Audit / Copy / carton details) live on `/carton/[id]`
- * — not a receiving-details overlay stepped from this table.
- */
+/** Keyboard / sidebar navigation for the receiving-lines table: */
 
 import { useEffect } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -47,11 +38,7 @@ export function useReceivingTableNavigation({
     const handler = (event: Event) => {
       const direction = (event as CustomEvent<'prev' | 'next'>).detail;
       if (direction !== 'prev' && direction !== 'next') return;
-      // Arrow-nav steps the OPEN record, so it only has to stand down where a
-      // row click is still the bulk toggle. On a surface that splits the planes
-      // (`rowClickOpens`) select mode is pinned on and stepping is exactly what
-      // the chevrons should do — reading `selectMode` alone is what left the
-      // Incoming chevrons as dead as the row click.
+      // Arrow-nav steps the OPEN record, so it only has to stand down where a row click is still the bulk toggle.
       if (selectModeRef.current && !rowClickOpens) return;
       if (orderedVisibleRows.length === 0) return;
 

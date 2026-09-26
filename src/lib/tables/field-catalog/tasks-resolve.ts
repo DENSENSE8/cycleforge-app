@@ -1,20 +1,4 @@
-/**
- * Tasks slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks.
- *
- * Vocabularies are never declared here: the lifecycle face resolves through
- * `workStatusLabel` (the same SoT the compound state pill and the work-order
- * chip read) and the record noun through `taskDeskRecordLabel`. A string
- * literal in this file would be a second spelling of a word another surface
- * already owns.
- *
- * Note what is NOT here: lateness. Whether a task is past its deadline depends
- * on the clock, and the surface passes ONE `nowMs` to every row for exactly
- * that reason — a per-row `Date.now()` would let two rows in one paint
- * disagree about what day it is. The compound state cell already reports it
- * from that shared clock, so a bound "overdue" column would be a second author
- * of one fact with a worse clock.
- */
+/** Tasks slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { taskDeskRecordLabel, type TaskDeskRow } from '@/lib/tasks/task-desk-row';

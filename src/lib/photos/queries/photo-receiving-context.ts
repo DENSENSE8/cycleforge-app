@@ -1,19 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Viewer-only provenance detail for one photo, resolved from its RECEIVING /
- * RECEIVING_LINE link: the paired serial numbers, the carton's carrier tracking,
- * and the carton/line claim ticket. Fetched lazily by the fullscreen viewer's
- * context panel (see `usePhotoReceivingContext`) so the hot media-library list
- * query never pays for data only shown when a photo is actually opened.
- *
- * Serials resolve through `serial_unit_provenance` (RECEIVING_LINE origin) — the
- * SAME verified join the production media-library `serial` finder uses
- * (`queries/library.ts`), NOT the `receiving_line_testing.serial_projection`
- * read-model (that migration is unapplied). Tracking reads
- * `receiving_carton.shipment_id → shipping_tracking_numbers.tracking_number_raw`.
- */
+/** Viewer-only provenance detail for one photo, resolved from its RECEIVING / RECEIVING_LINE link: */
 export interface PhotoReceivingContext {
   cartonId: number | null;
   /** Raw carton/line claim ref, e.g. "#9518" (line-level wins over carton). */

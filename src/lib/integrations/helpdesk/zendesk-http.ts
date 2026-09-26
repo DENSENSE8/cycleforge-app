@@ -1,14 +1,4 @@
-/**
- * Zendesk HTTP client — rate-limited, retried, deduped upstream calls.
- *
- * All Zendesk REST traffic should flow through {@link zendeskHttpRequest} so
- * every surface (support console, warranty, receiving claims, overview) shares
- * one per-org queue, distributed budget (Upstash Redis when configured),
- * in-flight GET dedup, proactive header pacing, 429 Retry-After backoff, and a
- * circuit breaker.
- *
- * Mirrors the Zoho client shape in src/lib/zoho/httpClient.ts.
- */
+/** Zendesk HTTP client — rate-limited, retried, deduped upstream calls. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { isRedisConfigured, redisCmd } from '@/lib/redis/client';

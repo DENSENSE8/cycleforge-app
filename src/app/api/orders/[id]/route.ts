@@ -15,19 +15,7 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * Canonical record route for a single order. Sits alongside the workflow verb
- * routes (`[id]/allocate`, `[id]/release`, `[id]/pick-tasks`, plus the
- * collection-level add/assign/skip/start/verify):
- *   GET    — fetch the order row                        (orders.view)
- *   PATCH  — edit record fields (whitelisted)           (orders.create)
- *   DELETE — hard-delete the order                      (orders.void, step-up)
- *
- * Orders have no soft-delete column, so DELETE mirrors POST /api/orders/delete:
- * a hard delete with a full before-snapshot audit row. Because `requireRoutePerm`
- * does NOT enforce step-up (the static wrapper does), we re-check the step-up
- * grant here so the destructive path stays step-up-protected.
- */
+/** Canonical record route for a single order. */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

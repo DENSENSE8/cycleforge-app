@@ -1,13 +1,4 @@
-/**
- * The dispatch table is the phone's whole navigation model, so this file is
- * the table itself, asserted row by row: every line of
- * docs/warehouse-os/PLAN-scan-shell-mobile.md → "Dispatch (mobile subset)",
- * both preview-vs-act rules, and the one genuine tie.
- *
- * A row that stops being asserted here is a row an operator will hit on the
- * floor with no Card behind it — which the plan's hand gate names exactly:
- * "every 'I wanted a menu' is a missing dispatch row".
- */
+/** The dispatch table is the phone's whole navigation model, so this file is the table itself, asserted row by row: */
 
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';

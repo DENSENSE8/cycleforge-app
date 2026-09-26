@@ -1,14 +1,4 @@
-/**
- * GET /api/cron/integrations/reconcile — daily drift repair.
- *
- * For every connector with a wired reconcile(), compare the provider's recently
- * modified records against local state and fix either side (catches dropped
- * webhooks / failed outbound pushes that polling alone misses). No-op until
- * providers implement reconcile(); safe to schedule now. Auth via CRON_SECRET.
- *
- * Optional ?hours=N sets the lookback window (default 25h — slightly over a day
- * to tolerate clock skew, matching the ERP reconciliation job).
- */
+/** GET /api/cron/integrations/reconcile — daily drift repair. */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';

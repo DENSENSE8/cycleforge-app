@@ -22,22 +22,12 @@ export interface Milestone {
   icon: ReactNode;
   /** The stamp. Null ⇒ this has not happened. */
   at: string | null;
-  /**
-   * The PERSON who did it. Omit when the stamp has no human actor — the row
-   * then shows {@link detail} with no face, rather than minting an avatar out
-   * of a label like "Shelf set", which is how a location ends up wearing
-   * someone's initials.
-   */
+  /** The PERSON who did it. */
   actor?: { staffId: number | null; name: string } | null;
   /** Non-person qualifier for the actor line ("Shelf set", "At receive"). */
   detail?: string | null;
   /** What the station read, in order. */
   scans?: MilestoneScan[];
-  /**
-   * The queue this record waits in until the stage is stamped, named the way
-   * the operator navigates to it ("Ready to pack") — never the null column
-   * ("Pending pack"). Those are different claims: one describes the data, the
-   * other describes where the record physically is.
-   */
+  /** The queue this record waits in until the stage is stamped, named the way the operator navigates to it ("Ready to pack") — never the null… */
   readyLabel: string;
 }

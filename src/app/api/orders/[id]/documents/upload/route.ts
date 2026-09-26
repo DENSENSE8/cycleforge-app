@@ -69,10 +69,7 @@ export async function POST(
   const documentType = typeRaw;
   const buffer = Buffer.from(await file.arrayBuffer());
   const contentType = file.type || 'application/octet-stream';
-  // Dedupe on the file's bytes, not just (order, type): the default
-  // buildSourceHash({ platform:'manual', orderRef, documentType }) made a second,
-  // different upload of the same type silently return the FIRST document.
-  // Identical re-uploads still collapse onto the existing row.
+  // Dedupe on the file's bytes, not just (order, type):
   const fileSha256 = createHash('sha256').update(buffer).digest('hex');
   const sourceHash = createHash('sha256')
     .update(['manual_upload', orderId, documentType, fileSha256].join('|'))

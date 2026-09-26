@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * FIND chronology faces — one document, kind-shaped rows, newest-first.
- *
- * Callers: SearchDossierFrame. Schema: FindEvent from find-dossier-model.
- * Enlarge uses usePhotoGallery + PhotoViewerPortal (never a page-level photo peek fan).
- * User: Continue with the next phase now (Phase 2 stream faces).
- */
+/** FIND chronology faces — one document, kind-shaped rows, newest-first. */
 
 import Link from 'next/link';
 import { cn } from '@/utils/_cn';

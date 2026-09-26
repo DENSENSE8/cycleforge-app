@@ -1,11 +1,4 @@
-/**
- * nav-registry contracts — active-route identification for the /m shell.
- *
- * These predicates are the drawer's selection logic verbatim (moved 2026-09-14
- * from MobileSidebarDrawer). The nested-prefix rule is what keeps detail routes
- * (e.g. /m/pick/123) identifying their parent destination without falsely
- * matching siblings (/m/pickaxe).
- */
+/** nav-registry contracts — active-route identification for the /m shell. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { MOBILE_NAV_DESTINATIONS, isGroupActive, isLeafActive } from './nav-registry';

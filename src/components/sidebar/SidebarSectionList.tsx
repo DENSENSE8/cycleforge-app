@@ -31,28 +31,9 @@ interface SidebarSectionListProps<TId extends string = string> {
   onSelect: (id: TId) => void;
   /** Optional aria-label for the nav landmark. */
   ariaLabel?: string;
-  /**
-   * Horizontal padding for rows + group headers. Defaults to the shared
-   * {@link SIDEBAR_GUTTER}. Override (e.g. `px-3`) to line rows up with a
-   * OrgWorkspaceControl above the panel. Pass `px-0` when the list sits inside a
-   * shell body that already applies {@link SIDEBAR_GUTTER}.
-   */
+  /** Horizontal padding for rows + group headers. */
   gutterClassName?: string;
-  /**
-   * Row register. `comfortable` (default) is the SETTINGS navigator shape —
-   * `py-3`, `text-sm`, a hairline under every row; right for Settings / Admin,
-   * where the list is the page's whole job and is read once.
-   *
-   * `ops` is the floor-rail shape: house one-row anatomy (`text-role-caption`,
-   * constant `py-1.5`), `divide-y` on the container rather than a border per
-   * row, and quiet `NAV_ROW.selectedClass` (sunken wash — not queue blue). Use
-   * it when the list is a NAVIGATOR beside a working surface (the Media
-   * library's facet rail), where vertical budget and scan speed decide, not
-   * reading comfort.
-   *
-   * This exists because the two registers were one, and the ops consumer was
-   * paying settings-panel density for a rail it hits dozens of times a shift.
-   */
+  /** Row register. */
   density?: 'comfortable' | 'ops';
 }
 
@@ -92,11 +73,7 @@ export function SidebarSectionList<TId extends string = string>({
   return (
     <nav
       className={cn(
-        // `comfortable` IS the panel body (Settings / Admin), so it owns the
-        // height and the scrollport. `ops` is a PINNED block with siblings
-        // beneath it (the Media library's outbound chips, the capture-day
-        // tree), so it must size to its rows — `h-full` there made it claim the
-        // whole column and paint straight over everything below it.
+        // `comfortable` IS the panel body (Settings / Admin), so it owns the height and the scrollport.
         ops ? 'divide-y divide-border-hairline' : 'h-full overflow-y-auto',
       )}
       aria-label={ariaLabel}

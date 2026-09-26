@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Skeleton, restyled to house tokens.
- *
- * Upstream ships `animate-pulse`. That is an OPACITY animation, which
- * composites off the main thread and moves no neighbour, so it is inside the
- * house motion law (which bans geometry tweens, not opacity). Kept.
- */
+/** shadcn/ui Skeleton, restyled to house tokens. */
 
 import * as React from 'react';
 import { cn } from '@/utils/_cn';

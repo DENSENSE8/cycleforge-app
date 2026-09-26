@@ -1,28 +1,4 @@
-/**
- * Theme registry — the single source of truth for every color theme.
- *
- * A theme is a complete `ThemePalette`: every `--ds-color-*` custom property
- * the Tailwind semantic aliases consume (see tailwind.config.mjs `colors`),
- * plus the page-level `--background` / `--foreground` pair. Adding a theme is
- * a pure configuration exercise:
- *
- *   1. author `themes/<name>.ts` exporting a `ThemePalette` (the `ThemeVars`
- *      Record type forces full coverage — a missing variable is a type error),
- *   2. register it in `THEME_PALETTES` below and widen `ThemeName`,
- *   3. done — the CSS is generated (`themePaletteStyleText`, injected by
- *      app/layout.tsx), the boot script picks it up (src/lib/theme/theme.ts),
- *      and the Appearance settings switcher lists it automatically.
- *
- * Two attributes are stamped on <html> by src/lib/theme/theme.ts:
- *   - `data-theme="<name>"`      → selects the palette's variable block.
- *   - `data-color-scheme="dark"` → set for `scheme: 'dark'` palettes only;
- *     scopes the raw-Tailwind-neutral compatibility remap in
- *     src/styles/globals.css and the dark staff-accent overrides, so ANY
- *     future dark-family theme inherits both for free.
- *
- * Light is the default: represented by the ABSENCE of both attributes, its
- * variables live in the generated `:root` block.
- */
+/** Theme registry — the single source of truth for every color theme. */
 
 // ── Palette contract ────────────────────────────────────────────────────────
 
@@ -136,22 +112,11 @@ export interface ThemePalette {
    * doubles as the canvas behind transparent rows.
    */
   page: { background: string; foreground: string };
-  /**
-   * Optional theme-owned staff-accent defaults. When present they are emitted
-   * inside the theme's variable block, which OUTRANKS the per-staff
-   * `.theme-<accent>` classes (0,1,1 vs 0,1,0) — i.e. the theme "collapses"
-   * staff accents (mono does this to stay strictly monochrome). Dark-scheme
-   * themes still get per-accent dark overrides at higher specificity, so for
-   * them this is only the signed-out / fallback accent. Omit to let the
-   * per-staff accent classes win (light, slate).
-   */
+  /** Optional theme-owned staff-accent defaults. */
   accent?: AccentVars;
 }
 
-// ── Staff accents (the `theme-<name>` classes) ─────────────────────────────
-// One entry per staff accent, with a light and a dark-scheme variant. The
-// generator emits `.theme-<name>` (light) and
-// `html[data-color-scheme='dark'] .theme-<name>` (any dark-family theme).
+// ── Staff accents (the `theme-<name>` classes) ───────────────────────────── One entry per staff accent, with a light and a dark-scheme…
 
 export const ACCENT_NAMES = [
   'green',
@@ -264,15 +229,7 @@ function accentDeclarations(accent: AccentVars, indent = '  '): string[] {
   ];
 }
 
-/**
- * The full generated theme stylesheet, injected once by app/layout.tsx as
- * `<style id="app-theme-palettes">`. Structure (specificity does the rest):
- *
- *   :root { light vars + default (blue) accent }         — 0,1,0
- *   .theme-<accent> { light accent vars }                 — 0,1,0 (later ⇒ wins)
- *   html[data-theme='<name>'] { theme vars }              — 0,1,1 (beats both)
- *   html[data-color-scheme='dark'] .theme-<accent> { … }  — 0,2,1 (dark accents win)
- */
+/** The full generated theme stylesheet, injected once by app/layout.tsx as `<style id="app-theme-palettes">`. */
 export function themeRegistryCssText(): string {
   const blocks: string[] = [];
 

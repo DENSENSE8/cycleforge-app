@@ -1,14 +1,4 @@
-/**
- * Integration connector contract (Phase 0 of the OAuth connection framework —
- * docs/integrations-oauth-connection-plan.md).
- *
- * A connector is the uniform behavior surface for one external provider. It
- * WRAPS the existing per-provider routes/clients (eBay/Amazon/Zoho OAuth, the
- * vault providers, Nango) behind one shape so the settings UI, the refresh
- * sweep, and the connection-driven sync orchestrator can treat every provider
- * the same. Phase 0 defines the contract + metadata; refresh()/validate()/
- * sync() are OPTIONAL and get wired per-provider in later phases.
- */
+/** Integration connector contract (Phase 0 of the OAuth connection framework — docs/integrations-oauth-connection-plan.md). */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { SyncProgress } from '@/lib/orders-sync/types';
@@ -16,24 +6,7 @@ import type { SyncProgress } from '@/lib/orders-sync/types';
 /** How a tenant authenticates the connection. */
 export type AuthKind = 'oauth' | 'nango' | 'vault';
 
-/** What a connection can do — drives capability badges, which providers the
- *  sync orchestrator runs, AND product-surface gating/labels (see
- *  src/lib/integrations/capability-labels.ts). Product surfaces speak these
- *  capabilities, never vendor brands — a feature is available when *some*
- *  connector with the capability is connected, not when "Zoho" is.
- *
- *    orders      — sales-order ingestion (marketplaces / storefronts / POS)
- *    inventory   — purchasing + catalog + stock backend (POs, item master,
- *                  fulfillment push). Zoho Inventory is the first connector.
- *    tracking    — carrier tracking events
- *    labels      — outbound label engine (rate shop / buy / void)
- *    payments    — payment processing (tenant-connected; Stripe stays platform)
- *    voice       — business phone (call log / voicemail / click-to-call)
- *    helpdesk    — customer tickets (support console, claims, warranty)
- *    email_inbox — org mailbox ingestion (PO mailbox, unfound-scan mail)
- *    catalog     — storefront catalog lookup (favorites / product search)
- *    ai          — BYOK AI chat/embeddings (Ask AI, AI search)
- */
+/** What a connection can do — drives capability badges, which providers the sync orchestrator runs, AND product-surface gating/labels (see… */
 export type Capability =
   | 'orders'
   | 'inventory'
@@ -90,13 +63,7 @@ export interface HealthResult {
 export interface SyncOpts {
   full?: boolean;
   cursor?: unknown;
-  /**
-   * ShipStation only: run the resumable HISTORICAL backfill instead of the
-   * incremental pull. Dry-run unless `apply` — a dry run reads ShipStation and
-   * the org's orders and reports what it would import / enrich / skip /
-   * quarantine, writing nothing. An applied run checkpoints every page in
-   * `shipstation_sync_runs` and resumes an interrupted run unless `restart`.
-   */
+  /** ShipStation only: */
   backfill?: {
     apply?: boolean;
     /** ISO start of the history to walk; default: 7 days ago (the import scope). */
@@ -105,18 +72,7 @@ export interface SyncOpts {
     windowDays?: number;
     restart?: boolean;
   };
-  /**
-   * Live per-phase progress sink. Present only for an operator-driven run that
-   * is streaming its own response (the desk / `/m` sync surfaces); cron and
-   * settings "Sync now" leave it undefined and the connector falls back to its
-   * no-op.
-   *
-   * This is the field whose absence made a 60-second import report itself as a
-   * spinner that stopped: the underlying job has always taken a
-   * {@link SyncProgress}, and the connector adapter was passing `undefined` for
-   * it, so every phase and every per-row detail the ingest emitted was
-   * discarded at the connector seam.
-   */
+  /** Live per-phase progress sink. */
   onProgress?: SyncProgress;
 }
 
@@ -127,17 +83,7 @@ export interface SyncOutcome {
   error?: string;
   /** Incremental watermark to persist for the next run. */
   cursor?: unknown;
-  /**
-   * Provider-shaped per-row result detail, passed through verbatim to the
-   * caller (the route returns the whole outcome as JSON). Opaque here on
-   * purpose: the contract stays provider-agnostic, and each surface narrows it
-   * to its own type — the desk's run surface reads it as
-   * `TransferOrderDetails` (src/lib/orders-sync/types.ts).
-   *
-   * Without it a connector sync reduces a whole import to two counters, and
-   * the run's per-row record (`buildSyncRunDetail` → OrderSyncRunDetailSheet)
-   * has literally nothing to draw.
-   */
+  /** Provider-shaped per-row result detail, passed through verbatim to the caller (the route returns the whole outcome as JSON). */
   details?: unknown;
   /**
    * Counters a surface may show beside the totals (rows read, fields vs

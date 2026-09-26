@@ -1,27 +1,4 @@
-/**
- * Browser silent-print fallback — renders label/report HTML in a hidden iframe
- * and lets the page's own `window.print()` drive the job.
- *
- * Modern browsers use an iframe (not `window.open` + popup):
- *   - No popup window flashes on screen, and the popup blocker can't intercept
- *     it (a hidden same-document iframe needs no user-gesture popup grant).
- *   - The print originates from the iframe's own document, so `window.print()`
- *     prints exactly that label.
- *
- * Older WebKit is feature-detected below and uses the original popup/document.write
- * path, with the popup reserved synchronously by the station button handler.
- *
- * What makes it SILENT:
- *   Under Chrome/Edge launched with `--kiosk-printing`, any `window.print()`
- *   call prints straight to the *default* printer with NO dialog. Without that
- *   flag the normal print dialog appears (browsers give web pages no other way
- *   to reach a driver-owned OS printer). Prefer WebUSB/Web Serial profiles for
- *   dialog-free thermal labels when possible (see {@link ./browserPrint}).
- *
- * The label HTML embeds its own `window.onload -> window.print()` (so the legacy
- * popup path still drives itself); inside the iframe that same script runs in the
- * frame's context and prints the frame. We only own the iframe lifecycle here.
- */
+/** Browser silent-print fallback — renders label/report HTML in a hidden iframe and lets the page's own `window.print()` drive the job. */
 
 export interface IframePrintOptions {
   /** Safety-net delay (ms) before the hidden iframe is torn down. Default 60s. */
@@ -52,12 +29,7 @@ export function reserveLegacyPrintPopup(): Window | null {
   return popup;
 }
 
-/**
- * Safari 5 / older WebKit does not implement iframe.srcdoc. Keep the original
- * station path for those machines: a user-gesture-created popup, document.write
- * of the self-printing 2×1 page, then document.close(). No modern APIs or
- * blob/object URLs are required by this branch.
- */
+/** Safari 5 / older WebKit does not implement iframe.srcdoc. */
 function printHtmlInLegacyPopup(
   html: string,
   options: IframePrintOptions,
@@ -99,11 +71,7 @@ export function printHtmlInIframe(html: string, options: IframePrintOptions = {}
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.title = options.name ?? 'Print label';
-  // Do not use `display:none` OR `visibility:hidden`: Chromium is allowed to
-  // omit either from the print tree, which turns a valid `srcdoc` paperwork
-  // document into a blank page. Park the frame off-screen instead. It remains
-  // rendered long enough for its own HTML and styles to lay out, but never
-  // occupies or flashes on the kiosk surface.
+  // Do not use `display:none` OR `visibility:hidden`:
   iframe.style.cssText =
     'position:fixed;left:-10000px;bottom:0;width:1px;height:1px;border:0;pointer-events:none;';
 

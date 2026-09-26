@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * React binding over {@link bandCollapseReducer}, layered on the centre-wide
- * {@link AutoCollapseController}.
- *
- * One controller in, one controller out: the host keeps calling
- * `useAutoCollapse()` for the scroll / composer rules and hands the result
- * here, so the centre still has ONE story about whether it is yielding its
- * column — this only decides which band is exempt.
- */
+/** React binding over {@link bandCollapseReducer}, layered on the centre-wide {@link AutoCollapseController}. */
 
 import { useMemo, useReducer } from 'react';
 import {

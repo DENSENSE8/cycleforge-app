@@ -16,24 +16,11 @@ export interface PhotoSelection {
   /** Whether any selection UI (checkmarks, action bar) should be visible. */
   isActive: boolean;
   isSelected: (id: number) => boolean;
-  /**
-   * Select/toggle a tile. A plain/Ctrl/Cmd click toggles the single tile and
-   * moves the anchor. `shift` paints the range [anchor, target] with the anchor's
-   * action — **select** if the anchor click selected, **deselect** if it cleared.
-   * The range re-derives from the anchor-click baseline each time, so moving the
-   * target back toward the anchor SHRINKS it (and dragging past flips direction),
-   * exactly like Finder / Google Photos. Range is computed over the flat sort
-   * order so it behaves predictably even though the grid is grouped by day/folder.
-   */
+  /** Select/toggle a tile. */
   selectTile: (id: number, mods?: PhotoSelectMods) => void;
   /** Select every currently-loaded photo (the header "select all"). */
   selectAll: () => void;
-  /**
-   * Replace the selection with an explicit id set — used by "select all matching
-   * filters", where the ids come from the server and may include photos not yet
-   * loaded into the grid. `selectedPhotos` only resolves the loaded subset, so
-   * id-based bulk actions (share/ZIP/delete) should read `selected` directly.
-   */
+  /** Replace the selection with an explicit id set — used by "select all matching filters", where the ids come from the server and may… */
   selectIds: (ids: number[]) => void;
   /** Toggle every id in a group — select all if any are unselected, else clear the group. */
   toggleGroupSelection: (ids: number[]) => void;
@@ -45,17 +32,7 @@ export interface PhotoSelection {
   resolveDragIds: (id: number) => number[];
 }
 
-/**
- * Owns multi-selection for the photo library: click-to-toggle, Shift+click
- * range, Ctrl/Cmd+click toggle, and cross-page persistence.
- *
- * Selection is keyed by id and is NOT pruned to the visible page — the infinite
- * query retains every loaded page, so a selection made on page 1 survives
- * paging to page 5 and a drag can carry the whole set. `selectedPhotos` resolves
- * ids against the full `photos` accumulator.
- *
- * @param photos The full, ordered list of loaded photos (sort order preserved).
- */
+/** Owns multi-selection for the photo library: */
 export function usePhotoSelection(photos: LibraryPhoto[]): PhotoSelection {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   // Anchor for Shift+click range extension (last individually-clicked tile)…
@@ -84,13 +61,7 @@ export function usePhotoSelection(photos: LibraryPhoto[]): PhotoSelection {
   const selectTile = useCallback(
     (id: number, mods: PhotoSelectMods = {}) => {
       const from = anchorId;
-      // Shift+click: re-derive the selection from the anchor-click baseline, then
-      // paint the range [anchor, target] with the anchor's action (select OR
-      // deselect). Re-deriving each time means moving the target back toward the
-      // anchor SHRINKS the range and dragging past it FLIPS direction — the
-      // Finder / Google-Photos model — and it works for clearing a range too.
-      // Computed over the flat sort order so it's predictable across day/folder
-      // grouping; the anchor + its action persist so the range stays re-stretchable.
+      // Shift+click: re-derive the selection from the anchor-click baseline, then paint the range [anchor, target] with the anchor's action…
       if (mods.shift && from != null && indexById.has(from) && indexById.has(id)) {
         const a = indexById.get(from)!;
         const b = indexById.get(id)!;

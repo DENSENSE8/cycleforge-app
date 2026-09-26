@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Flush feed pane — the shared body for the Sales-hub modes that render a
- * day-banded transaction feed (Local Pickup · Sales), flush in
- * `'relative flex min-h-0 min-w-0 flex-1 flex-col'` (no framed padded-card island).
- *
- * **No history dock here, deliberately** (2026-08-29). Every scan station got a
- * leftmost history dock so an operator can answer "did that scan land?" without
- * leaving what they are doing — but on this desk the day-banded feed IS that
- * answer, and it is already the primary surface. A dock beside it would render
- * the same rows twice, a foot apart.
- *
- * The KPI strip that sat above this feed was removed with every other
- * table-workbench KPI band (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5).
- *
- * Repair mode does NOT use this — it mounts `RepairTable`, which owns its own
- * boxed pane + richer row/detail model.
- */
+/** Flush feed pane — the shared body for the Sales-hub modes that render a day-banded transaction feed (Local Pickup · Sales), flush in… */
 
 import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
 import { type WalkInTransaction } from '@/lib/walk-in/transactions';

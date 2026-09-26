@@ -1,13 +1,4 @@
-/**
- * Zod schemas for the Operations Studio workflow APIs (/api/studio).
- *
- * Structural validation only — a draft may legitimately contain gaps
- * (dangling ports, unbound stations); those are the diagnostics engine's
- * domain (src/lib/workflow/diagnostics.ts), and only PUBLISH blocks on its
- * error-severity findings. The schema enforces shape and referential
- * integrity inside the payload (every edge endpoint is a node in the same
- * body), never business rules.
- */
+/** Zod schemas for the Operations Studio workflow APIs (/api/studio). */
 
 import { z } from 'zod';
 
@@ -59,46 +50,26 @@ export const StudioDraftCreateBody = z.object({
 });
 export type StudioDraftCreateInput = z.infer<typeof StudioDraftCreateBody>;
 
-/**
- * Body for POST /api/studio/templates/[id]/import (Phase E4). `name` is an
- * optional override for the new definition's name; omitted = the template's
- * name. The clone collides safely by version, so a repeat import lands as the
- * next version of the same name rather than failing.
- */
+/** Body for POST /api/studio/templates/[id]/import (Phase E4). */
 export const StudioTemplateImportBody = z.object({
   name: z.string().trim().min(1).max(120).optional(),
 });
 export type StudioTemplateImportInput = z.infer<typeof StudioTemplateImportBody>;
 
-/**
- * Body for POST /api/onboarding/template (Template Platform Phase 1). The
- * first-run chooser installs a chosen system template into the org via
- * installTemplateIntoOrg (activate: 'if_system'). Just the template id — the org
- * comes from the auth ctx, never the body.
- */
+/** Body for POST /api/onboarding/template (Template Platform Phase 1). */
 export const OnboardingTemplateChooseBody = z.object({
   templateId: z.number().int().positive(),
 });
 export type OnboardingTemplateChooseInput = z.infer<typeof OnboardingTemplateChooseBody>;
 
-/**
- * Body for POST /api/onboarding/recommend (Template Platform Phase 5). Free-text
- * intake describing how the shop runs ops; the recommender ranks EXISTING system
- * templates and returns their slugs (never invents one, never activates). Purely
- * a read/ranking — the owner still confirms via the chooser.
- */
+/** Body for POST /api/onboarding/recommend (Template Platform Phase 5). */
 export const OnboardingRecommendBody = z.object({
   text: z.string().trim().min(1).max(4000),
   category: z.string().max(64).nullable().optional(),
 });
 export type OnboardingRecommendInput = z.infer<typeof OnboardingRecommendBody>;
 
-/**
- * Body for POST /api/studio/definitions/[id]/submit (Template Platform Phase 4).
- * Submit one of the org's OWN definitions to the curated catalog for review.
- * All fields optional — catalog metadata overrides; the definition id is in the
- * path and the org comes from the auth ctx.
- */
+/** Body for POST /api/studio/definitions/[id]/submit (Template Platform Phase 4). */
 export const StudioTemplateSubmitBody = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().max(2000).nullable().optional(),

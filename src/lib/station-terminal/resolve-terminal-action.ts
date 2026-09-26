@@ -1,11 +1,4 @@
-/**
- * Resolve the terminal kind key for (mode, tab). Pure — no React, no side effects.
- *
- * Returns:
- *   - `null` when the kind is `'none'` or the mode/tab is unknown → hide dock
- *   - otherwise the kind string (`'mode-default'`, `'po-note'`, …) for the
- *     mode-specific VM builder to consume.
- */
+/** Resolve the terminal kind key for (mode, tab). */
 
 import { getTerminalSlice } from './registry';
 import type { ResolveTerminalKindInput } from './types';

@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Where this staff lands right after signing in. Two independent dropdowns
- * (desktop + mobile); NULL means "fall back to ROLE_HOME[role]". The
- * authoritative resolver lives in /signin/page.tsx; the defaults below are
- * only the placeholder hints.
- */
+/** Where this staff lands right after signing in. */
 
 import { APP_SIDEBAR_NAV } from '@/lib/sidebar-navigation';
 import { focusRing } from '@/design-system/tokens/focus-ring';

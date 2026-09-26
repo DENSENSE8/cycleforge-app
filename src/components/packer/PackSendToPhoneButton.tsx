@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Manual "send to phone" for the pack identity bar — the packing sibling of the
- * Unbox carton photo pill ({@link ReceivingPhotoButton}).
- *
- * /api/packing-logs already opens the packer's phone automatically on a tracking
- * pack (server `publishPackerScanReady`). This is the operator's re-send: phone
- * locked, wrong phone, camera closed, or a second round of photos. It publishes
- * the SAME `scan_ready` event on the same `packer:{staffId}` bridge, so the phone
- * listener ({@link PackerScanReadyCamera}) needs no new branch — only a fresh
- * `requestId`, which defeats its "already handled this log" dedupe so a manual
- * re-send always lands.
- *
- * Mount via {@link CartonContextCard} `photosCell` — same chrome face as Unbox
- * Photos (`STATION_CONTEXT_PHOTO_CHROME_CLASS`), never a sibling beside the card.
- */
+/** Manual "send to phone" for the pack identity bar — the packing sibling of the Unbox carton photo pill ({@link ReceivingPhotoButton}). */
 
 import { useCallback } from 'react';
 import { Camera } from '@/components/Icons';

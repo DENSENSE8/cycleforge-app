@@ -28,14 +28,7 @@ const rowClass = (selected: boolean) =>
     selected ? 'border-border-strong bg-mode-hover text-mode-ink' : 'border-mode-edge bg-mode-panel text-mode-ink active:bg-mode-hover',
   );
 
-/**
- * The package hub's `Resolve exception` verb: the pack scan of this tracking
- * number matched no order (an open `orders_exceptions` row). Two ways out —
- * link the box to the order it really holds (search by order #, tracking or
- * title), or close the exception with a required reason. One explicit button
- * is the write; `clientEventId` is minted once per opening so a retried tap
- * cannot resolve twice.
- */
+/** The package hub's `Resolve exception` verb: */
 export function ShipmentResolveSheet({
   open,
   onClose,

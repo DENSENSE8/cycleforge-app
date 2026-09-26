@@ -16,19 +16,7 @@ import {
   type AutomationDef,
 } from '@/lib/automations/automation-catalog';
 
-/**
- * /studio/automations — the first-principles answer to *"what runs by itself
- * in this warehouse, when, and did it work?"*
- *
- * The static half is {@link AUTOMATION_CATALOG} (what each automation IS); the
- * live half is `/api/cron-runs?view=summary`, read through the SAME
- * {@link useCronRunsSummary} hook the admin System-sync tab uses — one fetcher,
- * one cache, one poll. Cron rows join on `trigger.jobKey`.
- *
- * Run counters are read GENERICALLY off `lastRun.summary`: any numeric field a
- * job persists is painted, so a job that never wrote `assigned` simply shows
- * fewer chips instead of crashing on an absent key.
- */
+/** /studio/automations — the first-principles answer to *"what runs by itself in this warehouse, when, and did it work?"* */
 
 const HEALTH_CHIP: Record<JobHealth, string> = {
   ok: 'bg-emerald-50 text-emerald-700',

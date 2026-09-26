@@ -111,12 +111,7 @@ test('detectCarrier: neighboring lengths stay on their carriers', () => {
   assert.equal(detectCarrier('1Z999AA10123456784'), 'UPS');
 });
 
-// ─── §3.1 cross-carrier hardening — never truncate a USPS number ──────────────
-// The earlier (unsafe) strip guessed by trailing pattern: a valid 22-digit USPS
-// IMpb number routinely ends in a 12-digit FedEx-shaped run, so it got folded
-// onto a FedEx tail — which would have merged ~500 distinct USPS shipments.
-// The hardened strip anchors on the 96-prefixed GS1 envelope, so every
-// 92/93/94/95-prefixed USPS number passes through whole.
+// ─── §3.1 cross-carrier hardening — never truncate a USPS number ────────────── The earlier (unsafe) strip guessed by trailing pattern:
 
 test('USPS 22-digit number whose tail looks like FedEx Express is left WHOLE (plan example)', () => {
   // Trailing 12 = 314810260579 — FedEx-shaped under /^\d{12}$/, but USPS must stay whole.

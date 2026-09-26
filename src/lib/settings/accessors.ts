@@ -1,16 +1,4 @@
-/**
- * Settings Registry — typed server-side accessors for ORG-scope settings.
- *
- * Domain code reads org policy through these thin getters (same convention as
- * getPackingEnforcement / getActiveNasBaseUrl in ../tenancy/settings.ts): a
- * fully-typed value with the registry default baked in. Keep each accessor's key
- * + default in sync with its registry row.
- *
- * NOTE: these return the CONFIGURED value and do not apply the plan-entitlement
- * gate. A caller that reads a plan-gated setting (nasBackup `direct`, the
- * vision.* knobs) must also check `hasFeature(orgId, …)` before acting on a
- * gated value — see the resolver (./resolve.ts) which the API uses for UI.
- */
+/** Settings Registry — typed server-side accessors for ORG-scope settings. */
 
 import { parsePhotoAspectList, type PhotoAspect } from '@/lib/photos/photo-aspects';
 import { canonicalRole, type StaffRole } from '@/lib/auth/permissions-shared';
@@ -64,44 +52,18 @@ export const getReceivingScanSoundsEnabled = (s: OrgSettings): boolean =>
 export const getReceivingRequireSerialConfirmation = (s: OrgSettings): boolean =>
   readOrg<boolean>(s, 'receiving.requireSerialConfirmation', false);
 
-/**
- * Which item photo aspects BLOCK the `item_photos` procedure step.
- *
- * Stored as a comma list (see the registry row); parsed through the aspect SoT,
- * which drops unknown tokens rather than defaulting them. An empty result is a
- * legal answer — "any item photo counts" — and is what a two-person reseller
- * wants; the gate falls back to the line's photo count in that case.
- */
+/** Which item photo aspects BLOCK the `item_photos` procedure step. */
 export const getReceivingRequiredItemPhotoAspects = (s: OrgSettings): PhotoAspect[] =>
   parsePhotoAspectList(readOrg<string>(s, 'receiving.requiredItemPhotoAspects', 'included,serial'));
 
 export const getReceivingUnboxFlowCaptureOrderRaw = (s: OrgSettings): string =>
   readOrg<string>(s, 'receiving.unboxFlowCaptureOrder', '{}');
 
-/**
- * Org default for the Unbox Band-1 Inbound pin (registry toggle
- * `receiving.unboxDefaultPinnedExtraTabs`). v1 the pin catalog is Inbound-only,
- * so the org policy is a single boolean → the pin list (or none). New staff
- * inherit this until they pin/unpin their own strip. See the resolve order in
- * src/lib/receiving/unbox-default-pins.ts (Gemini D9).
- */
+/** Org default for the Unbox Band-1 Inbound pin (registry toggle `receiving.unboxDefaultPinnedExtraTabs`). */
 export const getReceivingUnboxDefaultPins = (s: OrgSettings): UnboxExtraTabId[] =>
   readOrg<boolean>(s, 'receiving.unboxDefaultPinnedExtraTabs', false) ? ['incoming'] : [];
 
-/**
- * PER-ROLE override of the Inbound pin default. Admins set it in Settings →
- * Receiving → Unbox strip as one `select` per role (Inherit · Pinned · Not
- * pinned), stored as flat registry keys
- * `receiving.unboxDefaultPinnedByRole.<canonicalRole>` (folded through
- * {@link canonicalRole} so `receiving`→`receiver` etc. — see the generated rows
- * in ../settings/registry.ts).
- *
- * The three states are the whole point of the role tier: `inherit` (default)
- * returns `undefined` so the resolver falls through to the org default; `on` /
- * `off` are an explicit per-role override that WINS over the org default (Gemini
- * D9). A boolean toggle could not express "inherit", which is why this is a
- * three-value select rather than a switch.
- */
+/** PER-ROLE override of the Inbound pin default. */
 export const getReceivingUnboxRoleDefaultPins = (
   s: OrgSettings,
   role: string | null | undefined,

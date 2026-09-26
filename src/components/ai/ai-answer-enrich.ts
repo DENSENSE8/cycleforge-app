@@ -1,10 +1,4 @@
-/**
- * Turns plain assistant prose into interactive content:
- *  - linkifyOrderRefs: order / tracking IDs become links into the dashboard so
- *    every listed record is clickable (works in run-on prose or table rows).
- *  - inferDestination: picks a "Take me there" target from the question + answer
- *    so the user can jump to the full view for all the records.
- */
+/** Turns plain assistant prose into interactive content: */
 
 import { SHIPPING_SHIPPED_PATH, shippingShippedHref } from '@/lib/shipping/shipped-desk';
 

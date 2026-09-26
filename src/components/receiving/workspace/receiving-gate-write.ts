@@ -1,74 +1,13 @@
 'use client';
 
-/**
- * Procedure-gate write waist — optimistic apply → durable persist → revert on
- * failure, with an operator-legible reason.
- *
- * ## Why this module exists
- *
- * The Unbox capture steps settle off durable stamps that live on
- * `receiving_line_testing` / `receiving_line_unit`:
- * `condition_graded_at` · `label_printed_at` · `serial_absent`, plus their
- * per-unit twins. `derive-capture-step-states` reads exactly those columns to
- * decide which step is active, so a write that never lands does not merely
- * lose a field — it **advances the operator's step gate on a fact the database
- * never recorded**.
- *
- * Until 2026-08-16 every one of those writes was spelled:
- *
- * ```ts
- * dispatchLineUpdated({ id, condition_graded_at: new Date().toISOString() });
- * void fetch(url, init).catch(() => {});   // ← res.ok never read
- * ```
- *
- * The docblocks justified it as "fire-and-forget; the server COALESCE keeps the
- * first write." COALESCE makes a **duplicate** write harmless; it does nothing
- * for a write that never arrived. A 403, a tenant-scope 404, an RLS rejection
- * or a dropped connection painted the step green, the operator moved to the
- * next carton, and nothing — no toast, no log, no console warning — said
- * otherwise. That is the only failure shape on this bench that produces wrong
- * data with no signal at all.
- *
- * ## The contract
- *
- * Three closures, so the optimistic patch and its undo can never drift apart:
- *
- *   - `apply()`  — paint the optimistic value (also re-run on Retry)
- *   - `revert()` — restore the prior value when the write did not land
- *   - the request — fired once, and its **status is always inspected**
- *
- * `revert()` is what keeps the step gate honest: a failed condition write puts
- * the Condition step back to pending rather than leaving it settled on a lie.
- *
- * Reference sibling for the same discipline on serials:
- * `line-edit/hooks/useLineSerials.ts` (snapshot → POST → restore on every
- * failure branch). This module is that pattern, hoisted so the eight gate
- * helpers cannot each re-derive it.
- *
- * Guard: `receiving-gate-write.guard.test.ts`.
- */
+/** Procedure-gate write waist — optimistic apply → durable persist → revert on failure, with an operator-legible reason. */
 
 import { toast } from '@/lib/toast';
 
 /** Operator-facing failure copy: what did not save, why, and what to do. */
 type GateWriteFailure = { title: string; description: string };
 
-/**
- * Resolve the operator message for a failed gate write.
- *
- * Two invariants:
- *   1. **The title always states the fact was NOT saved.** The operator's next
- *      action depends on knowing the durable value diverged from what they saw,
- *      so that cannot live in a description they may not read.
- *   2. **The description always names a next step.** "Update failed" tells an
- *      operator holding a box nothing they can act on.
- *
- * `status === null` means the request never completed (offline / dropped), which
- * is a different remedy from any server answer and so is its own branch.
- *
- * Module-private: its only external consumer was receiving-gate-write.guard.test.ts,
- * deleted 2026-08-19 with the rest of the structural guards. Still used twice below.
- */
+/** Resolve the operator message for a failed gate write. */
 function describeGateWriteFailure(
   fact: string,
   status: number | null,
@@ -191,25 +130,12 @@ type GateWriteBatchArgs<T> = {
   items: readonly T[];
   /** Paint the optimistic value for the whole set. */
   apply: (items: readonly T[]) => void;
-  /**
-   * Restore the prior value for **only the items whose write failed**.
-   *
-   * Reverting the whole set would be as wrong as reverting none: on a partial
-   * failure the successes are durable, so a blanket revert would put the UI
-   * back out of step with the database in the other direction.
-   */
+  /** Restore the prior value for **only the items whose write failed**. */
   revert: (failed: readonly T[]) => void;
   request: (item: T) => { url: string; init?: RequestInit };
 };
 
-/**
- * The N-writes twin of {@link persistGateWrite} — the "All units" / qty-split /
- * bulk-waiver pickers, which fan one operator tap out to one request per unit.
- *
- * Every request is settled and attributed back to its item, so a partial
- * failure reverts precisely the units that did not land and the Retry re-fires
- * only those.
- */
+/** The N-writes twin of {@link persistGateWrite} — the "All units" / qty-split / bulk-waiver pickers, which fan one operator tap out to one… */
 export function persistGateWriteBatch<T>(args: GateWriteBatchArgs<T>): void {
   if (typeof window === 'undefined') return;
   const { fact, items, apply, revert, request } = args;

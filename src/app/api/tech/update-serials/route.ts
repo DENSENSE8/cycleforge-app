@@ -32,9 +32,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   if (!salId && tracking) {
     // Find most recent TECH SAL for this tracking.
-    // shipping_tracking_numbers has no organization_id column (NEEDS-COL); it is
-    // scoped here via the tenant-owned parent `sal` (sal.organization_id). The
-    // stn join is on the integer surrogate PK (stn.id = sal.shipment_id), safe bare.
     const r = await tenantQuery(
       orgId,
       `SELECT sal.id FROM station_activity_logs sal

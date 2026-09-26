@@ -1,10 +1,4 @@
-/**
- * The shared catalog query grammar both kiosk rails must answer identically.
- *
- * The behaviors pinned here are the ones that broke the counter before:
- * a query that only searched the drilled category, and a bare request that
- * would have paged the whole projection.
- */
+/** The shared catalog query grammar both kiosk rails must answer identically. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

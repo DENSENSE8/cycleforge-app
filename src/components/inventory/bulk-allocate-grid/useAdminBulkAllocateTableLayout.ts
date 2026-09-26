@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The bulk-allocate slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline (`qty · condition`) — `paintMorph`
- * coerces, and the org write gate (`slotMorphsFor('admin-bulk-allocate')`)
- * refuses the foreign morph.
- */
+/** The bulk-allocate slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   ADMIN_BULK_ALLOCATE_FIELD_CATALOG,

@@ -1,14 +1,4 @@
-/**
- * Phone normalization for caller matching. The repo had no E.164 helper — only
- * a 10-digit display formatter (`src/utils/phone.ts`) — so this is the matching
- * key SoT for `counterparty_e164`.
- *
- * Scope is intentionally US/NANP-first (the business is domestic): 10-digit →
- * +1XXXXXXXXXX, 11-digit leading 1 → +1…, already-+E.164 passes through. Anything
- * else returns null (don't guess — an unmatched key is safer than a wrong one).
- * If international volume appears, swap the body for `libphonenumber-js` without
- * touching callers.
- */
+/** Phone normalization for caller matching. */
 
 export function toE164(raw: string | null | undefined, defaultRegion: 'US' = 'US'): string | null {
   if (!raw) return null;

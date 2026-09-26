@@ -1,27 +1,4 @@
-/**
- * Pre-paint boot splash (the white-flash bridge).
- *
- * A fresh sign-in lands on the dashboard via a HARD navigation
- * (window.location.assign). The dashboard's SSR HTML is NOT the splash — the app
- * shell (ResponsiveLayout) gates all children behind a client `mounted` flag, so
- * the document's first paint is a blank white div, and React's <BootGate> splash
- * only appears a few hundred ms later after hydration. Coming straight from the
- * sign-in-side splash, that blank gap reads as the "Loading your workspace"
- * screen flickering off and back on.
- *
- * This script runs synchronously in <head> (like THEME_BOOT_SCRIPT) on every
- * document load. When the one-shot boot flag is set it paints a static splash —
- * visually identical to <BootSplash> — into <html> immediately, BEFORE first
- * paint, bridging the gap. <BootGate> removes it (#__boot_splash_pre) as soon as
- * its own React splash is mounted on top, so the handoff is seamless. A 10s
- * self-removal is a safety net in case no BootGate ever claims it.
- *
- * The flag key and the element id below are duplicated by hand:
- *   - key  'cf:boot-splash'   must match BOOT_FLAG_KEY in `boot-flag.ts`
- *   - id   '__boot_splash_pre'  must match the removal in `components/boot/BootGate.tsx`
- *   - z-index 2000              must match `tokens/z-index.ts` (splash)
- * Keep them in sync.
- */
+/** Pre-paint boot splash (the white-flash bridge). */
 export const BOOT_SPLASH_SCRIPT = `(function(){
   try {
     if (sessionStorage.getItem('cf:boot-splash') !== '1' && sessionStorage.getItem('usav:boot-splash') !== '1') return;

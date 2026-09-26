@@ -14,15 +14,7 @@ interface FbaCombineWorkspaceProps {
   onClose: () => void;
 }
 
-/**
- * Center workspace that crossfades over the board on the combine page.
- *
- * It mirrors receiving's selected-line workspace: the "active entity" is the
- * in-progress FBA shipment. Pick packed items from the sidebar Packed rail (or
- * board checkboxes) → they land in the kanban builder; drag them into UPS-box
- * columns under one FBA Shipment ID. Existing/combined shipments are browsed
- * and edited from the sidebar Recent tab, not here.
- */
+/** Center workspace that crossfades over the board on the combine page. */
 export function FbaCombineWorkspace({
   selectedItems,
   stationTheme = 'green',

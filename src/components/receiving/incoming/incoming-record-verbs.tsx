@@ -3,10 +3,6 @@
 /**
  * The incoming delivery record's verbs — the ONE action strip under the
  * ledger's search row, armed for the open row (owner 2026-09-25: no verbs in
- * the record header or its right column). A verb either runs (`run`) or morphs
- * the strip into its own display (`display`) — pair, claim, task. Only the
- * existing receiving verbs: sync, pair, claim, open in Unbox, copy, tasks,
- * remove from Incoming.
  */
 
 import { Copy, Link2, Package, RefreshCw, Ticket, Trash2 } from '@/components/Icons';

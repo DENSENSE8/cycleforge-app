@@ -2,32 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-/**
- * Shared "rail row" anatomy primitive — one row, one skeleton, one size.
- *
- * An optional eyebrow line, a title line (with an inline accessory + a
- * right-aligned eyebrow affordance), and an optional meta line with
- * right-aligned trailing chips. Every station that shows a list of records — the
- * receiving/testing recent rail (`RailRow` → `renderRowMain`) and the tech
- * Up-Next `OrderCard` — fills the SAME named slots via a `*ToRailVM` adapter, so
- * the structure, sizing, truncation, and vertical rhythm are identical across
- * surfaces while each domain supplies its own slot CONTENT.
- *
- * The split is deliberate:
- *   • the primitive owns LAYOUT (flex, gaps, truncation containers, size scale);
- *   • the adapter owns CONTENT + emphasis (colors, weights, chips, casing).
- *
- * There is intentionally NO density/size variant: every rail row renders at the
- * one tight recent-rail scale. (The earlier `card` density was removed so the
- * shipping queue can't drift back into a taller, different-looking row.)
- *
- * Do NOT render a status dot, selection ring, click handler, or far-right
- * timestamp here — those belong to the host frame (`CompactActivityRow` /
- * `RailRow`'s button / `CardShell`). This component is the content stack only.
- *
- * Compact activity face (dot · title · one fact · `4h`): compose this body
- * inside `CompactActivityRow` — never fork a chat-notification twin.
- */
+/** Shared "rail row" anatomy primitive — one row, one skeleton, one size. */
 
 export interface RailRowVM {
   /** Optional line above the title (e.g. "#8101 · eBay · assignee"). Bring your own span colors. */

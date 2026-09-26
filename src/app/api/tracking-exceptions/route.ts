@@ -3,16 +3,7 @@ import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/tracking-exceptions
- *
- * Triage queue read. Filters:
- *   ?domain=receiving|orders        (default: receiving)
- *   ?status=open|resolved|discarded (default: open, "all" returns every status)
- *   ?q=<tracking-fragment>          exact or key18 suffix match
- *   ?limit=<n> (default 100, max 500)
- *   ?offset=<n> (default 0)
- */
+/** GET /api/tracking-exceptions */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -77,10 +68,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
        LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
 
-    // tracking_exceptions has no organization_id column (child-scoped via
-    // staff/receiving). Both parent FKs are nullable and joined on integer
-    // surrogate PKs, so we GUC-wrap (tenantQuery) for the RLS backstop rather
-    // than adding an explicit org filter. See NEEDS-COL note in tenancy audit.
+    // tracking_exceptions has no organization_id column (child-scoped via staff/receiving).
     const result = await tenantQuery(ctx.organizationId, sql, params);
 
     const countSql = `SELECT COUNT(*)::int AS n FROM tracking_exceptions te WHERE ${where.join(' AND ')}`;

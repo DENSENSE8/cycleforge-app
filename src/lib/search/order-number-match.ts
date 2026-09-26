@@ -1,13 +1,4 @@
-/**
- * Marketplace order # and unit serial matching for Find.
- *
- * Identifier queries equal the stored value (dash / separator insensitive).
- * They must not substring-match a longer id, and they must not treat a
- * numeric query as `orders.id` (that is Internal ID).
- *
- * Last-8 is exact: the paste is the trailing 8 alphanumerics, the trailing
- * 8 digits, or the trailing 8 raw characters (chip face, dashes included).
- */
+/** Marketplace order # and unit serial matching for Find. */
 
 export { looksLikeMarketplaceOrderNumber } from './looks-like-marketplace-order-number';
 

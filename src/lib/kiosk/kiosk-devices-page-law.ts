@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: KioskDevicesWorkspace, KioskDevicesSection, unit/cohort tests.
- * Affected API: none (URL ?view= only). Data schemas: KioskDevicesPageView.
- * User instruction (verbatim): This display and UI and UX is terrible. You must
- * upgrade… multiple tabs… triage between the tabs… using the impeccable skill.
- */
+/** Gate preamble (Fact-Forcing): */
 
 /** URL query key — park the active peer so refresh / share keep the triage. */
 export const KIOSK_DEVICES_VIEW_PARAM = 'view';
@@ -18,16 +12,7 @@ export function parseKioskDevicesPageView(raw: string | null | undefined): Kiosk
 }
 
 /**
- * Settings › Devices hosts TWO PRODUCT_TABLES peers (fleet + history). Paint law:
- *
- * - One visible DataTable at a time.
- * - TabSwitch sits under the page title (left) — never stack both tables.
- * - URL `?view=devices|history` routes the peer (`devices` may omit the param).
- * - Enroll chrome mounts only on the fleet tab.
- * - History never gains Revoke (credential verb stays on kiosk-devices).
- * - Do not mount DeskPageChrome here — settings keeps the canvas title row.
- *
- * Impeccable: distill (one peer) + polish (TabSwitch pill + matched enroll
+ * Settings › Devices hosts TWO PRODUCT_TABLES peers (fleet + history).
  * row heights). Operator 2026-09-11.
  */
 export const KIOSK_DEVICES_PAGE_LAW = {

@@ -1,53 +1,13 @@
 import type { ReactNode } from 'react';
 import type { StickyActionTone } from '@/design-system/components/StickyActionBar';
 
-/**
- * A verb's direction for one row — the law's do / undo / already-done.
- *
- * `TABLE_ENGINE_LAW.verbsBindToFields`: "A reversible verb is ONE verb with two
- * directions. 'Mark scanned out' and 'Undo scan-out' are not two verbs on two
- * pages." Direction is a function of ROW STATE and never of the route.
- *
- * - `do`   — the field is unset on this row; the verb writes it.
- * - `undo` — the field is set; the verb clears it.
- * - `done` — the verb has nothing to do here and no way to reverse it
- *            (a one-way write that already landed).
- */
+/** A verb's direction for one row — the law's do / undo / already-done. */
 export type VerbDirection = 'do' | 'undo' | 'done';
 
 /** Tie-break order, so a 50/50 selection resolves deterministically. */
 const DIRECTION_PRECEDENCE: readonly VerbDirection[] = ['do', 'undo', 'done'];
 
-/**
- * One contextual bulk action for a selection of table rows.
- *
- * ## Declared ONCE, per family — never at a page
- *
- * A verb belongs to its family's catalog and is BOUND by every surface that mounts
- * that family. A `SelectionAction` literal at a page or a mount is the fork
- * this law exists to refuse.
- *
- * ## It binds to a FIELD, not to a lane
- *
- * {@link SelectionAction.writesField} names the catalog fact the verb writes.
- * The offered set on a surface is derived from the fields that surface can
- * resolve ({@link offeredSelectionActions}) — never from a hardcoded per-lane
- * key list. A verb that writes no fact (copy, export, print, delete) declares
- * no field and is offered wherever the family is mounted; it still gates on
- * ROW STATE through {@link SelectionAction.enabled}.
- *
- * Everything that used to be "this lane offers these keys" is now a predicate
- * over the rows: "Set condition" is offered while a selected row is still in
- * the building, not because the URL says `?unshipped`. That is the same
- * answer on every surface, which is the point — a new lane inherits it.
- *
- * ## Bulk is a cardinality, not a mode
- *
- * The row `⋮` menu is this same catalog at n = 1. There is no separate bulk
- * vocabulary, and a mixed selection RESOLVES rather than hiding: the verb
- * offers the direction that applies to the majority and names the remainder
- * in {@link ResolvedSelectionAction.reason}.
- */
+/** One contextual bulk action for a selection of table rows. */
 export interface SelectionAction<T> {
   /** Stable identity for React keys + analytics. */
   key: string;
@@ -57,31 +17,9 @@ export interface SelectionAction<T> {
   /** Marks the CTA. The first `primary` action becomes the big button; the
    *  remainder render in the overflow menu in declaration order. */
   primary?: boolean;
-  /**
-   * Which KIND of verb this is, as a heading in the rail.
-   *
-   * A lane can publish eight of these, and eight buttons in one wrap row is a
-   * wall an operator has to read end to end every time — they do not divide by
-   * what they DO (write a value onto the rows, produce something from them,
-   * destroy them), only by which happened to be declared first. Grouping is the
-   * cheapest way to make "where is print" a glance instead of a scan.
-   *
-   * Omit it and the action rides in the unlabelled leading group, so a lane
-   * that never sets it renders exactly as it did.
-   */
+  /** Which KIND of verb this is, as a heading in the rail. */
   group?: string;
-  /**
-   * The catalog field id this verb WRITES (`orders.scanned_out`, …).
-   *
-   * The gate is whether the mounted surface can RESOLVE the fact for its rows,
-   * not whether it paints a column for it — a dock scan-out is offered on
-   * To-ship and on Shipped from this one declaration, while To-ship still
-   * refuses to paint a `Scanned out` column (`omitShippedOnlyBindings`).
-   * Painting is a layout decision; being able to act on a fact the row carries
-   * is not. A mount whose rows cannot answer the field never offers the verb.
-   *
-   * Omit for a verb that writes no fact (copy, export, print, delete).
-   */
+  /** The catalog field id this verb WRITES (`orders.scanned_out`, …). */
   writesField?: string;
   /**
    * This row's direction. Omit for a one-way verb.
@@ -100,26 +38,14 @@ export interface SelectionAction<T> {
   enabled?: (rows: T[]) => boolean;
   /** Tooltip shown when the action is disabled, explaining why. */
   disabledReason?: string;
-  /**
-   * Run the verb over the rows.
-   *
-   * `resolved.direction` is the majority direction the operator was shown; a
-   * reversible verb applies it and skips the rows it does not cover (those are
-   * the ones named in {@link ResolvedSelectionAction.reason}). One-way verbs
-   * ignore the second argument entirely.
-   */
+  /** Run the verb over the rows. */
   run: (rows: T[], resolved?: { direction: VerbDirection }) => void | Promise<void>;
 }
 
 export interface ResolvedSelectionAction<T> {
   action: SelectionAction<T>;
   disabled: boolean;
-  /**
-   * Why it's disabled — or, when the verb is live over a MIXED selection, which
-   * rows it will skip ("4 of 7 already scanned out"). The law requires the
-   * remainder be named rather than silently dropped, so this is populated on
-   * an enabled action too and consumers surface it as the tooltip.
-   */
+  /** Why it's disabled — or, when the verb is live over a MIXED selection, which rows it will skip ("4 of 7 already scanned out"). */
   reason?: string;
   /** Majority direction across the selection; undefined for a one-way verb. */
   direction?: VerbDirection;
@@ -148,12 +74,7 @@ function majorityDirection<T>(action: SelectionAction<T>, rows: T[]): VerbDirect
   return best;
 }
 
-/**
- * Apply an action's count + predicate constraints against the current
- * selection and resolve its DIRECTION from the rows, returning whether it's
- * disabled and a human reason for the tooltip. Pure — safe to call on every
- * render.
- */
+/** Apply an action's count + predicate constraints against the current selection and resolve its DIRECTION from the rows, returning whether… */
 export function resolveSelectionAction<T>(
   action: SelectionAction<T>,
   rows: T[],
@@ -219,15 +140,7 @@ export function resolveSelectionAction<T>(
   };
 }
 
-/**
- * The verbs a surface may offer, given the facts its rows can resolve.
- *
- * This replaces the per-lane key list the law forbids. A verb that names no
- * field is always offered (it reads the selection rather than writing a fact)
- * and gates on row state through `enabled`; a verb that names one is offered
- * only where that fact is resolvable, so a receiving-line mount never grows a
- * dock scan-out and an orders mount never has to list its keys.
- */
+/** The verbs a surface may offer, given the facts its rows can resolve. */
 export function offeredSelectionActions<T>(
   actions: readonly SelectionAction<T>[],
   resolvableFieldIds: Iterable<string>,

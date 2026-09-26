@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Ticket pick-row identity — subject leads; typed {@link TicketChip} on the
- * keys row. Thin composer over {@link StackedRowIdentity} for every
- * "pick / link an existing ticket" list.
- *
- * Golden consumers: shared {@link TicketPicker}, TicketLinkPopover, Warranty
- * link-existing, WarrantyTicketPopover, zendesk ClaimTicketPicker. Never lead with
- * a mono `#{id}` beside the subject — that was the third identity grammar
- * StackedRowIdentity retired.
- *
- * Detail: Stacked row identity.
- */
+/** Ticket pick-row identity — subject leads; typed {@link TicketChip} on the keys row. */
 
 import type { ReactNode } from 'react';
 import { TicketChip } from '@/components/ui/CopyChip';

@@ -1,18 +1,4 @@
-/**
- * staff-recents — server SoT for the per-staff "most recently searched" history
- * (Dashboard Search mode). Backed by `search_recents`
- * (src/lib/migrations/2026-07-17b_search_recents.sql).
- *
- * MRU semantics: a repeat query does not append — the unique
- * (organization_id, staff_id, scope, lower(query)) key collapses it and the
- * writer bumps `created_at` so it floats to the top. Reads are newest-first,
- * capped at STAFF_RECENTS_MAX; the writer trims the tail so the table stays
- * bounded per staffer.
- *
- * Rows are returned in the shared `SearchRecentEntry` shape so the same
- * `SearchRecentsDropdown` renderer works over the DB store and the legacy
- * localStorage store alike.
- */
+/** staff-recents — server SoT for the per-staff "most recently searched" history (Dashboard Search mode). */
 
 import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -33,16 +19,7 @@ interface SearchRecentDbRow {
   created_at: Date | string;
 }
 
-/**
- * `scope_label` is RE-RESOLVED on read, never trusted (2026-08-21).
- *
- * The column is a snapshot of whatever the writer's surface called itself at
- * insert time, and rows outlive the code path that wrote them: 89 dogfood rows
- * still carried `Search` from `GlobalFindCombobox`'s retired
- * `scope: isStage ? 'dashboard' : 'global'` line. `scope` is the durable fact;
- * the label is a presentation of it, so it resolves through the one SoT
- * ({@link resolveSearchScopeLabel}) on every read.
- */
+/** `scope_label` is RE-RESOLVED on read, never trusted (2026-08-21). */
 function toEntry(row: SearchRecentDbRow): SearchRecentEntry {
   return {
     id: String(row.id),
@@ -105,10 +82,7 @@ export async function pushStaffRecent(
   if (!query) return listStaffRecents(orgId, staffId);
   const scope = (input.scope || 'global').trim() || 'global';
 
-  // One pooled checkout / one transaction for the whole write: upsert →
-  // (only if a genuinely new row) trim → re-list. `COALESCE(EXCLUDED.x, …)` on
-  // the optional columns means an MRU bump that carries less context never wipes
-  // a previously-stored top_hit / result_count / label.
+  // One pooled checkout / one transaction for the whole write:
   return withTenantConnection(orgId, async (client) => {
     const upsert = await client.query<{ inserted: boolean }>(
       `INSERT INTO search_recents

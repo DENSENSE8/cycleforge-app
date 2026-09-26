@@ -19,10 +19,7 @@ describe('nav-command-codes', () => {
   });
 
   it('parses the country-mangled and lower-cased forms of every code', () => {
-    // An HID wedge on the wrong keyboard layout drops every separator and
-    // upper-cases the rest — the same failure `FLATTENED_MOBILE_LINK_RE` exists
-    // for. A sticker that only scans on a correctly-configured gun is a sticker
-    // that fails on the one bench nobody checked.
+    // An HID wedge on the wrong keyboard layout drops every separator and upper-cases the rest — the same failure `FLATTENED_MOBILE_LINK_RE`…
     for (const def of NAV_COMMAND_CODES) {
       const squashed = squashCommandCode(def.code);
       assert.equal(parseNavCommand(squashed)?.code, def.code, squashed);

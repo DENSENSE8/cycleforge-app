@@ -1,16 +1,4 @@
-/**
- * DB-free unit tests for {@link receivingLinesTableQuery} — the shared
- * query-options SoT behind the Unbox table + KPI strip dedup.
- *
- * Pins the contract the dedup depends on:
- *   - `full` phase key/params are byte-identical to the mode descriptor's own
- *     (so every consumer of a view shares ONE cache entry, and the existing
- *     `['receiving-lines-table']`-root invalidation keeps covering it);
- *   - `spine` phase drops `include=serials`, sends `phase=spine`, and keys as
- *     a `'spine'` leaf under the same root.
- *
- * Run: `npx tsx --test src/lib/queries/receiving-queries.test.ts`
- */
+/** DB-free unit tests for {@link receivingLinesTableQuery} — the shared query-options SoT behind the Unbox table + KPI strip dedup. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

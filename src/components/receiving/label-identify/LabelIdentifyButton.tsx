@@ -21,15 +21,7 @@ interface LabelIdentifyButtonProps {
   hideWhenUnavailable?: boolean;
 }
 
-/**
- * "Identify by photo" — the reliable way to add an item by photographing its
- * printed label. Snap the bottom label → the LAN vision box OCRs the Bose model →
- * the server resolves it to a catalog product → operator confirms → caller pairs it.
- *
- * Uses a plain file input with `capture="environment"` (rear camera) so it works
- * on the receiving desktop and on phones without the heavy full-screen capture
- * surface. One photo, one identify — built for "flip it over and shoot the label".
- */
+/** "Identify by photo" — the reliable way to add an item by photographing its printed label. */
 export function LabelIdentifyButton({
   onConfirm,
   label = 'Identify by photo',

@@ -13,25 +13,7 @@ export const dynamic = 'force-dynamic';
 
 const AUDIT_SOURCE = 'api.shipping.labels';
 
-/**
- * POST /api/shipping/labels — buy a quoted rate (operator/station entry).
- *
- * The generic sibling of /api/shipping/order-labels/purchase: no order anchor — it
- * buys the exact rate quoted by POST /api/shipping/rates and returns the label.
- * Callers that have an order should prefer the outbound route (it registers
- * tracking, stores the label document, and emails the customer).
- *
- * Idempotency: `clientEventId` is required; a prior successful purchase under
- * the same key (found via this route's LABEL_PURCHASED audit row) short-circuits
- * instead of buying a second label. ShipStation's create-label is NOT itself
- * idempotent and audit writes are best-effort, so the UI must also disable
- * double-submit — same residual window the outbound route documents.
- *
- * Missing per-org ShipStation credentials → 409 { error: 'NOT_CONNECTED' }.
- *
- * Body: { rateId, clientEventId, labelFormat?, labelLayout? }
- * Returns { ok, labelId, trackingNumber, labelDownload, … }.
- */
+/** POST /api/shipping/labels — buy a quoted rate (operator/station entry). */
 
 type PriorPurchase = { after_data: Record<string, unknown> | null };
 

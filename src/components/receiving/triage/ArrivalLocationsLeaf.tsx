@@ -1,46 +1,6 @@
 'use client';
 
-/**
- * @domain-job Arrival Displays → Locations — place the CARTON on a door shelf
- *   **or** place any PRODUCT on the carton in its putaway bin, without leaving
- *   the door pass.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse StationLocationsDisplay directly here — a port is
- *   built from hooks, `buildTriageDisplays` assembles elements outside any
- *   component, and Arrival is the one station with TWO placement grains to
- *   choose between. This file is that choice and nothing else.
- *
- * ## Two grains, one leaf, never one column
- *
- * Receiving carries two independent location facts and they are not a
- * hierarchy — neither falls back to the other:
- *
- * | Subject | Table | Means |
- * |---|---|---|
- * | Carton  | `receiving_triage.staging_location_id` (+ `priority_lane`) | the unopened box is on this shelf |
- * | Product | `receiving_line_putaway.staged_location_id` | this item goes to this bin |
- *
- * So the subject is a SELECT above the shared leaf and each subject brings its
- * own port. Widening the carton column to also mean "and its products" would
- * make every metric that reads it silently answer a different question, and
- * writing a product's bin into it would corrupt the shelf + lane pair that
- * `completeTriage` gates Save-for-unbox on.
- *
- * The carton subject keeps `useTriageLocationPort`, so `selectShelf`'s lane
- * auto-route and its manual-wins rule are inherited untouched — the gate is not
- * relaxed and its one satisfying control has not moved.
- *
- * The product subject mounts {@link useReceivingLineLocationPort}, the SAME
- * port Unbox uses, so there is one line-putaway writer on the floor rather than
- * an Arrival twin of it. It also carries the directed target ("put this product
- * here"), which the carton subject deliberately does not: a door shelf is
- * chosen by what is free right now, not by where this SKU historically went.
- *
- * Products appear only when the carton HAS lines — an unfound / unmatched
- * carton has no product to place, and offering the subject anyway would be a
- * verb that cannot commit.
- */
+/** @domain-job Arrival Displays → Locations — place the CARTON on a door shelf **or** place any PRODUCT on the carton in its putaway bin,… */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -84,10 +44,7 @@ export function ArrivalLocationsLeaf({
   const receivingId = row.receiving_id ?? null;
   const [subject, setSubject] = useState<SubjectId>(CARTON_SUBJECT);
 
-  // The carton's product lines. Its own key, NOT the accordion's
-  // `receiving-siblings` one: two observers on one key with different queryFns
-  // let the later mount's fetcher win, and the accordion's carries the
-  // serial/unit carry-forward that keeps a metadata refetch from blanking them.
+  // The carton's product lines.
   const linesQuery = useQuery<ReceivingLineRow[]>({
     queryKey: ['arrival-location-subjects', receivingId] as const,
     enabled: active && receivingId != null && receivingId > 0,
@@ -144,11 +101,7 @@ export function ArrivalLocationsLeaf({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Row 1 — WHAT is being placed. Only when there is a second answer:
-          a carton with no lines has exactly one placeable thing, and a select
-          with one option is chrome pretending to be a decision. Same face as
-          the leaf's own mode control one row down, so the two read as one
-          stacked child-mode grammar rather than two kits. */}
+      {/* Row 1 — WHAT is being placed. */}
       {lines.length > 0 ? (
         <div className="shrink-0" data-testid="arrival-locations-subject-select">
           <SearchableSelectField

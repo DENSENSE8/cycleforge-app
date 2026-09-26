@@ -7,31 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/units/next-id
- *
- * PREVIEW of the next unit identifier for a SKU — the label printer shows this
- * before the operator commits to printing. It does NOT advance the sequence
- * (fn_peek_unit_seq); the authoritative per-serial allocation happens server-
- * side at print time in /api/post-multi-sn. This makes browsing SKUs free of
- * sequence burn.
- *
- *   {
- *     unitId:  "IPH13-128-BLU-2026-000142",   // the NEXT id that will be issued
- *     gtin:    "02000000001236",              // 14 digits, internal range
- *     skuCatalogId: 123,
- *     year:    2026,
- *     seq:     142
- *   }
- *
- * Resolution order on sku_catalog:
- *   1. If body.sku_catalog_id is provided → use it directly.
- *   2. Else look up by `sku` (case-insensitive, trimmed). 404 if missing.
- *
- * Internal GTIN is generated + persisted lazily on first call per SKU. The
- * printed products label encodes the bare unit id (no GS1 link), so no qrUrl is
- * returned. Authentication: `print.label` permission.
- */
+/** POST /api/units/next-id */
 export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   const body = await request.json().catch(() => ({}));
@@ -50,15 +26,7 @@ export const POST = withAuth(async (request, ctx) => {
   }
 
   try {
-    // 1. Resolve sku_catalog row. Match strategy mirrors get-title-by-sku:
-    //    exact (case/trim) → leading-zero-stripped → platform_sku crosswalk.
-    //    Without this, an input like "1103" misses a catalog row stored as
-    //    "01103" and the print flow silently 404s.
-    //    Org-scoped: thread the caller's org so the lookup (direct id, sku/
-    //    platform_sku string-key match) is constrained to this tenant's rows.
-    //    sku_catalog is tenant-owned (organization_id); without this an org-B
-    //    caller could pass an org-A sku_catalog_id or a colliding sku string
-    //    and read org A's catalog row + previewed unit sequence.
+    // 1. Resolve sku_catalog row.
     const resolved = await resolveSkuCatalogRow(skuInput, explicitId, orgId);
 
     if (!resolved) {
@@ -69,9 +37,6 @@ export const POST = withAuth(async (request, ctx) => {
     }
 
     // 2. Ensure GTIN exists (catalog data; not encoded on the products label).
-    //    Org-scoped: the lazy UPDATE that mints a gtin is gated by
-    //    organization_id, so we can never persist a gtin onto another tenant's
-    //    sku_catalog row.
     const gtin = resolved.gtin && resolved.gtin.trim() ? resolved.gtin.trim() : await getOrCreateInternalGtin(resolved.id, orgId);
 
     // 3. Peek the next unit serial — preview only, does NOT advance the

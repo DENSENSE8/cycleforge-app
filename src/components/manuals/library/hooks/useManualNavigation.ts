@@ -17,14 +17,7 @@ export interface UseManualNavigation {
   goToCrumb: (index: number) => void;
 }
 
-/**
- * Owns folder navigation: the breadcrumb path, drilling in/out, and the
- * `?id=`-driven file selection. When a file is selected directly (deep link),
- * the breadcrumb jumps to that file's folder once.
- *
- * @param basePath Route for URL writes (e.g. '/products').
- * @param manuals  Current rows — used to resolve a deep-linked file's folder.
- */
+/** Owns folder navigation: */
 export function useManualNavigation(basePath: string, manuals: ManualRow[]): UseManualNavigation {
   const router = useRouter();
   const searchParams = useSearchParams();

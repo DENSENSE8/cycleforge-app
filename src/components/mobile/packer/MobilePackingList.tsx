@@ -11,15 +11,7 @@ import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/des
 import { GridDegradedBox } from '@/design-system/components/grid';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 
-/**
- * Mobile packer surface. The top scan field takes a staged tote (camera, wedge
- * or typed): `GET /api/packing/resolve-tote` names its paired order and the
- * phone opens that order's pack job (`/m/pack/start/[orderId]`). Below it,
- * recent packed logs, newest pinned at the bottom; tap opens MobilePackingSheet.
- *
- * Shares all display logic with the other mobile feeds via useCaptureStackQuery /
- * useCaptureStackWindow / CaptureStack. `limit` defaults to 8 (one phone screen).
- */
+/** Mobile packer surface. */
 export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; limit?: number }) {
   const router = useRouter();
   const pendingScan = useRef(false);

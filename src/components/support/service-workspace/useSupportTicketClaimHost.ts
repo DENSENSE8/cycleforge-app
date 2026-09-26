@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Shared claim host for the Support station — the create/link orchestration
- * modeled on `useUnboxLineController.openClaimModal` + `LineEditModals`.
- *
- * LINK is already served everywhere by `SupportContextHub → LinkageStrip →
- * TicketLinkPopover` (order / receiving / tracking anchors), so this host owns the
- * missing half: CREATE. It opens the create modal for an optional anchor and runs
- * the `POST /api/support/tickets` mutation (helpdesk-facade create + optional link
- * through the shared waist). On success it returns the PROVIDER ticket id so the
- * caller can open the new ticket (`?ticket=<providerTicketId>`) with no URL-key
- * change, then invalidates the Support context caches.
- */
+/** Shared claim host for the Support station — the create/link orchestration modeled on `useUnboxLineController.openClaimModal` +… */
 
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

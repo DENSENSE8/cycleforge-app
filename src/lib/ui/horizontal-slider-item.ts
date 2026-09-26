@@ -1,11 +1,4 @@
-/**
- * Horizontal button-slider item shape — the pure model behind the pill strip.
- *
- * Rescued out of `@/components/ui/HorizontalButtonSlider` (Warehouse-OS):
- * eight domain modules author these arrays (receiving / walk-in / support /
- * operations / signals sidebars) and none of them should reach into the UI
- * tree for a row shape.
- */
+/** Horizontal button-slider item shape — the pure model behind the pill strip. */
 
 export type HorizontalSliderTone =
   | 'zinc'

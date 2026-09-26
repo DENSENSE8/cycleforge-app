@@ -2,21 +2,7 @@
 
 /**
  * TabSwitch — the segmented tab box (one face only).
- *
- * Callers: KioskDevicesWorkspace, LabelPrinterWorkHeader, DocumentSlideOver,
- * settings/me, the Daily lists' All/Open/Done, the task inspector's Task/Ticket.
- * User: "For the tab switch component remove all the other variants and just
- * keep the segmented" (2026-09-11).
- *
  * INDUSTRIAL (operator 2026-09-23): *"box it off, no corner radius, industrial
- * tabs, smaller and easier to use."* The track and the sliding face are
- * flush-square (`rounded-none`) like the rest of the ops ladder — the old
- * capsule was a soft-ladder exemption this ruling retired — and the faces
- * dropped a size step (caption text, tighter pads) so the box reads as a
- * compact instrument, not a hero control.
- *
- * Former `default` / `upNext` / `solid` faces were deleted 2026-09-11. Tone is
- * only `solidTone` (inverse fill vs accent fill).
  */
 
 import type { ReactNode } from 'react';
@@ -54,12 +40,7 @@ interface TabSwitchProps {
    * `plain` = same size/weight as the label (no bubble) — preferred for dense ops headers.
    */
   countStyle?: 'badge' | 'plain';
-  /**
-   * Active-face fill.
-   * `inverse` (default): black sliding capsule + white label (`bg-surface-inverse`
-   * / `text-text-inverse`) — white on black, not staff accent.
-   * `accent`: `bg-accent-bg` + inverse label (Kiosk devices).
-   */
+  /** Active-face fill. */
   solidTone?: 'inverse' | 'accent';
   /**
    * `fill` (default) — track stretches; tabs share width (`flex-1`).

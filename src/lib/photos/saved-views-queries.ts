@@ -10,12 +10,7 @@ import {
   type SavedViewRow,
 } from '@/lib/saved-views/saved-views-queries';
 
-/**
- * Media Library saved views — thin wrappers over the polymorphic
- * `saved_views` table with `surface = 'media_library'`. Preserves the
- * historical function names so `/api/photos/saved-views` and
- * `useMediaLibrarySavedViews` stay unchanged.
- */
+/** Media Library saved views — thin wrappers over the polymorphic `saved_views` table with `surface = 'media_library'`. */
 
 export type MediaSavedView = SavedViewRow;
 

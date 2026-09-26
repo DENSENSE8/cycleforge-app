@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Station-density unit journeys for {@link WorkspaceTimelineTab}.
- *
- * One {@link TimelineSection} / {@link EventTimeline} feed for the carton —
- * not N Operations-style {@link SerialJourneySection} embeds. Each serial's
- * stage photo rows (arrival / unbox / testing / packing) fold in as collapsed
- * per-stage thumb rows; a failed photo fetch degrades that serial to
- * events-only (never blocks the feed).
- *
- * Station anatomy (`metaTrail` + `refInline`):
- *   1. Primary — event outcome ("Tested — Fail")
- *   2. Secondary — SerialChip last-8 · clock · actor
- * Raw PREV → NEXT machine trails are omitted (duplicate the title dialect).
- *
- * The secondary line is EARNED BY THE CHIPS. A single-unit carton carries no
- * serial chip (nothing to disambiguate — see `mergeStationUnitJourneys`), so
- * those rows collapse to one line with the clock trailing the title. Two-line
- * is the multi-unit shape, not the default.
- */
+/** Station-density unit journeys for {@link WorkspaceTimelineTab}. */
 
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';

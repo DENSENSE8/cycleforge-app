@@ -36,17 +36,7 @@ import { cn } from '@/utils/_cn';
 /** Station / journey density: max preview slots (last becomes `+N` when more). */
 const DEFAULT_MEDIA_THUMB_LIMIT = 4;
 
-/**
- * Shared, domain-agnostic event timeline — the vertical day-banded trail used by
- * detail panels across the app (carrier events, order tracking/label events,
- * receiving/tech/warranty/repair history…). It renders generic {@link TimelineItem}s;
- * each domain provides a `*ToTimeline` adapter (`src/lib/timeline/*`) — panels
- * never hand-roll a timeline.
- *
- * Visual language: quiet fading rail, **mode glyphs + HoverTooltip** (not color
- * dots), refined type hierarchy, hover row, restrained stagger. Identifiers
- * reuse the app-wide {@link CopyChip} family (last-8 + copy-on-click).
- */
+/** Shared, domain-agnostic event timeline — the vertical day-banded trail used by detail panels across the app (carrier events, order… */
 
 const BADGE_TONE: Record<TimelineTone, string> = {
   default: 'bg-surface-sunken text-text-muted',
@@ -64,12 +54,7 @@ const DENSITY: Record<Density, { pb: string; day: string; glyphTop: string }> = 
   compact: { pb: 'pb-3', day: 'mt-4 first:mt-0', glyphTop: 'top-px' },
 };
 
-/**
- * Inline timeline thumbs → shared photo-gallery SoT (never a new browser tab).
- * Preview is capped (`thumbLimit`); full `media` (or optional `galleryPhotos`
- * override — e.g. carton/PO set) feeds the lightbox. Read surface: `{ url,
- * thumbUrl }` only so delete/upload stay off.
- */
+/** Inline timeline thumbs → shared photo-gallery SoT (never a new browser tab). */
 function TimelineMediaStrip({
   media,
   thumbLimit = DEFAULT_MEDIA_THUMB_LIMIT,
@@ -249,14 +234,7 @@ function itemIdentityRefs(item: TimelineItem): TimelineRef[] {
   return item.ref ? [item.ref] : [];
 }
 
-/**
- * Actor cell — name, prefixed by the staffer's photo when the adapter resolved
- * a staff id. An `xs` mark keeps the meta line's height unchanged, so adding a
- * face never re-flows a dense journey.
- *
- * No id ⇒ name only. An avatar is never guessed from a display name: two people
- * share one, and the row would then attribute the work to the wrong face.
- */
+/** Actor cell — name, prefixed by the staffer's photo when the adapter resolved a staff id. */
 function ActorLabel({ item }: { item: TimelineItem }) {
   const staffId = item.actorStaffId;
   return (
@@ -269,19 +247,7 @@ function ActorLabel({ item }: { item: TimelineItem }) {
   );
 }
 
-/**
- * How the rows are grouped:
- *   • `time`   — chronological day bands ("order-based" view: the merged trail in
- *                time order — the default everywhere).
- *   • `serial` — one band per identifier (serial/tracking/sku/order id), each
- *                holding that unit's events in time order ("serial-based" view).
- *                Rows with no `ref` collapse under a single "Order events" band so
- *                nothing is dropped.
- *
- * The data already carries a per-row {@link TimelineRef} from every adapter, so
- * the serial↔order toggle is a pure presentation switch over the same items —
- * no second fetch, no second component.
- */
+/** How the rows are grouped: */
 export type TimelineGroupMode = 'time' | 'serial';
 
 export interface EventTimelineProps {
@@ -296,20 +262,9 @@ export interface EventTimelineProps {
   density?: Density;
   /** Identifier grouping (the serial↔order toggle). Default `time`. */
   groupMode?: TimelineGroupMode;
-  /**
-   * Override how rows bucket into bands when `groupMode === 'serial'`. Defaults
-   * to the row's own `ref` (`kind:value`). Lets a caller group by a chosen
-   * dimension (order / serial / tracking) without mutating each row's ref/chip —
-   * e.g. the operations journey buckets a unit-lifecycle row under its *order*
-   * band while the row still shows its *serial* chip. Omit ⇒ today's behavior.
-   */
+  /** Override how rows bucket into bands when `groupMode === 'serial'`. */
   groupKeyOf?: (item: TimelineItem) => TimelineGroupKey | null;
-  /**
-   * Rich timestamps (the 2026-standard form): show **relative** time inline
-   * ("2 days ago") with the full, timezone-aware absolute timestamp on hover.
-   * Default `false` keeps the terse `h:mma` clock so existing callers (order,
-   * tech, warranty timelines) are unaffected; the serial journey opts in.
-   */
+  /** Rich timestamps (the 2026-standard form): */
   richTime?: boolean;
   /**
    * Put time · actor immediately after the verb (flex gap) instead of far-right
@@ -323,37 +278,13 @@ export interface EventTimelineProps {
    * Without metaTrail: legacy inline-on-title-row behavior.
    */
   refInline?: boolean;
-  /**
-   * Serial mode only: render each band collapsed behind a chevron header (the
-   * latest band opens by default), so a multi-unit record reads as a tidy tree
-   * instead of a wall of rows. Default `false` ⇒ today's always-expanded bands,
-   * so existing serial-toggle callers are unaffected.
-   */
+  /** Serial mode only: */
   collapsibleGroups?: boolean;
-  /**
-   * Serial mode only: replace the default band header (kind label + chip) with a
-   * caller-supplied node — e.g. the operations journey's per-serial provenance
-   * card (SKU · grade · status · PO). Receives the band; the count/peek chrome
-   * stays owned by {@link EventTimeline}.
-   */
+  /** Serial mode only: */
   renderGroupHeader?: (group: TimelineGroupView) => ReactNode;
-  /**
-   * Opt-in row activation (Monitor→detail drill). When provided, each row
-   * becomes clickable + keyboard-activatable (Enter/Space) and calls this with
-   * the row's item — EXCEPT when the click/keypress lands on an inner
-   * interactive element (a CopyChip `<button>` or a link), which keeps its own
-   * behavior (copy / navigate). Omit ⇒ rows are inert display, exactly as today
-   * (every existing consumer is unaffected). Used by the Operations History
-   * browse feed to drill a row into that record's Trace.
-   */
+  /** Opt-in row activation (Monitor→detail drill). */
   onSelectItem?: (item: TimelineItem) => void;
-  /**
-   * Optional lightbox set for every media strip on this timeline (e.g. full
-   * carton/PO receiving photos). Omit ⇒ each strip opens its own stage `media`.
-   * Preview thumbs still come from the row; only the viewer source changes.
-   * Prefer URL-only inputs on read surfaces so delete stays off; pass
-   * {@link galleryMatchIds} when click-to-index needs photo ids.
-   */
+  /** Optional lightbox set for every media strip on this timeline (e.g. */
   galleryPhotos?: PhotoGalleryInput[];
   /** Parallel photo ids for {@link galleryPhotos} (URL-only read galleries). */
   galleryMatchIds?: Array<number | null | undefined>;
@@ -380,12 +311,7 @@ export interface TimelineGroupView {
   items: TimelineItem[];
 }
 
-/**
- * Bucket items by their `ref` identifier, preserving the incoming (sorted) order
- * both for the rows inside a band and for the bands themselves (first-seen wins),
- * so the serial view stays newest-first like the time view. Ref-less rows fall
- * into one trailing "Order events" band rather than vanishing.
- */
+/** Bucket items by their `ref` identifier, preserving the incoming (sorted) order both for the rows inside a band and for the bands… */
 function groupBySerial(
   items: TimelineItem[],
   groupKeyOf?: (item: TimelineItem) => TimelineGroupKey | null,
@@ -531,11 +457,7 @@ export function EventTimeline({
             );
           }
 
-          // Collapsible: a chevron header row; the latest band opens by default,
-          // the rest collapse to a one-line "latest event" peek. The toggle is a
-          // `role="button"` div (not a <button>) so the header's interactive
-          // CopyChips nest validly — chips stopPropagation, so a chip click copies
-          // without toggling the band.
+          // Collapsible: a chevron header row; the latest band opens by default, the rest collapse to a one-line "latest event" peek.
           return (
             <div key={g.key} className="rounded-lg">
               <div
@@ -606,32 +528,7 @@ export function EventTimeline({
         const glyphSpec = resolveTimelineGlyph(item.sourceEventType);
         const GlyphIcon = TIMELINE_GLYPH_ICONS[glyphSpec.id];
         const identityRefs = itemIdentityRefs(item);
-        /**
-         * The second line is EARNED BY THE CHIPS, not spent by default.
-         *
-         * Station anatomy puts the id chips on their own line so a column of
-         * last-8s lines up down a multi-unit feed. That alignment is now
-         * MEASURED, not assumed — dogfood carton 6159 at 1440 renders 5 identity
-         * chips in the History feed at exactly ONE left x (561px). It holds
-         * because the chip span is the first child of `metaBits` on every
-         * two-line row; anything inserted ahead of it breaks the column the
-         * second line exists to make.
-         *
-         * When a row has no identity chip that line carries only
-         * `3:14pm · Kai` — half a row of height for a clock. Chipless rows
-         * therefore fall back to the compact one-line `metaTrail` form the
-         * component already renders below, which is the same layout, not a
-         * third one.
-         *
-         * This became common once single-unit feeds stopped repeating a serial
-         * that disambiguated nothing (`mergeStationUnitJourneys`): on a one-unit
-         * carton EVERY row lost its chip and the feed was all half-empty
-         * second lines.
-         *
-         * `stationAnatomy` itself stays row-invariant — it also drives the day
-         * band, the latest-row ring and the raw-status-trail suppression, and
-         * flipping those per row would make one feed look like two.
-         */
+        /** The second line is EARNED BY THE CHIPS, not spent by default. */
         const stationTwoLine = stationAnatomy && identityRefs.length > 0;
         const glyphHref =
           item.href?.trim() || identityRefs[0]?.href?.trim() || undefined;

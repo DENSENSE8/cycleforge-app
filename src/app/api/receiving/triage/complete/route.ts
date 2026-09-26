@@ -5,16 +5,7 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { completeTriage } from '@/lib/receiving/complete-triage';
 
-/**
- * POST /api/receiving/triage/complete — the real "Save for unbox" transition
- * (docs/receiving-triage-redesign-plan.md §3.5). `TriagePanel`'s terminal
- * button posts here instead of the old client-only toast no-op.
- *
- * Body: { receiving_id, client_event_id? }
- *
- * House route skeleton: validate → domain helper → map status (withAuth) →
- * audit → after() side-effects.
- */
+/** POST /api/receiving/triage/complete — the real "Save for unbox" transition (docs/receiving-triage-redesign-plan.md §3.5). */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);
   const receivingId = Number((body as { receiving_id?: unknown })?.receiving_id);

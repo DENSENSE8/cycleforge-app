@@ -26,24 +26,9 @@ interface ReportBuckets {
   by_item: Array<{ key: string; label: string; count: number }>;
 }
 
-/**
- * Returns the SQL fragment for the event-source CTE for a given section.
- * Each fragment exposes columns: occurred_at, action, staff_id, item_key, item_label.
- *
- * The fragment seeds `params: [orgId]` so the assembled query's `$1` is always
- * the tenant org id (the caller spreads `source.params` first). Each fragment's
- * driving event table (inventory_events / station_activity_logs) carries
- * organization_id and is filtered on `$1`. Joins are all on integer surrogate
- * PKs (rl.id / pl.id / stn.id / tsn.id / sk.id / s.id / *.shipment_id FKs), so
- * they can't collide cross-tenant; scoping the driving table is sufficient.
- * `shipping_tracking_numbers` has no organization_id column (NEEDS-COL) and is
- * reached only via an integer FK, so it inherits scope from its joined parent.
- */
+/** Returns the SQL fragment for the event-source CTE for a given section. */
 function buildSourceCTE(section: Section): { sql: string; params: unknown[] } {
-  // params are appended by caller; the section SQL uses placeholders relative to
-  // the caller's running param count, so just return raw SQL here and let the
-  // caller weave it in. Filter clauses are appended outside this fragment.
-  // `$1` is the tenant org id (seeded below via params: [orgId]).
+  // params are appended by caller; the section SQL uses placeholders relative to the caller's running param count, so just return raw SQL…
   switch (section) {
     case 'receiving': {
       // Inventory events anchored on receiving lines. The line-level Zoho PO
@@ -139,13 +124,7 @@ function buildSourceCTE(section: Section): { sql: string; params: unknown[] } {
   }
 }
 
-/**
- * GET /api/audit-log/report?section=receiving|packing|tech|sku|staff
- *   Shared filters: day/start/end/staffId/sku
- *
- * Returns aggregate buckets for the daily report view.
- * Range capped at 31 days.
- */
+/** GET /api/audit-log/report?section=receiving|packing|tech|sku|staff Shared filters: */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId: OrgId = ctx.organizationId;

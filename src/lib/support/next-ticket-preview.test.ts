@@ -1,11 +1,4 @@
-/**
- * The support-ticket preview shown on the repair paperwork.
- *
- * What these defend: the counter never breaks because a helpdesk read failed,
- * and the projection never invents a number it cannot justify.
- *
- *   npx tsx --test src/lib/support/next-ticket-preview.test.ts
- */
+/** The support-ticket preview shown on the repair paperwork. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

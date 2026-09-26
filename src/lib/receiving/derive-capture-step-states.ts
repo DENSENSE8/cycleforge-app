@@ -15,65 +15,7 @@ import {
   type LinearStepState,
 } from './derive-receiving-step-states';
 
-/**
- * Capture-stack step gates — the bench half of the operator-facing unbox
- * procedure:
- *
- *   Label photo → Box photo → Shipping label → The box → Packing material
- *   → Contents → Condition → Item photos → Serial → Label
- *
- * A sibling vocabulary over the same shared walk (`deriveLinearStepStates`),
- * beside the matched stepper (`derive-receiving-step-states`) and the unfound one
- * (`derive-unfound-step-states`). It is longer and photo-aware because the
- * procedure renders one row per step, where the 3-dot progress bar rendered
- * one dot for "Photos" as a whole. Same primitive, different job — not a fork
- * (AGENTS.md → compose → grow the SoT → compound).
- *
- * ## Photo stage AND aspect — two axes, both gated
- *
- * `photoStage` says which evidentiary moment (`@/lib/receiving/photo-intent`);
- * `photoAspect` says which shot of that moment (`@/lib/photos/photo-aspects`).
- * They are orthogonal, so steps that share a stage are told apart by aspect:
- *
- *   arrival_label_photo  → arrival_package · shipping_label     (door / Triage)
- *   arrival_box_photo    → arrival_package · box_exterior
- *   shipping_label_photo → unbox_carton · shipping_label        (the bench's own
- *   box_photo            → unbox_carton · box_exterior           carton capture,
- *   packing_material     → unbox_carton · packing_material       three shots)
- *   item_photos          → unbox_item   · required aspect set   (RECEIVING_LINE)
- *
- * Door steps stamp `arrival_package` only — the stage the `require_one` receive
- * gate counts (`photo-policy.ts`). A bench capture that stamped `arrival_package`
- * would silently satisfy the gate with a post-opening photo and void the
- * control. Bench carton shots stay on `unbox_carton`.
- *
- * ## Condition IS a gate now (reversed 2026-08-01)
- *
- * It used to be `ungated`: `condition_grade` is NOT NULL with a default, so a
- * grade always exists and "graded" was indistinguishable from "never touched" —
- * gating on the grade would have stalled every carton on a decision that already
- * had a correct answer. The fix was not to keep skipping it but to record the
- * ACT: `receiving_line_testing.condition_graded_at` is stamped when an operator
- * explicitly grades. The stored default still pre-selects the chip, so satisfying
- * the step is one tap or one scanned condition code — a confirmation, never a
- * decision from scratch. The old reasoning is respected by that pre-selection,
- * not by skipping the step.
- *
- * `contents` has the same shape and the same answer: nothing recorded that a
- * human had read the line list, so `receiving_unbox.contents_confirmed_at` is
- * that fact. `label` (2026-08-02) is the third of the same family — reading the
- * face the carton is about to print leaves no evidence behind, so
- * `receiving_line_testing.label_previewed_at` is the acknowledgement itself.
- * None of the three is backfilled — a stamp asserts a person did something at a
- * time, so a pre-existing carton reads pending, which is honest and is one tap
- * away.
- *
- * These three are NOT the hand-ticked checklist deleted 2026-08-01. That list
- * let an operator tick "photographed the packing material" — a claim about
- * EVIDENCE, which the carton can answer for itself and therefore must. An
- * acknowledgement that someone READ something is the one fact only a person can
- * supply, and each column's name says exactly that and nothing more.
- */
+/** Capture-stack step gates — the bench half of the operator-facing unbox procedure: */
 
 // Not exported until a consumer outside this module needs it — the knip ratchet
 // only shrinks, and "Phase 3 will import it" is exactly the claim it exists to
@@ -95,12 +37,7 @@ type CaptureStepKey =
 type CaptureStepStage = 'arrival_package' | 'unbox_carton' | 'unbox_item';
 
 interface CaptureStepDef {
-  /**
-   * Open `string`, not `CaptureStepKey`: the vocabulary is resolved from the
-   * station declaration now, so this module does not get to close the set.
-   * `CaptureStepKey` narrowed by `isCaptureStepKey` is the separate question of
-   * which keys this module can GATE.
-   */
+  /** Open `string`, not `CaptureStepKey`: */
   key: string;
   label: string;
   /** Photo stage this step is evidenced by, when it is a photo step. */
@@ -109,25 +46,11 @@ interface CaptureStepDef {
   aspect?: PhotoAspect;
   /** The aspect SET this step is evidenced by — `item_photos`. */
   aspectSet?: readonly PhotoAspect[];
-  /**
-   * Declared for multi-qty lines so the row can carry `n of N` progress.
-   * Phase 2 (main Unbox dock): fill every expected serial (or waive), then
-   * **one** line-level condition + item-photos — not Serial→Condition→Photos×N.
-   * A true per-unit trio loop remains Phase 3.
-   */
+  /** Declared for multi-qty lines so the row can carry `n of N` progress. */
   perUnit?: boolean;
 }
 
-/**
- * Every key this module knows how to GATE. The vocabulary itself is no longer
- * declared here (see `captureStepVocabulary`) — this is the bench's half of the
- * contract: the declaration says which steps exist and in what order, and this
- * says which of them this module can decide "done" for.
- *
- * A declared capture step missing from here is a CI failure, not a runtime one
- * (`procedure-divergence.guard.test.ts`), so the bench can never quietly render
- * a step it has no gate for.
- */
+/** Every key this module knows how to GATE. */
 const GATED_KEYS: Record<CaptureStepKey, true> = {
   classify: true,
   arrival_label_photo: true,
@@ -166,25 +89,7 @@ function resolveCaptureVocabulary(
   });
 }
 
-/**
- * The ordered step list for one carton's intake type — RESOLVED FROM THE STATION
- * DECLARATION, not declared here.
- *
- * This module used to own its own ordered vocabulary, and the Studio Procedure
- * lens owned a different one. Both docblocks claimed to be "the operator-facing
- * unbox procedure" and they disagreed — 5 steps here, 7 there, different photo
- * granularity, different variant handling. An operator taught one procedure at
- * the bench while the owner reads another in Studio is worse than either being
- * wrong alone, because both look authoritative.
- *
- * They were never really in conflict: the bench list is the `capture` PHASE of
- * one procedure. `intake` (the scan) has already happened by the time this
- * renders, and `commit` (print · receive) belongs to the terminal dock. So the
- * declaration in `@/lib/stations/procedure` owns which steps exist, their order,
- * their labels, their photo stages and the named flows; this module owns only
- * the GATES — what counts as done, which needs the live row and is why the two
- * halves stay split.
- */
+/** The ordered step list for one carton's intake type — RESOLVED FROM THE STATION DECLARATION, not declared here. */
 export function captureStepVocabulary(
   input: CaptureStepVocabularyInput,
 ): ReadonlyArray<CaptureStepDef> {
@@ -228,47 +133,17 @@ export interface DeriveCaptureStepStatesInput
   cartonAspectCounts: Partial<Record<PhotoAspect, number>>;
   /** Per-aspect photo counts on THIS line (`unbox_item` stage). */
   itemAspectCounts: Partial<Record<PhotoAspect, number>>;
-  /**
-   * Org policy — which item aspects BLOCK the step
-   * (`receiving.requiredItemPhotoAspects`, default `included` + `serial`).
-   *
-   * Required rather than defaulted here on purpose: an empty list is a real,
-   * legal answer ("no aspect is mandatory") and a defaulted six-shot minimum
-   * would make `item_photos` un-completable for a two-person reseller. The
-   * caller resolves the org's answer; this module only applies it.
-   */
+  /** Org policy — which item aspects BLOCK the step (`receiving.requiredItemPhotoAspects`, default `included` + `serial`). */
   requiredItemAspects: readonly PhotoAspect[];
   /** `receiving_line_testing.condition_graded_at` — the grading ACT, not the grade. */
   conditionGradedAt: string | null;
   /** `receiving_unbox.contents_confirmed_at` — a human read the line list. */
   contentsConfirmedAt: string | null;
-  /**
-   * `receiving_line_testing.label_previewed_at` — a human read the printed face.
-   *
-   * NOT `label_note` (that answers "was the face customised", and is null on
-   * every carton whose default face was already right — gating on it parks the
-   * pointer on the last step forever) and NOT `label_printed_at` (the COMMIT act
-   * the terminal dock owns; gating a capture step on it inverts the phase order).
-   */
+  /** `receiving_line_testing.label_previewed_at` — a human read the printed face. */
   labelPreviewedAt: string | null;
   /** Unfound only — `isIntakeClassified(row)`. Ignored for matched cartons. */
   classified?: boolean;
-  /**
-   * When each step's evidence landed, by step key — a raw server instant, never
-   * a formatted string (this module is shared with a server read model, and
-   * formatting is the display layer's job).
-   *
-   * WHICH instant is the caller's fact-resolution job and differs by surface:
-   * the bench reads the photo payload it already holds, the receipt reads
-   * aggregate SQL. WHETHER that instant may be shown is this module's job, and
-   * it has exactly one answer — see {@link deriveProcedureSteps}.
-   *
-   * The three acknowledgement steps need no entry: for `condition`, `contents`
-   * and `label` the GATE FACT *is* the time, so {@link stepCompletedAt} reads it
-   * off the gate input rather than trusting two callers to pass the same instant
-   * twice. A caller that supplied one here would be silently ignored, which is
-   * the point — there is nothing to disagree about.
-   */
+  /** When each step's evidence landed, by step key — a raw server instant, never a formatted string (this module is shared with a server read… */
   evidenceAt?: Readonly<Record<string, string | null | undefined>>;
 }
 
@@ -276,18 +151,11 @@ export interface DeriveCaptureStepStatesInput
 export function deriveCaptureStepFlags(
   input: DeriveCaptureStepStatesInput,
 ): ReadonlyArray<LinearStepFlag> {
-  // Serial reuses the matched flow's gate verbatim (whole-line waiver →
-  // per-unit accounting → overage), so the stack and the 3-dot bar can never
-  // disagree about whether serials are complete. `labelPrinted` only feeds the
-  // Print flag, which this vocabulary does not have — pinned false and dropped.
+  // Serial reuses the matched flow's gate verbatim (whole-line waiver → per-unit accounting → overage), so the stack and the 3-dot bar can…
   const base = deriveReceivingStepFlags({ ...input, labelPrinted: false });
 
   return captureStepVocabulary(input.vocabulary).map((step): LinearStepFlag => {
-    // The vocabulary now comes from the declaration, so a step could in
-    // principle arrive without a gate here. Render it NOT DONE rather than
-    // throwing — a bench that crashes mid-carton is far worse than one showing
-    // an extra unchecked row — and let the divergence guard fail CI so it never
-    // reaches an operator.
+    // The vocabulary now comes from the declaration, so a step could in principle arrive without a gate here.
     if (!isCaptureStepKey(step.key)) return { key: step.key, done: false };
     switch (step.key) {
       case 'classify':
@@ -297,10 +165,7 @@ export function deriveCaptureStepFlags(
       case 'arrival_label_photo':
       case 'arrival_box_photo':
         return { key: step.key, done: arrivalAspectShot(input, step.aspect) };
-      // The three bench carton shots share one stage and are told apart by
-      // aspect. Gating any of them on the STAGE count would let one photo
-      // satisfy all three — the same over-counting `sqlCartonStagePhotoCount`
-      // exists to stop one level up.
+      // The three bench carton shots share one stage and are told apart by aspect.
       case 'shipping_label_photo':
       case 'box_photo':
       case 'packing_material':
@@ -316,21 +181,13 @@ export function deriveCaptureStepFlags(
       case 'serial':
         return { key: step.key, done: base.serial };
       case 'label':
-        // Reading a label leaves no evidence behind, so the acknowledgement is
-        // the only fact there is — the same shape as `contents`. It is not a
-        // hand-tick of the deleted-checklist kind: that let an operator claim
-        // EVIDENCE the carton itself could answer for.
+        // Reading a label leaves no evidence behind, so the acknowledgement is the only fact there is — the same shape as `contents`.
         return { key: step.key, done: !!input.labelPreviewedAt };
     }
   });
 }
 
-/**
- * One carton shot of `aspect` exists. A step that declares no aspect falls back
- * to the stage count — never to `true`: an un-aspected photo step is a
- * declaration bug, and reading it as satisfied would hide the bug behind a
- * green row.
- */
+/** One carton shot of `aspect` exists. */
 function arrivalAspectShot(
   input: DeriveCaptureStepStatesInput,
   aspect: PhotoAspect | undefined,
@@ -347,14 +204,7 @@ function cartonAspectShot(
   return (input.cartonAspectCounts[aspect] ?? 0) > 0;
 }
 
-/**
- * Every REQUIRED item aspect has at least one shot.
- *
- * With no required aspects the org has said "any item photo will do", so this
- * falls back to the line's stage count rather than reading vacuously true —
- * `[].every()` is `true`, which would mark the step done on a line with no
- * photos at all.
- */
+/** Every REQUIRED item aspect has at least one shot. */
 function requiredItemAspectsShot(input: DeriveCaptureStepStatesInput): boolean {
   if (input.requiredItemAspects.length === 0) return input.itemPhotoCount > 0;
   return input.requiredItemAspects.every((a) => (input.itemAspectCounts[a] ?? 0) > 0);
@@ -399,15 +249,7 @@ interface ProcedureStepRow {
   at: string | null;
 }
 
-/**
- * The instant a step's gate closed, before the done check.
- *
- * The three acknowledgement steps resolve off the gate input itself, because
- * there the fact that closes the gate *is* an instant — reading it here is what
- * makes "the time and the state agree" structural rather than a caller's
- * promise. Every other step's evidence is a photo, a serial or an audit row,
- * none of which this pure module can see, so those come from the caller.
- */
+/** The instant a step's gate closed, before the done check. */
 function stepCompletedAt(key: string, input: DeriveCaptureStepStatesInput): string | null {
   switch (key) {
     case 'condition':
@@ -421,26 +263,7 @@ function stepCompletedAt(key: string, input: DeriveCaptureStepStatesInput): stri
   }
 }
 
-/**
- * The whole procedure, in vocabulary order, with each step's state.
- *
- * Deliberately boring: EVERY step renders, in declaration order, done or not.
- * That is the simplification over the mid-canvas capture stack this replaces —
- * it hid pending steps and re-sorted completed ones so the current card could
- * sit at the bottom, which made the procedure unreadable as a procedure and
- * needed two extra rules (an "ungated steps only join the ledger once the
- * pointer passes them" carve-out, and a position field divorced from the render
- * index) purely to undo its own reordering. A checklist needs neither.
- *
- * ## `at` rides ONLY on a done step, and that rule lives here alone
- *
- * A step can legitimately hold partial evidence and still be pending — one
- * required item aspect out of two, say — and printing that evidence's timestamp
- * beside a pending row reads as a completion. Both readers (the bench deck and
- * the receipt) get the answer from this one line, so neither can decide it
- * differently: that is the same reason the STATE is derived here rather than
- * twice.
- */
+/** The whole procedure, in vocabulary order, with each step's state. */
 export function deriveProcedureSteps(
   input: DeriveCaptureStepStatesInput,
 ): ReadonlyArray<ProcedureStepRow> {

@@ -1,13 +1,4 @@
-/**
- * GET /api/inbox — the signed-in staffer's notification feed.
- *
- * Always scoped to `ctx.staffId`; there is no "read someone else's inbox" mode,
- * so `home.inbox.view` never widens beyond your own rows.
- *
- * The per-entity permission filter is re-applied here, in the read path. The
- * fan-out worker's filter is a WRITE-time snapshot — without this second gate a
- * permission revoked after delivery would leave the row readable forever.
- */
+/** GET /api/inbox — the signed-in staffer's notification feed. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

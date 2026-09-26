@@ -25,12 +25,7 @@ import {
 } from './voice-presentation';
 import { isNotConfigured, useVoicemails } from './useVoiceQueries';
 
-/**
- * Voicemail mode — the Workbench picker. A searchable, status-filtered to-do
- * list of voicemails / missed calls; selecting one writes `?vm=<id>` (durable,
- * deep-linkable) and the page body renders {@link VoicemailDetail}. One-row
- * anatomy: caller → time·mailbox meta → status dot + linked-ticket chip.
- */
+/** Voicemail mode — the Workbench picker. */
 export function VoicemailQueue() {
   const { vmId: selectedId, setVm } = useSupportVmParam();
 

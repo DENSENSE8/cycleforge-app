@@ -24,18 +24,7 @@ interface UseCacheReturn<T> {
   updateCache: (value: T) => void;
 }
 
-/**
- * Fetches and caches data by domain + ID.
- * Automatically refetches when the cache entry is invalidated via `cacheInvalidate`.
- *
- * @example
- * const { data: order, loading } = useCache({
- *   domain: CACHE_DOMAINS.ORDER,
- *   id: orderId,
- *   fetcher: () => fetchOrderById(orderId),
- *   ttlMs: CACHE_TTL.DEFAULT,
- * });
- */
+/** Fetches and caches data by domain + ID. */
 export function useCache<T>({
   domain,
   id,

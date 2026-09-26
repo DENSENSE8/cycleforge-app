@@ -12,14 +12,7 @@ import {
   UNFOUND_PO_SENTINEL,
 } from '@/lib/receiving/po-group-title';
 
-/**
- * Empty unfound carton — "scan the first return" affordance.
- *
- * Ledger face is Unbox {@link PoLineRow} (thumb · title · five-track meta) —
- * never a hand-built meta twin. Capture mounts as that row's body (same nest
- * as found lines) when {@link body} is `serial` and {@link unitsChrome} is
- * true; Arrival door flow keeps unitsChrome false so this card is face-only.
- */
+/** Empty unfound carton — "scan the first return" affordance. */
 export function ReturnScanCard({
   condition,
   onConditionChange,

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Admin → Staff schedule — thin composition layer. Roster management lives in
- * Settings → Team; this pane is weekly shifts, availability rules, and the shop
- * calendar.
- *
- * Logic lives in focused hooks:
- *   - useStaffScheduleData ......... server data (existing)
- *   - useStaffScheduleFilters ...... `?search/staffView/staffId=` → filtered roster
- *   - useStaffScheduleRealtime ..... staff-channel invalidation
- *   - useStaffScheduleViewModel .... scheduleMap, today labels, editors, cell meta, summary
- */
+/** Admin → Staff schedule — thin composition layer. */
 
 import { useState } from 'react';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';

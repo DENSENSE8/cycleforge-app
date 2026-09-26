@@ -7,22 +7,7 @@ import { getCurrentUser } from '@/lib/auth/current-user';
 import { computeWeekRange } from '@/utils/date';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
 
-/**
- * Shared Packing-surface page shell — mounted by BOTH `/packer` (legacy) and
- * `/pack` (the first-class Pack surface, Studio-driven operator surfaces refactor
- * Phase 7). The URL names the operator's job ("Packing"); the legacy `/packer`
- * redirects here via the proxy.
- *
- * Wrapped in `SurfaceGate surfaceKey="pack"`: when the org has published a
- * composition AND enabled the `surface_composed_render` flag, the data-driven
- * `SurfaceRenderer` renders; otherwise the proven legacy `PackerPageContent`
- * renders unchanged (the `'legacy'` escape hatch — the safe default).
- *
- * Performance note: the heavy `/api/packerlogs` query is prefetched here and
- * dehydrated into a React Query state so the table renders on first paint. The
- * key shape must match what `usePackerLogs(packerId, { weekRange })` builds; if
- * you change that hook, change this prefetch too.
- */
+/** Shared Packing-surface page shell — mounted by BOTH `/packer` (legacy) and `/pack` (the first-class Pack surface, Studio-driven operator… */
 export async function PackerSurfacePage({
   fallbackPath = '/pack',
 }: {

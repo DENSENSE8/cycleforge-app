@@ -2,21 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * GET /api/assignments/sku-search?q=<term>&staff_id=<id>&limit=50
- *
- * Search-first SKU assignment workflow.
- * Returns only the matching sku_stock rows (up to `limit`) joined with
- * their current active work_assignment (if any).
- *
- * - q          : search term against sku + product_title (required, min 1 char)
- * - staff_id   : optional — filter to SKUs already assigned to this staff member
- * - unassigned : "true" — filter to only SKUs with no active WA (open pool)
- * - limit      : max rows (1–200, default 50)
- *
- * This intentionally never returns all unassigned rows without a query,
- * preventing the "ping all 500" problem.
- */
+/** GET /api/assignments/sku-search?q=<term>&staff_id=<id>&limit=50 */
 async function handleGet(req: NextRequest, ctx: { organizationId: string }) {
   try {
     const { searchParams } = new URL(req.url);
@@ -119,19 +105,7 @@ async function handleGet(req: NextRequest, ctx: { organizationId: string }) {
   }
 }
 
-/**
- * POST /api/assignments/sku-search
- *
- * Assign or re-assign a sku_stock row to workers, or clear the assignment.
- *
- * Body:
- *   sku_stock_id : number        (required)
- *   tech_id      : number | null — technician (null to clear)
- *   packer_id    : number | null — packer     (null to clear)
- *   priority     : number        (optional, default 100)
- *   notes        : string        (optional)
- *   deadline_at  : string        (optional ISO date)
- */
+/** POST /api/assignments/sku-search */
 async function handlePost(req: NextRequest, ctx: { organizationId: string }) {
   try {
     const body        = await req.json();

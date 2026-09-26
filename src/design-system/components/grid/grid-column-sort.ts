@@ -1,37 +1,6 @@
 import type { GridSortDir } from './grid-sort-dir';
 
-/**
- * Value-level sort semantics, keyed by the column's `type`.
- *
- * ## Why this is the engine's job
- *
- * `type` already resolves alignment (`resolveGridColumnAlign`), the header
- * glyph (`ColumnTypeGlyph`) and the body cell shell (`gridDataCellClass`).
- * Sort was the one axis it did not own, so six families hand-wrote comparators
- * and answered the same question differently — and the disagreement was
- * user-visible, not cosmetic:
- *
- *   • Orders sent a missing deadline to `±Infinity` **flipped by direction**,
- *     so blanks sank to the bottom under BOTH asc and desc.
- *   • Receiving sent a missing date to `+Infinity` **unflipped**, so undated
- *     rows floated to the TOP under desc.
- *
- * Sort by date descending on the two grids and the empty rows were at opposite
- * ends. Each file documented its choice as deliberate; neither knew the other
- * existed. That is what a shared axis with no shared owner produces.
- *
- * ## The blank ruling
- *
- * **Blanks sort LAST in both directions, for every type.** The comparison
- * deliberately escapes `sign` — this is the spreadsheet convention (Sheets and
- * Airtable both do it) and the one Receiving already applied to CUSTOM columns
- * while exempting its own `date`. Its own note conceded the top-float was
- * merely "tolerable"; a blank is an absence of data, and an absence should not
- * outrank real values just because the operator reversed the arrow.
- *
- * Families keep the EXTRACTOR — pulling a comparable value off a domain row is
- * domain knowledge. The engine owns the comparison and the blank rule.
- */
+/** Value-level sort semantics, keyed by the column's `type`. */
 
 /** What a family's extractor hands back for one row + column. */
 export type GridSortValue = string | number | null | undefined;
@@ -59,15 +28,7 @@ function isBlank(value: GridSortValue): boolean {
   return value.trim() === '';
 }
 
-/**
- * Compare one column's extracted values. Returns the SIGNED primary result —
- * `0` means "tie, fall through to your stable key" (an id, never a second
- * fuzzy field).
- *
- * `dir` is applied here rather than by the caller because the blank rule has to
- * escape it; a caller that multiplied the result by its own sign afterwards
- * would re-invert blanks and undo the ruling.
- */
+/** Compare one column's extracted values. */
 export function compareGridValues(
   a: GridSortValue,
   b: GridSortValue,

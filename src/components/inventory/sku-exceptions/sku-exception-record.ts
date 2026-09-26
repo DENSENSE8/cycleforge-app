@@ -1,14 +1,4 @@
-/**
- * SKU exception → industrial record facts. Pure — no JSX, no fetch — so the
- * ledger row and the evidence column read ONE answer for "what step is next"
- * and "does this match the find box".
- *
- * Every placeholder is `HLD` (`LIFECYCLE.onHold`): stock that exists but cannot
- * be sold or picked by name until it is paired to its Zoho item. The
- * difference between two held records is the NEXT step, in the order a desk
- * resolves one: a photo (pairing is guesswork without one) → a count (where it
- * is and how many) → the pair itself.
- */
+/** SKU exception → industrial record facts. */
 
 import { skuExceptionLocationFace } from '@/lib/inventory/sku-exception-links';
 import type { ProvisionalSku } from '@/lib/neon/provisional-sku-queries';
@@ -33,12 +23,7 @@ export function skuExceptionLocationFaces(row: Pick<ProvisionalSku, 'locations'>
   return row.locations.filter((loc) => loc.qty !== 0).map((loc) => skuExceptionLocationFace(loc.barcode));
 }
 
-/**
- * The find box, answered client-side over every fact the record paints: title,
- * SKU, barcode, description, location (raw and segmented), creator. The feed
- * is one row per open placeholder, so the whole set is always on the client.
- * Case-insensitive; every whitespace-separated term must match somewhere.
- */
+/** The find box, answered client-side over every fact the record paints: */
 export function skuExceptionMatches(row: ProvisionalSku, query: string): boolean {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (terms.length === 0) return true;

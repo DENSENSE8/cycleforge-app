@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * `ShippedOrder → CartonContextCard` adapter — the ONE station identity face
- * for an order, shared by every {@link EntityStationPane} consumer.
- *
- * Promoted 2026-08-20 out of `support/orders/SupportOrderIdentity.tsx`; the
- * mapping was never Support-specific, and `/search?sel=order:` needs the same
- * face. Maps an order onto the Unbox one-row identity (order# · tracking ·
- * classify). Classify is read-only here — an order's channel is a fact from the
- * marketplace, not an operator choice. Pair the host with `placement="flow"` +
- * `reserveIdentityClearance={false}`.
- *
- * The carton header has no read-only twin (root `AGENTS.md`): editability is a
- * PROP on this one card, never a second component.
- */
+/** `ShippedOrder → CartonContextCard` adapter — the ONE station identity face for an order, shared by every {@link EntityStationPane} consumer. */
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';

@@ -1,17 +1,4 @@
-/**
- * FBA board item → {@link ItemRecord}.
- *
- * One line of an outbound FBA shipment. Like the repair adapter, this exists
- * because `/search?sel=fba:{id}` used to render an `EmptyState` and a button to
- * leave — the shipment's own contents were never shown on the surface that
- * found them.
- *
- * This is the one adapter with a real counted/expected pair to report: an FBA
- * line knows how many were planned and how many are physically staged, which is
- * exactly the progress face the shared item row was built around.
- *
- * Pure — no fetch, no hook, no React.
- */
+/** FBA board item → {@link ItemRecord}. */
 
 import type { ItemRecord } from '@/design-system/components/item-record';
 import type { FbaBoardItem } from '@/lib/fba/types';

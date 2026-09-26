@@ -1,11 +1,4 @@
-/**
- * Testing-mode scan session: STN (tracking) anchors a receiving line, then a
- * unit-label scan confirms the prepack identity. Used by TestingSidebarPanel
- * to drive the composite TRK↔SKU + serials feedback card.
- *
- * Pure state machine — no I/O. Callers resolve scans via resolveTestingScan
- * and feed the results in.
- */
+/** Testing-mode scan session: */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedVia } from '@/lib/testing/resolve-testing-scan';

@@ -17,14 +17,7 @@ import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * Tech-facing checklist step editing, scoped to a receiving line.
- *
- * Mirrors /api/sku-catalog/[id]/qc-checks but resolves the catalog id from the
- * line and is gated on `tech.qc_pass` (not `sku_stock.manage`) so testers can
- * curate the checklist from the testing screen. POST creates the catalog row on
- * demand when the SKU isn't catalogued yet.
- */
+/** Tech-facing checklist step editing, scoped to a receiving line. */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   // .../api/receiving-lines/[id]/qc-checks → id is segments[-2]

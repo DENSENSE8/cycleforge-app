@@ -1,16 +1,4 @@
-/**
- * Facts-sync — the write glue between the receiving spine and Layer 2.
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §4 (Layer 2/3).
- *
- * A street, after it creates/advances a line through the spine chokepoints,
- * persists that line's typed facts in ONE call: it passes only the facts it owns
- * (testing sets the testing bundle; the door sets the return/zoho bundle; etc.)
- * and this routes each to its narrow facts table or the registry. Partial — an
- * omitted section is not touched.
- *
- * Org-scoped + Deps-injected (delegates to the facts helpers' defaults).
- */
+/** Facts-sync — the write glue between the receiving spine and Layer 2. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { FactsDeps } from '../facts/store';

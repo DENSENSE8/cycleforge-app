@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * `/review` Workbench — table + detail overlay (Outbound Labels recipe).
- * Modes: Packing (default, `?mode=` cleared) · Pairing (`?mode=pairing`) ·
- * Catalog link (`?mode=catalog-link`).
- * Packing tabs: `?rtab=packed|shipped|history`. Selection: `?packerLogId=` / `?orderId=` /
- * Catalog link: `?choreId=`. Missing item number: `?section=missing-item-number&exceptionId=`.
- */
+/** `/review` Workbench — table + detail overlay (Outbound Labels recipe). */
 
 import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';

@@ -16,12 +16,7 @@ import {
 } from '@/lib/shipping/order-inspector-topics';
 import { toast } from '@/lib/toast';
 
-/**
- * Owns the panel's working copy of the order plus the inline-editable shipping
- * fields (order #, item #, tracking, ship-by date). Resyncs everything whenever
- * the underlying order changes (e.g. up/down navigation), and exposes the save
- * actions backed by {@link useOrderFieldSave}.
- */
+/** Owns the panel's working copy of the order plus the inline-editable shipping fields (order #, item #, tracking, ship-by date). */
 export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: () => void) {
   const [shipped, setShipped] = useState<ShippedOrder>(initialShipped);
   const [shipByDate, setShipByDate] = useState('');
@@ -50,12 +45,7 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
   } = fieldSave;
 
   useEffect(() => {
-    // Note: this used to flush an unsaved note draft for the OUTGOING record
-    // before re-seeding (the panel swaps content in place on queue j/k
-    // navigation — `display/motion-crossfade.md` → queue-processing inspector).
-    // Notes are no longer a panel-held draft over a scalar column: they append
-    // to `order_notes` on submit, so there is nothing left that a record swap
-    // could silently discard. The rest of the re-seed is unchanged.
+    // Note: this used to flush an unsaved note draft for the OUTGOING record before re-seeding (the panel swaps content in place on queue j/k…
     setShipped(initialShipped);
     const preferredDate = String(initialShipped.ship_by_date || '').trim() || initialShipped.created_at || '';
     setShipByDate(toMonthDayYearCurrent(preferredDate));
@@ -136,14 +126,7 @@ export function useShippedDetailState(initialShipped: ShippedOrder, onUpdate: ()
 
 export interface UseShippedPanelViewStateOptions {
   initialShipped: ShippedOrder;
-  /**
-   * The opening leaf section, resolved by the caller from the contextual SoT
-   * (`resolveOrderInspectorContext(...).defaultTab` in
-   * `@/lib/selection-context/order-inspector-context`) — Pending / fulfillment
-   * opens docs-first, the search deep-link opens journey-first, everything else
-   * keeps `shipping`. Mapped to Display topic + Order child via
-   * `order-inspector-topics`. The hook does not re-decide it; one decider, one place.
-   */
+  /** The opening leaf section, resolved by the caller from the contextual SoT (`resolveOrderInspectorContext(...).defaultTab` in… */
   defaultSection?: ShippedActiveSection;
   /** Documents tab gate — when false, a documents default falls back to Order. */
   showDocumentsTab?: boolean;

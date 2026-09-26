@@ -1,15 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { ZodType, ZodError } from 'zod';
 
-/**
- * Wraps `schema.safeParse(body)` and returns either the parsed payload OR a
- * standardized 400 NextResponse describing the validation failure.
- *
- * Usage:
- *   const parsed = parseBody(LocationsPatchBody, body);
- *   if (parsed instanceof NextResponse) return parsed;
- *   // ...parsed is now strongly typed
- */
+/** Wraps `schema.safeParse(body)` and returns either the parsed payload OR a standardized 400 NextResponse describing the validation failure. */
 export function parseBody<T>(
   schema: ZodType<T>,
   body: unknown,

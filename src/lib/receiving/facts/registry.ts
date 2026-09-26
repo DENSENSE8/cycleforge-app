@@ -1,22 +1,4 @@
-/**
- * Receiving typed-facts registry — the code-side governance for the
- * `receiving_line_facts(fact_kind, payload)` polymorphic store.
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §4 (Layer 2) / §5.
- *
- * `fact_kind` is a free-TEXT discriminator in the DB (no CHECK), exactly like
- * `workflow_nodes.type`: the allowed set + the payload shape live HERE, in a code
- * registry, so a new org-custom kind needs no migration. The writer validates the
- * payload against the registered Zod schema, so `(fact_kind, payload)` is a true
- * tagged union rather than a junk drawer.
- *
- * Unknown (org-custom) kinds fall back to a permissive passthrough schema — the
- * fact is stored and loosely validated (must be a JSON object), so a tenant can
- * carry bespoke intake facts without a code change either. Promote a kind to a
- * strict schema here once its shape stabilizes.
- *
- * Pure module — no DB, no Deps. The DB helpers live in ./store.
- */
+/** Receiving typed-facts registry — the code-side governance for the `receiving_line_facts(fact_kind, payload)` polymorphic store. */
 
 import { z } from 'zod';
 
@@ -59,12 +41,7 @@ const repairServiceSchema = z.object({
   ticketRef: z.string().optional(),
 });
 
-/**
- * eBay buyer-purchase marketplace payload for an Incoming line sourced from an
- * eBay buyer account. The queryable operational facts (source_order_id, tracking,
- * platform_account_id) live on the spine / link row; this holds the eBay-specific
- * provenance. Universal Incoming plan §3.7.
- */
+/** eBay buyer-purchase marketplace payload for an Incoming line sourced from an eBay buyer account. */
 const ebayPurchaseSchema = z.object({
   legacyOrderId: z.string().optional(),
   sellerUsername: z.string().optional(),

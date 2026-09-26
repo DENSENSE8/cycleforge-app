@@ -6,17 +6,7 @@ import { COMPOUND_TRACKS } from './compound-columns';
 import { renderCompoundGridCell } from './CompoundGridCell';
 import type { CompoundRowView } from './compound-row-model';
 
-/**
- * The two GUTTERS render edge to edge; every other track keeps its inset.
- *
- * A mounted-DOM assertion, not a source grep (`add-guard`): the question is
- * what class string a cell actually *emits* after `gridDataCellClass` has
- * composed four concerns, and reading the source for `px-2` cannot answer that.
- *
- * The operator's ask was literally "no padding, edge to edge, it must not
- * display outer spacing". The failure mode is silent — 8px of inset on a
- * 48px photo is a 33% smaller picture and nothing goes red — so this pins it.
- */
+/** The two GUTTERS render edge to edge; every other track keeps its inset. */
 
 const VIEW: CompoundRowView = {
   id: '1',
@@ -73,11 +63,7 @@ describe('the compound gutters are flush', () => {
   }
 
   it('pins the select mark to the TOP of the track, past the edge rail', () => {
-    // Operator 2026-09-04 "most top of the column per rows", reaffirmed
-    // 2026-09-15 after a pass floated the mark to the middle of the row:
-    // "the checklist icon should be pinned to the top and the drop-down icon
-    // should be below the checklist icon". "Centered in the middle" was the
-    // HORIZONTAL track — hence the 3px rail reservation, not a vertical centre.
+    // Operator 2026-09-04 "most top of the column per rows", reaffirmed 2026-09-15 after a pass floated the mark to the middle of the row:
     const html = paint('select');
     assert.match(html, /items-start/);
     assert.match(html, /\bpt-1\b/);
@@ -85,12 +71,7 @@ describe('the compound gutters are flush', () => {
   });
 
   it('gives a detail row a chevron BAND below the pinned mark', () => {
-    // The failure this pins: the chevron used to share a `grid-rows-2` stack
-    // with the check, which boxed the CONTROL into the top 23.5px of a 48px
-    // cell — so its alignment was a statement about the half, not the row, and
-    // `items-center` there moved the glyph 0.25px instead of the 12px a reader
-    // of the class string would assume. The band is absolute, so the mark plane
-    // (and the checkbox hit plane) is the whole cell again.
+    // The failure this pins:
     const html = paint('select', { open: false });
     assert.match(html, /data-row-detail/);
     assert.match(html, /absolute inset-x-0 bottom-0 h-6/);
@@ -108,15 +89,7 @@ describe('the compound gutters are flush', () => {
 
   for (const key of ['fulfillment', 'item', 'state']) {
     it(`${key} KEEPS its inset — flush is for the gutters only`, () => {
-      // Text that touches the column rule is unreadable. The operator asked for
-      // the check and the photo to go edge to edge, not the whole row.
-      //
-      // Asserts that SOME horizontal inset survives, not which one. Pinning the
-      // literal (`px-2`) made this fail the moment the shared inset was
-      // tightened to `px-1.5`, reporting a spacing preference as a broken
-      // invariant — the invariant is "these tracks are not flush".
-      // Scoped to the CELL's own class attribute — the full paint contains
-      // nested chip faces that legitimately zero their padding inside a grid.
+      // Text that touches the column rule is unreadable.
       const cellClass = paint(key).match(
         new RegExp(`<div data-col="${key}"[^>]*class="([^"]*)"`),
       )?.[1];
@@ -246,13 +219,7 @@ describe('the ids cell says which identifier is which', () => {
 
   it('rings the tracking dot and leaves the order dot solid', () => {
     const html = idsHtml();
-    // Counted on the PREFIXED property, one per ringed element — the standard
-    // `mask-image` is emitted alongside it, so counting the gradient itself
-    // would count one dot twice.
-    //
-    // The mask is what makes the ring work for BOTH paint shapes (hex style and
-    // Tailwind class) without converting `bg-*` to `border-*`, which Tailwind
-    // would never generate from a runtime-built string.
+    // Counted on the PREFIXED property, one per ringed element — the standard `mask-image` is emitted alongside it, so counting the gradient…
     const rings = html.match(/-webkit-mask-image/g) ?? [];
     assert.equal(rings.length, 1, 'the ring is the tracking line, and only it');
   });

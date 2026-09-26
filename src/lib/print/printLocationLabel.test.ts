@@ -1,9 +1,4 @@
-/**
- * Inventory 2×1 location face — coordinate-only (no room / zone kicker / Lv).
- * Guards locationLabelToFace + buildFaceInfoHtml. User: remove "Zone 3 - Parts",
- * eliminate stray "C", drop "Lv 1", enlarge primary ID, no HRI under matrix.
- * Run: npx tsx --test src/lib/print/printLocationLabel.test.ts
- */
+/** Inventory 2×1 location face — coordinate-only (no room / zone kicker / Lv). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

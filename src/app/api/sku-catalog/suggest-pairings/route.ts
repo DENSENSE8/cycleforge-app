@@ -3,27 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { suggestPairingsForSku } from '@/lib/neon/pairing-queries';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET  /api/sku-catalog/suggest-pairings?skuCatalogId=123&perPlatformLimit=5
- * POST /api/sku-catalog/suggest-pairings  body: { skuCatalogId, perPlatformLimit? }
- *
- * Returns the Product Hub payload for one canonical SKU:
- *   {
- *     skuCatalogId, canonicalSku, canonicalTitle,
- *     confirmed:    { amazon: [...], ebay: [...], ... },
- *     suggestions:  { amazon: [...], ebay: [...], ... }
- *   }
- *
- * - confirmed = active sku_platform_ids rows explicitly linked to this
- *   sku_catalog_id. A coincidental platform_sku == sc.sku match is NOT treated
- *   as confirmed (that misrepresents unpaired rows as linked).
- * - suggestions = unpaired sku_platform_ids rows ranked by title-similarity +
- *   order-volume + account-source heuristics. NEVER auto-applied; the Hub
- *   collects accepts and POSTs them to /pair-batch.
- *
- * Both verbs supported: GET for the Product Hub initial load (cacheable per
- * request), POST for explicit "Refresh suggestions" clicks.
- */
+/** GET /api/sku-catalog/suggest-pairings?skuCatalogId=123&perPlatformLimit=5 POST /api/sku-catalog/suggest-pairings body: */
 
 interface SuggestBody {
   skuCatalogId?: number;

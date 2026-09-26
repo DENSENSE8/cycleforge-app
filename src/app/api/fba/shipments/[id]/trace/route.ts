@@ -6,24 +6,7 @@ import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
 import { inventoryEventsToTimeline } from '@/lib/timeline/inventory-events';
 import type { TimelineItem } from '@/lib/timeline/types';
 
-/**
- * GET /api/fba/shipments/[id]/trace
- *
- * The FBA audit/trace read (P2-FBA-01). Resolves the full path for one
- * all-in-one shipment:
- *
- *   shipment → FNSKU line(s) → serialized unit(s) → inventory_events timeline
- *
- * The unit path is sourced from the P0-TRACE-01 spine via `readInventorySpine`
- * (inventory_events), so it is identical to every other lifecycle timeline in
- * the app — this route only joins the FBA linkage tables and feeds the shared
- * adapter. It also surfaces pipeline inconsistencies (acceptance B) without
- * mutating anything: missing unit linkage, units with no event path, and
- * catalog-vs-unit condition divergence.
- *
- * Org-scoped: every join carries `organization_id = $org`, and the spine read
- * is threaded with the caller's org so cross-tenant rows can never surface.
- */
+/** GET /api/fba/shipments/[id]/trace */
 
 interface TraceUnit {
   serial_unit_id: number;

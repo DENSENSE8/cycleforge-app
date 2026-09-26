@@ -17,12 +17,7 @@ interface StatCardProps {
   maxValue?: number;
 }
 
-/**
- * Category → semantic tone tokens (theme registry vars, NOT raw Tailwind hues)
- * so every theme — including mono's grayscale — restyles the dashboard without
- * touching this file. Tone meaning: all=info, tested=success, repair=warning,
- * outOfStock/pendingLate=danger, fba=fulfillment.
- */
+/** Category → semantic tone tokens (theme registry vars, NOT raw Tailwind hues) so every theme — including mono's grayscale — restyles the… */
 const CATEGORY_STYLES: Record<StatCategory, {
   text: string;
   progress: string;

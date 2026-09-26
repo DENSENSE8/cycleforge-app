@@ -1,39 +1,4 @@
-/**
- * THE nav matcher — ranked, pure, and shared by every surface that lets an
- * operator type to reach a destination (the ⌘K palette, the MasterNav spine).
- *
- * ## Why one module
- *
- * There were two matchers and they disagreed on both halves of the job. The
- * palette matched `label + href` and returned pages; the spine matched
- * `label + mode labels` and returned *sections* — so typing a page's exact name
- * in the spine handed back a category that didn't contain the word. Same input,
- * different searchable fields, different result kind.
- *
- * Both were also unranked `includes()`, which is the quieter defect: "Incoming"
- * and "Incoming photo sync" tie, so the thing you named sorts wherever the
- * registry happened to put it.
- *
- * This is deliberately NOT the cross-entity engine. `hybridSearch` /
- * `SearchHit` (`source-of-truth.md` → Cross-entity search) stays the SoT for
- * orders, cartons and units. This ranks ~40 static registry rows with no I/O, so
- * it can run on every keystroke.
- *
- * ## The ladder
- *
- * Tiers are ordered by how much the operator told us. Exact means they knew the
- * name; subsequence means we are guessing. A lower tier can never outrank a
- * higher one, whatever the length bonuses do.
- *
- *   exact         "labels"  → "Labels"
- *   prefix        "lab"     → "Labels"
- *   word-prefix   "lab"     → "Print Labels"      (starts a word inside)
- *   substring     "abel"    → "Labels"
- *   subsequence   "prlb"    → "Print Labels"      (in order, with gaps)
- *
- * Multi-token queries are AND: every token must match somewhere, so "print lab"
- * finds "Print Labels" and "incoming sync" does not match "Incoming".
- */
+/** THE nav matcher — ranked, pure, and shared by every surface that lets an operator type to reach a destination (the ⌘K palette, the… */
 
 /** Ordered weakest → strongest; index is the rank. */
 const NAV_MATCH_TIERS = [
@@ -55,18 +20,7 @@ const TIER_SCORE: Record<NavMatchTier, number> = {
   subsequence: 2_000,
 };
 
-/**
- * A match on a SECONDARY field (href, section label) is penalised by slightly
- * MORE than one tier step, so a label match always outranks a keyword match of
- * the same or any stronger tier.
- *
- * The reason is explanatory, not just preferential: a keyword hit produces no
- * highlight, because there is nothing in the visible text to mark. If a keyword
- * `exact` could outrank a label `prefix`, the operator would see a row float to
- * the top with no marked characters and no way to tell why. A keyword can still
- * beat a label match two tiers weaker — an exact alias really is better evidence
- * than a fuzzy subsequence guess.
- */
+/** A match on a SECONDARY field (href, section label) is penalised by slightly MORE than one tier step, so a label match always outranks a… */
 const KEYWORD_PENALTY = 2_100;
 
 /** A highlightable span in the matched text, as `[start, end)`. */
@@ -110,13 +64,7 @@ function wordStarts(text: string): number[] {
   return starts;
 }
 
-/**
- * In-order character match with gaps. Returns the spans it consumed, or null.
- *
- * Greedy-leftmost: it takes the first available position for each character.
- * That is not the optimal alignment, but it is the one users expect from a
- * type-ahead (the highlight walks forward as you type) and it is O(n).
- */
+/** In-order character match with gaps. */
 function subsequenceRanges(text: string, query: string): NavMatchRange[] | null {
   const ranges: NavMatchRange[] = [];
   let cursor = 0;
@@ -182,14 +130,7 @@ function mergeRanges(ranges: NavMatchRange[]): NavMatchRange[] {
   return out;
 }
 
-/**
- * Match a whole (possibly multi-token) query against one item.
- *
- * AND across tokens, and each token may satisfy itself on the label OR on a
- * keyword — so "print labels" matches a row labelled "Labels" under a "Print
- * Stations" section keyword. The row's tier is its WEAKEST token: a result is
- * only as good as its worst justification.
- */
+/** Match a whole (possibly multi-token) query against one item. */
 export function matchNavItem(item: NavSearchable, query: string): NavMatch | null {
   const normalized = normalizeNavQuery(query);
   if (!normalized) return null;
@@ -233,14 +174,7 @@ interface NavSearchResult<T> {
   match: NavMatch;
 }
 
-/**
- * Rank items against a query. An empty query returns everything unranked, so a
- * caller can use one code path for resting and searching.
- *
- * Ordering is fully deterministic — score, then shorter label (more specific for
- * the same evidence), then the ORIGINAL index. That last tiebreak is what keeps
- * the registry's curated order visible instead of letting equal rows shuffle.
- */
+/** Rank items against a query. */
 export function searchNav<T extends NavSearchable>(
   items: readonly T[],
   query: string,

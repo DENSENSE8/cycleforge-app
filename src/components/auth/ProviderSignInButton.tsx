@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Federated identity buttons — Google, Apple, and Microsoft.
- *
- * These are the ONE place in the app where foreign brand colors are correct.
- * Both providers require their own mark and chrome as a condition of using their
- * identity platform, so these buttons deliberately do NOT theme with the house
- * tokens. Everything else on /signin does.
- *
- * Google — https://developers.google.com/identity/branding-guidelines
- *   · Approved text: "Sign in with Google" / "Sign up with Google" /
- *     "Continue with Google" (localization encouraged).
- *   · The 4-color "super G" must be the standard color version on a white
- *     background, never recolored, redrawn, or rescaled out of proportion.
- *   · Light theme: fill #FFFFFF · 1px inside stroke #747775 · text #1F1F1F.
- *     (Neutral: #F2F2F2, no stroke. Dark: #131314 / #8E918F / #E3E3E3.)
- *   · Web padding: 12px → logo → 10px → label → 12px.
- *   · Must be at least as prominent as other third-party sign-in options —
- *     hence Microsoft renders at the identical height and weight below.
- *   · Font is specified as Google Sans Medium 14/20. Google Sans is not publicly
- *     licensed as a webfont, so we fall back to Roboto Medium (Google's own
- *     documented substitute in the older revision of this spec). This is the one
- *     item in the spec we knowingly approximate.
- *
- * Microsoft — https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-branding-in-apps
- *   · Text "Sign in with Microsoft"; 21×21 four-square mark, unmodified.
- *   · Light theme: fill #FFFFFF · 1px #8C8C8C border · text #5E5E5E.
- *
- * `ds-allow-hex` markers below are the documented escape in
- * color-tokens.guard.test.ts — brand chrome owned by a third party, not ours.
- */
+/** Federated identity buttons — Google, Apple, and Microsoft. */
 
 import { RotateCcw } from 'lucide-react';
 import type { PlatformProvider } from '@/lib/auth/platform-oauth-types';
@@ -93,13 +64,7 @@ const PROVIDER_MARK: Record<PlatformProvider, () => React.JSX.Element> = {
   microsoft: MicrosoftMark,
 };
 
-/**
- * Per-provider chrome. Both land on a white fill at 40px so neither reads as
- * more prominent than the other (Google's prominence rule).
- *
- * Padding follows Google's web spec — 12px lead, 10px gap, 12px trail — applied
- * to both so the marks and labels align across a stacked pair.
- */
+/** Per-provider chrome. */
 const PROVIDER_CHROME: Record<PlatformProvider, string> = {
   // ds-allow-hex: Google brand spec — light theme fill/stroke/text.
   google: 'bg-[#FFFFFF] border-[#747775] text-[#1F1F1F] hover:bg-[#F8F9FA]',
@@ -135,11 +100,8 @@ export function ProviderSignInButton({
         'relative flex h-10 w-full items-center rounded-lg border',
         // Google's web spec fixes these at 12 / 10 / 12px. They must NOT ride the
         // density scale — brand geometry stays constant across ops densities.
-        'gap-2.5 pl-3 pr-3', // ds-allow-spacing: third-party brand geometry
-        // House sans (Geist) by operator call 2026-09-07 — the provider buttons
-        // used to hard-code Roboto per Google's brand spec, which left the two
-        // biggest buttons on the card in a third typeface. Provider GLYPHS stay
-        // brand-accurate; the label rides the app face.
+        'gap-2.5 pl-3 pr-3', // ds-allow-spacing:
+// House sans (Geist) by operator call 2026-09-07 — the provider buttons
         'font-[var(--ds-font-sans)] text-sm font-medium leading-5',
         'transition-colors disabled:cursor-not-allowed disabled:opacity-60',
         focusRing('control'),
@@ -156,20 +118,7 @@ export function ProviderSignInButton({
   );
 }
 
-/**
- * Quiet trailing recency marker: a counter-clockwise circle arrow, the
- * universal "recent" glyph. It replaced a "Last used" text chip (2026-09-07,
- * operator call) — the words were three times the width of the signal they
- * carried and forced the button label off centre on the house buttons.
- *
- * Absolutely positioned, so it costs the label no width and never shifts a
- * centred label: the parent MUST be `relative` (ProviderSignInButton is; the
- * house `Button` usages on the sign-in card pass `relative`). House-tokened,
- * not brand-colored — it is our annotation, not part of the provider's button.
- *
- * `aria-hidden` on the glyph + an `sr-only` phrase: a screen reader gets
- * "Last used" as words, sighted operators get the icon.
- */
+/** Quiet trailing recency marker: */
 export function LastUsedMarker() {
   return (
     <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-text-faint">

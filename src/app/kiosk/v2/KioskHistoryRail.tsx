@@ -2,36 +2,7 @@
 
 /**
  * History MASTER rail — the stack of past records, and nothing else.
- *
- * Callers: `KioskHistoryPane`. Affected API: none directly (the pane owns the
- * query hook). Schemas: `KioskVisitRow`.
- * User: "a scrollable list on the left, newest first" — and 2026-09-23:
- * *"it must display the real information similar from the repair service
- * table."*
- *
- * ## The row IS the repair table's row
- *
- * Three lines, carrying what `/repair` prints: the TICKET and the quote, the
- * DEVICE and its serial, then the repair's own STATUS with the customer and the
- * date. The old row printed the ticket, a joined subtitle and a timestamp —
- * which meant a rail full of drop-offs could not tell the operator which ones
- * were still on the bench. Status is the column they were reading down.
- *
- * A row may be a counter VISIT or a standalone REPAIR (`row.source`); the two
- * paint the same because the operator is looking for the same paper either way.
- * Rows are keyed and selected by `row.key`, never `row.id` — the two books
- * number independently and a bare id would collide.
- *
- * Rows wear the catalog's own rail vocabulary — `KIOSK_POS_CATEGORY` plus the
- * idle/active wash and the `divide-y` stack — because this IS that rail with a
- * different population. Inventing a second row treatment beside it is the
- * fork the kiosk token file exists to prevent.
- *
- * **The find-bar is not here.** Search and the kind filter live in the shell's
- * one header band (`KioskHistoryTrail`), the same bracket the catalog trail
  * gives Repair and Sales (operator 2026-09-22: *"delete the old search
- * component only in the sidebar"*). The rail still READS `search` — to word
- * its empty state — and never edits it.
  */
 
 import { Loader2 } from '@/components/Icons';
@@ -78,12 +49,7 @@ function rowDevice(row: KioskVisitRow): string {
   return repairDeviceName(row.subtitle);
 }
 
-/**
- * The device's IDs — serial, then a second-device count. They sit in their own
- * non-shrinking slot at the right of the device line, because a serial read off
- * the unit on the bench is one of the four ways a row gets found, and a joined
- * `model · SN` line truncated it off every row on a 320px rail.
- */
+/** The device's IDs — serial, then a second-device count. */
 function rowDeviceIds(row: KioskVisitRow): string {
   const parts: string[] = [];
   if (row.serialNumber?.trim()) parts.push(`SN ${row.serialNumber.trim()}`);
@@ -91,34 +57,14 @@ function rowDeviceIds(row: KioskVisitRow): string {
   return parts.join(' · ');
 }
 
-/**
- * The status WORD, on its own — the repair book's first. A transaction status
- * (`staged`) is stored lower-case and is the FALLBACK, not the headline: a
- * drop-off's operator question is "is it repaired yet", which only
- * `repair_service.status` answers.
- *
- * It is returned separately from {@link rowTrail} because it becomes a CHIP.
- * Square's and Shopify's POS list rows never run status into a `·`-joined
- * sentence — a chip is the one thing on the row the eye can find without
- * reading, which is the whole point of scanning a list.
- */
+/** The status WORD, on its own — the repair book's first. */
 function rowStatus(row: KioskVisitRow): string | null {
   const status = row.repairStatus?.trim() || row.status?.trim();
   if (!status) return null;
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-/**
- * WHAT KIND of capture the row is, when the status chip does not already say.
- *
- * History is every checkout the counter records, not only drop-offs: a Sales
- * checkout lands in `counter_transactions` exactly like a repair visit and
- * joins the same rail. A repair row names itself — its chip reads `Pending
- * Repair` — but a sale's status is the transaction's (`Staged`), which says
- * nothing about what was rung up. So a sale is marked, a visit that did both
- * is marked, and a plain repair is left alone rather than printing `Repair`
- * beside `Pending Repair`.
- */
+/** WHAT KIND of capture the row is, when the status chip does not already say. */
 function rowKindLabel(row: KioskVisitRow): string | null {
   if (row.kind === 'retail') return 'Sale';
   if (row.kind === 'mixed') return 'Repair + sale';
@@ -127,11 +73,7 @@ function rowKindLabel(row: KioskVisitRow): string | null {
 
 /**
  * WHO — the quiet third line, beside the status chip.
- *
- * The date used to ride here too. It moved to the TOP-RIGHT of the row
  * (operator 2026-09-23: *"the main ID top left and the date and time top right
- * in the sidebar"*), which is where a POS list puts it: the two facts that
- * identify a record sit on one line, at the two edges the eye already tracks.
  */
 function rowTrail(row: KioskVisitRow): string {
   const name = row.customerName?.trim();
@@ -169,16 +111,7 @@ export function KioskHistoryRail({
   onSelect: (key: string) => void;
 }) {
   const term = search.trim();
-  /**
-   * The count says WHICH count it is. `25 records` and `25 results for "jane"`
-   * are different claims, and a rail that prints the first while a filter is
-   * on tells the operator the book holds 25 rows when it holds hundreds.
-   *
-   * Truthful under keyset paging: this surface knows how many rows it HOLDS
-   * and whether older ones exist — never a total. `25+` is that fact; a real
-   * total would cost a COUNT(*) on every keystroke, which is exactly the query
-   * the cursor exists to avoid.
-   */
+  /** The count says WHICH count it is. */
   const shown = `${rows.length}${hasMore ? '+' : ''}`;
   const singular = rows.length === 1 && !hasMore;
   const countLabel = term
@@ -187,10 +120,7 @@ export function KioskHistoryRail({
 
   return (
     <div className={KIOSK_POS_HISTORY_RAIL} data-testid="kiosk-history-rail">
-      {/* Broadened-result notice, in the palette's grammar (`CommandBar`): a
-          relaxed set must never read as an exact one. It sits ABOVE the scroll
-          box, not inside it, so scrolling to row 20 cannot hide the reason
-          those rows are on screen. */}
+      {/* Broadened-result notice, in the palette's grammar (`CommandBar`): */}
       {relaxed && !loading ? (
         <p
           className="shrink-0 border-b border-border-hairline px-4 py-2 text-role-caption text-text-muted"
@@ -217,17 +147,7 @@ export function KioskHistoryRail({
           <ul className={KIOSK_POS_CATEGORY_STACK}>
             {kioskHistoryDayBands(rows, (row) => row.createdAt).map((band) => (
               <li key={band.dayKey || `undated-${band.rows[0]?.key}`}>
-                {/* THE DAY BAND, pinned to the top of the scroll box (Polaris
-                    index table / Square's iPad transaction list). `top-0`
-                    inside the scrolling div — the `<ul>` is not a scroll
-                    container, so a sticky child of a child still pins to the
-                    box that actually scrolls.
-
-                    It needs an OPAQUE background or the rows it overlaps bleed
-                    through it at 1px, which reads as a rendering fault on a
-                    glossy tablet. `KIOSK_SECTION_LABEL_ROW` is the same chrome
-                    label the detail pane's section heads wear: one label
-                    grammar across both halves of the face. */}
+                {/* THE DAY BAND, pinned to the top of the scroll box (Polaris index table / Square's iPad transaction list). */}
                 <p
                   className={cn(
                     KIOSK_SECTION_LABEL_ROW,
@@ -271,15 +191,10 @@ export function KioskHistoryRail({
                           data-testid="kiosk-history-row"
                           data-history-key={row.key}
                         >
-                          {/* TOP LINE: the ID left, WHEN right. The two facts
-                              that identify a row, on one line, at the two edges
-                              the eye already tracks (operator 2026-09-23).
-
-                              Money is NOT one of them. It sat here at the same
-                              weight as the ticket and made two headlines
-                              competing for first read; it drops to the third
-                              row at caption size in the money token, where the
-                              eye finds it by colour instead of by size. */}
+                          {/*
+ * TOP LINE: the ID left, WHEN right.
+ * the eye already tracks (operator 2026-09-23).
+ */}
                           <span className="flex items-baseline justify-between gap-3">
                             <span className="min-w-0 truncate text-role-title text-text-default tabular-nums">
                               {rowTitle(row)}
@@ -315,10 +230,7 @@ export function KioskHistoryRail({
                             <span className="min-w-0 flex-1 truncate text-role-caption text-text-soft">
                               {trail}
                             </span>
-                            {/* Green is the MONEY token — an em dash is the
-                                absence of money and must not wear it, or "not
-                                quoted" reads as a figure from across the
-                                counter. */}
+                            {/* Green is the MONEY token — an em dash is the absence of money and must not wear it, or "not quoted" reads as a figure from across the… */}
                             <span
                               className={cn(
                                 'shrink-0 text-role-caption font-semibold tabular-nums',

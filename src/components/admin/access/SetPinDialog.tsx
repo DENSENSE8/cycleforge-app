@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Modal to admin-set a specific PIN for a staff member.
- *
- * Two inputs — PIN and confirm — both numeric 4-6 digits. Submits via the
- * caller's `onSubmit(pin)` which calls /api/admin/staff/[id]/set-pin.
- * Server may respond `STEPUP_REQUIRED` if the admin's session hasn't done
- * a fresh step-up — in that case the dialog stays open and surfaces the
- * error so the admin can satisfy step-up via the global helper.
- */
+/** Modal to admin-set a specific PIN for a staff member. */
 
 import { useCallback, useState } from 'react';
 import { Button } from '@/design-system/primitives';

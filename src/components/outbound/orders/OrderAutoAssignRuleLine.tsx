@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The order record's auto-assign rule as ONE read-only line — owner
- * 2026-09-25, decision 8: config is not record data. It reads
- * `Pick Cuong → Long · Pack Chi → QA Packer` (primary → backup, the rule that
- * keys this item # + SKU) and its pencil opens the existing editor
- * ({@link OrderAutoAssignRule}) as an inset form over the record. The full
- * list of rules gets its own config page later.
- */
+/** The order record's auto-assign rule as ONE read-only line — owner 2026-09-25, decision 8: */
 
 import { useState } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';

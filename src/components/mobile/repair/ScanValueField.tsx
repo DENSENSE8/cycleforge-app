@@ -20,15 +20,7 @@ export const REPAIR_FIELD_INPUT_CLASS = cn(
   focusRing('field', 'accent'),
 );
 
-/**
- * A labelled text field with a trailing camera Scan. Typing always works; the
- * camera is a shortcut, never the only way in. The first decode fills the
- * field, closes the sheet and releases the camera.
- *
- * The scan sheet stacks at `level={1}` (z-index modal + 10) because this field
- * lives inside full-screen `fixed inset-0 z-modal` sheets — a base-level
- * BottomSheet would tie that layer and could render underneath it.
- */
+/** A labelled text field with a trailing camera Scan. */
 export function ScanValueField({
   id,
   label,

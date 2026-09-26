@@ -10,20 +10,7 @@ import {
   type SendToDeviceState,
 } from '@/lib/realtime/device-handshake';
 
-/**
- * React binding for the desk-side send-to-device handshake.
- *
- * Owns the `idle → request_sent → peer_active | timed_out` machine and nothing
- * else: the *publish* stays with the caller, because each bench sends a
- * different payload on a different channel (receiving's stage-routed photo
- * request vs. pack's `scan_ready`). What must be identical across benches is
- * the waiting, the timeout, and what the operator is told — and that is exactly
- * what lives here.
- *
- * The caller receives the minted `requestId` and MUST put it on the wire, or
- * the phone's ack carries an id the desk is not waiting on and every send reads
- * as unreachable.
- */
+/** React binding for the desk-side send-to-device handshake. */
 
 /** How long a successful "On your phone" confirmation rests before clearing. */
 const PEER_ACTIVE_SETTLE_MS = 4_000;

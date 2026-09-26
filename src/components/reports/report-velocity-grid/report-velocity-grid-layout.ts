@@ -1,20 +1,4 @@
-/**
- * SKU-velocity column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced `VELOCITY_COLUMNS`, a page-local `AdminTableColumn[]` literal
- * carrying six JSX cells (two of them hue-coded) over
- * `Record<string, unknown>` rows: a second table engine's column type, with no
- * header sort, no Fields picker and no org binding, because that engine never
- * grew them.
- *
- * The skeleton mounts WHOLE — no `.filter`. A velocity row has no photo, so
- * the gutter paints the typed placeholder exactly as `cycle-counts`,
- * `part-compatibility` and `kiosk-slot-events` already do; filtering `thumb`
- * off the mount would need a new `COMPOUND_SKELETON_FILTER_DEBT` row and that
- * list is documented shrink-only. Chrome headers are family DATA and are
- * relabelled (SKU · Product · Last move · Tier); geometry is the engine's.
- */
+/** SKU-velocity column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -85,14 +69,7 @@ export function reportVelocityCompoundColumnsFor(
 export const REPORT_VELOCITY_COMPOUND_COLUMNS: readonly ReportVelocityGridColumn[] =
   reportVelocityCompoundColumnsFor(REPORT_VELOCITY_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the four the chrome paints: a
- * labeled header with a dead click fails `SLOT_TABLE_PAINT_LAW.headerSort`.
- * Structural chrome is named by `isSlotTableChromeTrack`, never by a hand list
- * that could drift from the law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function reportVelocitySortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

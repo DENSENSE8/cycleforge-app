@@ -1,36 +1,4 @@
-/**
- * WS2.2 — admin-role self-heal.
- *
- * Self-service signup wires the first admin via:
- *
- *   INSERT INTO staff_roles (staff_id, role_id)
- *   SELECT $1, r.id FROM roles r WHERE r.key = 'admin'
- *   ON CONFLICT DO NOTHING
- *
- * That `SELECT … FROM roles WHERE key = 'admin'` silently no-ops on a fresh DB
- * whose GLOBAL `roles` table was never seeded (scripts/seed-roles.mjs never run).
- * The result is an admin staffer with ZERO role assignments — and therefore zero
- * permissions — with no error to signal it.
- *
- * This helper guarantees the invariant "the first admin always ends up with the
- * admin role + permissions": it checks whether the wire landed, and if not, seeds
- * the admin role row (idempotent) and retries the wire.
- *
- * Permission set: we use the LIVE registry SoT (`ALL_PERMISSIONS`) rather than a
- * copied 8-role matrix. Phase 2b deliberately deleted the static
- * `ROLE_PERMISSION_SETS` from `permissions-shared.ts` because it drifted from the
- * DB; the only remaining copy is scripts/seed-roles.mjs (a non-importable script
- * const). Seeding admin with `Array.from(ALL_PERMISSIONS)` is correct by
- * construction and cannot drift. (Admin also short-circuits to all permissions at
- * runtime via `computeEffectivePermissions`, so the stored row is belt-and-braces.)
- * The non-admin system roles are intentionally NOT re-inlined here — that matrix's
- * SoT is scripts/seed-roles.mjs; duplicating it would re-introduce the drift Phase
- * 2b removed. Running seed-roles.mjs remains the way to seed the full taxonomy.
- *
- * Idempotent (ON CONFLICT DO NOTHING throughout) and safe to call inside the
- * signup transaction by passing the transaction client, so it shares the same
- * commit/rollback as the rest of signup.
- */
+/** WS2.2 — admin-role self-heal. */
 
 import type { Pool, PoolClient } from 'pg';
 import dbPool from '@/lib/db';

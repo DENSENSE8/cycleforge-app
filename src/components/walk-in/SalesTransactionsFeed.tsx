@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The Sales transaction feed — day-banded rows for the merged front-desk history.
- *
- * Composes the house table language end to end: `DateGroupHeader` day bands,
- * `groupRowsBy` for the buckets, `RowTitle` for the dot+title (fixed dot track,
- * so titles start at the same x on every row), `LedgerValue` for money, and the
- * shared `dashboardOrderRowShellClass` grid. Full-bleed inside the workbench
- * gutter column — the table is never wrapped in a card (workbench-shell.tsx).
- *
- * Every per-kind label / hue resolves through `transaction-kind.ts`; this view
- * assembles resolved facts and decides nothing.
- */
+/** The Sales transaction feed — day-banded rows for the merged front-desk history. */
 
 import { Fragment } from 'react';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';

@@ -1,20 +1,4 @@
-/**
- * /api/ai/usage — the tenant's AI usage + price breakdown (Settings → AI).
- *
- * GET ?days=30 → {
- *   providers: { chat, embed } — the RESOLVED source per capability (vault
- *     row from organization_integrations or the platform-metered default);
- *     never returns keys, only source/model/host,
- *   summary: per-model rollup from ai_usage_events (calls, tokens, estimated
- *     provider cost in microcents),
- *   marginPercent + totals — billed = estimated × (1 + margin); margin is
- *     DB-first per org (organizations.settings.aiUsageMarginPercent) with the
- *     AI_USAGE_MARGIN_PERCENT env as the global default.
- * }
- *
- * Everything is resolved from the caller's org (ctx → DB rows) — no tenant
- * constants. Read-only; not audited (same policy as plain retrieval).
- */
+/** /api/ai/usage — the tenant's AI usage + price breakdown (Settings → AI). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

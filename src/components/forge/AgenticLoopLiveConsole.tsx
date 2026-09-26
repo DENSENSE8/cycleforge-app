@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Agentic-loop live console — Plans Live Workbench.
- *
- * Composition (laws-driven + service-workspace ranking):
- *   Left  — ticket TOC (parent stays visible)
- *   Center — Plan Agent (SEND is the work) + centered composer; or MDX when
- *            `?view=doc`
- *   Right — live MDX HTML via {@link DetailStackRailRegistrar} (extras);
- *            run history collapsed under Advanced. {@link ForgePlanRail} owns
- *            the rail's ONE band; this console passes it a single-segment
- *            title and never a second identity line. Dismiss is the host's
- *            singleton `✕` (it runs `onClose` → `setRailOpen(false)`), with
- *            {@link ForgePlanRailReopenButton} as the re-open.
- *
- * Landing: `/forge?view=live` (`live` ≡ agent-primary). Its own route since
- * 2026-08-19 — it used to mount as Home's `?mode=forge` region.
- */
+/** Agentic-loop live console — Plans Live Workbench. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -92,10 +76,7 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
         else params.set(k, v);
       }
       const qs = params.toString();
-      // Write back to the path this console is MOUNTED on, never a literal. It
-      // hardcoded `/` while it was Home's `?mode=forge` region, so after the
-      // move to `/forge` (2026-08-19) the first view toggle silently threw the
-      // operator to Home with a stray `?view=doc`.
+      // Write back to the path this console is MOUNTED on, never a literal.
       const base = pathname || '/forge';
       router.replace(qs ? `${base}?${qs}` : base);
     },

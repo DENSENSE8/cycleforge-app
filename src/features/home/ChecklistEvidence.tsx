@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The open DAILY CHECKLIST item in the Daily ledger's evidence column.
- *
- * A checklist item is not a task — it is a per-day attestation with a roster
- * denominator — so it gets its own evidence: the item's words, the team's
- * progress today, the paired ticket's thread, and its **due time + reminder**,
- * which are wall-clock facts of the ITEM (every day for a recurring one), not
- * of one day's tick. The phone apps read the reminder through
- * `GET /api/v1/reminders` and ring locally; editing it here is list curation,
- * so it rides the same `admin.manage_staff` gate as adding to the list.
- */
+/** The open DAILY CHECKLIST item in the Daily ledger's evidence column. */
 
 import { useEffect, useState } from 'react';
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';

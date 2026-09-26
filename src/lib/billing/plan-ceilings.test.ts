@@ -1,14 +1,4 @@
-/**
- * Plan quantity ceilings — decision logic (DB-free via injected deps).
- *
- * Pins the dormant-by-default / fail-open contract of wouldExceedPlanCeiling():
- *   - flag OFF            → allowed, and NO collaborator (DB) reads happen
- *   - over the ceiling    → EXCEEDED
- *   - under the ceiling   → allowed
- *   - ceiling 0           → unlimited (allowed, usage never counted)
- *   - dogfood/exempt org  → allowed even when over
- *   - collaborator throw  → fail-open (allowed)
- */
+/** Plan quantity ceilings — decision logic (DB-free via injected deps). */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

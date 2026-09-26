@@ -9,22 +9,7 @@ import { deliverScanToTarget } from '@/lib/scan-hotkey/store';
 import { isScanPreview } from '@/components/station/scan-bar/scan-stance';
 import { useStationCommandScan } from '@/hooks/useStationCommandScan';
 
-/**
- * Mount once at the app root. Every wedge scan is classified via
- * {@link routeScan}; URL-shaped payloads (printed QR labels) get navigated
- * to immediately. Bare SKUs / serials / bin codes are emitted as a
- * `wedge-scan` window CustomEvent so pages that want their own behavior
- * (e.g. the receiving sidebar) can listen.
- *
- * After page claimers, the active Action-plane scan sink
- * ({@link dispatchScanToActiveSink}) may consume the payload — Unbox dock /
- * serial, Testing line adder, Pack / scan-out bars — before any URL redirect.
- * Editable focus still owns keys via {@link useWedgeScanner}'s bail-out; the
- * sink covers non-editable focus (row / chrome) with zero-latency Map lookup.
- *
- * Tactile + audible feedback fires on every accepted scan so the user knows
- * the read landed — important on noisy floors.
- */
+/** Mount once at the app root. */
 export function useGlobalWedgeScanner(): void {
   const router = useRouter();
   const tryCommand = useStationCommandScan();
@@ -32,16 +17,6 @@ export function useGlobalWedgeScanner(): void {
   const onScan = useCallback(
     (value: string) => {
       // ── Commands are read FIRST, ahead of every page claimer.
-      //
-      // A `CMD-*` sticker is addressed to the app, not to the surface the
-      // operator happens to be standing on, and the claimers below do not know
-      // that: Unbox History's Band-3 find, for one, buckets anything it cannot
-      // decode as search text — so a jump sticker would have been typed into a
-      // filter box instead of moving anyone.
-      //
-      // Preview stance still wins over it (`isScanPreview` below is checked
-      // inside the bar's own path); a command that reaches here reached a
-      // non-editable target, which is the case Preview cannot serve anyway.
       if (tryCommand(value)) return;
 
       const route = routeScan(value);
@@ -62,13 +37,7 @@ export function useGlobalWedgeScanner(): void {
 
       if (claimed) return;
 
-      // ── Preview stance is enforced HERE, at the one waist every wedge scan
-      // crosses — not per host. A physical scan lands on whatever holds focus,
-      // which on a bench is usually a row or the chrome, not the input; so with
-      // the guard only on the typed-submit path a scanner sailed straight into
-      // `routeScan` → navigate and Preview never fired at all. Filling the bar
-      // (rather than resolving) is the whole contract of the stance: no write,
-      // no navigation, no unbox attribution.
+      // ── Preview stance is enforced HERE, at the one waist every wedge scan crosses — not per host.
       if (isScanPreview() && deliverScanToTarget(value)) return;
 
       // Action-plane sink (dock / serial / station bar) before URL navigation.

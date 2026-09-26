@@ -51,14 +51,7 @@ describe('compareReceivingGridRows', () => {
   });
 });
 
-/**
- * Org custom columns (`custom:<defKey>`), merged into the model at runtime.
- *
- * Values arrive already typed per their def (see `hydrateCustomFieldMaps`), so
- * these fixtures use real JS types — a number def yields a number, a date def
- * yields an ISO `YYYY-MM-DD` string — which is what the comparator dispatches
- * on.
- */
+/** Org custom columns (`custom:<defKey>`), merged into the model at runtime. */
 describe('compareReceivingGridRows — org custom columns', () => {
   const KEY = 'custom:rack_slot';
 
@@ -78,12 +71,7 @@ describe('compareReceivingGridRows — org custom columns', () => {
     assert.ok(compareReceivingGridRows(low, mid, KEY, 'asc') < 0);
   });
 
-  // This is the fixture that actually PINS the numeric branch. `2` vs `10`
-  // does not: the string fallback uses `numeric: true` collation, which gets
-  // whole numbers right anyway. Decimals are where the two diverge — that
-  // collation treats `.` as a SEPARATOR, so it reads "2.5" vs "2.25" as 5 vs
-  // 25 and orders them backwards. A weight / cost custom field would silently
-  // mis-sort if this ever fell through to string compare.
+  // This is the fixture that actually PINS the numeric branch.
   it('sorts decimals by VALUE, where numeric collation would invert them', () => {
     const bigger = row({ id: 1, customFields: { rack_slot: 2.5 } });
     const smaller = row({ id: 2, customFields: { rack_slot: 2.25 } });

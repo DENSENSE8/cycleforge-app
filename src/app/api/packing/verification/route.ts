@@ -6,13 +6,7 @@ import { recordPackVerificationEvent } from '@/lib/packing/pack-verification';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * POST /api/packing/verification — packer submits a floor-capture verification
- * outcome for a packer_log after the guided slip/box photos + tracking check
- * (docs/todo/packer-review-station-plan.md Phase 2d/3c). Append-only; the domain
- * helper enforces the outcome state machine (409 on an illegal transition) and
- * client_event_id idempotency. orgId + staffId come from the auth context.
- */
+/** POST /api/packing/verification — packer submits a floor-capture verification outcome for a packer_log after the guided slip/box photos +… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

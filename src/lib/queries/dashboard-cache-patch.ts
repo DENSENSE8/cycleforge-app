@@ -1,20 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { toOrderRecord } from '@/lib/orders/order-record-normalize';
 
-/**
- * Dashboard-order cache surgery — one place for the incremental patches that keep
- * the Unshipped queue live WITHOUT a full `/api/orders` refetch (Phase 3 of the
- * unshipped-dashboard-performance plan).
- *
- * All three helpers operate over the `['dashboard-table','unshipped', …]` PREFIX,
- * so a single call updates EVERY cached list variant (every stage / limit / staff
- * key) at once. They are array-safe — a non-array cache entry (e.g. an in-flight
- * placeholder) passes through untouched — and identity-preserving: an entry that
- * didn't actually change is returned by reference so React Query skips the
- * re-render. The lightweight counts query lives under a SEPARATE key
- * (`unshipped-counts`) and is refreshed via {@link invalidateUnshippedCounts};
- * the list-prefix helpers never touch it.
- */
+/** Dashboard-order cache surgery — one place for the incremental patches that keep the Unshipped queue live WITHOUT a full `/api/orders`… */
 
 const UNSHIPPED_LIST_KEY = ['dashboard-table', 'unshipped'] as const;
 const UNSHIPPED_COUNTS_KEY = ['dashboard-table', 'unshipped-counts'] as const;
@@ -38,14 +25,7 @@ export function patchUnshippedOrderCache(
     let changed = false;
     const next = current.map((row: OrderRow) => {
       if (Number(row?.id) !== orderId) return row;
-      // Matching the id is not the same as changing the row. This used to set
-      // `changed` on the id match alone, which contradicted the identity
-      // promise in the header above: every redundant patch (two subscribers on
-      // one event, an Ably echo of a scan this tab already applied) handed
-      // React Query a fresh array and re-rendered the whole queue for nothing.
-      // With the live-change chip pulse downstream, "re-render for nothing" is
-      // no longer free — it is one keystroke away from flashing a status that
-      // did not move.
+      // Matching the id is not the same as changing the row.
       const rowChanged = Object.keys(patch).some(
         (key) => row[key] !== (patch as Record<string, unknown>)[key],
       );
@@ -57,20 +37,7 @@ export function patchUnshippedOrderCache(
   });
 }
 
-/**
- * The tech-verdict patch — one shape for the ONE event that flips an order out
- * of the pending lane (`order.tested`, published by `/api/tech/scan` when a
- * tracking number is scanned at the bench).
- *
- * It lives here rather than in a component because more than one surface reads
- * the unshipped cache and only one of them used to subscribe: `UnshippedTable`
- * owned this patch inline, so the compare panes (`OrdersPaneTable`) and the
- * drill host (`OrdersDrillHost`) — which query the same cache without mounting
- * that table — went stale on a scan until something else invalidated them.
- *
- * Never clobbers an existing `tested_by` with a null: the event carries the
- * tester only when the scan resolved one.
- */
+/** The tech-verdict patch — one shape for the ONE event that flips an order out of the pending lane (`order.tested`, published by… */
 export function patchUnshippedOrderTested(
   queryClient: QueryClient,
   event: {
@@ -89,11 +56,7 @@ export function patchUnshippedOrderTested(
   const patch: Partial<OrderRow> = { has_tech_scan: true };
   if (testedBy != null) patch.tested_by = testedBy;
 
-  // The bench, when the scan was made at an armed one. `publishOrderTested` has
-  // always carried `packLocationId` / `packLocationName`; the patch dropped
-  // them, so the Station chip on every board kept showing an em dash until some
-  // unrelated event forced a refetch. Same event, same round trip — the data
-  // was already on the wire.
+  // The bench, when the scan was made at an armed one.
   const packLocationId = Number(event?.packLocationName != null ? event.packLocationId : NaN);
   if (Number.isFinite(packLocationId)) {
     patch.pack_location_id = packLocationId;
@@ -119,12 +82,7 @@ export function removeUnshippedOrderFromCache(queryClient: QueryClient, orderId:
   });
 }
 
-/**
- * Refresh the lightweight Unshipped counts (sidebar legend + stage dropdown + nav
- * badge) and the desk-sidebar view badges (`desk-counts`) — cheap `COUNT(*)`s,
- * no row payload. Call this alongside any patch/remove so the tallies stay in
- * step without downloading rows.
- */
+/** Refresh the lightweight Unshipped counts (sidebar legend + stage dropdown + nav badge) and the desk-sidebar view badges (`desk-counts`)… */
 export function invalidateUnshippedCounts(queryClient: QueryClient): void {
   queryClient.invalidateQueries({ queryKey: UNSHIPPED_COUNTS_KEY });
   queryClient.invalidateQueries({ queryKey: DESK_COUNTS_KEY });

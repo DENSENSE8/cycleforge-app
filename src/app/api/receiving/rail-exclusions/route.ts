@@ -1,16 +1,4 @@
-/**
- * /api/receiving/rail-exclusions — per-staff receiving-rail dismiss (universal-feed
- * plan Phase 4). Replaces the old destructive bulk-DELETE: dismissing hides an
- * entity from THIS staffer's rail only (a staff_rail_exclusions row), reversibly.
- *
- *   GET    ?feedKey=receiving_triage        → { items: [{ entityType, entityId }] }  (this staff's exclusions)
- *   POST   { feedKey, items:[{entityType,entityId}] } → { success, count }  (dismiss)
- *   DELETE { feedKey, items:[{entityType,entityId}] } → { success, count }  (restore)
- *
- * staffId + orgId always come from the verified session (ctx), never the body.
- * Gated on `receiving.view` — a dismiss only affects the caller's own view, so
- * it is strictly weaker than the shared delete it replaces.
- */
+/** /api/receiving/rail-exclusions — per-staff receiving-rail dismiss (universal-feed plan Phase 4). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

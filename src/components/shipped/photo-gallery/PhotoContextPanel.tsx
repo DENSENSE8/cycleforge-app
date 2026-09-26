@@ -23,12 +23,7 @@ import {
 } from './photo-context-provenance';
 import type { PhotoItem } from './photo-gallery-utils';
 
-/**
- * Right-side info panel for the fullscreen viewer — the "where did this photo
- * come from" surface. Workflow type (unboxing / packing / claim) is shown
- * separately from the linked entity (PO, order, ticket) so partially-attached
- * photos never read as contradictory.
- */
+/** Right-side info panel for the fullscreen viewer — the "where did this photo come from" surface. */
 
 const WORKFLOW_ICONS = {
   unboxing: Package,
@@ -80,10 +75,7 @@ export function PhotoContextPanel({
   const navLink = resolveProvenanceNavLink(workflow, meta);
   const WorkflowIcon = WORKFLOW_ICONS[workflow.kind];
 
-  // Discrete provenance identifiers, shown as their own fields so the viewer
-  // surfaces the WHOLE picture (PO + claim + SKU + serial + tracking) instead
-  // of one "Linked to" line. Each is suppressed when it's already the primary
-  // headline above, so nothing reads twice.
+  // Discrete provenance identifiers, shown as their own fields so the viewer surfaces the WHOLE picture (PO + claim + SKU + serial +…
   const ctx = receivingCtx.data;
   // Library rows thread SKU · serial · stage through the gallery meta
   // (photo-grid-format → libraryPhotoMeta); non-library callers simply omit it.
@@ -113,11 +105,7 @@ export function PhotoContextPanel({
   return (
     <motion.aside
       data-testid="photo-context-panel"
-      // Animate the drawer's OWN WIDTH (flex sibling) so the image lane + toolbar
-      // reflow live and concurrently in BOTH directions — no transform, no
-      // popLayout, no `layout` projection (those caused the janky, asymmetric
-      // close). The inner column is fixed-width + left-anchored, so this outer
-      // `overflow-hidden` clips it into a clean slide-from-right / slide-out-right.
+      // Animate the drawer's OWN WIDTH (flex sibling) so the image lane + toolbar reflow live and concurrently in BOTH directions — no…
       initial={{ width: 0 }}
       animate={{ width: '20rem' }}
       exit={{ width: 0 }}
@@ -260,14 +248,7 @@ export function PhotoContextPanel({
           </Field>
         ) : null}
 
-        {/* Capture vs upload are two different instants and the gap between them
-            is the whole point: a carton photo taken on a dead-zone dock queues
-            in localStorage and INSERTs hours later, and a concealed-damage
-            dispute turns on when the shutter fired. So the device's own clock
-            gets its own field, and `createdAt` is labelled for what it actually
-            is — the upload. The caveat line is visible rather than a tooltip
-            because "this number came from the operator's phone" is part of the
-            fact, not optional context. */}
+        {/* Capture vs upload are two different instants and the gap between them is the whole point: */}
         {meta?.clientCapturedAt ? (
           <Field icon={<Camera className="h-3.5 w-3.5" />} label="Captured">
             <time dateTime={meta.clientCapturedAt} className="tabular-nums">

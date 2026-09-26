@@ -9,23 +9,7 @@ import { cleanText, type CanonicalOrderLine } from '@/lib/orders/canonical-order
 import { fetchEcwidCanonicalOrders } from '@/lib/orders/sources/ecwid-orders';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/orders/backfill/ecwid-price
- *
- * One-time repair for the Ecwid orders that imported before the adapter carried
- * a price: the mapper hardcoded `saleAmount: null`, so 472 Ecwid orders landed
- * with no revenue at all. The adapter now emits a per-line amount, but the
- * recurring sync only looks at a rolling window — orders older than that window
- * would stay blank forever. This route re-reads the store and fills them in.
- *
- * It writes `sale_amount` ONLY where the column `IS NULL`, and the guard is in
- * the UPDATE itself rather than just the diagnosis read: an operator may have
- * corrected a price by hand between the two statements, and a marketplace
- * number must never overwrite a human's correction.
- *
- * `dryRun` defaults TRUE. A backfill that writes by default is a backfill that
- * writes before anyone has read what it would do.
- */
+/** POST /api/orders/backfill/ecwid-price */
 
 /** Ecwid orders fetched when the caller names no limit. Covers the 472 unpriced rows. */
 const DEFAULT_LIMIT = 600;
@@ -46,14 +30,7 @@ interface LocalOrderRow {
   sale_amount: string | null;
 }
 
-/**
- * Which Ecwid line priced this local row.
- *
- * `orders` is one row per item, so a multi-item Ecwid order has several
- * candidate lines and picking the wrong one books another item's price. A
- * single-line order is unambiguous; otherwise the row's own sku must match, and
- * a row that matches nothing is left alone rather than guessed at.
- */
+/** Which Ecwid line priced this local row. */
 function pickLineForRow(
   candidates: CanonicalOrderLine[],
   row: LocalOrderRow,
@@ -105,11 +82,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   const orderIds = [...linesByOrderId.keys()];
 
-  // Scoped to Ecwid-sourced rows, and NOT by order_id alone: an Ecwid order
-  // number is a short integer, and this org has 57 `Other`, 28 unlabelled and
-  // one Amazon order sharing that id shape. Matching on the id alone would
-  // book an Ecwid price onto another channel's order. `account_source` is
-  // free text and both 'ecwid' and 'ECWID' are in use, hence the fold.
+  // Scoped to Ecwid-sourced rows, and NOT by order_id alone:
   const local = orderIds.length
     ? await tenantQuery<LocalOrderRow>(
         ctx.organizationId,

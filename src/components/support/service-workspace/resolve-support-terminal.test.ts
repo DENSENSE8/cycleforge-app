@@ -32,14 +32,7 @@ test('resolveSupportTerminal: connections (and unknown) hide the dock', () => {
   );
 });
 
-/**
- * The empty-composer label follows the VISIBILITY MODE (2026-08-02).
- *
- * It used to read "Reply" on an empty composer regardless of the toggle — so a
- * composer whose toggle said `Internal` and whose placeholder said "not
- * emailed…" sat under a button promising a reply, and only became honest once
- * the operator had typed. The mode is known before the first keystroke.
- */
+/** The empty-composer label follows the VISIBILITY MODE (2026-08-02). */
 test('resolveSupportTerminal: ticket tab label follows the mode with no draft', () => {
   const internal = resolveSupportTerminal({
     tabId: 'ticket',

@@ -1,15 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * label_print_jobs writers/readers — the immutable per-print ledger (serial↔label
- * pairing plan §5.1). One row per PHYSICAL label print; reprints append a new row
- * (is_reprint=true) that snapshots the SAME unit_uid — identity is never re-minted.
- *
- * Org-scoped via `tenantQuery` (the GUC-wrapped connection + RLS keep a row from
- * leaking across tenants). Idempotent on `(organization_id, client_event_id)` so a
- * retry of the same print is a no-op that returns the original row.
- */
+/** label_print_jobs writers/readers — the immutable per-print ledger (serial↔label pairing plan §5.1). */
 
 export type LabelJobType = 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION';
 

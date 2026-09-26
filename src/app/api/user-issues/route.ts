@@ -1,16 +1,4 @@
-/**
- * GET  /api/user-issues — tenant-scoped reported-issues list (UIC-1).
- * POST /api/user-issues — in-app feedback intake (ALP-5.2 dual-write).
- *
- * Neon (`user_reported_issues`, tenant-scoped) is the PRIMARY record; the
- * GitHub Issue (labeled "user-reported", which triggers claude-fix-issue.yml)
- * is a best-effort mirror. A report is never lost to a GitHub outage: the DB
- * write succeeds → `{ ok: true }` even when the mirror fails. Resolution
- * flows back via POST /api/user-issues/resolve → Ably `issue.resolved` toast.
- *
- * Body: { title, description, page?, type?: 'bug'|'suggestion'|'question',
- *         clientEventId? }   (response keeps the widget's `{ ok, error? }`)
- */
+/** GET /api/user-issues — tenant-scoped reported-issues list (UIC-1). */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -40,11 +28,7 @@ export const runtime = 'nodejs';
 const GITHUB_REPO = 'DENSENSE8/cycleforge-app';
 const GITHUB_API = 'https://api.github.com';
 
-// The GitHub mirror + claude-fix automation belong to ONE tenant (the dogfood
-// org that owns DENSENSE8/cycleforge-app). Mirroring another tenant's report
-// into that shared repo would leak their data AND create an issue that the
-// resolve path (pinned to FORGE_ORG_ID) can never close. So mirror ONLY for
-// the configured forge org; every tenant still gets the primary Neon record.
+// The GitHub mirror + claude-fix automation belong to ONE tenant (the dogfood org that owns DENSENSE8/cycleforge-app).
 const FORGE_ORG_ID = (process.env.FORGE_ORG_ID ?? '00000000-0000-0000-0000-000000000001').toLowerCase();
 
 const TYPE_LABEL: Record<UserIssueType, string> = {

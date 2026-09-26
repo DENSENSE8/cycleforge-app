@@ -1,18 +1,4 @@
-/**
- * Shared reader for the `inventory_events` lifecycle spine — the single
- * cross-station event stream that every station writes to (RECEIVED, TEST_*,
- * PUTAWAY, MOVED, PACKED, SHIPPED, …). One batched query, keyed on any of:
- *   • receiving_line_id  (the canonical "Line under PO" anchor)
- *   • serial_unit_id     (per-unit lifecycle, e.g. testing verdicts)
- *   • receiving_id        (carton-level events)
- *
- * Consumers map the normalized rows into their own event shapes:
- *   • receiving-aggregator → AuditEvent
- *   • tech-aggregator      → TechEvent
- *
- * Extracted in the audit-trail anchoring effort (docs/audit-trail-anchor-plan.md,
- * Phase 0) so the inventory_events read isn't duplicated per section.
- */
+/** Shared reader for the `inventory_events` lifecycle spine — the single cross-station event stream that every station writes to (RECEIVED,… */
 
 import 'server-only';
 import pool from '@/lib/db';
@@ -101,10 +87,7 @@ export async function readInventorySpine(
     where.push(`ie.event_type = ANY($${params.length}::text[])`);
   }
 
-  // Tenant scope: when an orgId is threaded through, restrict the spine to the
-  // caller's org and keep the LEFT JOINs from reaching across tenants. When
-  // omitted, the SQL/params/executor are byte-identical to the legacy path so
-  // the many un-migrated callers behave exactly as before.
+  // Tenant scope:
   let staffJoin = 'LEFT JOIN staff s ON s.id = ie.actor_staff_id';
   let serialJoin = 'LEFT JOIN serial_units su ON su.id = ie.serial_unit_id';
   let binJoin = 'LEFT JOIN locations l ON l.id = ie.bin_id';

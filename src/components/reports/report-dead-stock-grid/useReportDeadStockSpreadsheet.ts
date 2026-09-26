@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * **Dead-stock spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useReportDeadStockSpreadsheet({ rows, loading });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else. `/reports` mounts one of
- * THREE such hooks per tab and never a component that swaps column sets; a
- * single host taking three column arrays is the fork this port removed.
- *
- * ## Why sort and search are local state here
- *
- * `/reports` owns no search params at all — the tab is `useState` and the feed
- * is a client `fetch` of up to 500 rows. Writing `?sort=` would make a header
- * click round-trip a URL nothing else reads, and `?search=` per keystroke
- * would re-render the whole desk for a filter over rows the client already
- * holds. The server query's own narrowing (`?minDays=`,
- * `?includeNeverMoved=`) is untouched; the header sorts the page in hand.
- */
+/** **Dead-stock spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

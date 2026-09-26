@@ -7,12 +7,7 @@ import { assignThread, unassignThread } from '@/lib/threads/thread-assignments';
 import { createStaffMessage } from '@/lib/neon/staff-messages-queries';
 import pool from '@/lib/db';
 
-/**
- * POST   /api/threads/[id]/assign — set/replace the thread OWNER (one per thread).
- * DELETE /api/threads/[id]/assign — clear the owner. Both support.thread.manage.
- * On assign we drop a best-effort `support_assignment` staff_messages nudge to
- * the new owner (fire-and-forget via after(); never blocks the response).
- */
+/** POST /api/threads/[id]/assign — set/replace the thread OWNER (one per thread). */
 function toId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;

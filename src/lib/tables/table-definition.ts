@@ -1,56 +1,9 @@
-/**
- * Table DEFINITION schema — the data half of a Workbench spreadsheet.
- *
- * Plan: `docs/todo/nonlinear-data-table-engine-PLAN.md` (Phase 1, registry
- * waist). A definition is the part of a grid surface that is *configuration*:
- * which columns, in what order, at what widths, which are optional, what the
- * surface may do, and which prefs bucket it persists under. It is deliberately
- * **pure data** so it can be authored, diffed and validated — Phase 2 lets
- * Studio / an agent emit one of these as JSON.
- *
- * What is NOT in here, and must never be:
- *
- * - **Cells.** A cell is domain code (`receiving-grid/cells/*`), per family,
- *   forever at this horizon. A definition names a {@link cellMapKey}; it does
- *   not carry JSX.
- * - **Descriptor options.** `isSortable` / `isLocked` / `sortDescFirst` /
- *   accessors are functions, so they stay in the family's `make*Descriptor`.
- * - **Schema.** A definition selects among columns a family already renders; it
- *   never mints a DB column. DDL is not a display concern.
- *
- * The pairing of a definition with its typed column model + descriptor factory
- * is a `TableSurfaceBinding` (`@/components/tables/table-surface-binding`).
- *
- * ## Why the refinements below are laws, not taste
- *
- * `superRefine` carries the structural rules an author (human or model) can
- * otherwise break silently, because each of them fails as a *layout* bug rather
- * than an error:
- *
- * - a frozen pane that is not a contiguous leading prefix pins at the wrong
- *   origin (`gridFrozenLeft` sums the widths of the frozen columns *before* a
- *   given one);
- * - a frozen column carrying `hideKey`/`tier` can have the row's identity taken
- *   away by the column-display rail;
- * - two flex tracks means neither absorbs the sheet's slack predictably;
- * - and a default set that keeps growing is how a dense 1080p ops queue turns
- *   into soup one "just one more column" at a time.
- *
- * Invariants mirror Grid identity pane ·
- * Grid column visibility + sort.
- */
+/** Table DEFINITION schema — the data half of a Workbench spreadsheet. */
 
 import { z } from 'zod';
 import { TABLE_COLUMNS, type ColumnType, type TableId } from '@/lib/tables/table-columns';
 
-/**
- * Column `type` vocabulary, as a runtime tuple.
- *
- * `ColumnType` is a type-only union, so the tuple is hand-written and then
- * pinned to it in both directions: `satisfies` catches a value that is not a
- * `ColumnType`, and {@link MissingColumnType} fails the build when a new member
- * is added to the union and forgotten here.
- */
+/** Column `type` vocabulary, as a runtime tuple. */
 const COLUMN_TYPE_VALUES = [
   'text',
   'number',
@@ -73,13 +26,7 @@ void _COLUMN_TYPES_EXHAUSTIVE;
 /** Typed date faces — drives the track floor (`MIN_TRACK_REM_BY_DATE_FACE`). */
 const DATE_COLUMN_FACE_VALUES = ['day', 'stamp', 'duration'] as const;
 
-/**
- * Prefs-bucket ids, derived from the existing registry rather than re-typed.
- *
- * `TableId` is a type-only union; `TABLE_COLUMNS` is its `Record`, so its keys
- * ARE the runtime vocabulary. Deriving means a new table id cannot be legal in
- * one place and unknown in the other.
- */
+/** Prefs-bucket ids, derived from the existing registry rather than re-typed. */
 const TABLE_ID_VALUES = Object.keys(TABLE_COLUMNS) as [TableId, ...TableId[]];
 
 /**
@@ -114,20 +61,10 @@ const TABLE_ENTITY_FAMILIES = [
    *  a view of it — different store, different question, different row shape. */
   'tasks',
   'catalog-link',
-  /**
-   * Review → Missing item number. Sibling of `catalog-link`, never a merge:
-   * different store (`order_import_exceptions` vs `order_catalog_link_chores`)
-   * and a different question (sheet row never became an order vs listing
-   * unmatched to a catalog SKU).
-   */
+  /** Review → Missing item number. */
   'import-exception',
   'station-history',
-  /**
-   * Tech bench history — one row = one test scan, shaped into the shared
-   * `QueueRowRecord` by `techRecordToQueueRow`. Catalog:
-   * field-catalog/tech.ts. A SIBLING of `packer`, never a merge: the two
-   * benches answer different questions and carry different stamps.
-   */
+  /** Tech bench history — one row = one test scan, shaped into the shared `QueueRowRecord` by `techRecordToQueueRow`. */
   'tech',
   /** Packer bench history — `packerRecordToQueueRow` rows; catalog in field-catalog/packer.ts. */
   'packer',
@@ -184,55 +121,19 @@ const TABLE_ENTITY_FAMILIES = [
    * Catalog: field-catalog/audit-log.ts.
    */
   'audit-log',
-  /**
-   * Admin › Inventory holds — one row = one `serial_units` row in ON_HOLD,
-   * joined to the HELD event that quarantined it. Catalog:
-   * field-catalog/admin-holds.ts. Release is a row verb that OPENS A PLANE
-   * (its payload takes a restore-status parameter), never a `<form>` in a cell.
-   */
+  /** Admin › Inventory holds — one row = one `serial_units` row in ON_HOLD, joined to the HELD event that quarantined it. */
   'admin-holds',
-  /**
-   * Admin › Bulk allocate — one row = one unallocated `orders` row beside its
-   * SKU's STOCKED count. Catalog: field-catalog/admin-bulk-allocate.ts.
-   * Allocate is a row verb, never an actions column; `qty` and `eligible` are
-   * DERIVED in the resolver, so neither carries a `paths` entry.
-   */
+  /** Admin › Bulk allocate — one row = one unallocated `orders` row beside its SKU's STOCKED count. */
   'admin-bulk-allocate',
-  /**
-   * Admin › Cycle count LINES — one row = one `cycle_count_lines` row of one
-   * campaign. Catalog: field-catalog/cycle-count-lines.ts. Count / Approve /
-   * Reject are row verbs (the count opens a stage-overlay plane, because a
-   * parameterised write has no home on a compound row); never an actions column.
-   */
+  /** Admin › Cycle count LINES — one row = one `cycle_count_lines` row of one campaign. */
   'cycle-count-lines',
-  /**
-   * Admin › Inventory open DRIFT alerts — one row = one unresolved
-   * `stock_alerts` DRIFT row. Read-only: `/api/cron/inventory/drift-check`
-   * opens and resolves them, so a row verb here would be a second writer into
-   * a table the cron owns. Catalog: field-catalog/admin-drift-alerts.ts.
-   */
+  /** Admin › Inventory open DRIFT alerts — one row = one unresolved `stock_alerts` DRIFT row. */
   'admin-drift-alerts',
-  /**
-   * Admin › Inventory sku_stock ↔ ledger drift — one row = one
-   * `v_sku_stock_drift` comparison. A read-time join: no id and no timestamp,
-   * so the SKU is the identity and the Dates chrome carries no fact.
-   * Read-only. Catalog: field-catalog/admin-sku-drift.ts.
-   */
+  /** Admin › Inventory sku_stock ↔ ledger drift — one row = one `v_sku_stock_drift` comparison. */
   'admin-sku-drift',
-  /**
-   * Settings › Team directory — one row = one `staff` row. Catalog:
-   * field-catalog/staff-directory.ts. The sign-in-policy write and Deactivate
-   * are row verbs behind stage-overlay planes, never cells; the retired desk
-   * had both as controls inside a cell.
-   */
+  /** Settings › Team directory — one row = one `staff` row. */
   'staff-directory',
-  /**
-   * Reports › Bin utilization — one row = one `mv_bin_utilization` bin,
-   * org-scoped by the route's `locations` join. Read-only: no row verbs and no
-   * record plane. Catalog: field-catalog/report-bin-utilization.ts. NOT
-   * `bins` — that family's row carries count stamps and flags this MV
-   * projection does not have.
-   */
+  /** Reports › Bin utilization — one row = one `mv_bin_utilization` bin, org-scoped by the route's `locations` join. */
   'report-bin-utilization',
   /**
    * Reports › SKU velocity (30d) — one row = one SKU's movement totals,
@@ -246,39 +147,13 @@ const TABLE_ENTITY_FAMILIES = [
    * facts. Catalog: field-catalog/report-dead-stock.ts.
    */
   'report-dead-stock',
-  /**
-   * Reports › Staff day — one row = one (staffer × task) cell of one day's
-   * daily-check report. Read-only ("view only in a manager", operator
-   * 2026-09-15): no row verbs, no record plane — the interactive per-person
-   * view is /m/reports over the same `buildStaffDay` projection. Catalog:
-   * field-catalog/report-staff-day.ts.
-   */
+  /** Reports › Staff day — one row = one (staffer × task) cell of one day's daily-check report. */
   'report-staff-day',
-  /**
-   * Reports › Packer day — one row = one PACK scan of one PST day
-   * (`station_activity_logs` + its `packer_log_enrichment`). Read-only: the
-   * editable thing is the SKU's time to pack, which lives on the product
-   * record the row title links to. Replaced the hand-rolled `<table>` on
-   * `/operations?mode=analytics`, retired 2026-09-16 because the operator
-   * could not trust a KPI strip whose deltas compared a partial day with a
-   * whole one. Catalog: field-catalog/report-packer-day.ts.
-   */
+  /** Reports › Packer day — one row = one PACK scan of one PST day (`station_activity_logs` + its `packer_log_enrichment`). */
   'report-packer-day',
-  /**
-   * Reports › Tasks — one row = one FINISHED `work_assignments` follow-up
-   * (`work_type = 'FOLLOW_UP'`, lane `done`). Read-only: reopening a task is a
-   * verb of the task desk, where the row is still work. NOT `tasks` — that
-   * family is the working checklist, and one layout document over both would
-   * mean hiding a column on the record densified the queue. Catalog:
-   * field-catalog/report-tasks.ts.
-   */
+  /** Reports › Tasks — one row = one FINISHED `work_assignments` follow-up (`work_type = 'FOLLOW_UP'`, lane `done`). */
   'report-tasks',
-  /**
-   * Admin › per-SKU bin distribution — one row = one location holding this
-   * SKU. Read-only. Catalog: field-catalog/sku-bins.ts. NOT `bins` — that
-   * family's row is the warehouse-wide bin with its own count stamps and
-   * flags; this one is a per-SKU quantity in a location.
-   */
+  /** Admin › per-SKU bin distribution — one row = one location holding this SKU. */
   'sku-bins',
   /**
    * Admin › per-SKU stock ledger — one row = one `sku_stock_ledger` write.
@@ -286,59 +161,23 @@ const TABLE_ENTITY_FAMILIES = [
    * packed three reference ids into one string; they are three facts here.
    */
   'sku-ledger',
-  /**
-   * `/search` find plane — one row = one cross-entity search HIT. Read-only.
-   * Catalog: field-catalog/search-hits.ts. ONE family over six entity types
-   * on purpose: the row shape is the search wire (`AiSearchHit`), and six
-   * registrations of one dataset is the fork `REGISTER_ENTITY_NOT_PAGE`
-   * names. Heterogeneity is resolved at the adapter.
-   */
+  /** `/search` find plane — one row = one cross-entity search HIT. */
   'search-hits',
 ] as const;
 
-/**
- * Warehouse-dense default ceiling: how many non-gutter tracks a grid may open
- * with before the rest must be `tier: 'optional'` and opted in from the
- * column-display rail.
- *
- * Ten, because the golden (Receiving) opens with eight and the surfaces are
- * built for a 1080p bench beside a locked 720px station centre — there is real
- * headroom, and a definition asking for twelve default tracks is asking the
- * operator to scroll horizontally to read a row.
- */
+/** Warehouse-dense default ceiling: */
 export const MAX_DEFAULT_VISIBLE_TRACKS = 10;
 
 /** The house select gutter — structural, and never counted against the ceiling. */
 const SELECT_GUTTER_KEY = 'select';
 
-/**
- * One column of a definition — the pure-data mirror of `LedgerGridColumnModel`
- * plus the `sortable` header flag the receiving family declares.
- *
- * Strict on purpose: an unknown key is a rejected definition, not a silently
- * ignored one. That is the whole guarantee that makes authoring these safe.
- */
+/** One column of a definition — the pure-data mirror of `LedgerGridColumnModel` plus the `sortable` header flag the receiving family declares. */
 export const tableDefinitionColumnSchema = z.strictObject({
   key: z.string().min(1),
   /** CSS grid track (`minmax(X, X)`; at most one `1fr` per surface). */
   width: z.string().min(1),
   label: z.string().min(1).optional(),
-  /**
-   * Header word for the GRID face. `''` is legal and load-bearing — it is not a
-   * blank that slipped through.
-   *
-   * The compound chrome tracks `select` and `_fill` declare `gridLabel: ''` on
-   * purpose: they are a 48px checkmark square and a slack track, and
-   * `COMPOUND_TRACKS` documents each one. `thumb` is the exception — it keeps
-   * the word `Image` via `headerForceLabel`. So `''` means *print nothing
-   * here*, which is a different instruction from `undefined` (*not specified —
-   * fall back to `label`*). A `.min(1)` here rejected the empty string and
-   * took the whole Orders desk down with a Zod throw at module load, because
-   * select (the first column of every compound table) still carries it.
-   *
-   * If blank-label authoring ever needs policing, the rule is "`label` must not
-   * be blank" — which the line above already enforces — not this one.
-   */
+  /** Header word for the GRID face. */
   gridLabel: z.string().optional(),
   labelFitRem: z.number().positive().optional(),
   headerGlyphOnly: z.boolean().optional(),
@@ -356,10 +195,7 @@ export const tableDefinitionColumnSchema = z.strictObject({
   tier: z.enum(['core', 'optional']).optional(),
   /** Header is click-to-sort. The runtime vocabulary stays the family's code. */
   sortable: z.boolean().optional(),
-  // ── Materialized slot-track metadata (`materializeTracks`) ────────────────
-  // A definition whose canonical columns are a SlotLayout materialization
-  // (Orders since the Wave-1 hand-model kill) carries these on its slot
-  // tracks. Optional everywhere else; strictness still rejects unknown keys.
+  // ── Materialized slot-track metadata (`materializeTracks`) ──────────────── A definition whose canonical columns are a SlotLayout…
   /** Catalog field bound into this slot track (`status:N`); key stays the slot. */
   fieldId: z.string().min(1).optional(),
   /** Glyph key for `stage_event` slot cells, copied from the field. */

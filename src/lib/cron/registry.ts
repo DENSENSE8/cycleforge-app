@@ -1,13 +1,4 @@
-/**
- * Display registry for cron jobs — the source of truth for what the
- * "System sync activity" UI shows. `vercel.json` is the *deploy* source of
- * truth (the scheduler reads it); keep the two in sync when adding a job.
- *
- * `expectedEveryMs` drives staleness detection: a job whose last success is
- * older than ~2.5× its interval is flagged `stale` even with no error row —
- * catching the dangerous case where a job silently stops firing (exactly the
- * failure mode that was invisible before this feature).
- */
+/** Display registry for cron jobs — the source of truth for what the "System sync activity" UI shows. */
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;

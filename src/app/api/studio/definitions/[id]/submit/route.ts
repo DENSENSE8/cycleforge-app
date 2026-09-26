@@ -7,23 +7,7 @@ import { StudioTemplateSubmitBody } from '@/lib/schemas/studio';
 import { submitTemplateFromDefinition } from '@/lib/studio/submit-template';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/definitions/[id]/submit
- *
- * Submit one of the org's OWN workflow definitions to the curated public catalog
- * for review (Template Platform Phase 4). This is the mirror of the Phase 3
- * export: it serializes the org's live graph into a CycleForgeTemplatePackage and
- * persists it as a NON-system, review_status='submitted' workflow_templates row
- * stamped with submitted_by_org = ctx.organizationId. It does NOT clone anything
- * into the org (no installTemplateIntoOrg) — submission ≠ install.
- *
- * A curator (studio.catalog.review) later approves → public/approved or rejects.
- * Until then the row is private + invisible to every library read.
- *
- * studio.manage — the org is offering ITS OWN authored graph, the same authoring
- * gate as export/import. orgId comes from ctx, never the body; the definition
- * read is org-scoped so an org can only submit graphs it owns.
- */
+/** POST /api/studio/definitions/[id]/submit */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

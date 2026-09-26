@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Global `?` keyboard shortcuts cheat sheet — staff overview when no selection
- * CTA strip owns the key. With a selection mounted, `?` toggles **absolute
- * overlay** letters on those buttons instead (see useSelectionStatusBarHotkeys).
- *
- * Station teaching: letters are AFTER `⌘;` arms a region (never bare wedge keys).
- * Yields the `?` *key* on /photos (MediaLibrary owns that chord).
- */
+/** Global `?` keyboard shortcuts cheat sheet — staff overview when no selection CTA strip owns the key. */
 
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
@@ -173,10 +166,7 @@ export function KeyboardShortcutsCheatSheet() {
       // selection CTA reveal already ignores repeat; stay aligned.
       if (e.repeat) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Selection CTAs own `?` while mounted — useSelectionStatusBarHotkeys
-      // toggles overlays (including from Filter-orders INPUT). Do not open this
-      // sheet, and do NOT stopPropagation: this listener registered first and
-      // would otherwise swallow the event before the hook runs.
+      // Selection CTAs own `?` while mounted — useSelectionStatusBarHotkeys toggles overlays (including from Filter-orders INPUT).
       if (isSelectionInlineHotkeySurfaceActive()) return;
       if (isEditableKeyTarget(e.target)) return;
       e.preventDefault();

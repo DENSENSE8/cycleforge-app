@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * "Link a PO" tab for the Package Pairing surface.
- *
- * Makes the WEBSITE the source of truth for the carton↔PO link: search the local
- * PO mirror (read-only, no Zoho round-trip) and re-point this carton + line at
- * the correct PO — even when Zoho already had a different (wrong) one. Posts to
- * the audited /api/receiving/relink (scope 'both'); the displayed PO# updates in
- * place via `dispatchLineUpdated`. When relink pairs onto a busy matched shell,
- * the response's `paired_onto` / `receiving_id` redirects Unbox to that carton.
- *
- * This replaces "Zoho is authoritative": an operator who knows the right PO can
- * correct a mis-linked carton here instead of editing Zoho and waiting for a sync.
- */
+/** "Link a PO" tab for the Package Pairing surface. */
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -90,11 +78,7 @@ export function PoLinkTab({
   const currentPoNumber = (row.zoho_purchaseorder_number || '').trim() || null;
   const currentPoId = (row.zoho_purchaseorder_id || '').trim() || null;
 
-  // Universal Incoming (plan §7.1): when this line is an eBay-originated spine row
-  // (a real spine row with a non-Zoho primary source), picking a Zoho PO MERGES —
-  // it augments this line with a secondary Zoho link + equivalence via
-  // /api/receiving/inbound/link, rather than re-pointing a carton (relink). The
-  // eBay identity stays the badge; the Zoho PO is added alongside for accounting.
+  // Universal Incoming (plan §7.1):
   const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
   const isInboundMerge = row.id > 0 && inboundSource !== '' && inboundSource !== 'zoho';
 
@@ -258,17 +242,7 @@ export function PoLinkTab({
     }
   };
 
-  /**
-   * Link an identifier — the one the operator typed, or the `order_id` of a
-   * previous ORDER they picked from the results. The server decides the outcome
-   * ("/api/receiving/link-id"): `linked` when the id resolves to a purchase
-   * order or a sales order (its SKU/items are imported onto the carton), or
-   * `pending`, which records the id on a carton that STAYS unfound until the
-   * order is imported and claims it.
-   *
-   * There is no "no matches" state any more: whatever is in the box's label is
-   * always linkable from here.
-   */
+  /** Link an identifier — the one the operator typed, or the `order_id` of a previous ORDER they picked from the results. */
   const linkIdentifier = async (identifier: string) => {
     const value = identifier.trim();
     if (!value || linkingIdentifier) return;
@@ -353,13 +327,7 @@ export function PoLinkTab({
   };
 
   return (
-    // Column, not a stack: `CartonMatchHub` (bareChrome) hands this leaf a
-    // BOUNDED height and its docblock states the contract — "the combobox takes
-    // its natural height, tabBody takes the rest and scrolls internally". This
-    // root was a plain `space-y-2`, so it had no scroller at all: the wrapper
-    // above is `overflow-hidden`, and a 1081px list inside an 846px box was
-    // simply CLIPPED — every candidate past the eighth was unreachable.
-    // Search stays pinned; only the results scroll.
+    // Column, not a stack:
     <div className="flex h-full min-h-0 flex-col">
       <div className="shrink-0">
       {/* The currently-linked PO is shown in the global header — not repeated
@@ -376,10 +344,7 @@ export function PoLinkTab({
         </p>
       ) : null}
 
-      {/* One search box over BOTH namespaces — purchase orders and previous
-          sales orders — because a box's label carries whichever the seller
-          printed. Chrome (inset, hairline, field face) is the shared
-          {@link StationDisplaySearchHeader}, not spelled here. */}
+      {/* One search box over BOTH namespaces — purchase orders and previous sales orders — because a box's label carries whichever the seller… */}
       <StationDisplaySearchHeader
         value={query}
         onChange={setQuery}
@@ -404,18 +369,12 @@ export function PoLinkTab({
       ) : isFetching && candidates.length === 0 && orderCandidates.length === 0 ? (
         <UniversalLoader isLoading label="Loading orders" className="min-h-28" />
       ) : (
-        // Flush stack: `-space-y-px` pulls each row up onto its neighbour's
-        // border so adjacent 1px edges collapse into ONE hairline seam. The
-        // old `space-y-1.5` left a 6px canvas gutter between every candidate,
-        // which read as the list floating inside the pairing display rather
-        // than being its body.
+        // Flush stack: `-space-y-px` pulls each row up onto its neighbour's border so adjacent 1px edges collapse into ONE hairline seam.
         <div className="-space-y-px">
-          {/* Every avenue paints the SAME row — thumb · id · product title —
-              so the operator reads one list whichever namespace answered
-              (operator 2026-09-23). `ItemRecordThumb` is the Store avenue's own
-              media primitive (`ecwid-search-rows.tsx`); with no image it paints
-              its placeholder, which keeps the row's geometry identical rather
-              than collapsing the column. */}
+          {/*
+ * Every avenue paints the SAME row — thumb · id · product title — so the operator reads one list whichever namespace answered
+ * (operator 2026-09-23). `ItemRecordThumb` is the Store avenue's own
+ */}
           {/* The typed id leads: it is what the operator is holding, and it is
               linkable whether or not anything below matches it. */}
           {trimmed ? (
@@ -442,11 +401,7 @@ export function PoLinkTab({
             <PairingCandidateRow
               key={`order-${order.order_id}`}
               media={<ItemRecordThumb imageUrl={order.image_url ?? null} />}
-              // Same grammar as the Store row (`ecwid-search-rows.tsx`): the
-              // PRODUCT leads and the identifiers follow as CopyChips — order
-              // first, SKU second. The two lists sit in one dropdown, so a row
-              // that inverted title and meta would read as a different kind of
-              // thing depending on which avenue answered.
+              // Same grammar as the Store row (`ecwid-search-rows.tsx`):
               title={order.product_title || order.order_id}
               meta={
                 <div className="flex flex-wrap items-center gap-1">

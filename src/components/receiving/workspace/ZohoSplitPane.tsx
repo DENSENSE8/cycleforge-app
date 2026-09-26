@@ -22,17 +22,7 @@ function buildProviderPoUrl(detail: OpenPaneDetail): string {
   return 'https://inventory.zoho.com/app#/purchaseorders';
 }
 
-/**
- * Right-side escape hatch for opening the connected inventory provider's PO
- * page in a new tab. Provider apps block iframe embedding, so this pane only
- * surfaces an external link.
- *
- * **Unbox station:** prefer Displays → Inventory (`openDisplays('inventory')`)
- * for dossier CRUD — do not dispatch `open-zoho-pane` from Unbox LineEdit.
- * This occupant remains for desk/history flows that still fire the event.
- *
- * Non-modal rail occupant on `RightRailHost` (pushes; never floats).
- */
+/** Right-side escape hatch for opening the connected inventory provider's PO page in a new tab. */
 export function ZohoSplitPane() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');

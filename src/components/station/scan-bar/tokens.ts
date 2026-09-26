@@ -4,33 +4,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-/**
- * Canonical geometry + chrome for every station scan bar. Change padding,
- * height, icon slot, or placeholder styling HERE — not per surface.
- *
- * Chrome: flat band + staff bottom-rule + bottom-up station glow (chromatic
- * depth). The scan TYPE picker is one full-height flush segment — armed =
- * solid `surface-card` against the glow so it reads continuous with the work
- * canvas. Submit confirm is a center→edges scaleX flash on the bottom rule.
- * Work canvas elevation is border-only — no competing drop shadows at the join.
- *
- * Layout: input is full-bleed; the mode / paste / spinner rail is an absolute
- * frosted veil over the trailing edge (`backdrop-blur` + translucent card) so
- * long placeholder / typed text can soft-peek under the glyphs. Clearance is
- * measured (`ResizeObserver` → padding-inline-end), never magic per-station
- * `pr-*`. Stacking (low → high): input @ z-base → icon @ z-raised → submit
- * trace @ z-raised → frosted rail @ z-dropdown → armed mode @ z-dropdown.
- *
- * Left column has two modes ({@link StationScanBarProps.leadingColumn}):
- *   • `masternav` (default) — icon under the MasterNav mode glyph
- *     (`left-[2.9375rem]`), text under the MasterNav label (`pl-[4.3125rem]`).
- *     For station benches with no recent rail below.
- *   • `rail` — structural share of {@link SIDEBAR_SCAN_DOCK_LEADING_ROW} from
- *     `header-shell` (pad → DOT_TRACK → gap); icon in the track, input `pl-0`
- *     so typed text lands on the row title. No rem twin — density tracks the
- *     same tokens as the UNBOXED eyebrow / rail titles.
- * Full literals so Tailwind scans MasterNav pads (see header-shell for rail).
- */
+/** Canonical geometry + chrome for every station scan bar. */
 
 /** Leading icon — MasterNav mode-glyph column. */
 export const STATION_SCAN_BAR_ICON_SLOT_CLASS =

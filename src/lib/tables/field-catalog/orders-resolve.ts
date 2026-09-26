@@ -1,19 +1,4 @@
-/**
- * Orders slot resolvers — row + fieldId → the resolved facts a slot cell
- * paints. Pure functions; no React, no hooks.
- *
- * This is the family's `resolveField` half of the slot contract
- * (`docs/todo/slot-based-metadata-table-PLAN.md` §6.3): the catalog names the
- * fact, this module reads it off the `ShippedOrder` row the feed already
- * returns. The stage-step readers absorb the Slice 1 `ordersTestedStep`
- * prototype (`orders-compound-view.ts`) and add its packed / scanned-out
- * siblings, one resolver per catalog field — never a `row[path]` generic.
- *
- * `OrdersSlotContext` carries the two facts the ROW resolves better than the
- * wire does: tester/packer display names already run through the staff-name
- * map + `normalizePersonName` by the queue view layer. Wire-name fallbacks
- * keep the resolvers useful without it.
- */
+/** Orders slot resolvers — row + fieldId → the resolved facts a slot cell paints. */
 
 import type {
   CompoundSlotValue,
@@ -31,22 +16,13 @@ import { formatMonthDayTimePST } from '@/utils/date';
 
 export interface OrdersSlotContext {
   /**
-   * Normalized tester face from the queue view layer (`---` = missing). Still
-   * accepted because the queue row passes ONE context object to every resolver
-   * entry point, but no orders field reads it since Pick stopped borrowing the
+   * Normalized tester face from the queue view layer (`---` = missing).
    * tester family (operator ruling 2026-09-14) — the tester face now belongs to
-   * `ordersIdentityLine` and the `tech` catalog's own TEST lane.
    */
   testerDisplay?: string | null;
   /** Normalized packer face from the queue view layer (`---` = missing). */
   packerDisplay?: string | null;
-  /**
-   * Subtitle fields the mounting surface made EDITABLE in place (a select
-   * editor claims the part by key). A blank editable field keeps a faint
-   * `--` placeholder part instead of dropping — an in-place editor with no
-   * part would have nothing to click. Read-only mounts omit this and blanks
-   * drop exactly as before.
-   */
+  /** Subtitle fields the mounting surface made EDITABLE in place (a select editor claims the part by key). */
   editableFieldIds?: readonly string[];
 }
 
@@ -84,22 +60,8 @@ function staffId(...candidates: unknown[]): number | null {
 }
 
 /**
- * Pick step facts, off the feed's own pick projection (`picked_by_name` /
- * `picked_by` / `picked_at`).
- *
+ * Pick step facts, off the feed's own pick projection (`picked_by_name` / `picked_by` / `picked_at`).
  * Until the operator ruling of 2026-09-14 this read the tester/test_date
- * family, so an order that had been TESTED but never picked painted a picker
- * who had never touched it. A row with tester data and no pick data now
- * resolves EMPTY.
- *
- * **The Picker-station scan is handled in SQL, not here.** That desk is
- * `/test?ship=urgent` for this org, so its scans are a real pick signal — but
- * they enter through `PICK_FACTS_LATERALS`' `pick_station` arm
- * (`station_activity_logs` TECH/TRACKING_SCANNED), NOT by re-reading the
- * tester columns. Two reasons that distinction is load-bearing: a QC verdict
- * (`tech_serial_numbers.tested_by`, SERIAL_ADDED) is a different verb from a
- * pick scan and must never masquerade as one; and the feed has THREE readers,
- * so a fallback written here would fix one of them.
  */
 function pickedStep(row: OrdersRow): CompoundSlotValue {
   return {
@@ -201,24 +163,7 @@ export function ordersSlotValues(
   return slots;
 }
 
-/**
- * The compound ITEM cell's secondary line for bound subtitle fields — TONED
- * PARTS in binding order (the layout's array IS the display order, so an org
- * chooses `qty · condition · note` by binding in that order).
- *
- * Contextual faces come from the fields' own SoTs, never invented here:
- * - `orders.qty` paints the BARE number in the queue's count tone
- *   (`orderRowQtyTone`: 1 reads quiet, >1 reads warning — the "is this a
- *   multi" glance the flat Qty column already trained operators on);
- * - `orders.condition` paints the grade label in its grade tone
- *   (`conditionGradeTextClass`).
- * Everything else rides the quiet default. Blank values drop their part —
- * unless the field is in `ctx.editableFieldIds`, where a faint `--` part
- * holds the editor's click target (see {@link OrdersSlotContext}).
- *
- * Each part carries its fieldId as `key` so a subtitle-select editor can
- * claim it by key rather than by position.
- */
+/** The compound ITEM cell's secondary line for bound subtitle fields — TONED PARTS in binding order (the layout's array IS the display… */
 export function ordersSubtitleParts(
   record: ShippedOrder,
   subtitleFieldIds: readonly string[],
@@ -253,12 +198,7 @@ export function ordersSubtitleParts(
             ? 'font-semibold text-text-default'
             : `font-semibold ${countTone}`,
         key: fieldId,
-        // Two digits, always. A quantity is 1 on most rows and 10–99 on a few,
-        // and sizing to content shifted every fact after it sideways on exactly
-        // those rows — the ones an operator most needs to notice. Reserving the
-        // wider case costs one character on the common row and keeps the line
-        // scannable straight down the grid. Three-digit quantities overflow the
-        // reservation rather than truncate, which is the right failure.
+        // Two digits, always.
         widthCh: 2,
       });
       continue;

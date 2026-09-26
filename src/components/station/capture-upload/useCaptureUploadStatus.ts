@@ -21,32 +21,7 @@ import {
   type CaptureUploadSummary,
 } from './capture-upload-model';
 
-/**
- * Adapter: the three capture queues → one normalized {@link CaptureUploadEntry}
- * list, plus the actions the card needs.
- *
- * This is the ONLY place that knows there are three queues. The card takes
- * plain props, so a future bench (or a desk-side surface reading a different
- * source) mounts the same component without inheriting this coupling — which is
- * what makes the compound a house primitive rather than a phone widget.
- *
- * ### Why all three, when P0 only required two
- *
- * The locked P0 gate is "prove the SoT across ≥2 domains" (Receiving + Pack), to
- * stop an Unbox-shaped component shipping under a general name. Unioning is
- * strictly cheaper than filtering one out — the three queues expose a
- * byte-identical public API (`retry(id)` · `clearDone()` · `subscribe` ·
- * `snapshot`) — so excluding Unit would have been extra code buying a smaller
- * proof.
- *
- * ### D5 note (see the program prompt)
- *
- * That identical API is also the evidence D5 is deferred, not settled: after
- * normalizing names the packer and unit queues differ by 127 lines out of ~330.
- * The duplication is in the ENGINE. This adapter unifies the *reading* of it;
- * it does not pretend the three singletons are one. Do not cite this file as
- * proof the fork is resolved.
- */
+/** Adapter: the three capture queues → one normalized {@link CaptureUploadEntry} list, plus the actions the card needs. */
 
 /** Queue `done` is the queue's bookkeeping; `committed` is the operator's fact. */
 function normalizeState(raw: 'queued' | 'uploading' | 'done' | 'failed'): CaptureUploadState {
@@ -73,10 +48,7 @@ interface CaptureUploadStatusModel {
 }
 
 export function useCaptureUploadStatus(): CaptureUploadStatusModel {
-  // Unfiltered reads — the dock is shell-level and must show whatever is in
-  // flight regardless of which record the operator has navigated to. A scoped
-  // consumer filters the returned list; it must not narrow the subscription,
-  // or a photo uploading for the PO you just left goes silent mid-flight.
+  // Unfiltered reads — the dock is shell-level and must show whatever is in flight regardless of which record the operator has navigated to.
   const receiving = useUploadQueue();
   const pack = usePackerUploadQueue();
   const unit = useUnitUploadQueue();

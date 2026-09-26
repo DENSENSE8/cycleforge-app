@@ -15,13 +15,7 @@ import {
   toRowDateKey,
 } from './work-order-assignment-shared';
 
-/**
- * Owns the work-order assignment card's full state machine: the assignable-row
- * derivation + ordering, per-row drafts with localStorage persistence, the
- * resume-to-next-unconfirmed index logic, single-option auto-fill, debounced
- * autosave, confirm→advance, keyboard navigation, and the staff/deadline edit
- * handlers. Returns a controller bag the thin shell renders from.
- */
+/** Owns the work-order assignment card's full state machine: */
 export function useWorkOrderAssignmentCard({
   rows,
   startIndex,

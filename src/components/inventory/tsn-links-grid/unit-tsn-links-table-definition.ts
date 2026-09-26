@@ -1,11 +1,4 @@
-/**
- * `unit-tsn-links.unit` — the v1 TSN cross-reference table definition,
- * capabilities and surface descriptor.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`UNIT_TSN_LINKS_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `unit-tsn-links.unit` — the v1 TSN cross-reference table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -22,12 +15,7 @@ import {
   type UnitTsnLinksGridColumn,
 } from './unit-tsn-links-grid-layout';
 
-/**
- * A legacy READ ledger — the `kiosk-slot-events` shape. Nothing in this app
- * writes `tech_serial_numbers` any more, so there is no verb and never will
- * be, and `multiSelect` stays off: the gutter checkbox would be a control with
- * no verb behind it.
- */
+/** A legacy READ ledger — the `kiosk-slot-events` shape. */
 export const UNIT_TSN_LINKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -36,12 +24,7 @@ export const UNIT_TSN_LINKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeUnitTsnLinksGridDescriptor(
   columns: readonly UnitTsnLinksGridColumn[],
 ): GridSurfaceDescriptor<UnitTsnLinkTableRow, UnitTsnLinksGridColumn> {
@@ -83,15 +66,7 @@ export const UNIT_TSN_LINKS_TABLE_BINDING: TableSurfaceBinding<
   definition: UNIT_TSN_LINKS_TABLE_DEFINITION,
   columns: UNIT_TSN_LINKS_COMPOUND_COLUMNS,
   makeDescriptor: makeUnitTsnLinksGridDescriptor,
-  /**
-   * HONEST ABSENCE, ruled rather than defaulted. A `tech_serial_numbers` row
-   * has no record surface in this app and must not grow one: the desk's own
-   * header says what it is for — "helpful when joining v1 tech-station logs to
-   * v2 lifecycle" — so the row is a REFERENCE an operator reads and copies,
-   * and every fact it carries is already on the row. The shipment id is the
-   * one id that points somewhere, and it is a bound track, not the row's
-   * subject.
-   */
+  /** HONEST ABSENCE, ruled rather than defaulted. */
   recordPlane: {
     kind: 'none',
     reason:

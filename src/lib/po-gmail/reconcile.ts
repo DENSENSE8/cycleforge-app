@@ -1,21 +1,4 @@
-/**
- * Diff scanned PO emails against zoho_po_mirror (the read-only Zoho mirror)
- * and, secondarily, against receiving_lines to detect "received" status.
- *
- * Single roundtrip per scan: pool every candidate PO# into one ANY($1)
- * query, then fold results back per email.
- *
- * Status classification:
- *   - mirror has the PO AND any receiving_lines row for it has
- *     workflow_status IN (UNBOXED, AWAITING_TEST, IN_TEST, PASSED, FAILED,
- *     RTV, SCRAP, DONE)                            → 'received'
- *   - mirror has the PO (with or without receiving rows in pre-arrival
- *     statuses EXPECTED / ARRIVED / MATCHED)        → 'in_zoho'
- *   - mirror has no row                              → 'missing'
- *
- * Normalization rule must stay identical to the mirror's generated
- * column (see migration 2026-05-21_zoho_po_mirror.sql).
- */
+/** Diff scanned PO emails against zoho_po_mirror (the read-only Zoho mirror) and, secondarily, against receiving_lines to detect "received"… */
 
 import pool from '@/lib/db';
 
@@ -38,12 +21,7 @@ export interface MatchRow {
   has_received_line: boolean;                     // true if any line is post-arrival
 }
 
-/**
- * Look up a batch of normalized PO candidates. Returns a map from
- * normalized PO# → match row (one per matched PO). A PO present in the
- * mirror with no receiving_lines row is still returned (workflow_statuses
- * = [], has_received_line = false).
- */
+/** Look up a batch of normalized PO candidates. */
 export async function fetchMatchesByNormalizedPoNumbers(
   normalizedCandidates: string[],
 ): Promise<Map<string, MatchRow>> {

@@ -1,13 +1,4 @@
-/**
- * The engine's BANDING rule.
- *
- * `bandCompoundRows` is the only behaviour the `bandBy` option adds, so most of
- * this is pure: the no-option default must stay `singleBand` (every existing
- * mount reads its order from here), band order must follow the already-applied
- * sort, and a band with no caption must still be a band. The last two cases
- * mount the hook itself — with no DOM and no DataTable — because the shape of
- * the returned feed is the other half of "nothing moved".
- */
+/** The engine's BANDING rule. */
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -115,14 +106,7 @@ test('a band key with no caption is still a band', () => {
   assert.equal(banded.find(([key]) => key === 'task')?.[1].length, 2);
 });
 
-/**
- * Mount the hook for real (no DOM, no DataTable) and read the feed bag back.
- *
- * The banding rule above is pure, but "what the feed carries when nobody asked
- * for bands" is a property of the RETURN LITERAL, and only the hook can answer
- * it. `renderToStaticMarkup` of a component that returns `null` runs the hook
- * once with the real React dispatcher and nothing else.
- */
+/** Mount the hook for real (no DOM, no DataTable) and read the feed bag back. */
 function mountFeed(
   options?: Partial<Pick<UseCompoundSpreadsheetOptions<Row, string, CompoundSpreadsheetColumn>, 'bandBy' | 'sectionHeaders'>>,
 ): CompoundSpreadsheetFeed<Row, string, CompoundSpreadsheetColumn> {

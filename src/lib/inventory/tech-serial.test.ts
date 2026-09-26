@@ -1,11 +1,4 @@
-/**
- * Guards for the canonical tech_serial_numbers writer (relational-reuse plan,
- * Phase 2 — collapse the duplicated TSN INSERTs into one helper).
- *
- * attachTechSerial upper-cases the serial, applies the SERIAL/TECH defaults,
- * always binds serial_unit_id (the FK whose absence was the original drift),
- * and is ON CONFLICT DO NOTHING — verified against an injected executor.
- */
+/** Guards for the canonical tech_serial_numbers writer (relational-reuse plan, Phase 2 — collapse the duplicated TSN INSERTs into one helper). */
 
 import { test } from 'node:test';
 import { equal, ok, deepEqual } from 'node:assert';

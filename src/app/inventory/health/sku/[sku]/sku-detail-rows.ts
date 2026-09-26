@@ -1,37 +1,4 @@
-/**
- * Row mappers for the per-SKU operations view — this page's SQL shapes lifted
- * onto the shapes the REGISTERED families already speak.
- *
- * No section of this page owns a table. Two mount families that already
- * existed (`inventory-units`, `inventory-events`), one mounts the registered
- * `unit-allocations` family through a sibling layout document, and two are
- * families of their own (`sku-bins`, `sku-ledger`) whose entities nothing else
- * in the product lists. What every one of them needs is a translation, because
- * the loaders are narrower than the family feeds and `pg` hands back `Date`
- * objects where the resolvers read ISO strings:
- *
- * - {@link skuUnitsOverviewRows}: `serial_units` rows → {@link UnitsOverviewRow}.
- *   The page's query has no product join (every row on this page IS this SKU),
- *   so the sheet's structural Product track is filled from the page's own
- *   header facts rather than left blank.
- * - {@link skuPulseEventRows}: `inventory_events` rows → {@link PulseEventRow}.
- *   Facts this page does not fetch (bin move, notes, receiving refs) resolve to
- *   `null` and their tracks dash — this page never painted them and the mapper
- *   does not invent them.
- * - {@link skuBinTableRows}: `bin_contents` rows → {@link SkuBinTableRow}, with
- *   the same header-facts fill as the units sheet (the item cell is the SKU
- *   this page is about).
- * - {@link skuAllocationTableRows}: `order_unit_allocations` rows →
- *   {@link UnitAllocationTableRow}, the registered family's own wire row. The
- *   release facts are absent because this feed filters `state <> 'RELEASED'`;
- *   the type marks them optional for exactly this case.
- * - {@link skuLedgerTableRows}: `sku_stock_ledger` rows →
- *   {@link SkuLedgerTableRow}. `notes` crosses trimmed (blank ⇒ `null`): the
- *   phone take flow writes the operator's reason text there, and the row's
- *   note line paints it under the reason.
- *
- * Pure: no React, no clock, no I/O.
- */
+/** Row mappers for the per-SKU operations view — this page's SQL shapes lifted onto the shapes the REGISTERED families already speak. */
 
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import type { PulseEventRow } from '@/components/inventory/types';
@@ -189,11 +156,7 @@ export function skuAllocationTableRows(
     state: a.state,
     serial_unit_id: a.serial_unit_id,
     allocated_by_name: a.allocated_by_name,
-    // `released_at` / `released_reason` are deliberately ABSENT, not null: this
-    // loader filters `a.state <> 'RELEASED'` and every writer stamps those two
-    // columns in the same statement that sets the state, so they are
-    // structurally NULL for every row here. The family's row type marks them
-    // optional for exactly this feed.
+    // `released_at` / `released_reason` are deliberately ABSENT, not null:
   }));
 }
 

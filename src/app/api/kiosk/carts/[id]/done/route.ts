@@ -1,13 +1,4 @@
-/**
- * POST /api/kiosk/carts/[id]/done — the visit was submitted: close the cart so
- * no tablet can reopen and submit it twice. Holder-only (409 `HELD_ELSEWHERE`).
- *
- * Callers: `useKioskCartSync` (store `completeCart` / Next customer).
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_carts.status` via `completeKioskCart`.
- * User 2026-09-24: "all under ONE cart system for sales, custom amount and
- * repair service".
- */
+/** POST /api/kiosk/carts/[id]/done — the visit was submitted: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { completeKioskCart } from '@/lib/kiosk/kiosk-carts.server';

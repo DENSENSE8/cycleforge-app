@@ -1,14 +1,4 @@
-/**
- * One-shot "Replace tracking" intent for the order inspector.
- *
- * The orders-queue tracking menu arms an intent for an order id, then opens
- * `detail:order`. The open panel consumes the intent (Shipping tab + auto-start
- * TrackingNumberRow replace editor). Generation-aware so re-arming while the
- * same order is already open still fires.
- *
- * Keeps the intent out of the URL and out of every `open-shipped-details`
- * listener — only the inspector that matches the order id consumes it.
- */
+/** One-shot "Replace tracking" intent for the order inspector. */
 
 type Listener = () => void;
 

@@ -1,56 +1,6 @@
 'use client';
 
-/**
- * The station centre block face — flush eyebrow header, optionally a
- * height-collapsing body.
- *
- * Promoted from the page-local disclosure header inside `CartonInspectionPage`
- * (same face: eyebrow · chevron · trailing count/action) so the Search &amp;
- * Details centre composes it instead of growing a second one. That retirement
- * was prose-only until 2026-08-21 — carton kept its `SectionLabel` fork, with
- * the same `face` string and the same chevron, byte for byte.
- *
- * ## Two exports, because there are two jobs
- *
- * {@link StationCollapsibleBlock} is a DISCLOSURE: header + a body it owns and
- * removes from the tree when collapsed.
- *
- * {@link StationBlockLabel} is the header ALONE, for the two shapes a
- * disclosure cannot serve without lying:
- *   • a plain section label with no toggle at all (carton's Purchase orders ·
- *     Note · Progress);
- *   • a header whose body is a SWAP rather than a collapse — carton's Activity
- *     shows the newest event when "closed" and the full list when open, so
- *     wrapping it in the block would delete the one row it exists to show.
- *
- * ## Faces
- *
- * - `label` (default) — eyebrow + trailing chevron, bottom hairline.
- * - `hairline` — quieter micro face for scan-station Items / Label / Placement.
- *   The top seam is the separator; the WHOLE header row is the hit target.
- *
- *   They were right-aligned until 2026-08-30 (operator ruling). Stacked,
- *   three right-aligned bands read as a ragged column shoved against the
- *   Displays rail — the operator scans the centre from its left edge, and
- *   the band names were the one thing not there.
- *
- *   The hit target was the 12px top seam until 2026-08-30 (operator ruling):
- *   Label and Placement read as static captions, not disclosures. A scan
- *   station still cannot spare a chrome strip, but a disclosure that does not
- *   look or act like one costs more than the pixels. Full-row click, trailing
- *   chevron (right when shut, down when open), hover fill — the industry
- *   accordion. Collapse is still instant (no height tween).
- *
- * **Carries no outer padding.** The block is a structural wrapper in a
- * zero-padding shell; its header is a full-width bar with the station chrome
- * bottom hairline. Body padding belongs to whatever is rendered inside it.
- *
- * Collapse is driven by the host (`useAutoCollapse`), never by local state —
- * the whole point is that several blocks collapse together on one signal.
- *
- * **The collapse is INSTANT — no height animation** (operator rule,
- * 2026-08-22; see AGENTS.md → "No layout animations").
- */
+/** The station centre block face — flush eyebrow header, optionally a height-collapsing body. */
 
 import type { ComponentType, ReactNode } from 'react';
 import { ChevronDown } from '@/components/Icons';
@@ -97,12 +47,7 @@ export function StationBlockLabel({
    * renders exactly as it did before this existed.
    */
   icon?: StationBlockIcon;
-  /**
-   * Trailing count — omit rather than paint a zero the operator must decode.
-   * `ReactNode`, not `number`: carton's Activity header counts in WORDS
-   * (`12 events`) and its Contents header carries a totals summary string, and
-   * a numeric-only prop silently dropped both.
-   */
+  /** Trailing count — omit rather than paint a zero the operator must decode. */
   count?: ReactNode;
   action?: ReactNode;
   /** Disclosure state. Omit together with {@link onToggle} for a plain label. */
@@ -115,13 +60,7 @@ export function StationBlockLabel({
   onToggle?: () => void;
   /** `hairline` = quieter scan-station strip. The row is still the click target. */
   face?: StationBlockFace;
-  /**
-   * Draw the header's own rule. FALSE inside a well ({@link StationBandStack}),
-   * where the gutter between white cards already separates them and a second
-   * separator is one mechanism too many — the hairline token is `#f1f5f9`, the
-   * same hex as `surface-sunken`, so at bench distance it reads as a smudge
-   * rather than a boundary.
-   */
+  /** Draw the header's own rule. */
   seam?: boolean;
   /** Plane for the header strip (station-skin header fill). */
   className?: string;
@@ -211,19 +150,7 @@ export function StationBlockLabel({
   );
 }
 
-/**
- * The centre's "Collapse all" — one control, not one per station.
- *
- * Unbox and Testing each carried a byte-identical copy: same classes, same
- * `data-testid`, same aria-label, and (since per-line collapse) the same
- * two-altitude call. Two copies of a control are two chances for one of them to
- * quietly stop reaching an altitude, on one station only.
- *
- * `onCollapseAll` is expected to drive BOTH altitudes — the band controller and
- * the line controller (`useAutoCollapse` + `useLineCollapse`). A band that
- * collapsed itself while its lines stayed open hands the column back and takes
- * it again the moment the band re-opens.
- */
+/** The centre's "Collapse all" — one control, not one per station. */
 export function StationCollapseAllAction({
   onCollapseAll,
 }: {

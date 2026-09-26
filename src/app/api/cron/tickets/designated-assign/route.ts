@@ -1,19 +1,4 @@
-/**
- * Cron: turn `designated_<staff>` helpdesk tags into assigned tasks.
- *
- * GET /api/cron/tickets/designated-assign?limit=100
- *
- * For each org with Zendesk connected, scans a page of that org's tickets
- * (ordered by `updated_at DESC`, so a freshly-tagged old ticket is in the very
- * next sweep), resolves each designation against the org's active roster, and
- * creates the `FOLLOW_UP` task through `createTask` — the same path
- * `POST /api/tasks` uses, so the assignee gets the identical inbox row and
- * audit trail. Idempotent: a ticket that already carries a non-CANCELED
- * FOLLOW_UP task is skipped, so re-running this costs nothing.
- *
- * House cron contract: isAuthorizedCronRequest → withCronLock → withCronRun;
- * registered in src/lib/cron/registry.ts + vercel.json (both SoTs).
- */
+/** Cron: turn `designated_<staff>` helpdesk tags into assigned tasks. */
 
 import { NextResponse, type NextRequest } from 'next/server';
 

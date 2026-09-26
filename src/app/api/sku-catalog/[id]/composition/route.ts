@@ -4,16 +4,7 @@ import { getSkuCatalogById, getKitParts } from '@/lib/neon/sku-catalog-queries';
 import { getChildren } from '@/lib/neon/sku-relationship-queries';
 import { mergeKitComposition, kitCompositionSourceLabel } from '@/lib/orders/order-kit-composition';
 
-/**
- * GET /api/sku-catalog/[id]/composition
- *
- * Shopify-like bundle face: parent listing + contained components.
- * Prefer sku_relationships (tenant pairs); fall back to sku_kit_parts.
- * Never parses Zoho `-P`.
- *
- * Callers: Morphing OOS picker. Schema: sku_catalog + sku_relationships + sku_kit_parts.
- * User: multi-tenant parent→child kit display like Shopify bundles.
- */
+/** GET /api/sku-catalog/[id]/composition */
 function catalogIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   return Number(segments[segments.length - 2]);

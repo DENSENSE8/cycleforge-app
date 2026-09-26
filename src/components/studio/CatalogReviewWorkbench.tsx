@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * CatalogReviewWorkbench — the curator review queue for org-submitted workflow
- * templates (Template Platform Phase 4). A platform curator (studio.catalog.review)
- * works submissions here and approves → public/approved (enters the curated
- * catalog) or rejects → private/rejected.
- *
- * Workbench archetype (list → select → detail → act): the submission queue is the
- * stable left picker; a row click is the durable selection; the right pane is the
- * selected submission's detail + the approve/reject actions and crossfades on
- * selection change (the list stays put). House style throughout: linear
- * space-y/divide-y scaffold, one-row anatomy, semantic-token color, selection =
- * bg-blue-50 ring-1 ring-inset ring-blue-400 (no size shift), icons from
- * @/components/Icons, right-pane motion via the canonical workbenchPane preset
- * routed through the reduced-motion bridge.
- */
+/** CatalogReviewWorkbench — the curator review queue for org-submitted workflow templates (Template Platform Phase 4). */
 
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';

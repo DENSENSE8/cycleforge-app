@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * CartonMatchHub — unified Package Pairing + Auto-match surface for Unbox,
- * Testing, and Arrival.
- *
- * One host, two presentations:
- *   • Auto-match — `UnfoundMatchStrip` armed verb ROWS **below** the search,
- *     when `autoMatch` is set (unfound only). Toolkit: Find ticket (→ Ticket
- *     display · claim tabs) · Return # · Store · Zoho · Amazon return. Unbox
- *     passes `autoMatch={null}` — its pairing verbs live one level up, on the
- *     Linkage leaf's actions list ({@link LinkageDisplayHost}).
- *   • Pairing — avenue switcher + attach bodies (Inventory · PO · Store).
- *     Ticket create/link lives on the Ticket Displays topic
- *     (`ReceivingClaimPanel` New ticket · Link existing) — never a Pairing
- *     avenue twin.
- *
- * One hub adapts via:
- *   • `tabSet` — `unbox` includes Inventory Item; `arrival` does not (no Tickets avenue)
- *   • `chrome` — `bare` (Station Displays push — Arrival · Unbox · Testing): no
- *     duplicate title / pencil; Pairing secondary-token dropdown; flush plane
- *     (no WorkspaceCard island). `card`: WorkspaceCard + dense slider. Both
- *     mount the Auto-match rows BELOW the search when unfound.
- *   • `autoFocusSearch` — Unbox desk may focus; Arrival Station never
- *
- * Multi-link: order/PO collapses the picker; tickets stay on ReceivingTicketChip.
- * Store search always uses `chrome="bare"` on the flush Displays plane (D5).
- */
+/** CartonMatchHub — unified Package Pairing + Auto-match surface for Unbox, Testing, and Arrival. */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -113,15 +88,7 @@ type CartonMatchHubProps = {
   chrome?: CartonMatchHubChrome;
   /** Arrival Station: false. Unbox desk: typically true. */
   autoFocusSearch?: boolean;
-  /**
-   * Open on this tab — the host's "…and land on PO" intent, carried as data.
-   *
-   * The Unbox `# ----` chip used to say this with a window event dispatched a
-   * frame after it opened the pairing display. That never worked: the display
-   * opens through `router.replace`, so this hub mounts a navigation later and
-   * the event fired into an empty room. A prop is read at mount, so there is no
-   * window to miss.
-   */
+  /** Open on this tab — the host's "…and land on PO" intent, carried as data. */
   focusTab?: MatchTab | null;
   /** Monotonic bump so the same tab can be re-selected while already mounted. */
   focusRequestId?: number;
@@ -132,12 +99,7 @@ type CartonMatchHubProps = {
   /** Arrival accordion header toggle. */
   onToggleCollapsed?: () => void;
   showTopRule?: boolean;
-  /**
-   * When set and the carton is unfound, the Auto-match toolkit renders inside
-   * this hub, **below** the search. Unbox passes `null`: its pairing verbs are
-   * peers of Link on the Linkage leaf's actions list, not controls buried under
-   * the Link body's own search results.
-   */
+  /** When set and the carton is unfound, the Auto-match toolkit renders inside this hub, **below** the search. */
   autoMatch?: CartonMatchAutoMatch | null;
 };
 
@@ -346,14 +308,7 @@ function MatchHubCard({
     return () => window.removeEventListener('receiving-open-pairing-add', openStore);
   }, []);
 
-  /**
-   * Triage's PO pencil — it toggles a local `pairingOpen`, so this hub is
-   * mounted in the same commit and a one-frame dispatch does reach us.
-   *
-   * Unbox cannot use this path: it opens the pairing DISPLAY with a
-   * `router.replace`, so the hub mounts a navigation after the click and any
-   * dispatch fires into an empty room. That host uses `focusTab` below.
-   */
+  /** Triage's PO pencil — it toggles a local `pairingOpen`, so this hub is mounted in the same commit and a one-frame dispatch does reach us. */
   useEffect(() => {
     const openPo = () => openPairingTab('zoho_po');
     window.addEventListener(RECEIVING_OPEN_PAIRING_PO_EVENT, openPo);
@@ -427,18 +382,7 @@ function MatchHubCard({
     router.push(openInUnboxHref(receivingId, row.id));
   };
 
-  // The PO avenue searches BOTH purchase orders and previous sales orders and
-  // links any id the operator types, so its name cannot say "Purchase order" —
-  // that told the operator a marketplace order number did not belong here.
-  //
-  // ONE DISPLAY, ONE DROPDOWN, ONE LIST. The Displays leaf was briefly cut to
-  // the Orders avenue alone (2026-09-23) on the reading that importing a SKU is
-  // a stock act, not an identity act. The operator reversed it the same day —
-  // *"seems like it would be best to have store and orders within one display
-  // in general and so it would just be one drop down with the list"* — because
-  // at the bench they are one question ("what is this box?") answered from
-  // whichever namespace happens to hold the answer. Every avenue therefore
-  // renders the SAME row: thumb · id · product title.
+  // The PO avenue searches BOTH purchase orders and previous sales orders and links any id the operator types, so its name cannot say…
   const tabs: HorizontalSliderItem[] =
     tabSet === 'arrival'
       ? [
@@ -519,11 +463,7 @@ function MatchHubCard({
     ) : null;
 
   const avenueSwitcher = bareChrome ? (
-    // ONE dropdown over every avenue — the flush combobox grammar the ticket
-    // claim's Create|Link picker uses (keyboard-searchable, filters as you
-    // type). Flush select owns its own bottom hairline, and no bottom margin:
-    // the search header below sits flush under it, same edge-to-edge contract
-    // as the rest of this panel.
+    // ONE dropdown over every avenue — the flush combobox grammar the ticket claim's Create|Link picker uses (keyboard-searchable, filters as…
     <div ref={cardTopRef} data-testid="pairing-avenue-select">
       <SearchableSelectField
         appearance="flush"
@@ -580,25 +520,9 @@ function MatchHubCard({
     );
 
   const body = (
-    // `bareChrome` (right-rail Store panel) fills whatever height its host
-    // gives it: the combobox takes its natural height, `tabBody` (the search
-    // results) takes the rest and scrolls internally — never a fixed-height
-    // block that leaves dead space below it. `card` / `embedded` keep their
-    // natural content height (unchanged).
+    // `bareChrome` (right-rail Store panel) fills whatever height its host gives it:
     <div className={cn('min-w-0 max-w-full', bareChrome && 'flex min-h-0 flex-1 flex-col')}>
-      {/*
-       * FIND LEADS (2026-08-19). Avenue combobox + that avenue's search field
-       * sit at the TOP; the Auto-match toolkit follows below the results.
-       * Searching for the order IS the job here — the toolkit is the fallback
-       * you reach for when the search does not find it — so it must not push
-       * the search field down (it did, and on a ~300px Displays column that put
-       * the field below the fold).
-       *
-       * On Unbox the toolkit is not here at all: that surface's pairing level
-       * is the Linkage leaf's own actions list, so `autoMatch` arrives null and
-       * this body is combobox + search only. Hosts whose pairing surface IS
-       * this hub (Arrival · Testing · Incoming) keep it inline.
-       */}
+      {/* FIND LEADS (2026-08-19). */}
       {avenueSwitcher}
       <div className={cn(bareChrome && 'min-h-0 flex-1 overflow-hidden')}>{tabBody}</div>
       {!embedded && quickMatchStrip ? <div className="mt-3">{quickMatchStrip}</div> : null}
@@ -722,10 +646,7 @@ function MatchHubCard({
   }
 
   if (bareChrome) {
-    // Fills the host's flex column (LinkageDisplayHost's `flex-1` link body)
-    // instead of sizing to content — the fixed `max-h-[60vh]` cap this used
-    // to inherit (a leftover from the retired popover shell) left dead space
-    // under the results list on any column taller than 60% of the viewport.
+    // Fills the host's flex column (LinkageDisplayHost's `flex-1` link body) instead of sizing to content — the fixed `max-h-[60vh]` cap this…
     return (
       <div className={cn(PAIRING_FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col overflow-hidden')}>
         {content}

@@ -1,11 +1,4 @@
-/**
- * Data access for `part_links` — the SaaS-owned part → parent pairing (see the
- * 2026-06-28g migration). Mirrors the sibling `sku-relationship-queries` style:
- * plain org-scoped functions over `tenantQuery` / `withTenantTransaction`.
- *
- * Keyed on the LOGICAL part (base + color + condition; `parsePartSku().logicalKey`)
- * and the Zoho `items` scheme (FK `items.id`) — never the colliding SKU string.
- */
+/** Data access for `part_links` — the SaaS-owned part → parent pairing (see the 2026-06-28g migration). */
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
 export type PartLinkStatus = 'confirmed' | 'not_a_part';

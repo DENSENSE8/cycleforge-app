@@ -1,13 +1,4 @@
-/**
- * Station terminal action — pure types for the page × mode × tab dock resolver.
- *
- * The dock is a DoorDash/Uber-style sticky primary CTA: navigation
- * (`SectionTabsSlider` / sidebar modes) stays separate; this layer owns only
- * the terminal job for the active workspace section.
- *
- * VMs that carry React nodes (icons) are assembled in the component layer;
- * this module stays free of JSX so guard tests can run DB-free.
- */
+/** Station terminal action — pure types for the page × mode × tab dock resolver. */
 
 import type { ReactNode } from 'react';
 import type { SurfaceKey } from '@/lib/stations/surface-keys';

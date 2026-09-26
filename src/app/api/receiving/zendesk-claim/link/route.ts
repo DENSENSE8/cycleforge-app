@@ -20,14 +20,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Link an EXISTING Zendesk ticket to a receiving carton/line (the counterpart
- * to POST /api/receiving/zendesk-claim, which creates a fresh ticket).
- *
- * Thin wrapper over the universal `/api/support/tickets/link` waist — same
- * candidate search / link / unlink behaviour, gated by receiving.mark_received
- * so floor operators can claim without the broader Zendesk console permission.
- */
+/** Link an EXISTING Zendesk ticket to a receiving carton/line (the counterpart to POST /api/receiving/zendesk-claim, which creates a fresh… */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(
@@ -103,12 +96,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
-/**
- * DELETE ?receivingId=N[&lineId=N]&ticketId=N — detach a linked ticket from the
- * carton/line. Removes the ticket_links RECEIVING/RECEIVING_LINE row, the
- * paired SHIPMENT (STN) reference for the carton's tracking, and clears the
- * zendesk_ticket display columns. The Zendesk ticket itself is never touched.
- */
+/** DELETE ?receivingId=N[&lineId=N]&ticketId=N — detach a linked ticket from the carton/line. */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const context = 'DELETE /api/receiving/zendesk-claim/link';
   try {

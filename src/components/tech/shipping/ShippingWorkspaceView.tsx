@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe):
- * tabs · KPI · triage in one pinned sheet-chrome stack; body is
- * 'relative flex min-h-0 min-w-0 flex-1 flex-col'. Sidebar keeps Station scan / Up Next I/O.
- *
- * Multi-select opens the order right-rail plane (History / dashboard SoT) —
- * no bottom ContextualSelectionBar capsule.
- */
+/** Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe): */
 
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
@@ -40,16 +33,7 @@ export interface ShippingWorkspaceViewProps {
   techId: string;
 }
 
-/**
- * The bench strip. `pending` is the default body, so it lights no tab — the
- * same rule every other strip follows.
- *
- * There is no **All** entry: `all` is the absence of a narrowing, and the
- * unfiltered body is what shows when no tab is lit, so a tab for it is a
- * control that means *stop* (`DataTable`'s docblock, § "All" is not a tab).
- * Clicking the lit tab clears back to the default body — the same gesture
- * `useToShipChrome` uses.
- */
+/** The bench strip. */
 const SHIPPING_VIEW_TABS = [
   { id: 'urgent', label: 'Urgent' },
   { id: 'history', label: 'History' },
@@ -81,12 +65,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
       activeTab={SHIPPING_LIT_TABS.has(shipTab) ? shipTab : ''}
       onTabChange={(id) => setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))}
     >
-      {/*
-        The bench's one page-level action, at page-header altitude. It already
-        existed as a URL state (`?new=true`) with an opener that lived off in
-        the rail; the frame gives it the place a primary action belongs, and the
-        overlay it opens is unchanged.
-      */}
+      {/* The bench's one page-level action, at page-header altitude. */}
       <DeskActionSlotRegistrar>
         <DeskHeaderAction
           variant="primary"

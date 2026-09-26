@@ -1,27 +1,8 @@
 'use client';
 
 /**
- * The receiving CARTON record — one record view for every desk that lists
- * docked cartons (the Inbound desk's Docked lane and the Unbox History tab,
- * both through `DockedReceiptsLedger`), placed by `DeskRecordPlane`: below the
- * list's anchor (search row + action strip) by default, beside the list when
- * the staffer chooses fullscreen. The plane paints the header band (PO /
- * carton, n of N, ‹ ›, ✕) and owns Esc; the ledger owns J / K.
- *
+ * The receiving CARTON record — one record view for every desk that lists docked cartons (the Inbound desk's Docked lane and the Unbox…
  * Built for triage at a glance (owner 2026-09-25), on the order record's shape:
- *   - TOP — {@link ReceivingStatusStrip}: the overall state in the ledger row's
- *     own vocabulary (`dockedReceivingState`, so row and record agree), the
- *     next step (`deriveCartonReadiness`), the loud alerts (unfound, wrong
- *     destination, claims, write-off …) and the carton pipeline with who / when
- *     per step (`carton-record-status.ts`) — only steps that apply.
- *   - CENTER — the items: every line of the carton with its Zoho-governed
- *     identity and its own chain (condition, serials, test, label, received,
- *     put away, claim ticket), then the photos and the carton timeline.
- *   - RIGHT — facts and notes only: purchase, shipment, location, claims,
- *     carton / PO notes.
- * The record paints NO verbs: they live in the action strip under the list's
- * search bar (`carton-record-verbs.tsx`). Full station work stays on the Unbox
- * bench (`Open in Unbox`).
  */
 
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';

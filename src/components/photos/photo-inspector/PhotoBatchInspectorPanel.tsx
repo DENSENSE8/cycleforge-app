@@ -2,105 +2,7 @@
 
 /**
  * Media Library desk inspector — the n ≠ 1 face of the selection plane.
- *
- * ```text
- * [‹] Selection ………… 2 selected [⤢][✕]  ← the ONE band (DeskInspectorIndexShell)
- * ───────────────────────────────────
- * > Select all 48                     ← armed rows (↑↓ / Home / End / Enter)
- *   Select all matching
- * ───────────────────────────────────
- *   Attach to ticket
- *   Copy shareable links
- *   Create share page
- *   Edit labels
- * ───────────────────────────────────
- * [      ⭳       ][      🗑       ]   ← InspectorActionFloor (Macro floor)
- * ```
- *
- * ## Why this replaced a top action bar
- *
- * The bulk verbs lived in `PhotoLibraryToolbar` — a chrome band that *swapped
- * itself in over Bands 1–3* whenever a selection existed. Three costs, and the
- * third is the one that made it wrong rather than merely dense:
- *
- *  1. **It hid the chrome it replaced.** Selecting two photos took away the
- *     lifecycle tabs, the search field and the breadcrumb — the operator lost
- *     their place in the archive to read a row of icons.
- *  2. **Icon-only, at the top, with tooltips.** Six unlabelled glyphs is six
- *     things to parse before finding one verb; the same verbs as rows name
- *     themselves in words and cost no chrome height at all.
- *  3. **The right edge already owns "what can I do to the picked record".**
- *     n = 1 opens {@link PhotoInspectorPanel} there. Putting n ≥ 2 somewhere
- *     else made cardinality change the *place* as well as the content.
- *
- * ## What it composes, and what it deliberately does not
- *
- * Rows are the house armed-verb waist — {@link useArmedCursorList} +
- * `armed-cursor-face` tokens, the same pair `PhotosActionsArmedList` (Unbox
- * Displays → Photos → Actions) composes. Commit paints in the same turn as
- * Enter / Space / pointerdown; there is no hit-marker timer.
- *
- * It composes the HOOK, not `StationArmedVerbList`, and that is a decision the
- * A3 plan flagged in advance: that component hardwires
- * `useNavRegion({ id: 'right' })` and `isKeyboardRegion('right')`, which are
- * Station keyboard-region concerns. This is a desk `RightRailHost` occupant, and
- * `⌘;` region arm on this surface is explicitly ask-first (A3 → C-NAV), so the
- * rail takes the cursor behaviour and leaves the region registration alone.
- *
- * The armed face composes the chevron + track WITHOUT
- * `ARMED_CURSOR_MARKER_PULSE_CLASS` — a recorded, operator-confirmed divergence
- * from the Unbox golden (2026-08-10). This surface runs one predictable DS with
- * no motion; the pulse is the last thing that would still move on it, so a rail
- * that pulsed here would be the animation the pass exists to remove.
- *
- * ## Delete is on the FLOOR, never in the rows
- *
- * A destructive verb does not sit in the verb list beside its peers: it is the
- * flush trailing child of {@link InspectorActionFloor}, the desk Macro floor
- * (`right-rail-inspector.md` → *Workbench inspector action floor*). Dismiss stays
- * the host's `✕` on the top band, so it never sits beside a delete.
- *
- * ## One band, titled, with the count as its metric (2026-08-21)
- *
- * The top row was a bare {@link DeskRailChromeRow} — the host-close reserve and
- * nothing else — with `2 SELECTED` as the first row of the body beneath it.
- * That is a nameless band over a second identity line, where the contract wants
- * one band reading `[‹] Title …… [read-only metric] [⤢] [✕]`. It now composes
- * {@link DeskInspectorIndexShell} in the `standalone` stance: this rail is not
- * routed through an index (the grid selection opens it), so it owes no Back and
- * says so rather than defaulting into one. The count keeps its
- * `photo-batch-count` identity — it moved cells, it did not change job: still a
- * read-only statement of what the verbs below will act on.
- *
- * **The floor carries the TERMINAL pair — Download then Delete** (ruled
- * 2026-08-10). A single-peer floor is legal (`BinDetailFlyout` · `SkuDetailView`
- * · `RepairDetailsPanel` ship one), but the spread layout then gives Delete the
- * whole column, so "far right" is only literal once a second peer sits beside
- * it. Download is the right partner and the only one: it is the other verb an
- * operator reaches for without looking, and it is *terminal* — it ends the
- * selection's business rather than reshaping it, which is what the floor means.
- *
- * It **MOVES, it does not copy** ({@link FLOOR_ACTION_KEYS} partitions the
- * incoming action set): a verb readable in two places is two places to keep in
- * sync, and the rows exist precisely so each verb is read once. Everything else
- * — add · copy links · share page · labels — stays a named row.
- *
- * `InspectorFlushDelete` owns its own arm-then-confirm, so the rail holds no
- * delete state of its own. The floor stays MOUNTED at zero selected (its peers
- * disabled) rather than unmounting — a bottom row that appears and disappears
- * with the selection would move the verb list under the operator's cursor
- * mid-tick.
- *
- * **The floor is `surface="card"`, not the desk default `canvas`.** This rail's
- * body is one continuous white plane, and a grey band under it read as a second
  * surface rather than as its floor (operator-ruled 2026-08-10). The `border-t`
- * hairline still carries the seam; only the paint changed.
- *
- * Occupant id is the stable `detail:photo-batch` — a per-selection id would play
- * exit → empty → enter every time the operator ticked another tile, which is the
- * loop this rail exists for. Mutually exclusive with `detail:photo` by
- * construction (one `inspectorPhoto === null` split decides which mounts).
- *
  */
 
 import {
@@ -134,18 +36,7 @@ import {
 } from '@/lib/selection/selection-actions';
 import { cn } from '@/utils/_cn';
 
-/**
- * Bulk verbs that leave the row list for the Macro floor.
- *
- * TERMINAL only — a verb that ends the selection's business (hand the bytes
- * over) rather than reshaping it. Deletion is not listed because it is not a
- * `SelectionAction` at all: it arrives as `onDeleteSelected` and renders as
- * {@link InspectorFlushDelete}, the floor's trailing child.
- *
- * Keep this SHORT. Every key added here is a verb that stops naming itself in
- * words, and the floor's whole affordance is that the two glyphs on it are the
- * two an operator can hit without reading.
- */
+/** Bulk verbs that leave the row list for the Macro floor. */
 const FLOOR_ACTION_KEYS: readonly string[] = ['download'];
 
 interface BatchRow {

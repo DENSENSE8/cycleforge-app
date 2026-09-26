@@ -36,17 +36,7 @@ function resolveSquareBaseUrl(): string {
   return SQUARE_PRODUCTION_BASE_URL;
 }
 
-/**
- * Build a SquareConfig. With no override, all fields come from env (the
- * original single-tenant behavior — throws if token/location missing).
- *
- * When `accessTokenOverride` is supplied (e.g. a Nango-managed token for a
- * per-tenant connection), the token is taken from the override and the
- * non-secret fields (base URL, version, currency, location) still come from
- * env defaults. locationId is best-effort in that mode rather than required,
- * since per-tenant location resolution is a follow-up — see
- * src/lib/square/server.ts.
- */
+/** Build a SquareConfig. */
 export function buildSquareConfig(accessTokenOverride?: string): SquareConfig {
   return {
     baseUrl: resolveSquareBaseUrl(),

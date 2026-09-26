@@ -1,28 +1,4 @@
-/**
- * POST /api/support/suggest — draft an AI support reply for a helpdesk ticket.
- *
- * Grounds the customer's question in the org's document RAG (NemoClaw), in what
- * any attached PHOTOS deterministically show, and in the rows those photos
- * resolve to in our own data. Returns the draft + typed sources + confidence;
- * the agent accepts/edits/sends it from the support console. This is a
- * generation (no state mutation), so — like /api/ai/chat — it writes no audit
- * row.
- *
- * ## The vision loop, and the trap in it
- *
- * `stagedPhotoIds` are photo IDs, never URLs. **The client never holds a model-
- * readable image URL and a model is never handed an app route.**
- * `/api/photos/[id]/content` 302s to a signed storage URL behind this app's
- * session cookie — a cloud model following it fetches a sign-in page and
- * describes that. This route resolves the signed URL itself
- * ({@link resolvePhotoAccessUrl}), and only on the lane that is allowed to send
- * one.
- *
- * The deterministic pass (analyze → `routeScan` → `hybridSearch`) runs on EVERY
- * lane, including local-only. It is what makes the photo searchable afterwards
- * and what lets the draft say *"this is the unit on order #1234"* rather than
- * describing a picture.
- */
+/** POST /api/support/suggest — draft an AI support reply for a helpdesk ticket. */
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';

@@ -84,14 +84,7 @@ export const PUT = withAuth(async (req, ctx) => {
   }
 }, { permission: 'integrations.ebay' });
 
-/**
- * DELETE /api/ebay/accounts?id=123
- * Disconnect an eBay account. eBay exposes no token-revocation API, so deleting
- * the metadata row + vault scope (seller:{slug}|buyer:{slug}) IS the revocation.
- * Unscoped organization_integrations (app credentials) are intentionally kept.
- *
- * step-up required (token destruction); admins are exempt per withAuth.
- */
+/** DELETE /api/ebay/accounts?id=123 Disconnect an eBay account. */
 export const DELETE = withAuth(async (req, ctx) => {
   const idParam = req.nextUrl.searchParams.get('id');
   const id = Number(idParam);

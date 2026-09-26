@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The result row's LEAF FACES — the parts of a search row that paint one fact.
- *
- * Split out of {@link SearchResultRow} so that file stays the row GRAMMARS
- * (which face goes where, at which density) and this one stays presentational.
- * Same split, and the same reason, as `SearchRefinePills` under
- * `SearchRefineControls`: the row file had grown past the point a reviewer
- * reads it in one sitting, and the two halves change for different reasons.
- *
- * Nothing here decides layout ORDER. The anatomy law — the identifier leads,
- * status is a dot and its word together, no repeated entity noun, the exact
- * stamp travels with the relative one — is enforced by the row grammars that
- * arrange these faces.
- */
+/** The result row's LEAF FACES — the parts of a search row that paint one fact. */
 
 import type { ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
@@ -57,18 +44,7 @@ export function isNarrowDensity(density: SearchRowDensity): boolean {
   return density === 'compact' || density === 'dropdown';
 }
 
-/**
- * STATE, as one cluster: a minimal dot and its concise word, together.
- *
- * The dot alone is colour-only, which does not survive a grayscale bench
- * display or a screen reader; the word alone loses the peripheral read an
- * operator uses to triage a list without focusing on it. Splitting them across
- * the row — a dot at the leading edge, the word as a chip at the trailing edge
- * — was the worst of both: one fact, two fixations, full row width apart.
- *
- * `dotOnly` exists for the narrowest rail, where there is genuinely no room
- * for the word; the word is still the hover label, never dropped entirely.
- */
+/** STATE, as one cluster: */
 export function StatusMark({
   status,
   density,
@@ -111,24 +87,7 @@ export function StatusMark({
 
 /**
  * The TITLE — the row's subject.
- *
  * ## It is allowed two lines at narrow measure (operator 2026-09-13)
- *
- * It was `truncate` at every density, with the full value on a
- * {@link HoverTooltip}. On a phone that is not a fallback, it is a wall:
- * a tooltip is pointer-only, so `Bose Wave Music Syste…` had no second
- * reading anywhere on the device. The operator's report was exactly that —
- * *"you cannot see the title."*
- *
- * So at narrow measure the title CLAMPS to two lines instead of truncating to
- * one. A list row may grow; that is the difference between a list and a grid,
- * and the reason `/search` puts a table on the desk and a list in the hand. At
- * `comfortable` it stays one line, because there it is a TRACK in an aligned
- * grid and a two-line cell would break the column edge the grid exists for.
- *
- * The full value also rides a native `title`, the floor {@link AgeStamp}
- * already established in this file for the same reason: a fact that only
- * exists on hover-with-a-mouse is not carried at all.
  */
 export function SearchTitle({
   title,
@@ -171,14 +130,7 @@ export function SearchTitle({
   );
 }
 
-/**
- * The age face — relative for the glance, exact on the hover.
- *
- * "4d" answers "is this stale?" in peripheral vision and answers nothing at
- * all when an operator is reconciling an SLA, so the precise instant travels
- * with it rather than being a second lookup. `formatDateTimePST` is the house
- * stamp SoT; this row does not invent a date format.
- */
+/** The age face — relative for the glance, exact on the hover. */
 export function AgeStamp({
   source,
   label,
@@ -243,19 +195,7 @@ export function journeyActionFor(
 
 }
 
-/**
- * Carrier + abbreviated tracking — always shown when tracking exists
- * (density-gated, not `md:`).
- *
- * The carrier reads as its own brand mark rather than grey uppercase prose:
- * UPS brown, FedEx purple, USPS blue. That is the whole point of the mark —
- * an operator identifies a carrier in peripheral vision, without reading. Paint
- * comes from `carrier-brand.ts`, the carrier SoT, which is a deliberately
- * separate registry from the marketplace one in `source-platform.ts`.
- *
- * The carrier is resolved from the tracking number when the row carries no
- * hint, so a hit whose facet is missing a carrier still gets the right mark.
- */
+/** Carrier + abbreviated tracking — always shown when tracking exists (density-gated, not `md:`). */
 export function TrackingMeta({
   tracking,
   carrier,

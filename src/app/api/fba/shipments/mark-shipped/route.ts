@@ -7,32 +7,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/fba/shipments/mark-shipped
- *
- * Marks combined items (PACKED / LABEL_ASSIGNED) as SHIPPED, optionally links a
- * UPS tracking number, and optionally stamps the Amazon shipment ID.
- *
- * Two ways to target the items:
- *  - item_ids[]  — explicit (from the combine UI), requires tracking_number.
- *  - scan        — a packer scans EITHER a UPS tracking number OR the FBA
- *                  shipment ID; both resolve to the same shipment and ship all
- *                  of its packed/combined items (tracking already attached at
- *                  combine time, so tracking_number is optional here).
- *
- * Body:
- * {
- *   item_ids?:           number[],  // fba_shipment_items.id[]
- *   scan?:               string,    // UPS tracking number OR FBA shipment ID
- *   tracking_number?:    string,    // UPS / carrier tracking number to link
- *   amazon_shipment_id?: string,    // optional Amazon FBA shipment ID
- *   carrier?:            string,    // auto-detected from tracking if omitted
- * }
- *
- * After marking shipped:
- *  - If ALL items in a shipment are SHIPPED and actual_qty >= expected_qty,
- *    the shipment is DELETED (fully fulfilled).
- */
+/** POST /api/fba/shipments/mark-shipped */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * The compound cell bodies — the ONLY implementation, for every table.
- *
- * Each takes a {@link CompoundRowView} (a family's adapter output) rather than
- * a family row type, which is what lets Receiving, Orders and Incoming share
- * one layout instead of three that drift. A new table supplies a mapper; it
- * never copies a cell.
- *
- * These render the cell BODY. The surrounding `<div>` — grid cell class,
- * `data-col`, row box, frozen offset — is {@link CompoundGridCell}, which is
- * where every family enters. Nothing outside this directory composes these
- * bodies directly.
- *
- * The wrapper used to be each family's job, on the reasoning that per-staff
- * column display and the frozen-pane token resolve from the family's own model.
- * That was wrong in a way worth remembering: the wrapper decides a cell's
- * POSITION, so leaving it per-family forked the layout in the one place nobody
- * compares. Receiving pinned the photo track at the wrong offset and Orders did
- * not pin it at all — from the same `frozen: true`. Both prefs are resolved
- * from the MOUNTED columns now, which every family already passes.
- */
+/** The compound cell bodies — the ONLY implementation, for every table. */
 
 import { forwardRef, useRef, useState, type ComponentType, type HTMLAttributes, type ReactNode } from 'react';
 import Image from 'next/image';
@@ -119,32 +99,7 @@ import {
 import { StageStaffAssignPopover } from './StageStaffAssignPopover';
 import { CompoundStaffRosterButton } from './CompoundStaffRosterButton';
 
-/**
- * Column 4 — the photo, EDGE TO EDGE. Identity (select · order) precedes it.
- *
- * It fills its cell corner to corner: no inset, no border, no centring slack.
- * The cell is a square of the row box (`COMPOUND_GUTTER_TRACK_REM`).
- *
- * Very nearly a true square: the airtable skin paints a 1px bottom rule on every
- * direct child of a row, and the cell is border-box, so the painted area is
- * 48×47. That last pixel is the row SEAM, not padding — removing it for these
- * two tracks would break the continuous hairline down the grid — so a square
- * source is scaled by 48/S and loses half a pixel top and bottom. Named here
- * because "square" is the kind of claim that quietly stops being true.
- *
- * It used to be a 32px chip with a hairline border floating in a 64px track —
- * 9px of gap on three sides and 25px on the fourth, which read as a column of
- * postage stamps rather than a strip of product. The operator's ask was
- * literally "full width, no padding, edge to edge", and a photo is the one cell
- * content that gains from every pixel: it is what an operator matches against
- * the box in their hands.
- *
- * `object-cover` (not `contain`): a non-square source fills the square and
- * crops rather than letterboxing, because a band of empty ground inside the
- * cell would reintroduce exactly the inset this removes. The image can still
- * never set the row's height — the cell's height is fixed by
- * {@link COMPOUND_ROW_PX} and clips.
- */
+/** Column 4 — the photo, EDGE TO EDGE. */
 export function CompoundThumb({ view }: { view: CompoundRowView }) {
   return (
     <div className="relative h-full w-full overflow-hidden bg-surface-sunken">
@@ -173,46 +128,8 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
 
 /**
  * Column 1 — the SELECTION mark, edge to edge, and never blank.
- *
  * ## Two altitudes in one 16px box (operator 2026-09-15)
- *
- * The gutter reports the row's STATUS at rest and becomes the selection
- * control the moment a pointer reaches the row: an urgent order flashes a
- * lightning bolt while nobody is pointing at it, and that same box paints the
- * checklist square under hover, keyboard focus, or a no-hover pointer. Neither
- * face is a mode and neither is a mode switch — {@link GridSelectSquareFace}
- * already paints itself in exactly those three conditions, and
- * {@link CompoundSelectStatusFace} fades out under the same three, so the swap
- * is one CSS answer rather than two components racing a state flag.
- *
- * A TICKED row keeps the accent square standing at every pointer position:
- * membership must be readable straight down the column, so `status` is dropped
- * once `checked` is anything but `false`. That is also why the status face only
- * arrives with `'hover'` chrome — `'always'` (group-fold parents) never yields
- * the box.
- *
- * **The resting glyph is a MARK, not a state pill.** Which facts qualify is
- * {@link compoundSelectStatusMark}'s call, and ordinary rows resolve to
- * nothing: a glyph on every row would rebuild the column of forty faded checks
  * the operator retired on 2026-09-04.
- *
- * **The leading edge rail is NOT here.** It is the whole gutter CELL's, so it
- * spans the full row height even where the cell splits into check-over-chevron
- * — see {@link CompoundEdgeRail} and the `data-select-gutter` hosts. Painting
- * it inside this face is what clipped it to the top half of a detail row.
- *
- * ## Interactive vs decorative is the presence of `onToggle`
- *
- * With a handler this is a real `role="checkbox"` button whose hit plane is the
- * entire 48px cell — an operator never has to aim at a glyph, and Playwright's
- * `.check()` keeps working. Without one it is the same face, `aria-hidden`,
- * for the surfaces where the ROW owns the toggle (click-select) — the row's own
- * `role="checkbox"` is the control there, and a second one would be a duplicate
- * a screen reader has to disambiguate.
- *
- * What the tick MEANS is the caller's business: bulk membership on Receiving,
- * Incoming and To-Ship; "this task is done" on Tasks. Same control, same
- * picture, different handler.
  */
 
 export function CompoundSelect({
@@ -245,10 +162,6 @@ export function CompoundSelect({
     statuses && statuses.length > 0 && chrome === 'hover' && checked === false ? statuses : null;
   // BOTH faces share one box, pinned to the TOP of the gutter and inset past
   // the rail (operator 2026-09-04 "most top of the column per rows", reaffirmed
-  // 2026-09-15 after a pass floated the mark to the row's middle: the checklist
-  // icon stays pinned to the top and the drop-down sits below it). One class
-  // pair, passed to both planes — a face that aligned differently from the
-  // control it stands in for would make the glyph jump on hover.
   const faceCentring = cn(COMPOUND_GUTTER_MARK_TOP_PIN_CLASS, COMPOUND_GUTTER_RAIL_INSET_CLASS);
   // Decorative face — the ROW owns the toggle on click-select surfaces. Same
   // square the real control paints, so the two planes cannot look different.
@@ -269,51 +182,14 @@ export function CompoundSelect({
         label={label}
         disabled={disabled}
         chrome={chrome}
-        // Keeps GridRowCheckbox's own top pin (`items-start pt-1`) and adds the
-        // rail reservation — the compound gutter differs from a flat grid in
-        // the 3px inset only, never in the vertical pin. The hit plane is
-        // unchanged: the inset is INSIDE the full-cell button, and the button
-        // still spans every pixel above the chevron band.
+        // Keeps GridRowCheckbox's own top pin (`items-start pt-1`) and adds the rail reservation — the compound gutter differs from a flat grid in…
         className={faceCentring}
       />
     </span>
   );
 }
 
-/**
- * TITLE column — what it is, over what somebody said about it.
- *
- * The note is the second line by rule: a code under a title is a duplicate of
- * the IDS column two tracks away, whereas a note is the only place a row can
- * say something the schema has no field for.
- *
- * ## The note line is READ-ONLY
- *
- * It used to edit in place when a family passed `onCommitNote`. The editor went
- * with the display layer on 2026-08-29; the TRIGGER did not, and for a while
- * this cell rendered a button with `hover:underline` and
- * `aria-label="Edit note: …"` that set an `editing` flag nothing read. A
- * control that looks live and does nothing is worse than a plain line of text,
- * so the trigger is gone too.
- *
- * `commitReceivingLineNote` is still in the domain layer — the write survives,
- * it just has no cell-level caller. Note editing belongs on the record plane
- * now, like every other correction.
- *
- * ## A bound subtitle PART can edit in place — by capability, not by mode
- *
- * A family passes {@link CompoundSubtitleSelect} editors in `subtitleSelects`
- * and the matching part (by `key`) becomes a click-only menu trigger over the
- * options the family resolved from its own SoT; every other part — and the
- * same part on a mount that passes no editor — is the identical read-only
- * span. This is a scalar-field PATCH affordance (To-ship condition), not a
- * lifecycle transition; picking an option commits, Esc closes without saving
- * — the same contract the flat grid's condition editor had.
- *
- * The ROW owns Enter/Space (open / select), so the trigger is `tabIndex={-1}`
- * and opens on click only — same law as the ⋮ actions button and the old
- * note-editor trigger before it.
- */
+/** TITLE column — what it is, over what somebody said about it. */
 function isItemNumberSubtitlePart(key: string | undefined): boolean {
   return Boolean(key?.endsWith('.item_number'));
 }
@@ -363,12 +239,7 @@ function CompoundItemNumberEditor({
   );
 }
 
-/**
- * Condition (and any other subtitle select) — click opens, hold-and-move
- * reorders. Radix DropdownMenuTrigger toggles on pointerdown, which is the
- * same press that starts a drag, so this menu is controlled and forced shut
- * while the line is being reordered.
- */
+/** Condition (and any other subtitle select) — click opens, hold-and-move reorders. */
 function CompoundSubtitleSelectMenu({
   part,
   select,
@@ -438,19 +309,7 @@ function CompoundSubtitleSelectMenu({
   );
 }
 
-/**
- * The NOTE at the end of the subtitle line.
- *
- * Empty → the FileText glyph (a click target that does not invent prose).
- * Written → the note itself as muted caption text, truncated so qty /
- * condition / listing stay put. Click opens the editor, which always seeds
- * from the note that is already there.
- *
- * The editor opens below the trigger and grows to the RIGHT (`side="bottom"`
- * `align="start"`). The facts sit under the title on the left; `align="end"`
- * would throw the 16rem panel left into the select gutter. Collision
- * flipping stays off so a tight viewport cannot send it bottom-left.
- */
+/** The NOTE at the end of the subtitle line. */
 function CompoundSubtitleNote({
   text,
   edit,
@@ -464,16 +323,8 @@ function CompoundSubtitleNote({
   const has = body.length > 0;
 
   /*
-   * With a note written, the glyph is a fact and is always painted. With none,
-   * it is an AFFORDANCE — "you can write one here" — and an affordance on every
-   * row of a dense queue is 200 identical marks competing with the facts around
-   * them. So an empty note rides the row's own hover, the same reveal the empty
-   * select square uses (`group/row`, declared by `ledgerGridRowShellClass`).
-   *
-   * `focus-within` keeps it reachable by keyboard, where there is no hover at
-   * all, and the opacity transition means the line never reflows: the glyph
+   * With a note written, the glyph is a fact and is always painted.
    * always occupies its box (operator 2026-09-04 asked for the icon on row
-   * hover, not for the row to change shape under the pointer).
    */
   const glyph = (
     <FileText
@@ -596,10 +447,7 @@ export function CompoundItem({
   /** Row verbs that used to live on a ⋮ track — listing, void, open. */
   extraTitleActions?: readonly CopyChipHoverMenuItem[];
 }) {
-  // Bound subtitles REPLACE the note line: parts in binding order, sitting
-  // LEFT under the title. Item number is intentionally not painted here; its
-  // actions live on the product title hover surface. Notes stay in that
-  // cluster. Absent parts ⇒ the legacy note fallback.
+  // Bound subtitles REPLACE the note line:
   const parts = view.subtitleParts
     ? pinLineMoneyAfterQty(pinLineQtyFirst(view.subtitleParts))
     : view.subtitleParts;
@@ -614,16 +462,7 @@ export function CompoundItem({
   const listingHref = String(view.titleHref ?? '').trim() || null;
   const [editingItemNumber, setEditingItemNumber] = useState(false);
 
-  /*
-   * Click-and-hold reorder of the under-title facts.
-   *
-   * Headers still use HTML5 drag (an empty `select-none` cell). This line
-   * cannot: nested editors, a Radix menu that opens on pointerdown, and
-   * 1–2ch of selectable text all steal the native drag. Pointer tracking
-   * on `window` is the display method — same write (`onReorderByDrop`),
-   * destination named by field id. Notes stay in the left cluster and are
-   * not a drop target. See `useSubtitlePointerReorder`.
-   */
+  /* Click-and-hold reorder of the under-title facts. */
   const contextReorder = useSlotLayoutReorder();
   const reorder = onReorderSubtitle ?? contextReorder;
   const { draggingKey, overKey, skipClick, bindPart, enabled: reorderable } =
@@ -684,12 +523,7 @@ export function CompoundItem({
     );
   };
 
-  /*
-   * Notes stay in the left cluster (after qty / condition). They
-   * used to pin right, which is what made the under-title facts look like
-   * they belonged to the identity column. The editor still opens to the
-   * bottom-right of the glyph — that is a menu placement, not a face.
-   */
+  /* Notes stay in the left cluster (after qty / condition). */
   const noteKey = subtitleNoteKey;
   const inlineParts = parts?.filter(
     (p) => p.key !== noteKey && !isItemNumberSubtitlePart(p.key),
@@ -874,32 +708,8 @@ export function CompoundItem({
 }
 
 /**
- * Column 3 — the row's IDENTITY: order number over its tracking number.
+ * Column 3 — the row's IDENTITY:
  * Frozen in the left pane with select and the photo (operator 2026-09-04).
- *
- * **The leading mark is the brand DOT, never the type glyph.** That is the
- * house identity law (`AGENTS.md`), and it is why this cell composes
- * `BrandIdentityDot` + `OrderNumberMenuChip plain` / `TrackingNumberMenuChip
- * showIcon={false}` — exactly what Unbox History's `ReceivingOrderCell` and
- * `ReceivingTrackingCell` render.
- *
- * This shipped wrong once: it used `OrderIdChip` / `TrackingChip`, whose
- * default faces carry the `#` hash and the MapPin. Two tables then answered
- * "glyph or dot?" by two different rules — a fork hiding inside the SHARED
- * renderer, which is the worst place for one because it looks unified.
- *
- * **The dot's SHAPE says which identifier it marks:** filled for the order
- * handle, a ring for the carrier tracking number. Colour alone could not do it.
- * Both chips drop their own type mark on the stated promise that "the header
- * already labels ORDER / TRACK", and this cell stacks both under one header —
- * so an operator was left inferring the type from a brand palette, and on a row
- * whose order id and tracking number are the same digits (Incoming does this
- * routinely) there was nothing to infer from at all.
- *
- * Copy / Open / Edit verbs are not hand-rolled — the two menu chips own them.
- * To-ship Label is an extraItems row: it opens the paperwork overlay
- * ({@link PaperworkWalkHost} over the mounted table), it does not paint a
- * second chip or an in-row band.
  */
 
 export function CompoundFulfillment({
@@ -963,21 +773,10 @@ export function CompoundFulfillment({
       <GridCellDash />
     );
 
+  // Operator 2026-09-14:
   // Operator 2026-09-14: the order number displays on EVERY row — expanded
-  // children included ("it must display the order number for all the other
-  // rows, the child rows as well"). The old quietIdentity special-case dashed
-  // the order line on fold children because the band "spoke it once"; that is
-  // retired — every row answers "which order?" on line 1 and "which box?" on
-  // line 2 (tracking), band and children in one grammar.
-  // A family that declares `identityFace` has a LOCAL handle, not an order:
-  // plain, copyable, no brand dot and no marketplace menu (see the field's
-  // docblock). Checked first so the order path stays exactly as it was for
-  // every family that does have an order.
   const identity = view.identityFace ?? null;
-  // …and its second-line twin. A local handle usually has a SECOND local
-  // handle (bin code over SKU, unit id over serial), which had nowhere to go
-  // while this line was carrier-only. Same paint as line 1: plain, copyable,
-  // no ring and no tracking menu.
+  // …and its second-line twin.
   const identitySub = view.identitySubFace ?? null;
 
   return (
@@ -1019,13 +818,7 @@ export function CompoundFulfillment({
   );
 }
 
-/**
- * Tone → pill paint. Neutral by default: on a WMS floor most states are
- * unremarkable progress, and a grid where every row is coloured has no signal
- * left for the one row that needs a human. Saturated paint is reserved for
- * `alert` (hold / exception), which is the brief's "avoid red/yellow/green
- * unless it's a hard error" expressed as a rule rather than a palette.
- */
+/** Tone → pill paint. */
 const STATE_TONE_CLASS: Record<CompoundStateTone, { pill: string; dot: string }> = {
   neutral: { pill: 'bg-surface-sunken text-text-muted', dot: 'bg-text-faint' },
   done: { pill: 'bg-surface-sunken text-text-default', dot: 'bg-fill-success' },
@@ -1034,42 +827,8 @@ const STATE_TONE_CLASS: Record<CompoundStateTone, { pill: string; dot: string }>
 
 /**
  * DATES column — when it STARTED over how late it IS.
- *
- * ```text
- * ┌────────────────┐
- * │ #  Sep 1       │  order date  — Hash, same mark as the order id
- * │ ⏱  2d late     │  ship-by     — CalendarClock; ink follows the AGE
- * └────────────────┘
- * ```
- *
- * ## One field, twice — not a date beside a date-picker
- *
- * Both lines are the SAME control: `DateRangePickerField variant="compact"`,
- * the same month grid, click-to-commit. Glyphs name WHICH date: `Hash` on the
- * order line, `CalendarClock` on the deadline. The deadline glyph does not
- * swap when a row goes late — `currentColor` follows {@link formatCompoundDelayAgeFace}.
- * Hover always names the line (`Start date` / `Due date`, or a family tip that
- * already owns the name) via HoverTooltip so MorphCursorLayer carries the chip
- * on every PRODUCT_TABLES peer. The top line
- * used to be plain text beside a picker, and two dates in one cell wearing two
- * different faces read as two different kinds of fact — which they are not
  * (operator 2026-09-04: *"must use the exact same display for the days date the
- * ship by date"*). A line the surface cannot commit renders the identical field
- * `disabled`: the display is unchanged, only the click is gone. That is also
- * what makes the dates FIXABLE in place — a wrong import date is corrected on
- * the row instead of in a record page.
- *
- * ## The deadline line paints the AGE
- *
- * `2d late`, `1m late`, `Due today`, `in 3d` — never `Sep 2`. Nobody triages on
- * a civil day; they triage on how far past it is, and printing the date made
  * every row a subtraction (operator 2026-09-04). The date is not lost: it is
- * the hover, together with the lateness in words. See
- * {@link formatCompoundDelayAgeFace}.
- *
- * The top line keeps its date, because a purchase date has no "age" an operator
- * acts on — and its tooltip says whether it is the channel's order date or our
- * import stamp ({@link ordersOrderedAt}).
  */
 export function CompoundDates({
   view,
@@ -1124,17 +883,7 @@ export function CompoundDates({
   return <CompoundCell primary={startedWrapped} secondary={dueWrapped} />;
 }
 
-/**
- * One line of the DATES cell: the house compact date field, painted to fill it.
- *
- * Shared by both lines so the two can never drift — the geometry, the glyph
- * slot and the disabled face are declared once. `onCommit` absent ⇒ disabled:
- * same picture, no popover, which is the honest face for a surface that has no
- * write for this fact.
- *
- * The wrapper swallows pointer events so opening the calendar does not also
- * open the record — a row click is the record everywhere else on this grid.
- */
+/** One line of the DATES cell: */
 const CompoundDateField = forwardRef<
   HTMLDivElement,
   {
@@ -1196,19 +945,7 @@ const NEXT_STEP_TONE_CLASS = {
   blocked: 'text-text-danger',
 } as const;
 
-/**
- * STATUS column — the state pill over the NEXT STEP.
- *
- * Where the row IS, then where it is GOING: the station that picks it up next
- * ("Pack", "Scan out"), or the finished marker when nothing does. A floor
- * screen answers "what happens to this one" without a click, which is what the
- * second line of a status column is for — it held the ship-by date until
- * 2026-09-04, and a deadline is a date, so it moved to {@link CompoundDates}.
- *
- * A family that has not modelled its pipeline supplies no `nextStep` and the
- * line stays blank. Better an empty track than a guess at somebody else's
- * workflow.
- */
+/** STATUS column — the state pill over the NEXT STEP. */
 export function CompoundState({
   view,
   onOpen,
@@ -1292,55 +1029,7 @@ export function CompoundState({
   );
 }
 
-/**
- * Lifecycle STEP column — the media-object row every dense person-tool uses:
- * the ACTOR's mark on the left spanning both lines, the STATE VERB + stamp
- * stacked to its right.
- *
- * ```text
- * ( MG )  🔧 TESTED
- *         Jul 13, 4:15 PM · Bench 2
- * ```
- *
- * Three rules carry the design:
- * - **Person is a MARK, state is a WORD.** The avatar (photo → initials on
- *   the staffer's colour, {@link StaffAvatar}) is the identity channel; the
- *   verb keeps the quiet state tones. Staff colour never repaints the verb —
- *   a staffer who picks red must not make every row they test read as an
- *   error. A colour ring keeps the assigned colour scannable once a photo
- *   uploads. Round mark = person; the square edge-to-edge image stays the
- *   product photo's alone.
- * - **The verb marks what HAPPENED; nothing-yet is dotted empty + dash.**
- *   The done face ("Tested" / "Picked" / "Packed") paints once the event's
- *   timestamp lands. Before that the line keeps the step's glyph (the column
- *   identity survives) with {@link ITEM_RECORD_MOBILE_STAGE.empty} (dashed
- *   circle + pill corner) where the avatar would be, and the house
- *   {@link GridCellDash} beside the glyph. The catalog's `pending` face
- *   survives as the circle's accessible name only, so AT still hears the
- *   state. An assigned-but-undone row keeps the assignee's mark beside the
- *   dash — "this is Michael's" is still the actionable read. When
- *   {@link CompoundStageAssign} is present and the step has no `at`, the
- *   empty dashed mark (and the pending claimed mark) is the combo trigger:
- *   click opens {@link StageStaffAssignPopover}. Stamped steps stay
- *   read-only. Bulk assign stays the column-foot person icons. Full roster;
- *   no WorkOrder grid.
- * - **The name lives in the tooltip.** Names are ragged; the mark is 28px
- *   always. The full `who · time · station` line rides the hover, and the
- *   mark's `alt` names the actor for screen readers.
- * - **Past-tense second line is the stamp.** Once `at` is set the verb paints
- *   on the primary (PICKED / PACKED) and the secondary is the exact date/time
- *   — never the word Assigned. Pending + assignee paints the catalog pending
- *   verb (PICK / PACK) with Assigned underneath — never a dash.
- *
- * The two text lines stay {@link CompoundCell}'s fixed tracks, so the verb
- * baseline still locks to the state/item columns — the avatar is a leading
- * flex sibling, never a third row.
- *
- * An unclaimed / unstamped step paints an empty circle in the mark's slot
- * (same 28px as the `sm` avatar) and a dash next to the glyph — Pick and
- * Packed share this face; neither invents a blank cell. That empty face is
- * the assign combo when the host armed {@link CompoundStageAssign}.
- */
+/** Lifecycle STEP column — the media-object row every dense person-tool uses: */
 export function CompoundStageStep({
   labels,
   Icon,
@@ -1486,26 +1175,14 @@ export function CompoundStageStep({
   );
 }
 
-/**
- * Slot glyphs by catalog `iconKey`. Semantic aliases on purpose: PackageSearch
- * = pick from inventory, `PackingModeStandard` the pack bench,
- * `ShippingModeScanOut` the carrier-handoff scan. Unknown keys fall back to
- * the neutral carton.
- */
+/** Slot glyphs by catalog `iconKey`. */
 const SLOT_STEP_ICONS: Record<string, (props: { className?: string }) => JSX.Element> = {
   picked: PackageSearch,
   packed: PackingModeStandard,
   scanned_out: ShippingModeScanOut,
 };
 
-/**
- * The materialized SLOT cell body — one component for every bound track.
- *
- * Branches on the field's DISPLAY TYPE (never its id): `stage_event` paints
- * the two-line step above; everything else paints the resolved value over an
- * empty line (the header already labels the fact). The value arrives on
- * `view.slots[trackKey]`, resolved once per row by the family adapter.
- */
+/** The materialized SLOT cell body — one component for every bound track. */
 export function CompoundSlotCell({
   trackKey,
   label,
@@ -1563,20 +1240,7 @@ export function CompoundSlotCell({
   return <CompoundCell primary={compoundSlotPrimary(displayType, text)} secondary={null} />;
 }
 
-/**
- * The slot body for a plain resolved fact — chosen by the field's DISPLAY TYPE,
- * never by its id.
- *
- * This is the engine capability that retired the inventory-events cell map: an
- * age face for a date, a mono chip for a short enum, a copy affordance on a
- * code. A family that binds `inventory-events.occurred`, `orders.tracking` or
- * anything else of those types inherits the same face, which is the whole
- * argument of invariant 1 — the faces were never about the family.
- *
- * The tooltip carries the fact the face compresses (the absolute instant behind
- * an age, the full text behind a clipped line), so nothing is lost to the
- * shorter face.
- */
+/** The slot body for a plain resolved fact — chosen by the field's DISPLAY TYPE, never by its id. */
 function compoundSlotPrimary(
   displayType: FieldDisplayType | undefined,
   text: string | null,
@@ -1620,26 +1284,7 @@ function compoundSlotPrimary(
   );
 }
 
-/**
- * ACTIONS column — the row's ⋮ menu.
- *
- * Replaces the bare chevron that used to sit here. The chevron could say only
- * one thing ("open"), so every other per-row verb had to live somewhere else:
- * Receiving hid its triage verbs behind a right-click context menu that nothing
- * on screen advertised, and the kiosk cart grew a naked ✕ that voided a line the
- * customer had already been shown. A ⋮ is discoverable, holds as many verbs as
- * a family has, and keeps "Open" as its first item so nothing regressed.
- *
- * `tabIndex={-1}`: the ROW is already the keyboard target, so a focusable
- * control on every row would double the tab stops in a 500-row grid. The
- * keyboard path is the row's, not this button's — a focused row opens this menu
- * with Shift+F10 or the Menu key, and a right-click opens it too, both through
- * `compound-row-actions.ts`. (That module exists because this docblock used to
- * claim the context-menu path as a fact while no row in the product bound one.)
- *
- * Renders nothing when a family passes neither an open handler nor actions — an
- * affordance that looks clickable and does nothing is worse than an empty track.
- */
+/** ACTIONS column — the row's ⋮ menu. */
 export function CompoundActions({
   onOpen,
   actions,
@@ -1698,14 +1343,7 @@ export function CompoundActions({
   );
 }
 
-/**
- * Column 5 — the record affordance.
- *
- * `tabIndex={-1}`: the ROW is already the keyboard target, so a focusable
- * chevron on every row would double the tab stops in a 500-row grid for no new
- * capability. Renders nothing without an `onOpen` — a chevron that looks
- * clickable and does nothing is worse than an empty track.
- */
+/** Column 5 — the record affordance. */
 export function CompoundOpen({ onOpen }: { onOpen?: () => void }) {
   if (!onOpen) return null;
   return (

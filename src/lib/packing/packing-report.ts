@@ -26,24 +26,7 @@ export async function buildPackingReportRows(
     packerPredicate = ` AND sal.staff_id = $${params.length}`;
   }
 
-  /*
-   * `order_number` was added 2026-09-16. The desk Id chip paints the order
-   * number on its first line and the tracking's last-8 on its second, and with
-   * no order number on the row it painted the TRACKING twice — operator:
-   * *"the tracking number is already in the second row … the first row should
-   * be the order number only, and if the order number is not present it should
-   * be empty."* `o.order_id` is NULL whenever the pack scan never resolved to
-   * an order row, which is exactly the "empty" case.
-   *
-   * `packer_staff_id` and `platform` were added for the same reason, and it is
-   * the more important one: a slot-table family MUST feed the shared compound
-   * cells the facts they paint, or it silently forks. Without the staff id the
-   * `person` face cannot resolve `staff.color_hex` and every packer drew the
-   * same default bubble; without `account_source` the Id chip cannot resolve
-   * its marketplace mark and the order number lost its platform dot. Operator
-   * 2026-09-16: *"it should not be a fork of the slot data table."* The FIX
-   * was never in the view layer — the projection was short two columns.
-   */
+  /* `order_number` was added 2026-09-16. */
   const sql = `
     SELECT
       sal.id AS sal_id,

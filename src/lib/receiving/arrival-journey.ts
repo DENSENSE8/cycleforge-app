@@ -1,11 +1,4 @@
-/**
- * Arrival (triage) door journey — Door → Classified → Staged → Ready.
- *
- * Distinct from Unbox carton lifecycle (Scanned → Unboxed → Received) in
- * `carton-readiness` / `ReceivingCartonPipeline`. Arrival progress belongs only
- * in the Arrival receiving-details stack Progress tab — not the triage workspace
- * Overview.
- */
+/** Arrival (triage) door journey — Door → Classified → Staged → Ready. */
 
 export type ArrivalPipelineKey = 'door' | 'classified' | 'staged' | 'ready';
 type ArrivalPipelineState = 'done' | 'active' | 'pending';

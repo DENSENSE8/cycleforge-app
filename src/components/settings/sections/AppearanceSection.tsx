@@ -52,12 +52,7 @@ import {
 import { Switch } from '@/design-system/primitives/Switch';
 import { StaffPhotoCard } from './StaffPhotoCard';
 
-/**
- * True palette miniature — a tiny "app" rendered from the theme's actual
- * variables (canvas, card, text bars, accent chip, status-dot triad), so the
- * preview IS the theme, not an approximation. Inline styles are required
- * here: these are cross-theme colors shown while a different theme is active.
- */
+/** True palette miniature — a tiny "app" rendered from the theme's actual variables (canvas, card, text bars, accent chip, status-dot… */
 function ThemePreviewMini({ palette }: { palette: ThemePalette }) {
   const { vars } = palette;
   const accent = palette.accent?.bg ?? palette.preview.accent;
@@ -515,10 +510,7 @@ export function AppearanceSection() {
 
       <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Theme</h3>
-        {/* Options come straight from the theme registry — registering a new
-            palette (src/design-system/themes/registry.ts) lists it here with
-            zero switcher changes. Grouped by scheme: light-family first, then
-            dark-family (which also flips native widgets + the neutral remap). */}
+        {/* Options come straight from the theme registry — registering a new palette (src/design-system/themes/registry.ts) lists it here with zero… */}
         <div className="space-y-4">
           {(['light', 'dark'] as const).map((scheme) => {
             const names = THEME_NAMES.filter((n) => THEME_PALETTES[n].scheme === scheme);

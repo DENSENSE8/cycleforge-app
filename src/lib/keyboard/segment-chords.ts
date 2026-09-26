@@ -1,16 +1,4 @@
-/**
- * Segment perspective chords — Alt+1 / Alt+2 (… up to 3) flip the active
- * leaf’s child mode control — a flush `SearchableSelectField` since 2026-08-19
- * (Claim New·Link golden; `TabDisplay` is deleted).
- *
- * Distinct from nav-keys letters (`⌘;` → letter): these are modifier chords,
- * wedge-safe (bare digits never bind). Face labels come from
- * {@link segmentChordHint} so hint paint and the listener cannot drift.
- *
- * Spec: `docs/todo/displays-root-to-leaf-deferred-SOT-HANDOFF.md` Phase C;
- * Claim mounts always-visible hints (staff density) — other segments may stay
- * reveal-on-arm until they opt in.
- */
+/** Segment perspective chords — Alt+1 / Alt+2 (… up to 3) flip the active leaf’s child mode control — a flush `SearchableSelectField` since… */
 
 const MAX_SEGMENT_CHORDS = 3;
 

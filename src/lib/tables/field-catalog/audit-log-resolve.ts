@@ -1,16 +1,4 @@
-/**
- * Audit-log slot resolvers — pure.
- *
- * `when` resolves to the ABSOLUTE INSTANT, never to a pre-formatted or
- * relative face: the engine turns a `date` display type into the cell face and
- * keeps the instant behind it, and a resolver whose text depends on `now`
- * would sort and search differently on every render.
- *
- * The actor is a PERSON value, not a string. The retired cell printed
- * `actor_name ?? #actor_staff_id`; the `#id` half was a placeholder for a name
- * the join could not find, and the person face already draws that case
- * honestly from the id alone.
- */
+/** Audit-log slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { AuditLogRow } from '@/lib/audit/audit-log-row';

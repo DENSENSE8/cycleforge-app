@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Inventory › Stock — the open stock pair (triage evidence stack), placed by
- * the ledger's `DeskRecordPlane`: what it is (the shelf, the product, its
- * state) → evidence (photo, facts) → the count at THIS location and the
- * decision bar (Count · Open SKU · SKU exception for a placeholder).
- *
- * Nothing open, {@link stockSummary} reads the list as a whole (pairs · units ·
- * on hold · out of stock · rooms).
- */
+/** Inventory › Stock — the open stock pair (triage evidence stack), placed by the ledger's `DeskRecordPlane`: */
 
 import { useMemo } from 'react';
 import Image from 'next/image';

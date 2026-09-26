@@ -1,16 +1,4 @@
-/**
- * Operations Studio entitlement gate — decision logic (Part-2 Track 2).
- *
- * The whole point of this layer is that it is PERMISSIVE BY DEFAULT and can
- * never accidentally lock an existing org out of Studio. These cases pin the
- * five branches of isStudioGated() down DB-free via injected deps:
- *   - enforcement OFF                         → always allowed
- *   - enforcement ON + plan has Studio        → allowed
- *   - enforcement ON + plan lacks Studio      → GATED
- *   - dogfood/internal org                    → allowed (exempt)
- *   - per-org override flag = true            → allowed (force-grant)
- * Plus: fail-open on a collaborator throw.
- */
+/** Operations Studio entitlement gate — decision logic (Part-2 Track 2). */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

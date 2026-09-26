@@ -6,22 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/receiving/photo-move-targets
- *
- * Carton targets for Move photos. Broader than /api/receiving/po/list:
- * unmatched / ticket-anchored cartons (no Zoho PO lines) resolve by tracking,
- * PO #, carton QR (`R-<id>`), or support ticket id (`#232` / short digits /
- * Zendesk external id).
- *
- * Query:
- *   ?search=…   needle (optional — empty browses Unboxed-rail cartons)
- *   ?limit=25   max 100
- *   ?exclude=N  drop this receiving_id (the carton the move is relative to)
- *
- * When search + exclude empties because the needle only matched the excluded
- * carton, `targets` is the recent browse and `matchedExcludedSelf` is true.
- */
+/** GET /api/receiving/photo-move-targets */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const params = req.nextUrl.searchParams;

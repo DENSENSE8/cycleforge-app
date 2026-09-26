@@ -1,33 +1,4 @@
-/**
- * Fulfillment substitution — the ordered-vs-fulfilled deviation flow.
- *
- * When the unit that physically ships must differ from what was ordered/listed
- * ("customer asked for white even though the order is for black", a tester
- * regrades the unit, or a picked serial is swapped), this is NOT a silent edit:
- * it is an AUDITED RE-ALLOCATION EVENT.
- *
- *   release the original allocation  →  allocate the substitute unit  →
- *   record the original-vs-fulfilled delta in order_unit_amendments.
- *
- * Modeling it as a real re-allocation (not an override hack) means the existing
- * /api/pack/ship allocation check passes naturally for the substitute serial —
- * the substitute unit genuinely has an open allocation for the order. This
- * module owns only the atomic state change + the amendment record; the calling
- * route owns auth, validation, recordAudit, and any propagation side-effects
- * (customer notify / channel sync) via after().
- *
- * Tenancy + transaction shape mirror src/lib/picking/sessions.ts: the public
- * entry runs GUC-wrapped via withTenantTransaction; the core logic is split into
- * runSubstituteOrderUnit(client, …) so unit tests drive it DB-free with a fake
- * client + injected transition (the same core-plus-wrapper split as
- * transition()/runTransition()).
- *
- * Pairs with migration 2026-06-27e_order_unit_amendments.sql and is gated by the
- * FULFILLMENT_SUBSTITUTION rollout flag (isFulfillmentSubstitution()). The
- * advisory-vs-block_until_approved enforcement is resolved per-org by the route
- * (settings registry) and passed in — this helper just stamps the resulting
- * amendment status.
- */
+/** Fulfillment substitution — the ordered-vs-fulfilled deviation flow. */
 
 import type { PoolClient } from 'pg';
 import { transition as defaultTransition } from '@/lib/inventory/state-machine';
@@ -45,12 +16,7 @@ export type AmendmentEnforcement = 'advisory' | 'block_until_approved';
 export interface SubstituteOrderUnitInput {
   /** The allocation being replaced (carries order_id + the original unit). */
   originalAllocationId: number;
-  /**
-   * The order the caller believes it is amending (the URL `[id]`). When set, the
-   * helper rejects (409) BEFORE any mutation if the allocation belongs to a
-   * different order — closes the intra-org targeting hole where a valid foreign
-   * allocation id would otherwise be substituted against the wrong order.
-   */
+  /** The order the caller believes it is amending (the URL `[id]`). */
   expectedOrderId?: number;
   /** The unit physically going out instead (resolved from a serial scan upstream). */
   substituteUnitId: number;
@@ -95,12 +61,7 @@ const defaultDeps: SubstituteDeps = { transition: defaultTransition };
 
 // ─── Core (single client; testable) ──────────────────────────────────────────
 
-/**
- * Core re-allocation + amendment logic over one client. The caller owns the
- * transaction and the GUC (set by withTenantTransaction in the public entry, or
- * by the test harness). `orgId` is threaded into every read/write + the two
- * transition() calls so a cross-tenant id reads as not-found.
- */
+/** Core re-allocation + amendment logic over one client. */
 export async function runSubstituteOrderUnit(
   input: SubstituteOrderUnitInput,
   client: Pick<PoolClient, 'query'>,
@@ -325,13 +286,7 @@ export async function runSubstituteOrderUnit(
 
 // ─── Public entry (own GUC-wrapped transaction) ──────────────────────────────
 
-/**
- * Substitute the unit fulfilling an order line — atomic release + re-allocate +
- * amendment record, GUC-wrapped for tenant isolation. The route layer validates,
- * resolves the substitute serial → unitId, resolves per-org enforcement, then
- * calls this, maps the status, recordAudit(ORDER_SUBSTITUTE_UNIT), and fires any
- * propagation in after().
- */
+/** Substitute the unit fulfilling an order line — atomic release + re-allocate + amendment record, GUC-wrapped for tenant isolation. */
 export async function substituteOrderUnit(
   input: SubstituteOrderUnitInput,
   orgId: OrgId,
@@ -343,12 +298,6 @@ export async function substituteOrderUnit(
 }
 
 // ─── Approve / reject a PENDING amendment ────────────────────────────────────
-//
-// Only relevant under block_until_approved: a substitution re-allocates
-// immediately but records PENDING, and /api/pack/ship holds the order until the
-// amendment is decided. APPROVE just clears the gate (the re-allocation already
-// stands). REJECT reverts it: release the substitute back to stock and best-
-// effort re-allocate the original unit to the order.
 
 export type AmendmentDecision = 'APPROVE' | 'REJECT';
 

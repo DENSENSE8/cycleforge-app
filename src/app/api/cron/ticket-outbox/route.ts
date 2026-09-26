@@ -1,21 +1,4 @@
-/**
- * Cron: drain ticket_work_outbox into the helpdesk.
- *
- * GET /api/cron/ticket-outbox?batch=25&maxBatches=10
- *
- * The compensating half of counter/repair intake. Intake never blocks on the
- * helpdesk being reachable — it queues the ticket work and returns — so this is
- * what actually lands the ticket. Without a drainer the queue is just a nicer
- * place to lose tickets than the old log-and-continue catch.
- *
- * Mirrors /api/cron/search-outbox: bounded drain batches under a cron lock, so a
- * burst can't run the function past its duration budget or overlap the next
- * invocation. A row whose org has no helpdesk connected is released without
- * burning an attempt, so an unconnected tenant's queue never dead-letters itself.
- *
- * Auth: CRON_SECRET bearer — the same gate as the other
- * /api/cron routes, which are session-less by design.
- */
+/** Cron: drain ticket_work_outbox into the helpdesk. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

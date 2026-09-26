@@ -1,16 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/units/[unitId]/serial-absent
- *
- * Per-unit no-serial waiver for a materialised `receiving_line_unit` row.
- * Mirrors the line-level sibling (`…/lines/[id]/serial-absent`) — toggle
- * semantics, exact value written, Class-D reason vocabulary — but stamps
- * THIS unit only. The line-level `receiving_line_testing.serial_absent` is
- * never set or cleared here (plan: per-unit-no-serial-EXECUTION-PROMPT.md §3).
- *
- * `{ absent: true, reason }` sets the waiver; `{ absent: false }` clears it
- * (reason forced to null). withAuth (no extra permission) matches the
- * line-level route.
- */
+/** POST /api/receiving/lines/[id]/units/[unitId]/serial-absent */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

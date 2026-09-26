@@ -1,34 +1,4 @@
-/**
- * Buyer-note → entity_signals mirror derivation (plan §2.3, external emitter
- * standard — eBay first; Amazon rides the same module later, behind RDT).
- *
- * Signals are a PROJECTION OF THE LOCAL MIRROR (`orders.buyer_note`, migration
- * 2026-07-03p), never a side-effect of the connector. The nightly
- * `/api/cron/signals/buyer-notes-heal` sweep (under withCronLock) runs it; the
- * fresh-path hook it used to share with the eBay order sync went with that sync
- * (2026-09-24). Re-runs are free no-ops on rows already emitted: `source_ref` +
- * ux_entity_signals_source_ref make double-emission structurally impossible.
- * A full backfill is just this sweep with a bigger `limit`.
- *
- * Window shape: the legacy `orders` mirror has no updated_at, so the sweep
- * scans the newest N candidate rows by id (org-scoped, buyer_note present).
- * Idempotency makes over-scanning free; under-scanning heals next night.
- *
- * `source_ref` = `ebay-note:<orderPk>:<sha16(note)>` — the platform gives
- * buyerCheckoutNotes no id, so the ref is a hash of the note text keyed to the
- * mirror row (plan §2.3: "sha of order-id+note text"). An edited note is a new
- * signal by design.
- *
- * No interpretation at ingest (§2.3 point 6): raw text lands as
- * signal_kind='buyer_note'; semantic bucketing into reason_code is a later
- * classifier, never here.
- *
- * Tenancy: gated per-tenant via isBuyerNoteSignals(orgId) (flag
- * buyer_note_signals / env BUYER_NOTE_SIGNALS); org comes from the sync
- * connection / cron org loop — never inferred from a payload.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** Buyer-note → entity_signals mirror derivation (plan §2.3, external emitter standard — eBay first; Amazon rides the same module later,… */
 
 import { createHash } from 'node:crypto';
 import pool from '@/lib/db';

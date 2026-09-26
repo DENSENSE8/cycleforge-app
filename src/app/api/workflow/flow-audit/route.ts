@@ -2,26 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/workflow/flow-audit?days=90
- *
- * Read-only "how does information actually move through the system" feed for
- * the Operations canvas. It does NOT use the new workflow engine — it derives a
- * flow graph straight from the REAL item lifecycle so the flow can be audited
- * and improved before any workflow is wired live:
- *
- *   nodes  — every serial_status the units currently sit in, with live counts
- *            (serial_units.current_status). These are the lifecycle states.
- *   edges  — observed transitions (inventory_events.prev_status → next_status)
- *            with counts + most-recent timestamp. These are the real movements;
- *            a fat RECEIVED→ON_HOLD edge is a bottleneck you can see.
- *
- * The window (?days, default 90) bounds the edge aggregation so the picture
- * reflects current operations, not all-time history. Node occupancy is always
- * the live snapshot.
- *
- * Reads on every request — fine for a low-traffic admin tool.
- */
+/** GET /api/workflow/flow-audit?days=90 */
 export const dynamic = 'force-dynamic';
 
 interface FlowNode {

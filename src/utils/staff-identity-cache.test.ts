@@ -1,12 +1,4 @@
-/**
- * The staff identity cache is the ONE resolution point for a staffer's face:
- * `<StaffAvatar>` reads it by staff id so timelines, journeys and schedule
- * pills need no photo join. These pin the two behaviours that are easy to
- * break — the avatar surviving a colour refill, and the single-staffer patch
- * NOT flattening everyone else's warm colour.
- *
- * Run: node --test --import tsx src/utils/staff-identity-cache.test.ts
- */
+/** The staff identity cache is the ONE resolution point for a staffer's face: */
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

@@ -1,13 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * - Importers/callers: node:test only; covers `kioskDeviceCompoundView` used by
- *   `useKioskDevicesSpreadsheet` → DataTable Dates cell.
- * - Affected API: none (pure unit assertions on CompoundRowView.dates fields).
- * - Schemas: `KioskDeviceTableRow` + `CompoundDelay.faceLabel`.
- * - User instruction (verbatim intent): make the slot data table more page and
- *   display method agnostic — don't jam order date / last seen / dwell into one
- *   row when another row below can show dwell; be introspective.
- */
+/** Gate preamble (Fact-Forcing): */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

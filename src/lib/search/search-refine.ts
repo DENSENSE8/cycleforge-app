@@ -1,14 +1,4 @@
-/**
- * Client refine + display sort for `/search` over the retrieved top-50.
- *
- * Params (owned / carried by SEARCH_ROUTE_PARAMS):
- *   • `?etype=` — UI entity type (order | unit | receiving | sku | repair | fba)
- *   • `?hstat=` — hit `facets.status` (namespaced away from `/support` `status`)
- *   • `?colsort=` — `relevance` (default, omitted) | `date` (happened_at desc)
- *
- * Filtering and sorting are client-only — the retrieve call stays one unscoped
- * POST; operators refine the RRF ranking in place without a second round-trip.
- */
+/** Client refine + display sort for `/search` over the retrieved top-50. */
 
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
@@ -17,12 +7,7 @@ import { GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 
 export const SEARCH_ETYPE_PARAM = 'etype';
 export const SEARCH_HSTAT_PARAM = 'hstat';
-/**
- * Client channel refine over the retrieved top-50 — the stored
- * `source_platform` value (`ebay`, `amazon`, `ecwid`, …), NOT a display label,
- * so the key survives a catalog rename. Deliberately `chan` and not `platform`:
- * short, and unclaimed by any other surface's param registry.
- */
+/** Client channel refine over the retrieved top-50 — the stored `source_platform` value (`ebay`, `amazon`, `ecwid`, …), NOT a display… */
 export const SEARCH_CHAN_PARAM = 'chan';
 export const SEARCH_SORT_PARAM = GRID_COLUMN_SORT_PARAM;
 
@@ -136,15 +121,7 @@ export function refineSearchHits(
   });
 }
 
-/**
- * Per-entity hit tallies for the browse toolbar's scope cluster.
- *
- * Counted over the set the OTHER facets already narrowed (`hstat` / `chan`)
- * but deliberately NOT `etype`: a scope pill has to keep answering "how many
- * would I get if I picked this?" while a status or channel pill is on. Tally
- * it through `refineSearchHits` rather than a second hand-rolled predicate —
- * one filter law, so a facet added there is counted here for free.
- */
+/** Per-entity hit tallies for the browse toolbar's scope cluster. */
 export interface SearchEntityCounts {
   /** Hits matching the non-entity facets — the "All" pill's count. */
   total: number;
@@ -228,19 +205,7 @@ export function clearSearchRefine(params: URLSearchParams): void {
   params.delete(SEARCH_CHAN_PARAM);
 }
 
-/**
- * How many refines are LIVE — the number a collapsed phone trigger prints.
- *
- * The desk band shows its own state by painting eleven scope faces and a
- * bubble per facet, so it never needed a tally. A phone collapses that band
- * behind one control, and a collapsed control that does not say how much it
- * is hiding is how an operator ends up staring at three results and blaming
- * the index.
- *
- * Reads the SAME three keys `clearSearchRefine` drops, and deliberately not
- * `?colsort=` — sort re-orders the set, it does not narrow it, so counting it
- * would put a `1` on the trigger for a list nothing is filtering.
- */
+/** How many refines are LIVE — the number a collapsed phone trigger prints. */
 export function activeSearchRefineCount(params: URLSearchParams): number {
   let count = 0;
   if (parseSearchEtype(params.get(SEARCH_ETYPE_PARAM))) count += 1;

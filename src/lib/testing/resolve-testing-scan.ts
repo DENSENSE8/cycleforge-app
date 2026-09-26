@@ -20,15 +20,7 @@ type ReceivingCartonHeader = {
   intake_type?: string | null;
 };
 
-/**
- * Unit-id format printed by MultiSkuSnBarcode / unit-id.ts:
- *   {SHORTSKU}-{YYWW}-{SEQ6}      e.g. 00098-2621-000142
- * SHORTSKU = uppercase alphanumeric (dashes allowed), trimmed to ≤20 chars.
- *
- * NOTE: anchored at the END to avoid eating canonical R-/L-/U-/REP- handles
- * which superficially look like "{LETTER}-{digits}-{digits}". `routeScan`
- * runs first now, so this regex is the final unit-id fallback only.
- */
+/** Unit-id format printed by MultiSkuSnBarcode / unit-id.ts: */
 const UNIT_ID_RE = /^[A-Z0-9](?:[A-Z0-9-]{0,19})-\d{4}-\d{6}$/i;
 
 /** Zoho PO number, format `PO-1234` (case-insensitive). */
@@ -40,28 +32,13 @@ const HANDLING_UNIT_RE = /^H-\d+$/i;
 /** How a scan was matched — lets the UI tell the operator what it recognised. */
 export type ResolvedVia = 'handle' | 'unit_id' | 'serial' | 'receiving_id' | 'po' | 'tracking' | 'lpn' | 'sku';
 
-/**
- * Explicit search type the operator armed via the scan-bar mode buttons. When
- * set, auto-detection is bypassed and ONLY this type is searched — matching the
- * shipping station's "arm a mode, next scan is forced" behaviour.
- *
- * `sku` resolves a scanned product SKU (the printed product label / pre-pack
- * sticker) to its pre-packed receiving line(s) — the row already carries the
- * pre-pack state (sku, condition grade, saved serial_units) the testing panel
- * prefills from. Read-only resolve: it never mints or mutates a serial.
- */
+/** Explicit search type the operator armed via the scan-bar mode buttons. */
 export type ForcedTestingType = 'tracking' | 'po' | 'serial' | 'sku';
 
 export type ResolvedTestingScan =
   | { kind: 'line'; row: ReceivingLineRow; via?: ResolvedVia }
   | { kind: 'multi'; rows: ReceivingLineRow[]; receivingId: number; via?: ResolvedVia }
-  /**
-   * A license-plated box/tray (H-####) scan. Carries the resolved
-   * `handlingUnitId` so a workbench consumer can open the box panel to re-sort
-   * its units; `rows` (the box's receiving lines) are kept so consumers that
-   * only want the lines — the mobile list, the receiving picker — degrade to
-   * the same behaviour as `multi`.
-   */
+  /** A license-plated box/tray (H-####) scan. */
   | {
       kind: 'box';
       handlingUnitId: number;
@@ -83,17 +60,7 @@ export function looksLikeUnitId(value: string): boolean {
 }
 
 export function looksLikeReceivingRef(value: string): boolean {
-  // Compose the ONE decoder — never a local `R-\d+` regex. A printed carton
-  // sticker does NOT carry `R-1234`: since the platform-link change it carries
-  // an absolute Digital Link (`https://{slug}.app.cycleforge.ai/m/r/1234`), and
-  // a wedge in the wrong keyboard mode delivers that with its punctuation
-  // stripped. This test regexed the bare handle, so it answered FALSE for the
-  // exact payload this app prints — which is what sent a scanned carton down
-  // the carrier-tracking intake path and minted a duplicate carton per scan.
-  //
-  // `scannedReceivingId` resolves every form (absolute URL, bare path, the
-  // flattened wedge form, `R-1234`, legacy `RCV-1234`) and deliberately
-  // excludes a repair label (`REP-33` redirects to `/m/rs/33`, not a carton).
+  // Compose the ONE decoder — never a local `R-\d+` regex.
   const v = value.trim();
   if (!v) return false;
   return scannedReceivingId(v) != null;
@@ -114,20 +81,7 @@ export function looksLikeHandlingUnit(value: string): boolean {
 /** `L-{id}` line / `U-{id}` unit / `REP-{id}` repair label handles. */
 const LINE_UNIT_REPAIR_RE = /^(?:L|U|REP)-\d+$/i;
 
-/**
- * Cheap synchronous test: does this value look like a canonical internal CODE
- * — a carton/line/unit/handling-unit/repair handle, the legacy `RCV-{id}`
- * string, or a printed unit-id ({SKU}-{YYWW}-{SEQ6}) — as opposed to a PO
- * number, an order/reference number, or a carrier tracking number?
- *
- * Used by the receiving scan bar to decide whether to run
- * {@link resolveReceivingCodeToLine} even when the dash auto-classify
- * heuristic ({@link classifyUnboxScan}) armed Order# mode. EVERY canonical
- * handle contains a dash, so without this check `R-123` / `H-7` / a unit-id
- * would be classified as an order and mis-routed to the PO lookup (which
- * finds nothing). True PO/order/tracking values return false here and keep
- * their existing lookup-po routing untouched.
- */
+/** Cheap synchronous test: */
 export function looksLikeReceivingCode(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
@@ -139,10 +93,7 @@ export function looksLikeReceivingCode(value: string): boolean {
   ) {
     return true;
   }
-  // Printed LINE / UNIT matrices carry a Digital Link too, and the bare-handle
-  // regexes above miss them for the same reason the carton one did. Decode once
-  // and accept only the classes `resolveReceivingCodeToLine` can actually open —
-  // routeScan's fallbacks type everything else `sku` / `bin`, which stay false.
+  // Printed LINE / UNIT matrices carry a Digital Link too, and the bare-handle regexes above miss them for the same reason the carton one did.
   const route = routeScan(v);
   return route?.type === 'receiving-line' || route?.type === 'serial-unit';
 }
@@ -208,11 +159,7 @@ async function resolveLinelessCartonHandle(
 }
 
 async function fetchLinesByPoNumber(poNumber: string) {
-  // The route filters by `search` + `searchField`, NOT a bare
-  // `zoho_purchaseorder_number` param — `searchField=po` matches the scan
-  // against rl.zoho_purchaseorder_id / rl.zoho_purchaseorder_number /
-  // r.zoho_purchaseorder_number. `view=all` widens the scope to the full
-  // dataset (not just the current week).
+  // The route filters by `search` + `searchField`, NOT a bare `zoho_purchaseorder_number` param — `searchField=po` matches the scan against…
   const params = new URLSearchParams({
     limit: '50',
     offset: '0',
@@ -241,14 +188,7 @@ async function fetchLinesByPoNumber(poNumber: string) {
   return exact.length > 0 ? exact : all;
 }
 
-/**
- * Resolve a scanned product SKU to the receiving line(s) that hold it — the
- * pre-pack lookup. Uses the receiving-lines `sku` search (ILIKE on rl.sku /
- * rl.zoho_item_id), then keeps only EXACT SKU matches so "ABC-1" can't drag in
- * "ABC-12". `include=serials` so the returned row carries the pre-packed
- * serial_units (sku + condition grade + saved serials) the testing panel
- * prefills its fields from. Read-only — no serial is minted or mutated.
- */
+/** Resolve a scanned product SKU to the receiving line(s) that hold it — the pre-pack lookup. */
 async function fetchLinesBySku(sku: string): Promise<ReceivingLineRow[]> {
   const params = new URLSearchParams({
     limit: '50',
@@ -272,16 +212,7 @@ async function fetchLinesBySku(sku: string): Promise<ReceivingLineRow[]> {
   return exact.length > 0 ? exact : all;
 }
 
-/**
- * Find receiving lines whose serial ENDS WITH the scanned value — the
- * "last 8 of the serial / PO" quick lookup. Uses the receiving-lines default
- * search (ILIKE `%value%` across PO#, serial, sku, tracking) once, then splits
- * the hits into true SUFFIX matches on a serial vs. on the PO number/id — so a
- * short code behaves like "ends with", matching the last-8 chips elsewhere.
- *
- * Returns the two buckets separately so the caller can apply the precedence
- * "serial first, then PO".
- */
+/** Find receiving lines whose serial ENDS WITH the scanned value — the "last 8 of the serial / PO" quick lookup. */
 async function fetchLinesByPartial(
   value: string,
 ): Promise<{ serialRows: ReceivingLineRow[]; poRows: ReceivingLineRow[] }> {
@@ -317,29 +248,9 @@ async function fetchLinesByPartial(
   return { serialRows, poRows };
 }
 
-/**
- * Resolve a tracking number to the receiving lines already in the LOCAL
- * system (door-scanned cartons, incoming-synced lines). Exported so the
- * receiving sidebar can short-circuit an unbox scan of an in-system carton —
- * open it immediately from this query instead of round-tripping lookup-po
- * (and its Zoho fallback) behind the "Opening your PO" loader.
- */
+/** Resolve a tracking number to the receiving lines already in the LOCAL system (door-scanned cartons, incoming-synced lines). */
 export async function fetchLinesByTracking(tracking: string) {
-  // Small limit is enough to find the carton already in the system and skip
-  // lookup-po entirely. `include=serials` is cheap at this limit and lets the
-  // testing multi-picker show serial chips on tracking-resolved rows too (the
-  // receiving unbox short-circuit ignores the extra field harmlessly).
-  //
-  // Filter on the SHIPMENT JOIN (`?tracking_in=` → indexed equality against
-  // `stn.tracking_number_normalized` via `receiving_carton.shipment_id`), never
-  // `?search=`. This call blocks the Unbox open, and `?search=` is the generic
-  // field — an eleven-arm `ILIKE '%…%'` (item name, SKU, four PO identities,
-  // three tracking columns) plus an `EXISTS` over `serial_units`, all with a
-  // LEADING wildcard, so no index applies to any arm. Every one of those arms
-  // was dead weight: the caller throws the result away unless the row's
-  // tracking matches EXACTLY, which is the one thing `tracking_in` asks for.
-  // The canonicalization is shared (`normalizeScanKey` ⇔ `canonicalizeTrackingKey`
-  // ⇔ the stored normalized column), so a dashed or spaced scan still hits.
+  // Small limit is enough to find the carton already in the system and skip lookup-po entirely.
   const keys = parseTrackingKeys(tracking).keys;
   // Nothing canonicalizes to a key ⇒ nothing to look up. Sending an empty
   // `tracking_in` would drop the filter entirely and return an unrelated page of
@@ -365,13 +276,7 @@ export async function fetchLinesByTracking(tracking: string) {
 }
 
 async function fetchLineByUnitId(unitId: string): Promise<ReceivingLineRow | null> {
-  // /api/serial-units/[id] accepts either the numeric id or a serial_number
-  // string (the unit-id printed under the DataMatrix is stored as the
-  // serial_number for label-minted units). Reads current_receiving_line_id —
-  // the unit's CURRENT line (most recent inventory_events touch) — never
-  // origin_receiving_line_id, which freezes to the FIRST-ever receiving line
-  // and would jump to a stale PO once the unit has been returned and
-  // re-received under a different one.
+  // /api/serial-units/[id] accepts either the numeric id or a serial_number string (the unit-id printed under the DataMatrix is stored as…
   const res = await fetch(`/api/serial-units/${encodeURIComponent(unitId)}`);
   if (!res.ok) return null;
   const data = await res.json();
@@ -381,14 +286,7 @@ async function fetchLineByUnitId(unitId: string): Promise<ReceivingLineRow | nul
   return fetchLineById(receivingLineId);
 }
 
-/**
- * Resolve a handling-unit (LPN) handle to the receiving lines its member units
- * belong to. One box scan → every line in the box. The detail endpoint returns
- * `receiving_line_ids` (distinct origin_receiving_line_id of the box's units);
- * we hydrate each to a full ReceivingLineRow via the existing single-line fetch
- * so the multi-picker gets exactly the shape it already renders. A box of N
- * units typically spans only a few lines, so the fan-out is small.
- */
+/** Resolve a handling-unit (LPN) handle to the receiving lines its member units belong to. */
 async function fetchLinesByHandlingUnit(handlingUnitId: number): Promise<ReceivingLineRow[]> {
   const res = await fetch(`/api/handling-units/${handlingUnitId}`);
   if (!res.ok) {
@@ -410,13 +308,7 @@ async function fetchLineById(lineId: number): Promise<ReceivingLineRow | null> {
   return (data?.receiving_line ?? null) as ReceivingLineRow | null;
 }
 
-/**
- * Find the receiving line(s) that received a given physical serial number.
- * Uses the receiving-lines `serial` search (which joins serial_units on
- * origin_receiving_line_id) and then filters to an EXACT serial match so a
- * short/partial scan can't drag in unrelated rows. This is the path for
- * "scan the bare serial printed on the unit → jump to its PO".
- */
+/** Find the receiving line(s) that received a given physical serial number. */
 async function fetchLinesBySerial(serial: string): Promise<ReceivingLineRow[]> {
   const params = new URLSearchParams({
     limit: '10',
@@ -438,18 +330,7 @@ async function fetchLinesBySerial(serial: string): Promise<ReceivingLineRow[]> {
   );
 }
 
-/**
- * Resolve a tech-testing scan to one or more receiving lines. Accepted shapes:
- *
- *   • GS1 Digital Link URL (`/01/{gtin}/21/{serial}`) — printed unit QR
- *   • Unit ID string ({SHORTSKU}-{YYWW}-{SEQ6})
- *   • `RCV-{receiving_id}` internal carton ref (unmatched cartons)
- *   • `H-{id}` handling-unit (LPN) handle — fans out to every unit in the box
- *   • PO number (PO-1234)
- *
- * Returns `multi` when a carton has >1 receiving_line so the workspace can
- * mount a picker; `line` when there is exactly one match.
- */
+/** Resolve a tech-testing scan to one or more receiving lines. */
 export async function resolveTestingScan(
   raw: string,
   opts?: { forcedType?: ForcedTestingType | null },
@@ -510,9 +391,6 @@ export async function resolveTestingScan(
     }
 
     // Product SKU (printed product / pre-pack label) — the auto-detect tail.
-    // Reached only when the value isn't a code / PO / tracking / serial-or-PO
-    // suffix above, so a SKU sticker scan resolves to its pre-packed receiving
-    // line(s) and the testing panel prefills from that row's pre-pack state.
     if (/^[A-Za-z0-9][A-Za-z0-9._/-]{1,39}$/.test(value)) {
       const skuRows = await fetchLinesBySku(value);
       if (skuRows.length > 0) return linesToResult(skuRows, 'sku', value);
@@ -565,18 +443,7 @@ async function resolveForcedTestingScan(
     : linesToResult(poRows, 'po', value);
 }
 
-/**
- * Resolve a scan that is a *code* — a carton/line/unit handle, a printed
- * unit-id, a GS1 unit URL, a bare physical serial number, or a bare receiving
- * (carton) id — to its receiving line. Deliberately excludes tracking numbers
- * and PO numbers: returns `null` for those (and for anything unrecognised) so
- * the receiving sidebar can fall through to its tracking-intake flow instead
- * of mis-routing a carton scan.
- *
- * Shared by the testing sidebar ({@link resolveTestingScan}) and the receiving
- * sidebar so "scan the serial / receiving id → jump to the PO" behaves
- * identically on both pages.
- */
+/** Resolve a scan that is a *code* — a carton/line/unit handle, a printed unit-id, a GS1 unit URL, a bare physical serial number, or a bare… */
 export async function resolveReceivingCodeToLine(
   raw: string,
 ): Promise<ResolvedTestingScan | null> {
@@ -611,10 +478,7 @@ export async function resolveReceivingCodeToLine(
           return row ? { kind: 'line', row, via: 'unit_id' } : { kind: 'not_found', query: value };
         }
       }
-      // H-class — a license-plated box/tray. The scan opens the box workbench
-      // (desktop drawer) so the operator can re-sort its units across lines; the
-      // box's receiving `rows` ride along for consumers that only want the lines
-      // (mobile list, receiving picker) and degrade to `multi`-style behaviour.
+      // H-class — a license-plated box/tray.
       if (routed.type === 'handling-unit') {
         const id = Number(routed.redirect?.match(/\/m\/h\/(\d+)$/)?.[1]);
         if (Number.isFinite(id)) {
@@ -656,10 +520,7 @@ export async function resolveReceivingCodeToLine(
       return { kind: 'multi', rows: bySerial, receivingId, via: 'serial' };
     }
 
-    // A bare number is NOT treated as a carton id — cartons are only ever
-    // referenced by their `R-{id}` handle (resolved by routeScan above). Bare
-    // short codes fall through to the serial-then-PO partial match instead, so
-    // "last 8 of the PO" (e.g. 7001) isn't shadowed by a carton-id guess.
+    // A bare number is NOT treated as a carton id — cartons are only ever referenced by their `R-{id}` handle (resolved by routeScan above).
     return null;
   } catch (err) {
     return {

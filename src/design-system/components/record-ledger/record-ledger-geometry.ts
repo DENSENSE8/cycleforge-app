@@ -1,19 +1,4 @@
-/**
- * Record ledger geometry — the industrial record's box, in ONE place, for every
- * page that adopts the ledger after To ship (HANDOFF-industrial-record-ledger
- * "The record" law 4, desk Medium):
- *
- *   spine 5 │ photo 96 │ 3 × 32px bands │ right lane (date · QTY · next)
- *   row = 97 incl. the 1px rule between records
- *
- * Heights are FIXED so the virtualizer never measures. Band rules live INSIDE
- * each band's box (border-box), so three 32px bands are 96px, not 98.
- *
- * Classes, not colours: every colour a record paints comes from the region's
- * mode (`*-mode-*`) or from `LIFECYCLE_CLASSES`, so the same record reads in an
- * industrial or a triage region without a second copy. Page files take their
- * geometry from here and never type a px value of their own.
- */
+/** Record ledger geometry — the industrial record's box, in ONE place, for every page that adopts the ledger after To ship… */
 
 import type { CSSProperties } from 'react';
 

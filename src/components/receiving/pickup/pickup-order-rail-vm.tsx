@@ -1,10 +1,4 @@
-/**
- * Adapter: a {@link PickupOrderGroup} → shared `RailRowVM` slots for the Local
- * Pickup sidebar rail. Sibling of `pack-record-rail-vm` / Unbox
- * `ReceivingRowMain` — layout comes from `RailRowBody`; this module only
- * supplies slot CONTENT. Status presentation resolves through
- * `@/lib/local-pickup/order-status` (never a rail-local Draft/Done map).
- */
+/** Adapter: a {@link PickupOrderGroup} → shared `RailRowVM` slots for the Local Pickup sidebar rail. */
 
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import {

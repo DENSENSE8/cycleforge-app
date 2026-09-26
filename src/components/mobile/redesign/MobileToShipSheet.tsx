@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Phone to-ship order sheet — product header, LN/SKU/BY facts, picker/packer
- * cards, OOS as a critical block, 2-up operations. The shared workflow facts
- * own whether hold and exception-triage controls are available. Pick/Pack
- * execution is deliberately absent: it belongs to the `/m/pick` workflow.
- */
+/** Phone to-ship order sheet — product header, LN/SKU/BY facts, picker/packer cards, OOS as a critical block, 2-up operations. */
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef, useState, type ReactNode } from 'react';

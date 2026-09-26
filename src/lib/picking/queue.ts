@@ -1,13 +1,4 @@
-/**
- * Picker queue — aggregated list of orders that have open allocations and
- * are ready for someone to walk the warehouse.
- *
- * Powers the `/m/pick` landing page and the `GET /api/pick/queue` endpoint.
- *
- * "Open" means at least one `order_unit_allocations.state` is ALLOCATED
- * or PICKING. Once every allocation rolls past PICKED the order drops off
- * the queue automatically.
- */
+/** Picker queue — aggregated list of orders that have open allocations and are ready for someone to walk the warehouse. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -55,12 +46,7 @@ const QUEUE_SQL = `
   LIMIT 200
 `;
 
-// Tenant-scoped variant: explicit AND <t>.organization_id = $1 on every
-// org-bearing table (oua / o / c / wa), and picking_sessions — which has no
-// organization_id column (child-scoped via orders) — gated through its parent
-// order's org. All table joins here are integer surrogate-PK joins
-// (o.id = oua.order_id, c.id = o.customer_id, wa.entity_id = o.id,
-// ps.order_id = o.id), so no string-key org alignment is required.
+// Tenant-scoped variant:
 const QUEUE_SQL_TENANT = `
   SELECT
     o.id                                          AS order_id,

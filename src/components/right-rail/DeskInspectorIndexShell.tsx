@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Desk Context-plane inspector — thin adapter over Unbox
- * {@link DisplaysIndexLeafStage}. Upgrade the stage / index list / leaf header
- * in `station/displays/` — this shell only maps leaves ↔ stage + Esc pop.
- *
- * Never mounts {@link StationDisplaysPushStack} (Action push column). Chrome
- * (→| · ↑↓) stays on {@link DeskRailChromeRow} above this shell.
- */
+/** Desk Context-plane inspector — thin adapter over Unbox {@link DisplaysIndexLeafStage}. */
 
 import {
   useCallback,
@@ -101,17 +94,7 @@ export function DeskInspectorIndexShell({
   indexFilter = false,
   className,
 }: {
-  /**
-   * REQUIRED, no default — the enforcement hinge.
-   *
-   * `'index'` mounts the Root Index → leaf stage (Back is owed on every leaf).
-   * `'standalone'` paints the same band over a plain `body` (no index, no Back).
-   *
-   * It has no default on purpose: a rail that has not answered "am I routed
-   * through the one index?" must not compile. Defaulting it would let every
-   * surface that was never migrated keep the old shape silently — which is how
-   * 31 of 44 rails ended up with no Back and no route to an index.
-   */
+  /** REQUIRED, no default — the enforcement hinge. */
   stance: 'index' | 'standalone';
   /** `stance='standalone'` only — the panel body under the band. */
   body?: ReactNode;
@@ -132,15 +115,7 @@ export function DeskInspectorIndexShell({
   /** Index-only trailing (e.g. Orders ⋮ handoffs). */
   indexRightSlot?: ReactNode;
   leafTrailing?: ReactNode;
-  /**
-   * Panel chrome that belongs on the SAME row as back + title — contextual
-   * icons. Rendered before the reserved host-control cell.
-   *
-   * Before 2026-08-19 panels mounted a separate `DeskRailChromeRow` ABOVE this
-   * shell, so a leaf read as two stacked bands: `[⤢] [✕]` on one row
-   * and `[‹] Documents` on the next. The Displays column it was modelled on has
-   * always been ONE band. Pass the chrome here instead of stacking a row.
-   */
+  /** Panel chrome that belongs on the SAME row as back + title — contextual icons. */
   /** @deprecated Use {@link headerRightSlot}. Kept so the 13 existing callers compile. */
   chrome?: ReactNode;
   ariaLabel?: string;
@@ -251,24 +226,7 @@ export function DeskInspectorIndexShell({
       </div>
     ) : null;
 
-  /**
-   * ONE band, both stages — the Displays-column contract.
-   *
-   * `[‹] Title …………… [chrome][leaf trailing][⤢ ✕ reserved]`
-   *
-   * BAND, not a bare mount: `StationDisplayLeafHeader` is written for the
-   * Displays column's horizontal top band, so it carries `h-full flex-1` —
-   * inside a COLUMN flex that `flex-1` grows the header vertically and pins the
-   * leaf body to the floor (Import latest orders shipped exactly that: title
-   * floating mid-panel, field + CTA at the bottom). Same
-   * `STATION_DISPLAYS_PUSH_TOP_BAND` as Unbox Displays (carton identity
-   * height), not a `h-7` fork.
-   *
-   * The band renders on the INDEX stage too, because the host paints `⤢` / `✕`
-   * absolutely at `top-0 right-0` and needs a row of the right height beneath
-   * them at every stage — that is what a panel's own stacked `DeskRailChromeRow`
-   * used to provide, at the cost of a second band.
-   */
+  /** ONE band, both stages — the Displays-column contract. */
   const standalone = stance === 'standalone';
   const bandTitle = standalone
     ? (title ?? ariaLabel)

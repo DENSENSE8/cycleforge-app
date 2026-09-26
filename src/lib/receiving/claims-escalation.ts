@@ -1,29 +1,4 @@
-/**
- * Claim-deadline escalation — Phase 4 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md.
- *
- * The "Delivered · not unboxed" lane is a dashboard: it shows an aging carton but
- * nothing *pushes*. For a vendor PO that is fine — dwell is an internal cost you
- * can pay late. For an eBay purchase it is not: the Money Back Guarantee window
- * closes 30 days after the estimated delivery date whether or not anyone looked,
- * and once it closes the money is simply gone. That is the one clock on this
- * surface that expires on its own, so it is the one that earns a push.
- *
- * **Escalation is deliberately narrow** (`display/workbench.md` — dashboard-first;
- * push only near a hard deadline). It fires per line **once, ever**, only for
- * `inbound_source_type = 'ebay'`, and only inside the lead window. A daily sweep
- * that paged on every aging carton would be noise on a 1–15 person floor and would
- * train the team to ignore the one alert that matters.
- *
- * **Composes the lane's SoT, never a second definition of it.** Candidates come
- * from `listDeliveredNotUnboxed()` — the same query that feeds the tile, the list,
- * and the count — so a carton can never be escalated while being absent from the
- * surface the operator would open, and the loss write-off's exit rule (Phase 3)
- * removes it from both at once.
- *
- * Deps-injected (default = the real reader / ticket writer / flag) so unit tests
- * run DB-free and create no tickets.
- */
+/** Claim-deadline escalation — Phase 4 of docs/todo/ebay-delivered-not-unboxed-PLAN.md. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { DeliveredNotUnboxedItem } from './delivered-not-unboxed';
@@ -31,20 +6,10 @@ import type { DeliveredNotUnboxedItem } from './delivered-not-unboxed';
 import type { TicketLinkAnchorInput } from '@/lib/support/ticket-link';
 import { CLAIM_DUE_LEAD_DAYS, daysUntilClaimDeadline } from './claim-window';
 
-/**
- * The lead threshold and the day math are re-exported from the dependency-free
- * `./claim-window`, NOT redefined here: the Incoming grid chip reads the same two
- * symbols, so "due" cannot mean one thing to the cron and another to the cell the
- * operator is looking at.
- */
+/** The lead threshold and the day math are re-exported from the dependency-free `./claim-window`, NOT redefined here: */
 export { CLAIM_DUE_LEAD_DAYS, daysUntilClaimDeadline };
 
-/**
- * Ceiling on tickets created per org per run. A safety valve, not a policy: if a
- * run ever wants more than this, something upstream is wrong (a bad backfill, a
- * carrier marking a whole truck delivered) and filing 100 tickets would make it
- * worse. The runner LOGS when it clamps — a silent cap would read as "all clear".
- */
+/** Ceiling on tickets created per org per run. */
 export const CLAIMS_ESCALATION_MAX_PER_RUN = 20;
 
 interface ClaimsEscalationCandidate {
@@ -60,15 +25,7 @@ interface ClaimsEscalationCandidate {
 }
 
 
-/**
- * Which lane rows are due for escalation.
- *
- * Includes ALREADY-EXPIRED claims (`daysRemaining < 0`). They are past saving as a
- * marketplace case, but the operator still needs to know the money was lost and to
- * write the carton off — silently dropping them would hide exactly the failure this
- * whole initiative exists to surface. Phase 1 widened the feed window to 45 days
- * precisely so this tail is still visible.
- */
+/** Which lane rows are due for escalation. */
 export function selectEscalationCandidates(
   items: readonly DeliveredNotUnboxedItem[],
   todayKey: string,
@@ -106,15 +63,7 @@ export function escalationIdempotencyKey(receivingLineId: number): string {
   return `receiving-claim-escalation:${receivingLineId}`;
 }
 
-/**
- * Where to hang the ticket, in descending precision:
- *   1. the carton (+ this line) — `linkTicketToAnchor` has dedicated RECEIVING_LINE
- *      handling and also pairs the carton's shipment,
- *   2. the tracking number — correct when the line has no carton FK yet (the lane
- *      admits such rows via its loose join),
- *   3. nothing — file it anyway. An unanchored ticket whose body names the line is
- *      far better than silently skipping a claim that is about to expire.
- */
+/** Where to hang the ticket, in descending precision: */
 export function escalationAnchor(c: ClaimsEscalationCandidate): TicketLinkAnchorInput | null {
   if (c.receivingId != null) {
     return { type: 'receiving', receivingId: c.receivingId, lineId: c.receivingLineId };
@@ -194,18 +143,7 @@ async function realDeps(): Promise<ClaimsEscalationDeps> {
  * write-off's `LossExceptionCode` made. Export it when a consumer needs the name.
  */
 interface ClaimsEscalationOptions {
-  /**
-   * Master switch — REQUIRED, never defaulted
- * ("a safety classification is a REQUIRED
-   * parameter"). This is the difference between reporting and filing real tickets in
-   * a tenant's helpdesk, so every caller must state it; a default would arm the
-   * outward-facing path for any call site that forgot.
-   *
-   * Read the flag in the CALLER (`isReceivingClaimsEscalation()` in the cron route),
-   * not here: `feature-flags.ts` statically imports the Neon pool (`server-only`), so
-   * reading it in this module would drag the DB into it and make the whole thing
-   * untestable — the same bundle-altitude trap Phases 1 and 3 hit.
-   */
+  /** Master switch — REQUIRED, never defaulted ("a safety classification is a REQUIRED parameter"). */
   enabled: boolean;
   /** Force report-only even when armed. */
   dryRun?: boolean;

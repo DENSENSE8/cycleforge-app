@@ -1,27 +1,6 @@
-/**
- * Universal-surfaces kind catalog — the single runtime SoT for every
- * second-axis vocabulary in the universal-feed table family
- * (docs/todo/universal-feed-polymorphic-plan.md §-1 Q11, §2 "Key properties").
- *
- * The DB deliberately does NOT CHECK these axes (feed_key, signal_kind,
- * linkage_type, mutation_kind, node_surface.role, target_kind) so new kinds
- * are additive — registering here IS the migration. What the DB does CHECK
- * (entity_type, membership state/tone, mutation status) is mirrored here so
- * code and DDL can never drift silently: registry.test.ts pins both sides.
- *
- * The AI reads this registry at runtime (it is injected into the assistant's
- * tool schemas and prompt fragments), so every entry carries a `description`
- * written for the model, not just for humans. Adding a kind without a real
- * description degrades the assistant — don't.
- *
- * Pure module: no DB imports, no side effects (unit-testable DB-free, safe
- * from client code).
- */
+/** Universal-surfaces kind catalog — the single runtime SoT for every second-axis vocabulary in the universal-feed table family… */
 
-// ─── Entity types (FIRST discriminator axis — mirrors the DB CHECKs) ────────
-// Must stay byte-identical with the `*_entity_type_chk` CHECK lists in
-// migrations 2026-07-03d/e/f AND each parent's delete-trigger set. Adding a
-// value = new migration (CHECK redefinition + delete trigger) + entry here.
+// ─── Entity types (FIRST discriminator axis — mirrors the DB CHECKs) ──────── Must stay byte-identical with the `*_entity_type_chk` CHECK…
 
 export interface SurfaceEntityTypeDef {
   /** Parent table the id points at (delete-trigger target). */
@@ -140,13 +119,7 @@ export function isFeedKey(v: unknown): v is FeedKey {
 
 // ─── feed_memberships.state / tone (mirror the DB CHECKs) ────────────────────
 
-// 'active'/'needs_match'/'done' are the generic membership states. The
-// orders_unshipped feed additionally stores its fulfillment LANE
-// (pending/tested/blocked) in `state`, so the existing state index serves
-// per-lane counts + keyset pagination (Phase 5,
-// docs/unshipped-dashboard-performance-plan.md; Decision 8 — lane computed in
-// Node via deriveFulfillmentState, never in SQL). Mirrors
-// feed_memberships_state_chk (migration 2026-07-04a).
+// 'active'/'needs_match'/'done' are the generic membership states.
 export const FEED_MEMBERSHIP_STATES = ['active', 'needs_match', 'done', 'pending', 'tested', 'blocked'] as const;
 export type FeedMembershipState = (typeof FEED_MEMBERSHIP_STATES)[number];
 
@@ -243,13 +216,7 @@ export function isInsightSubjectKind(v: unknown): v is InsightSubjectKind {
   return typeof v === 'string' && (INSIGHT_SUBJECT_KINDS as readonly string[]).includes(v);
 }
 
-// ─── mutation_kind + trust classes (agent_mutations) ─────────────────────────
-// The §8 spec (plan doc "§10. mutation_kind spec") in executable form.
-// Trust classes (plan §-2 "Trust model (day one)"):
-//   auto         — view-layer only; applies immediately, no review.
-//   draft_scoped — applies to a workflow DRAFT without review (the draft is
-//                  the safety layer; publish stays the human gate).
-//   review       — lands as status='proposed'; a human applies via review.
+// ─── mutation_kind + trust classes (agent_mutations) ───────────────────────── The §8 spec (plan doc "§10.
 
 export type MutationTrustClass = 'auto' | 'draft_scoped' | 'review';
 
@@ -259,22 +226,7 @@ export interface MutationKindDef {
   /** target_kind stamped on agent_mutation_affects rows for this kind. */
   targetKind: string;
   description: string;
-  /**
-   * The permission an actor must hold to propose THIS kind — required, and
-   * deliberately not defaulted.
-   *
-   * Trust class answers "how does it land"; this answers "who may ask". They
-   * are different questions and were conflated until 2026-08-19, when
-   * `propose_mutation` carried one blanket `studio.manage` gate: a receiving
-   * operator who could move a photo by hand could not ask the assistant to,
-   * while a Studio admin could move it without holding any receiving
-   * permission at all. Mirror the permission the equivalent hands-on route
-   * requires, so the chat path is never looser OR tighter than the UI it
-   * shadows.
-   *
-   * `Record<string, MutationKindDef>` below makes a missing entry a compile
-   * error — that is the forcing function, not review.
-   */
+  /** The permission an actor must hold to propose THIS kind — required, and deliberately not defaulted. */
   permission: string;
 }
 
@@ -316,13 +268,7 @@ export const MUTATION_KINDS = {
     permission: 'studio.manage',
   },
 
-  // auto — receiving evidence. NOT view-layer: this moves a real photo link.
-  // It is `auto` because it is fully REVERTABLE (the inverse is the reverse
-  // move), scoped to one carton, and non-destructive — no pixels are deleted,
-  // only which record the photo hangs off. An operator correcting a
-  // mis-attached photo through chat should not wait on a review queue for a
-  // change they can already make by hand in the carton UI. Anything that
-  // DELETED evidence would be `review`, not this.
+  // auto — receiving evidence.
   'receiving_photo.reassign': {
     label: 'Move receiving photo',
     trust: 'auto',

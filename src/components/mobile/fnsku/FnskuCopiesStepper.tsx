@@ -5,13 +5,8 @@ import { Button } from '@/design-system/primitives';
 import { MAX_LABEL_COPIES } from '@/lib/print/labelCopies';
 
 /**
+ * How many FBA labels the hub's Reprint sends (operator 2026-09-25:
  * How many FBA labels the hub's Reprint sends (operator 2026-09-25: "I must be
- * able to adjust the count of how many I'm printing"). − / count / +, 1 to
- * {@link MAX_LABEL_COPIES}; the dock's Reprint reads the count back
- * (`Reprint 3 labels`). Lives in the hub's `content` slot, above the Printer
- * door — a working value, not a fact, so it never goes on the card.
- *
- * Edge to edge like the dock: three flush cells, a mode rule between them.
  */
 export function FnskuCopiesStepper({ copies, onCopies }: { copies: number; onCopies: (next: number) => void }) {
   const cell = 'min-h-mode-hit-cta w-full shadow-none ring-0';

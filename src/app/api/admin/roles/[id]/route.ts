@@ -1,9 +1,4 @@
-/**
- * GET    /api/admin/roles/[id] — single role + member list
- * PATCH  /api/admin/roles/[id] — partial update (label, color, position, permissions)
- *                                Admin role rejects permission changes.
- * DELETE /api/admin/roles/[id] — only allowed when !is_system AND member_count == 0.
- */
+/** GET /api/admin/roles/[id] — single role + member list PATCH /api/admin/roles/[id] — partial update (label, color, position, permissions)… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -104,10 +99,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (isAdminRoleKey(row.key)) {
       return NextResponse.json({ error: 'ADMIN_ROLE_PERMISSIONS_IMMUTABLE', message: 'Admin role grants every permission; it cannot be customized.' }, { status: 409 });
     }
-    // Phase 2a write-time validation: reject any submitted permission that
-    // isn't in the runtime registry. Without this, unknown strings would be
-    // silently dropped at request time and the admin would think they saved
-    // a grant that has no effect.
+    // Phase 2a write-time validation:
     const submitted: string[] = (body.permissions as unknown[]).map(String);
     const unknown = submitted.filter((p) => !ALL_PERMISSIONS.has(p as never));
     if (unknown.length > 0) {
@@ -149,10 +141,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const id = idFromUrl(req);
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
 
-  // `roles` is GLOBAL (no organization_id) — the role row is read without an
-  // org filter. The in-use gate, however, must count only THIS org's members
-  // (staff_roles → org-owned staff), so cross-tenant assignments don't leak
-  // into this admin's delete decision.
+  // `roles` is GLOBAL (no organization_id) — the role row is read without an org filter.
   const cur = await tenantQuery(
     ctx.organizationId,
     `SELECT r.id, r.key, r.is_system,

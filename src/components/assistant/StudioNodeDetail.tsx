@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Studio focused-node detail, hosted in the assistant dock (universal-feed
- * plan §-2.1 / §4 — "the assistant dock absorbs StudioInspector"). Renders the
- * focused node's identity, live occupancy, ports, and read-only config beneath
- * the chat when the user is on /studio.
- *
- * Structural editing (add/remove/wire nodes, rules) goes through chat now, so
- * this pane keeps only READ + a micro-tweak: the config dump plus, on a draft,
- * the existing NodeConfigForm for a single field (the underlying editing code
- * is unchanged — this just relocates the surface). Reuses the global Studio
- * workspace (the dock is inside StudioWorkspaceProvider).
- */
+/** Studio focused-node detail, hosted in the assistant dock (universal-feed plan §-2.1 / §4 — "the assistant dock absorbs StudioInspector"). */
 
 import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import { NodeConfigForm } from '@/components/studio/NodeConfigForm';

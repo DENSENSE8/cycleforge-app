@@ -24,14 +24,7 @@ function daysSince(iso: string | null | undefined): string {
   return `${d} days in shop`;
 }
 
-/**
- * `/m/rs/[id]` — the repair HUB, on {@link DetailHubScreen} (the exoskeleton's
- * reference). A read-only summary card on top (device, issue, customer + phone,
- * serial, status) that opens `/info` for every fact and the edit, then doors to
- * contextual screens from the `useRepairHubRows` registry — a new screen plugs
- * in there, not here. Status and Pickup stay here as dock sheets; Log work
- * opens the bench screen.
- */
+/** `/m/rs/[id]` — the repair HUB, on {@link DetailHubScreen} (the exoskeleton's reference). */
 function RepairHubInner() {
   const params = useParams<{ id: string }>();
   const repairId = Number(params?.id);

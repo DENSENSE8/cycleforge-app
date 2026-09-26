@@ -12,12 +12,7 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/photos/image-types — built-in scopes + the org's custom types.
- * Degrade-not-fail: the built-ins always return even if the custom-type query
- * errors (e.g. the table not yet migrated), so the sidebar never loses its
- * primary navigator.
- */
+/** GET /api/photos/image-types — built-in scopes + the org's custom types. */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   let custom: Awaited<ReturnType<typeof listCustomImageTypes>> = [];
   try {

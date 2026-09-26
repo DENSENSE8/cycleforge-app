@@ -1,15 +1,4 @@
-/**
- * The cycle-count CAMPAIGN row — the wire shape `/inventory/cycle-counts`
- * hands its client table island, and the row the `cycle-counts` family speaks
- * about.
- *
- * The desk is an RSC page: `loadCampaigns` runs server-side and the rows cross
- * the boundary as props, so this shape is deliberately PLAIN and serializable
- * (ISO strings, no `Date`, no pg row object). It carries exactly the facts the
- * desk painted — `closed_at` and `created_by` are selected by the query and
- * were never drawn, so they are not here. Adding them would restore columns the
- * port is not asked to invent.
- */
+/** The cycle-count CAMPAIGN row — the wire shape `/inventory/cycle-counts` hands its client table island, and the row the `cycle-counts`… */
 
 export interface CycleCountCampaignRow {
   id: number;
@@ -29,12 +18,7 @@ export interface CycleCountCampaignRow {
   createdByName: string | null;
 }
 
-/**
- * The campaign's state PILL word. One map, read by the row adapter (the pill)
- * and by the resolver (the Status header's sort key and the search index) — a
- * separate face on either side would order the list by words the operator
- * cannot see.
- */
+/** The campaign's state PILL word. */
 export function campaignStatusLabel(status: string): string {
   const s = status.trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';

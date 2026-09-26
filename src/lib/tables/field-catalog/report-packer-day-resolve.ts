@@ -1,15 +1,4 @@
-/**
- * Packer-day slot resolvers — pure.
- *
- * Same law as the sibling reports: dates resolve to the ABSOLUTE INSTANT and
- * numbers to their DIGITS, never a formatted face — a resolver whose text
- * carried " min" would sort lexically (10 before 5) and one that depended on
- * `now` would sort differently every minute.
- *
- * `basis` and `tier` resolve to the WORD the operator reads (`Set` / `Rules` /
- * `Default`, `Small` / `Medium` / `Large`) rather than the raw enum, because
- * these are text facts and search must match what a lead types.
- */
+/** Packer-day slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { PackingReportRow } from '@/lib/packing/packing-report-shared';
@@ -42,15 +31,7 @@ export function resolveReportPackerDaySlotValue(
 ): CompoundSlotValue | null {
   switch (fieldId) {
     case 'report-packer-day.packer':
-      /*
-       * A PERSON value, not a string: the face reads `staffId` + `name`, so a
-       * `{ kind: 'value' }` text rendered "—" on every row.
-       *
-       * `staffId` is what makes this family paint like its peers instead of
-       * forking: `StaffAvatar` resolves `staff.color_hex` from the ID, so a
-       * null drew the same default bubble for every packer (operator
-       * 2026-09-16). Same shape as `audit-log.actor` / `auth-sessions.staff`.
-       */
+      /* A PERSON value, not a string: */
       return { kind: 'person', staffId: row.packerStaffId, name: row.packerName };
     case 'report-packer-day.product':
       return { kind: 'value', text: row.productTitle };

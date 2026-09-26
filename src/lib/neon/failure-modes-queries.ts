@@ -2,23 +2,7 @@ import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Failure-mode taxonomy (failure_modes) + per-unit failure tags
- * (unit_failure_tags). See docs/condition-grading-repair-qc-plan.md §4.3/§4.4
- * and 2026-06-07_failure_modes.sql.
- *
- * Tenancy (additive, backward-compatible): every SQL-touching export takes an
- * OPTIONAL trailing `orgId`. When present, the query runs through the tenant
- * pool (GUC-scoped) so RLS can bite under app_tenant; when omitted, behavior is
- * byte-identical to before (raw `pool`).
- *
- * Table notes (docs/tenancy/org-id-coverage.generated.md):
- *   - `failure_modes`     → NO organization_id column, NO org-bearing parent
- *                           (reference-decide). GUC-wrap only; NEEDS-COL.
- *   - `unit_failure_tags` → NO organization_id column; parent `serial_units`
- *                           HAS organization_id, so scope via a JOIN/subquery on
- *                           serial_units.organization_id. NEEDS-COL.
- */
+/** Failure-mode taxonomy (failure_modes) + per-unit failure tags (unit_failure_tags). */
 
 export interface FailureModeRow {
   id: number;
@@ -84,11 +68,7 @@ export async function createFailureMode(params: {
   capsGradeAt?: string | null;
   sortOrder?: number;
 }, orgId?: OrgId): Promise<FailureModeRow> {
-  // failure_modes DOES have organization_id (usav-fallback default until the
-  // 2026-07-09a DEFAULT-drop migration flips it to loud-fail): stamp it
-  // explicitly so the write never leans on the column default. When orgId is
-  // present we also route through the tenant pool so the GUC is set
-  // (RLS-ready) and the write is transactional.
+  // failure_modes DOES have organization_id (usav-fallback default until the 2026-07-09a DEFAULT-drop migration flips it to loud-fail):
   const sql = `INSERT INTO failure_modes
        (code, label, category, severity, is_repairable, typical_cost_cents, caps_grade_at, sort_order, organization_id)
      VALUES ($1, $2, $3, $4, $5, $6, $7::condition_grade_enum, $8, $9)
@@ -229,10 +209,7 @@ export async function tagUnitFailure(params: {
     params.notes?.trim() || null,
   ];
 
-  // unit_failure_tags has NO organization_id column; scope through the
-  // org-bearing parent serial_units. When orgId is present, the INSERT is
-  // gated by an EXISTS on serial_units (cross-tenant unit → zero rows), and
-  // the fallback SELECT joins serial_units with the org predicate.
+  // unit_failure_tags has NO organization_id column; scope through the org-bearing parent serial_units.
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       const inserted = await client.query<UnitFailureTagRow>(
@@ -283,14 +260,7 @@ export async function tagUnitFailure(params: {
   return existing.rows[0];
 }
 
-/**
- * Auto-resolve on QC re-pass (reversibility 5.9): flip the OPEN tag for
- * (unit, mode) to 'resolved'. Mirrors tagUnitFailure's org scoping — the
- * table has no organization_id column, so the UPDATE is gated by an EXISTS
- * on the org-bearing parent serial_units. Returns the resolved row, or null
- * when there was no open tag for that mode (idempotent no-op; a cross-tenant
- * unit also matches zero rows).
- */
+/** Auto-resolve on QC re-pass (reversibility 5.9): */
 export async function resolveOpenUnitFailureTagByMode(params: {
   serialUnitId: number;
   failureModeId: number;

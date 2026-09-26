@@ -1,23 +1,4 @@
-/**
- * Claim the cartons that were waiting for THIS order to be imported.
- *
- * `linkCartonIdentifier` lets an operator link an id the system has never seen
- * (`receiving_carton.source_order_id`, carton still `source = 'unmatched'`).
- * That promise is only kept if something acts when the order finally arrives —
- * and nothing did: the Zoho webhook and the bulk sync import a PO as a
- * standalone carton and never look at pending ids, while
- * `reconcileUnmatchedReceiving` only matches on TRACKING and only when an
- * operator presses "Retry pair".
- *
- * So this runs at the end of every PO import (`importZohoPurchaseOrderToReceiving`):
- * find unmatched cartons whose recorded identifier normalizes to this PO's
- * number or reference, then run the ordinary resolved path on each —
- * `relinkReceivingPo` scope 'carton', which imports the PO's SKUs/items through
- * `ensurePoLinesOnReceiving({ importIfEmpty: true })`.
- *
- * Best-effort by contract: a claim fault must never fail the import that
- * triggered it. Deps-injected so the unit test runs DB-free.
- */
+/** Claim the cartons that were waiting for THIS order to be imported. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

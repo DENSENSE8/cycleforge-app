@@ -58,30 +58,7 @@ interface PickupRequestBody {
   declinedReason?: string;
 }
 
-/**
- * POST /api/repair-service/pickup
- *
- * Body (all optional except an identifier — either scan OR repairId):
- * {
- *   scan?: string,            // RS-ID barcode/input (e.g. "RS-125", "125", ticket #)
- *   repairId?: number,        // explicit id (preferred when the caller already knows it)
- *   signatureDataUrl?: string,// data:image/png;base64,… customer pickup signature
- *   signatureStrokes?: any[], // raw stroke data persisted to document_data
- *   signerName?: string,      // who signed (customer name); falls back to contact_info
- *   declinedReason?: string,  // when the customer refuses to sign — recorded, no blob upload
- * }
- *
- * Effect:
- * 1. Marks repair_service.status as Done.
- * 2. Appends a status_history entry when status changed.
- * 3. Closes the active REPAIR work_assignments row.
- * 4. Records pickup_signed_at + pickup_staff_id for audit-trail / reporting.
- * 5. If a signature payload is provided, uploads PNG to blob and inserts a
- *    documents row with document_type='pickup_agreement'.
- * 6. If declinedReason is provided (no signature), inserts a documents row with
- *    signature_url=null and document_data.declinedReason so the audit trail
- *    still captures the customer's refusal.
- */
+/** POST /api/repair-service/pickup */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
   const staffId = ctx.staffId;

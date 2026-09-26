@@ -1,13 +1,4 @@
-/**
- * Manuals / paperwork for an order pack bundle.
- *
- * The live `product_manuals` resolution (`listOrderPaperworkForPrint` — pinned
- * to the order, its item number or its SKU, in that precedence) is the SoT: a
- * rename, replace, re-pair, unpair or delete in the paperwork walk is exactly
- * what prints. `documents` manual rows linked to the order's sku_catalog_id
- * that carry a productManualId are projections of those rows and are skipped;
- * document-only manuals (no productManualId) still print after them.
- */
+/** Manuals / paperwork for an order pack bundle. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { listManualDocumentsForOrder } from '@/lib/documents/manual-documents';

@@ -4,13 +4,7 @@ import test from 'node:test';
 import { PRODUCT_TABLES } from './table-catalog';
 import { REGISTERED_BINDINGS } from '@/components/tables/registered-bindings';
 
-/**
- * `PRODUCT_TABLES` is a server-safe restatement of `REGISTERED_BINDINGS` (see
- * `table-catalog.ts` for why the route cannot import the registry). The
- * duplication is deliberate and this test is the price: a value in one list and
- * not the other means either a sheet nobody can enable, or a picker entry that
- * opens nothing.
- */
+/** `PRODUCT_TABLES` is a server-safe restatement of `REGISTERED_BINDINGS` (see `table-catalog.ts` for why the route cannot import the… */
 
 /** Distinct prefs buckets in the registry — two bindings may share one sheet. */
 function registryTableIds(): string[] {

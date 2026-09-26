@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * Compact receiving-photos control for station chrome. Carton-scoped by
- * default (the condensed CartonContextCard identity row); pass
- * `photoStage="unbox_item"` + `receivingLineId` for the unbox active-line item
- * camera — same pill, scoped to RECEIVING_LINE + `receiving_item` per the
- * stage SoT (`@/lib/receiving/photo-scope`).
- *
- * One pill: camera pinned left + (count when photos exist, else "+") pinned
- * right. **Click sends a capture request to the paired phone** — that action
- * never moves. When {@link onOpenPhotosDisplay} is set (Unbox carton identity),
- * **double-click opens Displays → Photos** (Actions list; replaces whatever
- * leaf is open). Single-click is deferred briefly so a double-click does not
- * also fire phone. Hover reveals the PhotoLauncher action dropdown (View ·
- * Upload · Download · Move · Ticket · Media · Details) unless
- * {@link suppressHoverGallery}. On Unbox, Move / Ticket open Displays (right
- * rail) via {@link onOpenMovePhotosExternal} / {@link onSendToTicket}. Count
- * and "+" never share the face — when a count is shown the plus is omitted.
- * Width is locked (`justify-between`) so digit growth does not shift the
- * identity row.
- *
- * Default hover strip is an {@link AnchoredLayer} at `panelPopover` (body
- * portal) so it escapes the scan-station center's `overflow-hidden`. Unbox
- * carton identity, item dock, and Arrival keep the hover strip.
- *
- * While a gallery-owned upload/move overlay is open, the peek stays pinned so
- * the upload controller is not unmounted mid-pick.
- */
+/** Compact receiving-photos control for station chrome. */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -84,25 +58,11 @@ const HOVER_LEAVE_MS = 140;
  * real phone tap still feels immediate.
  */
 const PHONE_CLICK_DEFER_MS = 280;
-/**
- * Delay before the hover PhotoLauncher strip opens. Instant open used to
- * `disabled` the teaching {@link HoverTooltip} on the same frame — operators
- * never saw “click = phone · double-click = details”. Short dwell keeps the
- * tip readable; longer hover still lands the action strip.
- */
+/** Delay before the hover PhotoLauncher strip opens. */
 const GALLERY_OPEN_DELAY_MS = 420;
 /**
  * Gap between the pill and the portaled gallery.
- *
- * ZERO on carton chrome: every other hover panel on that bar (the order-id and
- * tracking chip menus, listing, ticket) is a `ChipHoverMenuSurface`, which
- * anchors at `gap={0}` — flush under the cell. The photos panel was the one
- * face carrying a 6px offset, so it read as the only dropdown on the strip
  * floating off its button. Operator 2026-09-22: "it's the only one that has a
- * gap in the drop down display."
- *
- * The non-chrome faces (item dock `pill`, flush cube) keep the 6px: those sit
- * inside padded panels where a flush panel would kiss the neighbouring content.
  */
 const GALLERY_GAP_PX = 6;
 const GALLERY_CHROME_GAP_PX = 0;
@@ -113,10 +73,7 @@ function galleryAnchoredPlacement(
   if (placement === 'above') return 'top-center';
   if (placement === 'right') return 'right-start';
   if (placement === 'left') return 'left-start';
-  // Below opens CENTERED on the pill, not left-aligned to it: on the carton
-  // strip the trigger is a narrow cell in a row of narrow cells, so a
-  // start-aligned panel reads as belonging to whichever cell its left edge
-  // happens to land under.
+  // Below opens CENTERED on the pill, not left-aligned to it:
   return 'bottom-center';
 }
 
@@ -140,31 +97,9 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /** Carton PO#/order ref — stamped onto each photo's meta so the viewer's
    *  details panel shows the linked PO (parity with ReceivingPhotoPeek). */
   poRef?: string | null;
-  /**
-   * Capture stage this pill stamps — required, never defaulted (a defaulted
-   * safety classification is how bench photos silently became arrival
- * evidence;). Triage chrome passes
-   * `arrival_package` explicitly; the unbox header passes `unbox_carton`; the
-   * unbox active-line camera passes `unbox_item` together with
-   * `receivingLineId`.
-   */
+  /** Capture stage this pill stamps — required, never defaulted (a defaulted safety classification is how bench photos silently became… */
   photoStage: ReceivingPhotoStage;
-  /**
-   * What this pill's shot SHOWS, within {@link photoStage} — the second axis.
-   * A procedure step that asks for one specific frame ("the shipping label")
-   * passes it, so the capture satisfies that step and only that step; the three
-   * bench carton shots share one stage and are told apart by this alone.
-   *
-   * Omit on a general-purpose pill: null is *unclassified evidence*, which is
-   * both legal and the honest answer when the surface did not ask for a
-   * particular frame. Never defaulted to a concrete aspect — an aspect is a
-   * claim about what the operator pointed the camera at, and this component is
-   * not in a position to make one.
-   *
-   * Scoping is total: when set, the pill's COUNT and gallery show only shots of
-   * this aspect, so "1 photo" on the shipping-label step never means a photo of
-   * the box.
-   */
+  /** What this pill's shot SHOWS, within {@link photoStage} — the second axis. */
   photoAspect?: PhotoAspect | null;
   /**
    * Active receiving line — makes this pill the ITEM camera (RECEIVING_LINE +
@@ -172,20 +107,9 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    * carry the line id. Entity wins: a line id forces the item stage.
    */
   receivingLineId?: number | null;
-  /**
-   * Zoho PO id (or number) used ONLY to route an item phone request to
-   * `/m/receiving/po/{ref}/item/{line}/photos`. Without it the phone action is
-   * disabled for item scope (device upload still works) — `poRef` may be a
-   * sales-order ref the mobile PO route can't resolve.
-   */
+  /** Zoho PO id (or number) used ONLY to route an item phone request to `/m/receiving/po/{ref}/item/{line}/photos`. */
   poRouteRef?: string | null;
-  /**
-   * Where the hover gallery card opens relative to the pill.
-   * - `below` — under the pill, align start (carton identity + unit rows).
-   * - `above` — bottom-anchored chrome (unbox item dock) so the card never
-   *   runs off the pane edge.
-   * - `left` / `right` — beside the pill (legacy hosts only — not the carton bar).
-   */
+  /** Where the hover gallery card opens relative to the pill. */
   galleryPlacement?: 'below' | 'above' | 'right' | 'left';
   /**
    * `pill` — station identity / section chrome (camera + count, locked w-14).
@@ -197,19 +121,9 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   onSendToTicket?: () => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
   onOpenMovePhotosExternal?: () => void;
-  /**
-   * Unbox carton identity — double-click opens Displays → Photos (Actions).
-   * Replaces whatever Displays leaf is open; opens the column when closed.
-   * Single-click stays send-to-phone (deferred so dblclick does not also send).
-   * Omit on item dock / Arrival.
-   */
+  /** Unbox carton identity — double-click opens Displays → Photos (Actions). */
   onOpenPhotosDisplay?: () => void;
-  /**
-   * Suppress the hover PhotoLauncher strip (rare). Unbox carton identity keeps
-   * the strip — Move / Ticket open Displays via the external callbacks. Pill
-   * click stays send-to-phone; double-click opens Displays when
-   * {@link onOpenPhotosDisplay} is set.
-   */
+  /** Suppress the hover PhotoLauncher strip (rare). */
   suppressHoverGallery?: boolean;
 }) {
   const { getClient } = useAblyClient();
@@ -226,13 +140,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       : null;
   const stage = effectiveReceivingPhotoStage({ stage: photoStage, receivingLineId: lineId });
   const isItemScope = stage === 'unbox_item';
-  // The Unbox header pill/gallery reads the carton's WHOLE evidence set
-  // (package + unbox_carton + legacy), not just this session's unbox_carton
-  // shots — otherwise a carton whose photos predate the stage split shows a
-  // count of 0 here while the sidebar's denormalized total still says N. The
-  // WRITE target (below) stays pinned to `stage` so new captures still stamp
-  // `receiving_unbox_carton` correctly; only this read broadens. Triage's
-  // arrival-only pill and the line/item pill are unaffected.
+  // The Unbox header pill/gallery reads the carton's WHOLE evidence set (package + unbox_carton + legacy), not just this session's…
   const baseListIntent = receivingPhotoListIntentForScope({ stage, receivingLineId: lineId });
   const listIntent =
     baseListIntent === 'unbox_carton' ? RECEIVING_PHOTO_LIST_INTENT_CARTON : baseListIntent;
@@ -249,10 +157,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     }
   }, [receivingId, lineId, stage, photoAspect]);
 
-  // Scope the cache key: a line pill must not share an entry with its carton,
-  // and an aspect-scoped pill must not share one with the unscoped pill above it
-  // — otherwise the shipping-label step would read the whole carton's count and
-  // report itself satisfied by a photo of the box.
+  // Scope the cache key:
   const queryKey = useMemo(
     () =>
       [
@@ -292,18 +197,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
 
   useReceivingPhotosRealtimeRefresh(receivingId, staffId, refresh, staffId > 0 && !!orgId);
 
-  // An item capture routes to `/m/receiving/po/{ref}/item/{line}/photos`, which
-  // needs a PO route ref. Without one the phone leg is unavailable (device
-  // upload via the hover strip still works) — better than sending the operator's
-  // phone to a route it cannot resolve.
+  // An item capture routes to `/m/receiving/po/{ref}/item/{line}/photos`, which needs a PO route ref.
   const routeRef = String(poRouteRef ?? '').trim();
   const canSendToPhone = !isItemScope || routeRef.length > 0;
 
-  // Waiting/answered/unreachable renders on the house toast surface — NOT the
-  // blind optimistic "Sent to phone" toast this replaced originally (an Ably
-  // publish resolves with zero subscribers, so that one only ever confirmed
-  // the desk had spoken). This toast tracks the real handshake state instead.
-  // Same hook + same toast id shape as Pack (P1 · D2).
+  // Waiting/answered/unreachable renders on the house toast surface — NOT the blind optimistic "Sent to phone" toast this replaced…
   const phone = useSendToDevice('receiving_photo');
   useSendToDeviceToast(phone.state, phone.retry);
   const ackChannelName = getReceivingPhotoRequestChannelName(orgId, staffId);
@@ -541,13 +439,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         {pillButton}
       </HoverTooltip>
 
-      {/*
-        Body portal at panelPopover — escapes the locked-720 center
-        (overflow-hidden + sibling utility/Displays stacking). Gap bridge lives
-        on the portaled host via mouse enter/leave (pill leave delay still
-        applies). Carton chrome opens below-start and skips collision clamp so
-        the panel cannot be shoved left over Claim.
-      */}
+      {/* Body portal at panelPopover — escapes the locked-720 center (overflow-hidden + sibling utility/Displays stacking). */}
       <AnchoredLayer
         open={showGalleryPeek}
         onClose={closeGalleryPeek}
@@ -564,10 +456,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
             photos={photos}
             orderId={`RCV-${receivingId}`}
             receivingId={receivingId}
-            // Explicit target: without it a receiving gallery derives
-            // RECEIVING + `receiving_package`, so an ITEM pill's hover-upload
-            // would stamp carton evidence onto a line camera (and the write
-            // waist would 400 it). The resolver already encodes the matrix.
+            // Explicit target:
             uploadTarget={uploadTarget ?? undefined}
             allowReassign
             launcherLayout="toolbar"
@@ -575,10 +464,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
             compact
             libraryHref={cartonLibraryHref}
             onPhotoDeleted={(photoId) => refresh(photoId)}
-            // Reassign/upload are NOT deletes — passing the photo id as
-            // `deletedPhotoId` filtered the just-added photo straight back OUT
-            // of the gallery cache (only the trailing refetch hid the bug).
-            // Refresh with no id so the cache reconciles to include it.
+            // Reassign/upload are NOT deletes — passing the photo id as `deletedPhotoId` filtered the just-added photo straight back OUT of the…
             onPhotoReassigned={() => refresh()}
             onPhotoUploaded={() => refresh()}
             onUploadOverlayOpenChange={setGalleryUploadPinned}

@@ -5,17 +5,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { errorResponse } from '@/lib/api/errors';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * DELETE /api/studio/definitions/[id]/discard
- *
- * Permanently remove a never-published workflow definition draft (the reverse
- * of the draft INSERT). Cascades to its workflow_nodes / workflow_edges (ON
- * DELETE CASCADE). REFUSES to discard:
- *   - the active version (publish a new version to retire it instead), and
- *   - any definition still referenced by in-flight items (item_workflow_state),
- *     which has no cascade and would be orphaned.
- * Returns 404 for an unknown/already-discarded id.
- */
+/** DELETE /api/studio/definitions/[id]/discard */
 export const dynamic = 'force-dynamic';
 
 export const DELETE = withAuth(async (request, ctx) => {

@@ -9,13 +9,7 @@ import {
 } from './queue-display-sort';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 
-/**
- * The compound header keys are TRACKS; `?sort=` is written in FACTS. Nothing
- * bridged them after To-Ship moved to the two-row row, so every header click was
- * a silent no-op — sorting was off on the desk and stayed off, because the e2e
- * that would have caught it was still clicking a flat locator that resolved to
- * zero elements.
- */
+/** The compound header keys are TRACKS; `?sort=` is written in FACTS. */
 
 test('the compound tracks that carry a sortable fact resolve to it', () => {
   assert.equal(queueSortForColumnKey('fulfillment'), 'order');

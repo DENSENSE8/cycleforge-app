@@ -1,28 +1,4 @@
-/**
- * Shipped-order → Zoho Inventory fulfillment sync (the accounting reconciliation).
- *
- * For every order that has SHIPPED in our authoritative internal system, this
- * walks the Zoho fulfillment chain so a proper financial record exists:
- *
- *   sales order  →  package  →  shipment order  →  (delivered)  →  invoice
- *
- * Design goals (see docs/zoho-fulfillment-sync.md):
- *   - Idempotent: safe to run repeatedly. Every Zoho id we create is recorded in
- *     the `zoho_fulfillment_sync` ledger, and each step also re-checks Zoho
- *     (reference_number lookups / existing packages) before creating anything.
- *   - Incremental: the caller passes `since` (a delta cursor); only changed
- *     shipped orders are processed.
- *   - Dry-run: when dryRun is true NOTHING is written to Zoho — the intended
- *     actions are logged and recorded for review.
- *   - Auditable: the ledger holds every Zoho id + the final status per order, and
- *     each result carries a human-readable `actions` trail.
- *
- * Reuses the existing building blocks rather than reinventing them:
- *   - ZohoInventoryClient (createPackage / createShipmentOrder / createInvoice / …)
- *     on top of the rate-limited, retrying, circuit-breaking httpClient.
- *   - OrderSyncService.ingestExternalOrder to create+confirm a Zoho sales order
- *     (with contact + item resolution) when one doesn't exist yet.
- */
+/** Shipped-order → Zoho Inventory fulfillment sync (the accounting reconciliation). */
 
 import pool from '@/lib/db';
 import { getCurrentPSTDateKey } from '@/utils/date';
@@ -596,10 +572,7 @@ export async function syncShippedOrdersToZoho(opts: SyncRunOptions): Promise<Syn
     orgId,
   });
 
-  // Bind the whole push to this org's Zoho credential (per-org creds via
-  // withZohoOrg) + the allowlisted outbound op + usage audit. All client calls
-  // inside syncOneOrder (sales order / package / shipment / invoice) run as this
-  // tenant. A dry run still passes through so the binding is identical.
+  // Bind the whole push to this org's Zoho credential (per-org creds via withZohoOrg) + the allowlisted outbound op + usage audit.
   const results: OrderSyncResult[] = await withZohoCredential(orgId, 'salesorders.write', async () => {
     const out: OrderSyncResult[] = [];
     for (const order of orders) {

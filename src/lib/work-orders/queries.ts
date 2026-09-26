@@ -4,33 +4,11 @@ import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { normalizePSTTimestamp } from '@/utils/date';
 import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
-/**
- * Server-side work-order queue queries.
- *
- * Extracted from /api/work-orders/route.ts so that the queue route AND the
- * per-operator header endpoint (/api/work-orders/mine) share ONE data source.
- * (A route file can only export HTTP handlers — Next's generated route-type
- * checker rejects extra exports — so this query lives in lib instead.)
- */
+/** Server-side work-order queue queries. */
 
 const shippedByCarrierOrLatestStatusSql = SHIPPED_BY_CARRIER_SQL;
 
-/**
- * A pairing exception is not workable work — **R-FLOW-7, 2026-09-01**.
- *
- * Auto-cage (`src/lib/orders/auto-cage.ts`) stamps `release_state='caged'`
- * on every freshly ingested order that is unpaired (`sku_catalog_id` null).
- * Listing automations assign a tech/packer at import. Without this predicate
- * those two facts combine into the wrong answer: an order still sitting in
- * catalog pairing arrives on its assignee's goal chip and `/m/work` as the
- * next thing to do. Paperwork gaps (manuals, labels) stay on To-ship; they
- * are not this hold.
- *
- * Spelled exactly as the other live-queue readers spell it
- * (`/api/orders` fulfillmentScope, `/api/orders/queue-counts`) so all three
- * agree on what "in the working set" means: **caged ∩ unpaired** is held;
- * a paired row with a stale cage stamp is live work.
- */
+/** A pairing exception is not workable work — **R-FLOW-7, 2026-09-01**. */
 const NOT_CAGED_SQL = liveWorkingSetSql('o');
 
 function normalizeStatus(raw: unknown): WorkStatus {
@@ -142,11 +120,7 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
  * the active-queue query (getOrders) and the windowed calendar query
  * (getWorkOrdersInRange) emit an identical shape from one place.
  */
-// NOTE: no explicit WorkOrderRow return annotation — the literal carries a few
-// extra queue fields (primaryAssignmentId/primaryWorkType/…) that the shared
-// WorkOrderRow type (owned by P1-WORK-01) doesn't yet declare. Letting the type
-// infer and widening at the getOrders/getWorkOrdersInRange boundary avoids an
-// excess-property error without editing the shared type.
+// NOTE: no explicit WorkOrderRow return annotation — the literal carries a few extra queue fields (primaryAssignmentId/primaryWorkType/…)…
 function mapOrderRow(row: any) {
   return {
     id: `ORDER:${row.id}`,
@@ -186,25 +160,7 @@ function mapOrderRow(row: any) {
   };
 }
 
-/**
- * Windowed ORDER work-order query for the scheduling calendar (P3-ADM-03).
- *
- * The active-queue getOrders() caps at active statuses / LIMIT 500 with NO date
- * filter — wrong for a calendar that needs every assignment whose deadline (the
- * day-placement field; work_assignments has no scheduled_at, so we reuse
- * deadline_at) lands inside the visible month/week window, including DONE rows.
- *
- * Additive: a new function alongside getOrders; the existing query is untouched.
- * `fromISO`/`toISO` are inclusive-start / exclusive-end UTC ISO timestamps for
- * the visible window. Org/RLS scoped via tenantQuery.
- *
- * **Deliberately NOT filtered by `NOT_CAGED_SQL`** (considered 2026-09-01, not
- * overlooked). That predicate exists to keep un-triaged work off an operator's
- * actionable queue; this is a planning lens that already shows DONE rows, and
- * an order due Thursday that is still stuck in triage is exactly what a
- * scheduler needs to SEE. If the calendar should hide caged rows, that is an
- * operator ruling — make it here, and say so.
- */
+/** Windowed ORDER work-order query for the scheduling calendar (P3-ADM-03). */
 export async function getWorkOrdersInRange(
   orgId: string,
   fromISO: string,

@@ -11,12 +11,7 @@ const MAX_SEGMENTS = 24;
 /** The pick board: every open pick nobody owns, and who holds the rest. */
 export const PICK_UNASSIGNED_HREF = '/m/pick/unassigned';
 
-/**
- * The directed picker's top band, one row: exit, the run's progress rail,
- * the `Unassigned · N` door to the pick board, the `done / total` count at the
- * far right. Progress only — the order lives in its own card and every verb
- * lives in the dock.
- */
+/** The directed picker's top band, one row: */
 export function DirectedPickStatusBar({
   done,
   total,

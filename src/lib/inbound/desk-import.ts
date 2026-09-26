@@ -1,12 +1,4 @@
-/**
- * Incoming desk import orchestration — single Add / CSV row → ingestPurchase
- * (+ optional RETURN tag + classify stamps). Shared by import-purchase and
- * import-csv routes.
- *
- * Native Amazon Manage Returns CSV rows resolve sku_catalog when ASIN equals
- * sku_catalog.sku (case-insensitive). A catalog miss still ingests — tracking
- * must land so door/unbox can find the carton.
- */
+/** Incoming desk import orchestration — single Add / CSV row → ingestPurchase (+ optional RETURN tag + classify stamps). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';

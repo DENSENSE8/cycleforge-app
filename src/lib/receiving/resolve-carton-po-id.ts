@@ -1,22 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * Resolve the Zoho purchase-order id for a carton (receiving row).
- *
- * The PO id can live in two places and they DON'T always agree:
- *   • `receiving_carton.zoho_purchaseorder_id`     — the carton/header link
- *   • `receiving_line_zoho.zoho_purchaseorder_id`  — the per-line link (set by
- *                                                    the Zoho PO matcher / import;
- *                                                    read via the rz facts table)
- *
- * For eBay-purchasing-imported cartons the header column is frequently NULL
- * while the line(s) carry the real PO id — which is why anything that resolved
- * the PO id from the header alone (e.g. the PO-header-notes push) silently
- * skipped with `no_zoho_link`, even though the per-line description push (which
- * reads the line) worked. This is the single resolver both paths should use.
- *
- * Returns the trimmed PO id, or null when the carton has no Zoho link at all.
- */
+/** Resolve the Zoho purchase-order id for a carton (receiving row). */
 export async function resolveCartonZohoPoId(
   orgId: string,
   receivingId: number,

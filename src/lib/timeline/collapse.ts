@@ -1,20 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import type { TimelineItem } from './types';
 
-/**
- * Collapse runs of consecutive, identical events into a single row.
- *
- * Operational ledgers (esp. SAL tech scans) frequently record the *same* action
- * on the *same* ref by the *same* person several times in a row — e.g. a tech
- * re-scanning the same tracking. On the order timeline these stack up as
- * near-duplicate rows ("Testing scanned 8231" twice) and bury the milestones that
- * matter. We fold an adjacent run (same title + ref + actor + tone) into one row,
- * keep the newest timestamp as the row time, and annotate the count + the time
- * span in the subtitle so nothing is silently dropped.
- *
- * Operates on an already-sorted (newest-first) list; only *adjacent* equals
- * merge, so a tech scan that brackets a different event stays distinct.
- */
+/** Collapse runs of consecutive, identical events into a single row. */
 function timeOf(at: string | null): string {
   if (!at) return '';
   try {

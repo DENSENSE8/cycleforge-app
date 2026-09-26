@@ -1,30 +1,4 @@
-/**
- * Workflow-tap intended-write outbox (roi-execution/03 #10).
- *
- * tapWorkflow is fire-and-forget by contract: an engine failure never fails a
- * production scan. The cost is that a lost tap (crash between the domain
- * mutation and advance(), a transient lock, an engine bug) is invisible — the
- * unit silently stops moving through the graph. This module records the
- * INTENT of every tap before advance() is attempted so a reconciler cron can
- * re-drive taps that never landed:
- *
- *   recordTapIntent   → INSERT status='PENDING' before advance()
- *   markTapIntentLanded → advance() reached a durable outcome (moved/done/blocked)
- *   markTapIntentFailed → advance() reported a permanent drop (or max attempts)
- *   claimStaleTapIntents → reconciler claim: PENDING rows older than N minutes,
- *                          attempts bumped atomically, SKIP LOCKED
- *
- * Everything here is best-effort from the caller's point of view: tap.ts wraps
- * each call in try/catch, and the whole write path is inert unless the
- * WORKFLOW_TAP_OUTBOX flag is on (default OFF — the backing table ships in
- * migration 2026-07-09b_workflow_tap_outbox.sql, which may not be applied yet).
- *
- * Writes go through the owner pool with an explicit organization_id parameter,
- * mirroring the recordOpsEvent pattern (src/lib/ops-events.ts): the table is
- * RLS-FORCED from birth via enforce_tenant_isolation(), and the owner
- * connection stamps the org explicitly. The reconciler's claim is a deliberate
- * cross-org scan (session-less cron, same as the search-outbox worker).
- */
+/** Workflow-tap intended-write outbox (roi-execution/03 #10). */
 
 import pool from '@/lib/db';
 
@@ -90,12 +64,7 @@ export interface StaleTapIntent {
   attempts: number;
 }
 
-/**
- * Claim PENDING intents older than `olderThanMinutes` for re-drive: bumps
- * `attempts` atomically and returns the claimed rows. SKIP LOCKED so two
- * overlapping reconciler runs never double-claim (belt to withCronLock's
- * suspenders). Oldest first, bounded by `limit`.
- */
+/** Claim PENDING intents older than `olderThanMinutes` for re-drive: */
 export async function claimStaleTapIntents(args: {
   olderThanMinutes: number;
   limit: number;

@@ -37,25 +37,11 @@ function expiresInLabel(expiresAt: string | null): string | null {
   return `${hours} hour${hours === 1 ? '' : 's'}`;
 }
 
-/**
- * `usePhotoShareLinks` — generate temporary share URLs for a set of photo ids,
- * copy the formatted block to the clipboard, and toast the result.
- *
- * Shared by the drag-to-share handler and the "Copy shareable links" button so
- * both paths produce identical output. Performance: nothing is generated until
- * the caller invokes `generateAndCopy` (i.e. on drag start / button click), so
- * idle selection never hits the signing API.
- */
+/** `usePhotoShareLinks` — generate temporary share URLs for a set of photo ids, copy the formatted block to the clipboard, and toast the… */
 export function usePhotoShareLinks() {
   const [isLoading, setIsLoading] = useState(false);
 
-  /**
-   * POST the ids, format + copy the result, toast success/failure.
-   * Returns the outcome (text + uri-list) so a drag handler can also stuff it
-   * into `dataTransfer`, or `null` on any error / empty input.
-   *
-   * @param opts.ttlSeconds Override the signed-link lifetime (from the expiry picker).
-   */
+  /** POST the ids, format + copy the result, toast success/failure. */
   const generateAndCopy = useCallback(
     async (photoIds: number[], opts: { ttlSeconds?: number } = {}): Promise<ShareLinksOutcome | null> => {
       const ids = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))];
@@ -87,10 +73,7 @@ export function usePhotoShareLinks() {
         });
         const uriList = formatUriList(data.links);
 
-        // Copy to clipboard. This can reject when the document lacks focus or
-        // transient activation (e.g. mid-drag in some browsers) — we treat that
-        // as a soft failure: the text is still returned for dataTransfer and the
-        // toast tells the user it's ready to paste.
+        // Copy to clipboard.
         let copied = true;
         try {
           await navigator.clipboard.writeText(text);
@@ -128,12 +111,7 @@ export function usePhotoShareLinks() {
     [],
   );
 
-  /**
-   * Create a durable, public share *page* for the selection (vs. ephemeral
-   * signed links) and copy its single URL. Wraps the existing
-   * `POST /api/photos/share-packs` (a tokenized `/share/photos/:token` landing
-   * page with its own expiry), so recipients get one stable link instead of N.
-   */
+  /** Create a durable, public share *page* for the selection (vs. */
   const createSharePage = useCallback(
     async (
       photoIds: number[],
@@ -186,12 +164,7 @@ export function usePhotoShareLinks() {
     [],
   );
 
-  /**
-   * Download the selection as a single ZIP via the existing
-   * `GET /api/photos/download-zip` (a session-protected attachment response).
-   * Uses a transient anchor so the browser handles the download natively — no
-   * blob buffering in the page.
-   */
+  /** Download the selection as a single ZIP via the existing `GET /api/photos/download-zip` (a session-protected attachment response). */
   const downloadZip = useCallback((photoIds: number[], opts: { title?: string } = {}) => {
     const ids = [...new Set(photoIds.filter((id) => Number.isFinite(id) && id > 0))];
     if (ids.length === 0) {

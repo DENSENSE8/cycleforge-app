@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Arrival (Receiving triage) Station Displays carton Macro floor:
- *   [ ⋯ ][ Sync ][ Edit ][ Delete ]
- *
- * Thin station recipe over {@link CartonDisplaysActionFloor} (Sync, no Print).
- * Never desk `InspectorActionFloor`.
- */
+/** Arrival (Receiving triage) Station Displays carton Macro floor: */
 
 import { CartonDisplaysActionFloor } from '@/components/station/displays';
 import type { InventoryDossierRefreshResult } from '../workspace/line-edit/hooks/useZohoSync';

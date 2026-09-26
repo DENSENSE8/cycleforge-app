@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * The COUNT plane for `/inventory/cycle-counts/[id]` — a Center-Lock L2
- * record form stacked on the desk stage (`recordPlane: stage-overlay`). The
- * lines table stays mounted underneath, so a counter can still read the bin's
- * other SKUs while typing the number.
- *
- * ## Why this file exists at all
- *
- * The retired Counted cell rendered an `<input type="number">` and a Submit
- * button INSIDE the grid, for every `pending` line on an open campaign. A
- * compound row has no in-cell editor — `inCellEdit` is `false` on every family
- * in this repo and `CompoundRowAction` carries a fixed payload — so a write
- * whose payload needs a PARAMETER is a verb that opens a plane. This is that
- * plane, and it is the one `.tsx` the parameterised write is allowed
- * (`CycleCountLinesTable` is the other, for the RSC boundary).
- *
- * It carries what the cell could not: the bin, the SKU and the EXPECTED
- * quantity, so a counter can see what they are counting against instead of
- * typing a number into an anonymous 20px box.
- *
- * Callers: CycleCountLinesTable.
- */
+/** The COUNT plane for `/inventory/cycle-counts/[id]` — a Center-Lock L2 record form stacked on the desk stage (`recordPlane: */
 
 import { useEffect, useId, useState } from 'react';
 import { Button } from '@/design-system/primitives/Button';

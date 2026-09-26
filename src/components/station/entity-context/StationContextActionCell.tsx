@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Carton-bar action faces — geometry by construction.
- *
- * Listing / overflow / claim on the one-row strip go through these cells.
- * Height is `h-full` on the chrome class. Callers cannot pass `className`
- * or swap in IconButton. Photos stay on ReceivingPhotoButton appearance=chrome.
- */
+/** Carton-bar action faces — geometry by construction. */
 import { forwardRef, useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ExternalLink, Pencil, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -91,13 +85,7 @@ export function StationContextListingCell({
   })();
   const showActionMenu =
     !!onEdit || canCopy || !!openHref || links.filter((l) => l.href).length > 1;
-  /**
-   * One hover engine, one panel. This cell used to toggle an in-flow
-   * `absolute` box with `visible/invisible` — its own third mechanism behind
-   * the same class tokens, and the only one the locked-720 centre's
-   * `overflow-hidden` could clip. It now drops the same portaled panel as the
-   * identity chips and the classify pills.
-   */
+  /** One hover engine, one panel. */
   const hover = useHoverSurface({ disabled: !showActionMenu });
 
   /** Verbs come from the SoT, so the `⋯` overflow cannot offer a different set. */
@@ -150,28 +138,7 @@ export function StationContextListingCell({
   );
 }
 
-/**
- * The claim's DRAFT ticket number, in the slot the Claim button occupies.
- *
- * Shown while an unlinked carton has a claim body typed but not filed: it is
- * the id the ticket is heading for, so the operator can say the number out loud
- * to a seller before it exists.
- *
- * It FLASHES because it is not real yet. The pulse is `animate-pulse` —
- * opacity only, which composites off the main thread and moves no neighbour
- * (AGENTS.md: nothing may tween a property that triggers reflow). Pressing it
- * does what Claim did: shows the draft.
- *
- * NEUTRAL chrome, not the Claim tone: once the number is showing, this corner
- * is reading out an identifier like the listing cell beside it, not offering
- * the Claim verb. The orange wash made a filed ticket and a draft one look the
- * same weight.
- *
- * PREDICTED, NOT RESERVED. Zendesk mints ids on create, so another agent filing
- * first shifts this number. The flash and the "not filed yet" label are the
- * honesty — the number itself is bare so an operator can read it out — and the
- * value is never persisted (see {@link predictNextTicketNumber}).
- */
+/** The claim's DRAFT ticket number, in the slot the Claim button occupies. */
 export const StationContextDraftTicketCell = forwardRef<
   HTMLButtonElement,
   { active?: boolean; onClick: () => void; number: string }

@@ -1,19 +1,4 @@
-/**
- * Find-plane column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced a hand-rolled `<ul>` of `SearchHitLine` anchors: a loose list
- * with no header sort, no Fields picker, no org binding and no column edge,
- * because a list is not a table engine and never grows one.
- *
- * The skeleton mounts WHOLE — no `.filter`. The photo gutter has no photo on a
- * search hit and paints the typed placeholder, exactly as `audit-log` and
- * `sku-bins` already do: `COMPOUND_SKELETON_FILTER_DEBT` is documented
- * shrink-only, and a new surface cutting chrome to taste is the fork the law
- * names. Chrome headers are RENAMED into this plane's vocabulary instead
- * (Id · Description · When · Status) — a label is family data, geometry is the
- * engine's.
- */
+/** Find-plane column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -85,14 +70,7 @@ export function searchHitsCompoundColumnsFor(
 export const SEARCH_HITS_COMPOUND_COLUMNS: readonly SearchHitsGridColumn[] =
   searchHitsCompoundColumnsFor(SEARCH_HITS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the three chrome tracks this
- * family paints facts into — a painted DATA header with a dead sort fails
- * `SLOT_TABLE_PAINT_LAW.headerSort`. Structural chrome is named by
- * `isSlotTableChromeTrack`, never by a hand list that could drift from the law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function searchHitsSortFactFor(col: {
   key: string;
   fieldId?: string;

@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * The agenda rail — the left column of the Daily composer stage.
- *
- * A PRESET over {@link SidebarRecentRailBase}, not a rail of its own. The
- * shell brings the row frame, the status-dot track, the hover peek, the row ⋮
- * menu, the parked-strip pins and the ↑/↓ keyboard for nothing.
- *
- * It lists the WHOLE agenda — checklist items and tasks — because that is what
- * the operator is adding to. The row's meta line names which half it came
- * from, so the rail answers the same question the table's band captions do
- * without needing captions of its own.
- *
- * ## One bit, at a glance
- *
- * The dot answers "does this still want me": finished reads success, an open
- * task past its deadline is the only row that earns attention ink, everything
- * else is the neutral middle. Urgency rides the META line rather than the dot,
- * because urgent-and-not-yet-late and late are different facts and one dot
- * cannot carry both.
- */
+/** The agenda rail — the left column of the Daily composer stage. */
 
 import { useCallback, useMemo } from 'react';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
@@ -55,14 +36,7 @@ const agendaFacts = (row: DailyAgendaRow): RailPeekFact[] => [
   { tone: 'order', value: isDailyAgendaWork(row) ? (row.recordLabel ?? '') : '' },
 ];
 
-/**
- * The rail shell keys selection on a NUMBER, and this list carries rows from
- * two independently-numbered stores — `daily_check_items.id = 7` and
- * `work_assignments.id = 7` are different rows. Work rows (task AND ticket,
- * one store) take the positive space and checklist items the negative, which
- * cannot collide because neither table issues a zero. The durable string key
- * still rides `getReconcileId`, so React's identity is the real one.
- */
+/** The rail shell keys selection on a NUMBER, and this list carries rows from two independently-numbered stores — `daily_check_items.id =… */
 function agendaRailId(row: DailyAgendaRow): number {
   return isDailyAgendaWork(row) ? row.id : -row.id;
 }
@@ -82,12 +56,7 @@ export function AgendaRecentRail({
   /** The SAME clock the table read — never `Date.now()` per row. */
   nowMs: number;
 }) {
-  /**
-   * The desk owns the fetch (it also drives the ledger and the record), so
-   * the rail is handed settled rows and its `fetchFn` just returns them. The
-   * query key carries every row's identity and done state, so the shell
-   * re-reads the moment a feed settles instead of serving a stale cache.
-   */
+  /** The desk owns the fetch (it also drives the ledger and the record), so the rail is handed settled rows and its `fetchFn` just returns them. */
   const version = useMemo(
     () => rows.map((r) => `${r.key}:${r.done ? 1 : 0}`).join('|'),
     [rows],

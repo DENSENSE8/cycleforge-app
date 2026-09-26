@@ -1,16 +1,4 @@
-/**
- * GET /api/kiosk/visit/{id}/receipt — device-authed print of a completed visit.
- *
- * Callers: KioskCartLedger print buttons, KioskHistoryPane reprint.
- * Affected API: GET /api/kiosk/visit/[id]/receipt (device cookie).
- * Data schemas: VisitReceipt HTML from buildVisitReceipt + renderVisitReceiptHtml.
- * User: "print out a receipt including everything no matter repair service sales order" and "give internal staff as an internal record"
- *
- * Every render is audited. A reprint from the History face carries
- * `?reprint=1`, so the trail separates "the receipt this visit printed at
- * checkout" from "someone reprinted it later" — the fact the operator is
- * actually asking about when a customer turns up with a paper dispute.
- */
+/** GET /api/kiosk/visit/{id}/receipt — device-authed print of a completed visit. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

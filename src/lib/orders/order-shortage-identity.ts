@@ -1,15 +1,4 @@
-/**
- * Structured shortage identity for an order line.
- *
- * Lives beside `orders.is_out_of_stock` (the BLOCKED / Pending hold). Notes
- * never encode this — the Item-track triangle hover card and replenishment
- * read these fields.
- *
- * Callers: MorphingRowActionMenu, useOrderAssignment, POST /api/orders/assign,
- * POST /api/orders/missing-parts, ordersItemStatus, oos-pending-toast.
- * Schema: orders.oos_kind|oos_sku|oos_sku_catalog_id|oos_kit_part_id|oos_qty_short|oos_title|oos_zoho_item_id.
- * SoT rows: order_line_shortages. User: item-level OOS rebuild.
- */
+/** Structured shortage identity for an order line. */
 
 export type OrderShortageKind = 'listing' | 'kit_part' | 'catalog_child' | 'catalog_other';
 

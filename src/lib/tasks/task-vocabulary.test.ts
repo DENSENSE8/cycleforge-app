@@ -61,14 +61,7 @@ test('the throwable set is the urgency set — one list, not two copies', () => 
   assert.equal(isTaskEntityType('repair'), false);
 });
 
-/**
- * The predicate exists so the fan-out can refuse HONESTLY — a kind the
- * `staff_inbox_items` CHECK does not carry must come back
- * `notified: 'skipped_entity'`, never as a constraint violation thrown at an
- * operator who threw a perfectly legal task. Every kind is anchorable today;
- * this pins that the two lists agree, so the next `work_entity_type_enum`
- * value cannot quietly ship un-notified.
- */
+/** The predicate exists so the fan-out can refuse HONESTLY — a kind the `staff_inbox_items` CHECK does not carry must come back `notified: */
 test('every throwable record kind can anchor an inbox row', () => {
   assert.equal(isTaskEntityType('support_ticket'), true);
   // Anchorable since migration 2026-09-22a widened the inbox CHECK and gave

@@ -54,10 +54,7 @@ export interface UpsertTrackingExceptionParams {
 export async function upsertOpenTrackingException(
   params: UpsertTrackingExceptionParams,
   dbClient: DbClient = pool,
-  // tracking_exceptions is tenant-owned with a usav-fallback default. Callers
-  // that have a request org should thread it; session-less callers fall back to
-  // the transitional USAV org (the established single-tenant convention) so the
-  // INSERT is always stamped explicitly rather than relying on the GUC default.
+  // tracking_exceptions is tenant-owned with a usav-fallback default.
   orgId?: OrgId,
 ): Promise<TrackingExceptionRecord | null> {
   const effectiveOrgId = orgId ?? transitionalDogfoodOrgId();

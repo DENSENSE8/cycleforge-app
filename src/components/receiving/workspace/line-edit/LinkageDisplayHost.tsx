@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Unbox Displays → Linkage topic — the carton's PAIRING surface.
- *
- * Armed-row verbs + local nest drills (Photos twin):
- * `linkage` leaf → Actions list · `linkageAction` link|return|note → bodies.
- *
- * **The pairing verbs live HERE, on the actions list — never inside the Link
- * body.** Link is one avenue combobox plus that avenue's search field; Find
- * ticket · Return # · Store · Zoho · Amazon return are peers of it, not
- * controls buried under its search results. They are merged into this one list
- * rather than stacked as a second {@link StationArmedVerbList}: two lists both
- * register keyboard region `right` and would fight over the same letters.
- *
- * Find ticket is also this list's job, not Classify's — Classify grades what
- * the carton IS (urgency · platform · type); linking it to a ticket is a
- * pairing act.
- */
+/** Unbox Displays → Linkage topic — the carton's PAIRING surface. */
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { FileText, Link2, TicketHelp } from '@/components/Icons';
@@ -102,9 +86,6 @@ export function LinkageDisplayHost({
     trackingNumber: autoMatch?.trackingNumber ?? null,
     receivedSerial: autoMatch?.receivedSerial ?? null,
     // Find ticket is added below so it survives on FOUND cartons too.
-    // **No Store verb here** — Store is one of Link's three avenues (Inventory
-    // item · Purchase order · Store), so a peer row would be a second door onto
-    // the same search one level up from it.
     onOpenReturnSearch: openReturnSearch,
   });
 
@@ -204,13 +185,7 @@ export function LinkageDisplayHost({
         </div>
       ) : null}
       {verb === 'link' ? (
-        // Flush — no `DISPLAYS_BODY_INSET` (`px-4`). Same contract as
-        // TicketDisplayHost's Claim body: "Host stays flush; the search field
-        // and result rows own their own internal inset, never the whole
-        // detail." Wrapping the Store avenue combobox + its results in the
-        // standard gutter here (2026-08-24 fix) is what made it read as
-        // padded/not-edge-to-edge next to the Ticket panel's Create|Link
-        // combobox, which never had this wrapper.
+        // Flush — no `DISPLAYS_BODY_INSET` (`px-4`).
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <CartonMatchHub
             row={row}

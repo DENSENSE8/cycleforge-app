@@ -3,14 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
-/**
- * POST /api/repair-service/out-of-stock
- *
- * Records a missing part that is blocking this repair.
- * Stores the text in work_assignments.out_of_stock on the active wa row.
- *
- * Body: { repairId: number, assignmentId?: number | null, part: string }
- */
+/** POST /api/repair-service/out-of-stock */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;

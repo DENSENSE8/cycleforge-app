@@ -36,12 +36,7 @@ export function handlingUnitDetailQueryKey(idOrCode: string | number) {
   return ['handling-unit.detail', String(idOrCode)] as const;
 }
 
-/**
- * Shared box (handling-unit) detail fetch — `GET /api/handling-units/{idOrCode}`.
- * Accepts a numeric id, an `H-{id}` handle, or an external tote code. Powers the
- * desktop {@link BoxWorkbenchPanel}; mirrors the mobile box page's fetch so both
- * read the same endpoint + response shape (one query key family, cache-shared).
- */
+/** Shared box (handling-unit) detail fetch — `GET /api/handling-units/{idOrCode}`. */
 export function useHandlingUnitDetail(idOrCode: string | number | null) {
   const key = idOrCode == null ? '' : String(idOrCode);
   return useQuery<BoxResponse>({

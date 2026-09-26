@@ -1,16 +1,4 @@
-/**
- * GET  /api/auth/enroll/[token]
- *   Returns staff info for the enrollment page to render. Does NOT consume.
- *
- * POST /api/auth/enroll/[token]
- *   Body: { pin?: string }
- *   Completes enrollment: consumes the token, marks staff active, creates a
- *   phone session. Passkey is registered first on the phone (enrollmentToken
- *   on /api/auth/passkey/register/*). PIN is optional (station fallback).
- *   Completing without a PIN requires at least one staff_passkeys row.
- *
- * Callers: /m/enroll/[token] page. User: Enroll passkey first, PIN optional.
- */
+/** GET /api/auth/enroll/[token] Returns staff info for the enrollment page to render. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

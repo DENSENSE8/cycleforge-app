@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Settings → AI & Search → **Provider order**.
- *
- * Asks which connected provider an AI call should try FIRST. Local-first is the
- * product default: a tenant running their own model should not be paying a
- * cloud vendor by accident.
- *
- * Deliberately a sibling of `SupportVisionLaneCard`, not a fork of it — same
- * route, same three-state shape, same two disciplines:
- *
- * **1. It stores the REQUEST, never the resolved order.** Precedence
- * (org → deployment env → `local-first`) lives only in `resolveAiProviderOrder`.
- * A card that re-implemented "org wins over env" would be a second answer to
- * one question and would drift the moment either side changed.
- *
- * **2. "Inherit" is a real third state.** Clearing the choice deletes the org
- * key so the env / local-first default returns. Defaulting the control to
- * local-first would stamp an explicit value on first Save and hide the
- * deployment override forever.
- *
- * A third thing this card must not imply: **order is a preference, not a
- * promise.** An unconfigured or unhealthy provider is skipped, so the provider
- * that serves a given turn can differ from the one chosen here. The copy says
- * so, and per-turn truth is the usage table's source column.
- */
+/** Settings → AI & Search → **Provider order**. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Panel } from '@/design-system/primitives';

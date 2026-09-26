@@ -1,17 +1,4 @@
-/**
- * GET /api/inbox/tech-queue — the tech-station inbox backlog for the logged-in
- * staffer. Two buckets, derived live so the bell survives a reload and shows the
- * true backlog (not just whatever was pushed this session):
- *
- *   - return_pending_test : unboxed returns that still have a line needing test.
- *   - order_ready_ship    : unboxed priority cartons (a pending order needs the
- *                           contents) ready to fulfil/ship.
- *
- * Only primary-TECH staff get contents; everyone else gets an empty queue (the
- * client still subscribes to its own inbox channel — the publishers only fan out
- * to primary techs, so non-techs never receive the refetch events anyway).
- * staffId comes from the verified session; no special permission (own-data read).
- */
+/** GET /api/inbox/tech-queue — the tech-station inbox backlog for the logged-in staffer. */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

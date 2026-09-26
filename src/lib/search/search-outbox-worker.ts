@@ -1,24 +1,4 @@
-/**
- * search-outbox-worker — drains entity_search_outbox into entity_search_docs.
- *
- * The single write path for search docs (locked decision 5: DB trigger →
- * outbox → worker; domain helpers are never edited). Flow per drain call:
- *
- *   claim N pending rows (FOR UPDATE SKIP LOCKED, attempts+1)
- *     → group by org, then entity type
- *     → load parent rows org-scoped (tenantQuery — GUC + explicit org filter)
- *     → buildSearchText per row
- *     → embedText over the batch, BEST-EFFORT: on failure the docs still
- *       upsert with search_text and embedding NULL, so keyword search is
- *       fresh immediately and the next backfill/enqueue retries the embed
- *     → upsert docs (org-led natural key), delete docs whose parent vanished
- *     → mark outbox rows processed (or failed with the error message)
- *
- * Cross-org claim/mark run on the owner pool (BYPASSRLS — same posture as
- * other cron drains); all parent reads and doc writes are org-scoped.
- * Idempotent: re-processing a row re-upserts the same doc; a crash between
- * claim and mark leaves the row pending (attempts counts the retry).
- */
+/** search-outbox-worker — drains entity_search_outbox into entity_search_docs. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -181,15 +161,8 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     LEFT JOIN handling_units hu
            ON hu.id = su.handling_unit_id AND hu.organization_id = su.organization_id
     WHERE su.organization_id = $1 AND su.id = ANY($2::bigint[])`,
-  // Aggregate the only 1:many join (receiving_line) in a LATERAL so the outer
-  // SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id. (The LATERAL
-  // shape predates the receiving-spine rename — it was required while
+  // Aggregate the only 1:many join (receiving_line) in a LATERAL so the outer SELECT needs no GROUP BY at all; stn is 1:1 on shipment_id.
   // `receiving` was a security_invoker compat view — and stays because it
-  // keeps the outer SELECT GROUP-BY-free.) Wave-2 reader cutover: the carton
-  // door milestone reads from receiving_triage (rt, 1:1), aliased back to
-  // `received_at` so buildReceivingDoc's field contract never changes.
-  // Carton-level qa/condition/zoho_purchaseorder_number stay on the spine
-  // (out of scope this wave).
   RECEIVING: `
     SELECT r.id,
            stn.tracking_number_raw                                AS tracking_number,
@@ -218,22 +191,7 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
       FROM receiving_line rl WHERE rl.receiving_id = r.id
     ) lines ON TRUE
     WHERE r.organization_id = $1 AND r.id = ANY($2::bigint[])`,
-  // Platform crosswalk + BOM folded in as LATERAL aggregates so the outer
-  // SELECT stays GROUP-BY-free. Staff hold an ASIN, an eBay item id or a part
-  // name far more often than the internal SKU; without these the index could
-  // answer none of those. Each aggregate is LEFT-bounded so no single source
-  // can consume the whole canonical-text budget.
-  //
-  // `items` is the inventory-provider (Zoho) mirror and is joined by the ONE
-  // legal key: sku_catalog.provider_item_id = items.zoho_item_id
-  // (2026-07-22:23-27). NEVER by SKU string — items.sku and sku_catalog.sku
-  // are independent numbering schemes that collide on the same values
-  // (2026-07-22:5-9), so a string join would attach one product's provider
-  // identifiers to another's catalog row. This is also why `items` gets no
-  // entity type of its own: items.id is a uuid and entity_search_docs.entity_id
-  // is BIGINT by law (2026-07-03d:12-13). The join is 1:1 — zoho_item_id is
-  // UNIQUE (0000_baseline:2735) and provider_item_id is org-uniquely indexed
-  // (ux_sku_catalog_org_provider_item_id) — so no LATERAL and no GROUP BY.
+  // Platform crosswalk + BOM folded in as LATERAL aggregates so the outer SELECT stays GROUP-BY-free.
   SKU: `
     SELECT sc.id, sc.sku, sc.product_title, sc.category, sc.upc, sc.ean, sc.gtin, sc.notes,
            sc.lifecycle_status, sc.is_active, sc.created_at, sc.updated_at,
@@ -280,13 +238,6 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
     WHERE f.organization_id = $1 AND f.id = ANY($2::bigint[])
     GROUP BY f.id`,
   // Every join is 1:1, so the outer SELECT needs no GROUP BY and no LATERAL.
-  // `deleted_at IS NULL` is load-bearing, not hygiene: warranty_claims is
-  // SOFT-deleted (2026-06-09_warranty_zendesk_link.sql:10-12,19), so a
-  // tombstoned claim must return NO row here — the drain's parent-missing arm
-  // then DELETES its doc (drainSearchOutbox "Parent vanished" branch below).
-  // The migration's UPDATE trigger watches deleted_at for exactly that reason.
-  // Prose is LEFT-bounded at the source so a long denial write-up cannot
-  // consume the MAX_SEARCH_TEXT budget ahead of the claim number.
   WARRANTY_CLAIM: `
     SELECT wc.id, wc.claim_number, wc.serial_number, wc.sku, wc.product_title,
            wc.source_system, wc.source_order_id, wc.source_tracking_number,
@@ -309,13 +260,7 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
            status_cache, created_at, updated_at
     FROM support_tickets
     WHERE organization_id = $1 AND id = ANY($2::bigint[])`,
-  // `bin_contents` is the only 1:many edge, so it is a LEFT-bounded LATERAL and
-  // the outer SELECT stays GROUP-BY-free. The bin's own identifiers come first
-  // in the builder; the SKUs stored in it are the tail, bounded at 300 chars so
-  // a full pallet location cannot push the barcode past MAX_SEARCH_TEXT.
-  // No `is_active` predicate: a deactivated bin is still scannable off a
-  // printed label, so it stays indexed and reads back as INACTIVE
-  // (buildLocationDoc) rather than silently vanishing from search.
+  // `bin_contents` is the only 1:many edge, so it is a LEFT-bounded LATERAL and the outer SELECT stays GROUP-BY-free.
   LOCATION: `
     SELECT l.id, l.barcode, l.name, l.display_name, l.room,
            l.row_label, l.col_label, l.zone_letter, l.bin_type,
@@ -354,11 +299,7 @@ const defaultDeps: SearchOutboxDeps = {
        WHERE processed_at IS NULL
          AND claimed_at < now() - INTERVAL '15 minutes'`,
     );
-    // Claim = stamp claimed_at. A claimed row no longer matches the
-    // pending-dedupe partial unique (… AND claimed_at IS NULL), so a parent
-    // write DURING the drain inserts a FRESH pending row instead of being
-    // silently deduped against the in-flight snapshot (the review's blocker).
-    // attempts < ATTEMPTS_CAP keeps poison rows from starving the queue head.
+    // Claim = stamp claimed_at.
     const res = await pool.query(
       `UPDATE entity_search_outbox
        SET attempts = attempts + 1, claimed_at = now()
@@ -505,13 +446,6 @@ const defaultDeps: SearchOutboxDeps = {
 };
 
 // ── Embedding retry sweep (Phase 3, org-aware) ──────────────────────────────
-//
-// A doc whose embed failed (or that was indexed before the org had a
-// provider) carries embedding NULL and would otherwise wait for its parent
-// row to be touched again. The sweep re-enqueues stale NULL-embedding docs
-// PER ORG, and only for orgs that can actually embed right now (BYOK vault
-// or platform default) — for an unlinked tenant, NULL is the steady state,
-// and re-enqueueing would churn the queue forever.
 
 export interface EmbedRetryDeps {
   /** Orgs that currently have stale NULL-embedding docs. */
@@ -573,13 +507,7 @@ export async function sweepEmbeddingRetries(
   return total;
 }
 
-/**
- * Re-enqueue EVERY doc for one org — called when the org connects, switches,
- * or disconnects an AI provider, so its whole corpus re-embeds in the new
- * model's space (docs and queries must share one embedding space; mixed
- * models poison cosine relevance). Enqueue-only: the worker drains at its
- * own pace. Idempotent via the pending-dedupe unique.
- */
+/** Re-enqueue EVERY doc for one org — called when the org connects, switches, or disconnects an AI provider, so its whole corpus re-embeds… */
 export async function enqueueOrgReembed(orgId: OrgId): Promise<number> {
   const res = await pool.query(
     `INSERT INTO entity_search_outbox (organization_id, entity_type, entity_id)

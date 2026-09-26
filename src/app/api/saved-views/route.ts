@@ -5,16 +5,7 @@ import { isGenericSavedViewSurface } from '@/lib/saved-views/surfaces';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * GET  /api/saved-views?surface=… — caller's own + org-shared views for one
- *   dashboard/station surface (not operations / media_library — those keep
- *   their dedicated routes).
- * POST /api/saved-views — create a named view (body must include `surface`).
- *
- * Gated on `dashboard.view` — the same read permission Outbound / station
- * history operators already hold to see these surfaces. Ownership boundary is
- * `staff_id`; no new RBAC permission.
- */
+/** GET /api/saved-views?surface=… — caller's own + org-shared views for one dashboard/station surface (not operations / media_library —… */
 
 function readSurface(raw: unknown): string | null {
   return typeof raw === 'string' && raw.trim() ? raw.trim() : null;

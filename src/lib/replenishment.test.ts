@@ -1,21 +1,4 @@
-/**
- * DB-free unit tests for the vendor-PO replenishment domain module
- * (src/lib/replenishment.ts) — house Deps/fakes pattern (see
- * src/lib/billing/studio-gate.test.ts).
- *
- * Coverage:
- *   - transitionReplenishmentStatus: legality matrix, no-op on same status,
- *     404-shape throw, org threading into every statement.
- *   - recalculateNeed: missing row, zero/negative/edge quantities, the
- *     auto-cancel branch, org threading.
- *   - createDraftPurchaseOrders: vendor grouping, zero/negative
- *     quantity_to_order filtering, Zoho failure, org threading through the
- *     injected deps, po_created transitions.
- *
- * All fns take an explicit client/orgId (orgId is REQUIRED as of the
- * org-require pass), so a fake `query`-capturing client exercises the SQL
- * paths with zero DB.
- */
+/** DB-free unit tests for the vendor-PO replenishment domain module (src/lib/replenishment.ts) — house Deps/fakes pattern (see… */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

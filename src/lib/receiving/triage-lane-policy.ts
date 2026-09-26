@@ -1,22 +1,4 @@
-/**
- * Triage lane policy — the auto-routing rule table for `receiving.priority_lane`
- * (docs/receiving-triage-redesign-plan.md §4.2, decision D3).
- *
- * Mirrors `src/lib/receiving/putaway-placement.ts`'s `receivingDefaultPutawayPolicy`
- * pattern exactly: a pure, DB-free `DecisionRule[]` table reusing the SAME shared
- * evaluator (`src/lib/workflow/decision-eval.ts`) the `/studio` decision node
- * already runs — so this table is pluggable into a decision node with zero engine
- * changes, the moment an org wants to edit it visually. `DecisionFacts` only
- * carries `grade`/`channel`/`disposition` (shared across every decision-node
- * consumer, incl. the ZEN/WASM parity path in decision-eval-zen.ts) — rather than
- * widen that shared vocabulary for one caller, triage folds its own signal
- * (return vs PO, priority vs standard) into `channel` via {@link triageLaneChannel},
- * the same way a sales channel would be encoded for inspection/putaway rules.
- *
- * The operator's MANUAL lane override always wins over the auto-routed default —
- * same relationship `priority_tier` already has to the auto `is_priority` flag
- * (manual COALESCEs first). See {@link resolveTriageLane}.
- */
+/** Triage lane policy — the auto-routing rule table for `receiving.priority_lane` (docs/receiving-triage-redesign-plan.md §4.2, decision D3). */
 
 import { resolveDecision, type DecisionRule } from '@/lib/workflow/decision-eval';
 
@@ -58,23 +40,13 @@ export interface TriageLaneFacts {
   isPriority: boolean;
 }
 
-/**
- * Fold the carton's return/priority facts into the `channel` fact
- * `DecisionRule.when` already supports, so the triage policy needs no change to
- * the shared `DecisionFacts` shape. Kept as its own named function (not inlined)
- * so a `/studio` rule editor can document the exact channel values it may match.
- */
+/** Fold the carton's return/priority facts into the `channel` fact `DecisionRule.when` already supports, so the triage policy needs no… */
 export function triageLaneChannel(facts: TriageLaneFacts): 'return' | 'priority_po' | 'po' {
   if (facts.isReturn) return 'return';
   return facts.isPriority ? 'priority_po' : 'po';
 }
 
-/**
- * The system-default lane policy: priority PO → stock-out lane, return → return
- * lane, everything else → standard PO lane. First-match-wins, so an org
- * override in a future `/studio` decision node can insert a rule ahead of these
- * (e.g. route a specific vendor's returns to HOLD) without touching this module.
- */
+/** The system-default lane policy: */
 export function receivingTriageLanePolicy(): DecisionRule[] {
   return [
     {
@@ -98,13 +70,7 @@ export function receivingTriageLanePolicy(): DecisionRule[] {
   ];
 }
 
-/**
- * Resolve the effective lane for a carton: the operator's manual assignment
- * always wins; otherwise the policy table picks a default from the carton's
- * facts. Returns null only when neither a manual value nor a matching rule
- * exists (an empty/misconfigured policy) — callers treat null as "unassigned",
- * never as HOLD.
- */
+/** Resolve the effective lane for a carton: */
 export function resolveTriageLane(
   manualLane: string | null | undefined,
   facts: TriageLaneFacts,

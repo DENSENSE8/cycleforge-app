@@ -1,19 +1,4 @@
-/**
- * POST /api/orders/import/suggest-mapping
- *
- * Proposes column mappings for an uploaded order list, for the canonical fields
- * the deterministic alias map did not claim. The response is a SUGGESTION set —
- * the operator confirms each one in the mapping panel before anything imports.
- *
- * Generation, not mutation (backend-patterns.md → AI generation routes): no
- * audit row, but a per-org rate limit and a capability gate. Reuses the existing
- * `orders.import` permission because this is a step inside that flow, not a new
- * capability — an operator who may not import has no use for a mapping hint.
- *
- * Nothing here writes: the file never leaves the request, no staging row is
- * touched, and a failed model call degrades to "no suggestions" rather than
- * blocking the import the operator can still do by hand.
- */
+/** POST /api/orders/import/suggest-mapping */
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';

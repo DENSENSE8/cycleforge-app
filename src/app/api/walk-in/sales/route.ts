@@ -7,15 +7,7 @@ import { listCounterSalesAsSaleRows } from '@/lib/counter/list-counter-sales';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/walk-in/sales?q=&status=&weekStart=&weekEnd=&orderSource=&limit=
- * Query local square_transactions table. Defaults to walk_in_sale orders only.
- *
- * `?q=` is the Sales board's find text and BOTH halves of the merge answer it
- * (`getSquareTransactions` and `listCounterSalesAsSaleRows`). Handing the text
- * to only one half would let every counter visit through as a "match" beside
- * the Square rows that really matched.
- */
+/** GET /api/walk-in/sales?q=&status=&weekStart=&weekEnd=&orderSource=&limit= Query local square_transactions table. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     if (!isAllowedAdminOrigin(req)) {
@@ -32,10 +24,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const orderSource = orderSourceRaw && orderSourceRaw !== 'all' ? orderSourceRaw : undefined;
     const limitRaw = Number(searchParams.get('limit') || 200);
     const limit = Number.isFinite(limitRaw) ? Math.max(1, Math.min(500, limitRaw)) : 200;
-    // A SEARCH IS NOT A PAGE. `?limit=` is the board's display window; honouring
-    // it while `q` narrows would answer "no match" for a sale sitting one row
-    // past the bound — a bounded search is the same lie one layer down. A
-    // searching read opens to this endpoint's ceiling instead.
+    // A SEARCH IS NOT A PAGE.
     const rowLimit = search ? 500 : limit;
 
     const rows = await getSquareTransactions(
@@ -65,13 +54,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'walk_in.view', feature: 'walkIn' });
 
-/**
- * DELETE /api/walk-in/sales?id=<uuid> — soft-delete (hide) a walk-in sale.
- *
- * Square is the system of record, so this only hides the local mirror row
- * (sets deleted_at); the sale is NOT removed from Square and re-syncs keep it
- * hidden. Refund/void in Square if you need to reverse the actual sale.
- */
+/** DELETE /api/walk-in/sales?id=<uuid> — soft-delete (hide) a walk-in sale. */
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   try {
     if (!isAllowedAdminOrigin(req)) {

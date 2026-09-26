@@ -9,20 +9,7 @@ import {
   type EbayAccount,
 } from './connections-shared';
 
-/**
- * Owns the connections admin panel: the section expand/input state, the eBay +
- * Amazon account queries, and every integration mutation (Ecwid exception
- * tracking + resolved-exception clearing, eBay token refresh, Zoho
- * refresh/sync/import, eBay/Ecwid backfill, Ecwid→Square catalog sync, carrier
- * tracking, Amazon health/connect/disconnect). Each fires an
- * `admin-connections-log` window event on success/failure. Returns a
- * controller bag the sections render.
- *
- * No order IMPORT lives here: ShipStation is the one order source
- * (`POST /api/integrations/shipstation/sync`, driven by `useOrdersSync` on the
- * orders desk). The eBay / Amazon order syncs and the "full order sync" that
- * chained the eBay one were retired with their routes.
- */
+/** Owns the connections admin panel: */
 export function useConnectionsPanel() {
   const queryClient = useQueryClient();
   const [showOrders, setShowOrders] = useState(true);

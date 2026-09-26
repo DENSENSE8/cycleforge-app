@@ -86,79 +86,7 @@ import {
 } from './useCartonContextBarLayout';
 
 
-/**
- * Carton-level context card — **station entity-context header (SoT)**.
- *
- * Public import for all stations:
- *   `import { CartonContextCard } from '@/components/station/entity-context'`
- *
- * Staff dropdown + photo strip, the listing / Zendesk / PO# / tracking chip
- * row. Identity editors now live in Unbox SectionTabsSlider tabs
- * (tracking/listings), not below-row drawers. PO is copy/open when linked;
- * unfound / no real Zoho PO id can pass `onEditPo` → Package Pairing (PO tab).
- *
- * **ONE face for every scan station**: ONE semantic row filling the floating
- * {@link StationContextBar} identity column (no card chrome of its own).
- * Pair hosts with `StationWorkbench reserveIdentityClearance={false}` (in-flow)
- * or legacy overlay clearance.
- *
- *   Left — navigation: back, then identity flush against it (order# ·
- *            tracking#). No vertical rule between back and the first fact —
- *            the strip is one abutting row, same as Band-1 CTAs.
- *   Left — identity: order# · tracking#. **No lifecycle chip.** The stage is
- *            already on every row of the sidebar rail the operator selected
- *            this carton from, so a copy of it here spent bar width — on a
- *            strip under constant width pressure — restating what the surface
- *            beside it never stops showing. Removed 2026-08-21 after two passes
- *            (dot, then dot + word) failed to earn the space. The rail dot SoT
- *            (`getReceivingStatusDot`) is unchanged and still the one status
- *            face; this bar simply is not one of its consumers.
- *   Middle — classify: priority · platform · type, absolutely centered
- *            in the bar. Each wears its catalog identity dot + name. Collapses
- *            to dots only when those labels would touch identity or actions.
- *   Right — actions: quiet price · listing (ExternalLink + platform name)
- *            · claim (ticket + "Claim") · photos (camera + count). Listing,
- *            Claim, and photos share one word-button recipe
- *            (`STATION_CONTEXT_*_CHROME_CLASS`). Overflow is a raw `h-full`
- *            cell — never `IconButton` (fixed h-7 box floats off the strip).
- *            Those three verbs overflow into `⋯` before wrap.
- *
- * Secondary / exact triage detail (qty rollups, extra boxes, lineage,
- * exception routing, diagnostics) lives in right-edge **Displays** — never a
- * "Show details" expander under this identity band (guard:
- * `carton-context-details-in-displays.guard.test.ts`).
- *
- * The bar never wraps. Classify pills collapse and trailing verbs park in
- * `⋯` before a second row appears. No brand tiles. Never IconButton on this
- * row.
- * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `showPoTotal`,
- * classify, …) to hide that affordance per station — do not invent empty
- * placeholder tracks.
- *
- * Thin adapters
- * (`LineCartonContextSection` · `TestingCartonHeader` ·
- * `ShippingEntityContextHeader` · `PackOrderIdentity` · `ReviewOrderIdentity` ·
- * `OrderStationIdentity`) wire domain controllers only. Pack photos use
- * `photosCell`; never a sibling control beside this card.
- *
- * Layout decisions preserved from the original inline implementation:
- *  - The listing chip uses a full-color brand tile ({@link PlatformMark}
- *    `preferBrandTile`) only when `tileSrc` exists (Amazon); other platforms
- *    show ExternalLink + label with no carton/FBA glyph. ExternalLink goes
- *    faint when there is no listing URL. Placeholder text when unbound.
- *  - Identity editing: listing/tracking editors accessible via chip edit actions,
- *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
- *    Package Pairing → PO when there is no real Zoho PO id.
- *  - Every menu the bar opens is bottom-CENTER under its cell (classify · listing
- *    · photos) — one anchoring so the strip reads as one system. Overflow `⋯` is
- *    the one exception (`align=end`) so the trailing cell's menu stays on-screen.
- *    Collision flip is off on this bar. Catalog edit ("Edit colours" on the
- *    platform / type menus) opens ONE page-centered `CatalogManagerPopover` —
- *    never a second inline bar-anchored twin. Full Classify Displays stays the
- *    searchable editor when staff open that leaf themselves.
- *
- * Purely presentational/controlled — all state lives in the parent.
- */
+/** Carton-level context card — **station entity-context header (SoT)**. */
 export function CartonContextCard({
   receivingId,
   staffId,
@@ -217,25 +145,14 @@ export function CartonContextCard({
   receivingId: number | null;
   staffId: string;
   isUnmatched: boolean;
-  /**
-   * Purchase-order money total, resolved by the adapter via `cartonPoTotal`
-   * (`src/lib/receiving/po-total.ts`) — never summed in a view. `null` renders
-   * a dash icon (no line on this carton carries a mirrored price).
-   * Displayed under Photos (before listing · Claim, gap-0 abut) when {@link showPoTotal}.
-   */
+  /** Purchase-order money total, resolved by the adapter via `cartonPoTotal` (`src/lib/receiving/po-total.ts`) — never summed in a view. */
   poTotal?: number | null;
   /**
    * Show the PO-total / price slot. Default on — the top-right chrome always
    * paints price (honest `—` when unknown), listing, and photos.
    */
   showPoTotal?: boolean;
-  /**
-   * Carton-wide received / expected counts, resolved via `cartonQtyRollup`
-   * (`src/lib/receiving/po-total.ts`) so this shares the PO total's carton
-   * grain — never a per-line count beside a carton-wide total. Omit to hide.
-   * Prefer Displays / PO lines for exact triage qty — this slot is a compact
-   * face only when an adapter opts in.
-   */
+  /** Carton-wide received / expected counts, resolved via `cartonQtyRollup` (`src/lib/receiving/po-total.ts`) so this shares the PO total's… */
   qty?: { received: number; expected: number | null } | null;
   /**
    * The carton still needs its intake kind (unbox stepper's Classify dot is
@@ -247,35 +164,17 @@ export function CartonContextCard({
    * When false, hide platform/type/urgency pills from this header.
    */
   showClassifyControls?: boolean;
-  /**
-   * When false (with {@link showClassifyControls}), urgency / platform / type
-   * render as read-only tone pills — facts for the station bar.
-   * Default true = chip-anchored {@link InlinePillPicker} menus. Classify
-   * Displays remains available when staff open that leaf themselves.
-   */
+  /** When false (with {@link showClassifyControls}), urgency / platform / type render as read-only tone pills — facts for the station bar. */
   classifyInteractive?: boolean;
   /** Opens / toggles the claim push panel. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
-  /**
-   * The DRAFT ticket number (`#12345`) while an unlinked carton has a claim
-   * body typed but not filed. When set it TAKES the Claim slot — the operator
-   * has already decided to claim, so the useful thing in that corner is the
-   * number the ticket is heading for, not the verb they just used.
-   * Predicted, never reserved — see `predictNextTicketNumber`.
-   */
+  /** The DRAFT ticket number (`#12345`) while an unlinked carton has a claim body typed but not filed. */
   draftTicketNumber?: string | null;
   /** True while the Unbox Claim push column is open — Claim pill reads pressed. */
   claimViewActive?: boolean;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
   showStaffPhotoRow?: boolean;
-  /**
-   * Carton capture stage the header photo pill stamps (stage SoT) — required,
-   * never defaulted (a defaulted safety classification is how bench photos
- * silently became arrival evidence;).
-   * Triage passes `arrival_package` explicitly; unbox chrome passes
-   * `unbox_carton`. Item evidence never comes from this card — it is
-   * line-scoped, so the active-line camera owns it.
-   */
+  /** Carton capture stage the header photo pill stamps (stage SoT) — required, never defaulted (a defaulted safety classification is how… */
   photoStage: 'arrival_package' | 'unbox_carton';
   listingLink: string;
   /** Hide the listing slot for stations whose active entity has no storefront listing. */
@@ -344,13 +243,7 @@ export function CartonContextCard({
   onToggleTicketView?: () => void;
   /** True while the ticket push column is open — ticket History stays non-pulsing. */
   ticketViewActive?: boolean;
-  /**
-   * Far-left back button that closes the active entity so the right pane
-   * crossfades back to this page's list/history display (in-page — NOT a route
-   * change). Scan-station adapters always pass the host closer that clears
-   * that station's selection SoT (Unbox desk, Testing select-line, Pack /
-   * Shipping controller). Omit only hides the control — never pass a no-op.
-   */
+  /** Far-left back button that closes the active entity so the right pane crossfades back to this page's list/history display (in-page — NOT… */
   onExitToList?: () => void;
   /** Tooltip + aria-label for the back button. Default "Back to list". */
   exitLabel?: string;
@@ -368,19 +261,9 @@ export function CartonContextCard({
    * whatever leaf is open. Omit on Arrival.
    */
   onOpenPhotosDisplay?: () => void;
-  /**
-   * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
-   * Ticket open Displays via the external callbacks. Pill click stays
-   * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
-   * is set.
-   */
+  /** Opt-out: suppress Photos hover toolbar. */
   suppressPhotoHoverGallery?: boolean;
-  /**
-   * Station-owned Photos track (e.g. Pack send-to-phone). When set, occupies
-   * the trailing photos slot instead of {@link ReceivingPhotoButton} — same
-   * geometry as Unbox chrome; never a sibling beside this card. Omit on
-   * receiving stations that use `receivingId` + `ReceivingPhotoButton`.
-   */
+  /** Station-owned Photos track (e.g. */
   photosCell?: ReactNode;
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
@@ -388,26 +271,14 @@ export function CartonContextCard({
   const [overflowOpen, setOverflowOpen] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
   const overflowAnchorRef = useRef<HTMLDivElement | null>(null);
-  // Freeze the responsive decision while a classify menu is open. The row must
-  // not reflow under a pointer that is mid-interaction: a pill changing width
-  // moves out from under the cursor, which fires `mouseleave` and flashes the
-  // menu shut. `openPicker` is exactly "a cell owns the pointer right now".
+  // Freeze the responsive decision while a classify menu is open.
   const { classifyCompact, overflowActions } = useCartonContextBarLayout(
     barRef,
     openPicker != null,
   );
   const overflowSet = new Set<CartonContextActionId>(overflowActions);
 
-  /**
-   * Ownership-scoped: a pill may only clear the slot it actually holds.
-   *
-   * The pills share one hover registry, so crossing from one to the next evicts
-   * the first and BOTH report — the loser "closed", the winner "opened" — in an
-   * order React does not guarantee. A bare `setOpenPicker(null)` from the loser
-   * landing last would clear the winner, unfreezing the bar's layout while its
-   * menu is open: the reflow-under-a-stationary-pointer this row exists to
-   * prevent. Keying the clear on `prev === picker` makes a stale close a no-op.
-   */
+  /** Ownership-scoped: */
   const setClassifyMenu = (
     picker: 'urgency' | 'platform' | 'type',
     next: boolean,
@@ -416,24 +287,10 @@ export function CartonContextCard({
     setOpenPicker((prev) => (next ? picker : prev === picker ? null : prev));
   };
 
-  /**
-   * "Edit" / "Edit colours" on the platform / type menus opens the org catalog
-   * manager — the ONE place `platforms.color_hex` and the catalog rows are
-   * edited ({@link CatalogManagerPopover} → {@link CatalogManagerList}, shared
-   * with the /settings catalog section). It is a single PAGE-CENTERED overlay
-   * (`RightPaneOverlay align="center"`): the carton bar used to also mount an
-   * inline bar-anchored twin of the same list, so one job had two edit surfaces
-   * with two anchorings. Urgency has no entry: it is `receiving.priority_tier`,
-   * not a catalog row, so there is no colour to edit and a dead row would be
-   * worse than its absence.
-   */
+  /** "Edit" / "Edit colours" on the platform / type menus opens the org catalog manager — the ONE place `platforms.color_hex` and the catalog… */
   const [catalogManager, setCatalogManager] = useState<CatalogKind | null>(null);
 
-  // Canonical platform tone/label for the listing chip — same SoT the platform
-  // pill and printed label read, so a platform never presents two ways.
-  // Org-editable platform/type catalogs drive the pickers below (fall back to
-  // the built-in lists until seeded). The platform tone/label resolver reads
-  // the catalog too, so a renamed or custom platform reads correctly here.
+  // Canonical platform tone/label for the listing chip — same SoT the platform pill and printed label read, so a platform never presents two…
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
   const platformTypeRules = usePlatformTypeRules();
@@ -441,24 +298,14 @@ export function CartonContextCard({
   const resolvePlatformMeta = usePlatformMeta();
   const platformMeta = resolvePlatformMeta(platformValue);
 
-  // An imported return shows its PLATFORM on the listing chip; its originating
-  // ORDER# stays a SEPARATE copy chip (the PO#/order# slot below), so the listing
-  // link and the order id each copy/open on their own — never glued into one
-  // "Amazon · <order#>" chip. poDisplay carries the order# (the import sets
-  // receiving.zoho_purchaseorder_number as the display representative).
+  // An imported return shows its PLATFORM on the listing chip; its originating ORDER# stays a SEPARATE copy chip (the PO#/order# slot…
   const isReturn = receivingType.trim().toUpperCase() === 'RETURN';
-  // A serial-resolved outbound order (a return) fills the PO#/order slot only
-  // when the carton has no PO# of its own — never clobber a real bound PO#. Like
-  // an imported-return order#, the lifted linkage reads copy-only (last-8): it is
-  // not a Zoho PO, so no Zoho open + no inline editor.
+  // A serial-resolved outbound order (a return) fills the PO#/order slot only when the carton has no PO# of its own — never clobber a real…
   const linkedReturnOrder = (linkedOrderNumber ?? '').trim();
   const effectiveOrder = poDisplay || linkedReturnOrder;
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
-  // Listing face: brand tile (Amazon) as iconOnly; platforms without tileSrc
-  // use ExternalLink + label (no carton/FBA glyph fallback). Identity last-8
-  // stays on PO# / TRK / ticket. Placeholder text when unbound / no platform.
-  // Same paint ladder as PlatformMark — order `#` + listing ExternalLink.
+  // Listing face:
   const platformIconTone = platformValue ? platformMetaIconTone(platformMeta) : null;
   const listingChipDisplay = platformValue
     ? platformMeta.label
@@ -510,16 +357,7 @@ export function CartonContextCard({
     catalogOptions: platformCatalog.options,
     isUnmatched,
   });
-  /**
-   * Type is a DEPENDENT picklist: platform controls which types are offered
-   * (`platform_type_rules`). An unconstrained platform keeps the full list, so
-   * this narrows nothing until an org authors a rule.
-   *
-   * The current value is always kept in the list even when a rule would now
-   * forbid it. Rules are validated on WRITE, never on read — a carton filed
-   * before the rule existed still shows what it actually is, instead of the
-   * pill rendering blank on a value the row genuinely holds.
-   */
+  /** Type is a DEPENDENT picklist: */
   const allowedTypes = allowedTypesForPlatform(platformTypeRules, platformValue);
   const typeOptions = useMemo(() => {
     const all = typeClassifyOptions({ catalogOptions: typeCatalog.options });
@@ -532,17 +370,7 @@ export function CartonContextCard({
     });
   }, [typeCatalog.options, allowedTypes, receivingType]);
 
-  /**
-   * One legal answer left AND the carton already says it → the pill is not a
-   * question. Show it, do not ask. That is the ergonomic payoff of the
-   * dependency: picking FBA files the carton as a Return without the operator
-   * reaching for the type pill.
-   *
-   * The second half of that condition is load-bearing. A carton filed before
-   * the rule existed can be sitting on a value the rule now forbids; locking
-   * THAT pill would show the operator a wrong answer and take away the control
-   * that fixes it. A rule may remove a choice — it must never strand a carton.
-   */
+  /** One legal answer left AND the carton already says it → the pill is not a question. */
   const typeLocked = isTypeSettledForPlatform(platformTypeRules, platformValue, receivingType);
 
   // Exit chevron — flush cube filling chrome row. Identity run (order #,
@@ -563,14 +391,7 @@ export function CartonContextCard({
   ) : null;
 
   const classifyFace = classifyCompact ? 'dot' : 'label';
-  /**
-   * Middle — the classifications an operator CHOOSES (priority · platform ·
-   * type), absolutely centered. Status is not one of them: it is derived, so it
-   * stays in the identity run with the facts it belongs to.
-   *
-   * Chip face — hover list. Platform / type Edit drops the catalog manager
-   * under this centered cluster (middle display, not right overlay).
-   */
+  /** Middle — the classifications an operator CHOOSES (priority · platform · type), absolutely centered. */
   const classifyCluster = showClassifyControls ? (
     <div
       data-testid="carton-context-classify-pills"
@@ -600,12 +421,7 @@ export function CartonContextCard({
         options={platformOptions}
         value={platformValue}
         onSelect={onPlatformSelect}
-        // The channel is a WORD, not a colour. This pill was pinned to
-        // `collapsedFace="dot"`, so every carton — Amazon, eBay, Unfound alike —
-        // painted a bare dot and the platform name existed only in the
-        // aria-label. Urgency and Type next to it already use `classifyFace`
-        // (label, collapsing to a dot only when the bar runs out of room); the
-        // platform now reads the same way.
+        // The channel is a WORD, not a colour.
         collapsedFace={classifyFace}
         collapsedLabel={
           classifyCompact
@@ -639,32 +455,7 @@ export function CartonContextCard({
   ) : null;
 
 
-  /**
-   * Order id — ONE face for every scan station.
-   *
-   * The link verb is "Link Id", not "Link PO". An unbox operator holds a
-   * carton with SOME identifier on it — a Zoho PO number, a marketplace order
-   * number, an RMA, a supplier reference — and often the system has never seen
-   * it (the order has not been imported yet). Naming the action after one of
-   * those sources told the operator the other four were not allowed here, so
-   * unfound cartons were left unlinked until an import caught up.
-   *
-   * There is no read-only twin. This used to branch on `onEditPo`: hosts that
-   * wired an editor got {@link IdentityLinkChip}, everyone else got a bare
-   * `OrderIdChip dense`. Two components for one job means the read-only station
-   * (Arrival) drifts silently — which is exactly what happened to the tracking
-   * cell below. Whether the menu carries an Edit row is a PROP, not a second
-   * component.
-   *
-   * EMPTY IS A CTA, NOT A PLACEHOLDER. With no order id the face used to be
-   * `—`, which reads as "this carton has no order and there is nothing to do".
-   * The click already opened Package Pairing (`emptyEditActivate` in
-   * `IdentityLinkChip`), so the affordance existed and was invisible. On a host
-   * that wires `onEditPo` the face now says **Pair** and the tooltip names the
-   * destination: tapping the order cell opens the pairing display on the right.
-   * Read-only stations (no `onEditPo`) keep the quiet dash — there, nothing
-   * would happen on click.
-   */
+  /** Order id — ONE face for every scan station. */
   const orderPairCta = !effectiveOrder && !!onEditPo;
   const orderChip = showOrderIdentity ? (
     <IdentityLinkChip
@@ -700,18 +491,7 @@ export function CartonContextCard({
     />
   ) : null;
 
-  /**
-   * Platform mark — the channel fact for a bar with NO classify cluster.
-   *
-   * {@link classifyCluster} is null whenever `showClassifyControls={false}`
-   * (the pack bench), and it carried the only platform face on the bar. What
-   * remained was a TINT on the order `#` glyph and a word inside its hover
-   * label — neither is a fact an operator can read at a glance, which is what
-   * "the platform must display on the carton" asks for.
-   *
-   * Rendered ONLY when the cluster is absent, so a station that already shows
-   * the classify platform pill never paints the same channel twice.
-   */
+  /** Platform mark — the channel fact for a bar with NO classify cluster. */
   const platformFace =
     !classifyCluster && platformValue && platformMeta.value ? (
       <HoverTooltip label={platformMeta.label} asChild focusable={false}>
@@ -724,18 +504,7 @@ export function CartonContextCard({
       </HoverTooltip>
     ) : null;
 
-  /**
-   * Tracking# — ONE face for every scan station; Unbox is the SoT.
-   *
-   * The read-only branch used to paint a bare `TrackingChip dense`, which is a
-   * PROPORTIONAL face inside the same `w-[8ch]` lock the mono face was measured
-   * for. Eight digits did not fit, so Arrival truncated the number from the
-   * wrong end — `052400…` instead of the last-8 the whole product identifies
-   * cartons by. Same data, same lock, two type faces: the fork WAS the bug.
-   *
-   * Edit is a prop. A station that wires no editor simply gets a menu without
-   * an Edit row.
-   */
+  /** Tracking# — ONE face for every scan station; Unbox is the SoT. */
   const trackingExtraBoxes =
     filledExtraTrackingsCount > 0 ? (
       <HoverTooltip
@@ -932,12 +701,7 @@ export function CartonContextCard({
 
   const overflowMenu =
     overflowItems.length > 0 ? (
-      /**
-       * Same panel as every other cell on this bar — the ⋯ differs only in
-       * being CLICK-opened (there is no identity to peek at, so hover would be
-       * a trap for a pointer crossing the bar). It was a Radix `DropdownMenu`;
-       * the rows now come from the one row renderer.
-       */
+      /** Same panel as every other cell on this bar — the ⋯ differs only in being CLICK-opened (there is no identity to peek at, so hover would… */
       <div ref={overflowAnchorRef} className="flex h-full shrink-0 items-stretch">
         <StationContextIconCell
           ariaLabel="More actions"
@@ -1008,11 +772,7 @@ export function CartonContextCard({
         ) : null}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
           {platformFace}
-          {/* Order # is a copy/menu target, so it gets the same cell box as
-              every other interactive cell. The chip itself is `inline-flex` and
-              centred — without this h-full wrapper its hover box would be
-              shorter than the pills' and the strip would delineate at two
-              heights. */}
+          {/* Order # is a copy/menu target, so it gets the same cell box as every other interactive cell. */}
           {orderChip ? (
             <div className={STATION_CHROME_HOVER_CELL_CLASS}>{orderChip}</div>
           ) : null}

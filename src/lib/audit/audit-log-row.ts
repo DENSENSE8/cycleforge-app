@@ -1,27 +1,4 @@
-/**
- * One row of the audit desk — an `audit_logs` row joined to its actor, made
- * wire-safe.
- *
- * Lifted out of `/settings/audit/page.tsx` so the RSC page, the resolver and
- * the adapter all name the same shape. The page is a server component and the
- * table is a client island, so this is the type that crosses the boundary.
- *
- * Two things change on the way out, and nothing else:
- *
- * - `created_at` becomes an ISO STRING, not a `Date`. A slot resolver must
- *   return the same text for the same row at any time (see
- *   `inventory-events-resolve.ts`), and an instant that has to survive the RSC
- *   boundary is a string on both sides of it.
- * - `metadata` / `before_data` / `after_data` are DROPPED. The desk selects
- *   them and paints none of them: the before/after diff was never built (see
- *   the page docblock, corrected 2026-09-12). Three JSONB blobs per row × 50
- *   rows is real payload for a feature that does not exist, so the query row
- *   names them as read-and-discarded and the desk row does not carry them. The
- *   day a diff plane ships, it adds them here and a catalog fact each.
- *
- * Field names stay snake_case — the wire names the catalog documents in its
- * `paths`.
- */
+/** One row of the audit desk — an `audit_logs` row joined to its actor, made wire-safe. */
 
 /** The raw `SELECT` shape the audit page reads out of `audit_logs`. */
 export interface AuditLogQueryRow {

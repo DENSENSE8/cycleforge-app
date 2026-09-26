@@ -1,17 +1,4 @@
-/**
- * POST /api/integrations/nango/connected
- *
- * Called by the admin UI after the Connect UI fires its `connect` event.
- * Persists a lightweight marker (no secret) in organization_integrations so
- * the integrations grid shows the connection and later proxy/token calls know
- * which Nango connection to use. Tokens stay inside Nango's own store.
- *
- * Body: { provider, connectionId, providerConfigKey, displayLabel? }
- *
- * The connectionId/providerConfigKey come from Nango's connect event payload;
- * we trust them only as far as the (org-scoped) marker — no credentials are
- * derived from the client here.
- */
+/** POST /api/integrations/nango/connected */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -1,21 +1,4 @@
-/**
- * Per-SKU bins catalog guards, materialization and adapter behaviour — the
- * family that replaced `/inventory/health/sku/[sku]`'s five hand-written
- * `AdminTableColumn` objects for bin distribution.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - the NON-FORK. `bins` (Warehouse › Bins overview) is a DIFFERENT document
- *   about a different entity — a row there is a location with aggregates over
- *   every SKU inside it. A future agent reading "bins already exist" will be
- *   tempted to reuse that catalog or copy its aggregate facts; this file fails
- *   the day one of those names appears here.
- * - the LEVEL SoT. The state pill and the bound `level` track must say the same
- *   word, so both read `skuBinLevel` and the test pins the four cases against
- *   the predicates `location-queries.ts` publishes.
- * - the CLOCK face. The retired cell printed `toLocaleString()` — day AND time
- *   — so both DATES lines are used rather than hiding the time in a tip.
- */
+/** Per-SKU bins catalog guards, materialization and adapter behaviour — the family that replaced `/inventory/health/sku/[sku]`'s five… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -285,10 +268,8 @@ describe('sku-bins row view', () => {
     assert.equal(view.id, '4120');
     assert.equal(view.title, 'Dell Latitude 5520');
     assert.equal(view.note, 'LAT5520-A');
-    // The bin is a LOCAL handle, so it rides `identityFace` — not `orderId`,
-    // which would inherit the marketplace dot and the open-on-platform menu
+    // The bin is a LOCAL handle, so it rides `identityFace` — not `orderId`, which would inherit the marketplace dot and the open-on-platform menu
     // (operator 2026-09-14). This line pinned `orderId` from before that
-    // migration and had been asserting a field the family stopped setting.
     assert.deepEqual(view.identityFace, { value: 'A · R2 · C4', label: 'Bin' });
     assert.equal(view.orderId, null);
     assert.equal(view.stateLabel, 'Stocked');

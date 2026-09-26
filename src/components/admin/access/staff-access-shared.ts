@@ -1,10 +1,4 @@
-/**
- * Shared types + small formatters for the StaffAccessDetail card set.
- *
- * Extracted from the former 1361-line StaffAccessDetail.tsx so the detail
- * hook, the individual cards, and the pure permission-matrix module can all
- * import one source of truth. No React in here — keep it import-light.
- */
+/** Shared types + small formatters for the StaffAccessDetail card set. */
 
 export interface DetailEnvelope {
   staff: {

@@ -1,22 +1,4 @@
-/**
- * Global proxy (formerly `middleware.ts`). Handles two concerns:
- *
- * 1. Auth gate (shadow + enforce modes) — checks for the session cookie,
- *    attaches `x-pathname` to the request headers, and either passes
- *    through (shadow), redirects HTML to /signin, or returns 401 JSON
- *    for API routes when AUTH_V2_ENABLED is set.
- *
- * 2. Legacy QR-code rewrites — printed labels point to /m/b and /m/l;
- *    rewrite those to their canonical app paths in-place (no extra
- *    round-trip). Device-specific routes (/m/enroll, /m/r/*, /m/u/*,
- *    /m/scan) stay at /m/* untouched.
- *
- * Edge runtime caveat: this file is bundled for the Edge runtime, where
- * `node:crypto`, `pg`, and the existing pool can't run. It does NOT touch
- * the database — it only checks for cookie presence. The actual session
- * lookup happens inside Node-runtime route handlers via `withAuth` /
- * `requirePermission`.
- */
+/** Global proxy (formerly `middleware.ts`). */
 
 import { NextRequest, NextResponse } from 'next/server';
 // Dependency-free by construction (see its docblock) — safe in an edge bundle.
@@ -39,11 +21,6 @@ import {
 } from '@/lib/vercel/skew-pin';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
-// Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
-// LEGACY_SESSION_COOKIE_NAME). During the cookie rename the edge accepts EITHER
-// the canonical `cf_sid` or the legacy `usav_sid` — the migrate-on-touch to a
-// single cf_sid happens in the /api/auth/session heartbeat (Node runtime).
-// Kiosk host helpers are pure string/env (no db) — safe to import here.
 const SESSION_COOKIE_NAME = 'cf_sid';
 const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
 
@@ -75,10 +52,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
-  /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
-  // Anonymous share-pack read + zip download by token — a token IS the
-  // capability. The `[^/]+` requires a token segment, so the bare collection
-  // route (`POST /api/photos/share-packs`, create) stays gated by withAuth.
+  /^\/share\/photos\//,                 // public photo share-pack viewer (token capability) Anonymous share-pack read + zip download by token — a token IS the capability.
   /^\/api\/photos\/share-packs\/[^/]+/,
   /^\/api\/auth\//,
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
@@ -89,10 +63,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/cron\//,                     // Vercel-cron-fired routes (auth via CRON_SECRET inside handler)
   /^\/api\/webhooks\//,                 // carrier + Stripe + integration callbacks
   /^\/api\/billing\/webhook(?:$|\/)/,   // Stripe webhook needs raw body, no cookie
-  /^\/api\/forge\/ingest(?:$|\/)/,      // Cycle Forge loop ingress (auth via FORGE_INGEST_TOKEN inside handler)
-  // GS1 Digital Link resolver — same printed QR serves both audiences.
-  // The handler itself branches on session cookie: authed staff get
-  // contextual redirects, anon callers bounce to the public storefront.
+  /^\/api\/forge\/ingest(?:$|\/)/,      // Cycle Forge loop ingress (auth via FORGE_INGEST_TOKEN inside handler) GS1 Digital Link resolver — same printed QR serves both audiences.
   /^\/gs1\/resolve(?:$|\/)/,
   /^\/01\/[0-9]+(?:$|\/)/,
   // Generic anon landing for a scanned code that resolved to no entity —
@@ -110,10 +81,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/.well-known\//,
 ];
 
-// Hostnames that should NOT be treated as a tenant subdomain. Anything else
-// of the form `slug.<root>` is extracted as a tenant slug and stamped onto
-// the request headers so downstream handlers can resolve the org without a
-// per-request hit on the DB at the edge.
+// Hostnames that should NOT be treated as a tenant subdomain.
 const RESERVED_SUBDOMAINS = new Set<string>([
   'www',
   'app',
@@ -145,10 +113,7 @@ function extractTenantSlug(host: string | null): string | null {
   // subdomain there is the project, not a tenant. Cheap heuristic: any host
   // ending in .vercel.app skips slug extraction.
   if (cleaned.endsWith('.vercel.app')) return null;
-  // Dev tunnel hostnames (Cloudflare quick tunnels, ngrok) carry a random
-  // subdomain that is not a tenant. Without this, e.g. quiet-frog-1234 from
-  // quiet-frog-1234.trycloudflare.com resolves to an unknown org and every
-  // org-scoped query (staff picker, etc.) comes back empty on the phone.
+  // Dev tunnel hostnames (Cloudflare quick tunnels, ngrok) carry a random subdomain that is not a tenant.
   if (
     cleaned.endsWith('.trycloudflare.com') ||
     cleaned.endsWith('.ngrok-free.app') ||
@@ -168,11 +133,7 @@ const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
   { prefix: '/m/l/', target: '/receiving/lines/' },
 ];
 
-// Dual-route pages that have a dedicated mobile counterpart. When the request
-// comes from a phone-class device we rewrite at the edge before any JS runs,
-// so old browsers that can't hydrate the React tree still get the right view.
-// Exact path match only — sub-pages (e.g. /receiving/lines/[id]) are not
-// rewritten because they have no /m/ counterpart.
+// Dual-route pages that have a dedicated mobile counterpart.
 const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
   // Packing has a dedicated phone history and capture-evidence face. It stays
   // a partial completion path until mobile pack confirmation is implemented.
@@ -183,31 +144,13 @@ const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
 ]);
 
 // Phones only — exclude iPad/Android tablets so they keep the desktop view.
-// Android phone UA always contains "Mobile"; tablets omit it. iPadOS reports
-// a macOS UA (no "iPad" token) so it falls through here as desktop, which is
-// the desired behavior. Old iOS and old Android phones do match this pattern.
 const MOBILE_UA_RE = /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((re) => re.test(pathname));
 }
 
-/**
- * Auth enforcement is unconditional. The proxy never serves a page or API
- * route to an unauthenticated client outside the PUBLIC_PATHS allowlist
- * (/signin, /not-authorized, /m/enroll/*, /api/auth/*, static assets).
- *
- * 🚨 BREAK-GLASS ESCAPE HATCH (operator-only, not for normal rollout):
- *   AUTH_V2_ENABLED=false (or "0", "shadow", "off")
- *     → proxy stops redirecting/401-ing unauthenticated requests
- *     → `withAuth` and `requirePermission` STILL enforce per-route/per-page
- *     → so disabling this only removes the edge redirect, not the actual auth
- *
- * The downstream wrappers no longer honour this flag (Phase 1, 2026-05-17) —
- * they always enforce. The flag survives at proxy level only as a knob for
- * the rare case where the edge-runtime cookie check itself misfires and ops
- * needs to fall back to wrapper-level enforcement.
- */
+/** Auth enforcement is unconditional. */
 function isAuthV2Enabled(): boolean {
   const v = (process.env.AUTH_V2_ENABLED ?? '').toLowerCase().trim();
   return v !== 'false' && v !== '0' && v !== 'shadow' && v !== 'off';
@@ -229,28 +172,7 @@ function resolveMobileUaRewrite(pathname: string, ua: string | null): string | n
   return MOBILE_UA_REWRITES.get(pathname) ?? null;
 }
 
-/**
- * Surface-migration redirect (Studio-driven operator surfaces refactor). The
- * Unbox + Triage + Incoming + Pickup + History receiving modes graduated to their
- * own first-class routes (`/unbox`, `/triage`, `/incoming`, `/pickup`,
- * `/receiving/history`), so the address bar names the operator's job. Bare
- * `/receiving` (the Unbox default) and each `/receiving?mode=…` normalize to the
- * new canonical URL, dropping the now-redundant `mode` param (mode-specific
- * search params like History's `?q=`/`?field=`/`?scope=` ride along). Exact path
- * only — sub-routes (`/receiving/lines/[id]`, `/receiving/history`,
- * `/receiving/unfound`, …) keep their URLs.
- *
- * FOH/BOH split redirect matrix (lane 05·P5) — this function is the single
- * source for the `/receiving?mode=` legacy family:
- *   `?mode=pickup`  → `/pickup`             (Local Pickup mode)
- *   `?mode=repair`  → `/repair`             (Repair mode)
- *   `?mode=history` → `/incoming?lane=docked` (Inbound desk Docked lane)
- * The rest of the matrix:
- *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
- *   `/walk-in?mode=repair|repairs` browse → `/dashboard?mode=repairs`
- *   `/walk-in?mode=repair` + `new`/`openRepair` → `/repair` (task door)
- *   `/walk-in?mode=sales` / other `?category=` → in-page (`useWalkInTaskRedirect`)
- */
+/** Surface-migration redirect (Studio-driven operator surfaces refactor). */
 function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/receiving') return null;
   const mode = url.searchParams.get('mode');
@@ -303,21 +225,7 @@ function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextReque
   return next;
 }
 
-/**
- * Legacy shipment-history doors → the Shipped desk.
- *
- * `/shipping/orders?shipped=` and `/dashboard?shipped=` both used to mean "show
- * me what already left" on a page whose job is now open work only. This is the
- * one hop that keeps those bookmarks alive: the shipped vocabulary
- * (`shippedWeekOffset`, `carrier`, `dateFrom`, …) rides across unchanged and is
- * read by the same `resolveShippedQueryArgs` on the other side, while the
- * open-queue keys are dropped — a history page wearing a queue's filters is a
- * page that can only render nothing.
- *
- * Ordered BEFORE `resolveDashboardOutboundRedirect` on purpose: that rule would
- * otherwise claim `/dashboard?shipped=` for To ship and cost a second hop to
- * get here.
- */
+/** Legacy shipment-history doors → the Shipped desk. */
 function resolveShippedDeskRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (!isLegacyShippedDeskUrl(url.pathname, url.searchParams)) return null;
   const next = url.clone();
@@ -367,13 +275,7 @@ function resolveSupportOrdersRedirect(url: NextRequest['nextUrl']): NextRequest[
   return next;
 }
 
-/**
- * Walk-In job-switcher redirect. `/pickup?job=repair` was how the short-lived
- * "Walk-In station" addressed its Repair job; Repair is now its own Receiving
- * mode at `/repair`. `?job=sales` had no mode of its own — Sales lives on the
- * `/walk-in` Sales page — so it lands there. Any other `?job=` (incl. `pickup`,
- * the default) is just Local Pickup: strip the param and stay.
- */
+/** Walk-In job-switcher redirect. */
 function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/pickup' && url.pathname !== '/pickup/') return null;
   const job = url.searchParams.get('job');
@@ -384,13 +286,7 @@ function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nex
   return next;
 }
 
-/**
- * Sales-hub Repair mode redirect (dual-door RepairTable).
- *
- * Browse bookmarks (`mode`/`category` = repair|repairs, no task keys) → Sales
- * history desk `/dashboard?mode=repairs`. Task deep-links (`new`, `openRepair`)
- * → station `/repair`. Preserve queue params (`tab`, `search`, `sort`, `dir`).
- */
+/** Sales-hub Repair mode redirect (dual-door RepairTable). */
 function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/walk-in' && url.pathname !== '/walk-in/') return null;
   const mode = url.searchParams.get('mode');
@@ -412,14 +308,7 @@ function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextReque
   return next;
 }
 
-/**
- * Pack-surface redirect (operator-surfaces refactor Phase 7). The packing station
- * graduated from `/packer` to the first-class `/pack` route, so the address bar
- * names the operator's job. Bare `/packer` (and `/packer/`) normalize to `/pack`,
- * preserving the `?packMode=` sub-view param. Exact path only — no `/packer`
- * sub-routes exist, but guard against a future one leaking. Every device lands here:
- * packing is desktop-only (2026-09-14 mobile ruling) and the phone rewrite is gone.
- */
+/** Pack-surface redirect (operator-surfaces refactor Phase 7). */
 function resolvePackSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/packer' && url.pathname !== '/packer/') return null;
   const next = url.clone();
@@ -428,14 +317,7 @@ function resolvePackSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['n
   return next;
 }
 
-/**
- * Test-surface redirect (operator-surfaces refactor Phase 8). The testing station
- * graduated from `/tech` to the first-class `/test` route, so the address bar
- * names the operator's job. `/tech` (and `/tech/`) normalize to `/test`,
- * preserving `?view=testing` (and rewriting legacy `?view=testing-history` →
- * `?view=testing` — history browse now lives inside Testing mode).
- * Exact path only — the `/tech/*` sub-routes (none today) keep their URLs.
- */
+/** Test-surface redirect (operator-surfaces refactor Phase 8). */
 function resolveTestSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/tech' && url.pathname !== '/tech/') return null;
   const next = url.clone();
@@ -471,23 +353,14 @@ function resolveTestingHistoryViewRedirect(url: NextRequest['nextUrl']): NextReq
   return next;
 }
 
-// Per-section browse filters — mirrors SYSTEM_SAVED_VIEWS in
-// `src/lib/operations/saved-view-presets.ts`, INLINED here to keep the Edge
-// bundle self-contained (this file's convention; see SESSION_COOKIE_NAME). The
-// `view` marker highlights the matching preset chip on landing.
+// Per-section browse filters — mirrors SYSTEM_SAVED_VIEWS in `src/lib/operations/saved-view-presets.ts`, INLINED here to keep the Edge…
 const AUDIT_LOG_SECTION_PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   receiving: { stations: 'RECEIVING', sources: 'sal,inventory', view: 'sys:receiving-audit' },
   packing: { stations: 'PACK', view: 'sys:pack-audit' },
   tech: { stations: 'TECH', view: 'sys:tech-audit' },
 };
 
-/**
- * Redirect a legacy `/audit-log/*` URL to its Operations History equivalent
- * (plan §4.1), preferring a system saved-view preset and carrying record params
- * across. **Unconditional as of the Phase 7 cutover** — the `/audit-log` route
- * files are removed, so these URLs (bookmarks / old links) must always land on
- * History rather than 404. (`/settings/audit` is a distinct route, unaffected.)
- */
+/** Redirect a legacy `/audit-log/*` URL to its Operations History equivalent (plan §4.1), preferring a system saved-view preset and… */
 function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   const p = url.pathname;
   if (p !== '/audit-log' && !p.startsWith('/audit-log/')) return null;
@@ -552,19 +425,8 @@ function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['next
 }
 
 /**
+ * Security response headers.
  * Security response headers. Attached to every response we hand back from
- * the proxy (rewrite, next, redirect, 401). Conservative defaults that
- * preserve the app's existing functionality:
- *
- *  - Camera is allowed on same-origin only (mobile receiving photo capture).
- *  - USB + Serial allowed same-origin only — browser-native silent label
- *    printing (WebUSB / Web Serial) in Settings → Hardware. Without `usb=(self)`
- *    `navigator.usb.requestDevice()` throws "disallowed by permissions policy".
- *  - Mic / geolocation / payment all disabled by default.
- *  - frame-ancestors 'self' (CSP) + X-Frame-Options DENY — defense in depth.
- *  - HSTS with 1y max-age + subdomains. Don't preload yet (irreversible).
- *  - Referrer policy trims cross-origin leak surface.
- *  - nosniff blocks MIME confusion attacks.
  */
 const PERMISSIONS_POLICY = [
   'camera=(self)',
@@ -677,11 +539,7 @@ export function proxy(req: NextRequest): NextResponse {
   // build a `?next=` query when it redirects to /signin.
   const requestHeaders = new Headers(req.headers);
   requestHeaders.set('x-pathname', rewriteTarget ?? pathname);
-  // …and the query beside it. A ROOT LAYOUT is handed no `searchParams`, so a
-  // shell-level paint seed (`maybeSeedShell`) could otherwise only be gated on
-  // the path — and on a station whose tabs live in the URL that means paying
-  // for a seed the mounted tab will never read. Empty string when there is no
-  // query; never used for auth or routing.
+  // …and the query beside it.
   requestHeaders.set('x-search', req.nextUrl.search);
 
   // Stamp the tenant slug (if any) so downstream handlers can resolve the

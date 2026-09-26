@@ -2,15 +2,7 @@
 
 /**
  * The ONE staff-choice row — shared by every "pick a person" face on signin:
- * the station roster (StaffPickerList), the after-email staff picker on
- * /signin, and the workstation QR-auth identity display.
- *
  * Layout is the operator-pinned email-flow display (2026-09-08): rounded
- * card-row, avatar, name, role eyebrow, chevron (when picking), blue dot on
- * recent. The icon is the StaffAvatar SoT (photo or colour hex) — never a
- * hand-rolled initials span. Omit `onPick` for a display-only row (no
- * chevron, not a button). `pill` carries state chips so the station roster
- * keeps its behavior without a second row shape.
  */
 
 import type { ReactNode } from 'react';

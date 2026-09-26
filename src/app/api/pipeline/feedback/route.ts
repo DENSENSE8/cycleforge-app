@@ -1,11 +1,4 @@
-/**
- * POST /api/pipeline/feedback
- *
- * Submit a human rating for a training sample. This lets you manually
- * upgrade or downgrade sample quality to improve training data.
- *
- * Body: { sampleId: number, rating: number (1-5) }
- */
+/** POST /api/pipeline/feedback */
 
 import { db } from '@/lib/drizzle/db';
 import { trainingSamples } from '@/lib/drizzle/schema';

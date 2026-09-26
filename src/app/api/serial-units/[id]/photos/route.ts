@@ -12,25 +12,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Serial-unit photo endpoint — photos a packer captures when scanning a
- * pre-packed product's QR at the pack station. Linked via photo_entity_links
- * (entity_type='SERIAL_UNIT', entity_id=serial_units.id).
- *
- * Photos live on the office NAS (browser-direct WebDAV PUT), not Vercel Blob —
- * the same model receiving uses. This route never handles bytes; the browser
- * writes the file to the NAS and POSTs the resulting `photoUrl`(s) here to link.
- *
- * The `[id]` segment resolves a numeric serial_units.id, a serial_number, OR a
- * minted unit_uid ({SKU}-{YYWW}-{SEQ6}) — the last is what a scanned label QR
- * carries — so the same id a packer scans resolves here.
- *
- * GET  → { photos: [{id,url,photo_type,uploaded_by,created_at}], nasBaseUrl,
- *          initialNasFolder } — list + the NAS config the capture surface needs.
- * POST → attach one or many NAS photo URLs ({ photoUrl } or { photoUrls: [] }),
- *        then emit ONE `NOTE` inventory_event so the capture shows on the unit's
- *        timeline (the detail panel already renders inventory_events).
- */
+/** Serial-unit photo endpoint — photos a packer captures when scanning a pre-packed product's QR at the pack station. */
 
 function extractIdSegment(pathname: string): string {
   const m = /\/api\/serial-units\/([^/]+)\/photos/.exec(pathname);
@@ -103,10 +85,7 @@ export const GET = withAuth(
 
       return NextResponse.json({
         success: true,
-        // Numeric serial_units.id, so a caller that scanned a label handle
-        // (U-{serial} / GS1 / unit_uid) can resolve the canonical id in one
-        // read — the packer testing-photo scan uses this to key the phone
-        // upload's entityId + the desktop realtime refresh.
+        // Numeric serial_units.id, so a caller that scanned a label handle (U-{serial} / GS1 / unit_uid) can resolve the canonical id in one read…
         unit_id: unit.id,
         photos: rows.map((row) => ({
           id: row.id,
@@ -160,10 +139,7 @@ export const POST = withAuth(
         Number.isFinite(packerLogIdRaw) && packerLogIdRaw > 0 ? packerLogIdRaw : null;
       const poRef = String(body.poRef ?? body.orderId ?? '').trim() || null;
 
-      // Origin allowlist — same security boundary receiving uses now that we
-      // trust a client-supplied URL: it must point at the org's configured NAS
-      // (test or prod) or the same-origin dev proxy. Permissive only when
-      // NOTHING is configured, so un-migrated orgs keep working.
+      // Origin allowlist — same security boundary receiving uses now that we trust a client-supplied URL:
       const org = await getOrganization(ctx.organizationId as OrgId);
       const allowedBases = org ? getAllNasBaseUrls(org.settings) : [];
       const envBase = (process.env.NEXT_PUBLIC_NAS_PHOTOS_BASE_URL || '').replace(/\/+$/, '');

@@ -1,13 +1,4 @@
-/**
- * Incoming delivery-state presentation SoT — short grid labels + long tile titles.
- *
- * Grid icons (`ReceivingDeliveryStateIcon` cluster) and sidebar hunt tiles
- * ({@link TILES}) must not drift into parallel vocabularies. Icons, short
- * hover tips, tile labels, and long filter-education titles live here once.
- *
- * Dependency-light (icons + types only) so both client components and any
- * future server copy can import without dragging UI.
- */
+/** Incoming delivery-state presentation SoT — short grid labels + long tile titles. */
 
 import type { ComponentType } from 'react';
 import {

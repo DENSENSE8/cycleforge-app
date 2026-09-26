@@ -1,18 +1,4 @@
-/**
- * Shared forced-tool-call against the local Hermes gateway.
- *
- * Generalizes the proven pattern in `src/lib/po-gmail/extract-llm.ts`: a
- * single OpenAI-style chat-completions request that FORCES one tool call
- * (`tool_choice`), runs at `temperature: 0`, and returns the parsed tool
- * arguments. Local-only — posts to HERMES_API_URL with the model named in
- * AI_MODEL (default `gemma-4-e4b`). No cloud fallback: if the gateway is
- * down or the model returns invalid output, the caller gets a clear error.
- *
- * Every "agent does work" feature (PO extraction, claim drafting, …) should
- * route through here so the gateway plumbing lives in exactly one place. The
- * caller owns the system prompt, the tool schema, and how it interprets the
- * returned args.
- */
+/** Shared forced-tool-call against the local Hermes gateway. */
 
 import { postToAiProvider } from '@/lib/ai/failover';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
@@ -39,15 +25,7 @@ export interface HermesToolCallInput {
   temperature?: number;
   /** Defaults to 1024. */
   maxTokens?: number;
-  /**
-   * Whose provider chain serves this call — REQUIRED, never defaulted.
-   *
-   * This used to be a pre-resolved `provider` config, which meant every caller
-   * duplicated the same resolve-and-null-check and none of them could fail
-   * over. Taking the org instead lets this function own the chain, so a cold
-   * or unreachable local box falls forward to cloud instead of throwing
-   * (backend-patterns.md → a safety classification is a REQUIRED parameter).
-   */
+  /** Whose provider chain serves this call — REQUIRED, never defaulted. */
   orgId: OrgId;
 }
 
@@ -112,12 +90,7 @@ export async function hermesToolCall<T = unknown>(
         },
       },
     ],
-    // Force a tool call — without this, small models occasionally answer with
-    // prose ("Sure! Here's what I found:") instead of calling the tool. We send
-    // exactly one tool, so `"required"` forces *that* tool. We use the string
-    // form (not `{type:'function',function:{name}}`) because it's portable:
-    // LM Studio only accepts none|auto|required, while OpenAI-compatible
-    // gateways accept "required" too.
+    // Force a tool call — without this, small models occasionally answer with prose ("Sure!
     tool_choice: 'required',
   };
 

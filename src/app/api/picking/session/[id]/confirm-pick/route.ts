@@ -2,22 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { confirmPick } from '@/lib/picking/sessions';
 
-/**
- * POST /api/picking/session/[id]/confirm-pick
- *
- * Records a confirmed pick for one allocation: flips the unit
- * ALLOCATED → PICKED via the state machine and the allocation row's `state`
- * column in one transaction.
- *
- * Body: { allocation_id: number, client_event_id?: string,
- *         tote_scan?: string }
- *
- * `tote_scan` — the tote (handling unit) the picker armed for this session:
- * `H-{id}`, a numeric id, or an external tote barcode. When present the same
- * transaction binds the picked unit into that tote and stamps the
- * tote↔order pairing (one tote carries one order). A tote paired to a
- * different order, or not OPEN/STAGED, 409s before anything is written.
- */
+/** POST /api/picking/session/[id]/confirm-pick */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
@@ -42,12 +27,7 @@ export const POST = withAuth(async (request, ctx) => {
   const toteScan =
     typeof body?.tote_scan === 'string' && body.tote_scan.trim() ? body.tote_scan.trim() : null;
   try {
-    // Thread the caller's tenant id so the shared module org-gates the
-    // order_unit_allocations read/write (WHERE id=$1 AND organization_id=$2 →
-    // 404 on a foreign-org allocation, never 403), runs inside a GUC-wrapped
-    // transaction, and forwards orgId to transition() so the serial_units
-    // mutation is org-scoped and the inventory_event is stamped to the real
-    // tenant — closes the cross-tenant flip-to-PICKED leak.
+    // Thread the caller's tenant id so the shared module org-gates the order_unit_allocations read/write (WHERE id=$1 AND organization_id=$2 →…
     const result = await confirmPick({
       sessionId,
       allocationId,

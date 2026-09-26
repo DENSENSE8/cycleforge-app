@@ -5,12 +5,7 @@ import { usePlatformMeta } from '@/hooks/useCatalog';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import type { ReceivingClaimController } from '../hooks/useReceivingClaimController';
 
-/**
- * Compact Create-surface helper after empty tracking-seeded Link search
- * auto-flips to Create. Dense chip row (order · tracking last-8), not Link’s
- * “Pick the existing ticket…” prose. Only mounts when the controller flagged
- * the flip (not on a manual Create pick).
- */
+/** Compact Create-surface helper after empty tracking-seeded Link search auto-flips to Create. */
 export function ClaimEmptySeedCreateHelper({ c }: { c: ReceivingClaimController }) {
   if (c.mode !== 'create' || !c.autoCreateFromEmptyTracking) return null;
 

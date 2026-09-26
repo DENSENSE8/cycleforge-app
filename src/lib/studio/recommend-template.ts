@@ -1,20 +1,4 @@
-/**
- * recommend-template — rank EXISTING catalog templates against a shop's intake
- * description (Template Platform Phase 5, the "recommend a template slug" half).
- *
- * The output is always a subset of slugs that ALREADY EXIST in the candidate set
- * — the recommender can never invent a slug, so a recommendation is always
- * installable via the existing chooser/import path (activate policy unchanged; a
- * recommendation NEVER activates anything, it just ranks). This is the safe,
- * deterministic core; an optional injected `rerank` hook lets an LLM reorder the
- * shortlist, but its output is filtered back to known slugs so a hallucinated
- * slug is dropped, not surfaced.
- *
- * Pure + DB-free: the caller passes the candidate templates (read from the
- * catalog) and an optional rerank dep. Deterministic scoring uses simple token
- * overlap + a category-match bonus — good enough to order a handful of vertical
- * templates, and fully testable without a model.
- */
+/** recommend-template — rank EXISTING catalog templates against a shop's intake description (Template Platform Phase 5, the "recommend a… */
 
 export interface IntakeProfile {
   /** Free-text description of how the shop runs ops (the onboarding intake). */
@@ -95,12 +79,7 @@ function scoreCandidate(intakeTokens: Set<string>, intakeCategory: string | null
   return score;
 }
 
-/**
- * Rank the candidate templates for the intake. Returns the top `limit` by score
- * (desc, ties broken by slug for stability), each with a short reason. When a
- * `rerank` dep is supplied it reorders the shortlist, but its result is filtered
- * back to known candidate slugs so it can only ever reorder/subset — never invent.
- */
+/** Rank the candidate templates for the intake. */
 export async function recommendTemplates(
   intake: IntakeProfile,
   candidates: TemplateCandidate[],

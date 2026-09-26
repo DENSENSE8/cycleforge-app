@@ -4,12 +4,7 @@ import assert from 'node:assert/strict';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getActiveReasonCodes, updateReasonCode } from './reason-codes-queries';
 
-/**
- * Cross-org isolation for the Class-D reason resolver (D1). getActiveReasonCodes
- * reads through tenantQuery (GUC app.current_org) AND filters organization_id —
- * one org must never see another's substitution vocabulary. DB-gated: skips when
- * DATABASE_URL is absent (mirrors tenancy/idor-regression.test.ts).
- */
+/** Cross-org isolation for the Class-D reason resolver (D1). */
 
 const HAS_DB = !!process.env.DATABASE_URL;
 const ORG_A: OrgId = '00000000-0000-0000-0000-00000000fa01';

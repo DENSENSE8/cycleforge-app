@@ -1,11 +1,4 @@
-/**
- * POST /api/auth/passkey/authenticate/finish
- *
- * Body: { response: AuthenticationResponseJSON, deviceKind?, deviceLabel?, persistent? }
- *
- * Verifies the assertion, bumps the credential counter, creates a session,
- * sets the cookie. Same downstream behaviour as PIN signin.
- */
+/** POST /api/auth/passkey/authenticate/finish */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
@@ -97,10 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
     }
 
-    // Sign-in == clock-in (soft gate — never blocks). When a shift is
-    // active, session expires at shift end and the punch is tied to it.
-    // Otherwise the punch is off-the-books and the session uses the
-    // device-kind default window.
+    // Sign-in == clock-in (soft gate — never blocks).
     const activeShift = await findActiveShift(staffRow.id);
 
     const session = await createSession({

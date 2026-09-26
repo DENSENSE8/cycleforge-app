@@ -1,19 +1,4 @@
-/**
- * Receiving sidebar-rail quantity — floor units counted vs expected.
- *
- * The meter shows `receiving_line.quantity_received`. Zoho does not zero it.
- * Staff face is the local row; provider confirmation is a hover tip, not a 0/1.
- *
- * Four strategies:
- *   - `received` → Unboxed / Viewed: counted / expected
- *   - `scanned`  → Queue / Prioritize: door scan = whole carton
- *   - `unfound`  → Unfound stubs: same counted/expected as `received`
- *   - `combined` → Triage union: unmatched→unfound, else→scanned
- *   - `tested`   → QC Recent: recorded verdicts / received
- *
- * Row anatomy + popover live in RecentActivityRailBase — they call
- * `getPreviewQty` / `RAIL_QTY`.
- */
+/** Receiving sidebar-rail quantity — floor units counted vs expected. */
 
 import type { ReactNode } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

@@ -42,12 +42,7 @@ import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
 import { TechAllGridRow } from './TechAllGridRow';
 import { useTechAllTableLayout } from './useTechAllTableLayout';
 
-/**
- * Row order for a column sort, keyed by SORT FACT — the structural `identity`
- * plus catalog field ids (`techAllSortFactFor` maps a mounted column to one),
- * so a `?colsort=` key resolves through the mounted model and rebinding a slot
- * re-points the sort with it.
- */
+/** Row order for a column sort, keyed by SORT FACT — the structural `identity` plus catalog field ids (`techAllSortFactFor` maps a mounted… */
 function compareTechAllRows(
   a: TechAllTriageRow,
   b: TechAllTriageRow,

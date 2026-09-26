@@ -49,9 +49,6 @@ export * from './procedure';
 export * from './item-record';
 export * from './milestone-pipeline';
 // Desk page chrome — the frame every non-scan desk wears (SoT, 2026-08-31).
-// FLAT, not a `desk/` subdirectory: design-mcp's catalog walk is a
-// non-recursive readdir over this folder, so a nested file is a primitive the
-// contract server can never serve — and unservable law is not law.
 export * from './DeskPageChrome';
 export * from './DeskStageContext';
 export * from './DeskActionSlot';

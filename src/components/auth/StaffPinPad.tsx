@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Themed PIN numpad. Mounted from /signin (the SwitchStaffSheet went
- * PIN-less 2026-09-15 — it act-as mints without a pad now).
- *
- * Auto-submits on the 6th digit. Renders a passkey button when the staff has
- * passkeys registered (caller toggles `enablePasskey`). Keep callers thin —
- * this component owns the dots row, the numpad, and the submit button.
- */
+/** Themed PIN numpad. */
 
 import { useCallback, useState } from 'react';
 import { PinPadKey } from '@/components/auth/PinPadKey';

@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * PhotoPolicyOverrideSheet — the conscious acknowledgement in front of a
- * receiving photo-policy waiver (WS-PHOTO §4).
- *
- * The gate is a SOFT block: an operator may receive a carton the evidence
- * policy blocked, but only by naming WHY from a closed vocabulary, and the
- * override is persisted as a `receiving_exceptions` row plus an audit entry.
- * This sheet is the whole ceremony:
- *
- * - It restates what is being waived (the gate's own blocker strings), so the
- *   operator overrides a specific, readable claim — never an abstract warning.
- * - The confirm action is **disabled until a reason is picked**. Nothing is
- *   pre-selected: a defaulted reason is a reason nobody read, which is exactly
- *   the silent bypass the soft block exists to avoid.
- * - There is **no free-text field**, here or anywhere on this path. The reason
- *   is a `PHOTO_WAIVED_*` code from the system registry; the server validates
- *   against the same list and assembles the persisted prose itself.
- *
- * One shell for both surfaces: `BottomSheet` renders as a floor sheet on the
- * phone and as a centered dialog on the desktop bench, so the Unbox bench and
- * `/m/r/[id]` share this component instead of forking a modal each.
- */
+/** PhotoPolicyOverrideSheet — the conscious acknowledgement in front of a receiving photo-policy waiver (WS-PHOTO §4). */
 
 import { useMemo, useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';
@@ -35,18 +14,7 @@ import {
   type PhotoPolicyOverrideOption,
 } from '@/lib/receiving/photo-policy-override-wire';
 
-/**
- * The pickable waiver reasons, tenant labels applied.
- *
- * Composes the house reason-vocabulary read (`useReasonVocabulary`) rather than
- * fetching `reason_codes` again — the same waist the repair failure vocabulary
- * uses. The registry, not the fetch, decides WHICH codes exist: the route
- * validates against `PHOTO_POLICY_OVERRIDE_CODES`, so an unseeded org and a
- * failed fetch both still render exactly the four options the server accepts.
- *
- * Module-local until a second surface genuinely needs the options without the
- * sheet — the knip gate treats a speculative export as new dead code.
- */
+/** The pickable waiver reasons, tenant labels applied. */
 function usePhotoPolicyOverrideOptions(): PhotoPolicyOverrideOption[] {
   const rows = useReasonVocabulary(PHOTO_POLICY_OVERRIDE_FLOW_CONTEXT);
   return useMemo(() => buildPhotoPolicyOverrideOptions(rows), [rows]);

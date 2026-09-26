@@ -21,12 +21,7 @@ export type QueueRowRecord = ShippedOrder & Record<string, unknown>;
 /** Which surface owns this table — drives status dots and tracking affordances. */
 export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
 
-/** Sort order for the date-banded / column-sorted queue.
- *  - `deadline` (default): bands by ship-by; most-overdue first within a day.
- *  - `newest`: bands by created date, most-recently-added first.
- *  - `priority`: retired synonym of `deadline` (tested-before-pending grouping
- *    on fulfillment). URL parse maps it to deadline.
- *  - Column sorts (`title`…`tracking`): flat global order (see queue-row-compare). */
+/** Sort order for the date-banded / column-sorted queue. */
 export type OrdersQueueSort = QueueDisplaySort;
 
 /** Treat empty / whitespace / legacy `'1'` sentinel as missing. */
@@ -175,23 +170,7 @@ export function normalizePersonName(value: unknown): string {
   return text;
 }
 
-/**
- * Resolve the status dot/label/description for a row given the owning surface.
- *
- * `null` means **this queue has no per-row status to show**, and the row paints
- * no dot, no chip and no tooltip rather than a placeholder.
- *
- * That is the honest answer for the Labels queue. It is fed by
- * `awaitingLabelsQuery` — `awaitingOnly=true`, i.e. `shipment_id IS NULL` — so
- * every row in it is awaiting a label by construction. Stamping "Awaiting
- * Label" on each one spent a status track, a colour and a tooltip to restate
- * the table's own name, on a fixed-width stage where every track is contested.
- * A column that reads the same on every row is not a status; it is a title.
- *
- * (`staged` has the same shape — a constant `PACKED_STAGED` — and is left as-is
- * here on purpose: it was not part of this change and its surface has not been
- * measured for the desk stage yet.)
- */
+/** Resolve the status dot/label/description for a row given the owning surface. */
 export function resolveRowStatus(
   record: QueueRowRecord,
   queueMode: OrdersQueueMode,

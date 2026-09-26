@@ -1,13 +1,4 @@
-/**
- * Built-in station nodes — event-gating + routing through the seeded
- * "Standard refurb-and-list" v1 graph shape (see
- * src/lib/migrations/2026-06-11b_seed_reseller_workflow_v1.sql).
- *
- * Uses the REAL registered NodeDefinitions (import side-effects below) with
- * the same in-memory store harness as advance.test.ts, so it proves the
- * Phase-1 contract end to end: taps advance, replays park, fail loops
- * through repair, and ship is terminal.
- */
+/** Built-in station nodes — event-gating + routing through the seeded "Standard refurb-and-list" v1 graph shape (see… */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

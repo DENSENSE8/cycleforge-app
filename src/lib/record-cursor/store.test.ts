@@ -18,10 +18,7 @@ import {
  * `resolveRecordCursor(...)` result per render).
  */
 function cursor(overrides: Partial<RecordCursor> = {}): RecordCursor {
-  // No `as RecordCursor`: the cast would let a field added to RecordCursor go
-  // missing from this fixture without a compile error, which — combined with a
-  // field-blind equality gate — would leave the new field with no signal from
-  // either the compiler or this suite.
+  // No `as RecordCursor`:
   return {
     scope: 'record',
     position: 3,
@@ -258,19 +255,7 @@ test('an update that genuinely changes a field emits a new snapshot in place', (
   withdraw();
 });
 
-/**
- * Every field the gate compares, changed ALONE.
- *
- * A gate that silently skips a field fails towards STALE data, not towards a
- * tear: the store answers "nothing changed", no subscriber re-renders, and the
- * panel keeps drawing the previous `n / m` and steps to the previous target id.
- * Mutation-testing the earlier suite, five of the seven comparators could be
- * deleted with all tests still green — so each one gets its own case here.
- *
- * `scope` is absent deliberately: `assertScopeAgreement` pins it to the
- * publication's own `scope`, which the gate compares separately. Its invariant
- * is tested below instead.
- */
+/** Every field the gate compares, changed ALONE. */
 const SINGLE_FIELD_CHANGES: ReadonlyArray<{ what: string; override: Partial<RecordCursor> }> = [
   // The operator stood still and a row landed below them — only `total` moves.
   { what: 'total (a row was appended)', override: { total: 48 } },
@@ -353,10 +338,7 @@ test('a step id that only changed TYPE is the same record — no emit', () => {
 });
 
 test('mutating one scope leaves the OTHER scope snapshot identity-stable', () => {
-  // This is what stops receiving's two simultaneous cursors from tearing each
-  // other: `recomputeTop` allocates a fresh Map but must reuse the immutable
-  // publication records, so the untouched scope keeps handing
-  // useSyncExternalStore the very same object.
+  // This is what stops receiving's two simultaneous cursors from tearing each other:
   const withdrawTable = publishRecordCursor({
     surfaceId: 'receiving-lines-table',
     scope: 'record',

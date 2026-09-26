@@ -1,10 +1,4 @@
-/**
- * Sales (front-desk transaction history) categories — the Monitor on `/walk-in`
- * after tasks moved to the Walk-In station (`/pickup?job=`).
- *
- * `all` is the default: the page is the overall transaction history for every
- * front-desk category. Sales / Pickups / Repairs narrow that same feed.
- */
+/** Sales (front-desk transaction history) categories — the Monitor on `/walk-in` after tasks moved to the Walk-In station (`/pickup?job=`). */
 
 import { Layers, Package, SalesPrice, Wrench } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';

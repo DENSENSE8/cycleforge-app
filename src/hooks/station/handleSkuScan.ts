@@ -2,16 +2,7 @@ import { mergeSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import { toast } from '@/lib/toast';
 import type { ScanHandlerContext } from './types';
 
-/**
- * Handles colon-format SKU scans (e.g. "PROD-123:A" or "SKUx2:tag").
- *
- * Flow (mirrors GAS Tech-sheet colon handler):
- *  1. Require an active or recently-scanned order as the anchor.
- *  2. POST to /api/tech/scan-sku with the full colon code, tracking, and salId.
- *  3. Server looks up serial(s) from sku.serial_number, inserts them via SAL context,
- *     decrements sku_stock, and writes shipping_tracking_number back to the sku row.
- *  4. Update the active order card with the new serial list + SKU↔serial pairing.
- */
+/** Handles colon-format SKU scans (e.g. */
 export async function handleSkuScan(input: string, ctx: ScanHandlerContext): Promise<void> {
   const contextOrder = ctx.reopenScanContextOrder();
 

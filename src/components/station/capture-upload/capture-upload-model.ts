@@ -1,31 +1,6 @@
-/**
- * Capture-upload visibility — the pure model.
- *
- * One vocabulary for "what happened to the photo I just took", shared by every
- * Station bench that captures evidence (Receiving · Pack · Unit today; FBA /
- * Pickup when they grow a queue). No React, no queue imports, no DOM — so the
- * summary law is unit-testable and the same rules serve the phone dock today
- * and a desk-side surface later.
- *
- * Why this exists: the three capture queues already ship a full
- * `queued → uploading → done | failed` machine with `retry()`, but the ONLY
- * consumer was a transient toast mounted in the mobile shell — and only for
- * receiving. A toast is not a completion signal on a scan floor: it is gone in
- * four seconds, it cannot be retried, and an operator three feet from the
- * screen with their hands on a carton never sees it. Station law is explicit
- * that pass/fail belongs on a card, not a corner toast
- * (6).
- *
- * Program: `docs/todo/station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`
- * (P0 · D1 · D10).
- */
+/** Capture-upload visibility — the pure model. */
 
-/**
- * The house vocabulary. Deliberately NOT the queues' own `UploadState`: they
- * say `done`, which describes the queue's bookkeeping ("this entry is finished
- * with"), where the operator's question is whether the evidence is *committed*
- * — uploaded to storage AND attached to the record. Same instant, honest noun.
- */
+/** The house vocabulary. */
 export type CaptureUploadState = 'queued' | 'uploading' | 'committed' | 'failed';
 
 /** Which bench's queue an entry came from. Drives retry routing + the label. */
@@ -52,15 +27,7 @@ export function captureUploadKey(entry: Pick<CaptureUploadEntry, 'domain' | 'id'
   return `${entry.domain}:${entry.id}`;
 }
 
-/**
- * Which state the surface should WEAR when several are live at once.
- *
- * `failed` outranks everything, including in-flight work. A burst of six photos
- * where one 403s must read as a failure, not as "Uploading 5…" — the whole
- * defect this program exists to close is a failure that never reached the
- * operator's eye. `committed` is the weakest: it is the resting confirmation,
- * and any newer activity supersedes it.
- */
+/** Which state the surface should WEAR when several are live at once. */
 export type CaptureUploadTone = 'idle' | 'committed' | 'active' | 'failed';
 
 export interface CaptureUploadSummary {
@@ -76,13 +43,7 @@ export interface CaptureUploadSummary {
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/**
- * Fold the union into the one line + tone the card renders.
- *
- * Counts are reported alongside the tone rather than folded into it, so a
- * surface can say "1 failed" in rose while still showing that 5 are in flight —
- * the failure leads, but the in-flight work is not erased by it.
- */
+/** Fold the union into the one line + tone the card renders. */
 export function summarizeCaptureUploads(entries: CaptureUploadEntry[]): CaptureUploadSummary {
   let inFlight = 0;
   let failed = 0;
@@ -129,13 +90,7 @@ export function summarizeCaptureUploads(entries: CaptureUploadEntry[]): CaptureU
   return { tone: 'idle', inFlight: 0, failed: 0, committed: 0, total: 0, headline: '' };
 }
 
-/**
- * Turn a raw upload error into a human, actionable line.
- *
- * Moved here verbatim from `PhotoUploadToaster`, which owned the only copy: the
- * card and the toast must never disagree about what a 403 means to an operator,
- * and two copies of a regex ladder is exactly how they would drift.
- */
+/** Turn a raw upload error into a human, actionable line. */
 export function humanizeUploadError(raw: string): string {
   const v = raw.trim();
   if (/forbidden/i.test(v)) return "You don't have permission to add photos here.";
@@ -146,14 +101,7 @@ export function humanizeUploadError(raw: string): string {
   return v || 'Upload failed';
 }
 
-/**
- * The distinct reasons behind the failed entries, in first-seen order.
- *
- * Six photos that failed for ONE reason is one problem with one fix; the card
- * says it once instead of stacking six identical rows off the bottom of a phone
- * screen. (The toast path had the same instinct — it coalesced bursts — and
- * that judgement is preserved here rather than re-derived.)
- */
+/** The distinct reasons behind the failed entries, in first-seen order. */
 export function distinctFailureReasons(entries: CaptureUploadEntry[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];

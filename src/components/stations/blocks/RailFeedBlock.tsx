@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Rail-feed block component — a selectable worklist rail (queue slot). Renders
- * resolved rows one-per-line (title → ref chip → meta), newest-first; clicking a
- * row dispatches a `station:select` CustomEvent `{ id }`. Receives rows + bound
- * actions as props; never fetches or knows which integration feeds it.
- */
+/** Rail-feed block component — a selectable worklist rail (queue slot). */
 
 import { useState } from 'react';
 import { Loader2 } from '@/components/Icons';

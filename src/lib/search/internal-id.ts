@@ -1,10 +1,4 @@
-/**
- * Header Internal ID — Cycle Forge keys and printed QR payloads.
- *
- * A typed `R-99`, a carton Digital Link URL, a GS1 unit QR, or a bare
- * shipment / receiving / unit PK all resolve here. Catch-all text search
- * does not. DB-free: SQL lives in global-entity-search.
- */
+/** Header Internal ID — Cycle Forge keys and printed QR payloads. */
 
 import {
   decodedHandle,
@@ -62,13 +56,7 @@ function idFromRedirect(redirect: string | undefined, pattern: RegExp): number |
   return positiveInt(pattern.exec(redirect)?.[1]);
 }
 
-/**
- * Pull Cycle Forge keys out of a find/scan payload.
- *
- * Printed QRs (Digital Link URL, GS1, `R-99`) are exact. A bare number is
- * every internal PK that could share that id (shipment, carton, order, unit).
- * Marketplace order #s, tracking, and serials do not belong here.
- */
+/** Pull Cycle Forge keys out of a find/scan payload. */
 export function parseInternalIdQuery(raw: string): InternalIdKeys | null {
   const q = String(raw ?? '').trim();
   if (!q) return null;
@@ -213,16 +201,7 @@ export function searchPageHrefForScanRoute(route: {
   return desktopSearchHref(redirect);
 }
 
-/**
- * Direct-open destination for a TYPED printed handle whose desktop landing is
- * NOT `/search` — a location (`/inventory?bin=`), a QC line
- * (`/receiving/lines/{id}`), a support ticket (`/support?ticket=`). The record
- * list cannot represent those, so ⌘K renders one "Open …" row that goes
- * exactly where the scan-gun path ({@link searchPageHrefForScanRoute}) goes.
- *
- * `/search`-rooted handles return null: their record hits already land there,
- * and a duplicate row above them would be noise.
- */
+/** Direct-open destination for a TYPED printed handle whose desktop landing is NOT `/search` — a location (`/inventory?bin=`), a QC line… */
 export function directOpenForTypedHandle(
   raw: string,
 ): { href: string; route: ScanRoute } | null {

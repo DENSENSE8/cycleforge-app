@@ -1,12 +1,4 @@
-/**
- * DB-free contract for the carton inspector's read model.
- *
- * Run: `node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
- *        src/components/receiving/inspector/carton-inspector-model.test.ts`
- *
- * The formatter assertions run under whatever TZ the host has; the point of the
- * warehouse wall-clock path is that the answer does not depend on it.
- */
+/** DB-free contract for the carton inspector's read model. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -113,10 +105,7 @@ test('buildCartonMilestones treats blank strings as absent and trims actors', ()
 });
 
 test('milestone stamps render as WAREHOUSE wall-clock, not re-shifted instants', () => {
-  // The API sends `to_char(ts::timestamp, …)` with the DB session on
-  // America/Los_Angeles: 21:26:58Z is delivered as "2026-07-28 14:26:58"
-  // ALREADY in warehouse time. Re-interpreting that as an instant would shift
-  // it a second time; `formatDateTimePST` parses the naive shape purely.
+  // The API sends `to_char(ts::timestamp, …)` with the DB session on America/Los_Angeles:
   assert.equal(formatDateTimePST('2026-07-28 14:26:58'), '07/28/2026 2:26:58 PM');
   // And the events spine, which really is an instant, still lands on 14:26 PDT.
   assert.equal(formatDateTimePST('2026-07-28T21:26:58.201Z'), '07/28/2026 2:26:58 PM');
@@ -591,11 +580,7 @@ test('cartonEventSignature: Stage workflow notes do not reprint NOTE + machine t
 });
 
 test('cartonExceptions: a RETURN never asks the operator to go find a PO', () => {
-  // A return has no PO to match, so "unpaired" is not a finding about it —
-  // same rule `isTriagePaired` (triage-focus.ts) has used since C6. Carton
-  // 50354 has NO receiving_triage row at all, which is why the fixture below
-  // carries an explicit UNFOUND: the suppression must hold even when the
-  // pairing answer really was recorded.
+  // A return has no PO to match, so "unpaired" is not a finding about it — same rule `isTriagePaired` (triage-focus.ts) has used since C6.
   const asReturn = cartonExceptions(
     { ...RECEIVING, pairing_state: 'UNFOUND', is_return: true, intake_type: 'RETURN' },
     { expected: 1, received: 0, lines: 1, lines_complete: 0 },
@@ -636,11 +621,7 @@ test('cartonFlags: the return suppression matches the exception rule', () => {
   assert.equal(flags.some((f) => f.key === 'unfound'), false);
 });
 
-// --- absent vs recorded -----------------------------------------------------
-// `/api/receiving/[id]` and the receiving-lines builders no longer send
-// COALESCE(rt.pairing_state,'UNFOUND'), so `pairing_state: null` now genuinely
-// means "no receiving_triage row" — 751 of 2790 dogfood cartons. The finding has
-// to come from a fact somebody RECORDED instead.
+// --- absent vs recorded ----------------------------------------------------- `/api/receiving/[id]` and the receiving-lines builders no…
 
 const NO_PO = { zoho_purchaseorder_id: null, zoho_purchaseorder_number: null } as const;
 

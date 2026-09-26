@@ -19,39 +19,15 @@ function ticketDate(iso: string): string {
 interface Props {
   search: UseTicketSearch;
   onSelect: (t: TicketCandidate | null) => void;
-  /**
-   * Field label — OMITTED by default, and that is the point. Claim reaches this
-   * picker from a `Link existing` segment tab whose own label already said it,
-   * so the default "Pick the existing ticket" was the tab restated one row down
-   * over a box whose placeholder explains itself. Pass one only where the picker
-   * has no naming context above it (`StnTicketLinkModal` names the shipment).
-   */
+  /** Field label — OMITTED by default, and that is the point. */
   label?: string;
-  /**
-   * `anchor` — picking the ONE entity a ticket is about; tickets anchored
-   * elsewhere are hidden by the server, so the empty copy explains the gap.
-   * `reference` — attaching an EXTRA entity; nothing is hidden, and a ticket's
-   * existing anchor renders as context instead.
-   */
+  /** `anchor` — picking the ONE entity a ticket is about; tickets anchored elsewhere are hidden by the server, so the empty copy explains the… */
   mode?: 'anchor' | 'reference';
   /** Unique id for the search input (two pickers can coexist on a page). */
   inputId?: string;
 }
 
-/**
- * Link-mode search box + results list (recent tickets when the box is empty).
- *
- * Anchor-agnostic: it knows nothing about receiving, shipments, or orders — the
- * host supplies a {@link UseTicketSearch} whose `buildUrl` resolves the anchor.
- * This is the single picker for every "link an existing ticket" surface; do not
- * fork a per-surface copy.
- *
- * Row identity is {@link TicketPickRow} (subject → TicketChip) — same stacked
- * grammar as Move photos / Orders import / Support subject.
- *
- * Sheet-band chrome: underline search + full-bleed hairline rows (no rounded-xl
- * list card) — same axis as Claim Subject/Body.
- */
+/** Link-mode search box + results list (recent tickets when the box is empty). */
 export function TicketPicker({
   search,
   onSelect,

@@ -1,30 +1,4 @@
-/**
- * Receiving sidebar-rail feed descriptors + fetchers — the declarative SoT for
- * every rail on the receiving page. Each rail wrapper was re-deriving the same
- * four things by hand (a `/api/receiving-lines` fetch, a query key, a quantity
- * strategy, and status/event wiring); this module pulls the data half into one
- * place so a rail is now a descriptor entry, not a bespoke component.
- *
- * The feeds, all consumed through `ReceivingFeedRail`:
- *   - unboxRecent  → Unboxed       (view=unbox_opened ONLY — SQL first-open order,
- *                                   `unbox_opened_at` age axis, preserveServerOrder)
- *   - unboxQueue   → Door queue    (triage door-scans mirrored into Unbox; own segment)
- *   - scanned      → Queue/Prioritize (view=scanned, sort=priority, no unmatched)
- *   - viewed       → Viewed        (view=viewed, per-staff recents)
- *   - triageCombined → Triage      (scanned ∪ unfound, door-scan recency)
- *   - triageUnfound  → Unfound     (unfound-queue stubs)
- *   - triageDone     → Done        (triage_complete stubs)
- *   - searchRecent   → Recently searched (`/search` rail; same view=viewed feed)
- *   - testingRecent  → QC Recent (view=testing_opened, testing_opened_at axis,
- *                                   preserveServerOrder; Testing API only)
- *
- * Stable identity matters: `refreshEvents` arrays and the `getActivityAt` fns are
- * module-scope so the rail shell's listener effects subscribe once (a fresh
- * array/arrow each render risked a dropped optimistic event mid-swap).
- *
- * Scope: receiving rails plus QC Recent (`testingRecent`). Mobile scan feeds
- * share the QC endpoint via the same view.
- */
+/** Receiving sidebar-rail feed descriptors + fetchers — the declarative SoT for every rail on the receiving page. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
@@ -115,19 +89,9 @@ interface ReceivingRailFeed {
   rowTitleMode?: ReceivingRailRowTitleMode;
   /** Stamp `rail_title_context` after fetch (`po` = group by PO key). */
   stampRailTitleContext?: 'po';
-  /**
-   * When false, the rail ignores `receiving-line-deleted` and only exits on
-   * carton delete/dismiss (`receiving-entry-deleted` / cache remove). Used by
-   * Unboxed (one row per carton) so removing a line inside a carton retargets
-   * the same `carton:{id}` row instead of exit+enter.
-   */
+  /** When false, the rail ignores `receiving-line-deleted` and only exits on carton delete/dismiss (`receiving-entry-deleted` / cache remove). */
   listenLineDelete?: boolean;
-  /**
-   * When false, the rail does NOT subscribe to `receiving-line-updated`.
-   * Unboxed opts out so Testing/workspace rich patches (serials, type, workflow,
-   * by-id dumps) cannot mutate age/qty/status — title renames go through
-   * `patchUnboxRailTitleByCarton` only. Default true (triage / queue / viewed).
-   */
+  /** When false, the rail does NOT subscribe to `receiving-line-updated`. */
   acceptLineUpdateBus?: boolean;
   // OR a custom multi-source fetch (combined / unfound-queue):
   buildFetcher?: (
@@ -136,12 +100,7 @@ interface ReceivingRailFeed {
   ) => () => Promise<ApiResponse>;
 }
 
-// NOTE: `receiving-entry-deleted` is deliberately NOT a refresh event. The rail
-// already binds it as `deleteGroupEvent` (ReceivingFeedRail) — which SURGICALLY
-// drops just the deleted carton's rows and sticky-suppresses its id so a later
-// fetch can't resurrect it. Listing it here too made a delete ALSO trigger a
-// full-list refetch, which needlessly re-rendered (and could race to empty) the
-// whole rail. A delete must only remove that id, never refresh the entire list.
+// NOTE: `receiving-entry-deleted` is deliberately NOT a refresh event.
 const TRIAGE_REFRESH: string[] = [
   'receiving-triage-refresh',
   'receiving-entry-added',
@@ -219,9 +178,6 @@ async function fetchScannedRows(rt: RailFetchRuntime): Promise<ReceivingLineRow[
 }
 
 // Unbox "Received" matched source — recently UNBOXED cartons (view=activity).
-// Merged with new door-scans + unfound in buildUnboxReceivedFetcher; the
-// per-source order is irrelevant since the union is re-sorted by received recency.
-// Unbox sidebar — cartons scanned on the Unbox surface (ops UNBOX_SCAN_OPENED).
 const UNBOX_OPENED_SOURCE: ReceivingLinesQuery = {
   segment: 'unbox-opened',
   view: 'unbox_opened',
@@ -244,12 +200,7 @@ export function unboxOpenedRecencyMs(row: ReceivingLineRow): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
-/**
- * Triage / door-queue age axis — intake time only.
- * Prefer door-scan / received; fall back to `last_activity_at` for unfound/done
- * stubs that fold intake into that field. Never bare `created_at` or
- * `unbox_opened_at` (those are Unbox axes).
- */
+/** Triage / door-queue age axis — intake time only. */
 function triageDoorScanAt(row: ReceivingLineRow): string | null {
   return row.scanned_at ?? row.received_at ?? row.last_activity_at ?? null;
 }
@@ -280,11 +231,7 @@ function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<ApiResp
       fetchScannedRows(rt).catch(() => [] as ReceivingLineRow[]),
       fetchUnfoundStubs(rt).catch(() => [] as ReceivingLineRow[]),
     ]);
-    // IMPORTANT: keep triage stable by carton identity. When an unfound carton
-    // becomes matched, it moves between the two source queries; without a stable
-    // identity this appears as a delete+add flicker. Dedup to one row per carton
-    // (receiving_id) and key the row by a durable client_event_id so React Query
-    // reconciliation updates in place.
+    // IMPORTANT: keep triage stable by carton identity.
     const bestByCarton = new Map<number, ReceivingLineRow>();
     for (const row of [...scanned, ...unfound]) {
       const rid = row.receiving_id;
@@ -326,14 +273,7 @@ function buildUnboxReceivedFetcher(
   opts?: { limit?: number },
 ): () => Promise<ApiResponse> {
   return async () => {
-    // `limit` is overridable because a `ReceivingLineRow` is a FAT record —
-    // photos, serials, rail title context — and this feed's default page of 50
-    // was measured at 154.5KB / 2.2s, the heaviest request on `/unbox`. The
-    // sidebar rail wants all 50; the station history dock draws twelve. Anything
-    // fetched and not drawn is pure payload.
-    //
-    // Note the dedup below is by CARTON, so a caller asking for N lines can get
-    // fewer than N rows back — ask for headroom, not for exactly what you draw.
+    // `limit` is overridable because a `ReceivingLineRow` is a FAT record — photos, serials, rail title context — and this feed's default page…
     const opened = await fetchReceivingLines(UNBOX_OPENED_SOURCE, rt, {
       limit: opts?.limit ?? UNBOX_SIDEBAR_LIMIT,
       includeSerials: false,
@@ -412,20 +352,13 @@ const FEEDS = {
     pinSelectedLead: false,
     // Server owns sort (first-open). Shell must not re-sort by getActivityAt.
     preserveServerOrder: true,
-    // First-load reveal is a left→right slide-in cascade (x: -12 → 0), matching
-    // the scan-dock / CRUD `framerPresence.sidebarRailRow` entrance language. Rows
-    // fade in from fully transparent (not a dim gray hold) so the slide reads as a
-    // clean entrance rather than "grayed rows that jump" — see
-    // `staggerRevealSidebarSlideItem`.
+    // First-load reveal is a left→right slide-in cascade (x:
     staggerRevealMotion: 'slide',
     // One row per carton — line deletes retarget the carton row in place.
     listenLineDelete: false,
     // Mode isolation: ignore shared line-update bus (title via carton helper).
     acceptLineUpdateBus: false,
-    // Honors the shared `?staff=` header filter (P1-WORK-02): the server's
-    // view=unbox_opened staff clause matches on the unbox actor (unbox_opened_by
-    // / UNBOX_SCAN_OPENED). Absent param = ALL staff (unchanged default).
-    // Window capped at UNBOX_SIDEBAR_LIMIT.
+    // Honors the shared `?staff=` header filter (P1-WORK-02):
     usesStaffFilter: true,
     autoSelectFirstWhenEmpty: false,
     limit: UNBOX_SIDEBAR_LIMIT,
@@ -516,20 +449,7 @@ const FEEDS = {
     refreshEvents: TRIAGE_REFRESH,
     refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
-  /**
-   * `/search` "Recently searched" — the records this operator recently opened.
-   *
-   * Unbox's OWN feed shape (`view=viewed` → `receiving_line_views`, ordered by
-   * this viewer's `viewed_at`), off `/api/receiving-lines`. That is the point:
-   * the rows are real receiving lines, so they arrive carrying
-   * `catalog_product_title` / `zoho_item_title` and the rail's normal title
-   * resolver paints a PRODUCT TITLE — not the identifier the operator typed.
-   *
-   * It is also why `/search` needs no endpoint, no resolver, no row adapter and
-   * no rail of its own: only a different eyebrow over a query the app already
-   * answers. A stub feed off `search_recents` was tried and abandoned — that
-   * table stores typed strings and no record, so it can only ever paint ids.
-   */
+  /** `/search` "Recently searched" — the records this operator recently opened. */
   searchRecent: {
     segment: 'search-recent',
     eyebrowTitle: 'Recently searched',
@@ -596,9 +516,5 @@ const FEEDS = {
 /** Feed ids — the key a rail binds by (`feed="unboxRecent"`). */
 export type ReceivingRailFeedId = keyof typeof FEEDS;
 
-// Re-typed so an indexed lookup `RECEIVING_RAIL_FEEDS[id]` widens to the full
-// `ReceivingRailFeed` (every optional present) rather than the narrow per-key
-// shape — otherwise feeds that omit `buildFetcher`/`view`/etc. would make those
-// fields unreadable through the generic rail. Same object, so the module-scope
-// fns + refreshEvents arrays keep their stable identity.
+// Re-typed so an indexed lookup `RECEIVING_RAIL_FEEDS[id]` widens to the full `ReceivingRailFeed` (every optional present) rather than the…
 export const RECEIVING_RAIL_FEEDS: Record<ReceivingRailFeedId, ReceivingRailFeed> = FEEDS;

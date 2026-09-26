@@ -1,15 +1,4 @@
-/**
- * The struck title — a compound line whose work is done (Daily's tick).
- *
- *   npx tsx --test src/components/tables/compound/compound-title-strike.test.ts
- *
- * What the engine promises:
- *   - a family that never declares `titleStruck` paints NO strike host, so
- *     Orders / Receiving / Unbox titles are untouched by this field existing;
- *   - `titleStruck: false` mounts the host with the lane closed (width 0), so
- *     the first tick animates open instead of appearing;
- *   - `titleStruck: true` paints the lane full-width and mutes the title.
- */
+/** The struck title — a compound line whose work is done (Daily's tick). */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import React from 'react';

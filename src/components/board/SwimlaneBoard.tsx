@@ -1,36 +1,6 @@
 'use client';
 
-/**
- * SwimlaneBoard — the reusable "bubble-list pipeline" board. Each lane is a
- * rounded bubble card; inside it the consuming surface renders its OWN real
- * table rows (via {@link SwimlaneBoardProps.renderLaneBody}), scrolled
- * VERTICALLY only. This is the generalization of the original Unshipped shelf
- * board: it owns ALL the board mechanics — the 40px header band, the 1/2/3-up
- * column toggle, drag-to-reorder lanes (@dnd-kit), drag-to-resize a lane body,
- * per-lane sort menu, per-lane date filter, and cross-device persistence — and
- * stays agnostic about WHAT a row is. A surface supplies:
- *
- *   - `lanes`        the lane model (id/label/dot/description/icon), canonical order
- *   - `bucket(row)`  pure derivation of a row's lane (never assigned)
- *   - `sortOptions`  the sort vocabulary + labels for the per-lane menu
- *   - `getRowDate`   (optional) the field the per-lane date picker filters on
- *   - `renderLaneBody` the surface's own embedded table (header suppressed)
- *   - `prefsKey`     which `staff_preferences` board bag to read/write
- *
- * Persistence: column layout, lane order, and per-lane sort/expand/height/range
- * persist per staffer via `useStaffPreferences` under `prefs[prefsKey]`, so the
- * view follows the operator across devices. Lane ids + sort ids round-trip as
- * open strings; this component is the SoT that validates them on hydrate and
- * falls back to the canonical lane order / default sort for anything unknown.
- *
- * Column visibility is owned by the consumer: wrap `<SwimlaneBoard>` in
- * `TableColumnConfigProvider` so every embedded lane table honors the same
- * hidden-key set (column chrome is parked for a later pass).
- *
- * Add a lane → add it to `lanes` + (optionally) the persisted order; the bubble
- * appears with no other change. Add a board → define a new `prefsKey` and a
- * lanes/bucket/renderLaneBody triple; no schema change (see BOARD_PREFS).
- */
+/** SwimlaneBoard — the reusable "bubble-list pipeline" board. */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { createPortal } from 'react-dom';
@@ -68,12 +38,7 @@ export interface SwimlaneLaneDef<LaneId extends string> {
   icon: React.ComponentType<{ className?: string }>;
   /** Tailwind text class for the lane header icon (defaults to gray). */
   iconClass?: string;
-  /**
-   * When true, omit this lane from the board while it has zero rows (exception /
-   * attention lanes like Urgent / Blocked). Always-visible pipeline lanes leave
-   * this unset. A focused single-lane filter still renders an empty lane so the
-   * filter doesn't look broken.
-   */
+  /** When true, omit this lane from the board while it has zero rows (exception / attention lanes like Urgent / Blocked). */
   hideWhenEmpty?: boolean;
 }
 
@@ -97,10 +62,7 @@ interface SwimlaneLaneBodyContext<Row, LaneId extends string, SortId extends str
    *  internal scroll/cap so the board's single scroll region owns the wheel
    *  (no per-lane scroll trap). The height props are omitted in this mode. */
   growToContent?: boolean;
-  /** Stacked (1-up) layout only: the board's shared scroll region. A virtualized
-   *  lane body windows its rows against THIS element (instead of its own — absent
-   *  — scroll body), so a stacked lane stays windowed instead of mounting every
-   *  row. Undefined in grid (2/3-up) mode, where each lane owns its own scroll. */
+  /** Stacked (1-up) layout only: */
   scrollParentRef?: RefObject<HTMLElement | null>;
   /**
    * Collapse control for the sticky top-right chip + bottom Show more/less bar.
@@ -344,10 +306,7 @@ function SwimlaneBubble<Row, LaneId extends string, SortId extends string>({
         ? 'max-h-[56vh]'
         : 'max-h-[48vh]';
 
-  // Stacked (1-up) lanes grow to content and let the BOARD own the scroll, so the
-  // wheel is never trapped per lane. Collapse caps the preview to N rows + a
-  // "Show more" toggle (replacing the inner scrollbar). Grid (2/3-up) lanes keep
-  // the capped, internally-scrolling body where side-by-side columns want it.
+  // Stacked (1-up) lanes grow to content and let the BOARD own the scroll, so the wheel is never trapped per lane.
   const stacked = colCount === 1;
   const bodyRows = stacked && !expanded ? rows.slice(0, STACKED_COLLAPSED_PREVIEW_ROWS) : rows;
   const canToggleStacked = stacked && rows.length > STACKED_COLLAPSED_PREVIEW_ROWS;
@@ -786,10 +745,7 @@ export function SwimlaneBoard<Row, LaneId extends string, SortId extends string>
       <div
         ref={pageScroll ? undefined : boardScrollRef}
         data-testid="swimlane-board-scroll"
-        // Portaled dashboard toolbar: parent column already owns the horizontal
-        // gutter (KPI + tabs + board share one edge).
-        // Vertical air is provided by spacer divs below so `sticky top-0` correctly
-        // caps at the absolute scroll boundary without bleeding through padding.
+        // Portaled dashboard toolbar:
         className={
           pageScroll
             ? `w-full ${toolbarPortalTarget ? '' : 'px-4'}`

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Ops attention KPI band — **workbench SoT** for station / outbound flex-wrap
- * KPI strips (Unbox, Testing, Shipping, Pack, Labels, To-ship, …).
- *
- * Distinct from Monitor {@link KpiStrip} (2×2 → 4-col CSS grid for rollup
- * zones). This band is a flex-wrap row of {@link KpiTile}s with shared
- * empty / error chrome so domain strips stop forking `TILE_BAND_CLASS`.
- *
- * `density="band"` = industrial Band 2 flush (gap-0, denser cells, flush
- * empty/error). Default keeps the legacy card-strip spacing for gradual ports.
- */
+/** Ops attention KPI band — **workbench SoT** for station / outbound flex-wrap KPI strips (Unbox, Testing, Shipping, Pack, Labels, To-ship, …). */
 
 import type { ReactNode } from 'react';
 import { RefreshCw } from '@/components/Icons';

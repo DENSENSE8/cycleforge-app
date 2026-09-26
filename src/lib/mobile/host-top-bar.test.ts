@@ -1,12 +1,4 @@
-/**
- * The scan seat must exist EXACTLY ONCE on every `/m` screen, and since
- * 2026-09-15 both halves of that promise read one predicate: the shell paints
- * its header when {@link mobileRouteOwnsTopBar} is false, and
- * `MobileDetailTopBar` paints the seat when it is true. So the cases that
- * matter are the ones where a wrong answer means a duplicate door (host header
- * kept AND a seat in the record bar) or none at all (header withheld AND no
- * seat).
- */
+/** The scan seat must exist EXACTLY ONCE on every `/m` screen, and since 2026-09-15 both halves of that promise read one predicate: */
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mobileRouteOwnsTopBar } from './host-top-bar';
@@ -24,10 +16,7 @@ test('/m/pick is the pick session itself — its progress band is the only chrom
 });
 
 test('a queue route keeps the host header — the trailing slash is the whole rule', () => {
-  // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions`
-  // itself, the queue, still gets the host header. Drop the slash and the
-  // queue loses its header (and its only scan door, because a queue has no
-  // record bar).
+  // `/m/exceptions/` excludes the exception RECORD while `/m/exceptions` itself, the queue, still gets the host header.
   assert.equal(mobileRouteOwnsTopBar('/m/work'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/exceptions'), false);
   assert.equal(mobileRouteOwnsTopBar('/m/scan'), false);

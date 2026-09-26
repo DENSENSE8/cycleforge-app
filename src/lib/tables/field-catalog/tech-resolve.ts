@@ -1,17 +1,4 @@
-/**
- * Tech bench slot resolvers — row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks, no fetch, no clock.
- *
- * The row is the shared `QueueRowRecord` that `techRecordToQueueRow` produced,
- * so this module reads exactly the properties that mapper sets — one resolver
- * arm per catalog field, never a `row[path]` generic.
- *
- * Honest absence is load-bearing: a scan with no serial resolves to `null`,
- * never an empty-looking placeholder, and the test step resolves the actor as
- * a STAFF ID because the tech mapper projects no name alias. The cell turns
- * that id into an avatar through the identity cache; inventing `Staff #7`
- * here would put a label on the row that nobody calls that person.
- */
+/** Tech bench slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';

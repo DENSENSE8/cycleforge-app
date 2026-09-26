@@ -4,17 +4,6 @@ import { forwardRef, type HTMLAttributes } from 'react';
 import { cn } from '@/utils/_cn';
 
 // ─── Inset ───────────────────────────────────────────────────────────────────
-//
-// Padding by INTENT (spacing-token-leakage plan Phase 3): a plain padded box
-// whose inset comes from the Tier-2 spacing intents (`inset-card/field/cozy/
-// chip` — tailwind.config.mjs plugin), so it is density-aware for free. Reach
-// for <Inset> instead of hand-picking another `px-N py-M` pair for the same
-// job (the census found 65 distinct paddings on one box archetype).
-//
-// Padding ONLY — no surface, border, or radius (that's <Panel>). The intent
-// is the whole padding story for this element: don't add raw p-*/px-* via
-// className. `inset-empty` is deliberately absent — the dashed empty/error
-// recipe belongs to <EmptyState>.
 
 export type InsetSpace = 'card' | 'field' | 'cozy' | 'chip';
 

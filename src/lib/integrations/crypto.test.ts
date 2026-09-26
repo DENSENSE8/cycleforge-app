@@ -1,10 +1,4 @@
-/**
- * AES-256-GCM roundtrip for the integration vault.
- *
- * Runs with the existing `node --test --import tsx` harness — no extra deps.
- * Uses a fixed key here (deterministic test); production code reads it from
- * INTEGRATION_KMS_KEY.
- */
+/** AES-256-GCM roundtrip for the integration vault. */
 
 import { test, before } from 'node:test';
 import { strictEqual, throws, ok } from 'node:assert';
@@ -54,13 +48,7 @@ test('rejects malformed envelope', () => {
   throws(() => decryptIntegrationPayload('not-base64!'));
 });
 
-/* ── Key rotation (INTEGRATION_KMS_KEY_PREVIOUS) ──────────────────────────
- * Regression cover for 2026-08-21: local dev and Vercel production shared one
- * Neon database with different INTEGRATION_KMS_KEY values, so each environment
- * silently locked the other out of `organization_integrations` on every OAuth
- * token refresh. Accepting retired keys for decryption is what makes changing
- * the key a config edit instead of an outage.
- */
+/* ── Key rotation (INTEGRATION_KMS_KEY_PREVIOUS) ────────────────────────── Regression cover for 2026-08-21: */
 test('a payload written under a retired key still decrypts', () => {
   const oldKey = randomBytes(32).toString('base64');
   const newKey = randomBytes(32).toString('base64');

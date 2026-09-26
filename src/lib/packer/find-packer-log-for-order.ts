@@ -1,16 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Resolve the most-recent completed packer_log for a packed order — the record a packer's
- * tracking-number scan already created (PACK_COMPLETED). The mobile pack flow
- * uses this so in-flow "Take Photos" attaches to the existing completed pack
- * instead of minting a new one.
- *
- * Linkage: packer_logs.shipment_id ↔ the order's shipment, matched through both
- * orders.shipment_id and the shipment_links junction (multi-tracking POs).
- * Returns null when the order hasn't been packed yet.
- */
+/** Resolve the most-recent completed packer_log for a packed order — the record a packer's tracking-number scan already created… */
 export async function findPackerLogForOrder(
   organizationId: string,
   orderRowId: number,

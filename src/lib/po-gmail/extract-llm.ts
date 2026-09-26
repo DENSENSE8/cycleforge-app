@@ -1,31 +1,10 @@
-/**
- * LLM-backed field extraction for PO emails (Phase 4 of PO mailbox triage).
- *
- * Posts to THIS ORG's chat provider (resolveOrgAiConfig — vault BYOK, then
- * the platform default), OpenAI-compatible wire. It was env-only
- * (HERMES_API_URL / AI_MODEL), which meant one endpoint served every tenant.
- * If the provider is unreachable or returns invalid output, the operator sees
- * a clear error and can retry.
- *
- * The function ALWAYS marks results as low-trust at the consumer side
- * (the checklist UI requires explicit confirmation per field). The model
- * also self-rates confidence per field; we surface that without acting
- * on it ourselves.
- *
- * No SDK dep — plain fetch against the OpenAI Chat Completions endpoint
- * the Hermes gateway exposes. The tool definition uses OpenAI's `tools`
- * + `tool_choice` shape, which gemma-4-e4b and other tool-calling-capable
- * local models honor.
- */
+/** LLM-backed field extraction for PO emails (Phase 4 of PO mailbox triage). */
 
 import { aiRequestHeaders } from '@/lib/ai/provider';
 import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-// Default model when the resolved provider names none. Gemma 4 e4B has explicit tool-call
-// support + reasoning, which gives the most disciplined arg adherence we
-// can get from a sub-5GB local model. Swap it by setting the model on the
-// org's connected provider (Settings → AI), not by an env var.
+// Default model when the resolved provider names none.
 const DEFAULT_AI_MODEL = 'gemma-4-e4b';
 
 const SYSTEM_PROMPT = [
@@ -257,10 +236,7 @@ export async function extractWithLlm(
       { role: 'user', content: buildUserText(input) },
     ],
     tools: [REPORT_TOOL],
-    // Force a tool call. We send exactly one tool, so `"required"` forces it.
-    // The string form is portable (LM Studio only accepts none|auto|required;
-    // OpenAI-compatible gateways accept "required" too) — unlike the
-    // `{type:'function',function:{name}}` object form LM Studio rejects.
+    // Force a tool call.
     tool_choice: 'required',
   };
 

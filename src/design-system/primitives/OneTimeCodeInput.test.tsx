@@ -1,13 +1,4 @@
-/**
- * OneTimeCodeInput — the edit algebra behind the boxes, plus the typing face.
- *
- *   npx tsx --test src/design-system/primitives/OneTimeCodeInput.test.tsx
- *
- * The boxes exist so a pairing code can be typed without Caps Lock and without
- * a free-text field: every character has its own target, the caret moves
- * itself, and a pasted code lands whole. Those three behaviours are pinned
- * here because each has a plausible off-by-one.
- */
+/** OneTimeCodeInput — the edit algebra behind the boxes, plus the typing face. */
 import React from 'react';
 import assert from 'node:assert/strict';
 import test from 'node:test';

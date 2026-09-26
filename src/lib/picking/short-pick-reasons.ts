@@ -1,15 +1,4 @@
-/**
- * Short-pick reason-code vocabulary — the built-in SoT for WHY a picker confirmed
- * fewer units than planned (the remainder is released back to STOCKED). This is
- * the BUILT-IN registry: seeded into reason_codes (flow_context='short_pick') so
- * a tenant can rename or add reasons, and the offline fallback the picker renders
- * when the DB is unseeded / unreachable. Descriptive vocabulary — nothing in code
- * branches on the value (recordShortPick always releases to STOCKED); the reason
- * is audit only. See docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md D1.
- *
- * `hint` is operator help text shown under each option; it stays code-side (the
- * DB owns code + label) and resolves by code for built-ins, blank for custom.
- */
+/** Short-pick reason-code vocabulary — the built-in SoT for WHY a picker confirmed fewer units than planned (the remainder is released back… */
 
 interface ShortPickReasonOption {
   code: string;

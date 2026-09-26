@@ -1,17 +1,6 @@
 /**
- * The phone's own record of where the operator has been, so a detail bar's
- * Back can go BACK instead of forward.
- *
- * Why: `MobileDetailTopBar` with `backHref` used to `router.push(backHref)`.
- * A sub-screen (`/m/rs/7/info`) pushing its hub, and the hub's plain Back
- * (`router.back()`), then bounced between each other forever — every Back
+ * The phone's own record of where the operator has been, so a detail bar's Back can go BACK instead of forward.
  * added the other screen on top of the stack (operator 2026-09-24: "an
- * infinite callback loop … it should come back to where I was before I
- * scanned it"). The browser does not expose the previous URL, so the shell
- * records one.
- *
- * The trail mirrors the history stack: a visit to the entry two back is a Back
- * (pop); anything else is a forward step (push). Only paths are compared.
  */
 
 const KEY = 'cf-m-nav-trail';
@@ -55,12 +44,7 @@ export function previousMobilePath(): string | null {
 
 /**
  * The job a record was opened FROM (`?back=`), when it is a safe phone path.
- *
- * A primary record opened from a job — an order from the pick queue, a carton
  * from the scan tape — is a full screen, not a sheet (operator 2026-09-24), and
- * its bar shows an X back to that job. The job passes itself as `back`; only a
- * same-origin `/m/` path is honoured, so a crafted link cannot route the X
- * off-site or to the desk.
  */
 export function mobileJobReturn(raw: string | null | undefined): string | null {
   const value = (raw ?? '').trim();

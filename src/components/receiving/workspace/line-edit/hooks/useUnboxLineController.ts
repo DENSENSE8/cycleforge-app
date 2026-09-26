@@ -47,17 +47,7 @@ import {
   type WorkspaceLabelKind,
 } from '@/lib/print/workspace-label-kinds';
 
-/**
- * Controller for the UNBOX + TRIAGE workspace display. Composes the mode-agnostic
- * `useReceivingLineCore` (carton identity / scratch / copy·share / priority) and
- * layers the unbox-specific domain on top: condition grade, serial scanning, the
- * receive/print action, the RETURN serial-match flow, and the printed-label
- * payload. Returns `{ ...core, ...unbox }` so the panel reads one object.
- *
- * Testing has its own controller (Phase 3) that composes the SAME core but swaps
- * this layer for verdicts + unit-id minting — so the shared carton logic lives in
- * exactly one place.
- */
+/** Controller for the UNBOX + TRIAGE workspace display. */
 export function useUnboxLineController(
   row: ReceivingLineRow,
   staffId: string,
@@ -88,32 +78,11 @@ export function useUnboxLineController(
   // Effective condition of the selected unit on a multi-qty line (reported up
   // from ReceivingUnitRows). Null on single-qty lines.
   const [unitLabelCondition, setUnitLabelCondition] = useState<string | null>(null);
-  /**
-   * TWO durable buffers, one per GRAIN of text on this line (split 2026-07-31,
-   * migration `2026-07-31b_receiving_lines_label_note.sql`):
-   *
-   *   itemNote  ← `receiving_line.notes`      — the operator's item note
-   *               (Zoho / receive). On Unbox overview the live draft also
-   *               drives the carton sticker center (preview + Print · Receive).
-   *               Composed in the Notes dock ({@link LineNotesCard}).
-   *   labelNote ← `receiving_line.label_note` — durable printed face center
-   *               (Testing reprint + LabelEditPopover / As Listed). Stamped
-   *               from itemNote on carton print so reprint stays aligned.
-   *
-   * They were one buffer until the split, so an operator could not write a note
-   * that did not print, nor re-word a label without rewriting the record's
-   * note. The migration backfills `label_note := notes`, so both start equal on
-   * existing cartons; they diverge when LabelEditPopover edits without the dock
-   * (overview still prefers the dock draft for live center).
-   */
+  /** TWO durable buffers, one per GRAIN of text on this line (split 2026-07-31, migration `2026-07-31b_receiving_lines_label_note.sql`): */
   const [itemNote, setItemNote] = useState(row.notes ?? '');
   const [labelNote, setLabelNote] = useState(row.label_note ?? '');
   const [serialInput, setSerialInput] = useState('');
-  // Explicit "no serial number" waiver for this line (mutually exclusive with a
-  // captured serial). Carries an auditable reason code and satisfies the optional
-  // serial-confirmation gate (receiving.requireSerialConfirmation). Durable —
-  // seeded from the persisted `receiving_line_testing.serial_absent` on the row,
-  // committed via commitSerialAbsent (below), so it survives refresh / device.
+  // Explicit "no serial number" waiver for this line (mutually exclusive with a captured serial).
   const [serialAbsent, setSerialAbsent] = useState(!!row.serial_absent);
   const [serialAbsentReason, setSerialAbsentReason] = useState<string | null>(
     row.serial_absent_reason ?? null,
@@ -151,10 +120,7 @@ export function useUnboxLineController(
     setUnitLabelCondition(null);
   }, [row.id, row.qa_status, row.disposition_code, row.condition_grade, row.receiving_source]);
 
-  // Hydrate each buffer from its OWN durable column on line change AND whenever
-  // the persisted value updates (own blur-save echo, another device, an external
-  // edit) so the composer shows the saved note and the preview shows the saved
-  // face. Separate effects: an item-note save must not re-seed the label face.
+  // Hydrate each buffer from its OWN durable column on line change AND whenever the persisted value updates (own blur-save echo, another…
   useEffect(() => {
     setItemNote(row.notes ?? '');
   }, [row.id, row.notes]);
@@ -162,12 +128,7 @@ export function useUnboxLineController(
     setLabelNote(row.label_note ?? '');
   }, [row.id, row.label_note]);
 
-  // Track the previous line's item note so the Notes composer can offer a
-  // "repeat previous" prefill on multi-line cartons. The workspace stays
-  // mounted across sibling-line switches within the same carton (see
-  // ReceivingRightPane's carton-keyed remount), so a ref-captured value
-  // naturally survives from one line to the next. Recent (History) itself
-  // reads the DB via /api/receiving/recent-label-note — not this slot.
+  // Track the previous line's item note so the Notes composer can offer a "repeat previous" prefill on multi-line cartons.
   const itemNoteLiveRef = useRef(itemNote);
   useEffect(() => {
     itemNoteLiveRef.current = itemNote;
@@ -190,19 +151,13 @@ export function useUnboxLineController(
     setSerialInput(latest);
   }, [row.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: line switch only
 
-  // Seed the no-serial waiver from the line's DURABLE value on line change AND
-  // whenever the persisted fact updates — a fresh open, a reload, another device,
-  // or the optimistic `receiving-line-updated` bus patch from commitSerialAbsent
-  // all reconcile here (it's a per-line fact now, not ephemeral per-mount state).
+  // Seed the no-serial waiver from the line's DURABLE value on line change AND whenever the persisted fact updates — a fresh open, a reload,…
   useEffect(() => {
     setSerialAbsent(!!row.serial_absent);
     setSerialAbsentReason(row.serial_absent_reason ?? null);
   }, [row.id, row.serial_absent, row.serial_absent_reason]);
 
-  // Quick-return hotkey: Escape re-focuses the serial scan input from anywhere
-  // in the unbox panel, so the operator can resume scanning without reaching for
-  // the mouse. Only fires when no modal/dialog/select is currently active
-  // (avoids intercepting Escape from popovers, search fields, select elements).
+  // Quick-return hotkey:
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -234,9 +189,6 @@ export function useUnboxLineController(
   }, [row.id]);
 
   // Sibling PO-line clicks keep the workspace mounted (carton-keyed remount only).
-  // Re-focus the serial scan field on every line switch so the operator can keep
-  // scanning without clicking into the input. Skip the carton's first paint
-  // (SerialCard / stepper owns that).
   const skipSerialFocusOnMountRef = useRef(true);
   useEffect(() => {
     if (skipSerialFocusOnMountRef.current) {
@@ -626,12 +578,7 @@ export function useUnboxLineController(
   // Unfound, return, and sales-order-linked cartons have no Zoho PO to receive against.
   const isUnfound = shouldUseLocalReceiveOnly(row);
 
-  /**
-   * Dogfood primary: print dialog + receive in one click. Face says Receive;
-   * print opens synchronously so the browser dialog is not blocked by the
-   * async receive. Already-received lines stay print-only (terminal routes
-   * those separately).
-   */
+  /** Dogfood primary: */
   const handlePrintAndReceive = useCallback(() => {
     runPrimaryPrint();
     void handleReceive(isUnfound ? 'local_receive' : 'zoho_receive');
@@ -639,17 +586,7 @@ export function useUnboxLineController(
 
   const canPrintReview = labelOptions.length > 0;
   const canReceiveReview = row.receiving_id != null;
-  // Fully received ⇔ the line reached DONE. `received_done_at` is stamped by a
-  // DB trigger on that transition, so EVERY write path gets it for free — this
-  // bench, mark-received-po, the phone, and the Zoho-received reconcile — and
-  // none of them can drift.
-  //
-  // Deliberately NOT `workflow_status === 'UNBOXED'`: that state is ambiguous.
-  // `/api/receiving/match` advances a merely-linked line to UNBOXED, and a
-  // failed Zoho receive parks a line there ("inventory committed, Zoho
-  // pending"). Both must keep the Receive CTA — the first was never received,
-  // the second needs a retry.
-  // Stamp may still be a Date on a stale client patch — coerce before trim.
+  // Fully received ⇔ the line reached DONE.
   const isReceived = Boolean(String(row.received_done_at ?? '').trim());
   // Zoho receive is only valid for matched cartons; unfound stays local-only.
   const canZohoReceive = canReceiveReview && !isUnfound;
@@ -673,19 +610,13 @@ export function useUnboxLineController(
     expectedQty > 0 ? serialAccounted >= expectedQty : hasCapturedSerial;
   const serialConfirmed =
     !requireSerialConfirmation || unitsSatisfied || serialWaived;
-  // Org photo policy (`receiving.photoPolicy`, WS-PHOTO Plan 5) — same
-  // settings-page cache as the serial gate above, so reading it costs no extra
-  // request. Unknown/loading values degrade to 'optional' (never block on a
-  // setting we can't see; the server gate is the backstop).
+  // Org photo policy (`receiving.photoPolicy`, WS-PHOTO Plan 5) — same settings-page cache as the serial gate above, so reading it costs no…
   const photoPolicyRaw = useSetting<ReceivingPhotoPolicy>('receiving', 'receiving.photoPolicy').value;
   const photoPolicy: ReceivingPhotoPolicy =
     photoPolicyRaw === 'require_one' || photoPolicyRaw === 'require_per_item'
       ? photoPolicyRaw
       : 'optional';
-  // Preflight evidence = the carton photo list the entity-header photo pill
-  // already keeps warm (same queryKey → same cache entry; rows carry
-  // receivingLineId + caption = photo_type). Enabled only when the policy can
-  // actually block, so the 'optional' default adds zero fetches.
+  // Preflight evidence = the carton photo list the entity-header photo pill already keeps warm (same queryKey → same cache entry; rows carry…
   const photoPolicyQueryEnabled =
     photoPolicy !== 'optional' && row.receiving_id != null && row.receiving_id > 0;
   const { data: photoPolicyPhotos } = useQuery<{
@@ -715,11 +646,7 @@ export function useUnboxLineController(
   /** THIS line's item-photo count; null = unknown (policy optional / not loaded). */
   const lineItemPhotoCount =
     photoStageCounts != null ? photoStageCounts.itemCountsByLineId.get(row.id) ?? 0 : null;
-  // Mirror of the server gate (mark-received 409) through the SAME evaluator —
-  // blocker copy is never re-derived here. Client scope: carton stage counts +
-  // THIS line's item count; sibling-line gaps are the server gate's job.
-  // Degrade-not-block: while the photo list is unknown the control stays
-  // enabled and a server 409 renders in the receive feedback region.
+  // Mirror of the server gate (mark-received 409) through the SAME evaluator — blocker copy is never re-derived here.
   const photoPolicyDisabledReason = useMemo(() => {
     if (!photoStageCounts) return null;
     const verdict = evaluateReceivingPhotoPolicy({
@@ -785,10 +712,7 @@ export function useUnboxLineController(
     : isUnfound
       ? 'Receive locally'
       : receiveMenuLabel;
-  // Unfound cartons have no Zoho/scan options in the menu — just print-only and
-  // a local "receive all". Keep the menu copy honest so it matches what's shown.
-  // When Unreceive is available, name it in the split affordance — after receive
-  // the primary is Print-only and undo used to be buried with no menu hint.
+  // Unfound cartons have no Zoho/scan options in the menu — just print-only and a local "receive all".
   const splitMenuAriaLabel = isUnfound
     ? 'Print only, or receive all locally (no print)'
     : canUnreceive
@@ -822,11 +746,7 @@ export function useUnboxLineController(
           ? 'Print the label and receive this line'
           : 'Print the label and receive every open line on this PO';
 
-  // Pair the carton with the shipped order a scanned serial matched. Fires for
-  // ANY line once a return is detected (not just a pre-typed RETURN) — the server
-  // has already persisted the link + carton display rep; this mirrors the order#
-  // into the PO# field instantly for the label/scan value. Guarded so it writes
-  // once and never overwrites an operator/Zoho-set PO#.
+  // Pair the carton with the shipped order a scanned serial matched.
   useEffect(() => {
     if (serialLookup.state !== 'found') return;
     const orderNo = (serialLookup.matchedOrder?.order_id || '').trim();
@@ -1030,11 +950,7 @@ export function useUnboxLineController(
     ],
   );
 
-  // Single durable choke point for the green-check no-serial waiver. Updates the
-  // local controller state (the active-row control reflects instantly) AND
-  // persists via markReceivingSerialAbsent, which optimistically patches the
-  // shared bus so the Unbox stepper's Serial step flips on the same frame, then
-  // stamps receiving_line_testing so the waiver survives refresh / another device.
+  // Single durable choke point for the green-check no-serial waiver.
   const commitSerialAbsent = useCallback(
     ({ absent, reason }: { absent: boolean; reason: string | null }) => {
       // Snapshot BEFORE the local setState pair, or the revert would restore

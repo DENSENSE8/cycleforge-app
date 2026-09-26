@@ -30,10 +30,7 @@ describe('shadows SoT', () => {
   });
 
   it('every role resolves to a single themed shadow-elev-* utility', () => {
-    // The ladder must stay one class per role: the `--ds-elev-*` var carries
-    // the ambient + key + cast layers, so a `shadow-scrim/NN` color modifier
-    // (which rewrites EVERY layer to one alpha) would flatten the stack back
-    // into the downward-only shadow this ladder replaced.
+    // The ladder must stay one class per role:
     for (const cls of [
       ELEVATION_CLASS.raised.soft,
       ELEVATION_CLASS.raised.default,

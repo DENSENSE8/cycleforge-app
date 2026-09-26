@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The painted queue read as the floor reads it — what needs hands: state
- * totals, past ship-by, no bin. Two faces of one count (desk-surface handoff:
- * "split with nothing open: the pane shows the list summary; in place: that
- * summary lives on the list"): {@link OrderQueueSummary} fills the empty split
- * pane, {@link OrderQueueSummaryLine} rides the ledger's status bar in place.
- */
+/** The painted queue read as the floor reads it — what needs hands: */
 
 import { useMemo } from 'react';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';

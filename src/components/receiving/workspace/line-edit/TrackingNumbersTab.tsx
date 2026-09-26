@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Unbox Tracking display — primary + extra tracking CRUD for a carton PO.
- *
- * Flush Displays body (no WorkspaceCard glass island). The Displays tab already
- * names this surface — no redundant "Tracking numbers" eyebrow. Chip Edit on
- * the identity bar navigates here; add-extra lives next to Primary.
- */
+/** Unbox Tracking display — primary + extra tracking CRUD for a carton PO. */
 
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import { MapPin, Plus, X } from '@/components/Icons';

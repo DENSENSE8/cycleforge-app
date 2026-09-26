@@ -1,30 +1,4 @@
-/**
- * ShipStation orders → the org's `orders` rows: platform attribution, the
- * canonical line, and the reconciliation plan. Pure — the connector
- * (`./shipstation.ts`) supplies the IO.
- *
- * ShipStation is an aggregator: every order belongs to one of its STORES, and
- * each store is a storefront on a platform (Amazon, eBay, Walmart, Ecwid …).
- * An order is therefore never recorded as `shipstation`; it carries the
- * platform `account_source` the rest of the app already uses:
- *
- *   1. the store's link (`integration_store_links`, set by the operator or
- *      placed once by the store sync) names its platform and, optionally, the
- *      storefront account whose slug the order carries; a link without an
- *      account uses the org's spelling for the linked platform (as in 2);
- *   2. else the store's marketplace → catalog platform slug
- *      (`shipstationMarketplaceSlug`), spelled the way this org's orders already
- *      spell that platform (the most-used account_source that the catalog places
- *      on it, e.g. 'Amazon', 'eBay', 'ecwid'), else the slug itself;
- *   3. ShipStation's Manual Orders store is the org's manual channel;
- *   4. anything else (a store missing from `/stores`, the label API, the rate
- *      browser) is unattributed → the order is QUARANTINED, never guessed.
- *
- * Matching (`matchAggregatorOrderRows`): the row under that exact
- * account_source; else one platform's rows are adopted (enriched, never
- * re-sourced); else legacy `shipstation` rows are claimed (re-keyed); a number
- * spread across platforms is QUARANTINED.
- */
+/** ShipStation orders → the org's `orders` rows: */
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import type { ShipStationV1Order, ShipStationV1Store } from '@/lib/shipping/shipstation/orders-v1';
 import type { ShipAddress } from '@/lib/shipping/shipstation/types';
@@ -157,13 +131,7 @@ export function groupByOrderNumber(orders: readonly ShipStationV1Order[]): Map<s
 const isCancelled = (o: ShipStationV1Order) => (o.orderStatus ?? '').toLowerCase() === 'cancelled';
 const isShipped = (o: ShipStationV1Order) => (o.orderStatus ?? '').toLowerCase() === 'shipped';
 
-/**
- * orders.status for a group. A real ShipStation split (`mergedOrSplit`) is
- * shipped only when every live part is; otherwise the group is copies of one
- * order (same number re-created, e.g. a manual re-entry) and one shipped copy
- * means the order shipped. awaiting_shipment lands in the outbound "needs a
- * label" queue (unassigned).
- */
+/** orders.status for a group. */
 function groupStatus(live: readonly ShipStationV1Order[]): string {
   if (live.length === 0) return 'unassigned';
   const split = live.some((o) => o.mergedOrSplit);
@@ -196,14 +164,7 @@ function toBuyerAddress(a: ShipAddress | null) {
   };
 }
 
-/**
- * One canonical line for a ShipStation order (all orders sharing its number).
- * `orders` is one row per order on this branch, so the row carries the first
- * product line (sku + title, `(+N more)` when there are others) and the total
- * units; every line is kept in full on `shipstation_order_refs.line_items`.
- * No placeholder title is ever invented — an order ShipStation holds no items
- * for gets a blank title.
- */
+/** One canonical line for a ShipStation order (all orders sharing its number). */
 export function toCanonicalLine(group: readonly ShipStationV1Order[], accountSource: string): CanonicalOrderLine {
   const primary = primaryOf(group);
   const items = group.flatMap((o) => o.items).filter((it) => !it.adjustment);
@@ -497,12 +458,7 @@ export function backfillWindows(start: Date, end: Date, days: number): Array<{ s
   return out;
 }
 
-/**
- * Where a (possibly interrupted) backfill continues: the checkpoint's window
- * and page, or the first window of the phase when there is none. Windows
- * before the checkpoint are done; a page is re-read on resume (writes are
- * idempotent), never skipped.
- */
+/** Where a (possibly interrupted) backfill continues: */
 export function resumeFrom(
   windows: ReadonlyArray<{ start: Date; end: Date }>,
   checkpoint: BackfillCheckpoint | null,

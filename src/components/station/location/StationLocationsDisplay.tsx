@@ -1,66 +1,6 @@
 'use client';
 
-/**
- * @domain-job Station Displays → **Locations** — browse the addresses this
- *   warehouse has, place the open entity on one, reprint a scuffed sticker,
- *   or mint a new spot without leaving the bench. Reprints use the shared 2×1
- *   {@link printLocationLabelsJob} face (same HTML as Unbox).
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse `LocationCrudDialog` — that is the Inventory
- *   admin editor behind a modal scrim; this is a Displays leaf whose rows are
- *   ONE armed control on the keyboard path, next to a carton in hand.
- *
- * Shared by Arrival, Unbox, and Ready to Pack through
- * {@link StationLocationPlacementPort}: same interaction at all three benches,
- * three different writers (triage staging · line putaway · pack placement).
- *
- * **Why a LIST and not a create form.** The first cut of this leaf was
- * create-only, which answered the rarer half of the job: an operator reprints a
- * scuffed shelf label far more often than they invent a shelf, and Arrival could
- * not do that at all. A list makes viewing and printing the default and demotes
- * creation to one mode inside it.
- *
- * **Why a mode control and not a print button per row.** Displays armed rows are
- * ONE control — never a nested button, kebab or icon inside the row
- * (`display/station-workbench.md` → armed-row grammar), because a second control
- * makes the row's own commit ambiguous at a bench and is unreachable by the
- * keyboard path the row already owns. So a child control above the list says
- * what committing a row DOES. Rows stay one control; ↑↓ / Enter / click keep
- * working unchanged.
- *
- * **Why a body combobox and not a leaf-header segment.** It rode
- * `setLeafTrailing` as a `TabDisplay appearance="segment"` until 2026-08-19,
- * where three tabs plus the header's own back / refresh / print / edit / kebab /
- * expand / close controls truncated the leaf title to `Loca…` in a
- * right-rail-width column. The house child-mode face is the ticket claim panel's
- * Create|Link — `SearchableSelectField appearance="flush"` at the top of the
- * body (`receiving/workspace/claim/components/ClaimModeSelect.tsx`) — so this
- * leaf composes the same one: row 2, full-bleed, directly under the sticky
- * header and above the filter. ⌥1/⌥2/⌥3 stay bound through
- * `useSegmentChords`, exactly as the segment had them.
- *
- * **It composes, it does not fork.** Addresses are minted by the same waist the
- * bin label printer uses — `POST /api/locations/register` via
- * {@link registerLocations} — so a row lands in `locations` with the canonical
- * flat barcode, idempotently. The sticker is the shared 2×1
- * {@link printLocationLabelsJob} face (same HTML as Unbox). The encoded barcode
- * is still the flat location code `extractArrivalLocationBarcode` decodes.
- *
- * Placement runs through the port's own writer — at Arrival that is
- * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
- * rule are inherited. One storage per station; this leaf never writes across
- * them.
- *
- * **The directed target (2026-08-20).** Above the list, a port MAY supply
- * `suggestion` — "put this product here", composed as {@link PlacementSummary}
- * with the BASIS of the claim under it. It is additive and optional on purpose:
- * a leaf must never derive a target from its own catalog, so only a port with
- * an auditable source (today `receiving_line_putaway` SKU history, see
- * `lib/receiving/suggested-putaway-location.ts`) can direct anyone. The list
- * underneath is untouched and remains the override — replacing it with the
- * suggestion is what would make a wrong answer unrecoverable.
- */
+/** @domain-job Station Displays → **Locations** — browse the addresses this warehouse has, place the open entity on one, reprint a scuffed… */
 
 import { useCallback, useMemo, useState } from 'react';
 import { MapPin, Plus, Printer } from '@/components/Icons';
@@ -194,13 +134,7 @@ export function StationLocationsDisplay({
     [orgGs1?.gln, port, user?.organizationSlug],
   );
 
-  /**
-   * Commit the DIRECTED target. Deliberately not routed through
-   * {@link commit}: that resolves the row out of the browsable catalog, and a
-   * suggested bin can legitimately be absent from it (deactivated, or filtered
-   * out as a non-bin parent). Placing must not silently no-op because the
-   * override list happens not to list the answer.
-   */
+  /** Commit the DIRECTED target. */
   const placeSuggested = useCallback(() => {
     if (!suggestion) return;
     setBusyId(`suggested:${suggestion.location.id}`);
@@ -223,11 +157,7 @@ export function StationLocationsDisplay({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* Row 2 — what committing a row does. Same face as the ticket claim
-          panel's Create|Link (`SearchableSelectField appearance="flush"`, which
-          owns its own bottom hairline): one child-mode grammar across every
-          right-edge leaf, full-bleed across the column. Outside the mode branch
-          so New can be left again. */}
+      {/* Row 2 — what committing a row does. */}
       <div className="shrink-0" data-testid="station-locations-mode-select">
         <SearchableSelectField
           appearance="flush"
@@ -252,19 +182,7 @@ export function StationLocationsDisplay({
         />
       ) : (
         <>
-          {/* Row 2b — the DIRECTED target. The list below answers "which
-              addresses exist?"; this answers "where does THIS one go?", which
-              is the question an operator actually has with a product in hand.
-              It never REPLACES the list — the searchable rows underneath are
-              the override path, which is what makes a wrong suggestion
-              survivable. Only ports with an auditable source supply one
-              (`StationLocationPlacementPort.suggestion`); the rest paint
-              nothing here and the leaf stays the catalog it was.
-
-              The basis line is not decoration. A directive whose reason the
-              operator cannot see is one wrong answer away from being ignored
-              forever, so the claim ("3 of the last 10 CF-1180 went here") ships
-              with the address or the block does not ship at all. */}
+          {/* Row 2b — the DIRECTED target. */}
           {mode === 'place' && (suggestion || suggestionLoading) ? (
             <div
               className={cn('shrink-0 border-b border-border-hairline py-2', DISPLAYS_BODY_INSET)}
@@ -306,10 +224,7 @@ export function StationLocationsDisplay({
             </div>
           ) : null}
 
-          {/* Row 3 — the same find face as the Root Index `Filter displays…`
-              row and the Unbox workbench Band 3 (`variant="chrome"`, full
-              width, hairline under): one component, one rhythm, wherever an
-              operator types above a list. */}
+          {/* Row 3 — the same find face as the Root Index `Filter displays…` row and the Unbox workbench Band 3 (`variant="chrome"`, full width,… */}
           <div className="shrink-0 border-b border-border-hairline">
             <SearchField
               value={query}

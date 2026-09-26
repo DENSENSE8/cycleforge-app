@@ -1,14 +1,6 @@
 /**
  * Task Discovery
- *
- * Scans the codebase for actionable issues and returns them as structured
- * tasks for the agent to implement. Runs once per pipeline cycle.
- *
- * Discovery sources (in priority order):
- *   1. TypeScript type errors      (priority 1)
- *   2. Failing tests               (priority 1)
- *   3. ESLint violations           (priority 2)
- *   4. TODO/FIXME/HACK comments    (priority 3)
+ * 4. TODO/FIXME/HACK comments    (priority 3)
  */
 
 import { exec as childExec } from 'node:child_process';

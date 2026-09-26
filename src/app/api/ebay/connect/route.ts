@@ -14,14 +14,7 @@ import {
 
 const STATE_COOKIE_MAX_AGE = 600; // 10 min — matches the callback TTL window
 
-/**
- * GET /api/ebay/connect
- * Starts the multi-tenant eBay OAuth consent flow.
- *
- * CSRF defense is two-layer: an AES-GCM-encrypted `state` (tamper-proof, carries
- * the tenant + a nonce) PLUS an httpOnly cookie holding the same nonce so the
- * callback can confirm it returned to the same browser session that started it.
- */
+/** GET /api/ebay/connect Starts the multi-tenant eBay OAuth consent flow. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

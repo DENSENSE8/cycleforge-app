@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Flush trailing Delete for Workbench inspector action floors.
- *
- * Icon-only, transparent, hairline leading edge — Orders golden
- * (`OrderUpdateDock`). Two-click arm via tooltip. Controlled (Orders) or
- * self-armed (`onConfirm` / `onDeleted` for Incoming-family).
- */
+/** Flush trailing Delete for Workbench inspector action floors. */
 
 import { useEffect, useRef, useState } from 'react';
 import { Trash2 } from '@/components/Icons';

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Receiving-line rail-selection path (Unbox / History / Incoming / Tech Testing).
- *
- * Owns the publish bridge to `rail-actions-store` so the right rail can render
- * the selection band + action region. Surfaces opt in by calling this wrapper
- * instead of mounting a bottom ContextualSelectionBar — do not dual-publish
- * from {@link useReceivingLineBulkSelection} alone.
- *
- * Plan: receiving-line selection → right rail (mirrors useOrderRailSelection /
- * docs/todo/order-rail-selection-plane-PLAN.md Phase 2); hoard History rail SoT.
- */
+/** Receiving-line rail-selection path (Unbox / History / Incoming / Tech Testing). */
 
 import { useEffect, useMemo } from 'react';
 import {

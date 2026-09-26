@@ -1,18 +1,4 @@
-/**
- * Cross-artifact guard for the receiving-exception vocabulary
- * (Phase 2 of docs/todo/ebay-delivered-not-unboxed-PLAN.md).
- *
- * The hazard this exists for: `seedOrgCatalog` derives `reason_codes.sort_order`
- * from ARRAY POSITION in `RECEIVING_EXCEPTION_CODES` (10, 20, 30 …), while the
- * seed migrations HARDCODE the numbers that walk produced at the time they were
- * written. Splicing a new code into an earlier sub-vocabulary renumbers every code
- * after it, so a newly-seeded org and a pre-existing org disagree about
- * `sort_order` — a silent, data-only desync no type checker can see.
- *
- * These tests read the migrations and assert they still agree with the registry.
- *
- * Run: `npx tsx --test src/lib/receiving/exception-codes.test.ts`
- */
+/** Cross-artifact guard for the receiving-exception vocabulary (Phase 2 of docs/todo/ebay-delivered-not-unboxed-PLAN.md). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

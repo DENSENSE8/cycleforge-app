@@ -1,24 +1,4 @@
-/**
- * Cross-org isolation test harness (Phase A4).
- *
- * Reusable building blocks for the regression suite that proves a second
- * tenant cannot read/write a first tenant's rows. Every table enforced in
- * Phase E gets a spec built on these helpers (acceptance criterion E4).
- *
- * Two layers are tested separately because they fail for different reasons:
- *
- *   1. APPLICATION layer — the hand-written `WHERE organization_id = $n`
- *      filter. Provable today against any pool (see db.test.ts).
- *
- *   2. DATABASE layer (RLS) — the backstop that makes a *forgotten* filter
- *      non-fatal. Only meaningful when the connection role does NOT have
- *      BYPASSRLS. neondb_owner has BYPASSRLS (so FORCE is inert for it);
- *      the RLS proofs therefore require a non-bypass app role, supplied via
- *      TENANT_APP_DATABASE_URL. Without it, the RLS proofs SKIP (documented).
- *
- * Nothing here drops shared tables or deletes the synthetic orgs — concurrent
- * test runs may share them.
- */
+/** Cross-org isolation test harness (Phase A4). */
 
 import type { Pool } from 'pg';
 import { DOGFOOD_ORG_ID } from './constants';
@@ -77,15 +57,7 @@ export async function enforcedRoleInvariant(
   return { ok: !(forcedCount > 0 && bypass), forcedCount, role: r[0]!.current_user, bypass };
 }
 
-/**
- * Proof that RLS itself (not the app filter) isolates tenants. Creates a
- * scratch table that mimics the enforced pattern, FORCEs it, inserts a row for
- * each org via the tenant GUC, then SELECTs with NO org filter under each org
- * and asserts only that org's row is visible. MUST be run against a non-bypass
- * pool to be meaningful.
- *
- * Returns the visible-row counts; the caller asserts {a:1,b:1,crossA:0}.
- */
+/** Proof that RLS itself (not the app filter) isolates tenants. */
 export async function proveRlsIsolatesScratch(
   pool: Pool,
 ): Promise<{ ownA: number; ownB: number; crossFromB: number; loudFail: boolean }> {
@@ -153,21 +125,7 @@ export async function proveRlsIsolatesScratch(
   }
 }
 
-/**
- * Read-only proof that RLS isolates an EXISTING FORCEd table under a non-bypass
- * role, WITHOUT needing CREATE (the runtime `app_tenant` role correctly lacks
- * CREATE on `public`, so `proveRlsIsolatesScratch` cannot run there). Counts
- * rows under the populated org's GUC (expects > 0) and under a different org's
- * GUC (expects 0) — isolation comes entirely from the `tenant_isolation` policy
- * (no WHERE filter). Fully read-only: runs in a transaction it always ROLLBACKs.
- *
- * `table` is a trusted constant supplied by the caller (validated via the
- * `::regclass` cast, which throws on a bad name) — not user input.
- *
- * Returns `{ forced:false }` when the table isn't FORCEd yet so the canary can
- * skip cleanly (a slice not yet promoted), mirroring the self-arming pattern of
- * the reason_codes spec.
- */
+/** Read-only proof that RLS isolates an EXISTING FORCEd table under a non-bypass role, WITHOUT needing CREATE (the runtime `app_tenant`… */
 export async function proveRlsIsolatesForcedTable(
   pool: Pool,
   table: string,

@@ -1,25 +1,6 @@
 /**
  * Google Drive photo-backup — auth + Drive REST plumbing (org-scoped).
- *
- * A tenant connects their OWN Google Drive via "Sign in with Google" (OAuth,
- * scope `drive.file`). We then back up photo originals into a folder THIS app
- * created in their Drive, so storage cost moves to the tenant.
- *
- * Token model (mirrors Amazon LWA):
- *   - The shared app's clientId/clientSecret come from env
- *     (GOOGLE_DRIVE_CLIENT_ID / _SECRET) — one Google Cloud OAuth client for the
- *     whole platform.
- *   - Each tenant's refresh token + root folder id live (encrypted) in the
- *     organization_integrations vault (provider='google_drive').
- *   - Short-lived access tokens are minted on demand and cached IN-PROCESS per
- *     org (never persisted) — same shape as zoho/core.ts.
- *
- * `drive.file` is least-privilege: this app can only ever see files it created,
- * so we never touch the rest of the user's Drive. That also keeps the OAuth app
  * in non-restricted-scope territory (no CASA security assessment).
- *
- * Zero new dependencies — plain fetch against the Drive v3 REST + upload
- * endpoints, like po-gmail/client.ts and amazon/token-refresh.ts.
  */
 
 import pool from '@/lib/db';
@@ -166,12 +147,7 @@ async function loadDriveCreds(orgId: OrgId): Promise<GoogleDriveCredentials> {
   return creds;
 }
 
-/**
- * A valid access token for this org's Drive. Cached in-process; refreshed via the
- * stored refresh token when expired. A 400/401 from Google means the refresh
- * token was revoked/expired — we flag the vault row (status='error') and throw a
- * reconnect-prompt error.
- */
+/** A valid access token for this org's Drive. */
 export async function getDriveAccessToken(orgId: OrgId): Promise<string> {
   const cached = tokenCache.get(orgId);
   if (cached && cached.expiresAt > Date.now() + ACCESS_TOKEN_SKEW_MS) return cached.token;

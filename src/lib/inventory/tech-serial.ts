@@ -1,22 +1,4 @@
-/**
- * tech-serial.ts
- * ────────────────────────────────────────────────────────────────────
- * Canonical writer for `tech_serial_numbers` lineage rows.
- *
- * Before this helper the same INSERT was hand-rolled in (at least) four
- * places — `receiving/serial-attach.ts`, `receiving/receive-line.ts`,
- * `serial-units/[id]/test/route.ts`, and `tech/insertTechSerialForTracking.ts`
- * — each with a slightly different column subset, which is how rows drifted
- * (e.g. some never stamped `serial_unit_id`). One helper, one column list.
- *
- * Transport note (Phase 2 of the relational-reuse plan): this is pg-client
- * based on purpose. The hot inbound/outbound paths run inside
- * `pool.connect()` → BEGIN/COMMIT transactions; the Drizzle (`neon-http`)
- * repositories run on a SEPARATE stateless HTTP connection and therefore
- * CANNOT co-commit with a pg transaction. Any writer that must be atomic with
- * `serial_units` / `sku_stock_ledger` / `inventory_events` belongs here (pass
- * the transaction's `client`), not in the Drizzle repositories.
- */
+/** tech-serial.ts ──────────────────────────────────────────────────────────────────── Canonical writer for `tech_serial_numbers` lineage rows. */
 
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -52,13 +34,7 @@ export interface AttachTechSerialInput {
    * receiving paths that are not order-bound. Prefer over shipment_id joins.
    */
   orderId?: number | null;
-  /**
-   * Tenant scope. `organization_id` is NOT NULL with a session-aware default
-   * (`current_setting('app.current_org')` → fallback org), so it is bound ONLY
-   * when explicitly provided — omitting it lets the DB default apply, which is
-   * how the receiving/tech paths have always worked. Pass it from contexts
-   * (e.g. tech tracking) that carry an explicit org and don't set the session GUC.
-   */
+  /** Tenant scope. */
   organizationId?: string;
   /**
    * Historical import timestamp as a true instant (ISO-8601 with `Z`/offset);
@@ -68,27 +44,7 @@ export interface AttachTechSerialInput {
   createdAt?: string | null;
 }
 
-/**
- * Insert one `tech_serial_numbers` lineage row. Idempotent via
- * `ON CONFLICT DO NOTHING` (the partial unique index
- * `ux_tsn_receiving_line_serial` guards receiving-line re-scans). Returns the
- * new id, or `null` when a conflict swallowed the insert.
- *
- * Pass `executor` to share the caller's open pg transaction; defaults to the
- * pool for standalone writes.
- *
- * Tenancy (backward-compatible): pass the optional trailing `orgId` to thread an
- * explicit tenant. When provided it (a) stamps `organization_id = orgId` on the
- * INSERT — overriding `input.organizationId` so the threaded org always wins —
- * and (b) sets the `app.current_org` GUC for the write so RLS-subject paths
- * resolve to the right tenant: if the caller shares their own `executor`
- * (open transaction) the GUC is set on THAT client with the txn-local
- * `set_config(...,true)`; with the default pool executor the write is routed
- * through `withTenantTransaction` (which BEGINs + sets the GUC + COMMITs).
- * When `orgId` is OMITTED the behavior is byte-identical to before: the column
- * is bound only when `input.organizationId` is present and the raw `executor`
- * (pool by default) runs the INSERT with no GUC.
- */
+/** Insert one `tech_serial_numbers` lineage row. */
 export async function attachTechSerial(
   input: AttachTechSerialInput,
   executor: Pick<PoolClient, 'query'> = pool,

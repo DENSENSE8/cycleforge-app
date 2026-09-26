@@ -74,14 +74,7 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
   // Tracks the ID we've already applied locally but whose URL update may still be in flight.
   // Prevents the openOrderId-sync effect from reverting to the stale URL value.
   const pendingOrderIdRef = useRef<number | null>(null);
-  // Tracks an openOrderId that the user just closed. The URL update from
-  // replaceOpenOrderId(null) is async; without this guard, the sync effect re-runs
-  // with the stale URL value, re-resolves the order, and reopens the panel —
-  // producing the "X closes halfway then reopens / errors out" bug. `seen` is
-  // whether the URL has carried that id: a record closed before its own
-  // `?openOrderId=` write landed must keep ignoring it through that late
-  // landing, not drop the guard on the null URL it was closed from (the
-  // To Ship "Esc, then the record reopens ~800 ms later" bug).
+  // Tracks an openOrderId that the user just closed.
   const ignoredOpenOrderIdRef = useRef<{ id: number; seen: boolean } | null>(null);
 
   const openOrderId = useMemo(() => {
@@ -128,10 +121,6 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
   }, [openOrderId, replaceOpenOrderId]);
 
   // Latest-ref so the disable effect below depends only on `detailsEnabled`.
-  // clearSelectedOrder's identity churns with every searchParams change; with
-  // it as a dep the effect re-fired per URL update, re-dispatching
-  // close-shipped-details, whose handleClose stripped `openOrderId` — the
-  // Search-mode detail ↔ list flash loop.
   const clearSelectedOrderRef = useRef(clearSelectedOrder);
   clearSelectedOrderRef.current = clearSelectedOrder;
 
@@ -192,9 +181,6 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
       // longer needed — unless the closed id has not reached the URL yet.
       if (ignoredOpenOrderIdRef.current?.seen) ignoredOpenOrderIdRef.current = null;
       // CRITICAL: bail if a router.replace from applySelectedOrder hasn't landed yet.
-      // Without this, the render between setSelectedShipped(A) and the URL catching up
-      // to ?openOrderId=A sees `openOrderId == null && selectedShipped` and clears the
-      // brand-new selection — producing the "panel opens, closes, reopens" jitter.
       if (pendingOrderIdRef.current != null) return;
       if (selectedShipped) {
         clearSelectedOrder(false);

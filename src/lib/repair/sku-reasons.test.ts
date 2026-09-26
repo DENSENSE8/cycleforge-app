@@ -1,14 +1,6 @@
 /**
  * Per-SKU repair reason rules — DB-free, via injected deps.
- *
- * Runner: `npx tsx --test src/lib/repair/sku-reasons.test.ts`
- *
  * What these defend (operator 2026-09-14, the kiosk Add-reason CTA):
- *   - a reason added from a tablet lands on THAT SKU, never on every repair;
- *   - the tenant id reaches every DB call (a device principal must not be able
- *     to read or write another org's vocabulary);
- *   - an unfavorited catalog SKU still gets a scope (the identity anchor);
- *   - adding a reason never removes one that was already on screen.
  */
 
 import { test } from 'node:test';

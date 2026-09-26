@@ -1,12 +1,4 @@
-/**
- * linkCartonIdentifier — DB-free unit tests.
- *
- * The contract an operator depends on: ANY id links, a resolvable id imports
- * that order's items, and an unresolvable id is recorded WITHOUT claiming the
- * carton is a matched Zoho PO.
- *
- * Run: `tsx --test src/lib/receiving/link-carton-identifier.test.ts`
- */
+/** linkCartonIdentifier — DB-free unit tests. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

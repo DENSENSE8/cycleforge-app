@@ -30,13 +30,7 @@ interface FbaSelectModeDeps {
   inputRef: RefObject<HTMLInputElement | null>;
 }
 
-/**
- * The FBA "select / combine" scan concern: board-selection counts, the
- * select-mode fallback items bubbled up to the parent `FbaPairedReviewPanel`,
- * and the FNSKU→board-select flow (including the not-on-board auto-add-then-select
- * path). Split out of {@link useFbaStationInput}; shares the controller's
- * error/hint/input state through the passed setters.
- */
+/** The FBA "select / combine" scan concern: */
 export function useFbaSelectMode({
   fbaScanOnly,
   fbaMode,

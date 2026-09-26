@@ -18,37 +18,7 @@ import {
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-/**
- * POST /api/product-manuals/upload
- *
- * Multipart upload for PDFs (and other previewable formats). Two modes:
- *   - create   — no `id` in the form → new row, blob saved at
- *                `product-manuals/<timestamp>_<slug>.pdf`, row goes in as
- *                `status='unassigned'` unless caller passes one.
- *   - replace  — `id` present → swaps the blob on the existing row and
- *                `del()`s the previous source_url (best-effort; non-fatal
- *                if the old blob is already gone).
- *
- * Why a dedicated multipart route instead of reusing the CRUD POST: that
- * endpoint takes JSON and assumes the file already lives somewhere with a
- * public URL. This route owns the Blob lifecycle so the UI can hand a File
- * straight from `<input type="file">`.
- *
- * Word docs (.doc/.docx) are auto-converted to PDF via headless LibreOffice
- * (see lib/manuals/docxToPdf) before upload — the stored blob is always the
- * PDF; the source Word file is not retained. Applies to both create and
- * replace, so "Replace file" on a PDF manual accepts a Word doc too.
- *
- * Form fields:
- *   file          required — PDF, image, or Word doc (.doc/.docx → converted)
- *   id            optional — when present, replaces the existing manual's blob
- *   displayName   optional — defaults to the file's name (stripped of .pdf)
- *   folderPath    optional — '/'-separated; pre-filled to current breadcrumb
- *   type          optional — manual | troubleshooting | installation | …
- *   sku           optional
- *   itemNumber    optional
- *   status        optional — defaults to 'unassigned'
- */
+/** POST /api/product-manuals/upload */
 export const POST = withAuth(
   async (request, ctx) => {
     // Thread orgId so the by-id replace read (ownership gate), upsert/update
@@ -66,10 +36,7 @@ export const POST = withAuth(
     if (!(file instanceof File)) {
       return NextResponse.json({ success: false, error: 'file is required' }, { status: 400 });
     }
-    // Optional companion thumbnail — generated client-side from page 1 of
-    // the PDF so the sidebar can render visual cards. Best-effort: if the
-    // upload comes without one (replace from a non-PDF, generator failure,
-    // backfill not yet performed), we just leave thumbnail_url null.
+    // Optional companion thumbnail — generated client-side from page 1 of the PDF so the sidebar can render visual cards.
     const thumbnailFile = form.get('thumbnail');
     const idRaw = form.get('id');
     const id = idRaw != null && idRaw !== '' ? Number(idRaw) : null;

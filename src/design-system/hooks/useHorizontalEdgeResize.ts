@@ -20,14 +20,7 @@ const KEYBOARD_STEP_PX = 16;
  *  range one `KEYBOARD_STEP_PX` at a time would need dozens of presses. */
 const KEYBOARD_STEP_LARGE_PX = 80;
 
-/**
- * Which edge of the panel owns the drag handle.
- *
- * - `leading` — left-edge handle on a **right-anchored** pane (document /
- *   detail stack). Dragging left grows; dragging right shrinks.
- * - `trailing` — right-edge handle on a **left-anchored** pane (context
- *   panel / receiving rail). Dragging right grows; dragging left shrinks.
- */
+/** Which edge of the panel owns the drag handle. */
 export type HorizontalEdge = 'leading' | 'trailing';
 
 /** Pure drag math — exported so unit tests cover both edges without mounting. */
@@ -73,29 +66,10 @@ export function shouldCollapseFromEdgeDrag(
 /** Default past-min slack when {@link UseHorizontalEdgeResizeOptions.onCollapseBeyondMin} is set. */
 export const EDGE_RESIZE_COLLAPSE_SLACK_PX = 48;
 
-/**
- * Which collapse threshold the drag is currently LEANING against — the pane is
- * pinned at a bound (its live width clamped) and the operator is pushing past it
- * in the slack window, one shove from a collapse. Feeds the splitter's
- * "arm-to-close" highlight (VS Code / Figma snap-zone grammar) so a collapse is
- * never a surprise: the seam of the thing about to close lights before it fires.
- *
- * - `'overshoot'` — dragging past the MAX cap (pane pinned at cap, `raw > clamped`)
- *   but not yet past {@link UseHorizontalEdgeResizeOptions.overshootBeyondPx}
- *   (which closes the FAR rail — the station cascade's Stage 3).
- * - `'collapse'` — dragging past the MIN floor (pane pinned at min, `raw < clamped`)
- *   but not yet past {@link UseHorizontalEdgeResizeOptions.collapseBelowPx}
- *   (which parks THIS pane — drag-past-min self-collapse).
- * - `'none'` — resizing normally, or a bound with no collapse wired to arm.
- */
+/** Which collapse threshold the drag is currently LEANING against — the pane is pinned at a bound (its live width clamped) and the operator… */
 type EdgeDragArm = 'none' | 'collapse' | 'overshoot';
 
-/**
- * Pure. `clampedWidth` is the live layout width AFTER `[minWidth, cap]` clamping,
- * so `raw` diverging from it is exactly "the operator is leaning against a bound".
- * A threshold is only armable when its collapse is wired (its `*Px` arg is set);
- * a bare bound with nothing to collapse arms nothing.
- */
+/** Pure. `clampedWidth` is the live layout width AFTER `[minWidth, cap]` clamping, so `raw` diverging from it is exactly "the operator is… */
 export function edgeDragArmState(args: {
   rawWidth: number;
   clampedWidth: number;
@@ -167,26 +141,14 @@ interface UseHorizontalEdgeResizeOptions {
   label?: string;
   /** `data-testid` on the handle. Defaults to the document-pane id. */
   testId?: string;
-  /**
-   * Opt-in: on pointerup, if the raw (unclamped) drag width is below
-   * {@link collapseBelowPx}, call this instead of flooring at minWidth.
-   * Live layout still clamps to minWidth during the drag; a collapse release
-   * restores the pre-drag width so a collapse gesture never persists the floor.
-   */
+  /** Opt-in: on pointerup, if the raw (unclamped) drag width is below {@link collapseBelowPx}, call this instead of flooring at minWidth. */
   onCollapseBeyondMin?: () => void;
   /**
    * Raw-width threshold for {@link onCollapseBeyondMin}. Defaults to
    * `minWidth - {@link EDGE_RESIZE_COLLAPSE_SLACK_PX}` when the callback is set.
    */
   collapseBelowPx?: number;
-  /**
-   * Opt-in mirror of {@link onCollapseBeyondMin} for the GROW end: fired once
-   * (edge-triggered) mid-drag when the raw (unclamped) drag width pushes past
-   * {@link overshootBeyondPx}. Used by the station cascade's Stage 3 — dragging a
-   * sash past the point the far rail is squeezed to its min closes that far rail
-   * (freeing its width for this pane). Fires again only after the raw width drops
-   * back below the threshold and re-crosses it, so it never spams.
-   */
+  /** Opt-in mirror of {@link onCollapseBeyondMin} for the GROW end: */
   onOvershootMax?: () => void;
   /** Raw-width threshold for {@link onOvershootMax} (typically `maxWidth + slack`). */
   overshootBeyondPx?: number;
@@ -203,25 +165,11 @@ export interface HorizontalEdgeHandleProps {
   onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   /** Double-click snaps back to `defaultWidth` (and persists). */
   onDoubleClick: (e: ReactMouseEvent<HTMLDivElement>) => void;
-  /**
-   * Arrow keys nudge the width (Shift+Arrow for a larger step); Home/End jump
-   * to the floor/ceiling. The WAI-ARIA "window splitter" pattern for a
-   * focusable `role="separator"` — without this the handle was reachable by
-   * Tab (`tabIndex={0}`, `aria-valuenow`) but inert on every key press.
-   */
+  /** Arrow keys nudge the width (Shift+Arrow for a larger step); Home/End jump to the floor/ceiling. */
   onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
 
-/**
- * Pixel-width drag for a horizontally resizable pane.
- *
- * Default (`edge: 'leading'`): right-edge slide-over with a left-edge handle —
- * dragging left grows the panel. Pass `edge: 'trailing'` for a left-anchored
- * column with a right-edge handle (dragging right grows).
- *
- * Lifted from ZohoSplitPane — shared SoT for horizontal document panes and
- * the receiving context-panel rail.
- */
+/** Pixel-width drag for a horizontally resizable pane. */
 export function useHorizontalEdgeResize({
   storageKey,
   defaultWidth = DEFAULT_WIDTH,
@@ -241,10 +189,7 @@ export function useHorizontalEdgeResize({
   // localStorage hydrates in the effect below (avoids a width mismatch).
   const [width, setWidthState] = useState(defaultWidth);
   const [isDragging, setIsDragging] = useState(false);
-  // Which collapse threshold the live drag is leaning against — drives the
-  // "arm-to-close" seam highlight. `'none'` at rest / while resizing normally.
-  // React bails on an unchanged value, so setting it every pointermove is
-  // effectively edge-triggered (no re-render unless the zone changed).
+  // Which collapse threshold the live drag is leaning against — drives the "arm-to-close" seam highlight.
   const [armState, setArmState] = useState<EdgeDragArm>('none');
   const widthRef = useRef(width);
   const edgeRef = useRef(edge);
@@ -294,10 +239,7 @@ export function useHorizontalEdgeResize({
     setWidthState(
       readPersistedWidth(storageKey, defaultWidth, minWidth, maxWidthPad, maxWidth),
     );
-    // Hydrate from storage when the preference key / defaults change — not on
-    // every `maxWidth` tick. Cap changes clamp the live width below so a
-    // mid-drag frame-cap bump (station dual-rail coupling) cannot re-read an
-    // stale localStorage value and stomp the sash.
+    // Hydrate from storage when the preference key / defaults change — not on every `maxWidth` tick.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- maxWidth via clamp effect
   }, [storageKey, defaultWidth, minWidth, maxWidthPad]);
 
@@ -395,11 +337,7 @@ export function useHorizontalEdgeResize({
       const beyond = overshootBeyondPxRef.current;
       const onOvershoot = onOvershootMaxRef.current;
       const onCollapse = onCollapseBeyondMinRef.current;
-      // Arm-to-close highlight: `widthRef.current` is the just-clamped live width,
-      // so `raw` diverging from it means the pane is pinned at a bound and the
-      // operator is pushing into the slack window — one shove from a collapse.
-      // Only a threshold with a wired collapse arms (a bare bound highlights
-      // nothing).
+      // Arm-to-close highlight:
       setArmState(
         edgeDragArmState({
           rawWidth: raw,
@@ -461,15 +399,7 @@ export function useHorizontalEdgeResize({
     [enabled, defaultWidth, setWidth, stopDrag],
   );
 
-  /**
-   * Arrow-key resize — see {@link HorizontalEdgeHandleProps.onKeyDown}.
-   * Direction mirrors {@link widthFromEdgeDrag}: on a `trailing` edge, moving
-   * the handle right (ArrowRight) grows the pane, same as dragging right;
-   * on `leading`, right shrinks it (dragging right shrinks a leading-edge
-   * handle too — see the `HorizontalEdge` doc above `widthFromEdgeDrag`).
-   * `setWidth` (not `applyLiveWidth`) — a keypress is a discrete commit, not
-   * a live drag frame, so it persists immediately like a click would.
-   */
+  /** Arrow-key resize — see {@link HorizontalEdgeHandleProps.onKeyDown}. */
   const onKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
       if (!enabled) return;
@@ -519,12 +449,7 @@ export function useHorizontalEdgeResize({
      * itself. Feeds the sash's arm-to-close highlight.
      */
     collapseArmed: armState === 'collapse',
-    /**
-     * True while a drag is leaning past the MAX cap into the
-     * {@link onOvershootMax} slack — the FAR rail is pinned at its min and one
-     * shove from closing (the station cascade's Stage 3). Feeds the sash's
-     * arm-to-close highlight and the cross-rail relay.
-     */
+    /** True while a drag is leaning past the MAX cap into the {@link onOvershootMax} slack — the FAR rail is pinned at its min and one shove… */
     overshootArmed: armState === 'overshoot',
   };
 }

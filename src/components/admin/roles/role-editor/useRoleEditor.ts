@@ -4,13 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { AuditEntry, RoleDetail, StaffPickerRow } from './role-editor-types';
 
-/**
- * Owns the role editor's data + every mutation: the role-detail fetch, the
- * audit + full-staff loads, role PATCH (label/color/permissions/mobile-defaults),
- * permission toggle, add/remove staff (read-modify-write the staff's role set),
- * delete, and the cross-view refresh broadcast. Returns a controller bag the
- * thin shell + cards render from.
- */
+/** Owns the role editor's data + every mutation: */
 export function useRoleEditor(roleId: number) {
   const [detail, setDetail] = useState<RoleDetail | null>(null);
   const [loading, setLoading] = useState(true);

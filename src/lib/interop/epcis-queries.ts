@@ -1,40 +1,10 @@
-/**
- * The one SQL read behind the EPCIS projection. SERVER-ONLY.
- *
- * Deliberately NOT re-exported from any barrel: `./epcis-projection.ts` and
- * the vocabulary modules are pure and client-safe, and a barrel that mixed
- * them with this file would drag the Neon driver into every client bundle
- * that touched interop (bundle altitude).
- * Callers import this path explicitly.
- */
+/** The one SQL read behind the EPCIS projection. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { EpcisCursor, EpcisSourceRow } from './epcis-projection';
 
-/**
- * One page of the event spine, oldest-first.
- *
- * ## Ascending, unlike every UI feed in this repo
- *
- * The rails read newest-first because an operator wants what just happened.
- * An interop consumer wants to REPLAY, so it reads oldest-first and keeps a
- * cursor — that way a partner that ingested through cursor X can resume at X
- * and receive exactly the events that occurred since, in order.
- *
- * ## Joins are minimal and identity-safe
- *
- * `sku_catalog` is reached ONLY through `serial_units.sku_catalog_id`. Joining
- * it on the SKU *string* is a house hard law violation — `items` and
- * `sku_catalog` are independent numbering schemes whose SKUs collide
- * (SKU identity), so a string join would
- * silently attach one product's GTIN to another product's unit. A unit with no
- * `sku_catalog_id` simply has no GTIN, and the projection falls back to an
- * internal EPC.
- *
- * `receiving_carton` is joined only for the PO number that fills the `why`
- * dimension.
- */
+/** One page of the event spine, oldest-first. */
 export async function fetchEpcisEvents(args: {
   orgId: string;
   since: string | null;

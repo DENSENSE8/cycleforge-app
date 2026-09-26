@@ -1,33 +1,4 @@
-/**
- * `AiSearchHit → CompoundRowView` — the find plane's adapter.
- *
- * Pure, strings and enums, no JSX: "the moment a family can pass a node, the
- * fork walks back in wearing a view model." This is the ONLY place six entity
- * types collapse into one row, which is invariant 1 (`ENGINE_IS_MONOMORPHIC`):
- * heterogeneity is resolved at the adapter boundary and never enters the
- * engine.
- *
- * ## What the compound row says about one hit
- *
- * - IDS — the VERIFIABLE identifier ({@link searchHitIdentifier}), leading the
- *   row, because a warehouse reader scans top-to-bottom down the left edge and
- *   the thing they are checking against a label is the handle. The carrier
- *   tracking is the cell's second line when the hit has one, which is the same
- *   two-line identity every other desk paints.
- * - TITLE — what the record IS. The entity noun that used to sit under it is a
- *   TRACK now (`search-hits.entity`): the same word on every row of a scoped
- *   list is noise, and the line it cost belongs to a real fact.
- * - STATE — the status word, toned through {@link orderStatusTone}, the one
- *   status map the whole find surface already shares. The dot and the word are
- *   the SAME cell, never a coloured dot on one edge of the row and its word on
- *   the other.
- * - DATES — Hash line = the civil day of `happened_at`, Calendar line = the
- *   clock. A relative stamp alone ("4d") is not enough for SLA work, so the
- *   exact instant rides both hovers.
- *
- * There is no money and no photo behind a search hit; both stay null and the
- * shared cells paint the honest empty face.
- */
+/** `AiSearchHit → CompoundRowView` — the find plane's adapter. */
 
 import { format } from 'date-fns';
 import type {
@@ -38,12 +9,7 @@ import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { orderStatusTone, type ChipTone } from '@/components/search/search-result-chips';
 import { searchHitIdentifier } from '@/lib/tables/field-catalog/search-hits-resolve';
 
-/**
- * The find surface's five-tone chip vocabulary → the row's three-tone state
- * vocabulary. `alert` is the only attention-grabbing tone and it is spent on
- * the two states a human has to do something about; a shipped or delivered row
- * is finished, and everything else is ordinary progress.
- */
+/** The find surface's five-tone chip vocabulary → the row's three-tone state vocabulary. */
 const STATE_TONE_BY_CHIP: Readonly<Record<ChipTone, CompoundStateTone>> = {
   emerald: 'done',
   blue: 'neutral',
@@ -96,12 +62,7 @@ export function searchHitsCompoundView(hit: AiSearchHit): CompoundRowView {
     // A hit with no title is a malformed search doc; name it by the handle it
     // definitely has rather than painting "Untitled" over a real record.
     title: str(hit.title) ?? identifier,
-    /**
-     * Fallback line only — the layout binds serial + condition as subtitles
-     * and a bound subtitle replaces this. The raw wire subtitle is prose
-     * (`serial · sku · status`), which is why it is the fallback and not the
-     * face: three facts joined by dots do not sort and do not align.
-     */
+    /** Fallback line only — the layout binds serial + condition as subtitles and a bound subtitle replaces this. */
     note: str(hit.subtitle),
     orderId: identifier,
     tracking,

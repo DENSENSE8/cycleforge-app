@@ -1,14 +1,4 @@
-/**
- * Tenancy constants.
- *
- * The dogfood tenant is org #1 with a fixed UUID. `DOGFOOD_ORG_ID` is the
- * canonical name for it. It exists ONLY for explicit dogfood exemptions
- * (e.g. billing/entitlement gates that grandfather the first tenant) — NEVER
- * for request scoping. Request scoping comes from `ctx.organizationId` /
- * `resolveOrgIdFromRequest`, which fail closed rather than default to a tenant.
- *
- * The UUID `…0001` is unchanged (DB seed, enum `EBAY_USAV`).
- */
+/** Tenancy constants. */
 
 export const DOGFOOD_ORG_ID = '00000000-0000-0000-0000-000000000001' as const;
 

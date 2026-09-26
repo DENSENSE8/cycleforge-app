@@ -4,15 +4,7 @@ import { LABEL_FACE_SHELL, type LabelFaceModel } from '@/lib/print/labelFace';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
-/**
- * Shared 2×1" DataMatrix label shell. Receiving, repair, and product/testing
- * labels all render the same physical sticker — an info column on the left and
- * a DataMatrix on the right — so the page setup, flex layout, print script, and
- * silent-print plumbing live here once. Each caller supplies only its own
- * content (`infoHtml` + `infoCss`) and scaling knobs (`scale`, `qrSize`, label
- * dimensions). Keeping the shell in one place is what stops the labels from
- * drifting apart (e.g. the testing label printing at the wrong scale/position).
- */
+/** Shared 2×1" DataMatrix label shell. */
 
 // escapeLabelHtml lives in ./labelHtml (dependency-free) so face-model modules
 // don't inherit this file's bwip-js graph.
@@ -124,17 +116,7 @@ ${printScript}
 </body></html>`;
 }
 
-/**
- * Build the full 2×1 label document — ONE sticker.
- *
- * Multiplicity is never a page-repeat or a printer repeat count here: a run of
- * N stickers is N plates through {@link printLabelFacesJob}
- * (`labelCopies.expandPlateRun`), because the paired CX418 prints one label for
- * a raster job however many copies the command asks for.
- *
- * Exposed for tests/preview; most callers want {@link printLabel}, which also
- * drives the silent-print / popup pipeline.
- */
+/** Build the full 2×1 label document — ONE sticker. */
 export function buildLabelHtml(opts: PrintLabelOptions): string {
   const widthIn = opts.widthIn ?? LABEL_FACE_SHELL.widthIn;
   const heightIn = opts.heightIn ?? LABEL_FACE_SHELL.heightIn;

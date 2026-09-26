@@ -67,24 +67,7 @@ function lastDigits(value: string | null | undefined, n = 10): string {
   return digits.length <= n ? digits : digits.slice(-n);
 }
 
-/**
- * Confirm that an order number belongs to a phone, and return its public order
- * number.
- *
- * The counter's prior-order reveal is deliberately a TWO-KEY check (order # +
- * phone). An order number alone is a guessable, sequential key, and the kiosk
- * device principal is unattended-capable — anything one key can reveal, a
- * stranger can reveal. So this answers exactly one question ("do these two
- * agree?") and returns nothing else.
- *
- * That narrowness is why it does NOT reuse /api/ecwid/order-search: that route
- * exists to hand an authenticated operator a rich list of order CANDIDATES to
- * pick from. Returning candidates to an unattended tablet is the fishing
- * surface this check is designed to avoid.
- *
- * Returns null when the creds are missing, the lookup fails, no order matches,
- * or the phone does not agree — the caller cannot distinguish, by design.
- */
+/** Confirm that an order number belongs to a phone, and return its public order number. */
 export async function confirmOrderNumberForPhone(args: {
   orgId: OrgId;
   orderNumber: string;
@@ -139,22 +122,7 @@ export async function confirmOrderNumberForPhone(args: {
   }
 }
 
-/**
- * The buyer on one Ecwid order, by public order number.
- *
- * Exists because the receiving link flow
- * (`/api/receiving/add-unmatched-line`) creates a `repair_service` row from an
- * Ecwid order id it holds but a buyer it never fetched, so every ticket born
- * there landed with `customer_id IS NULL` and printed paper with no name on
- * it. Shipping person wins over billing: that is who the unit goes back to.
- *
- * Lives HERE rather than in the route because this repo already carries five
- * forked `GET /orders` fetchers; a sixth is how they keep drifting.
- *
- * Returns `null` on absent creds, a vendor error, or no order — a missing
- * buyer link is recoverable on the next sync pass, a thrown receiving scan is
- * not.
- */
+/** The buyer on one Ecwid order, by public order number. */
 export async function fetchEcwidOrderContact(
   orgId: OrgId,
   orderNumber: string,

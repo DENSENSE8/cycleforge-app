@@ -1,13 +1,7 @@
 import { LIFECYCLE } from '@cycleforge/design-tokens';
 import type { TimelineItem, TimelineTone } from './types';
 
-/**
- * One `station_activity_logs` (SAL) row, keyed to a shipment. SAL is the
- * complete operational scan ledger (tech scan, pack, ship-confirm) keyed by
- * `shipment_id` — the order's `audit_logs` feed is often incomplete (it may
- * carry only PACK_COMPLETED), so the order timeline reads SAL for the physical
- * milestones audit_logs lacks.
- */
+/** One `station_activity_logs` (SAL) row, keyed to a shipment. */
 export interface StationActivityRow {
   id: number;
   created_at: string | null;

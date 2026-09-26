@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Warehouse floor plan — React Flow (@xyflow/react) renderer for the map tab.
- *
- * Phase 1 (read-only): bins as DOM nodes auto-laid from room/row/col grid
- * coordinates (floor-layout.ts), colored by the shared map tone SoT
- * (map-tones.ts — the exact logic the flat table uses), with pan/zoom,
- * Controls and MiniMap. Clicking a bin opens the existing BinDetailFlyout via
- * `onCellClick` (parent owns selection). No dragging, no persistence — those
- * are Phase 3 (docs/todo/warehouse-map-react-flow-plan.md §9).
- *
- * Canvas archetype: the graph is the map — it pans/zooms directly and is
- * never crossfaded; detail opens in the flyout. Zone nodes are emitted before
- * bin nodes so bins paint on top (document order — no stacking overrides).
- */
+/** Warehouse floor plan — React Flow (@xyflow/react) renderer for the map tab. */
 
 import { useMemo } from 'react';
 import {

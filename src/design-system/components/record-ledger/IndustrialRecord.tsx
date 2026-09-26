@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * `IndustrialRecord` — one record of a {@link RecordLedger}: the anatomy of
- * HANDOFF-industrial-record-ledger ("The record"), shared by every page that
- * adopts the ledger after To ship.
- *
- *   spine │ photo │ context   CODE · BIN … · ids ·························│ date
- *         │       │ identity  title ·····································│ QTY [n]
- *         │       │ execution facts ·····································│ → next
- *
- * The page supplies the band CONTENT; this component owns the box: fixed
- * heights, the state spine + tint from `LIFECYCLE`, the one right lane down all
- * three bands, a 2px ink outline when open, hover wash only, no motion.
- *
- * **Whole record opens; controls never do** (law 10): a stretched button under
- * the bands is the open target (one keyboard / AT stop per record); the bands
- * sit above it with pointer events off, and an interactive child turns them
- * back on with `pointer-events-auto` and stops propagation.
- */
+/** `IndustrialRecord` — one record of a {@link RecordLedger}: */
 
 import type { ReactNode } from 'react';
 import Image from 'next/image';

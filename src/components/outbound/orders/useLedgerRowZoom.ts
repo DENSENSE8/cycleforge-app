@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Per-staff industrial-ledger row zoom (`tableColumns[tableId].rowZoom`).
- *
- * Same optimistic staff-preferences write as `useGridRowFills`: it patches
- * only its own `rowZoom` slot and spreads the rest of `tableColumns[tableId]`
- * through untouched, so widths / fills / visibility survive the round trip.
- */
+/** Per-staff industrial-ledger row zoom (`tableColumns[tableId].rowZoom`). */
 
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

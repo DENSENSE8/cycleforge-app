@@ -14,14 +14,7 @@ import { toast } from '@/lib/toast';
 
 type PackageVerb = 'resolve' | 'copy' | 'track';
 
-/**
- * `/m/shipping/shipments/[shipmentId]` — the PACKAGE hub on
- * {@link DetailHubScreen}: one carrier tracking number
- * (`shipping_tracking_numbers.id`), the phone twin of the Shipped desk record.
- * The card opens `/info` (every fact); doors open Items, Activity and the
- * order's other boxes. The dock is Resolve exception (only while the pack scan
- * sits unmatched) · Copy tracking · Track on the carrier's site.
- */
+/** `/m/shipping/shipments/[shipmentId]` — the PACKAGE hub on {@link DetailHubScreen}: */
 function ShipmentHubInner() {
   const hub = useShipmentHub();
   const [resolveOpen, setResolveOpen] = useState(false);

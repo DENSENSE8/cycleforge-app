@@ -9,17 +9,7 @@ import {
   type SidebarRouteKey,
 } from '@/lib/sidebar-navigation';
 
-/**
- * Routing SoT consistency (operator-surfaces refactor Phase 11 — safe subset).
- *
- * Cross-checks the two key systems the plan wants unified — the `SurfaceKey`
- * registry (the operator-job SoT) and the runtime `SidebarRouteKey` nav contract
- * — so that every graduated surface route resolves to the right nav key,
- * permission, and mobile allowance. This pins the mapping as an executable
- * invariant now (the destructive `packer`→`pack` / `tech`→`test` id rename +
- * legacy-nav deletion are a separate, non-concurrent cleanup — see the plan's
- * Phase 11 status note), so any drift fails loudly.
- */
+/** Routing SoT consistency (operator-surfaces refactor Phase 11 — safe subset). */
 
 /** Each surface's canonical route → the nav route-key that owns its panel. */
 const SURFACE_TO_ROUTE_KEY: Record<SurfaceKey, SidebarRouteKey> = {

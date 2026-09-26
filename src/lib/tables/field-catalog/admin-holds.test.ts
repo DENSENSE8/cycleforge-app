@@ -1,22 +1,4 @@
-/**
- * Admin › Holds catalog guards, materialization, adapter and verbs — the family
- * that replaced `/inventory/holds`' seven hand-written `AdminTableColumn`
- * objects.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - the UNPAINTED-FACT non-goal. `condition_grade` and the unit's own `notes`
- *   are selected by `loadHeldUnits` and painted by nothing. A future agent
- *   reading "the row already has the grade" will be tempted to bind it; the
- *   catalog must not name either column until a cell actually paints it.
- * - the VERB's home. `release` is declared in `admin-holds-verbs.ts` and is not
- *   a catalog field. A verb re-declared at the mount is the per-lane action
- *   list `VERBS_BIND_TO_FIELDS` exists to forbid, and a verb re-declared as a
- *   FIELD is how a `<select>` gets back into a cell.
- * - the CLOCK face. The retired `held_at` cell printed `toLocaleString()` —
- *   date AND time — and on a quarantine queue "held twenty minutes ago" and
- *   "held last Tuesday" are different problems.
- */
+/** Admin › Holds catalog guards, materialization, adapter and verbs — the family that replaced `/inventory/holds`' seven hand-written… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

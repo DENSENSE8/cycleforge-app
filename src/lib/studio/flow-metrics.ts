@@ -1,22 +1,4 @@
-/**
- * Flow² metrics assembly (Operations Studio ST2).
- *
- * The Live lens shows the CURRENT occupancy of each node (active/blocked now).
- * Flow² is the TREND/THROUGHPUT view: how long units dwell at each node, how
- * traffic splits across each node's output ports, how WIP has grown over the
- * snapshot window, and which nodes are the bottlenecks.
- *
- * The heavy lifting is SQL (percentile_cont for dwell, the lag() window for
- * per-unit time-in-node, GROUP BY for port distribution); this module is the
- * PURE assembler that maps those raw aggregates onto the graph's node INSTANCES
- * and ranks bottlenecks — so it is unit-testable with plain objects, no DB.
- *
- * Granularity note: workflow_runs records node_TYPE (e.g. 'list_ebay'), not the
- * node instance id, so dwell + port metrics are per-type and fan out to every
- * instance of that type; workflow_node_stats is keyed by node_id, so WIP trend
- * is per-instance. The assembler joins the two by (instance.type → type metric)
- * and (instance.id → stats).
- */
+/** Flow² metrics assembly (Operations Studio ST2). */
 
 export interface FlowNodeRef {
   id: string;
@@ -165,10 +147,7 @@ export function assembleFlowMetrics(input: AssembleFlowInput): StudioFlowRespons
     };
   }
 
-  // Edge volume = times the source node's port fired. workflow_runs is per-type,
-  // so every edge out of a same-type node sees that type's port total (fine —
-  // the seed graph has one node per type; multi-instance graphs over-attribute
-  // symmetrically, documented).
+  // Edge volume = times the source node's port fired.
   const edges: Record<string, FlowEdgeMetrics> = {};
   for (const e of input.edges) {
     const srcNode = nodes[e.source];

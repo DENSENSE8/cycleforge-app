@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Vendor-receipt state for one inbound row — the `zoho` column's cell.
- *
- * Renders what {@link zohoReceiptFace} returns and nothing else: no map lives
- * here (kinetic-ledger law 4 — views assemble resolved facts). Absent status
- * renders {@link GridCellDash}, because "we have never synced this PO" is a
- * different fact from "the vendor reports it open" and COALESCE-ing them would
- * invent an answer.
- *
- * **Not part of `ReceivingStatusCell`.** That cell is the LOCAL lifecycle
- * state; this is the VENDOR's. Two facts, two columns — the same ruling that
- * split state from stamp in that file.
- *
- * The sync age lives in the tooltip, never in the cell: a mirror status is as
- * fresh as the last poll, and a bare age in the cell would fight the `date`
- * column, which is the stamp column.
- */
+/** Vendor-receipt state for one inbound row — the `zoho` column's cell. */
 
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

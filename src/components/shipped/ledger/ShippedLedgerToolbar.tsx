@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The Shipped ledger's toolbar — find box + period + type / carrier / status
- * facets + exceptions-only, every control writing the SAME URL state the
- * packer-log week feed reads (`useShippedTableFilters`,
- * `useShippedFilterActions`), so a bookmark and the old table's params stay
- * one vocabulary. Free text is the server's `?q=` inside the period.
- */
+/** The Shipped ledger's toolbar — find box + period + type / carrier / status facets + exceptions-only, every control writing the SAME URL… */
 
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {

@@ -1,33 +1,4 @@
-/**
- * Manual inbound linking — the operator chokepoint behind the "Link" button
- * (plan §7.1, §7.2). Given ONE Incoming spine row and a second purchase identity
- * (typically an eBay-originated line → its Zoho PO), this:
- *
- *   1. adds the target as a SECONDARY link on the same spine row (the existing
- *      primary keeps the badge; if the line had no primary yet the target becomes
- *      primary), idempotent on ux_inbound_po_links_natural;
- *   2. when the target is Zoho, writes the zoho_purchaseorder_id / _number onto
- *      the line's receiving_line_zoho facts row (W3 — the spine zoho columns are
- *      dead) so Zoho readers + receive-in-Zoho work on the row;
- *   3. records the cross-source equivalence edge (line's primary ↔ target,
- *      reason 'manual') so reconcile/merge queries see the two orders as one;
- *   4. writes an inbound_purchase_merge_log audit row; and
- *   5. (augment_winner, the default) collapses a *duplicate* zoho-only spine row
- *      the Zoho sync may already have created for that PO — but ONLY when the
- *      pairing is unambiguous (exactly one such loser). Ambiguous → augment + log,
- *      never delete. Mirrors the auto-merge invariant in merge-purchase-lines.ts.
- *
- * This is the manual, operator-initiated analogue of `mergeEbayLinesIntoZohoPo`
- * (which auto-runs at the end of the Zoho sync by tracking/order# match). Here the
- * operator has explicitly chosen the line and the target, so no fuzzy matching —
- * the link is authoritative.
- *
- * Idempotency guards (§4.4): only EXPECTED/ARRIVED, quantity_received=0 losers are
- * collapsible; the link + equivalence upserts are idempotent; a per-(org, target)
- * advisory lock serializes concurrent links to the same order.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** Manual inbound linking — the operator chokepoint behind the "Link" button (plan §7.1, §7.2). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -222,13 +193,7 @@ export async function linkInboundManually(
       }
     }
 
-    // 6b. Adopt the Zoho identity onto the winner's receiving_line_zoho facts row
-    //     (W3 writer inversion — the spine zoho columns are dead). Runs after the
-    //     loser collapse so ux_receiving_line_zoho_org_po_line can't collide with
-    //     the just-deleted duplicate's rz row (FK cascade removed it). Inline
-    //     upsert (not narrow.ts) because this site needs COALESCE-once on
-    //     zoho_line_item_id and must maintain the derived
-    //     zoho_purchaseorder_number_norm (GENERATED on the old spine column).
+    // 6b. Adopt the Zoho identity onto the winner's receiving_line_zoho facts row (W3 writer inversion — the spine zoho columns are dead).
     if (targetSource === 'zoho') {
       await client.query(
         `INSERT INTO receiving_line_zoho (

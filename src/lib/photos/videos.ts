@@ -7,13 +7,7 @@ import { getDefaultStorageProvider } from './storage/resolve-primary';
 import type { PhotoEntityType } from './types';
 import type { VideoMime } from './video-upload-rules';
 
-/**
- * `entity_videos` — the video twin of the photo catalog, keyed by the same
- * polymorphic (entity_type, entity_id) pair as `photo_entity_links`. Every
- * statement runs in `withTenantTransaction` and names `organization_id`
- * explicitly from the auth context. Why videos are not `photos` rows: see
- * `src/lib/migrations/2026-09-24d_entity_videos.sql`.
- */
+/** `entity_videos` — the video twin of the photo catalog, keyed by the same polymorphic (entity_type, entity_id) pair as `photo_entity_links`. */
 
 export interface EntityVideoRow {
   id: number;
@@ -170,14 +164,7 @@ export async function listReadyVideosForEntity(input: {
   });
 }
 
-/**
- * Delete one video in the caller's org: the row in a tenant transaction, then
- * the GCS object best-effort (the same non-fatal rule `deletePhoto` follows —
- * a bucket hiccup must not resurrect a row the operator removed; an orphaned
- * object is swept, a phantom row is not). Returns the deleted row, or null
- * when there was none. A pending row's object may not exist; the adapter's
- * delete ignores not-found.
- */
+/** Delete one video in the caller's org: */
 export async function deleteVideo(organizationId: string, videoId: number): Promise<EntityVideoRow | null> {
   const deleted = await withTenantTransaction(organizationId, async (client) => {
     const row = await selectVideo(client, organizationId, videoId);

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Desk record photo lane → every photo of this item # + SKU
- * ({@link fetchLinePhotos}), in Unbox's own viewer: `usePhotoGallery` +
- * `PhotoViewerPortal` (`PhotosActionsToolRuntime`, `PhotoPeekFan`). Fetched
- * on press, never on paint. The phone record reads the same fetcher into
- * `MobileSwipePhotoViewer`.
- */
+/** Desk record photo lane → every photo of this item # + SKU ({@link fetchLinePhotos}), in Unbox's own viewer: */
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';

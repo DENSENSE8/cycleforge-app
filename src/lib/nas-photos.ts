@@ -1,25 +1,8 @@
-/**
- * Client helpers for receiving NAS photos (picker + capture upload).
- *
- * Production: the browser talks only to the same-origin `/api/nas` proxy; Vercel
- * forwards read/write to the office NAS Media Agent (Synology share mounted at
- * `/Volumes/USAV Media` on the tunnel Mac). Local dev may use `/api/nas-dev`
- * against a mounted share.
- *
- * Attach flows store the resulting URL on the `photos` table via
- * POST /api/receiving-photos — no bytes through Vercel.
- */
+/** Client helpers for receiving NAS photos (picker + capture upload). */
 
 import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
 
-// Base URL of the NAS file server, e.g. "https://nas.usav.local" or, for local
-// dev, "http://192.168.1.50:8088" / "/api/nas-dev". No trailing slash.
-//
-// This used to be a build-time constant from NEXT_PUBLIC_NAS_PHOTOS_BASE_URL.
-// It's now a RUNTIME value so an admin can flip between a test and a production
-// NAS without a rebuild: the active URL comes from org settings via
-// GET /api/nas-config and is pushed in with `setNasBaseUrl()` (see
-// `useEnsureNasConfig`). The env var is kept only as an initial dev seed.
+// Base URL of the NAS file server, e.g.
 let runtimeBase = (process.env.NEXT_PUBLIC_NAS_PHOTOS_BASE_URL || '').replace(/\/+$/, '');
 
 export function setNasBaseUrl(url: string | null | undefined): void {
@@ -39,12 +22,7 @@ export function nasConfigured(): boolean {
   return getNasBaseUrl().length > 0;
 }
 
-/**
- * True when `url` points at the NAS file server (so a delete must go
- * browser-direct over WebDAV — the Vercel API route can't reach the LAN).
- * Excludes Vercel Blob URLs (those are deleted server-side) and matches both
- * the configured absolute base and the local dev proxy path.
- */
+/** True when `url` points at the NAS file server (so a delete must go browser-direct over WebDAV — the Vercel API route can't reach the LAN). */
 export function isNasPhotoUrl(url: string): boolean {
   if (!url) return false;
   if (/vercel-storage\.com|blob\.vercel-storage/.test(url)) return false;
@@ -66,10 +44,7 @@ export interface NasEntry {
   url: string;
 }
 
-// One directory entry from the NAS file server. We accept either format:
-//   • Caddy `file_server browse` (Accept: application/json): { name, size,
-//     is_dir, mod_time, ... }
-//   • nginx `autoindex_format json`: { name, type, size, mtime }
+// One directory entry from the NAS file server.
 interface RawEntry {
   name: string;
   size?: number;
@@ -145,19 +120,7 @@ export async function listNasDir(relDir: string): Promise<NasEntry[]> {
     });
 }
 
-/**
- * Build the NAS destination URL for a freshly captured receiving photo. The PO
- * (and line) is encoded into the FILENAME, written flat into the operator's
- * configured folder — NOT a per-PO subfolder. WebDAV `PUT` returns 409 when the
- * parent collection doesn't exist (it won't auto-create `PO_123/`), so a flat
- * name keeps writes working against a plain WebDAV server and the dev proxy
- * alike, while still grouping by PO when a human sorts the folder by name:
- *   {baseUrl}/{folder}/{poPart}[_L{lineId}]__{filename}
- * `poPart` is the human PO number (`scope.poRef`, e.g. "4421") when known, else
- * the internal `PO_{receivingId}` — so the saved filename leads with the PO#.
- * `filename` is derived from a stable per-capture id, so a Retry overwrites the
- * same path (idempotent) instead of littering duplicates.
- */
+/** Build the NAS destination URL for a freshly captured receiving photo. */
 export function buildNasPhotoUrl(opts: {
   baseUrl: string;
   folder: string;
@@ -192,13 +155,7 @@ export function buildNasPhotoUrl(opts: {
   return `${baseUrl.replace(/\/+$/, '')}/${encoded}`;
 }
 
-/**
- * Destination URL for an outbound shipping LABEL on the NAS. Mirrors
- * {@link buildNasPhotoUrl} but writes a FLAT `LABEL_<orderRef>__<filename>` into
- * the configured folder (no `labels/` subdir — plain WebDAV PUT 409s when a
- * parent collection is missing, the same constraint receiving photos hit). The
- * `LABEL_` prefix keeps labels eyeball-distinct from photos in the same share.
- */
+/** Destination URL for an outbound shipping LABEL on the NAS. */
 export function buildNasLabelUrl(opts: {
   baseUrl: string;
   folder: string;
@@ -229,17 +186,7 @@ interface PutResult {
   error?: string;
 }
 
-/**
- * Write one captured photo straight to the NAS over WebDAV (HTTP PUT). The app
- * is Vercel-hosted and can't reach the LAN, so the BROWSER does this PUT against
- * the Cloudflare-fronted NAS endpoint. `credentials: 'include'` lets a Cloudflare
- * Access cookie ride along when the endpoint is protected.
- *
- * The NAS file server must allow PUT for this path and answer the CORS preflight
- * (Access-Control-Allow-Methods: PUT, Allow-Origin: <app origin>) — see the
- * deploy notes. Returns the destination URL on success so the caller can attach
- * it to the receiving row.
- */
+/** Write one captured photo straight to the NAS over WebDAV (HTTP PUT). */
 export async function putNasPhoto(url: string, blob: Blob): Promise<PutResult> {
   let res: Response;
   try {
@@ -265,18 +212,7 @@ export async function putNasPhoto(url: string, blob: Blob): Promise<PutResult> {
   return { ok: false, url, error: `NAS write failed (HTTP ${res.status}).` };
 }
 
-/**
- * Delete one photo file from the NAS over WebDAV (HTTP DELETE), browser-direct
- * — mirroring the capture upload PUT. Going through the browser (not the Vercel
- * route) lets the operator's Cloudflare Access cookie ride along via
- * credentials:'include', exactly like the PUT. Call this alongside
- * DELETE /api/photos/[id] (which only removes the DB row + Vercel-Blob
- * originals) so the NAS file isn't orphaned.
- *
- * Requires the NAS Caddy to route the DELETE verb to its webdav module — see
- * deploy/nas-photo-server/Caddyfile (PUT + DELETE → webdav). A 404 is treated as
- * success — the file's already gone, which is the goal.
- */
+/** Delete one photo file from the NAS over WebDAV (HTTP DELETE), browser-direct — mirroring the capture upload PUT. */
 export async function deleteNasPhoto(url: string): Promise<{ ok: boolean; error?: string }> {
   let res: Response;
   try {

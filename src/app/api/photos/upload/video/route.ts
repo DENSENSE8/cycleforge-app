@@ -12,19 +12,7 @@ export const dynamic = 'force-dynamic';
 /** Long enough to start a phone upload; GCS honours a PUT that began before expiry. */
 const UPLOAD_URL_TTL_SECONDS = 15 * 60;
 
-/**
- * POST /api/photos/upload/video — step 1 of a direct-to-GCS video upload.
- *
- * Same routing as `POST /api/photos/upload`: the body names `entityType` +
- * `entityId` (parsed by `parseMediaEntityTarget`, gated by
- * `uploadPermissionFor(entityType)`); the object lands in the photo bucket
- * under `{org}/videos/{entity flow}/…`. Bytes never pass through here — this
- * inserts a `pending` row and returns a V4 signed PUT that binds the content
- * type and size. The browser PUTs to `uploadUrl` with exactly `headers`, then
- * calls `POST /api/photos/upload/video/{videoId}/finalize`.
- *
- * Body: `{ entityType, entityId, contentType, sizeBytes, fileName? }`.
- */
+/** POST /api/photos/upload/video — step 1 of a direct-to-GCS video upload. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;

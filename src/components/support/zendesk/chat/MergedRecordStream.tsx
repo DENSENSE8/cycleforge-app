@@ -1,36 +1,6 @@
 'use client';
 
-/**
- * The ticket conversation stream — helpdesk messages (optionally interleaved
- * with warehouse / carrier events) over one shared `TimelineItem` waist.
- *
- * **One face everywhere.** Unbox · Arrival · Testing Ticket Displays and
- * `/support` share this bubble chrome ({@link ./ticket-bubble-chrome}). No
- * ledger shell or variant prop — `SupportChatThread` stays deleted.
- *
- * **Station Ticket Displays omit `events`** (messages only). Floor spine lives
- * on the peer Timeline Displays tab (`EventTimeline` / `WorkspaceTimelineTab`).
- * Support service workspace may still pass a collapsed event spine via
- * `mergeFloorTimeline` until an explicit Floor toggle ships.
- *
- * ## Sibling of `EventTimeline`, not a fork
- *
- * Every row is a `TimelineItem` from `src/lib/timeline/` adapters. Merge / sort /
- * day-key logic is shared. Only the message **shell** is conversation chrome
- * (block markdown + attachments do not fit `EventTimeline`'s title + subtitle).
- *
- * ## Reading direction is ASCENDING
- *
- * Composer docks at the bottom → newest adjacent → sort oldest → newest and
- * scroll to the end. `collapseTimeline` runs on the EVENT spine only (never
- * messages — consecutive same-author replies must not fold).
- *
- * ## Scroll + gutter
- *
- * Host owns the scroll port (`SupportTicketDetail`). Chrome from
- * {@link ./ticket-bubble-chrome}: stream + composer share `px-3` inset
- * (same as station band / ticket title). Host stays flush (`DISPLAYS_FLUSH_HOST`).
- */
+/** The ticket conversation stream — helpdesk messages (optionally interleaved with warehouse / carrier events) over one shared… */
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { ZendeskAgent, ZendeskComment, ZendeskUser } from '@/lib/zendesk';
@@ -66,16 +36,7 @@ import {
   TICKET_BUBBLE_STREAM,
 } from './ticket-bubble-chrome';
 
-/**
- * Rows rendered before the "Show earlier" control appears, and the size of one
- * page of history.
- *
- * A ticket can carry hundreds of comments and an unbounded `map` over all of
- * them is what the ruling forbids. A bottom-anchored conversation makes the
- * cheap answer the right one: render the TAIL and page backwards on request —
- * no virtualizer, no measured row heights, and the newest message (the only one
- * that must be on screen) is always mounted.
- */
+/** Rows rendered before the "Show earlier" control appears, and the size of one page of history. */
 const STREAM_PAGE = 60;
 
 interface ZAttachmentWire {
@@ -109,13 +70,7 @@ function atMs(at: string | null): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/**
- * Leading mark — author's identity for a message, station glyph for an event.
- *
- * Staff posts use {@link StaffAvatar} at size `sm` + `colorRing`, the same
- * scoped mark as compound DataTable cells (staff colour fill, photo colour-ring).
- * Zendesk roster photos only appear when there is no staff id.
- */
+/** Leading mark — author's identity for a message, station glyph for an event. */
 function ThreadStaffMark({
   staffId,
   name,
@@ -317,17 +272,7 @@ export function MergedRecordStream({
    * sorted and collapsed. Omit ⇒ messages only.
    */
   events?: TimelineItem[];
-  /**
-   * Live height of a floating composer overlaying the bottom of this stream's
-   * scroll port (measured by {@link useMeasuredHeight} in the host).
-   *
-   * It is spent as a SPACER inside the stream, ABOVE the autoscroll sentinel —
-   * not as padding on the port. `scrollIntoView({ block: 'end' })` aligns the
-   * sentinel with the port's bottom edge, so a sentinel below the reserved band
-   * would park the newest message right back under the composer. With the
-   * spacer first, "scrolled to the end" means the last message sits clear of
-   * the dock.
-   */
+  /** Live height of a floating composer overlaying the bottom of this stream's scroll port (measured by {@link useMeasuredHeight} in the host). */
   bottomInsetPx?: number;
 }) {
   const { data, isLoading, error } = useTicketComments(ticketId);
@@ -392,10 +337,7 @@ export function MergedRecordStream({
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [rows.length]);
 
-  // A growing composer (auto-grow textarea, CC strip, staged thumbs) eats the
-  // band the newest message occupies. Re-dock the end ONLY when the reader is
-  // already parked there — re-scrolling someone who has read up into history
-  // would yank the thread out from under them.
+  // A growing composer (auto-grow textarea, CC strip, staged thumbs) eats the band the newest message occupies.
   useEffect(() => {
     const end = endRef.current;
     const port = end?.closest<HTMLElement>('[data-conversation-port]');

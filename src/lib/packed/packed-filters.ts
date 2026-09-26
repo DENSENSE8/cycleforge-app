@@ -1,12 +1,4 @@
-/**
- * Packed-tab URL facets — staff is `?staff=`; packed-at window is
- * `?dateFrom=` / `?dateTo=` (civil YYYY-MM-DD, warehouse zone).
- *
- * Starting filter is the warehouse **current week**. Omitting both date
- * params (and not setting {@link PACKED_ALL_DATES_PARAM}) means the desk
- * should seed that week. `allDates=1` is the intentional clear — all packed
- * history, no week window — so dismiss does not immediately re-seed.
- */
+/** Packed-tab URL facets — staff is `?staff=`; packed-at window is `?dateFrom=` / `?dateTo=` (civil YYYY-MM-DD, warehouse zone). */
 
 import {
   computeWeekRange,
@@ -79,12 +71,7 @@ export function packedFiltersHot(args: {
   return Boolean(args.staffId || args.dateFrom || args.dateTo);
 }
 
-/**
- * Glanceable packed-at window — matches DateRangePickerField presets
- * (Today / This week / Last 7 days / Last 30 days / This month) when the
- * keys line up. Prefer {@link packedDateExactLabel} in the find-field
- * trailing cluster so operators see concrete civil dates.
- */
+/** Glanceable packed-at window — matches DateRangePickerField presets (Today / This week / Last 7 days / Last 30 days / This month) when… */
 export function packedDateWindowLabel(
   dateFrom: string | null | undefined,
   dateTo: string | null | undefined,

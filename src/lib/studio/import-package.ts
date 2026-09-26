@@ -1,23 +1,4 @@
-/**
- * import-package — install a CycleForgeTemplatePackage (Phase 3) into an org.
- *
- * This is the "validate → persist → call the ONE installer" path the Phase 1–2
- * APIs were designed for — NOT a third clone path. A validated package is
- * persisted as a NON-system `workflow_templates` row (the durable Neon artifact;
- * invisible to the system library, which lists is_system = true only), then
- * installTemplateIntoOrg clones it exactly like any template — but ALWAYS as a
- * draft (`activate: 'never'`): custom / import / AI packages never auto-activate,
- * the owner reviews + publishes via the human gate.
- *
- * Validation (registered node/surface types only) is the route's job via
- * validateTemplatePackage; this module assumes an already-validated package.
- * Deps-injected so it unit-tests DB-free.
- *
- * Caveat: the template INSERT is a global write and the install is a separate
- * tenant tx; if the install fails after persist, an orphan non-system template
- * row remains (invisible, harmless). Phase 4 visibility/review curation absorbs
- * these; not worth a cross-scope tx here.
- */
+/** import-package — install a CycleForgeTemplatePackage (Phase 3) into an org. */
 
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';

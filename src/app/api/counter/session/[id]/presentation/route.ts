@@ -1,10 +1,4 @@
-/**
- * POST /api/counter/session/{id}/presentation — desk Show proposal.
- *
- * Callers: `useCounterSession.setPresentation`.
- * Schema: `counter_sessions.consult_presentation` jsonb.
- * User: continue to Phase 3 Show + browser confirm.
- */
+/** POST /api/counter/session/{id}/presentation — desk Show proposal. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

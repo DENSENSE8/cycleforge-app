@@ -1,11 +1,6 @@
 /**
- * Header page-face resolver — which chip + which switcher rows the
- * GlobalHeader page control shows. Pure; the React wrapper lives in
- * {@link HeaderPageSwitcher}.
- *
+ * Header page-face resolver — which chip + which switcher rows the GlobalHeader page control shows.
  * Operator 2026-08-31: this control is Scan Stations triage only. Desk /
- * table pages already name themselves in {@link DeskPageChrome}; a second
- * "Shipping" chip in the beam is a twin of that title.
  */
 
 import {

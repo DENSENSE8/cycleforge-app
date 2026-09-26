@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { JSDOM } from 'jsdom';
 
-// `isEditableKeyTarget` — the house predicate this module deliberately does NOT
-// re-implement — reads `instanceof HTMLElement`, so the suppressor needs a DOM
-// even though its own logic is pure. Same setup the repo's other DOM-touching
-// `.test.ts` files use (the unit runner collects `.test.ts` only).
+// `isEditableKeyTarget` — the house predicate this module deliberately does NOT re-implement — reads `instanceof HTMLElement`, so the…
 const dom = new JSDOM('<!doctype html><html><body></body></html>');
 const g = globalThis as unknown as Record<string, unknown>;
 g.window = dom.window;

@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Testing Displays — reference tools on the right-edge push column
- * ({@link StationDisplaysPushStack}), never a centre `SectionTabsSlider`.
- *
- * Sibling of Arrival's {@link buildTriageDisplayTabs}. Centre = testing work
- * (PO lines · UnboxLabelPreview); dock = **label / item notes** + Pass · Print.
- * Ticket create/link/chat live in {@link TicketDisplayHost} (Unbox grain) —
- * never a blocking modal over the middle. SKU Pairing · Checklist · Manuals ·
- * Timeline · carton Linkage are Displays. PO `#` chip opens Linkage with
- * `pairingFocus` as DATA.
- *
- * P3 bodies (Ticket · Timeline) are dynamic — strip labels stay eager.
- */
+/** Testing Displays — reference tools on the right-edge push column ({@link StationDisplaysPushStack}), never a centre `SectionTabsSlider`. */
 
 import dynamic from 'next/dynamic';
 import {

@@ -1,43 +1,8 @@
-/**
- * The inbox's missing CREATE path — a directly-addressed row.
- *
- * `staff_inbox_items` shipped with `reason: 'manual' | 'acted' | 'assigned' |
- * 'mentioned' | 'rule' | 'sla'` in its CHECK and a renderer that reads
- * 'assigned' as "Assigned to you", but the only writer was
- * `drainNotificationOutbox` — so 'assigned' could never be written. This is
- * that writer.
- *
- * ## Why this bypasses the outbox, and why that is not a shortcut
- *
- * The pipeline is `ops_events → notification_outbox → cron worker →
- * staff_inbox_items`, and the worker's whole job is `resolveRecipients()`:
- * deriving WHO should hear about a domain event from `staff_subscriptions`.
- *
- * A thrown task has no recipient to derive. A colleague chose a person by name.
- * Routing it through the outbox would hand an explicit address to a resolver
- * whose only answer is "whoever subscribed" — and the assignee almost certainly
- * has not subscribed to that carton, so the row would be delivered to the wrong
- * people or to nobody. The cron delay (up to a batch interval) would also make
- * a bench handoff arrive late, which is the one thing it cannot do.
- *
- * So: derived recipients go through the outbox; explicit recipients are written
- * here. Same table, same read model, same triage verbs.
- */
+/** The inbox's missing CREATE path — a directly-addressed row. */
 
 import { WORK_TASK_ASSIGNED } from './event-vocabulary';
 
-/**
- * Idempotency + collapse keys for a thrown task.
- *
- * BOTH are keyed on the task, and the collapse key deliberately so. The worker
- * collapses rows sharing a `collapse_key` within a 60s window, bumping
- * `collapse_count` and re-marking a read row unread. If a task's collapse key
- * were the entity's (`order:5:delivery`), an unrelated system notification
- * about that order could fold INTO a human handoff — one operator's message to
- * another silently absorbed into a machine event, or vice versa. Per-task keys
- * make a thrown task collapse with nothing, which is correct: two people
- * handing you the same carton for different reasons are two things to do.
- */
+/** Idempotency + collapse keys for a thrown task. */
 function assignedTaskKeys(workAssignmentId: number): {
   dedupKey: string;
   collapseKey: string;
@@ -57,16 +22,7 @@ interface AssignInboxItemArgs {
   /** Render hints only — never filtered on (the table's own contract). */
   note: string | null;
   urgent: boolean;
-  /**
-   * The PROVIDER ticket number, on a `support_ticket` row only.
-   *
-   * `entity_id` is the LOCAL `support_tickets.id` — what the row is anchored to
-   * and what `?ticket=` resolves against. It is NOT the number an operator
-   * quotes, and an inbox row reading `Ticket 461` next to a desk row reading
-   * `Ticket 10023` is the two-numbers confusion in its most visible form. A
-   * render hint, so the anchor stays the id the CHECK and the delete trigger
-   * know about.
-   */
+  /** The PROVIDER ticket number, on a `support_ticket` row only. */
   ticketNumber?: number | null;
 }
 

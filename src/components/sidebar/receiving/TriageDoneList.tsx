@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Triage "Done" list — cartons already staged + saved for unbox
- * (`receiving.triage_complete = true`, §3.1/E10). Answers E10 without removing
- * cartons from the triage universe: a carton that's Done still shows on the
- * combined Triage tab too (with a "Staged" badge — see `useTriageStagedCartons`),
- * this tab is just a filtered view for "what did I already stage today".
- *
- * Pure composition, thin binding over {@link ReceivingFeedRail} (feed `triageDone`)
- * — mirrors TriageUnfoundList/TriageCombinedList.
- */
+/** Triage "Done" list — cartons already staged + saved for unbox (`receiving.triage_complete = true`, §3.1/E10). */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { ReceivingFeedRail } from './ReceivingFeedRail';

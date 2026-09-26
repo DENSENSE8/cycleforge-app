@@ -48,11 +48,7 @@ export function classifyReceiveResponse(
     };
   }
   const body = (r.body || {}) as Record<string, unknown>;
-  // Photo-policy insurance gate (WS-PHOTO Plan 5): a 409 with structured
-  // blockers from the mark-received routes. Amber, not rose — the fix is at
-  // the bench (take the required photos), not a system failure. Blockers come
-  // from the shared evaluator, so this copy matches the preflight disabled
-  // reason exactly.
+  // Photo-policy insurance gate (WS-PHOTO Plan 5):
   const photoBlock = r.ok ? null : readPhotoPolicyBlock(r.httpStatus, body);
   if (photoBlock) {
     return {
@@ -128,10 +124,7 @@ export function classifyReceiveResponse(
     circuit?: { isOpen?: boolean; retryAfterMs?: number; consecutiveFailures?: number };
   };
   if (zoho.skip_reason === 'zoho_circuit_open') {
-    // Cooldown is recoverable, not a hard failure: the lines committed locally
-    // and the background sync replays once Zoho's breaker closes. Amber, with a
-    // concrete retry window (surfaced from the server's in-process breaker —
-    // this is what replaced the former 3s client-side /api/zoho/health check).
+    // Cooldown is recoverable, not a hard failure:
     const secs = Math.max(1, Math.ceil((zoho.circuit?.retryAfterMs ?? 0) / 1000));
     return {
       verdict: 'circuit_open',

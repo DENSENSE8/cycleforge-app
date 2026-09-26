@@ -19,23 +19,7 @@ import type {
   TaskRow,
 } from './create-task-core';
 
-/**
- * Real bindings for throwing a task.
- *
- * Two things worth knowing about the insert:
- *
- * 1. It writes `assignee_staff_id` DIRECTLY and leaves the two station slots
- *    NULL. `fn_sync_work_assignment_assignee()` (2026-08-08b) returns FOLLOW_UP
- *    rows untouched precisely so this column is authoritative for a thrown
- *    task, where it is derived for station work.
- *
- * 2. It is a plain INSERT with no find-active-and-update, unlike
- *    `POST /api/assignments`. That route upserts because a bench runs one entity
- *    at a time; a thrown task is exempt from `ux_work_assignments_active_entity`
- *    (2026-08-08b) exactly so two people can be handed the same record for
- *    different reasons. Reusing that route's upsert would have silently
- *    hijacked an existing task instead of creating a second one.
- */
+/** Real bindings for throwing a task. */
 export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
   return {
     async insertTask(args: InsertTaskArgs): Promise<TaskRow | null> {
@@ -97,26 +81,9 @@ export function createTaskDeps(organizationId: OrgId): CreateTaskDeps {
       });
     },
 
-    /**
-     * Durable row first, live push second — in that order, always.
-     *
-     * The Ably message is a MIRROR of `staff_inbox_items`, so a dropped push
-     * costs latency while the row still shows up on the recipient's next fetch.
-     * Publishing first (or instead) would make delivery depend on a transport
-     * with no retry and no persistence.
-     *
-     * `ON CONFLICT DO NOTHING` returns no row on a duplicate — that means this
-     * task was already delivered to this staffer, so there is nothing new to
-     * announce and the push is skipped rather than re-fired.
-     */
+    /** Durable row first, live push second — in that order, always. */
     async notifyAssignee({ task, recipientStaffId, actorStaffId, urgent }: NotifyAssigneeArgs): Promise<void> {
-      /**
-       * One extra read, on the ticket arm only, so the inbox row can print the
-       * number the operator quotes. `entity_id` stays the LOCAL registry id —
-       * it is what the CHECK, the delete trigger and `?ticket=` are built on —
-       * and the provider number rides the payload as a render hint. A failed
-       * lookup degrades to the id, never to a wrong number.
-       */
+      /** One extra read, on the ticket arm only, so the inbox row can print the number the operator quotes. */
       const ticketNumber =
         task.entityType === 'support_ticket'
           ? await tenantQuery<{ external_ticket_id: string | null }>(

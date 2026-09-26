@@ -1,9 +1,4 @@
-/**
- * Client-safe types + bucket vocabulary for the packer review queue (plan §4c).
- * Kept out of pack-review-queue.ts (which imports the server-only `tenantQuery`)
- * so the Review station UI + its hook can import the shapes without pulling the
- * database into the client bundle.
- */
+/** Client-safe types + bucket vocabulary for the packer review queue (plan §4c). */
 
 const PACK_REVIEW_BUCKETS = [
   'needs_review',

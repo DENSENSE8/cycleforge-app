@@ -1,33 +1,7 @@
 import type { PoolClient } from 'pg';
 import { classifyPackTier } from '@/lib/packing/pack-tier-classifier';
 
-/**
- * Writer for the shipped-table read model (`packer_log_enrichment`).
- *
- * Precomputes the slowly-changing, expensive-to-resolve enrichments for a PACK
- * `station_activity_logs` row — the catalog product title (the non-indexable
- * ecwid / sku_catalog / sku_stock UNNEST+regexp laterals), the v_sku lookup, the
- * order match, and the order-tracking json — so the /api/packerlogs read query
- * (src/lib/neon/packer-logs-week.ts) can JOIN them 1:1 instead of running the
- * laterals per row on every cache miss.
- *
- * The LATERAL bodies below are copied VERBATIM from the inline read query so the
- * projected values are byte-identical to what the laterals produced; the only
- * change is they are evaluated once (on write / relink / backfill) instead of on
- * every read. Volatile fields (carrier status, staff names, deadlines, scan-out)
- * are intentionally NOT projected — the reader keeps them as live joins.
- *
- * Best-effort + idempotent: an UPSERT keyed on sal_id, safe to call repeatedly.
- * Callers fire it via `after()` so it never blocks a mutation's response.
- *
- * Tenant scope (2026-07-01): every SKU-string lateral is org-scoped by
- * `sal.organization_id` (sku_platform_ids / sku_catalog / sku_stock / orders),
- * so a SKU string that collides across orgs can no longer bleed a foreign
- * tenant's title into a row. RESIDUAL: the `v_sku` compat view (a projection of
- * serial_units that drops organization_id) can't be predicate-filtered here; its
- * SKU-string branch remains cross-org until v_sku exposes org (tracked with the
- * tech_serial_numbers / serial-spine strangle).
- */
+/** Writer for the shipped-table read model (`packer_log_enrichment`). */
 
 /** Any query surface: the pool, a checked-out client, or a tenant-tx client. */
 type Queryable = Pick<PoolClient, 'query'>;
@@ -380,14 +354,7 @@ export async function computePackerLogEnrichment(
   await applyRulesPackTierFallback(executor, ids);
 }
 
-/**
- * Recompute enrichment for every PACK scan affected by a change to the given
- * order id(s) — used by order create / assign / delete. Targets scans that are
- * EITHER currently projected onto one of these orders (enr.order_row_id) OR share
- * its shipment (so a newly-linked or unlinked order re-resolves its `order_match`
- * here). Tolerates already-deleted orders: the order_row_id branch still finds
- * the scans that pointed at them so their match falls back correctly.
- */
+/** Recompute enrichment for every PACK scan affected by a change to the given order id(s) — used by order create / assign / delete. */
 export async function recomputeEnrichmentForOrders(
   executor: Queryable,
   orderIds: ReadonlyArray<unknown>,

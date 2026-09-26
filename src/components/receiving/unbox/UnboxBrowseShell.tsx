@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Client shell for `/unbox` — holds the middle **loading field** until the real
- * carton workspace (or a settled empty scan bench) marks primary paint ready.
- *
- * Only the MIDDLE is covered. The recents rail renders normally underneath this
- * shell's siblings, so the seeded selected row paints first and is never hidden
- * waiting on the carton.
- *
- * When the shell seed already warmed `receiving-siblings`, start ready: the
- * workspace derives during render (`seededWorkspace`) and must NOT sit behind
- * `opacity-0` in the SSR HTML (that hid every Era A LCP win).
- *
- * **The stand-in is {@link UniversalLoader}, not a drawn skeleton** (2026-08-20).
- * `UnboxStationFirstPaint` painted bars where the identity band and line rows
- * would land — geometry that had to be re-cut by hand every time the carton
- * header moved. The field owns no geometry: the real workspace stays mounted
- * underneath and keeps defining layout, so the reveal is still CLS 0 and the
- * cover no longer has anything to drift from.
- *
- * The field is `pointer-events-none` (the loader's default), matching what the
- * absolutely-positioned skeleton did here.
- */
+/** Client shell for `/unbox` — holds the middle **loading field** until the real carton workspace (or a settled empty scan bench) marks… */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

@@ -1,11 +1,4 @@
-/**
- * Legacy tech-serial → sales-order resolve.
- *
- * `tech_serial_numbers.shipment_id → orders.shipment_id` is the pre-allocation
- * ship record. It is also how a leftover TECH serial scan hangs an unrelated
- * unit on an already-packed tracking (Wave serial onto a Bose 151 order after
- * PACK_COMPLETED). Post-pack attaches are not a ship.
- */
+/** Legacy tech-serial → sales-order resolve. */
 
 import pool from '../db';
 import type { OrgId } from '@/lib/tenancy/constants';

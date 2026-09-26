@@ -50,14 +50,7 @@ export async function GET(
   }
 }
 
-/**
- * PATCH /api/tracking-exceptions/[id] — edit mutable fields from the triage
- * UI's pencil/edit dialog. Only the fields supplied in the body are updated.
- *
- * Body shape (all optional):
- *   { tracking_number, notes, exception_reason, status, staff_name,
- *     domain_metadata }
- */
+/** PATCH /api/tracking-exceptions/[id] — edit mutable fields from the triage UI's pencil/edit dialog. */
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> },

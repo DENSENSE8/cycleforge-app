@@ -1,19 +1,4 @@
-/**
- * Part-compatibility column model — MATERIALIZED from a {@link SlotLayout}
- * onto the SHARED compound skeleton, never a hand array.
- *
- * It replaced `columns`, a component-local `AdminTableColumn[]` literal
- * carrying JSX (two two-line `<div>` stacks, a hand-rolled pill, and a
- * `<Button>` cell): a second table engine's column type, with no header sort,
- * no Fields picker and no org binding, because that engine never grew them.
- *
- * The skeleton mounts WHOLE — no `.filter`. A compatibility edge has no
- * picture, so the photo gutter paints the typed placeholder, exactly as
- * `cycle-counts` and `kiosk-slot-events` already do; filtering `thumb` off the
- * mount would need a new `COMPOUND_SKELETON_FILTER_DEBT` row and that list is
- * documented shrink-only. Chrome headers are family DATA and may be relabelled
- * (SKU · Part · Linked · Fit); a geometry cut is not.
- */
+/** Part-compatibility column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -73,17 +58,7 @@ export function partCompatibilityCompoundColumnsFor(
 export const PART_COMPATIBILITY_COMPOUND_COLUMNS: readonly PartCompatibilityGridColumn[] =
   partCompatibilityCompoundColumnsFor(PART_COMPATIBILITY_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers here — the header-sort law. The four chrome
- * tracks that paint a fact the layout does not BIND (`fulfillment` = the SKU,
- * `item` = the part title, `dates` = the linked stamp, `state` = the fit pill)
- * map to the catalog field behind them, so the header sorts the thing the
- * operator is looking at. Structural chrome is named by
- * {@link isSlotTableChromeTrack} rather than by a hand list here, so a track
- * added to that vocabulary cannot start offering a sort on this desk.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function partCompatibilitySortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

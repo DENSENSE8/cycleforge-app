@@ -1,13 +1,4 @@
-/**
- * Deterministic work_assignment upsert for RECEIVING entities.
- *
- * Whenever needs_test or assigned_tech_id changes on a receiving row or
- * receiving_lines row, call this function to keep work_assignments in sync.
- *
- * Rules:
- *   - needsTest=true  + techId present  → upsert ASSIGNED assignment
- *   - needsTest=false OR techId null    → cancel any active assignment
- */
+/** Deterministic work_assignment upsert for RECEIVING entities. */
 
 import { Pool, PoolClient } from 'pg';
 

@@ -1,21 +1,4 @@
-/**
- * Nav-keys leader machine — the PURE state machine behind the leader-armed
- * selection keyboard (spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`).
- *
- * Grammar: `⌘; (leader) → region key → target letter`. This reducer owns only
- * the phase transitions + whether the event was CONSUMED (so the DOM binding
- * knows to `preventDefault`); the store owns key classification, letter
- * matching (it needs the live region handle), timers, overlay claim, and side
- * effects. Keeping the phase logic pure is what makes wedge-safety testable
- * without a DOM.
- *
- * Wedge safety is expressed here as: `leader` refuses to arm while an editable
- * element holds focus (so a scan field is never hijacked), an unmapped region
- * key returns to idle WITHOUT consuming (the keystroke passes through rather
- * than being swallowed — how a coincident scan burst exits), and every `cancel`
- * (escape / timeout / pointerdown / blur / modifier combo / scan burst) drops
- * straight to idle.
- */
+/** Nav-keys leader machine — the PURE state machine behind the leader-armed selection keyboard (spec: */
 
 import type { NavRegionId } from './nav-regions';
 

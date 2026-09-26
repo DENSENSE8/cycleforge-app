@@ -12,24 +12,7 @@ interface OrgGs1Identity {
 
 const EMPTY: OrgGs1Identity = { gln: '', companyPrefix: '' };
 
-/**
- * The tenant's resolved GS1 identity, for client surfaces that print.
- *
- * **This is the browser's only GLN.** The bin and rack label printers each kept
- * their own copy in `localStorage` until 2026-08-02 — a second source of truth
- * for a per-tenant fact, editable per browser, and silently able to disagree
- * with the value the print ladder and every interop projection actually read.
- * Both local fields were deleted; this hook replaced them.
- *
- * Degrade-not-fail: a failed or forbidden fetch resolves to `{ gln: '',
- * companyPrefix: '' }` rather than throwing. That is also the SAFE direction —
- * an absent GLN means `locationLabelPayload` falls back to the bare location
- * code, which scans identically in this app. A label that prints is worth more
- * than a label that was going to carry a GS1 AI.
- *
- * `staleTime: Infinity` because an org's GS1 identity changes roughly never,
- * and a printer refetching it per label would be pure noise.
- */
+/** The tenant's resolved GS1 identity, for client surfaces that print. */
 export function useOrgGs1(): { identity: OrgGs1Identity; loading: boolean } {
   const { data, isPending } = useQuery({
     queryKey: qk.orgGs1.identity(),

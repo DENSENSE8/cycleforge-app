@@ -1,33 +1,6 @@
 import { cn } from '@/utils/_cn';
 
-/**
- * In-field ACTION CELL — the one face for a control riding inside a search
- * field's trailing row: **paste** · **in-field refine** (the filter funnel) ·
- * **rail collapse**.
- *
- * ```text
- * [🔍  filter tracking…………………………………  📋  ⧉ ]
- *                                      paste refine
- * ```
- *
- * `TechRailSearchBar` has described these as one grammar since it was written —
- * *"all three use a 24px control / 14px glyph box and one centered row"* — but
- * the cell was DECLARED in three places (`SearchField`'s paste button,
- * `RailFilterCollapseButton`)
- * and had already drifted: the two field cells hover blue, collapse hovered to
- * `text-text-default`. A sentence in a docblock cannot fail. A shared token can
- * only be broken on purpose.
- *
- * **Class-level, not a component, on purpose.** The refine cell must be a raw
- * `<button>` that Radix `Popover.Trigger asChild` can ref, and it nests a hot
- * dot; paste adds a hover-reveal class; collapse rides an `IconButton` for its
- * focus ring. One face, three legitimately different shells — a component here
- * would have to grow a prop per shell, which is how a face becomes a fork.
- *
- * Peer, one rung up: {@link WorkbenchBandControl} is the same idea for the
- * band's own controls (Views · KPI · inspector), sized to the ROW rather than
- * to the field.
- */
+/** In-field ACTION CELL — the one face for a control riding inside a search field's trailing row: */
 
 /**
  * Resting + hover tone. Split out because the collapse cell keeps `IconButton`

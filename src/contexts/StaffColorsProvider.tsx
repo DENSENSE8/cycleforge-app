@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Populates the module-level staff identity cache in @/utils/staff-colors so
- * the synchronous resolvers (getStaffThemeById, getStaffColorHex,
- * getStaffAvatarPhotoId) can render without each consumer threading the staff
- * record through props.
- *
- *   • Fetches /api/staff?active=false once on mount and on cache invalidation.
- *   • Pushes results into setStaffColorCache(), which bumps a version and
- *     notifies subscribers via _subscribeStaffColorCache.
- *   • Components that need to re-render on color changes call
- *     useStaffColorVersion() — the hook subscribes to the version counter and
- *     forces a re-render whenever the cache is replaced.
- *
- * Mounted near the top of the app (root layout) so the cache is warm before
- * any staff-colored chrome paints.
- */
+/** Populates the module-level staff identity cache in @/utils/staff-colors so the synchronous resolvers (getStaffThemeById,… */
 
 import { useEffect, useReducer } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -60,10 +45,7 @@ export function StaffColorsProvider({ children }: { children: React.ReactNode })
     if (data) setStaffColorCache(data);
   }, [data]);
 
-  // Seed the SIGNED-IN staffer's own avatar from the auth envelope. The
-  // /api/staff fetch above is idle-deferred, so without this the spine footer
-  // would show initials for a beat on every cold boot before flipping to the
-  // photo. Runs after the list effect so a fresh list never un-does it.
+  // Seed the SIGNED-IN staffer's own avatar from the auth envelope.
   const selfStaffId = user?.staffId;
   const selfAvatarPhotoId = user?.avatarPhotoId ?? null;
   useEffect(() => {
@@ -74,12 +56,7 @@ export function StaffColorsProvider({ children }: { children: React.ReactNode })
   return <>{children}</>;
 }
 
-/**
- * Subscribes to the module-level color cache version. Components that read
- * getStaffThemeById/getStaffColorHex during render and want to re-render when
- * an admin updates a color should call this hook (the returned value is just
- * a tick counter — discard it).
- */
+/** Subscribes to the module-level color cache version. */
 export function useStaffColorVersion(): number {
   const [, force] = useReducer((x: number) => x + 1, 0);
   useEffect(() => _subscribeStaffColorCache(force), []);

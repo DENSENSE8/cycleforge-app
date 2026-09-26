@@ -1,22 +1,4 @@
-/**
- * POST /api/receiving/[id]/inventory-sync
- *
- * Pull-from-inventory-provider for a single carton. Resolves the carton's
- * Zoho PO id (header OR line-level — see resolveCartonZohoPoId) and
- * re-imports that PO into the local receiving / receiving_lines via
- * importZohoPurchaseOrderToReceiving, which refreshes:
- *   • receiving.zoho_notes        ← PO header `notes`   (the Zoho Notes tab)
- *   • receiving_lines.unit_price  ← line `rate`         (the price display)
- *   • receiving_lines.zoho_notes  ← line `description`  (item descriptions)
- *
- * This is the read direction that complements the per-field push (Save to Zoho
- * notes, item-description PUT). The workspace header Refresh button and the
- * Zoho Notes tab both call this so the local cache matches the provider on
- * demand.
- *
- * Provider-agnostic path (B3) — moved from /api/receiving/[id]/zoho-sync,
- * which now re-exports this handler as a legacy alias.
- */
+/** POST /api/receiving/[id]/inventory-sync */
 import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';

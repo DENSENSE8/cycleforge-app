@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Second 48px compound leaf — serial / location / View unit.
- * Same column template as the product row. Does not grow CompoundItem.
- *
- * Callers: CompoundRowDetailHost. Contract: data-compound-row-detail.
- * Facts face: CompoundRowDetailFacts (shared with mobile sheet).
- * Schema: CompoundRowDetail. User: "Rendered fewer hooks… To-ship" — keep Facts
- * out of this file's export surface so Sheet does not depend on Band HMR.
- */
+/** Second 48px compound leaf — serial / location / View unit. */
 
 import { gridDataCellClass, LEDGER_GRID_FROZEN_CELL } from '@/design-system/components/grid';
 import { ledgerGridRowShellClass } from '@/design-system/components/grid/grid-cell-chrome';
@@ -47,9 +39,6 @@ export function CompoundRowDetailBand({
       aria-label={`Details for ${title.trim() || 'this line'}`}
       // Leaf face, not a canvas wash — same ruling as the group band
       // (SlotTableGroupParentRow). Operator 2026-09-14: expanded state is an
-      // OUTLINE, never a grayed-out row, so the inserted detail row paints the
-      // leaf's own `bg-surface-card`. Opaque, not transparent:
-      // LEDGER_GRID_FROZEN_CELL is `bg-inherit`.
       className={cn(ledgerGridRowShellClass(false), 'bg-surface-card')}
       style={{ gridTemplateColumns: template, minHeight: COMPOUND_ROW_PX }}
       onClick={(event) => event.stopPropagation()}

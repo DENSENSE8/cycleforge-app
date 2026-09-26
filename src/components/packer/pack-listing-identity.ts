@@ -1,19 +1,4 @@
-/**
- * Listing identity for a pack session — the one place that turns an active pack
- * order's SKU / item number into the listing link + platform key the station
- * entity-context chips consume.
- *
- * Both packing surfaces read from here so the sidebar active-order card and the
- * workbench identity bar can never disagree about which listing an operator is
- * about to seal:
- *   - `PackOrderWorkspace` (the pack bench's active-entity pane)
- *   - `resolvePackOrderIdentityChips` → `PackOrderIdentity` → `CartonContextCard`
- *   - Pack Displays Listings leaf (`ListingLinksTab`)
- *
- * URL + label derivation stays in the `external-item-url` SoT; this only maps
- * its platform label onto the `source-platform` catalog value (`amazon_fba`
- * has no catalog row — it renders as `fba`).
- */
+/** Listing identity for a pack session — the one place that turns an active pack order's SKU / item number into the listing link + platform… */
 
 import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import {

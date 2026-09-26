@@ -7,23 +7,7 @@ import { TriageScrollKnobs } from './TriageScrollKnobs';
 
 export type { TriageSectionSpec };
 
-/**
- * Scroll host for a dense warehouse triage form. Distinct operational blocks
- * are grouped as {@link TriageSections} cards (`cornerClass('surface')`).
- *
- * ## The jump rail is opt-in
- *
- * The grouping alone IS the scan for a short form, so `knobs` defaults off and
- * a three-section host stays a plain scroll. Pass `knobs` when the pane is
- * fixed-width and the operator works it repeatedly — there the rail earns its
- * column twice over, because {@link TriageScrollKnobs} is also a position
- * readout (an `IntersectionObserver` marks the section under the reader), which
- * a scroll with no rail cannot answer at all.
- *
- * It rides the EDGE, never a button row across the top: vertical space is the
- * scarce axis in a dense form, and a top row either scrolls away or is made
- * sticky and spends that space permanently.
- */
+/** Scroll host for a dense warehouse triage form. */
 export function TriageScrollLayout({
   header,
   banner,
@@ -39,12 +23,7 @@ export function TriageScrollLayout({
   sections: readonly TriageSectionSpec[];
   /** Show the edge jump rail. Off by default — see the note above. */
   knobs?: boolean;
-  /**
-   * Column measure — see {@link TriageSections}. `fixed` also reserves the
-   * scrollbar gutter, so the column does not shift sideways the moment the
-   * content (a rate list, a preview) grows past the pane and a scrollbar
-   * appears.
-   */
+  /** Column measure — see {@link TriageSections}. */
   measure?: 'fluid' | 'fixed';
   className?: string;
   'data-testid'?: string;

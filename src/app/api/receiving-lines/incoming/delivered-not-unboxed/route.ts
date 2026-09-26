@@ -1,10 +1,4 @@
-/**
- * GET /api/receiving-lines/incoming/delivered-not-unboxed
- *
- * Carrier-delivered cartons that have not been unboxed yet (qty=0, unboxed_at
- * null). Includes dock-scanned-but-not-unboxed — unlike view=incoming which
- * drops scanned rows. Complements delivered-unscanned (not scanned).
- */
+/** GET /api/receiving-lines/incoming/delivered-not-unboxed */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

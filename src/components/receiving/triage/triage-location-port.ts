@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Arrival's adapter onto {@link StationLocationPlacementPort}.
- *
- * The triage staging controller IS the writer — `selectShelf` carries the lane
- * auto-route and the manual-wins rule — so this maps its shape onto the shared
- * Locations leaf without moving one line of that policy.
- */
+/** Arrival's adapter onto {@link StationLocationPlacementPort}. */
 
 import { useMemo } from 'react';
 import type { StationLocationPlacementPort } from '@/components/station/location';

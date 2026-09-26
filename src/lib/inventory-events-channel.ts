@@ -1,10 +1,4 @@
-/**
- * Custom-event channel for the inventory detail-panel overlay.
- *
- * Mirrors the `open-shipped-details` / `close-shipped-details` /
- * `navigate-shipped-details` pattern used by the dashboard/shipped sidebar.
- * The sidebar dispatches these; the `InventoryDetailsOverlay` listens.
- */
+/** Custom-event channel for the inventory detail-panel overlay. */
 
 export type InventoryDetailKind = 'bin' | 'sku' | 'unit' | 'alert' | 'count';
 

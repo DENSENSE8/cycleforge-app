@@ -1,12 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Request schemas for /api/staff-todos (the header goal chip's checklists).
- *
- * Station values mirror VALID_STATIONS in src/lib/neon/staff-stations-queries
- * (not imported — that module pulls in the pg pool and these schemas must stay
- * client-safe for the typed fetch helpers).
- */
+/** Request schemas for /api/staff-todos (the header goal chip's checklists). */
 export const StaffTodoStation = z.enum(['TECH', 'PACK', 'UNBOX', 'SALES', 'FBA']);
 
 /**

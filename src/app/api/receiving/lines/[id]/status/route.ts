@@ -140,11 +140,7 @@ export async function POST(
     const nextWorkflow = WORKFLOW_FOR_EVENT[eventType] ?? null;
     const nextSerialStatus = SERIAL_STATUS_FOR_EVENT[eventType] ?? null;
 
-    // ─── Advance workflow_status via the guarded chokepoint (was a raw-UPDATE
-    //     bypass with its own WORKFLOW_FOR_EVENT map — §7 Step D). skipEvent: this
-    //     route emits ONE combined line+serial inventory_event below, so the
-    //     chokepoint must not double-write a line event. The guard is permissive
-    //     (unmodeled edges log, never reject) so re-test bounce-backs still pass. ─
+    // ─── Advance workflow_status via the guarded chokepoint (was a raw-UPDATE bypass with its own WORKFLOW_FOR_EVENT map — §7 Step D).
     if (nextWorkflow) {
       const tr = await transitionReceivingLine(
         { receivingLineId: lineId, to: nextWorkflow, actorStaffId: staffId, station, skipEvent: true },
@@ -155,12 +151,7 @@ export async function POST(
         return NextResponse.json({ success: false, error: tr.error }, { status: tr.status });
       }
     }
-    // Testing facts (qa/disposition/condition) + notes — the non-lifecycle half of
-    // the former combined UPDATE (same guard condition). Wave-3 writer inversion:
-    // qa/disposition/condition live on receiving_line_testing now; only notes
-    // stays on the spine. One transaction keeps the two writes as atomic as the
-    // former single statement. Partial-upsert semantics replicate the former
-    // COALESCE($n, col): a provided value overwrites, null leaves it untouched.
+    // Testing facts (qa/disposition/condition) + notes — the non-lifecycle half of the former combined UPDATE (same guard condition).
     if (nextWorkflow || qaStatus || dispositionCode || conditionGrade) {
       await withTenantTransaction(orgId, async (client) => {
         await client.query(
@@ -186,21 +177,6 @@ export async function POST(
     }
 
     // ─── Update serial_units.current_status + the lifecycle event ───────────
-    //
-    // The serial status change is the dual-spine drift this route used to cause:
-    // a raw, unguarded UPDATE plus a separate, non-atomic inventory_event. Behind
-    // UNIFIED_ENGINE_APPLY_TRANSITION, route it through the guarded chokepoint
-    // (applyTransition) — guard + atomic event in one tx — with skipTap, since
-    // recordTestVerdict is the canonical tapper for test verdicts (a second tap
-    // here would be redundant). The chokepoint writes the inventory_event itself
-    // (receiving_line_id + payload preserved), so we don't write a second one.
-    //
-    //   - flag ON  + serial in scope + guard allows → chokepoint owns the event.
-    //   - flag ON  + guard declines (e.g. RTV RETURNED from a receiving state is
-    //     not modeled) → log + fall back to the legacy raw write + event (parity
-    //     net; surfaces which transitions still need an allow-list edge).
-    //   - flag OFF, line-only (NOTE / no serial) → legacy raw write + event,
-    //     now org-scoped. Byte-identical to before for legitimate traffic.
     const useChokepoint = isUnifiedEngineApplyTransition();
     const eventPayload = {
       qa_status: qaStatus,

@@ -1,94 +1,6 @@
 'use client';
 
-/**
- * `UniversalLoader` — the house loading field that replaces per-surface skeletons.
- *
- * @domain-job        Cover a work plane while its data is in flight.
- * @hardware-target   Station · Workbench · Monitor
- * @density           floor
- * @justification     The skeleton family it replaces was one hand-drawn twin per
- *                    surface (`UnboxWorkbenchSkeleton`, `UnboxStationFirstPaint`,
- *                    `ReceivingWorkspaceSkeleton`, …), each of which had to be
- *                    re-drawn every time its real chrome moved — and each of
- *                    which drifted anyway. One field over the real anatomy has
- *                    no geometry to keep in sync.
- *
- * ## Why a canvas and not a grid of divs
- *
- * The field is ~2.5k dots at desk width. As DOM nodes that is 2.5k layout boxes
- * mutated every frame; as one canvas it is a single composited surface, so the
- * spring integration stays off the main-thread layout path entirely.
- *
- * ## What it paints
- *
- * - **Anti-gravity** — dots inside `MOUSE_RADIUS` of the pointer are pushed
- *   along the outbound vector and spring back (`SPRING` / `FRICTION`) once it
- *   leaves. Pointer position comes from a **window** listener, not a canvas one,
- *   so the effect survives `pointer-events-none` (the default here: an operator
- *   must be able to reach the surface underneath while it settles).
- * - **Scaled refresh** — one DIAGONAL band whose dots swell on a sine, timed
- *   off `performance.now()` so its speed is frame-rate independent. The front
- *   is the line `x + y = c`, so it enters at the top-LEFT corner and its
- *   crossing of the top edge travels to the top-RIGHT corner before the tail
- *   clears the bottom. A plain vertical band read as a shutter; the diagonal
- *   reads as a pass over the plane.
- * - **Light unmount** — `isLoading` going false fades the overlay over
- *   `motionDurations.slow`, THEN unmounts, so the rAF loop stops rather than
- *   idling behind an invisible layer.
- *
- * ## The pre-hydration lattice (do not delete)
- *
- * A canvas draws nothing until its effect runs, and on a Tier-1 route that is
- * the whole window the cover exists for — measured on `/unbox`, the effect
- * fires well over half a second after the overlay is in the DOM, so the plane
- * sat blank for exactly as long as the operator was waiting. The overlay
- * therefore carries the SAME lattice as a CSS `radial-gradient` background:
- * same pitch, same token, zero JS, present in the server HTML. The canvas
- * clears it (`fieldLive`) the moment it has painted its first frame, so the
- * dots are never drawn twice.
- *
- * ## One field per covered region — it refuses to nest
- *
- * Unbox stacks three of these over the same plane: the browse shell's cover,
- * the `ReceivingLineWorkspace` chunk fallback inside it, and the desk view's.
- * As skeletons that was three static markup trees; as canvases it would be
- * three rAF loops integrating springs over the same pixels, and three
- * overlapping dot fields reading as one darker, denser field. A descendant
- * therefore checks {@link FieldCoverContext} and paints nothing while an
- * ancestor already covers it — the ancestor's field IS its loading face. If
- * the ancestor settles first, the descendant takes over on the next render.
- *
- * ## House constraints this obeys
- *
- * - **Color comes from `baseColors`, never a literal.** Each dot wears one of
- *   six pastel base tokens (`PASTEL_PALETTE`) and deepens within its own family.
- * - **The plane is white in every theme.** Not `bg-surface-canvas`, not
- *   `--ds-color-background-surface` — a fixed white utility, by operator ruling
- *   2026-08-21. This is the one place the field steps outside the theme layer,
- *   which is also why its palette is base rather than semantic: pastels tuned
- *   for white would be wrong over a dark plane, so the plane is pinned instead
- *   of the palette chasing it. Worth knowing: on a dark theme this reads as a
- *   bright white card while a surface loads.
- * - **Reduced motion paints ONE static frame** — no loop, no pointer listener.
- *   This is also the honest reading of the Unbox ruling that a pulsing skeleton
- *   "reads as a fault light" on a scan floor: the operator who has asked the OS
- *   for stillness gets stillness.
- * - **Hidden tabs stop the loop** (`visibilitychange`), so a backgrounded desk
- *   costs nothing.
- * - Flush ops chrome: the overlay inherits its host's radius, it never adds one.
- *
- * ## Usage
- *
- * ```tsx
- * <UniversalLoader isLoading={!ready}>
- *   <TheRealSurface />
- * </UniversalLoader>
- * ```
- *
- * Children stay mounted and keep defining layout, so the swap costs no shift
- * (CLS 0). With no children it is a standalone field — the shape a Suspense
- * `fallback` or a `loading.tsx` wants.
- */
+/** `UniversalLoader` — the house loading field that replaces per-surface skeletons. */
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { motionDurations } from '@/design-system/foundations/motion';
@@ -105,16 +17,7 @@ import { cn } from '@/utils/_cn';
 /** True inside a region an ancestor field is already covering. */
 const FieldCoverContext = createContext(false);
 
-/**
- * Declare a region already covered — every {@link UniversalLoader} inside it
- * paints nothing and runs no loop.
- *
- * The ancestor guard inside the loader handles real nesting on its own. This is
- * for the case it cannot see: a host that keeps a pane MOUNTED but hidden
- * (`visibility: hidden` + `inert`) behind a sibling overlay. Unbox does exactly
- * that on carton→carton, and the hidden pane's own chunk fallback was happily
- * integrating springs into a canvas nobody could see.
- */
+/** Declare a region already covered — every {@link UniversalLoader} inside it paints nothing and runs no loop. */
 export function LoaderFieldCover({
   covered,
   children,
@@ -400,13 +303,7 @@ export function UniversalLoader({
         ref={containerRef}
         className={cn(
           'relative flex w-full flex-1 flex-col',
-          // A childless field has NOTHING in normal flow — the overlay is
-          // absolute, so it contributes no height. In a flex-COLUMN parent with
-          // a definite height, `flex-1` saves it; in a block or flex-ROW parent
-          // it collapses to 0 and the white plane paints nothing at all.
-          // Measured: 200px in the good case, 0px in both bad ones. The floor is
-          // what makes "always white" true rather than layout-dependent.
-          // `cn` is twMerge, so a caller's own `min-h-*` still wins.
+          // A childless field has NOTHING in normal flow — the overlay is absolute, so it contributes no height.
           showField && !children ? 'min-h-24' : 'min-h-0',
           className,
         )}

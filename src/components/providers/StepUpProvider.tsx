@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Global step-up gate. Any client caller that hits a `403 STEPUP_REQUIRED`
- * response can ask the user to re-confirm (PIN / passkey) via this provider's
- * `requestStepUp(scope)` and then retry the original request.
- *
- * Pair it with {@link fetchWithStepUp} from `@/components/auth/StepUpModal`,
- * which calls `requestStepUp(scope)` automatically on a 403 and retries once.
- */
+/** Global step-up gate. */
 
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
 import { StepUpModal } from '@/components/auth/StepUpModal';

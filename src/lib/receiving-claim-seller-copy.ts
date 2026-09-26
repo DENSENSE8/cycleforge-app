@@ -9,13 +9,7 @@ export function sellerClaimClipboardLabel(messageId: number): string {
   return `Seller msg #${messageId}`;
 }
 
-/**
- * Copy seller-facing claim text to the system clipboard AND the header
- * clipboard history (GlobalHeader → clipboard icon). When `messageId` is
- * known, the history row shows the compact DB id label; send-to-staff uses
- * `seller_claim_message` so the recipient's inbox shows the id, not the wall
- * of text.
- */
+/** Copy seller-facing claim text to the system clipboard AND the header clipboard history (GlobalHeader → clipboard icon). */
 export async function copySellerClaimMessage(opts: {
   text: string;
   messageId?: number | null;

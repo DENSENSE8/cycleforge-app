@@ -1,19 +1,4 @@
-/**
- * The ONE client-side writer for a SKU's pack standard time.
- *
- * Two surfaces set it — the Products desk record (`ProductDetail`) and the
- * `PackProfileEditor` dialog mounted by Operations Analytics and Packer Review
- * — and they must not each hand-roll the PATCH: the tier derivation is part of
- * the write, so a second caller with its own body is a second truth about what
- * tier a 12-minute SKU is.
- *
- * Tier is NOT a parameter. It is derived from minutes by `tierForMinutes`, so
- * `pack_profiles.pack_tier` (NOT NULL) can never disagree with
- * `pack_profiles.estimated_minutes`.
- *
- * Server side: PATCH /api/sku-catalog/[id] → `upsertSkuPackProfileLink`
- * (src/lib/neon/pack-profile-links.ts), permission-gated there.
- */
+/** The ONE client-side writer for a SKU's pack standard time. */
 
 import { snapMinutes, tierForMinutes } from '@/lib/packing/pack-standard-stops';
 

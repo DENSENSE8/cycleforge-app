@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getShipmentRecord } from '@/lib/shipments/shipment-record';
 
-/**
- * GET /api/shipments/[id]/record — the package record (`ShipmentRecord`):
- * items in the box, pack + scan-out, carrier milestones, siblings, the
- * unmatched-scan exception and every action, newest first. `id` is
- * `shipping_tracking_numbers.id`. 404 when unknown or not this org's package.
- */
+/** GET /api/shipments/[id]/record — the package record (`ShipmentRecord`): */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

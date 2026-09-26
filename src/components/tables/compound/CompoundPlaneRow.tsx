@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * A compound row WITH its entity's row-anchored action plane.
- *
- * ## The last reason a family owned a row
- *
- * `CompoundRow` paints every compound cell, but it had nowhere to put a panel
- * that opens BESIDE a picked row — so To-ship mapped the columns itself and
- * mounted its CYC-82 assign manifold by hand. That is `OrdersQueueTableRow`:
- * 1300 lines whose desktop branch is `CompoundRow` with more props, kept alive
- * by a panel and a click rule.
- *
- * Both are engine concerns now. The panel is declared once per ENTITY on
- * `TableSurfaceBinding.rowPlane` (see its docblock for why the binding and not
- * a mount), and the click rule that opens it is
- * {@link applyCompoundRowPlaneGutterClick} — the CYC-82 gesture, which three
- * unrelated surfaces already obeyed before it had a shared home.
- *
- * This component owns the two things a hook cannot: the per-row `open` state
- * and the row element ref the plane anchors to.
- *
- * A binding with no `rowPlane` renders the plain shared row and pays nothing —
- * no state, no ref, no wrapper.
- */
+/** A compound row WITH its entity's row-anchored action plane. */
 
 import { useCallback, useRef, useState } from 'react';
 import { CompoundRow, type CompoundRowProps } from './CompoundRow';
@@ -49,14 +27,7 @@ export function CompoundPlaneRow<Row, C extends { key: string; width: string }>(
 
   const onToggle = select?.onToggle;
 
-  /**
-   * The gutter click, with the plane wired in.
-   *
-   * The checkbox ALWAYS toggles — opening the plane is a side-effect of
-   * becoming selected, never a substitute for the toggle, and shift stays the
-   * range walk. Without a registered plane the toggle is handed through
-   * untouched, so a family with no plane behaves exactly as it did.
-   */
+  /** The gutter click, with the plane wired in. */
   const handleToggle = useCallback(
     (event: { shiftKey: boolean }) => {
       if (!onToggle) return;

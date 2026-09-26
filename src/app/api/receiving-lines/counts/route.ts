@@ -6,20 +6,7 @@ import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Receiving-lines COUNTS sibling (station-table-unification-plan §5 / §7.2).
- *
- * A lightweight `{ total, byDay }` tally over `receiving_line` filtered ONLY by
- * REAL indexed columns (tenant, `created_at` range, optional `assigned_tech_id`
- * and `workflow_status`) — so the SQL is unambiguously correct and never diverges
- * from a forked copy of the 2000-line list route's view-mode WHERE (Decision 3).
- * View-specific lane counts (incoming delivery facets, testing verdicts) are
- * DERIVED CARRIER/read-time state, not raw columns, so they are re-derived
- * client-side from the lane SoT (Decision 12) — this endpoint intentionally does
- * not attempt them.
- *
- * GET /api/receiving-lines/counts?weekStart=&weekEnd=&staff=&workflowStatus=
- */
+/** Receiving-lines COUNTS sibling (station-table-unification-plan §5 / §7.2). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const orgId = ctx.organizationId;

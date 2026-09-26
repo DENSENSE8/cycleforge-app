@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * **Part-compatibility spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * Sort and search are local state. `?boseModelId` is the one URL fact this
- * desk owns and it selects the FEED (a different query key); re-ordering rows
- * already in memory must not round-trip the server.
- */
+/** **Part-compatibility spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

@@ -83,10 +83,8 @@ describe('QueueGroupRow — the fold parent band', () => {
       line({ id: 2, tracking_numbers: ['1ZBBB'] }),
     ]);
     const select = html.match(/data-col="select"[\s\S]*?data-col="/)?.[0] ?? '';
+    // Operator 2026-09-15:
     // Operator 2026-09-15: the mark plane is the whole cell with the mark
-    // PINNED TO THE TOP, and the fold chevron takes its own bottom band — the
-    // COMPOUND_TWO_LINE_CLASS stack that used to box the control in a 23.5px
-    // half is gone from the gutter (it stays the answer for TEXT cells).
     assert.doesNotMatch(select, /grid-rows-2/, 'the gutter no longer boxes the check in a stack');
     assert.doesNotMatch(
       select,
@@ -100,10 +98,8 @@ describe('QueueGroupRow — the fold parent band', () => {
   });
 
   it('rolls up the SAME status its leaves paint — a shortage is not a blank band', () => {
+    // Operator 2026-09-15:
     // Operator 2026-09-15: five OUT OF STOCK children under a band reading
-    // nothing. A shortage is a LIFECYCLE stage (resolveRowStatus), never a
-    // `shipment_status` word — rolling up the raw column folded every row to
-    // the empty string and silenced the parent.
     const { html } = paint([
       line({ id: 1, is_out_of_stock: true }),
       line({ id: 2, is_out_of_stock: true }),

@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Sticky LedgerGrid column-header row — the ONE header every table draws.
- *
- * It owns select-all, frozen tracks, sort click, aria-sort and HoverTooltip
- * tips. The inner label/chevron lives in {@link GridHeaderLabel}.
- *
- * ## What is deliberately not here any more
- *
- * Drag-resize grips, the right-click column menu and the column-display rail
- * were deleted 2026-08-29 (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.2).
- * They were the interactive layer that made a header a surface each desk could
- * fork; the header is now geometry + sort + select-all and nothing else. If a
- * verb earns its way back it comes back once, here, asked for.
- *
- * Callers reach this through {@link DataTable}, which draws it from the
- * binding's columns — no page supplies header chrome.
- */
+/** Sticky LedgerGrid column-header row — the ONE header every table draws. */
 
 import { useRef, useState, type ReactNode } from 'react';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
@@ -66,26 +50,7 @@ import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
 export type LedgerHeaderLayoutApi = {
-  /**
-   * NOTE — there is deliberately no `template`, `cellClass`, `rowShellClass`,
-   * `frozenCellClass`, `frozenLeft` or `isFrozen` here.
-   *
-   * All six were per-family fields, and five of them were the SAME shared
-   * function under a family-flavoured alias: every layout module re-exported
-   * `gridTemplate`, `ledgerGridCell`, `ledgerGridRowShellClass` and
-   * `LEDGER_GRID_FROZEN_CELL` as `receivingGridTemplate`, `tasksGridCell`,
-   * `dailyGridRowShellClass` and so on. Six declarations of one answer is a
-   * fork whether or not the bodies match today — it is a rename, not a
-   * decision, and it gives six places for the next fix to miss.
-   *
-   * What is left is the one field that genuinely differs per surface: which
-   * columns offer click-to-sort.
-   *
-   * Freeze membership (`column.frozen`) and the sticky offset
-   * (`gridFrozenLeft(columns, key)`) derive from the MOUNTED array, so a header
-   * cannot disagree with the model beneath it — whichever model a surface
-   * swaps in.
-   */
+  /** NOTE — there is deliberately no `template`, `cellClass`, `rowShellClass`, `frozenCellClass`, `frozenLeft` or `isFrozen` here. */
   isSortable: (key: string) => boolean;
   /** Column key that draws `data-frozen-edge`. Default `title`. */
   frozenEdgeKey?: string;
@@ -181,13 +146,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
     >
       {hasSelect ? (
         <div
-          // A `role="row"` may only own cell-family roles. Without this the
-          // wrapper is a generic element, ARIA flattens it, and the
-          // `role="checkbox"` inside `GridRowCheckbox` becomes a direct child
-          // of the row — which is what failed axe `aria-required-children`
-          // ("Element has children which are not allowed: [role=checkbox]")
-          // and cost the To-ship desk 10 Accessibility points. This is the
-          // header row, so the select gutter is a `columnheader`.
+          // A `role="row"` may only own cell-family roles.
           role="columnheader"
           className={cn(
             ledgerGridCell({ inset: 'none', rule: true }),
@@ -203,42 +162,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               checked={allSelected ? true : someSelected ? 'mixed' : false}
               onToggle={onToggleAll}
               label={allSelected ? 'Deselect all' : 'Select all'}
-              // ## The select-all face is the FAMILY's chrome. Always.
-              //
-              // This used to override to `'flush'` whenever the mounted model
-              // carried a `thumb` track ("a compound row's select-all must
-              // share the body's face"). The probe was the fork: /shipping
-              // exceptions drops `thumb` from the very same compound columns
-              // (`sheet.columns.filter(c => c.key !== 'thumb')`), so one desk
-              // painted a real bordered checkbox in the top-left and its
-              // sibling desk — same engine, same rows — painted a faded
-              // checkmark. Two faces for one control, decided by whether a
-              // photo column happened to be mounted.
-              //
-              // The two positions are not the same control and were never
-              // meant to match. A BODY cell answers "is this row in?" forty
-              // times down a column, so it is a full-bleed checkmark that
-              // reads as a column at a glance (`CompoundSelect`, hardcoded
-              // `'flush'`). The HEADER cell is a single command — select all,
-              // clear all — and a command needs a box you can see is a box,
+              // ## The select-all face is the FAMILY's chrome.
               // including in its mixed state. Operator 2026-09-04: port the
-              // exceptions checkmark onto To-ship.
-              //
-              // So the header takes the chrome the family declared and nothing
-              // probes the column array. Click-select surfaces (Incoming,
-              // Unbox History) still pass `'sheets'` and are unchanged.
-              //
-              // AMENDED 2026-09-04 (same operator, later the same day): "the
-              // selection top left select all must be on hover as well". A
-              // family that declares `'always'` now paints the HOVER face here
-              // — the identical square, revealed by the header row's own hover
-              // (`group/hrow`) and pinned whenever the box is checked or mixed,
-              // so a live selection is never hidden. That is the row body's
-              // rule applied to the command, and it answers the same argument:
-              // a permanently-painted control over the top-left of the grid
-              // states its availability at a moment nobody is asking. Families
-              // that declare `'selected-only'` keep it — that is a different
-              // instruction, not a louder version of this one.
               chrome={selectGutterChrome === 'always' ? 'hover' : selectGutterChrome}
             />
           ) : (
@@ -337,18 +262,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   const originRef = useRef<{ x: number; y: number } | null>(null);
   const didReorderRef = useRef(false);
   const [dragOver, setDragOver] = useState(false);
-  /*
-   * A header is three affordances on one element, so each is claimed narrowly:
-   *
-   *  - CLICK sorts (unchanged),
-   *  - DRAG on the cell reorders,
-   *  - DRAG on the right-edge grip resizes.
-   *
-   * The grip stops propagation on pointer-down so a resize never starts a
-   * reorder, and the reorder's own drag suppresses the click that would
-   * otherwise fire a sort on drop. Structural tracks (`select`, `_fill`,
-   * paint) never reorder — they are chrome, not facts.
-   */
+  /* A header is three affordances on one element, so each is claimed narrowly: */
   const reorderable =
     Boolean(onReorderColumn) &&
     !isGridColumnFillTrack(column) &&

@@ -1,13 +1,4 @@
-/**
- * Returns testing bin — special barcode location that receiving auto-stages
- * return cartons into on carton-label scan.
- *
- * Mirrors {@link ./parts-sort} (TECH-PARTS): seeded barcode + cached
- * lookup. Org setting `receiving.returnsTestBin` (via callers) selects the
- * symbol; env `RETURNS_TEST_BIN_BARCODE` is the last-resort override.
- *
- * Server-only — browser code must import {@link ./returns-test-bin-symbol} instead.
- */
+/** Returns testing bin — special barcode location that receiving auto-stages return cartons into on carton-label scan. */
 
 import {
   findLocationByBarcode,

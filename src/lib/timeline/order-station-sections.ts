@@ -1,10 +1,4 @@
-/**
- * Order search-feedback station sections — map timeline events / photo stages
- * onto Receiving · Unbox · Testing · Shipping · More.
- *
- * Pure + client-safe. Views filter merged {@link TimelineItem}s and gallery
- * inputs through these helpers; they never invent a second timeline engine.
- */
+/** Order search-feedback station sections — map timeline events / photo stages onto Receiving · Unbox · Testing · Shipping · More. */
 
 import type { UnitTimelinePhotoRowSource } from './unit-photos-events';
 import type { TimelineItem } from './types';

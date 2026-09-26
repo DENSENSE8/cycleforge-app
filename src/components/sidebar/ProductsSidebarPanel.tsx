@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Sidebar surface for `/products`. Hosts pickers / rails per view. L2 views
- * (Catalog · Manuals · Labels · Pairing · QC · Kit) live in GlobalHeader
- * (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
- *
- * Mounted by DashboardSidebar when routeKey === 'products'.
- */
+/** Sidebar surface for `/products`. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -145,12 +139,7 @@ export function ProductsSidebarPanel() {
 
 // ─── Pairing sidebar queue ─────────────────────────────────────────────────
 
-/**
- * The pairing queue list, hosted directly in the sidebar (replaces the
- * standalone left rail in ProductsPairingShell). Selection writes ?sku=
- * so the main pane (ProductHubPanel) picks it up via URL. Search comes in
- * from the shared sidebar SearchBar (`?q=`).
- */
+/** The pairing queue list, hosted directly in the sidebar (replaces the standalone left rail in ProductsPairingShell). */
 function PairingSidebarQueue({ query, sort }: { query: string; sort: PairingSort }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -203,12 +192,7 @@ function PairingSidebarQueue({ query, sort }: { query: string; sort: PairingSort
 
 // ─── QC sidebar product picker ────────────────────────────────────────────
 
-/**
- * Product list for the QC Checklist view. Searches the SKU catalog and, on
- * select, writes `?view=qc&skuId=<catalogId>` so the main pane
- * (QcChecklistWorkspace) loads that SKU's checklist. The selected row stays
- * highlighted. Empty query fetches the top page so there's always a list.
- */
+/** Product list for the QC Checklist view. */
 function QcSidebarPicker({ query }: { query: string }) {
   const { skuId, setSkuId } = useProductsSkuIdParam();
   const selectedSkuId = skuId != null ? String(skuId) : null;

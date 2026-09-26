@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * On-screen render of a printed 2×1" label face from a {@link LabelFaceModel}.
- *
- * Renders the SAME HTML document Chrome prints ({@link buildLabelHtml} with
- * `preview: true`) inside a scaled iframe — so the Unbox / Testing / Products
- * preview cannot drift from the physical sticker. `embedded` strips the
- * bordered card chrome for use inside a menu/popover / procedure host.
- *
- * The iframe is always black-on-white paper (print-faithful). Host width is
- * measured and the 2in×1in document is scaled to fit. Default `fit="capped"`
- * stops at 2.5× (~480×240) for popovers; Unbox centre uses `fit="host"` so the
- * sticker spans the same fixed column width as the PO lines above it.
- *
- * **Width wrapper:** the outer shell is full-width + transparent (`embedded`)
- * so left/right gutters never paint a card fill. Only the sticker box owns the
- * white paper background.
- *
- * Text-slot updates (center note, corners, HRI) patch the live iframe DOM via
- * {@link patchLabelFaceDocument} — rewriting `srcDoc` on every keystroke would
- * tear down the document and flash the sticker. Full rebuild only when matrix /
- * symbology / scale / kind identity changes.
- *
- * `buildLabelHtml` is a **static** import so the sticker HTML is ready on the
- * first paint (no cold `import()` → pulse → iframe gap). Print callers still
- * lazy-load the shell via {@link receiving-label-helpers}; preview hosts already
- * pay for the face when they mount.
- */
+/** On-screen render of a printed 2×1" label face from a {@link LabelFaceModel}. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { LabelFaceSlotOverlay, type LabelFaceSlotHandlers } from '@/components/labels/LabelFaceSlotOverlay';

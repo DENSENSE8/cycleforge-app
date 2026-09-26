@@ -1,42 +1,11 @@
-/**
- * Server-side opaque sessions in Postgres. Cookie carries only a 32-byte
- * random sid; everything else (staff_id, role, device, expiry, revocation)
- * lives in `staff_sessions`. That means we can revoke a single device or
- * an entire user's sessions instantly — something a JWT can't do without a
- * blocklist.
- *
- * Idle-timeout policy by device_kind (when staff.session_policy='default'):
- *   station  →  8 hr idle, 24 hr absolute  (workstation default, survives a coffee break + lunch)
- *   personal → 12 hr idle, 30 days absolute (the "Remember me" device — long-lived)
- *   phone    →  4 hr idle,  4 hr absolute  (matches Ably token TTL)
- *
- * Per-staff session_policy overrides:
- *   extended   — personal devices get 7d idle / 90d absolute; others unchanged
- *   persistent — no idle, 1 year absolute, sliding (touchSession refreshes it).
- *                Stays signed in indefinitely so long as the staff keeps using
- *                the device. Still revocable from the admin UI.
- *
- * Per-session "Keep me signed in":
- *   `staff_sessions.persistent` carries the sign-in checkbox. It resolves the
- *   same PERSISTENT_WINDOW as the per-staff policy, for THIS device only —
- *   the checkbox is a per-sign-in choice, the policy is admin config, and the
- *   two OR together (see resolveSessionWindow). A persistent session also
- *   ignores shift-end expiry, because a session that dies at the end of the
- *   shift is not "signed in no matter what".
- */
+/** Server-side opaque sessions in Postgres. */
 
 import { randomBytes } from 'node:crypto';
 import pool from '@/lib/db';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import { enforceMaxConcurrentSessions, type ConcurrencyDeps } from '@/lib/auth/session-concurrency';
 
-/**
- * Canonical session cookie. Renamed from the legacy `usav_sid` (dogfood-branded)
- * to the vendor-neutral `cf_sid`. During the transition every READER accepts
- * either name (see {@link readSessionSid}); writers set `cf_sid` and clear the
- * legacy cookie. The name is duplicated (inlined) in `src/proxy.ts` because the
- * Edge runtime can't import this Node module — keep the two in sync.
- */
+/** Canonical session cookie. */
 export const SESSION_COOKIE_NAME = 'cf_sid';
 /** Legacy cookie name — still honored on read during the 30-day migration. */
 export const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
@@ -106,15 +75,7 @@ const PERSISTENT_WINDOW: IdleWindow = {
   absoluteMs: 365 * 24 * 60 * 60 * 1000,
 };
 
-/**
- * Resolve the effective idle/absolute window given device + staff policy +
- * the session's own "Keep me signed in" flag.
- *
- * The session flag and the staff policy are an OR, never a replacement: an
- * admin who put a staff on `session_policy='persistent'` keeps that window
- * whether or not the box was checked, and checking the box grants it to this
- * device regardless of the staff's policy.
- */
+/** Resolve the effective idle/absolute window given device + staff policy + the session's own "Keep me signed in" flag. */
 export function resolveSessionWindow(
   kind: DeviceKind,
   policy: SessionPolicy,
@@ -125,15 +86,7 @@ export function resolveSessionWindow(
   return IDLE_WINDOWS[kind];
 }
 
-/**
- * The whole expiry decision for a new session, as a pure function: device
- * window ∩ staff policy ∩ "Keep me signed in" ∩ (optionally) the end of the
- * staff's shift.
- *
- * Extracted from {@link createSession} so the shift-vs-persistent interaction
- * can be pinned by a DB-free test — it is the part that silently defeats the
- * checkbox when it goes wrong.
- */
+/** The whole expiry decision for a new session, as a pure function: */
 export function resolveSessionExpiry(opts: {
   deviceKind: DeviceKind;
   policy: SessionPolicy;
@@ -147,14 +100,7 @@ export function resolveSessionExpiry(opts: {
   const window = resolveSessionWindow(opts.deviceKind, opts.policy, opts.persistent);
   const defaultExpiresAt = new Date(now + window.absoluteMs);
 
-  // Shift-bound expiry wins (if it's sooner). Falls back to the device's
-  // absolute window when no shift is provided.
-  //
-  // Exception: a persistent session opted out of auto-signout — whether that
-  // came from the staff's policy or from "Keep me signed in" on this device,
-  // the whole point is to stay signed in across days. Binding the session to
-  // shift end (min() below) would silently defeat that, so we ignore the
-  // shift window for it and use the full 1-year persistent window.
+  // Shift-bound expiry wins (if it's sooner).
   const honorsShift =
     !opts.persistent &&
     opts.policy !== 'persistent' &&
@@ -199,20 +145,9 @@ export interface CreateSessionOpts {
   deviceLabel?: string | null;
   ip?: string | null;
   userAgent?: string | null;
-  /**
-   * Optional hard expiry. When set, overrides the device-kind absolute
-   * window — used to tie session lifetime to the end of the staff's shift
-   * so they get auto-signed-out when their shift ends.
-   *
-   * Ignored for a persistent session — see {@link CreateSessionOpts.persistent}.
-   */
+  /** Optional hard expiry. */
   expiresAt?: Date;
-  /**
-   * The sign-in page's "Keep me signed in" checkbox, for THIS device.
-   * True → no idle timeout, a 1-year sliding absolute window, and shift-end
-   * expiry is ignored (a shift-bound expiry would silently defeat the whole
-   * promise). Defaults to false, which is exactly today's behaviour.
-   */
+  /** The sign-in page's "Keep me signed in" checkbox, for THIS device. */
   persistent?: boolean;
 }
 
@@ -362,14 +297,7 @@ export async function loadSession(sid: string | null | undefined): Promise<Sessi
   };
 }
 
-/**
- * Diagnostic variant of loadSession — returns the same row plus a `reason`
- * tag explaining why a null was produced. Used by /api/auth/session to
- * surface a `x-auth-debug` header so we can tell at a glance whether a
- * sign-out was caused by missing cookie, idle timeout, revocation, etc.
- *
- * Side-effect parity: still auto-revokes on idle, exactly like loadSession.
- */
+/** Diagnostic variant of loadSession — returns the same row plus a `reason` tag explaining why a null was produced. */
 export type SessionNullReason =
   | 'no-cookie'
   | 'sid-malformed'
@@ -436,20 +364,10 @@ export async function loadSessionWithReason(
   };
 }
 
-/**
- * Bump last_seen_at and return the session's (possibly slid) expires_at so
- * the caller can refresh the cookie's max-age to match. Best-effort; failure
- * must not break the request, so it resolves to null on error.
- *
- * Called from the /api/auth/session heartbeat after a successful loadSession.
- */
+/** Bump last_seen_at and return the session's (possibly slid) expires_at so the caller can refresh the cookie's max-age to match. */
 export async function touchSession(sid: string): Promise<Date | null> {
   try {
-    // For a persistent session — whether from the staff's policy or from
-    // "Keep me signed in" on this device — slide expires_at forward so it
-    // never crosses its absolute window as long as they keep using it.
-    // Default/extended policies leave expires_at alone — absolute window is
-    // a hard ceiling for them.
+    // For a persistent session — whether from the staff's policy or from "Keep me signed in" on this device — slide expires_at forward so it…
     const persistentMs = PERSISTENT_WINDOW.absoluteMs;
     const r = await pool.query(
       `UPDATE staff_sessions s

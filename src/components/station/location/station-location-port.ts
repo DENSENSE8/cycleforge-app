@@ -1,17 +1,4 @@
-/**
- * Station location placement PORT — the one seam between the shared
- * Displays → Locations leaf and the three storages that own a placement.
- *
- * Three storages stay three storages. Arrival writes the carton's triage
- * `staging_location_id`; Unbox writes `receiving_line_putaway` on the open
- * line; Ready to Pack writes `order_pack_placements` for the open order. The
- * INTERACTION is the same at all three benches — browse the addresses you
- * have, put the thing you are holding on one, reprint a scuffed sticker, mint
- * one that does not exist yet — so the leaf is shared and the WRITER is not.
- *
- * Nothing here is React: a port is data plus one async writer, so a station
- * can build it from a controller, a fetch, or a test fake.
- */
+/** Station location placement PORT — the one seam between the shared Displays → Locations leaf and the three storages that own a placement. */
 
 import type { PutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
 
@@ -46,26 +33,9 @@ export interface StationLocationPlacementPort {
    * Ready to Pack. Used in row subtitles and the leaf's own footer copy.
    */
   entityNoun: string;
-  /**
-   * Can a freshly minted BIN hold this entity?
-   *
-   * `false` on Ready to Pack, and it is not a nicety: `/api/locations/register`
-   * mints a shelf BIN, while `order_pack_placements` only accepts a
-   * DESK / STAGING row (`PACK_PLACEABLE_KINDS`). Offering "Create & place"
-   * there would mint a real shelf and then bounce the placement with
-   * `LOCATION_NOT_PLACEABLE` — a dead end dressed as a verb. The mint + print
-   * half still works, which is the half that was actually missing.
-   */
+  /** Can a freshly minted BIN hold this entity? */
   canPlaceMinted: boolean;
-  /**
-   * The DIRECTED target — "put it HERE" — painted above the searchable list.
-   *
-   * Optional, and deliberately so: only the line-grain putaway port has a
-   * source honest enough to direct with (`suggested-putaway-location`, which
-   * carries its own basis). The carton-staging and pack-desk ports leave it
-   * undefined and the leaf stays the catalog it has always been. A leaf must
-   * never fabricate one from its own list.
-   */
+  /** The DIRECTED target — "put it HERE" — painted above the searchable list. */
   suggestion?: PutawaySuggestion | null;
   /** First suggestion read in flight — the target slot waits instead of flashing empty. */
   suggestionLoading?: boolean;

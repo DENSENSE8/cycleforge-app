@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Lets route context panels (e.g. Unbox Recent filter footer) write the same
- * {@link CONTEXT_PANEL_COLLAPSE} preference owned by {@link ContextPanelLayout}
- * — without prop-drilling through `SidebarContextPanel`.
- *
- * Also carries optional mid-strip MRU pins published by every
- * {@link SidebarRecentRailBase} (default on) and a mini scan session published
- * by primary {@link StationScanBar}s so {@link LeftDockCollapseStrip} can peek
- * pins + arm a new scan while the panel is parked.
- */
+/** Lets route context panels (e.g. */
 
 import {
   createContext,
@@ -154,13 +145,7 @@ export function useContextPanelCollapse(): ContextPanelCollapseApi | null {
   return useContext(ContextPanelCollapseContext);
 }
 
-/**
- * Publish mid-strip MRU while this feed is mounted; clear on unmount or when
- * the snapshot is null/empty. No-op outside {@link ContextPanelCollapseProvider}.
- *
- * Deps on a content signature (not the snapshot identity) so fresh `onSelect`
- * closures each render do not loop the provider. Latest handlers ride a ref.
- */
+/** Publish mid-strip MRU while this feed is mounted; clear on unmount or when the snapshot is null/empty. */
 export function usePublishCollapsePins(snapshot: CollapseMruSnapshot | null) {
   const api = useContextPanelCollapse();
   const setCollapseMru = api?.setCollapseMru;
@@ -213,13 +198,7 @@ export function usePublishCollapsePins(snapshot: CollapseMruSnapshot | null) {
   }, [setCollapseMru]);
 }
 
-/**
- * Publish the primary scan-bar session for the parked mini scan cell; clear on
- * unmount or when `session` is null. No-op outside
- * {@link ContextPanelCollapseProvider}. Handlers ride a ref so fresh closures
- * each render do not loop the provider; `value` / placeholder / chrome
- * still re-publish when they change.
- */
+/** Publish the primary scan-bar session for the parked mini scan cell; clear on unmount or when `session` is null. */
 export function usePublishCollapseScan(session: CollapseStripScan | null) {
   const api = useContextPanelCollapse();
   const setCollapseScan = api?.setCollapseScan;

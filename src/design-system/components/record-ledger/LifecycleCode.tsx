@@ -14,17 +14,7 @@ const LIFECYCLE_GLYPH: Readonly<Record<LifecycleIcon, ComponentType<{ className?
   'circle-pause': CirclePause,
 };
 
-/**
- * A lifecycle state as the floor reads it: a solid badge in the state's
- * colour carrying the state's icon, then its mono code (`RDY`, `OOS` …). The
- * icon is the second carrier after colour — shape still separates states for
- * colour-blind staff and when scanning a long list. Icon and code are hidden
- * from assistive tech; the full word is read instead.
- *
- * `children` replaces the visible code (a group band's `OOS 2/3`); `srLabel`
- * replaces the spoken word, and `null` drops it where the word is already
- * visible.
- */
+/** A lifecycle state as the floor reads it: */
 export function LifecycleCode({
   state,
   className,

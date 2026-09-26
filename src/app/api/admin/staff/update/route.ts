@@ -1,19 +1,4 @@
-/**
- * POST /api/admin/staff/update
- *
- * Updates name/active/default_home_path[_mobile] on a staff row, scoped to
- * the caller's tenant. Refuses to operate on staff from another org (the
- * WHERE clause filters by organization_id; no row updated → 404).
- *
- * Body: { id, name?, active?, defaultHomePath?, defaultHomePathMobile? }
- *
- * Role assignments live in `staff_roles` and are edited exclusively via
- * PUT /api/admin/staff/[id]/roles — that endpoint also auto-mirrors the
- * primary role into the legacy `staff.role` column. This endpoint silently
- * ignores any `role` field on the body for back-compat with old callers.
- *
- * Gated by admin.manage_staff.
- */
+/** POST /api/admin/staff/update */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

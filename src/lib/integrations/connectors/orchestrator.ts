@@ -1,28 +1,11 @@
-/**
- * Connection-driven sync orchestrator — the layer that makes a *connection*
- * drive ingestion instead of an ad-hoc button. Runs each connector's wired
- * `sync()` for every org that has that provider connected.
- *
- * `syncConnection` powers the per-org "Sync now"; `runOrdersSyncAllOrgs`
- * powers the crons (the 15-minute Square run and ShipStation's own schedule).
- */
+/** Connection-driven sync orchestrator — the layer that makes a *connection* drive ingestion instead of an ad-hoc button. */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import { connectorsWithCapability, getConnector, listConnectors } from './registry';
 import type { ReconcileOutcome, SyncOpts, SyncOutcome } from './types';
 
-/**
- * Best-effort operational writeback after a provider sync. Stamps
- * last_synced_at / last_sync_status on the org's vault row(s) for the provider.
- *
- * Guarded: the columns ship in migration
- * `2026-07-09d_org_integrations_operational_cols.sql`, which is OWNER-APPLIED
- * later — until then Postgres raises undefined_column (42703). We catch and
- * continue so syncs keep working before the migration lands. Also inherently
- * best-effort for eBay/Amazon, whose connections live in dedicated account
- * tables (the UPDATE simply matches zero vault rows).
- */
+/** Best-effort operational writeback after a provider sync. */
 async function recordSyncOutcome(orgId: OrgId, provider: IntegrationProvider, ok: boolean): Promise<void> {
   try {
     await pool.query(

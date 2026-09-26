@@ -1,13 +1,4 @@
-/**
- * ZPL (Zebra Programming Language) templates for the three label classes.
- *
- * All three target 2x1" at 203 dpi (406 × 203 dots). The QR class on each
- * label encodes the same URL form the existing popup-HTML printer emits, so
- * scans land identically regardless of which dispatch path printed the label.
- *
- * Keep the templates dumb — string concatenation only. Caller is responsible
- * for escaping ^FH/^FS sequences if user content can contain ZPL specials.
- */
+/** ZPL (Zebra Programming Language) templates for the three label classes. */
 
 function esc(input: string | number | null | undefined): string {
   return String(input ?? '').replace(/[\^~]/g, ' ');
@@ -73,21 +64,7 @@ export function buildProductZpl(input: ProductLabelInput): string {
     .join('\n');
 }
 
-/**
- * Per-unit Tier-3 label. Used for serialized refurbished electronics where
- * the QR encodes a GS1 Digital Link (/01/{gtin}/21/{unitSerial}) — see
- * src/lib/scan-resolver.ts:buildGs1UnitUrl. Falls back to an internal /q/...
- * URL when no GTIN is assigned to the SKU.
- *
- * Layout (2x1" / 406×203 dots, same stock as carton/product labels):
- *   ┌─────────────────────────────────┐
- *   │ {productTitle / sku}            │
- *   │ Unit: {unitSerial}              │
- *   │ {intakeDate} · {conditionShort?}│  ┌──────┐
- *   │                                 │  │ QR   │
- *   │ {sku barcode 1D}                │  └──────┘
- *   └─────────────────────────────────┘
- */
+/** Per-unit Tier-3 label. */
 export interface UnitLabelInput {
   /** GS1 Digital Link URL (or fallback internal URL) encoded in the QR. */
   qrPayload: string;

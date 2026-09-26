@@ -18,13 +18,7 @@ export interface WriteLedgerDeltaInput {
   refSalId?: number | null;
 }
 
-/**
- * Canonical inventory quantity write — INSERT sku_stock_ledger only.
- *
- * Caller MUST run inside `withTenantTransaction(orgId, …)` so the GUC and
- * fn_recompute_sku_stock trigger project onto sku_stock. Never touches
- * sku_stock directly.
- */
+/** Canonical inventory quantity write — INSERT sku_stock_ledger only. */
 export async function writeLedgerDelta(
   client: Pick<PoolClient, 'query'>,
   input: WriteLedgerDeltaInput,

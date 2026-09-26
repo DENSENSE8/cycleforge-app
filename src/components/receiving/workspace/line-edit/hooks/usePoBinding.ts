@@ -12,16 +12,7 @@ function poValueOf(row: ReceivingLineRow): string {
   return (row.zoho_purchaseorder_number || row.zoho_purchaseorder_id || '').trim();
 }
 
-/**
- * PO# binding for a receiving line: the inline-editor open state, the edited
- * value, and {@link persistPoNumber} which writes the typed PO# to the carton
- * AND fans out to every existing receiving_line for it.
- *
- * The editor defaults open for matched rows without a PO# yet (the operator's
- * most likely next action on a bound carton), and is re-armed on every row
- * switch for those same cases. Unfound (unmatched) cartons stay collapsed —
- * the operator opens the editor via the PO# chip when they want to link one.
- */
+/** PO# binding for a receiving line: */
 export function usePoBinding(row: ReceivingLineRow) {
   const [poEditorOpen, setPoEditorOpen] = useState(
     () => row.receiving_source !== 'unmatched' && !poValueOf(row),
@@ -34,30 +25,13 @@ export function usePoBinding(row: ReceivingLineRow) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id, row.zoho_purchaseorder_number, row.zoho_purchaseorder_id]);
 
-  // Re-arm the PO# editor for matched-but-un-bound rows so the operator doesn't
-  // have to click the pencil after each switch — and COLLAPSE it once the row is
-  // filled/linked. Unfound cartons stay collapsed; the operator opts in via the
-  // PO# chip edit affordance. A bound PO# reads in the carton header chip; the
-  // open search editor is only for finding/typing one, so it folds away when
-  // there's nothing left to bind (fires on row switch + when a link fills the
-  // PO#).
+  // Re-arm the PO# editor for matched-but-un-bound rows so the operator doesn't have to click the pencil after each switch — and COLLAPSE it…
   useEffect(() => {
     setPoEditorOpen(row.receiving_source !== 'unmatched' && !poValueOf(row));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [row.id, row.receiving_source, row.zoho_purchaseorder_number, row.zoho_purchaseorder_id]);
 
-  /**
-   * Save the operator-typed PO# to the carton. ONE round-trip: PATCH
-   * /api/receiving/[id] auto-flips `receiving.source` 'unmatched' → 'zoho_po' on
-   * a non-null PO# write, so the carton drops off the Unfound queue.
-   *
-   * No line fan-out: the carton's `zoho_purchaseorder_number` already flows to
-   * every line on read (`normalizeRow` falls back to the carton number when a
-   * line's own is null) and is searchable via the carton column — so the old
-   * "GET every line → PATCH each" (N+2 round-trips) bought nothing but latency.
-   * The active line is patched optimistically below; sibling lines reconcile
-   * from the carton number on the next list refresh (`app-refresh-data`).
-   */
+  /** Save the operator-typed PO# to the carton. */
   const persistPoNumber = useCallback(
     async (nextRaw: string) => {
       if (row.receiving_id == null) return;

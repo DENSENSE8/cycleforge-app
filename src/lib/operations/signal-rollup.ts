@@ -1,35 +1,4 @@
-/**
- * Nightly signal → insight_links rollup (universal-feed plan Phase 5 learning loop).
- *
- * Rolls each org's own `entity_signals` up into per-org `insight_links` rows —
- * one row per (org, signal_kind) — capturing that operation's OWN reason-code
- * distribution over a trailing window. This is the non-redundant complement to
- * the live benchmark readout (`operations/benchmarks.ts`): the readout computes
- * rates from `inventory_events`; this captures the *why* (top reason codes +
- * volume + diversity) that inventory_events cannot express. The assistant's
- * `get_benchmarks` tool and the "you vs typical" surface read both.
- *
- * Taxonomy: linkage_type `org_signal_rollup`, source `org_rollup` (see
- * registry.ts + migration 2026-07-03s). subject_kind `signal_kind`,
- * subject_ref = the signal_kind.
- *
- * Tenancy: like `workflow/node-stats.ts`, this is an org-SPANNING nightly
- * aggregate — one set-based INSERT…SELECT that reads each row's
- * `entity_signals.organization_id` and STAMPS the same org on its output
- * insight_links row (GROUP BY organization_id), so no cross-tenant data ever
- * crosses. It INTENTIONALLY runs on the stateless owner `db` connection (RLS
- * bypass), NOT a GUC-scoped tenant connection, because one statement covers
- * every org — a single `app.current_org` GUC cannot express that. entity_signals
- * carries a NOT-NULL org and insight_links' write policy is bypassed on the
- * owner role, so every output row is safely attributed to its source org.
- *
- * Idempotent: re-running overwrites each (org, signal_kind) rollup's metrics via
- * ON CONFLICT on `ux_insight_links_org_subject` (the org-scoped partial-unique
- * index; predicate re-stated so Postgres picks it). created_at is left untouched
- * on conflict — freshness lives in `metrics.computed_at`.
- *
- * Deps-injected (default owner `db`) so unit tests run DB-free.
- */
+/** Nightly signal → insight_links rollup (universal-feed plan Phase 5 learning loop). */
 
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
@@ -60,10 +29,7 @@ export async function runSignalInsightRollup(
 ): Promise<SignalRollupResult> {
   const days = Number.isFinite(windowDays) ? Math.max(1, Math.min(Math.round(windowDays), 365)) : 30;
 
-  // CTE chain: per-reason counts (incl. the NULL-reason bucket) → totals over
-  // ALL rows, but rank + distinct + top-N over the NON-NULL reason codes only,
-  // so a large NULL-reason bucket can't steal a top-N slot (which would drop the
-  // Nth real reason). Then upsert one insight_links row per (org, kind).
+  // CTE chain: per-reason counts (incl.
   const result = await deps.execute(sql`
     WITH per_reason AS (
       SELECT s.organization_id,

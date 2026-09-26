@@ -1,12 +1,4 @@
-/**
- * Unit + source guards for multi-qty Unbox display modes:
- *  - qty roll-up for high-qty identical lines (no 500 DOM rows)
- *  - hard UNIT_ROW_DISPLAY_CAP in unit-track mode
- *
- * Run: node --test --import tsx \
- *        src/components/receiving/workspace/line-receive-mode.test.ts
- *        src/components/receiving/workspace/bulk-qty-display.guard.test.ts
- */
+/** Unit + source guards for multi-qty Unbox display modes: */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

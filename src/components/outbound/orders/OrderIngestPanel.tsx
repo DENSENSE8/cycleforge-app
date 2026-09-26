@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Add-orders leaf bodies for the To-ship rail.
- *
- * `SyncImportSection` was deleted 2026-09-15 with the rail's `sync` leaf: order
- * import is its own measured run surface now (`OrderSyncRunView` on the desk,
- * `/m/orders/sync` on the phone), and a sheet-name field beside an "Import
- * latest orders" button was the second way to start the same job.
- *
- * Content only — the leaf list, the Root Index, its find row and its keybinds
- * all live in `DeskInspectorIndexShell` (the Unbox Displays recipe), composed
- * by {@link OrderIngestRail}. Nothing here paints chrome, a header, or a close:
- * the rail host owns the singleton dismiss.
- *
- * @domain-job outbound-order-ingest
- * @hardware-target Workbench
- * @density ops
- * @justification Leaf content for an existing index shell, not a new surface.
- */
+/** Add-orders leaf bodies for the To-ship rail. */
 
 import { FileText } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';

@@ -1,20 +1,4 @@
-/**
- * search-recents — the single source of truth for typed search-query history
- * (docs/unified-global-search-consolidation-plan.md §3.2, decision D3).
- *
- * Replaces the 5+ siloed localStorage buckets (`dashboard_search_history`,
- * `shipped_search_history`, `inventory_search_history_${tab}`, …) with ONE
- * MRU array keyed by `cf_search_recents_v1`. Every surface — the global
- * header dropdown and the per-page recents dropdowns — reads from here.
- *
- * Client-only (localStorage-backed) but written to no-op safely under SSR /
- * Node (guards on `localStorage` availability, wraps every access in
- * try/catch) so it can be imported anywhere and unit-tested with a fake store.
- *
- * NOT navigation history: `command-bar-recent` stores last-*opened records*
- * (D4) and is deliberately NOT migrated here — this store holds last-*typed
- * queries* only.
- */
+/** search-recents — the single source of truth for typed search-query history (docs/unified-global-search-consolidation-plan.md §3.2,… */
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { resolveSearchScopeLabel } from './search-scope-labels';
@@ -199,13 +183,7 @@ export function recentRerunHref(entry: Pick<SearchRecentEntry, 'query' | 'scopeH
   return `/search?q=${encodeURIComponent(entry.query)}`;
 }
 
-/**
- * One-time, NON-DESTRUCTIVE seed of the legacy per-domain buckets into the
- * unified store. Guarded by a marker key so it runs once per browser; the old
- * keys are LEFT IN PLACE (the sidebars still read them during the transition —
- * deletion is Phase 6, gated on `deleteLegacy`). Idempotent regardless via the
- * dedupe on (scope, query).
- */
+/** One-time, NON-DESTRUCTIVE seed of the legacy per-domain buckets into the unified store. */
 export function migrateLegacyRecents(opts: { deleteLegacy?: boolean } = {}): void {
   const store = getStore();
   if (!store) return;

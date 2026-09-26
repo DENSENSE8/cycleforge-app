@@ -1,12 +1,4 @@
-/**
- * usage — per-org AI usage metering (ai_usage_events; migration 2026-07-04b).
- *
- * One row per billable AI call: query embeds, worker doc-embed batches,
- * Ask-AI tool calls. Feeds the Settings → AI price breakdown and the
- * env-gated Stripe meter reporter. Fire-and-forget by contract: metering
- * must NEVER fail or slow the search path — errors are logged and dropped
- * (same posture as recordAudit).
- */
+/** usage — per-org AI usage metering (ai_usage_events; migration 2026-07-04b). */
 
 import pool from '@/lib/db';
 import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
@@ -55,12 +47,7 @@ export function recordAiUsage(input: AiUsageInput): void {
     });
 }
 
-/**
- * Per-tenant billing margin (percent) applied to platform-carried AI usage.
- * Resolution is DB-first — the org's row in `organizations.settings`
- * (key `aiUsageMarginPercent`, platform-set) — with the AI_USAGE_MARGIN_PERCENT
- * env as the global default and 0 as the floor. Never a code constant per org.
- */
+/** Per-tenant billing margin (percent) applied to platform-carried AI usage. */
 export async function getAiUsageMarginPercent(orgId: OrgId): Promise<number> {
   try {
     const org = await getOrganization(orgId);

@@ -19,12 +19,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE = 'units.pack-placement.move';
 
-/**
- * POST /api/units/pack-placement/move — place / move a loose serialized unit
- * between packing DESK / STAGING benches (Ready-to-Pack unit staging).
- * Accepts a numeric `unitId` or a scanned `unitScan` (unit-id / uid / serial),
- * resolved org-scoped. Does not touch stock putaway (`current_location`).
- */
+/** POST /api/units/pack-placement/move — place / move a loose serialized unit between packing DESK / STAGING benches (Ready-to-Pack unit… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const canWrite =

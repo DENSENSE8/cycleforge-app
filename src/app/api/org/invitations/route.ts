@@ -1,14 +1,4 @@
-/**
- * /api/org/invitations
- *
- *   POST  — create an org invitation (invite by email) and email a join link.
- *   GET   — list pending invitations for the current org.
- *
- * Both gated by admin.manage_staff and tenant-scoped via ctx.organizationId.
- * The accept side is public: /api/auth/invitation/accept + /invite/[token].
- *
- * See docs/identity-layer-plan.md.
- */
+/** /api/org/invitations */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

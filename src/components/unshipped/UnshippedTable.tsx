@@ -58,14 +58,7 @@ import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packe
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 import { OutboundOrdersLedger } from '@/components/outbound/orders/OutboundOrdersLedger';
 
-/**
- * Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping
- * stations that embed the same table without a lane scope).
- *
- * Workbench contract: URL-addressable selection (`?openOrderId`) + crossfading
- * right-pane detail. Dashboard tabs force the lane via {@link fulfillmentLane};
- * stations omit it and keep optional `?ustatus` / `?stage` filters.
- */
+/** Pre-pack fulfillment queue — Dashboard Pending / Tested tabs (and pack/shipping stations that embed the same table without a lane scope). */
 export interface UnshippedTableProps extends DashboardSearchSectionProps {
   packedBy?: number;
   testedBy?: number;
@@ -84,20 +77,7 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
    */
   fulfillmentLane?: 'pending' | 'tested';
-  /**
-   * Pin this desk to ONE derived pre-dock state, whatever the URL says.
-   *
-   * The Pending (ex-Shortage) desk is the case this exists for. Its page has
-   * always DOCUMENTED itself as "locked to BLOCKED rows", but nothing enforced
-   * it: the mount passed no lane and no filter, so the desk actually painted
-   * every unshipped order and its `?ustatus` came from whatever the last link
-   * carried. A desk whose whole job is one lane cannot leave that lane to a
-   * query parameter — the operator opens the tab and sees packed orders.
-   *
-   * It BEATS `?ustatus` rather than seeding it: a seeded param is one stray
-   * link away from being wrong again, and this is the desk's identity, not a
-   * refinement of it.
-   */
+  /** Pin this desk to ONE derived pre-dock state, whatever the URL says. */
   lockedFulfillmentState?: FulfillmentState;
   /**
    * Soft idle copy when the board has nothing to show (and when the fetch
@@ -107,12 +87,7 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
-  /**
-   * Paint the rows as the industrial record ledger (`OutboundOrdersLedger`)
-   * instead of the slot `DataTable`. Only the To-ship desk sets it
-   * (`DashboardOrdersView`); every other mount keeps the slot table. The feed,
-   * filters, fetch and overlays above the sheet are identical either way.
-   */
+  /** Paint the rows as the industrial record ledger (`OutboundOrdersLedger`) instead of the slot `DataTable`. */
   ledger?: boolean;
 }
 
@@ -156,12 +131,7 @@ export function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
         : Boolean(String(outOfStock || '').trim());
     patch.is_out_of_stock = flagged;
   }
-  // The urgent toggle rides the same event as assignments (useOrderAssignment
-  // dispatches isUrgent on every mutation). It was missing from BOTH the guard
-  // and the patch, so clearing urgency 200'd at the API, toasted "Urgent
-  // cleared"… and left the row yellow, the rail pulsing and the strip's
-  // transition label stuck on "Clear urgent" — the cache never heard (operator
-  // 2026-09-15, found through the relabelled pill).
+  // The urgent toggle rides the same event as assignments (useOrderAssignment dispatches isUrgent on every mutation).
   if (detail?.isUrgent !== undefined) patch.is_urgent = Boolean(detail.isUrgent);
   if (notes !== undefined) patch.notes = notes;
   if (itemNumber !== undefined) patch.item_number = itemNumber;
@@ -235,13 +205,7 @@ export function UnshippedTable({
       : '';
   /** Exception row flag refine (`?rowFlag=awaiting_customer`). */
   const rowFlagFilter = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
-  /**
-   * CAGED facet (`?cage=1`). Unlike every other facet this swaps the DATA
-   * SOURCE rather than narrowing the queue: `/api/orders?fulfillmentScope=true`
-   * requires a shipment and a tracking number, so a caged order — caged
-   * precisely because facts like tracking are still missing — is not in that
-   * payload at all and no client-side predicate could find it.
-   */
+  /** CAGED facet (`?cage=1`). */
   const cagedOnly =
     searchParams.get('cage') === '1' || searchParams.get('cage') === 'true';
   /** Packing-station placement: any placed package or one bench id. */
@@ -260,12 +224,7 @@ export function UnshippedTable({
   const openOrderId =
     Number.isFinite(openOrderIdValue) && openOrderIdValue > 0 ? openOrderIdValue : null;
   const paperworkId = parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM));
-  /*
-   * Desk-sidebar lenses, filtered SERVER-side (`@/lib/orders/desk-view-filters`):
-   * `?pair=po` narrows the Shortage (BLOCKED) desk to PO/receiving-paired
-   * shortages; `?queue=pick` narrows To-ship to the pick list. Each only
-   * applies to the desk it refines, so a stray param never narrows an embed.
-   */
+  /* Desk-sidebar lenses, filtered SERVER-side (`@/lib/orders/desk-view-filters`): */
   const deskLens = readDeskViewFilters(searchParams);
   const pairFilter = lockedFulfillmentState === 'BLOCKED' ? deskLens.pair ?? undefined : undefined;
   const queueFilter = lockedFulfillmentState ? undefined : deskLens.queue ?? undefined;
@@ -293,32 +252,13 @@ export function UnshippedTable({
   ]);
 
 
-  /**
-   * The desk's chrome — lifted HERE, above the sheet that draws it, because the
-   * find field is now part of the QUERY.
-   *
-   * It used to be resolved inside `UnshippedSheet`, one component below the
-   * fetch, which is exactly why the search could only ever narrow the page in
-   * memory: the value never reached the thing that decides which orders arrive.
-   * To-ship holds a bounded page (`limit: 200` + "load more") of ~4.8k orders,
-   * so an order on page 3 answered "No orders found" while sitting in the
-   * warehouse. `/api/orders?q=` already searches the whole in-warehouse scope
-   * UNBOUNDED (`fetchUnshippedOrdersData` drops `listShape` / `stage` / `limit`
-   * when `q` is present) — the plumbing was there, unplugged.
-   *
-   * The value stays session-local state (`useDashboardSearchController`); it is
-   * spent on a react-query key, never on `router.replace`, so the table is not
-   * remounted per keystroke (DataTable rule 3).
-   */
+  /** The desk's chrome — lifted HERE, above the sheet that draws it, because the find field is now part of the QUERY. */
   const chrome = useToShipChrome({ blockedQueue: lockedFulfillmentState === 'BLOCKED' });
   const searchQuery = chrome.search.value;
 
   const query = useQuery({
     ...unshippedOrdersQuery({
-      // The find text IS part of the fetch now. `fetchUnshippedOrdersData`
-      // reads it as `?q=` and, while it is set, drops `listShape` / `stage` /
-      // `limit` so the match runs over the whole in-warehouse scope instead of
-      // over whichever 200 rows happened to be loaded.
+      // The find text IS part of the fetch now.
       searchQuery,
       packedBy,
       testedBy,
@@ -369,20 +309,7 @@ export function UnshippedTable({
     [cagedQuery.data],
   );
 
-  /*
-   * The fourth settled state (loading → absence → no-match → **degraded**).
-   *
-   * This feed read `data` / `isLoading` / `isSuccess` and never `isError`, so a
-   * failed queue read fell through to `EMPTY_UNSHIPPED_ROWS` and painted the
-   * settled-empty board: "your warehouse is clear" and "we could not reach the
-   * server" were the same screen. On the one surface where that answer decides
-   * whether an operator stops working, it has to be two screens.
-   *
-   * Two faces, per `GridDegradedBox`'s own contract: nothing to show ⇒ the
-   * rose box REPLACES the board; rows already painted (seed, cache, a prior
-   * page) ⇒ keep them and say the refresh failed. A background refetch error
-   * must never blank a surface the operator is mid-scan on.
-   */
+  /* The fourth settled state (loading → absence → no-match → **degraded**). */
   const queueError = cagedOnly ? cagedQuery.isError : query.isError;
   const { refetch: refetchQueue } = query;
   const { refetch: refetchCaged } = cagedQuery;
@@ -451,20 +378,7 @@ export function UnshippedTable({
     !!ordersChannelName,
   );
 
-  // Pending-stage rows live in this merged queue too, so reflect tech-test
-  // verdicts (has_tech_scan) in place — a tracking scan at the bench moves the
-  // row pending → tested and the status chip morphs under the operator's eye.
-  //
-  // The patch itself is `patchUnshippedOrderTested` (cache SoT), not inline:
-  // `useRealtimeInvalidation` runs the same helper for the desk surfaces that
-  // read this cache WITHOUT mounting this table (compare panes, drill host).
-  // Both subscriptions firing is fine and deliberate — the /tech embed has no
-  // dashboard hook above it, and the second patch is identity-preserving, so
-  // it costs a comparison rather than a re-render.
-  //
-  // NOT frame-coalesced: this handler reads its payload, and `coalesce:'frame'`
-  // is last-wins, so two benches scanning in the same frame would patch one row
-  // and silently drop the other.
+  // Pending-stage rows live in this merged queue too, so reflect tech-test verdicts (has_tech_scan) in place — a tracking scan at the bench…
   useAblyChannel(
     ordersChannelName,
     'order.tested',
@@ -544,19 +458,11 @@ export function UnshippedTable({
     }
     return [...loaded, deepLinked];
   }, [cagedOnly, cagedRows, deepLinkQuery.data, query.data]);
-  // `?stage` is filtered SERVER-side; dashboard tabs no longer force a lane —
-  // stage is a row fact. Optional `fulfillmentLane` remains for station embeds.
-  // Facets: `?attention=1` (urgent), `?late=1` (must ship), `?ustatus`, `?rowFlag`.
-  //
-  // Memoized because this list is the input to the grouped row model below it —
-  // an unmemoized re-derive here re-identifies every row on every render.
+  // `?stage` is filtered SERVER-side; dashboard tabs no longer force a lane — stage is a row fact.
   const todayKey = getCurrentPSTDateKey();
   const laneRecords = useMemo(
     () =>
-      // The caged set is already the answer — the server returned exactly the
-      // held rows. Running the queue's predicates over it would drop every one
-      // of them on the first line (`if (!tracking) return false`), which is the
-      // very reason they are invisible today.
+      // The caged set is already the answer — the server returned exactly the held rows.
       cagedOnly
         ? allRecords
         : allRecords.filter((r) => {
@@ -574,16 +480,7 @@ export function UnshippedTable({
           ship_by_date?: string | null;
           row_flag?: string | null;
         };
-        /*
-         * NO tracking gate (2026-08-30). This line used to drop every untracked
-         * row — `if (!tracking) return false` — which is what made "needs a
-         * label" a separate table instead of a state. Those rows now ride the
-         * queue and paint the `Needs label` pill (AWAITING_LABEL), so the
-         * operator sees their own intake instead of it disappearing.
-         *
-         * `tracking` is still read below by nothing here: the lifecycle stage
-         * derives from `shipment_id`, which is the fact the pill needs.
-         */
+        /* NO tracking gate (2026-08-30). */
         const packedAt = row.packed_at || row.pack_activity_at || null;
         const lifecycle = resolveOrderLifecycleStage({
           shipmentId: row.shipment_id,
@@ -731,17 +628,7 @@ export function UnshippedTable({
     patchPaperwork(Number(first.id));
   }, [cagedOnly, paperworkId, patchPaperwork, records, selectedRailRows]);
 
-  /**
-   * Tracking-hover **Label** door (`useOrdersSpreadsheet.onOpenLabels`) — the
-   * third entrance the walk documents, beside the header CTA and the selection
-   * bar. It opens ON the hovered row instead of the head of the queue, and the
-   * step list stays the whole visible queue so Next keeps walking from there.
-   *
-   * The chain (CompoundFulfillment → CompoundGridCell → OrdersQueueTableRow →
-   * useOrdersSpreadsheet) was already plumbed; only this last hop was missing,
-   * so the menu painted Open with no Label and the e2e that pins the door sat
-   * behind a `rowCount === 0` skip.
-   */
+  /** Tracking-hover **Label** door (`useOrdersSpreadsheet.onOpenLabels`) — the third entrance the walk documents, beside the header CTA and… */
   const openLabelsWalkForRecord = useCallback(
     (record: ShippedOrder) => {
       if (cagedOnly) return;
@@ -782,11 +669,7 @@ export function UnshippedTable({
     invalidateUnshippedCounts(queryClient);
   }, [queryClient]);
 
-  // Copy acts on the SELECTION, and the shape it copies is the shipped
-  // order-export shape rather than the on-screen column set: a pasted order row
-  // has to carry the identity fields (record id, SKU, platform) that make it
-  // useful away from the app, and half the visible tracks are chips and icons
-  // with no text to copy.
+  // Copy acts on the SELECTION, and the shape it copies is the shipped order-export shape rather than the on-screen column set:
   const copyExport = useMemo(
     () => ({
       columns: [...ORDER_EXPORT_COLUMNS],
@@ -795,12 +678,7 @@ export function UnshippedTable({
     [],
   );
 
-  // First-run teaching state: a brand-new org sees the "connect a sales
-  // channel" CTA instead of three empty lanes that read as broken. Any active
-  // search/status/staff filter falls through to the board, which owns its own
-  // typed "no matches" empty per lane. Pack (and similar embeds) pass
-  // `awaitingMessage` so idle / failed-empty reads as "Awaiting scan" — never a
-  // rose degraded alert.
+  // First-run teaching state:
   const isIdleEmpty =
     !query.isLoading &&
     allRecords.length === 0 &&
@@ -809,14 +687,8 @@ export function UnshippedTable({
     stageFilter === 'all' &&
     staffId === undefined;
 
+  // An empty QUEUE is not an empty ORG (operator 2026-09-14).
   // An empty QUEUE is not an empty ORG (operator 2026-09-14). This used to be
-  // `isIdleEmpty` alone, so `/shipping/orders` told an org with 4,422 orders
-  // and three live integrations to "connect a sales channel" the moment its
-  // to-ship lane drained — the one screen that must never read as unconfigured,
-  // because the operator's next move is to import, not to onboard.
-  //
-  // The org-level fact already exists (`GET /api/onboarding/stats`); the queue
-  // result set cannot answer this question and never could.
   const onboarding = useOnboardingStats();
   const hasActivity = orgHasActivity(onboarding.data);
 
@@ -824,23 +696,13 @@ export function UnshippedTable({
     // An empty cage is not a brand-new org — showing "connect a sales channel"
     // there would answer a question nobody asked.
     !cagedOnly &&
-    // Neither is an unreachable server. This was the worst face of the missing
-    // error branch: a failed read on an established org taught it to set itself
-    // up. The degraded gate below catches it first; this keeps the teaching
-    // state honest on its own terms.
+    // Neither is an unreachable server.
     !queueError &&
     isIdleEmpty &&
-    // UNKNOWN is not new. While the stats load — or if they fail — the ordinary
-    // empty stands. Teaching setup to an org we cannot prove is fresh is the
-    // exact defect above, and defaulting to it on a network blip would
-    // reintroduce it.
+    // UNKNOWN is not new.
     hasActivity === false;
 
-  // Labels / export hooks MUST sit above the empty/awaiting/degraded early
-  // returns. Callers: DashboardOrdersView / Pack embeds mount UnshippedTable.
-  // Affected API: toggleLabelsWalk, runExport refs. Schema: none.
-  // User: "Rendered fewer hooks… Still getting this on the two ship page."
-  // Loading → first-run empty skipped these hooks and crashed the route.
+  // Labels / export hooks MUST sit above the empty/awaiting/degraded early returns.
   const onToShipDesk =
     pathname === SHIPPING_ORDERS_PATH && !isSupportContext && !cagedOnly;
   const toggleLabelsWalk = useCallback(() => {
@@ -887,14 +749,7 @@ export function UnshippedTable({
     );
   }
 
-  // Phase 2 "Load more": the stage-aware total (server, dedup-independent) exceeds
-  // the loaded ceiling ⇒ more rows exist. Bumping the ceiling refetches the wider
-  // page. Hidden during search (results are already the full match set).
-  // A dashboard LANE (`fulfillmentLane`) is the PENDING/TESTED/BLOCKED mapping,
-  // so its total comes from the lane SoT — `byStage` is the RAW hasTechScan
-  // split and adding BLOCKED to it double-counts every untested blocked order.
-  // A `?stage=` facet IS that raw split (the server filters on it), so those
-  // two branches keep reading `byStage`.
+  // Phase 2 "Load more":
   const laneTotals = fulfillmentLaneTotals(queueCounts);
   const stageTotal =
     pairFilter === 'po' ? (deskCounts?.po ?? 0)
@@ -913,16 +768,7 @@ export function UnshippedTable({
               ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed ??
                 records.length
               : (queueCounts?.total ?? 0);
-  // The caged endpoint returns the whole held set (bounded at 500) in one
-  // read, so there is no second page to offer.
-  // The control moved INTO the status bar's count sentence. It used to be a
-  // band below the bar carrying its own "Showing N of M" against a different
-  // denominator than the bar's — two answers to "how many are left", stacked.
-  // It also mounted after first paint, shoving the last data row down while the
-  // operator was already reading.
-  // A SEARCH is already unbounded, so there is no next page to fetch — and
-  // `stageTotal` counts the unsearched lane, so leaving the control up would
-  // offer "load more" against a denominator the search does not use.
+  // The caged endpoint returns the whole held set (bounded at 500) in one read, so there is no second page to offer.
   const showLoadMore = !cagedOnly && !searchQuery.trim() && stageTotal > rowLimit;
   const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + fetchWindow) : undefined;
 
@@ -946,20 +792,7 @@ export function UnshippedTable({
     <>
       {labelsCta}
       {exportMenu}
-      {/*
-        Q5 stage. Walk + STATUS trail are SIBLINGS of the sheet inside
-        {@link OrderStatusTrailStage}'s `relative` box, never a body swap.
-        {@link PaperworkWalkHost} is a `fill="stage"` DeskStageOverlay
-        (`absolute inset-0`), so it needs a positioned box the size of the
-        table to cover, and Center Lock says the DataTable stays mounted
-        underneath it. Swapping the body instead unmounted the grid — the
-        operator lost scroll position, cursor and check-set on every Labels
-        press, and the walk's own `?paperwork=` exit remounted a cold table.
-
-        The wrapper is unconditional on purpose. Adding it only while the walk
-        is open would move `UnshippedSheet` in the tree and remount the grid —
-        the table flash `tests/e2e/to-ship-paperwork-walk.spec.ts` pins.
-      */}
+      {/* Q5 stage. Walk + STATUS trail are SIBLINGS of the sheet inside {@link OrderStatusTrailStage}'s `relative` box, never a body swap. */}
       <OrderStatusTrailStage>
         {ledger ? (
           <OutboundOrdersLedger
@@ -1016,16 +849,7 @@ export function UnshippedTable({
   );
 }
 
-/**
- * Refresh failed while rows are already on screen — the non-blocking half of
- * the degraded state.
- *
- * The rows stay. What changes is that the desk stops implying they are current:
- * an operator reading a queue that quietly stopped updating is the same failure
- * as the empty board, just slower. `role="status"` because it must reach a
- * screen-reader operator who cannot see the band appear, and `polite` because
- * it interrupts nothing — the rows below are still workable.
- */
+/** Refresh failed while rows are already on screen — the non-blocking half of the degraded state. */
 function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
   return (
     <div
@@ -1042,28 +866,7 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/**
- * Unshipped · Pending sheet — the To Ship fulfillment queue as a single
- * connected spreadsheet (`useOrdersSpreadsheet` → {@link NonlinearTableHost} →
- * `LedgerGridSurface`). One grid surface, no Board|Grid switcher: search renders
- * the same grid over filtered records.
- *
- * Local to this file on purpose. The feed above gates a brand-new org onto
- * `OrdersFirstRunEmptyState` BEFORE any grid mounts, so the spreadsheet hook
- * (which publishes a grid-priority record cursor) has to sit behind that gate
- * rather than run unconditionally in the feed. The old `UnshippedShelfBoard`
- * module was deleted into this component
- * (`docs/todo/one-table-engine-orders-host-PLAN.md` §5.2); its `selectedId`
- * state and `open/close-shipped-details` bridge came with it and are gone —
- * nothing ever read that value.
- *
- * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
- * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
- *
- * Scroll: {@link DataTable} is a flex-fill column inside a definite flex chain
- * (Unbox golden) so the grid self-scrolls — one Y port, no absolute viewport
- * calc. Column header sticks inside the grid; no page-level sticky.
- */
+/** Unshipped · Pending sheet — the To Ship fulfillment queue as a single connected spreadsheet (`useOrdersSpreadsheet` → {@link… */
 function UnshippedSheet({
   chrome,
   searchPending,

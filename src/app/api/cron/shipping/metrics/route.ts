@@ -1,20 +1,4 @@
-/**
- * GET /api/cron/shipping/metrics
- *
- * Phase G observability. Emits one structured snapshot of carrier-tracking /
- * delivered-surface health and any derived alerts, as log lines the Vercel/
- * Datadog scrapers key off:
- *   [metrics.shipping.tracking] { ...counts }
- *   [alert.shipping.tracking]   { level, code, message, value }   (per alert)
- *
- * Pure reads — safe to run often. Auth: Vercel cron origin (CRON_SECRET).
- * Cadence (vercel.json): every 30 min.
- *
- * Tenancy: intentionally cross-org (Phase D category B). A read-only
- * observability snapshot spanning all tenants — it emits log metrics only and
- * writes nothing, so it stays a single global pass on the owner pool. (Convert
- * to a per-org rollup only if per-tenant shipping dashboards are ever needed.)
- */
+/** GET /api/cron/shipping/metrics */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

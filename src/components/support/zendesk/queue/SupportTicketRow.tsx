@@ -6,26 +6,7 @@ import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { priorityBadge, statusBadge, statusDot } from '../badges';
 
-/**
- * One ticket row — {@link TicketPickRow} / {@link StackedRowIdentity} SoT:
- * subject leads; typed {@link TicketChip} on the keys row (never mono `#{id}`).
- * Status · priority sit beside the chip; age trails. Leading status dot stays
- * outside the stack (queue chrome).
- *
- * Host is `div role=button` (not `<button>`) so TicketChip copy buttons nest
- * without invalid HTML — same pattern as station RailRow / InventoryPulseSidebar.
- *
- * THE ticket row. Both consumers compose it: the full queue in `SupportTicketsBoard`
- * and the recent dock in `SupportTicketsRecentRail`.
- *
- * The one thing that genuinely differed between them is the trailing instant — the
- * queue shows when the ticket last changed, the dock shows when this operator opened
- * it — so `at` is a prop rather than something read off a ticket here.
- *
- * Takes primitives, not a `ZendeskTicket`: the recent dock's rows come from
- * localStorage (`RecentTicket`), not the API. (Unrelated to `SupportTicketRow` in
- * `src/lib/support/tickets.ts`, which is a DB row type that happens to share the name.)
- */
+/** One ticket row — {@link TicketPickRow} / {@link StackedRowIdentity} SoT: */
 export function SupportTicketRow({
   id,
   subject,

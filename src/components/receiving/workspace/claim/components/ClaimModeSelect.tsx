@@ -23,13 +23,7 @@ const MODE_OPTIONS = [
   },
 ] as const;
 
-/**
- * Create | Link mode — flush combobox at the top of the Claim body (same
- * grammar as Claim type). One control for Displays + modal; never a leaf-header
- * New·Link segment twin and never a Chat·Claim parent underline.
- *
- * ⌥1 / ⌥2 still switch modes via {@link useSegmentChords}.
- */
+/** Create | Link mode — flush combobox at the top of the Claim body (same grammar as Claim type). */
 export function ClaimModeSelect({ c }: { c: ReceivingClaimController }) {
   const modeChangeRef = useRef(c.handleModeChange);
   modeChangeRef.current = c.handleModeChange;

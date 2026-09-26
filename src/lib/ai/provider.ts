@@ -1,32 +1,4 @@
-/**
- * AI provider config layer — the single place that resolves WHERE an AI
- * capability call goes and WHICH model serves it.
- *
- * Locked decision (docs/ai-search-modernization-plan.md, 2026-07-03):
- * every LLM + embedding call resolves `{ baseURL, apiKey, model }` per
- * capability from env. Hermes local is the dev config; Vercel AI Gateway is
- * the prod default. Never hardcode a provider URL or model name outside this
- * module — callers ask for a capability, not a vendor.
- *
- * Env sets (all OpenAI wire format — the gateway erases provider dialects):
- *   chat  → AI_CHAT_BASE_URL  / AI_CHAT_MODEL  / AI_CHAT_API_KEY
- *   embed → AI_EMBED_BASE_URL / AI_EMBED_MODEL / AI_EMBED_API_KEY
- *
- * This module is the PLATFORM DEFAULT LEAF only. Tenant paths must resolve
- * through `resolveOrgAiConfig(orgId, capability)` (org-provider.ts), which
- * falls through to here when an org has connected nothing of its own.
- *
- * The legacy HERMES_API_URL / HERMES_MODEL / AI_MODEL / HERMES_API_KEY
- * fallback was REMOVED with hermes-client.ts. Two env sets for one capability
- * meant setting the modern vars appeared to configure the app while the legacy
- * path ignored them — the pair agreed only because both happened to point at
- * the same box. Configure AI_CHAT_* explicitly.
- *
- * NOTE: deliberately NOT `import 'server-only'` — DB-free unit tests import
- * this module under node:test. Nothing here touches the DOM or leaks secrets
- * client-side as long as it is only imported from server code (same posture
- * as src/lib/feature-flags.ts).
- */
+/** AI provider config layer — the single place that resolves WHERE an AI capability call goes and WHICH model serves it. */
 
 export type AiCapability = 'chat' | 'embed';
 
@@ -37,32 +9,11 @@ export interface AiProviderConfig {
   apiKey: string;
   /** Gateway model string (e.g. anthropic/claude-haiku-4-5) or local model id. */
   model: string;
-  /**
-   * Extra request headers the endpoint needs BESIDES bearer auth — today only
-   * Cloudflare Access (`CF-Access-Client-Id` / `CF-Access-Client-Secret`) in
-   * front of a tunnelled self-hosted model.
-   *
-   * This exists because an edge gateway's auth is a property of the ENDPOINT,
-   * not of the model or the key, so it cannot ride on `apiKey`. It is omitted
-   * (not `{}`) when there is nothing to send, so a caller can spread it
-   * unconditionally.
-   *
-   * Callers MUST forward it. Dropping it against a CF-protected endpoint
-   * yields a Cloudflare 403 that reads like a model/auth failure — the exact
-   * trap that made this field a prerequisite for retiring hermes-client
-   * (docs/todo/ai-provider-consolidation-HANDOFF.md, Phase 0).
-   */
+  /** Extra request headers the endpoint needs BESIDES bearer auth — today only Cloudflare Access (`CF-Access-Client-Id` /… */
   headers?: Record<string, string>;
 }
 
-/**
- * Cloudflare Access service-token headers, or undefined when unconfigured.
- *
- * Mirrors the emit rule the retired `hermes-client.getHermesHeaders()` used:
- * each header is sent only when its var is non-empty, so a half-configured
- * pair degrades to sending the half that exists rather than throwing. Kept
- * permissive on purpose — this is a passthrough, not a validator.
- */
+/** Cloudflare Access service-token headers, or undefined when unconfigured. */
 export function resolveCloudflareAccessHeaders(
   env: ProviderEnv = process.env,
 ): Record<string, string> | undefined {
@@ -78,12 +29,7 @@ export function resolveCloudflareAccessHeaders(
 /** Injectable env record so unit tests never mutate process.env. */
 export type ProviderEnv = Record<string, string | undefined>;
 
-/**
- * Pinned embedding dimensionality. 768 keeps `vector(768)` interchangeable
- * between prod (`openai/text-embedding-3-small` with `dimensions: 768`) and
- * dev (`nomic-embed-text`, natively 768) — a provider flip is a re-embed job,
- * never a schema change. Do NOT confuse with the 1536-dim RAG tables.
- */
+/** Pinned embedding dimensionality. */
 export const EMBEDDING_DIMS = 768;
 
 /** Prod default via AI Gateway — only on the explicit "Ask AI" path, never inline per keystroke. */
@@ -142,37 +88,12 @@ export function resolveAiConfig(
   };
 }
 
-/**
- * The PLATFORM's Anthropic key, or '' when unset.
- *
- * Separate from `resolveAiConfig` because the assistant's agent loop speaks
- * Anthropic's NATIVE tool-use API, not the OpenAI wire format the rest of this
- * module resolves — the two are different protocols, not two URLs.
- *
- * Lives here so provider.ts remains the single module in `src/` that reads an
- * AI credential from env (enforced by the no-restricted-syntax rule in
- * eslint.config.mjs). Tenant paths must prefer the org's OWN vault key and
- * treat this only as the last-resort platform default.
- */
+/** The PLATFORM's Anthropic key, or '' when unset. */
 export function resolvePlatformAnthropicKey(env: ProviderEnv = process.env): string {
   return readEnv(env, 'ANTHROPIC_API_KEY');
 }
 
-/**
- * Build the request headers for an OpenAI-wire call against a resolved config.
- *
- * Replaces the retired `hermes-client.getHermesHeaders()`. Layer order is
- * load-bearing:
- *   1. `content-type` (overridable by `extra`)
- *   2. `Authorization: Bearer <apiKey>` — the MODEL's credential, omitted when
- *      the endpoint needs none (local Hermes / Ollama)
- *   3. `config.headers` — the ENDPOINT's credential (Cloudflare Access)
- *   4. `extra` — per-call routing/telemetry headers (session id, source)
- *
- * 2 and 3 are different credentials for different hops and must both be sent;
- * an endpoint behind CF Access rejects a request carrying only the bearer with
- * a 403 that reads like a model auth failure.
- */
+/** Build the request headers for an OpenAI-wire call against a resolved config. */
 export function aiRequestHeaders(
   config: Pick<AiProviderConfig, 'apiKey' | 'headers'>,
   extra?: Record<string, string>,

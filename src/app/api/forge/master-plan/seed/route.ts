@@ -5,12 +5,7 @@ import { readMasterPlanSeed } from '@/lib/master-plan/seed-source';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/forge/master-plan/seed — canonical starter MDX for empty-doc CRDT
- * bootstrap (ALP-1.4). Read-only; the CRDT itself lives in Yjs over Ably, and
- * Neon never stores the live blob. All seeders must use this same string so
- * the fixed-clientID seed race stays idempotent (src/lib/master-plan/README.md).
- */
+/** GET /api/forge/master-plan/seed — canonical starter MDX for empty-doc CRDT bootstrap (ALP-1.4). */
 export const GET = withAuth(async (_req: NextRequest, _ctx) => {
   try {
     const seed = await readMasterPlanSeed();

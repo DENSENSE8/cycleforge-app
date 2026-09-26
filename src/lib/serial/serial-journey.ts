@@ -1,17 +1,4 @@
-/**
- * Serial Number Journey — pure helpers shared by the embeddable
- * {@link SerialJourneySection} and the Operations ▸ History record view.
- *
- * Nothing here touches the DB or React: it builds the focused-journey query
- * filters, the deep-link into History mode, and exports (CSV string + printable
- * HTML) from the already-merged {@link TimelineItem}[] the timeline renders. The
- * heavy lifting (5-spine merge, adapters, idempotent event spine) is untouched —
- * this only surfaces what already exists.
- *
- * The `build*` functions are pure (no `window`, deterministic given `exportedAt`)
- * so they unit-test DB-free; the `download*` / `print*` functions are the thin
- * browser-side side-effects.
- */
+/** Serial Number Journey — pure helpers shared by the embeddable {@link SerialJourneySection} and the Operations ▸ History record view. */
 
 import { format, parseISO } from 'date-fns';
 import type { TimelineItem } from '@/lib/timeline/types';

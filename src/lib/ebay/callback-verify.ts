@@ -1,23 +1,4 @@
-/**
- * eBay OAuth callback verification — the gate half of /api/ebay/callback.
- *
- * The callback is a PUBLIC landing route (eBay's redirect carries no app
- * session), so everything it trusts must arrive inside the AES-GCM-encrypted
- * `state` minted by /api/ebay/connect from the CALLER'S session: the workspace,
- * the acting staff, the account label, and a nonce mirrored in an httpOnly
- * cookie. This module owns the decision of whether that state may be honored:
- *
- *   1. decrypt (tamper/impostor → invalid)
- *   2. required binding fields present (org, accountName, actor, nonce, issuedAt)
- *   3. freshness inside the 10-minute window
- *   4. CSRF — state nonce must equal the cookie nonce (same browser)
- *
- * plus the re-check the encrypted state cannot make for itself ten minutes
- * later: the staff who started the connect is STILL an active member of the
- * workspace the tokens are about to be vaulted into. The state is immutable,
- * memberships are not — a demoted or deactivated actor must not come back from
- * eBay consent with write access to the org's integration vault.
- */
+/** eBay OAuth callback verification — the gate half of /api/ebay/callback. */
 
 import pool from '@/lib/db';
 import { decryptIntegrationPayload } from '@/lib/integrations/crypto';
@@ -91,10 +72,7 @@ export function verifyEbayCallbackState(input: VerifyEbayCallbackStateInput): Eb
     return { ok: false, code: 'ebay_oauth_state_expired' };
   }
 
-  // CSRF: the nonce in `state` must match the httpOnly cookie set at connect —
-  // proves the callback returned to the same browser that initiated the flow
-  // (and, because the callback clears the cookie on every terminal outcome,
-  // that this state has not been replayed).
+  // CSRF: the nonce in `state` must match the httpOnly cookie set at connect — proves the callback returned to the same browser that…
   if (!input.cookieNonce || input.cookieNonce !== nonce) {
     return { ok: false, code: 'ebay_invalid_oauth_state' };
   }

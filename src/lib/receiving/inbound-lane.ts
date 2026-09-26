@@ -1,10 +1,4 @@
-/**
- * Inbound desk lane — Pipeline (on the way) vs Docked (landed activity).
- *
- * `/incoming` hosts both feeds. `?lane=docked` selects the former Receiving
- * Board (`view=activity`); omitted / `pipeline` is Incoming (`view=incoming`).
- * Pure helpers so chrome, mode resolution, and redirects share one contract.
- */
+/** Inbound desk lane — Pipeline (on the way) vs Docked (landed activity). */
 
 import { RECEIVING_HISTORY_URL_PARAMS } from '@/lib/receiving-history-search';
 import { HISTORY_SORT_WIRE_IDS } from '@/lib/receiving/receiving-modes';

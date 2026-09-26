@@ -65,11 +65,7 @@ describe('ordersIdentityLine', () => {
 });
 
 describe('the pick step (absorbed into the slot resolver)', () => {
-  // `ordersTestedStep` became `resolveOrdersSlotValue(row, 'orders.picked')`,
-  // and on 2026-09-14 the facts behind it moved off the tester/test_date family
-  // onto the feed's pick projection. The resolver's own suite lives beside the
-  // catalog; these two pin the seam this file always pinned: the step line the
-  // compound cell paints.
+  // `ordersTestedStep` became `resolveOrdersSlotValue(row, 'orders.picked')`, and on 2026-09-14 the facts behind it moved off the…
   it('is empty when nobody has picked', () => {
     const step = resolveOrdersSlotValue(baseOrder(), 'orders.picked');
     assert.equal(step?.kind, 'stage_event');

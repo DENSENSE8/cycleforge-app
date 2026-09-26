@@ -25,10 +25,7 @@ test('large photo tiles retain their natural aspect layout', () => {
   assert.equal(photoGridTileRatio('lg'), 'natural');
 });
 
-// `photoLibraryShowsSelectControl` was deleted with the folder drill: every
-// surviving view paints photo tiles, so the gate had no remaining case to
-// express. Its test goes with it rather than asserting a dead contract — see
-// the note on `photoLibraryShowsGridControls` in photo-grid-density.ts.
+// `photoLibraryShowsSelectControl` was deleted with the folder drill:
 
 test('density is offered only on photo tile grids', () => {
   // `folderIsLeaf` is gone with the drill; the view alone decides now.

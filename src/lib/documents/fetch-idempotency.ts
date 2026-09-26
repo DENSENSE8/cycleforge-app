@@ -1,9 +1,4 @@
-/**
- * Dedupe key for marketplace-fetched outbound documents (docs/outbound-documents-plan.md §4.3).
- * Backed by ux_documents_outbound_source_hash (2026-07-01c migration) so a
- * re-fetch of the same (org, document_type, sourceHash) upserts instead of
- * duplicating. Pure — no DB access — so it unit-tests trivially.
- */
+/** Dedupe key for marketplace-fetched outbound documents (docs/outbound-documents-plan.md §4.3). */
 
 import { createHash } from 'node:crypto';
 

@@ -1,33 +1,4 @@
-/**
- * Single source of truth for all permissions the application knows about.
- *
- * Every other shape — the `PermissionString` union, `ALL_PERMISSIONS` set,
- * `STEP_UP_PERMISSIONS` set, the `PERMISSION_CATEGORIES` UI grouping —
- * derives from this array. Adding a new permission anywhere requires only
- * appending a row here.
- *
- * Why this exists (replaces the previous split between PermissionString,
- * ROLE_PERMISSION_SETS, ALL_PERMISSIONS, and PERMISSION_CATEGORIES):
- *
- *   - The old `ALL_PERMISSIONS` set was built by iterating the seed role
- *     matrix. Permissions registered in `PermissionString` but never granted
- *     by any role were silently absent from `ALL_PERMISSIONS`, and any DB
- *     row referencing them would be dropped at request time with no warning.
- *
- *   - `PERMISSION_CATEGORIES` was a third hand-curated list. Adding a new
- *     permission required touching three places, and the editor would skip
- *     unregistered permissions silently.
- *
- * Now: one array, derived everywhere. Drift between the type and the runtime
- * is impossible.
- *
- * Conventions:
- *   - `id`         : the wire/permission string (also the literal in the type union).
- *   - `category`   : maps to the section in the Roles editor UI; group leaves with the same id.
- *   - `label`      : human-readable name shown in the editor.
- *   - `destructive`: hint for UI confirm dialogs and the future audit script.
- *   - `stepUp`     : if true, withAuth() requires a fresh PIN/passkey grant before the handler runs.
- */
+/** Single source of truth for all permissions the application knows about. */
 
 // ─── Categories (UI grouping order is preserved) ────────────────────────────
 
@@ -105,15 +76,9 @@ export const PERMISSIONS = [
   { id: 'shipping.void_label',      category: 'shipping', label: 'Void shipping label', destructive: true, stepUp: true },
   { id: 'orders.view',              category: 'shipping', label: 'View orders' },
   { id: 'orders.create',            category: 'shipping', label: 'Create orders' },
-  // Reserving a specific serialized unit against an order line is a WRITE: it
-  // consumes stock another order could have had. The pre-existing allocate
-  // door (`POST /api/orders/[id]/allocate`) gates on `orders.view`, a read
-  // string — do not copy that; new allocation surfaces use this.
+  // Reserving a specific serialized unit against an order line is a WRITE:
   { id: 'orders.allocate',          category: 'shipping', label: 'Allocate serialized stock to order lines' },
-  // Sale amount IS the revenue number reports read, so an operator correcting
-  // it is editing finance data, not a display field. Separate from
-  // `orders.create` so a floor role can be given order entry without the
-  // ability to restate what an order sold for.
+  // Sale amount IS the revenue number reports read, so an operator correcting it is editing finance data, not a display field.
   { id: 'orders.set_price',         category: 'shipping', label: 'Set or correct an order line sale price' },
   { id: 'orders.import',            category: 'shipping', label: 'Import orders (Google Sheets + Ecwid)' },
   { id: 'inventory.list_unit',      category: 'shipping', label: 'List a unit on a sales channel' },
@@ -162,21 +127,12 @@ export const PERMISSIONS = [
   { id: 'operations.plans.manage',  category: 'ops', label: 'Create and manage ops plans' },
   { id: 'operations.plans.claim',   category: 'ops', label: 'Claim and complete assigned plan tasks' },
   { id: 'operations.tv.view',       category: 'ops', label: 'View operations TV / wall display' },
-  // Home Inbox: reading YOUR OWN notification feed, and managing YOUR OWN
-  // subscriptions. Neither grants sight of another staffer's inbox — the
-  // routes scope to ctx.staffId — and neither substitutes for the per-entity
-  // view permission, which is re-checked at read time in lib/notifications/inbox.ts.
+  // Home Inbox: reading YOUR OWN notification feed, and managing YOUR OWN subscriptions.
   { id: 'home.inbox.view',          category: 'ops', label: 'View personal notification inbox' },
   { id: 'home.subscriptions.manage', category: 'ops', label: 'Manage personal subscriptions (follow / mute)' },
   { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (assistant tools)' },
   { id: 'assistant.chat',           category: 'ops', label: 'Use the operations assistant (global AI dock)' },
-  // ─ Tool Forge (self-evolving capability pipeline, 2026-08-22c) ─
-  // Deliberately FOUR permissions, not one. /api/mcp is gated on
-  // `assistant.chat`, which today grants the whole read-tool registry; hanging
-  // git and deploy authority off that same string would hand it to every
-  // operator who can open the assistant. The route gate gets a caller TO the
-  // gateway; these decide what they may do once there, re-checked per call
-  // inside runAssistantTool.
+  // ─ Tool Forge (self-evolving capability pipeline, 2026-08-22c) ─ Deliberately FOUR permissions, not one.
   { id: 'tool_forge.search',        category: 'ops', label: 'Search the tool registry for existing capabilities' },
   { id: 'tool_forge.request',       category: 'ops', label: 'Request a new tool (submit for triage)' },
   { id: 'tool_forge.decide',        category: 'ops', label: 'Record a triage decision on a build request' },
@@ -197,26 +153,16 @@ export const PERMISSIONS = [
   // an unattended tablet authorizes a drop-off on its own, but a charge needs a
   // real person who holds this. Checked at the kiosk PIN step-up.
   { id: 'walk_in.take_payment',     category: 'ops', label: 'Take counter payment' },
-  // Changing a price is a different risk from taking one (Square gates "apply
-  // price adjustments", "enter custom amounts" and "comp/void" on their own):
-  // a price adjustment, a keypad amount, a comp and a void of a line the
-  // customer has seen. Checked at the kiosk PIN step-up and on the desk's
-  // line-price override.
+  // Changing a price is a different risk from taking one (Square gates "apply price adjustments", "enter custom amounts" and "comp/void" on…
   { id: 'walk_in.adjust_price',     category: 'ops', label: 'Adjust a line price at the counter' },
   { id: 'stations.manage',          category: 'ops', label: 'Customize station pages (blocks, publish)' },
   { id: 'studio.view',              category: 'ops', label: 'View Operations Studio' },
   // Step-up is enforced on the PUBLISH route only (withAuth stepUp: true) so
   // ordinary draft edits don't prompt for a PIN every five minutes.
   { id: 'studio.manage',            category: 'ops', label: 'Edit & publish Operations Studio workflows' },
-  // Item-level recovery is distinct from graph authoring: a floor lead can
-  // unpark a stuck unit (blocked/error → active) without being able to edit or
-  // publish workflows. Non-destructive + reversible (a re-park is one scan away),
-  // so it's friction-free — no stepUp.
+  // Item-level recovery is distinct from graph authoring:
   { id: 'studio.recover',           category: 'ops', label: 'Recover stuck workflow items (unpark)' },
-  // Template Platform Phase 4 curation gate: moderate org-submitted workflow
-  // templates for the public catalog (review queue, approve/reject). Distinct
-  // from studio.manage (author your OWN org's graphs) — this blesses another
-  // org's submission for every tenant, so it's a platform-curator privilege.
+  // Template Platform Phase 4 curation gate:
   { id: 'studio.catalog.review',    category: 'ops', label: 'Review & curate submitted workflow templates' },
   // Entity-anchored conversation threads (ticket-optional; independent of the
   // Zendesk integration gate — a thread exists before any provider ticket).
@@ -240,12 +186,7 @@ export const PERMISSIONS = [
   { id: 'integrations.sheets',      category: 'integrations', label: 'Trigger Google Sheets sync' },
   { id: 'integrations.google_drive', category: 'integrations', label: 'Manage Google Drive photo backup' },
   { id: 'integrations.zendesk',     category: 'integrations', label: 'Manage Zendesk tickets' },
-  // Read-only standards projections (EPCIS event feed, EDI 856 ASN, lineage
-  // facets) over rows that already exist. Its own permission rather than
-  // `reports.export` because it is the whole tenant's operational history in a
-  // machine-readable form — the grant a customer makes to a PARTNER's service
-  // account, which is a different decision from letting a staffer download a
-  // report. Read-only, but broad, so it is ADMIN_ONLY in scripts/seed-roles.mjs.
+  // Read-only standards projections (EPCIS event feed, EDI 856 ASN, lineage facets) over rows that already exist.
   { id: 'interop.read',             category: 'integrations', label: 'Read standards interop projections (EPCIS / ASN)' },
 
   // ─ Product manuals (cross-cutting, lives under "data sources" admin tab) ─
@@ -267,11 +208,7 @@ export const PERMISSIONS = [
   // tenant-admin job — grant on the platform org's owner roles only).
   { id: 'beta.review',              category: 'admin', label: 'Review beta applications (platform funnel)' },
 
-  // ─ Developer / QA ─
-  // Authorization for QA capability reads — not an organization setting. The
-  // server-side capability resolver ALSO requires organizations.environment
-  // = 'sandbox', so granting this on a customer org is a no-op. Do not add
-  // it to production role templates.
+  // ─ Developer / QA ─ Authorization for QA capability reads — not an organization setting.
   { id: 'developer.qa_tools.view',  category: 'developer', label: 'View QA capabilities' },
 ] as const satisfies ReadonlyArray<PermissionDef>;
 

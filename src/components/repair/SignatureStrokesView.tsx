@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * A stored signature, drawn from its STROKES.
- *
- * Callers: `KioskHistoryDetail` (drop-off + pick-up signatures).
- * Affected API: none. Data schemas: `documents.document_data.signatureStrokes`
- * (`SignatureStrokeGroup[]`, the shape `signature_pad` emits).
- * User: "I need to see both signatures."
- *
- * ## Why this exists beside the PNG
- *
- * `submit-repair-intake.ts` uploads a PNG to Blob and records the strokes in
- * the same `documents` row, and it says why: the Blob upload can fail while
- * the signature is perfectly good ("Signature image upload failed — stroke
- * data saved as backup"). So a face that renders only `signature_url` shows
- * an empty box for a device that WAS signed — the worst possible answer at a
- * counter, because it looks like the customer never signed.
- *
- * This is the documented fallback, not a second renderer of the same thing:
- * the PNG is preferred wherever it exists (see the caller), and this draws the
- * vector the pad captured when it does not.
- *
- * Read-only by construction — no canvas, no pointer handlers, no export.
- * Capture is `SignaturePad`; this only replays.
- */
+/** A stored signature, drawn from its STROKES. */
 
 import type { SignatureStrokeGroup } from '@/lib/repair/signature-geometry';
 

@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Tracking-scan orchestration for the receiving sidebar — the single entry point
- * a scanned tracking #, PO/order reference, or internal handle flows through.
- *
- * Resolution order (each short-circuits on a hit, else falls through):
- *   1. Internal code resolve (R-/RCV-/H-/L-/U-/REP- handles, printed unit-ids,
- *      serials) → jump straight to the PO line.
- *   2. Phase-0 cache select (zero fetch).
- *   3. Local-first tracking short-circuit (Triage + Unbox).
- *   4. `/api/receiving/lookup-po` (local DB only) → match a PO or create + open
- *      an unmatched carton. Unbox paints a pending rail stub (tracking#) at t=0
- *      and always opens an optimistic unmatched empty PO-items pane; lookup
- *      fills header / accordion / label in place (order/ticket miss → toast).
- *
- * Owns the scan-input value (`bulkTracking`), the armed scan mode, and the
- * in-flight counter. Mutates the selection + PO-context cells via injected
- * setters (those cells live in useReceivingSelection / usePoContext).
- */
+/** Tracking-scan orchestration for the receiving sidebar — the single entry point a scanned tracking #, PO/order reference, or internal… */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { QueryClient } from '@tanstack/react-query';
@@ -59,10 +42,7 @@ import {
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 
-// `ScanResolutionMode` now lives with the scan pipeline (src/lib/receiving/scan)
-// and is re-exported here for the existing import surface. `'auto'` (the default
-// for an un-armed scan) resolves the value as ticket#, PO#, or tracking#; only
-// `UnboxScanMode` ('tracking' | 'order' | 'ticket') values can be armed in the UI.
+// `ScanResolutionMode` now lives with the scan pipeline (src/lib/receiving/scan) and is re-exported here for the existing import surface.
 export type { ScanResolutionMode };
 import type {
   PoContext,
@@ -137,12 +117,7 @@ export interface TrackingScanState {
   ) => void;
 }
 
-/**
- * Flatten every cached receiving feed under `['receiving-lines-table']` (Recent
- * rail, Prioritize, main table) into one de-duplicated row list. Tolerates the
- * three cached shapes those feeds use: a bare `ReceivingLineRow[]` (rails), an
- * `{ receiving_lines }` envelope (table), and an infinite `{ pages }` query.
- */
+/** Flatten every cached receiving feed under `['receiving-lines-table']` (Recent rail, Prioritize, main table) into one de-duplicated row list. */
 function collectCachedReceivingRows(queryClient: QueryClient): ReceivingLineRow[] {
   const out: ReceivingLineRow[] = [];
   const seen = new Set<number>();
@@ -210,22 +185,12 @@ export function useTrackingScan({
     accordionBootstrapRef.current = accordionExpandPref === 'all' ? 'all' : 'default';
   }, [accordionExpandPref]);
 
-  // Audio/haptic scan confirm (Station archetype §6 — the eyes-down operator needs
-  // a non-visual cue). Read into a ref so the submitTrackingScan callback identity
-  // stays stable (no dep churn). Silent by default: useScanFeedback gates sound on
-  // the org master switch + per-staff toggle, haptics on the per-staff toggle.
+  // Audio/haptic scan confirm (Station archetype §6 — the eyes-down operator needs a non-visual cue).
   const { playScanFeedback } = useScanFeedback();
   const playScanFeedbackRef = useRef(playScanFeedback);
   useEffect(() => { playScanFeedbackRef.current = playScanFeedback; }, [playScanFeedback]);
 
-  // Scan-race guard. Each scan captures the receiving page-mode "generation" at
-  // submit; switching modes (or any `receiving-clear-line`) bumps it. A scan that
-  // RESOLVES after the operator has moved on must NOT force its carton open in the
-  // now-current mode (the cross-mode leak). It still refreshes every receiving
-  // feed, so a found-order scan lands in the Unbox Queue rail (view=scanned)
-  // rather than hijacking whatever view is now showing. Bump on clear-line only
-  // (mode switch / unbox-view switch / workspace close) — the normal scan→open
-  // flow never dispatches clear-line, so consecutive same-mode scans are unaffected.
+  // Scan-race guard.
   const scanGenerationRef = useRef(0);
   useEffect(() => {
     const bump = () => {
@@ -315,11 +280,6 @@ export function useTrackingScan({
       };
 
       // Fire the per-scan audio/haptic confirm alongside the caller's onResult:
-      // a clean PO match chimes success; everything else (unmatched, not-found,
-      // integration-error, network error) buzzes so the operator knows to glance.
-      // Every terminal below routes its result echo through this, and the apply
-      // layer receives it as `applyCtx.onResult`, so the cue fires exactly once
-      // per scan on every path.
       const fireResult = (result: TrackingScanResult) => {
         playScanFeedbackRef.current(result.matched && !result.error ? 'success' : 'reject');
         opts?.onResult?.(result);
@@ -327,27 +287,9 @@ export function useTrackingScan({
 
       void (async () => {
         try {
-          // Serial / unit / carton-handle / receiving-id scan → jump straight to
-          // the PO line it belongs to, bypassing carrier tracking intake. Only
-          // short-circuits on a hit; tracking numbers and anything unrecognised
-          // fall through to the normal lookup-po flow below untouched. Skipped in
-          // Order# mode — an order/PO reference is never a serial/carton code.
+          // Serial / unit / carton-handle / receiving-id scan → jump straight to the PO line it belongs to, bypassing carrier tracking intake.
           try {
-            // Canonical internal codes — carton/line/unit/handling-unit/repair
-            // handles (R-/RCV-/H-/L-/U-/REP-) and printed unit-ids — always
-            // resolve to their PO line, bypassing carrier-tracking intake. This
-            // is what lets a printed R-{id} receiving label scan back to its own
-            // carton via the IDENTICAL path as any other scan. Every handle
-            // contains a dash, so `classifyUnboxScan` auto-arms Order# mode for
-            // them; we therefore still run the resolver in Order# mode WHEN the
-            // value looks like a code (looksLikeReceivingCode) — a true PO/order
-            // number returns false there and keeps its lookup-po routing. Only
-            // short-circuits on a hit; tracking numbers and anything unrecognised
-            // fall through to the normal lookup-po flow below untouched.
-            // Internal-handle rung — skip for Unbox pure tracking scans (no dash,
-            // not a ticket#) so lookup-po starts immediately. Handles / serials
-            // still resolve when the value looks like a receiving code or when
-            // Order#/Ticket#/auto-with-code paths need them.
+            // Canonical internal codes — carton/line/unit/handling-unit/repair handles (R-/RCV-/H-/L-/U-/REP-) and printed unit-ids — always resolve…
             const skipInternalForUnboxTracking =
               intakeSurfaceRef.current === 'unbox'
               && (lookupMode === 'tracking'
@@ -363,9 +305,6 @@ export function useTrackingScan({
                 );
             if (internal) {
               // Surface split FIRST so an unbox scan never writes triage feeds.
-              // Unbox → the open chokepoint (stub drop, Unboxed upsert, Arrival
-              // purge, touch-scan stamp); triage → triage feed + the sanctioned
-              // triage→Unbox-Queue mirror.
               fireResult({
                 tracking: trackingNumber,
                 matched: true,
@@ -411,10 +350,7 @@ export function useTrackingScan({
                 }
                 deferInvalidateTriageAndUnboxQueueFeeds(queryClient);
               }
-              // Echo the resolution back to the caller (phone-paired scans listen
-              // for this to render their matched/unmatched result) — the code
-              // short-circuit must too, or a phone scan of an R-/unit handle never
-              // reports back.
+              // Echo the resolution back to the caller (phone-paired scans listen for this to render their matched/unmatched result) — the code…
               setScanMatchedRows(internal.rows);
               setLineAccordionBootstrap(accordionBootstrapRef.current);
               setSelectedLine(internal.pick);
@@ -432,14 +368,7 @@ export function useTrackingScan({
             /* fall through to carrier tracking intake */
           }
 
-          // Phase 0 — Recent-list instant select (zero fetch, no loader). If the
-          // scanned PO / tracking / ticket# is already a MATERIALIZED carton
-          // (receiving_id set) sitting in any receiving-feed cache — the
-          // Recent/Unboxed rail, Prioritize, or the History table, all keyed
-          // under ['receiving-lines-table'] — open it straight from cache
-          // exactly like clicking that rail row (dispatchSelectLine).
-          // EXPECTED-only incoming lines (receiving_id null) are intentionally
-          // skipped so they still flow through the lookup-po adopt/stamp path.
+          // Phase 0 — Recent-list instant select (zero fetch, no loader).
           try {
             // Phase-0 rung (pure, src/lib/receiving/scan): read the feed caches
             // and resolve to a materialized carton; the hook owns the effects.
@@ -458,12 +387,7 @@ export function useTrackingScan({
                 emitReceiving('receiving-scan-resolved');
                 return;
               }
-              // Stamp scanned_by for the signed-in operator (same lightweight
-              // touch-scan the local-tracking short-circuit uses) — no blocking
-              // lookup-po round-trip. Use the carton's own tracking number.
-              // Unbox surface routes through the open chokepoint (stub drop +
-              // Arrival purge + touch-scan; the row is already cached, so no
-              // rail upsert). Triage keeps the plain scanned_by stamp.
+              // Stamp scanned_by for the signed-in operator (same lightweight touch-scan the local-tracking short-circuit uses) — no blocking lookup-po…
               if (intakeSurfaceRef.current === 'unbox') {
                 applyUnboxCartonOpened(queryClient, {
                   receivingId: cached.receivingId,
@@ -483,13 +407,7 @@ export function useTrackingScan({
                 clearUnboxPendingRail();
               }
               maybeStageReturnCarton(cached.receivingId, cached.row);
-              // Open via the rail's own select event so the sidebar selectedLine,
-              // rail highlight, and right-pane workspace stay in lockstep — this
-              // is the identical path a Recent-rail row click takes.
-              // Stale-guard: only open if the operator hasn't switched modes
-              // mid-scan. The row is already in the feed cache either way, so a
-              // stale scan simply stays visible in the queue rather than yanking
-              // the current view to it.
+              // Open via the rail's own select event so the sidebar selectedLine, rail highlight, and right-pane workspace stay in lockstep — this is…
               if (shouldOpen()) dispatchSelectLine(cached.row);
               window.dispatchEvent(new CustomEvent('receiving-scan-resolved'));
               return;
@@ -593,10 +511,7 @@ export function useTrackingScan({
             lookupValueForCall = local.value;
           }
 
-          // Build the apply context once for this scan — every cell the open /
-          // promote effects need. The effectful open logic lives in scan-apply.ts
-          // now (applyMatchedCarton / applyUnmatchedCarton); this hook resolves
-          // the rung and hands the result to the apply layer.
+          // Build the apply context once for this scan — every cell the open / promote effects need.
           const applyCtx: ScanApplyCtx = {
             trackingNumber,
             staffId,
@@ -617,10 +532,7 @@ export function useTrackingScan({
             intakeSurface: intakeSurfaceRef.current,
           };
 
-          // lookup-po rung (local-DB only, src/lib/receiving/scan): resolves from
-          // STN / PO mirror / ticket links — never live Zoho. The hook owns every
-          // effect below; the resolver throws on a hard failure, caught by the
-          // outer catch exactly as the inline fetch did.
+          // lookup-po rung (local-DB only, src/lib/receiving/scan):
           const resolution = await resolveViaLookupPo(
             {
               callValue: lookupValueForCall,

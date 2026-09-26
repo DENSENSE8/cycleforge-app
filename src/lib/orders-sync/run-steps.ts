@@ -1,32 +1,6 @@
 /**
- * The order-import RUN LEDGER — a measured, step-by-step fold of the sync
- * stream into something an operator can read while it runs.
- *
- * ## Why a ledger and not a percentage
- *
+ * The order-import RUN LEDGER — a measured, step-by-step fold of the sync stream into something an operator can read while it runs.
  * Operator 2026-09-15: "I need a step-by-step measured what's syncing to build
- * trust." A bare percentage answers a question nobody at the desk is asking.
- * The numbers that build trust are per-step and absolute — *214 rows read →
- * 51 tracking resolved → 12 updated → 35 inserted*. This module owns that
- * shape; a surface renders it, and {@link ProgressBar} `segments` glances at
- * it as `completed / total` (law PG6: progression is a COUNT of finished
- * steps, never the index of the step in view).
- *
- * ## Why folding is not trivial
- *
- * Two hazards, both real in the current emitters:
- *
- * 1. **A phase can arrive more than once.** The ShipStation connector reports
- *    `fetching_shipstation` bare and then again with its count. A naive
- *    `count = event.count` makes numbers jump or vanish; counts here
- *    ACCUMULATE, and a lane's cursor never moves backwards.
- * 2. **A step can be legitimately empty.** A lane that finishes without ever
- *    emitting `updating` updated zero rows — that is `0 updated`, done, not
- *    "still pending" and not "skipped". Only a lane the run never started
- *    yields skipped steps.
- *
- * Everything here is pure and immutable: every mutator returns a new state, so
- * React can hold it and a test can drive it without a DOM.
  */
 import type { SyncPhase, SyncStreamEvent } from './types';
 
@@ -50,12 +24,7 @@ export interface SyncRunStep {
   id: SyncRunStepId;
   /** Operator-facing sentence, present tense while running. */
   label: string;
-  /**
-   * What the count counts, singular. Renders as "35 orders" / "1 order".
-   * Empty on an UNMEASURED step — `match` and `publish` emit no count, and a
-   * fabricated "0 orders" there reads as "it matched nothing", which is a
-   * different and false claim.
-   */
+  /** What the count counts, singular. */
   unit: string;
   state: SyncRunStepState;
   /** Accumulated across every lane and every emission. `undefined` = not yet known. */
@@ -118,14 +87,7 @@ interface LaneState {
   cursor: number;
   /** The step this lane is on right now. */
   current: SyncRunStepId | null;
-  /**
-   * The step that was IN FLIGHT when this lane failed or was cancelled.
-   *
-   * Load-bearing: without it, a lane error painted every step it had already
-   * passed as failed, so cancelling mid-insert reported "Read ShipStation
-   * orders — Cancelled" on a read that had finished with 214 orders. A failure
-   * belongs to one step; the ones behind it stand.
-   */
+  /** The step that was IN FLIGHT when this lane failed or was cancelled. */
   failedAt?: SyncRunStepId | null;
   error?: string;
 }
@@ -196,10 +158,7 @@ export function applySyncRunEvent(
   }
 
   if (event.type === 'exception') {
-    // The exceptions pass reports rows, not phase counts — scanned is the
-    // measurable total, resolved is the win, and both are derivable from the
-    // rows the surface already holds. Count SCANNED here so the step number
-    // matches "we looked at N".
+    // The exceptions pass reports rows, not phase counts — scanned is the measurable total, resolved is the win, and both are derivable from…
     const id: SyncRunStepId = 'exceptions';
     return {
       ...state,
@@ -237,12 +196,7 @@ export function completeSyncRunLane(
   return withSettlement({ ...state, lanes });
 }
 
-/**
- * Operator cancel. The lanes keep whatever they had already reported — wiping
- * them to idle (the old `handleCancelTransfer`) threw away the fact that 20
- * orders HAD landed before the abort, which is the one thing the operator
- * needs to know next.
- */
+/** Operator cancel. */
 export function cancelSyncRun(state: SyncRunState): SyncRunState {
   const lanes = { ...state.lanes };
   for (const key of Object.keys(lanes) as SyncRunLane[]) {
@@ -297,13 +251,7 @@ function stepState(state: SyncRunState, id: SyncRunStepId): { state: SyncRunStep
   return { state: 'done' };
 }
 
-/**
- * The renderable ledger.
- *
- * A finished MEASURED step with no emission is `count: 0` — "nothing to
- * update" is an answer, not a blank. An UNMEASURED step (`publish`) has no
- * count at all, because inventing one would report a fan-out as "0 orders".
- */
+/** The renderable ledger. */
 export function syncRunSteps(state: SyncRunState): SyncRunStep[] {
   return STEP_ORDER.map((id) => {
     const resolved = stepState(state, id);

@@ -16,21 +16,7 @@ function envZohoOrgId(): string {
   return (process.env.ZOHO_ORG_ID || process.env.ZOHO_ORGANIZATION_ID || '').trim();
 }
 
-/**
- * GET /api/zoho/oauth/callback
- *
- * Authorized Redirect URI registered in the Zoho API Console. Receives the
- * authorization code, exchanges it for access + refresh tokens, discovers the
- * tenant's Zoho Inventory organization_id, and persists the connection to the
- * per-tenant vault (organization_integrations, provider='zoho') — the single
- * source of truth. No env vars are written; the Zoho *app* client id/secret are
- * shared across tenants (like Amazon's LWA app) and copied into the encrypted
- * payload so it is self-contained at runtime.
- *
- * The connecting TENANT is resolved from the signed-in admin's session (the
- * Zoho redirect is a top-level same-site navigation, so the session cookie is
- * present). Required env: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, NEXT_PUBLIC_APP_URL.
- */
+/** GET /api/zoho/oauth/callback */
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
 

@@ -6,32 +6,9 @@ import { SIDEBAR_GUTTER, sidebarHeaderPillRowClass } from '@/components/layout/h
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-system/components/FilterRefinementBar';
 
-/**
- * The ONE layout shell for every master sidebar.
- *
- * Search is NOT a sidebar concern: the global header pill
- * ({@link GlobalHeaderSearch}) is the single search surface. Page-scoped lookup
- * goes through the AI assistant. The sidebar renders NO search band — enforced
- * by `sidebar-search-bar.guard.test.ts`.
- *
- * The shell owns the structure so panels supply only slots, never layout:
- *
- *   h-full flex flex-col overflow-hidden     ← outer column (never scrolls)
- *     headerAbove                            ← pinned: filterControl / eyebrow / facet filters
- *     <FilterRefinementBar/> (optional)      ← leftover rail chrome; desks use DataTable filter
- *     headerRows[]  (each a 40px pill band)  ← pinned: sub-tabs / field scopes / chips
- *                                            (NOT page L2 — that lives in GlobalHeader)
- *     headerBelow                            ← pinned, non-banded, OUTSIDE the scroll
- *     children  (flex-1 overflow-y-auto)     ← the only scrolling region
- *     footer                                 ← pinned bottom, OUTSIDE the scroll
- */
+/** The ONE layout shell for every master sidebar. */
 export interface SidebarShellProps {
-  /**
-   * Optional leftover rail filter bar. Binding-backed desks must NOT pass this —
-   * DataTable owns search + the filter icon to its right (To-ship gold). When
-   * provided, the shell still renders FilterRefinementBar (Inventory / Warranty
-   * / Audit / Issues rails that are not yet on that control).
-   */
+  /** Optional leftover rail filter bar. */
   filter?: Omit<FilterRefinementBarProps, 'variant'>;
 
   /** Pinned rows ABOVE the filter (filterControl, section eyebrow, mode rail).

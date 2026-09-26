@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * RepairServiceIdentify — single SoT host for linking a carton to an Ecwid
- * repair-service (-RS) / store order.
- *
- * Mounted from:
- *   • Arrival Pairing / Unbox Linkage — {@link CartonMatchHub} Store avenue
- *   • Unbox Classify — when Arrival never paired (same module, no fork)
- *
- * Compose {@link EcwidProductSearchInline} `popoverMode="repair_service"`;
- * the host owns layout chrome only. Success writes go through the caller's
- * `onSelect` → {@link addUnmatchedLine} (items accordion or Classify identify)
- * → POST add-unmatched-line (carton Order # + type REPAIR + repair_service upsert).
- */
+/** RepairServiceIdentify — single SoT host for linking a carton to an Ecwid repair-service (-RS) / store order. */
 
 import { EcwidProductSearchInline } from '@/components/receiving/unfound/EcwidProductSearchInline';
 import type { EcwidProductSelection } from '@/components/receiving/unfound/ecwid-search/ecwid-search-shared';

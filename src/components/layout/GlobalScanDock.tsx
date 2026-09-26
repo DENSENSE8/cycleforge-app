@@ -8,27 +8,7 @@ import {
   subscribeScanDock,
 } from '@/lib/scan-dock/store';
 
-/**
- * The persistent scan input — the fourth zone of {@link GlobalHeader}.
- *
- * Mounted once, in the header, which `ResponsiveLayout` mounts once from the
- * ROOT layout. The App Router does not remount the root layout across a client
- * navigation, so this input — its React state, its DOM node, and its focus —
- * survives every jump the command router performs. That is the entire reason it
- * lives here rather than in each surface's sidebar panel, where the panel swap
- * on a mode change takes the bar down with it.
- *
- * It renders NOTHING until a surface publishes a policy via `useScanDock`, so
- * mounting it is inert on every page that has not migrated. Surfaces move over
- * one at a time; an unmigrated surface keeps its own bar and nothing collides.
- *
- * @domain-job Persistent cross-surface scan input for the station command router
- * @hardware-target Station
- * @density ops
- * @justification `StationScanPaneHost` and the sidebar bands are mounted INSIDE
- *   a surface, which is precisely the lifetime this must outlive. The named host
- *   cannot be reused because its remount is the defect.
- */
+/** The persistent scan input — the fourth zone of {@link GlobalHeader}. */
 export function GlobalScanDock() {
   const policy = useSyncExternalStore(
     subscribeScanDock,
@@ -39,13 +19,7 @@ export function GlobalScanDock() {
   const inputRef = useRef<HTMLInputElement>(null);
   const lastPolicyId = useRef<string | null>(null);
 
-  // Surface changed: clear the VALUE, keep the FOCUS.
-  //
-  // Both halves are deliberate. Keeping focus is the dock's whole purpose — an
-  // operator who scanned a jump sticker must be able to pull the trigger again
-  // immediately. Clearing the value is the other half: a half-typed serial
-  // carried from Quality Control to Ready to Pack would hand the next bench a
-  // string its resolver never saw scanned.
+  // Surface changed:
   useEffect(() => {
     const id = policy?.id ?? null;
     if (lastPolicyId.current === id) return;

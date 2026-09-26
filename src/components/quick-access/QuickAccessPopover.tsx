@@ -23,13 +23,7 @@ interface QuickAccessPopoverProps {
   compact?: boolean;
 }
 
-/**
- * Mobile / FAB account menu body (desktop staff identity lives on the
- * MasterNav spine footer — {@link StaffAccountFooter}).
- * Pins live in GlobalHeader ({@link HeaderPinsSwitcher}); page MRU lives in
- * {@link HeaderRecentsSwitcher} — neither remounts here.
- * Signed-in staff card lives at the bottom.
- */
+/** Mobile / FAB account menu body (desktop staff identity lives on the MasterNav spine footer — {@link StaffAccountFooter}). */
 export function QuickAccessPopover({
   onClose,
   onOpenHistoryPopover,

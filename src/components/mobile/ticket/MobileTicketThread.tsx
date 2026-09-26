@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * The phone face of one helpdesk ticket — `/m/t/[ticketId]`.
- *
- * THE MOBILE SoT for the reply verb (SURFACE_LAW §1: every operator verb is
- * completable on `/m` first). A checklist row that carries a ticket link is a
- * job with a conversation attached, and until this screen existed the phone
- * could show the operator that a ticket was owed and then had nowhere to send
- * them — the row's ticket glyph was a MARK precisely because no door existed.
- *
- * A PAGE, not a `BottomSheet`, and the two reasons are the same reason: the
- * on-screen keyboard. A sheet with a focused textarea keeps ~40% of a 390×844
- * screen for the thread the operator is answering, and a thread is exactly what
- * you must re-read while typing. A page also gives the ticket a URL, so a lead
- * can send "look at ticket 48120" and land a thumb on the answer.
- *
- * ONE JOB: read this thread, answer it. No assignment editor, no status
- * change, no photo picker — the desk console keeps those, and each is its own
- * verb with its own destination (SURFACE_LAW R1). Photos arrive only already
- * chosen, staged by the surface that handed over (`?photos=`, e.g. the repair
- * workbench's Photos screen); the dock shows them and lets the operator drop
- * one. The stream face is the house {@link ConversationMessageCard}; the mouth
- * is {@link MobileTicketReplyDock}, chrome over the shared composer waist.
- *
- * Boundary: platform layer + `src/lib` + `src/hooks` only. The desk's
- * `MergedRecordStream` and `TicketComposer` are `src/components/**` feature
- * dirs `/m` may not import (ARCHITECTURE.md rule 2); what they SHARE with this
- * file — the message card, the markdown renderer, the author resolver, the
- * composer behaviour — already lives in the design system and in `lib`.
- */
+/** The phone face of one helpdesk ticket — `/m/t/[ticketId]`. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import { IdentityMark } from '@/components/identity/IdentityMark';
@@ -48,13 +20,7 @@ import { cn } from '@/utils/_cn';
 import type { TicketThreadHandoff } from '@/lib/composer/ticket-thread-handoff';
 import { MobileTicketReplyDock } from './MobileTicketReplyDock';
 
-/**
- * The comments route already resolves author identity server-side
- * (`enrichCommentAuthors` → `author_name` / `author_photo`), so the phone hands
- * `resolveAuthor` empty rosters and still never paints a bare "User <id>".
- * Fetching an agent roster here to re-derive names the payload already carries
- * would be a second request for an answer we hold.
- */
+/** The comments route already resolves author identity server-side (`enrichCommentAuthors` → `author_name` / `author_photo`), so the phone… */
 const NO_AGENTS: Map<number, ZendeskAgent> = new Map();
 const NO_USERS: Map<number, ZendeskUser> = new Map();
 
@@ -67,12 +33,7 @@ export function MobileTicketThread({
   handoff?: TicketThreadHandoff;
 }) {
   const { has, isLoaded } = useAuth();
-  /**
-   * The same permission the read and write routes gate on
-   * (`integrations.zendesk`). Gating the SURFACE on it means a staffer who
-   * cannot post never reaches a screen whose only verb 403s — the registry's
-   * rule that an absent door beats one that fails on press.
-   */
+  /** The same permission the read and write routes gate on (`integrations.zendesk`). */
   const canRead = !isLoaded || has('integrations.zendesk');
   const liveId = canRead ? ticketId : null;
 
@@ -120,15 +81,7 @@ export function MobileTicketThread({
         }
       />
 
-      {/*
-       * The stream hugs the COMPOSER, not the top bar: `mt-auto` on the inner
-       * column pushes a short thread down so the newest message sits where the
-       * thumb and the reply field already are. A two-comment ticket otherwise
-       * floats at the top of an 844px screen with 500px of dead air between the
-       * question and the answer box. `mt-auto` and not `justify-end`, because
-       * `justify-end` on a scroll port clips the first message out of reach
-       * once the thread grows past one screen.
-       */}
+      {/* The stream hugs the COMPOSER, not the top bar: */}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain py-3">
         {!canRead ? (
           <p className="px-4 text-role-caption text-text-muted">

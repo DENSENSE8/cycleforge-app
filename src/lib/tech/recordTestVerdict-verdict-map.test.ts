@@ -2,12 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { pickVerdictMapping, VERDICT_TO_STATUS } from './recordTestVerdict';
 
-/**
- * The per-org verdict→status override (Wave 2 / Class A) resolves through the pure
- * pickVerdictMapping: an override wins, an unset verdict falls back to the
- * hardcoded VERDICT_TO_STATUS. Flag-gated in recordTestVerdict (default off = no
- * settings read), so this pure unit test covers the resolution rule DB-free.
- */
+/** The per-org verdict→status override (Wave 2 / Class A) resolves through the pure pickVerdictMapping: */
 
 test('pickVerdictMapping: no override → the hardcoded default', () => {
   assert.deepEqual(pickVerdictMapping('PASS'), VERDICT_TO_STATUS.PASS);

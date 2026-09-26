@@ -1,15 +1,4 @@
-/**
- * Shared trust + clamp math for body-portaled tooltips / menus.
- *
- * Bad or near-origin trigger rects used to survive a size-only check, then
- * viewport clamp pinned the bubble to ~(MARGIN, MARGIN) — a stray top-left
- * flash before a later remeasure. Trust the rect first; only then clamp.
- *
- * Two placement families:
- *   • {@link clampPortalTooltipPosition} — above/below/right/left (read-only tips).
- *   • {@link clampPortalSideMenuPosition} — end/start side flyouts for dense
- *     table hover menus (clears the vertical row-scan path).
- */
+/** Shared trust + clamp math for body-portaled tooltips / menus. */
 
 export const PORTAL_TOOLTIP_MARGIN = 8;
 /** Default gap between a side-menu trigger and its portal panel. */
@@ -76,12 +65,7 @@ export function readTrustedTriggerRect(
   return isTrustedPortalAnchor(rect, viewport) ? rect : null;
 }
 
-/**
- * Clamp a tooltip bubble to the viewport relative to a trusted anchor.
- * Returns null (keep portal hidden) when the anchor is untrusted or when clamp
- * would pin the tip to the top-left margin while the trigger is elsewhere —
- * the classic top-left flash.
- */
+/** Clamp a tooltip bubble to the viewport relative to a trusted anchor. */
 export function clampPortalTooltipPosition(args: {
   anchor: PortalRect;
   bubble: Pick<DOMRect, 'width' | 'height'>;
@@ -150,16 +134,7 @@ export function clampPortalTooltipPosition(args: {
   return { top, left };
 }
 
-/**
- * Place an interactive hover menu beside the trigger — prefer trailing (`end` /
- * right in LTR) so the panel does not sit in the vertical scan path of a data
- * table. Flips to `start` when there isn't room. Vertical `align: 'start'`
- * (default) keeps the menu top flush with the chip so OPEN/EDIT stays next to
- * the hovered row.
- *
- * Returns null when the anchor/bubble is untrusted or when clamp would pin the
- * panel to the top-left margin while the trigger is elsewhere.
- */
+/** Place an interactive hover menu beside the trigger — prefer trailing (`end` / right in LTR) so the panel does not sit in the vertical… */
 export function clampPortalSideMenuPosition(args: {
   anchor: PortalRect;
   bubble: Pick<DOMRect, 'width' | 'height'>;

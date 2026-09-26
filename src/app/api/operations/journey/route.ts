@@ -17,23 +17,7 @@ import {
   type JourneySource,
 } from '@/lib/operations/journey';
 
-/**
- * GET /api/operations/journey — the Master Operations Journey reader. Two modes,
- * dispatched by whether a specific record was named:
- *
- * ENTITY (Trace) — pass `dim` + one of `order`/`serial`/`tracking` → THAT record's
- * complete cross-station journey (SAL + inventory + audit + carrier + warranty),
- * org-gated. 404 if the record isn't owned by the caller's org.
- *
- * BROWSE — no record number → the org-wide, filterable, keyset-paginated event
- * feed (`readJourneyBrowse`), newest-first. Filters: from/until, stations, types,
- * staffId, status, sources, q; `cursor` (opaque, base64url) paginates and the
- * response carries the next `cursor`. The `audit` spine is admin-only in browse
- * (`admin.view_logs`, plan Decision §3.2 Option B) — see `resolveBrowseSources`.
- *
- * Read-only; org-scoped via `withTenantTransaction`. Rows are bucketed by `source`
- * with a `raw` payload matching each source's existing timeline adapter input.
- */
+/** GET /api/operations/journey — the Master Operations Journey reader. */
 
 const DIMENSIONS: readonly JourneyDimension[] = ['order', 'serial', 'tracking', 'unit'];
 

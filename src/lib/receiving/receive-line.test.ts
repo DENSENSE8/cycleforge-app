@@ -1,18 +1,4 @@
-/**
- * receiveLineUnits — Step D fold tests.
- *
- * Two halves:
- *   1. resolveReceiveWorkflowTarget — the pure TS replica of the workflow CASE
- *      the legacy combined UPDATE ran in SQL. Exhaustively pins the semantics
- *      the fold must preserve: explicit DONE always wins, explicit
- *      UNBOXED/MATCHED are advance-only-guarded (scan_only's advanceOnly=false
- *      revert still rewinds), qty completion auto-advances to UNBOXED only
- *      when no explicit target is set, otherwise the line stays put.
- *   2. Source-level invariants (same style as serial-attach.test.ts): the
- *      workflow transition joins the tenant transaction client + orgId, and
- *      the Wave-3 schema split (testing facts → receiving_line_testing,
- *      zoho_item_id → receiving_line_zoho) is never written/read off the spine.
- */
+/** receiveLineUnits — Step D fold tests. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

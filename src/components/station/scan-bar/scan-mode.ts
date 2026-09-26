@@ -20,13 +20,7 @@ export function isStationScanInputFocused(target: EventTarget | null): boolean {
   );
 }
 
-/**
- * Esc un-arms the type rail only when:
- *   - the station scan input is focused
- *   - no overlay owns Esc
- *   - the hotkey-rebind capture is not live
- *   - a type is actually armed (Auto already → let Esc bubble)
- */
+/** Esc un-arms the type rail only when: */
 export function shouldHandleScanModeEsc(opts: {
   key: string;
   armed: boolean;

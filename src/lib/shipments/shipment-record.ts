@@ -1,21 +1,4 @@
-/**
- * The shipment (package) record read — one `shipping_tracking_numbers` row
- * assembled into the `ShipmentRecord` contract (`./shipment-record-types`).
- *
- * Two halves so the shaping is unit-testable without a database:
- *   · `loadShipmentRecordRows` — every SQL read, inside ONE tenant transaction.
- *   · `buildShipmentRecord`    — pure: raw rows → contract.
- *
- * Time law: every instant leaves here as `Date#toISOString()`. Every column
- * read is `timestamptz` (packer_logs / orders_exceptions / tech_serial_numbers
- * `.created_at` since the 2026-09-25g naive→timestamptz cutover), so rows are
- * read as-is — no session-zone pinning, no casts.
- *
- * Tenant scope: STN is global-ish (nullable `organization_id`), so the package
- * is visible when it is stamped with the caller's org, or unstamped and owned
- * by one of the caller's orders / scans / links / pack logs. Every other read
- * is filtered by `organization_id` directly.
- */
+/** The shipment (package) record read — one `shipping_tracking_numbers` row assembled into the `ShipmentRecord` contract… */
 
 import pool from '@/lib/db';
 import { readInventorySpine } from '@/lib/audit-log/inventory-spine';
@@ -197,14 +180,7 @@ const SHIPMENT_VISIBLE_SQL = `
        )
      )`;
 
-/**
- * The org-visible package, or null. Shared with the resolve-exception writer so
- * "does this caller see this package" has one answer.
- *
- * Runs on the owner pool with the org predicate spelled out: an unstamped
- * (NULL-org) STN row is invisible to the RLS-subject tenant pool, yet it is
- * this org's package when one of the org's own rows points at it.
- */
+/** The org-visible package, or null. */
 export async function readVisibleShipment(orgId: OrgId, shipmentId: number): Promise<ShipmentStnRow | null> {
   const res = await pool.query<ShipmentStnRow>(SHIPMENT_VISIBLE_SQL, [shipmentId, orgId]);
   return res.rows[0] ?? null;

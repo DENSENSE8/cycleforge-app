@@ -1,10 +1,4 @@
-/**
- * Catalog search-pool choice — one engine for staff stacked + kiosk-split.
- *
- * First-page paint (`showAllProducts`) must not disable the whole-catalog
- * pool. Kiosk-split prefetches page 1 so the grid paints, then a 2+ char
- * query hydrates `rootSearchPool` (Redis-cached `mode=all&limit=100`).
- */
+/** Catalog search-pool choice — one engine for staff stacked + kiosk-split. */
 
 export function isCatalogRootSearchLevel(opts: {
   currentCategoryId: string | null;

@@ -13,12 +13,7 @@ import { createPackerLog } from '@/lib/packing/packer-log-writer';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { buyerNoteHoldBody, readBuyerNoteHold } from '@/lib/orders/buyer-note-interlock';
 
-/**
- * Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a
- * shippable state). Caught by the outer try so the whole transaction rolls
- * back — preserving the route's "zero mutations on failure" guarantee — and
- * surfaced as the transition()'s own status (404/409).
- */
+/** Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a shippable state). */
 class UnitTransitionError extends Error {
   constructor(
     readonly httpStatus: number,
@@ -31,45 +26,7 @@ class UnitTransitionError extends Error {
   }
 }
 
-/**
- * POST /api/pack/ship
- *
- * Phase 5 — THE CORE FIX. Single transaction that closes the loop:
- *   - Verifies scanned serials match the order's open allocations.
- *   - Transitions each allocation ALLOCATED|PICKED → SHIPPED.
- *   - Transitions each serial_units row → SHIPPED.
- *   - Appends one sku_stock_ledger row per unit with reason='SOLD' and
- *     delta=-1 (or -qty for Tier 1/2 lines via line_qty). The
- *     trg_sku_stock_from_ledger trigger projects the new on-hand count
- *     onto sku_stock.stock atomically — this is the single inventory
- *     decrement event for the order.
- *   - Emits PACKED, LABELED, SHIPPED inventory_events per unit, in order.
- *     Phase 5 collapses pack/label/ship into one operator action; future
- *     phases may split them when carrier-label timing matters.
- *   - Writes a single ORDERS-class packer_logs row and a SAL row so the
- *     existing dashboards keep showing the pack event.
- *   - Sets orders.status='shipped' last so any concurrent reader sees the
- *     event-side state before the order flag flips.
- *
- * Body:
- *   {
- *     order_id: number,
- *     serials?: string[],              // raw serial scans, GS1 URLs OK
- *     serial_unit_ids?: number[],      // explicit IDs (alternative to serials)
- *     tracking_number?: string,        // ORDERS scan_ref / shipment lookup
- *     carrier?: string,
- *     client_event_id?: string         // UUID; per-unit suffixed for idempotency
- *   }
- *
- * Provide either `serials` or `serial_unit_ids` (or both — they're merged).
- * Mismatch handling: if any scanned serial doesn't match an open
- * allocation for the order, the route returns 409 with the offending
- * serials and ZERO mutations are committed. Callers may unblock with
- * /api/pack/ship?override=true after operator confirmation — not yet
- * implemented; deliberate Phase 5 limitation.
- *
- * Permission: packing.complete_order.
- */
+/** POST /api/pack/ship */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const orderId = Number(body?.order_id);
@@ -111,11 +68,7 @@ export const POST = withAuth(async (request, ctx) => {
   const orgId = ctx.organizationId;
 
   try {
-    // GUC-wrapped: every tenant table this route touches (orders, order_unit_allocations,
-    // serial_units, inventory_events, sku_stock_ledger, packer_logs, station_activity_logs)
-    // has RLS enabled, so under the app_tenant pool the policies scope each statement to
-    // this org and the GUC column default stamps org on the raw INSERTs. Explicit
-    // organization_id predicates below are kept as defense-in-depth.
+    // GUC-wrapped: every tenant table this route touches (orders, order_unit_allocations, serial_units, inventory_events, sku_stock_ledger,…
     const result = await withTenantTransaction(orgId, async (client) => {
       // 1. Resolve all units in one round trip.
       const unitsQ = await client.query<{ id: number; sku: string | null; current_status: string; normalized_serial: string }>(
@@ -208,10 +161,7 @@ export const POST = withAuth(async (request, ctx) => {
         return { ...buyerNoteHoldBody(buyerNoteHold), status: 409 };
       }
 
-      // 4b. Block-until-approved gate: a substitution raised under the
-      //     block_until_approved enforcement records a PENDING amendment. The
-      //     order cannot ship until a supervisor approves it. Flag-guarded so
-      //     the query is skipped entirely when substitution is disabled.
+      // 4b. Block-until-approved gate:
       if (isFulfillmentSubstitution()) {
         const pendingQ = await client.query<{ id: number }>(
           `SELECT id FROM order_unit_amendments
@@ -307,14 +257,7 @@ export const POST = withAuth(async (request, ctx) => {
           ledgerId = ledger.rows[0]?.id ?? null;
         }
 
-        // 5e+5f. serial_units → SHIPPED via the guarded state machine. This
-        //     writes current_status=SHIPPED AND emits the single SHIPPED
-        //     inventory_event (carrying the ledger linkage via stockLedgerId).
-        //     The unit's real from-state is ALLOCATED or PICKED (or another
-        //     pre-SHIPPED state); we do NOT pass expectedFrom since it varies.
-        //     A rejection means the unit isn't shippable — throw to roll the
-        //     whole transaction back (no partial commit) and surface the
-        //     transition's own status.
+        // 5e+5f. serial_units → SHIPPED via the guarded state machine.
         const shippedKey = clientEventId ? `${clientEventId}:${u.id}:SHIPPED` : null;
         const t = await transition(
           {
@@ -394,11 +337,7 @@ export const POST = withAuth(async (request, ctx) => {
         client,
       );
 
-      // 10. Clear loose-unit placement for each shipped unit — a unit staged on a
-      //     bench has left the pack floor. Parallel to the order clear above; same
-      //     transaction (client), so a rolled-back ship leaves the ledger intact.
-      //     The count already excludes off-floor statuses, so this only removes the
-      //     lingering row (returns false when the unit was never bench-staged).
+      // 10. Clear loose-unit placement for each shipped unit — a unit staged on a bench has left the pack floor.
       for (const u of perUnit) {
         await clearUnitPackPlacement(
           orgId,
@@ -421,10 +360,7 @@ export const POST = withAuth(async (request, ctx) => {
       return NextResponse.json(result, { status: result.status });
     }
 
-    // Formal audit-log row for the shipped order. recordAudit pulls actor/role/
-    // ip/request-id from ctx + headers and never throws. The route already
-    // writes per-unit SHIPPED inventory_events + a packer_logs row; this adds
-    // the generic audit_logs spine the compliance dashboards key off.
+    // Formal audit-log row for the shipped order.
     await recordAudit(pool, ctx, request, {
       source: 'pack.ship',
       action: AUDIT_ACTION.PACK_COMPLETED,
@@ -442,16 +378,7 @@ export const POST = withAuth(async (request, ctx) => {
       },
     });
 
-    // Phase 1.4/1.5 fulfillment tail: tell the engine each unit was packed then
-    // shipped so an enrolled+listed unit flows pack → ship → done. Fire-and-forget
-    // AFTER the commit (tapWorkflow never throws and drops unenrolled units);
-    // behind the flag. The two taps are awaited in order per unit: 'packed'
-    // advances pack → ship, then 'shipped' (now parked at ship) advances ship →
-    // done (the ship port is terminal/unrouted). expectNodeType keeps each a
-    // no-op off its node, so a unit shipped without engine-listing can't be
-    // false-advanced or blocked. Both are observer-only — the irreversible
-    // carrier custody already happened in the committed transaction above; the
-    // engine just records that the unit reached the terminal node.
+    // Phase 1.4/1.5 fulfillment tail:
     if (isUnifiedEngineFulfillmentTaps()) {
       after(async () => {
         for (const u of result.units) {

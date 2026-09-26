@@ -1,16 +1,6 @@
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
 
-/**
- * Combine shipping label + packing slip into ONE print job (docs/outbound-documents-plan.md
- * Phase 2 — "Print Both"). Renders each document full-bleed on its own page inside a
- * hidden iframe, then drives `window.print()` from that iframe's own document —
- * one dialog, one job, sequential pages — instead of a separate print per doc.
- *
- * PDFs render via `<embed>` (the browser's native PDF viewer prints along with
- * the page); images via `<img>`. Documents are fetched through
- * `/api/documents/[id]/content` — same-origin, session-authenticated, and
- * already redirects to wherever the bytes actually live (NAS today).
- */
+/** Combine shipping label + packing slip into ONE print job (docs/outbound-documents-plan.md Phase 2 — "Print Both"). */
 
 export interface PrintableOutboundDocument {
   id: number;

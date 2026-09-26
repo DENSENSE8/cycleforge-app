@@ -38,12 +38,7 @@ function getSourceDotBg(row: PackerLogRow) {
   return 'bg-fill-success';
 }
 
-/**
- * Phone-tuned sheet for a single packer log entry. Header mirrors the mobile
- * receiving carton sheet: title + qty/condition on the left, copy chips on
- * the right. Shows existing pack photos via PhotoGallery, with a CTA that
- * hands off to /m/p/{packerLogId}/photos for fresh captures.
- */
+/** Phone-tuned sheet for a single packer log entry. */
 export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetProps) {
   const router = useRouter();
   const [paperworkOpen, setPaperworkOpen] = useState(false);

@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Units LedgerGrid cell registry — one switch, edit the matching case.
- *
- * Since the wave 1.4 slot port the fact tracks are MATERIALIZED
- * (`status:1…N` / `subtitle:1…N`), so the switch runs on the bound FIELD ID,
- * not on a hardcoded column key. Structural tracks (`serial · product`) keep
- * their own cases. A new bindable fact needs a catalog entry, a resolver case
- * and — only if it wants a face richer than text — a case here; it never needs
- * a new column file.
- *
- * Row shell builds {@link UnitsGridCellCtx}; domain values stay here.
- *
- * Status resolves through the unit-status registry (`unitStatusBadgeClass` /
- * `unitStatusDotClass`) inside the house {@link GridStatusCellValue} — never a
- * local tone map. Condition uses the condition-tone SoT flush grade face.
- */
+/** Units LedgerGrid cell registry — one switch, edit the matching case. */
 
 import type { ReactNode } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';

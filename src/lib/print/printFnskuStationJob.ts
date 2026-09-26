@@ -1,12 +1,4 @@
-/**
- * Station side of a phone-sent FNSKU reprint (`grain: 'fnsku'` on the staff
- * print bridge): read the org's catalog row, print `job.copies` FBA unit
- * labels on this computer's label printer, then ledger ONE `label_print_jobs`
- * REPRINT row carrying that count (`symbology: 'code128'`,
- * `templateId: 'fba_fnsku'`, idempotent on the bridge's request id).
- *
- * Callers: `useStaffPrintBridgeHost`. Returns an operator-facing error or null.
- */
+/** Station side of a phone-sent FNSKU reprint (`grain: */
 
 import type { StaffPrintFnskuPayload } from '@/lib/print/staff-print-bridge';
 

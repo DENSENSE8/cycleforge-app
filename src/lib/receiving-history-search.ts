@@ -1,11 +1,4 @@
-/**
- * Sidebar copy + search parameter normalization for `/receiving?mode=history`.
- * Mirrors the dashboard shipped-tab field/slider model (see `shipped-search.ts`).
- * Search field / scope controls live in `HistoryWorkspaceHeader` (workbench chrome).
- *
- * Unbox History Band 3 command-row filter bag:
- * {@link HistoryCommandFilterState} in `history-command-filter.ts`.
- */
+/** Sidebar copy + search parameter normalization for `/receiving?mode=history`. */
 
 export type ReceivingHistorySearchField =
   | 'all'

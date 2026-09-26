@@ -17,18 +17,7 @@ import pool from '@/lib/db';
 
 const ROUTE_CANDIDATE_IMPORT = 'sourcing-candidate.import';
 
-/**
- * POST /api/sourcing/candidates/[id]/import — Import a candidate into inventory.
- *
- * Idempotent on three levels so a retry never doubles a receiving row:
- *   1. `Idempotency-Key` replays the prior response.
- *   2. An existing acquisition for the candidate replays its receiving id.
- *   3. The import itself runs in one transaction.
- *
- * Effect: upsert supplier → create receiving (source_platform='ebay') →
- * part_acquisitions(status='ordered') → stamp last_known_cost_cents. Returns
- * the receiving id to route into the normal unbox flow.
- */
+/** POST /api/sourcing/candidates/[id]/import — Import a candidate into inventory. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'sourcing.import');

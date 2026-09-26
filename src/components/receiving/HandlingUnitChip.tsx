@@ -4,16 +4,7 @@ import { CopyChip } from '@/components/ui/CopyChip';
 import { Package } from '@/components/Icons';
 import { handlingUnitHandle } from '@/lib/barcode-routing';
 
-/**
- * The LPN (handling-unit) chip — "Box H-123 · 4 units". Teal / Package icon so
- * it reads as the *physical box* identity, visually distinct from the gray PO
- * chip and the blue tracking chip (the operator always sees both "which
- * receipt" and "which box"). Tapping copies the `H-{id}` handle so it can be
- * pasted into a scan bar.
- *
- * Pass either `code` (e.g. an external tote barcode) or `handlingUnitId` (mints
- * the `H-{id}` handle). `unitCount`, when set, renders the "· N units" suffix.
- */
+/** The LPN (handling-unit) chip — "Box H-123 · 4 units". */
 export interface HandlingUnitChipProps {
   handlingUnitId?: number | null;
   code?: string | null;

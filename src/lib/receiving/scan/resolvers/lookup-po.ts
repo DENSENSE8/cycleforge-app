@@ -1,15 +1,4 @@
-/**
- * lookup-po resolver — local-DB-only fetch ladder, classified into a result.
- *
- * Always calls with `localOnly: true`. Live Zoho / inventory is never on the
- * scan hot path (tracking, ticket#, order/PO#, auto). Misses return
- * `not_found` (order/ticket) or `unmatched` (tracking unfound carton).
- * Operator-initiated promote + crons remain the only Zoho paths.
- *
- * Returns a {@link LookupPoResolution} the hook applies; throws on a hard
- * failure (`!success`) so the caller's existing catch reports it. Pure +
- * dependency-injected (`lookupPo`) → DB/React-free.
- */
+/** lookup-po resolver — local-DB-only fetch ladder, classified into a result. */
 
 import type { LookupPoDeps, LookupPoInput, LookupPoResolution } from '../types';
 

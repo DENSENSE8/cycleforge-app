@@ -23,13 +23,7 @@ export interface OverlaySearchProps {
   sliderSlot?: ReactNode;
 }
 
-/**
- * Animated toggle between a trigger element and a search input.
- * Use for inline search bars that expand on click and collapse on blur-when-empty.
- *
- * Pass `sliderSlot` to show a HorizontalButtonSlider above the input when open.
- * Uses: framerTransition.overlaySearchIn
- */
+/** Animated toggle between a trigger element and a search input. */
 export function OverlaySearch({
   isOpen,
   onToggle,

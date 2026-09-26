@@ -15,22 +15,7 @@ import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 
-/**
- * The Orders queue **selection / cursor plane** — the page concern lifted out of
- * the old `OrdersGridHost` (plan Phase 1, wave 5c) so the grid became a
- * presentational adapter over `NonlinearTableHost`. That adapter is now the
- * `useOrdersSpreadsheet` hook, which is this hook's only caller.
- *
- * This is deliberately a VERBATIM move, not a rewrite: the two rail effects
- * encode at least four documented bug-fixes named in their comments — the D4
- * clear violation, the `?openOrderId=` boot window, the 1→2 checkbox race, and
- * the close round-trip. Reorganising them risks reintroducing every one, so the
- * logic is transplanted unchanged and only its inputs/outputs are made explicit.
- *
- * The shared home the three dashboard rail lanes call; the grid consumes what it
- * returns and no longer decides which record is open, publishes the cursor, or
- * closes the global detail-stack panel.
- */
+/** The Orders queue **selection / cursor plane** — the page concern lifted out of the old `OrdersGridHost` (plan Phase 1, wave 5c) so the… */
 function scrollQueueRowIntoView(id: number | string) {
   if (typeof document === 'undefined' || typeof requestAnimationFrame === 'undefined') return;
   requestAnimationFrame(() => {
@@ -107,32 +92,9 @@ export function useOrdersQueuePlane({
     [railSelection, selectedIds],
   );
   const selectedRecordId = selectedRecord ? Number(selectedRecord.id) : null;
-  /**
-   * The record the SET is currently responsible for — the one piece of state
-   * that lets the two effects below tell three superficially identical
-   * situations apart:
-   *
-   *   set {4821} · record null · ref 4821  → the operator CLOSED it → clear
-   *   set {4821} · record null · ref null  → checked, rows not landed → wait
-   *   set {}     · record 4821 · ref null  → an external open (deep link,
-   *                                          search jump, Recents) → adopt it
-   *
-   * Without it the effects fight. Closing the inspector while its row stays
-   * checked made the derived-open effect immediately re-open it (the panel could
-   * not be closed at all), and a naive fix for that closed the deep-linked
-   * record during the one commit before the set adopts it.
-   */
+  /** The record the SET is currently responsible for — the one piece of state that lets the two effects below tell three superficially… */
   const railOpenedIdRef = useRef<number | null>(null);
-  /**
-   * A record whose close the rail has ALREADY dispatched but which has not
-   * flushed back yet. Closing is not synchronous here — it round-trips through
-   * the global detail-stack event and the queue hook's bridge — so for a commit
-   * or two `selectedRecordId` still names a record the rail has decided is
-   * gone. `railOpenedIdRef` is null by then (the close branch nulls it), which
-   * makes that record look EXTERNALLY opened to the adopt effect below: clear
-   * the selection inside that window and it re-checked the row it had just
-   * cleared, leaving one row selected after a Clear (a D4 violation).
-   */
+  /** A record whose close the rail has ALREADY dispatched but which has not flushed back yet. */
   const railClosingIdRef = useRef<number | null>(null);
 
   // Derive the open record from the set.
@@ -154,10 +116,7 @@ export function useOrdersQueuePlane({
         // Never opened — fall through and open it below.
       }
       const next = displayedRecords.find((r) => Number(r.id) === railOccupancy.orderId);
-      // Checked but not on screen — a deep link whose rows have not landed, or a
-      // refetch in flight. Leave the current occupant alone: dropping it here is
-      // exactly what used to make a reloaded row vanish, and genuine removal is
-      // already owned by useOrdersQueueSelection's seen-in-this-queue guard.
+      // Checked but not on screen — a deep link whose rows have not landed, or a refetch in flight.
       if (!next) return;
       railOpenedIdRef.current = railOccupancy.orderId;
       openRecord(next);
@@ -175,34 +134,10 @@ export function useOrdersQueuePlane({
     railClosingIdRef.current = selectedRecordId;
     closeRecord();
     // …and close the GLOBAL panel, not just this hook's state.
-    //
-    // The rail opens a record through the detail-stack EVENT (`onOpenRecord` →
-    // `dispatchOpenShippedDetails`), so `closeRecord()` — which only clears
-    // local state, since no caller on this surface passes `onCloseRecord` —
-    // left `detail:order` registered and merely OUTRANKED by the 2+ occupant.
-    // It then re-announced itself onto `selectedRecord` through the event
-    // bridge, rebuilding exactly the state this branch had just torn down
-    // (`selectedRecordId` set, ref null) — which the guard above declines to
-    // touch a second time. The operator saw it on the next Clear: the multi
-    // occupant unregistered, the stale inspector surfaced underneath, and the
-    // adopt effect below read it as an external open and re-checked its row.
-    // Clearing the rail left one row selected — the precise D4 violation the
-    // close branch exists to prevent. Guarded by the ref check above, so the
-    // `?openOrderId=` boot window is still never closed from here.
     dispatchCloseShippedDetails();
   }, [clickSelect, railOccupancy, selectedRecordId, displayedRecords, openRecord, closeRecord, clear]);
 
-  // Adopt an externally-opened record into the set, so every entry path lands on
-  // the same single selection SoT. Guarded by the ref, not by set size: an
-  // external jump SHOULD replace a live multi-select, but a clear must not
-  // resurrect the row it just closed.
-  //
-  // Also skip when the set ALREADY contains the open id. Without that, the
-  // 1→2 checkbox path races: derive-open closes the inspector and nulls the
-  // ref, then this effect still sees selectedRecordId for one commit and
-  // selectOnly-collapses the multi-set back to one row (Set ship-by "Applies
-  // to 1"). True external opens (deep link / search / Recents) land with the
-  // id absent from the set, so they still adopt.
+  // Adopt an externally-opened record into the set, so every entry path lands on the same single selection SoT.
   useEffect(() => {
     if (!clickSelect) return;
     if (!railSelection) return;
@@ -222,13 +157,7 @@ export function useOrdersQueuePlane({
   }, [clickSelect, railSelection, selectedRecordId, selectOnly, selectedIds]);
 
   // ─── Record cursor ─────────────────────────────────────────────────────────
-  /**
-   * Open a record on behalf of the cursor — open, then scroll.
-   *
-   * Checkbox-only bulk: the check-set does not own the open record, so the
-   * cursor calls `openRecord` directly. The old `selectOnly` path stays behind
-   * `clickSelect` for any mount that still derives open-from-checks.
-   */
+  /** Open a record on behalf of the cursor — open, then scroll. */
   const handleCursorOpen = useCallback(
     (record: ShippedOrder, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
       if (clickSelect) selectOnly(Number(record.id));

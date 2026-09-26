@@ -1,19 +1,4 @@
-/**
- * Server-side helpers to resolve the current authenticated staff from the
- * `cf_sid` session cookie. Used by route handlers, server actions, and the
- * `requirePermission` page guard.
- *
- * Phase 2 of the editable-roles work: the effective permission set is now
- * computed from the DB (`staff_roles` × `roles`) rather than the static
- * matrix in code. The static matrix at `permissions-shared.ts` stays as
- * the seed source and offline fallback.
- *
- * Merge order (mirrors Discord):
- *   1. UNION of every role's permissions assigned to this staff
- *   2. ∪ permissions_added (per-staff override grants)
- *   3. \ permissions_removed (per-staff override revokes)
- *   4. If any assigned role has key 'admin' → short-circuit to ALL.
- */
+/** Server-side helpers to resolve the current authenticated staff from the `cf_sid` session cookie. */
 
 import { cookies } from 'next/headers';
 import pool from '@/lib/db';
@@ -42,19 +27,9 @@ export interface CurrentUser {
   permissionsRemoved: ReadonlyArray<string>;
   /** Resolved mobile UI config (role defaults + per-staff override). */
   mobileDisplayConfig: MobileDisplayConfig;
-  /**
-   * Profile photo id (`staff.avatar_photo_id`), or null. Rides the envelope so
-   * the spine footer paints the operator's own face on FIRST render — the
-   * client staff identity cache is filled from an idle-deferred /api/staff
-   * fetch, which would otherwise show initials for a beat on every cold boot.
-   */
+  /** Profile photo id (`staff.avatar_photo_id`), or null. */
   avatarPhotoId: number | null;
-  /**
-   * Signed-in email shown under the name on the account row. Resolved from
-   * `accounts.primary_email` via `staff.account_id`; in a shared-account org
-   * an act-as staff has no account of their own, so the front-door umbrella
-   * account's email shows instead. Null when neither resolves.
-   */
+  /** Signed-in email shown under the name on the account row. */
   email: string | null;
 }
 
@@ -69,11 +44,7 @@ interface StaffOverrideRow {
 }
 
 async function loadStaffOverrides(staffId: number, orgId: string): Promise<StaffOverrideRow | null> {
-  // Auth hot path: read on every authenticated request. L2-Redis-only (no
-  // per-instance L1) + short TTL so a staff PATCH's purge takes effect
-  // fleet-wide immediately — a permission revocation must never linger in a
-  // per-instance Map. Not-found returns null and getOrSet does not cache null,
-  // so a deleted staff row is never negatively cached.
+  // Auth hot path:
   try {
     return await getOrSet<StaffOverrideRow | null>(
       CACHE_NS.staffOverrides,
@@ -82,10 +53,7 @@ async function loadStaffOverrides(staffId: number, orgId: string): Promise<Staff
       30,
       [CACHE_TAGS.staffOverrides],
       async () => {
-        // Email lives in account_emails (verified, unique per address) —
-        // accounts.primary_email is an unpopulated denormalized pointer.
-        // LATERAL picks the account's best email: verified first, newest
-        // first.
+        // Email lives in account_emails (verified, unique per address) — accounts.primary_email is an unpopulated denormalized pointer.
         const r = await pool.query(
           `SELECT s.name, s.role, s.permissions_added, s.permissions_removed,
                  s.mobile_display_config, s.avatar_photo_id,
@@ -104,11 +72,7 @@ async function loadStaffOverrides(staffId: number, orgId: string): Promise<Staff
         );
         const row = (r.rows[0] as StaffOverrideRow | undefined) ?? null;
         if (!row || row.account_email) return row;
-        // Shared-account org: an act-as staff row has no account of its own —
-        // the email under the name is the umbrella account that signed in.
-        // The org-settings gate lives in SQL so individual (per-email) orgs
-        // never leak another member's address. Best-effort: a failure here
-        // must not nuke the override load.
+        // Shared-account org:
         try {
           const umbrella = await pool.query<{ email: string | null }>(
             `SELECT ae.email
@@ -175,11 +139,7 @@ async function buildCurrentUser(session: SessionRow | null): Promise<CurrentUser
   return {
     session,
     staffId: session.staffId,
-    // `??` alone lets an empty-string `staff.name` (or a failed override load)
-    // reach the client as '', which renders as a bare dot avatar + "Staff #id"
-    // everywhere. Coalesce blank/whitespace to a stable `Staff #id` so the
-    // session envelope is always a usable display name — the single source of
-    // truth read synchronously by every surface (no per-surface name fetch).
+    // `??` alone lets an empty-string `staff.name` (or a failed override load) reach the client as '', which renders as a bare dot avatar +…
     name: overrides?.name?.trim() || `Staff #${session.staffId}`,
     organizationId: session.organizationId,
     role,

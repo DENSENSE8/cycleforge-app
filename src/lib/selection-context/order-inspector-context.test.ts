@@ -67,11 +67,7 @@ test('journeyFirst (search deep-link) wins over the context default', () => {
 
 
 test('dispatch / delete / dock are resolved here, not re-derived in the body', () => {
-  // These three used to live in `ShippedDetailsBody` as a prop plus two local
-  // expressions, each spelling the same lane set differently
-  // (`context === 'dashboard' || isFulfillmentPanel || isLabelsPanel`). One
-  // descriptor now answers all three, so a new context cannot answer two of
-  // them and forget the third.
+  // These three used to live in `ShippedDetailsBody` as a prop plus two local expressions, each spelling the same lane set differently…
   const dispatchLanes = ['dashboard', 'queue', 'fulfillment', 'labels'] as const;
   const observeLanes = ['staged', 'station', 'packer', 'shipped'] as const;
 
@@ -93,10 +89,7 @@ test('dispatch / delete / dock are resolved here, not re-derived in the body', (
 });
 
 test('every context mounts the editor dock — the old 5-way disjunction was a tautology', () => {
-  // `showEditorDock` read `showDashboardExtras || staged || station || packer ||
-  // shipped`, which unions to every context there is. Kept as a descriptor field
-  // so a future context has somewhere to say no; pinned so nobody "simplifies"
-  // it back into a hand-written disjunction that drifts.
+  // `showEditorDock` read `showDashboardExtras || staged || station || packer || shipped`, which unions to every context there is.
   for (const panelContext of [
     'dashboard',
     'queue',

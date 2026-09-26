@@ -1,16 +1,4 @@
-/**
- * Org-wide slot layouts — the ORG layer of the slot-table cascade, stored in
- * the `organizations.settings.tableLayouts` JSONB bag (keyed by the same
- * tableId as `PRODUCT_TABLES`; no DDL — the bag is `.passthrough()`).
- *
- * The registry below names which tables HAVE opted into slot layouts and which
- * catalog validates their bindings. Opt-in is explicit and per-family
- * (`docs/todo/slot-based-metadata-table-PLAN.md` §6): a tableId absent here is
- * a 404 at the API, never a silently-accepted blob — Phase 3+ ports (pickup,
- * customers, …) add one entry each, per the plan's adoption checklist.
- *
- * Pure helpers only; the route owns the read/write of the org row.
- */
+/** Org-wide slot layouts — the ORG layer of the slot-table cascade, stored in the `organizations.settings.tableLayouts` JSONB bag (keyed by… */
 
 import {
   ORDERS_IMPORT_FIELD_CATALOG,
@@ -164,13 +152,7 @@ import { TECH_FIELD_CATALOG, TECH_TABLE_LAYOUT_ID } from '@/lib/tables/field-cat
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import { readStoredSlotLayout, type SlotLayout } from '@/lib/tables/slot-layout-core';
 
-/**
- * Slot-opted-in tables: tableId → the catalog its bindings validate against,
- * and which morphs the table's mount can actually PAINT. To-ship renders the
- * compound morph only this ship (sheet paint is Phase 4); storing a `sheet`
- * layout would materialize subtitle tracks nothing draws — a header over
- * blank cells for the whole org — so the write gate refuses it here.
- */
+/** Slot-opted-in tables: */
 export const SLOT_LAYOUT_TABLES: Readonly<
   Record<string, { catalog: FieldCatalog; morphs: readonly ('sheet' | 'compound')[] }>
 > = {
@@ -178,16 +160,7 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // Wave 2 (kill-list 07 §4): pickup renders the SHEET morph only — a stored
   // `compound` layout would promise a two-row item cell nothing draws.
   [PICKUP_TABLE_LAYOUT_ID]: { catalog: PICKUP_FIELD_CATALOG, morphs: ['sheet'] },
-  // DELIBERATELY ABSENT: `fba` (Amazon Prep). Its catalog and product layout
-  // survive in `field-catalog/fba.ts`, but the board DISPLAY was torn out
-  // 2026-08-30 — and while the id stayed registered, `/api/tables/layouts`
-  // accepted and stored an organization column layout for a table that renders
-  // nothing. A manager could "save the columns" into a void, with no error
-  // anywhere. Opt-in is per-MOUNT, not per-catalog (operator ruling
-  // 2026-08-31, seller-table-program wave 1.2): unregistered, so the route
-  // 404s until the board is rebuilt. Re-add one line with the rebuilt mount.
-  // Wave 1.1 (seller-table-program §03): Ready renders the SHEET morph only —
-  // a stored `compound` layout would promise a two-row item cell nothing draws.
+  // DELIBERATELY ABSENT:
   [READY_TABLE_LAYOUT_ID]: { catalog: READY_FIELD_CATALOG, morphs: ['sheet'] },
   // Wave 1.3: receiving is the COMPOUND golden — Unbox, History and Testing
   // all mount the same compound row, so a stored `sheet` layout would open
@@ -330,9 +303,6 @@ export const SLOT_LAYOUT_TABLES: Readonly<
     morphs: ['compound'],
   },
   // Admin › Inventory SKU stock drift — COMPOUND only, and its OWN document:
-  // the two drift desks sit on one page over two entities (a live comparison
-  // and the alert record about it), so hiding a counter on one must not
-  // densify the other.
   [ADMIN_SKU_DRIFT_TABLE_LAYOUT_ID]: {
     catalog: ADMIN_SKU_DRIFT_FIELD_CATALOG,
     morphs: ['compound'],
@@ -375,11 +345,7 @@ export const SLOT_LAYOUT_TABLES: Readonly<
     catalog: REPORT_PACKER_DAY_FIELD_CATALOG,
     morphs: ['compound'],
   },
-  // Reports › Completed tasks — COMPOUND only, its OWN document: hiding
-  // `Deadline` on the record of finished work must not densify the `tasks`
-  // desk a staffer works their open queue on. Without this line the org column
-  // layout 404s and the catalog reads as a false orphan
-  // (`layout-registry-gap:report-tasks`).
+  // Reports › Completed tasks — COMPOUND only, its OWN document:
   [REPORT_TASKS_TABLE_LAYOUT_ID]: {
     catalog: REPORT_TASKS_FIELD_CATALOG,
     morphs: ['compound'],
@@ -395,12 +361,7 @@ export const SLOT_LAYOUT_TABLES: Readonly<
     catalog: SKU_LEDGER_FIELD_CATALOG,
     morphs: ['compound'],
   },
-  // Admin › per-SKU open allocations — the SIBLING document over the
-  // `unit-allocations` entity. Same catalog BY REFERENCE (one entity, one
-  // family); only the stored layout differs, which is the whole reason the id
-  // exists: this feed binds `allocated_by` and never the release facts, the
-  // unit desk does the reverse, and one document would dash a track on one of
-  // them.
+  // Admin › per-SKU open allocations — the SIBLING document over the `unit-allocations` entity.
   [SKU_ALLOCATIONS_TABLE_LAYOUT_ID]: {
     catalog: UNIT_ALLOCATIONS_FIELD_CATALOG,
     morphs: ['compound'],
@@ -439,13 +400,7 @@ export function readOrgTableLayout(
   return readStoredSlotLayout((layouts as Record<string, unknown>)[tableId]);
 }
 
-/**
- * Build the next whole `tableLayouts` map for a write: the JSONB `||` merge is
- * shallow, so a one-table write must carry every sibling verbatim (normalizing
- * a sibling here could destroy another table's stored layout — pass raw
- * through untouched). `layout: null` deletes the key (reset to product
- * default).
- */
+/** Build the next whole `tableLayouts` map for a write: */
 export function nextTableLayoutsMap(
   settings: Record<string, unknown> | null | undefined,
   tableId: string,

@@ -1,17 +1,4 @@
-/**
- * PostHog analytics — thin, no-op-by-default client wrapper.
- *
- * Telemetry is OPT-IN via env. Until `NEXT_PUBLIC_POSTHOG_KEY` is provisioned,
- * every function here is a no-op and `posthog-js` is never imported — so the
- * build and runtime are completely unaffected whether or not the package is
- * installed.
- *
- * Design notes:
- * - `posthog-js` is NOT a dependency. We load it lazily via a dynamic import
- *   guarded by try/catch. The specifier is built at runtime so the bundler
- *   cannot statically resolve (and therefore cannot fail to resolve) it.
- * - The import only ever runs in the browser, and only when a key is set.
- */
+/** PostHog analytics — thin, no-op-by-default client wrapper. */
 
 'use client';
 

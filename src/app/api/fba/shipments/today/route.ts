@@ -4,18 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * GET /api/fba/shipments/today
- *
- * Returns today's PLANNED shipment and its items (for duplicate detection).
- * "Today" is based on the server's local date (due_date = CURRENT_DATE).
- *
- * Response:
- * {
- *   success: true,
- *   shipment: { id, shipment_ref, due_date, items: [{ id, fnsku, expected_qty, status }] } | null
- * }
- */
+/** GET /api/fba/shipments/today */
 export const GET = withAuth(async (_request, ctx) => {
   try {
     // Per-scan "today's shipment" snapshot → short-TTL cache (20s bounds tracking-

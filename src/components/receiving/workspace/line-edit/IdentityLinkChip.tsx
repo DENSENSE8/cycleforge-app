@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Identity chip used across the condensed carton row. It supports the original
- * `[external-link] · [copy value] · [edit]` layout plus a compact action-menu
- * mode where the chip remains the primary action and Open/Edit move below it.
- *
- * When `editOpen`, the {@link CopyChip} face swaps to steady `editing` via the
- * shared `editing` prop — the identity row never drops digits, reflows, or pulses.
- */
+/** Identity chip used across the condensed carton row. */
 
 import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
@@ -118,13 +111,7 @@ export function IdentityLinkChip({
   showExternalIcon?: boolean;
   /** First menu row. Listing uses Copy; PO/tracking use Open. */
   menuFirstAction?: 'open' | 'copy';
-  /**
-   * Rows after the first action (Open/Copy) — e.g. the ticket chip's
-   * Message / Seller / Unlink cluster. **Data, not markup:** these
-   * used to be a `menuBetween: ReactNode` where each caller hand-spelled the
-   * menuitem classes, which is a row renderer forked per host. Edit (when
-   * `editInMenu`) still renders after them.
-   */
+  /** Rows after the first action (Open/Copy) — e.g. */
   menuRows?: ChipHoverMenuRow[];
   /**
    * Hide the hover menu while a sibling panel is open (seller message, etc.).
@@ -133,12 +120,7 @@ export function IdentityLinkChip({
   suppressMenu?: boolean;
   /** Additional open targets — when length > 1, the hover menu lists every link. */
   linkOptions?: Array<{ href: string; label: string; title?: string }>;
-  /**
-   * Listing chrome: fixed-width platform mark instead of the variable-width
-   * platform name. `display` stays the accessible / tooltip label. Pair with
-   * `showExternalIcon` so missing-link state grays the ExternalLink glyph —
-   * never opacity-wash the brand mark.
-   */
+  /** Listing chrome: */
   iconOnly?: boolean;
   /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
   iconOnlyMark?: ReactNode;
@@ -179,19 +161,7 @@ export function IdentityLinkChip({
   const showActionMenu = hasMenuActions && !editOpen && !suppressMenu;
   const isEditing = !!editOpen;
 
-  /**
-   * Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared
-   * with the classify pills, the rail peek and the chip menus (0ms open, 150ms
-   * close, one surface open at a time). This chip used to run its own
-   * `useState` + `mouseenter/mouseleave` pair with no close delay and a
-   * `duration-100` fade, which made it the fifth engine on a row that had just
-   * been consolidated to one — and, because it never joined the registry, its
-   * menu did not evict an open classify menu (two panels, one pointer).
-   *
-   * Open state stays LOCAL here (unlike `InlinePillPicker`, whose host lifts it
-   * to drive the bar's `frozen` layout freeze). Nothing outside this chip needs
-   * to know the menu is up, so there is no lifted mirror to keep in sync.
-   */
+  /** Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared with the classify pills, the rail peek and the chip menus (0ms… */
   const hover = useHoverSurface({ disabled: !showActionMenu });
   /** Anchor for the portaled menu — the whole chip cluster, so it centres under the face. */
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -364,14 +334,7 @@ export function IdentityLinkChip({
         </HoverTooltip>
       ) : null}
       {showActionMenu ? (
-        /**
-         * ONE panel for the whole carton bar — {@link ChipHoverMenuSurface}
-         * portals it bottom-CENTRED under the chip, the same grammar the
-         * listing cell and the classify pills use. It was a hand-built
-         * `AnchoredLayer` + raw rows here, a CSS-visibility box on the listing
-         * cell and a Radix popper on the pills: three mechanisms behind one set
-         * of class tokens, which is how they drifted apart.
-         */
+        /** ONE panel for the whole carton bar — {@link ChipHoverMenuSurface} portals it bottom-CENTRED under the chip, the same grammar the listing… */
         <ChipHoverMenuSurface
           open={hover.isOpen}
           onClose={hover.close}
@@ -408,13 +371,6 @@ export function IdentityLinkChip({
             /**
              * An EMPTY identity has nothing to open, so the row is not rendered
              * at all — not rendered disabled. Operator 2026-09-22: "don't even
-             * display the CTA open on the carton context on hover if the order
-             * id is empty." A greyed "Open" on an unfound carton is a promise
-             * the chip cannot keep and an extra row between the pointer and the
-             * only action that IS available there (Link Id).
-             *
-             * A chip that HAS a value but no href keeps the disabled row: that
-             * is the honest "no link available" state for a known identifier.
              */
             ...(menuFirstAction === 'open'
               ? !normalizedValue && !openHref

@@ -1,15 +1,4 @@
-/**
- * Read-side "connecting dots" for a thread — the derivable related entities
- * (order → tracking / serials / SKU; repair → serial → order) resolved at read
- * time via the existing journey anchor engine, merged with any curated
- * thread_links (manual connections). No new linkage is persisted here; this is
- * the cheap, always-current view the deep-scan recommended (option A) over a
- * denormalized link row for derivable facts.
- *
- * Server-only (imports the journey resolver + tenant db). Org-scoped throughout:
- * every query filters organization_id, and tracking is only ever reached through
- * an org-owned order (never a raw STN probe).
- */
+/** Read-side "connecting dots" for a thread — the derivable related entities (order → tracking / serials / SKU; repair → serial → order)… */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -44,21 +33,7 @@ export async function resolveThreadConnections(
     out.push(c);
   };
 
-  /**
-   * The thread's linked support ticket, resolved over a precedence-ordered list
-   * of (entity_type, entity_id) candidates — the FIRST candidate that carries a
-   * ticket wins, and within one candidate an anchor beats a passing reference.
-   *
-   * Extracted so the ORDER and RECEIVING branches share one query instead of two
-   * near-identical copies (only RECEIVING had one, which is why a linked ticket
-   * was invisible on outbound threads entirely).
-   *
-   * Queries BOTH outbound anchor conventions, deliberately: threads/escalate.ts
-   * writes entity_type='ORDER' with orders.id, while the universal link waist
-   * writes 'SHIPMENT' with the STN id for the SAME order. Neither reads the
-   * other, so a reader that checks only one silently misses half the links.
-   * Convergence is a separate lane; until then, callers pass both.
-   */
+  /** The thread's linked support ticket, resolved over a precedence-ordered list of (entity_type, entity_id) candidates — the FIRST candidate… */
   const pushLinkedTicket = async (
     client: Parameters<Parameters<typeof withTenantTransaction>[1]>[0],
     candidates: Array<{ entityType: string; entityId: number }>,
@@ -133,11 +108,7 @@ export async function resolveThreadConnections(
         });
       }
 
-      // Linked support ticket. The order's own STNs come from shipment_links —
-      // the same table the outbound link surface anchors tickets against — so
-      // "which ticket concerns this order?" resolves through the shipment the
-      // two sides share. Order-anchored links (escalate's convention) take
-      // precedence over shipment-anchored ones (the waist's).
+      // Linked support ticket.
       const stns = await client.query<{ shipment_id: string }>(
         `SELECT shipment_id FROM shipment_links
           WHERE organization_id = $1::uuid AND owner_type = 'ORDER' AND owner_id = $2::int

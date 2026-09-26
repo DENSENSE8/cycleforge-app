@@ -1,22 +1,4 @@
-/**
- * The hub "Information" edit: which repair facts a phone may correct, and how
- * a draft becomes an ordered list of writes.
- *
- * Repair facts go through the EXISTING `PATCH /api/repair-service`, one
- * `{ id, field, value }` per request (allowlist in `updateRepairField`) plus an
- * optional `notes` key. The sequence stops at the first failure and the caller
- * re-reads the row — the server, not the draft, says what stuck.
- *
- * Customer: `resolveRepairContact` reads the joined `customers` row first and
- * `contact_info` only fills blanks, so WHERE a contact edit lands depends on
- * the link:
- * - linked → `PATCH /api/customers/[id]` (the record every surface reads);
- * - not linked → the repair's `contact_info` string, as intake wrote it.
- * The link itself moves through `/api/repair-service/[id]/customer`: create +
- * link (POST), change to an existing customer (PUT), unlink (DELETE — the
- * customer row is never deleted). A link change is staged in the draft
- * (`customer`) and saved with everything else, link first, then contact.
- */
+/** The hub "Information" edit: */
 
 import { parseLegacyContactInfo } from './contact-info';
 import { CustomerContactPatchBody, RepairCustomerCreateBody, type CustomerContactPatch } from '@/lib/schemas/customers';

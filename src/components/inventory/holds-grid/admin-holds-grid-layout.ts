@@ -1,18 +1,4 @@
-/**
- * Admin › Holds column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced seven hand-written `AdminTableColumn` objects carrying JSX — a
- * second table engine's column type, with no header sort, no Fields picker and
- * no org binding, because that engine never grew them.
- *
- * The skeleton mounts WHOLE — no `.filter`. The photo gutter has no photo on a
- * held unit and paints the typed placeholder, exactly as `kiosk-slot-events`
- * already does: `COMPOUND_SKELETON_FILTER_DEBT` is documented shrink-only, and
- * a new desk cutting chrome to taste is the fork the law names. Chrome headers
- * are RENAMED into this family's vocabulary instead (Unit · Serial · Held at ·
- * Restore to) — a label is family data, geometry is the engine's.
- */
+/** Admin › Holds column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -90,14 +76,7 @@ export function adminHoldsCompoundColumnsFor(
 export const ADMINHOLDS_COMPOUND_COLUMNS: readonly AdminHoldsGridColumn[] =
   adminHoldsCompoundColumnsFor(ADMINHOLDS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the four chrome tracks this
- * family paints facts into — a painted DATA header with a dead sort fails
- * `SLOT_TABLE_PAINT_LAW.headerSort`. Chrome that carries no fact (`select`,
- * `thumb`, `_fill`) has no `fieldId` and falls through to null.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function adminHoldsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

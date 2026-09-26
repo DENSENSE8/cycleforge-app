@@ -1,14 +1,4 @@
-/**
- * Studio law #3, pinned: a lens REPAINTS the graph — it never moves a node.
- *
- * The Procedure lens paints a data box on every node, which is the kind of
- * change that quietly tempts a layout tweak. This asserts the invariant the
- * spec's acceptance criteria name outright ("toggling never re-lays-out
- * nodes"): the same nodes and edges in, byte-identical positions out, whatever
- * a lens hands the builder.
- *
- *   node --import tsx --test src/components/studio/canvas/studio-canvas-graph.test.ts
- */
+/** Studio law #3, pinned: */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

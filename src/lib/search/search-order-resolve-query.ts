@@ -1,10 +1,4 @@
-/**
- * TanStack Query waist for {@link resolveSearchOrder}.
- *
- * Header find seeds the cache on a successful identifier resolve; search order
- * feedback reads the same keys so navigation paints content without a second
- * fetch / gray loading shell.
- */
+/** TanStack Query waist for {@link resolveSearchOrder}. */
 
 import {
   queryOptions,

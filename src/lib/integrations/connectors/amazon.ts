@@ -1,10 +1,4 @@
-/**
- * Amazon connector validate adapter — wraps the /api/amazon/health check
- * logic. Lazily imported by the registry.
- *
- * No order sync: ShipStation is the sole outbound-order importer (owner
- * 2026-09-24), and it already aggregates the Amazon store.
- */
+/** Amazon connector validate adapter — wraps the /api/amazon/health check logic. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { loadActiveAmazonAccounts, loadAmazonCreds } from '@/lib/amazon/accounts';
 import { getMarketplaceParticipations } from '@/lib/amazon/client';

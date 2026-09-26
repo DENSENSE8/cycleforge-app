@@ -1,72 +1,6 @@
 'use client';
 
-/**
- * The ONE tracking-paste surface on Incoming — one input, two questions.
- *
- * An operator pastes a list of tracking numbers and asks either *"show me
- * these rows"* (**Filter**, the primary) or *"are these received upstream?"*
- * (**Check receipts**, the secondary, previously its own rail). Same paste,
- * same parser, same panel real estate: two boxes would mean pasting the same
- * forty numbers twice and remembering which one answers which question — and
- * two places to fix every paste bug.
- *
- * It PUSHES rather than floats, so the filtered table and this report are on
- * screen together. That adjacency is the whole point: the residuals below name
- * the rows the table cannot show, and reading them side by side is the job.
- *
- * ## The residuals are the feature
- *
- * `?tracking_in=` deliberately relaxes the Incoming lane, so a vendor-received
- * carton comes back instead of vanishing. What the table still cannot show is a
- * tracking this org has never seen, and what it cannot EXPLAIN is one that left
- * the lane for a physical reason. Both are reported here, by key, from a single
- * resolve that is independent of the table's pagination.
- *
- * ## One bucket at a time, at full height (2026-08-03)
- *
- * The residuals used to render as stacked sections, each clipped to its own
- * `max-h-48 overflow-y-auto` box. Two defects, one cause. A 53-tracking paste
- * put **nine** hidden rows behind a ~2.5-row porthole, so the answer to *"where
- * did the rest go"* was itself the thing you had to go hunting for; and each of
- * those boxes was a **nested viewport inside the shell's own scroll port**,
- * which `ui-design-system.md` → *Scroll ownership* bans outright — a component
- * mounted into an existing scroll host is CONTENT, never a viewport.
- *
- * Both are fixed by the same move: the buckets become **leaves** on
- * {@link DeskInspectorIndexShell} — Unbox index→leaf grammar — so exactly one
- * renders at a time, at whatever height it needs, inside the ONE port this
- * shell owns. Back returns to the topic index.
- *
- * ## Why this dropped `SidebarIntakeFormShell`
- *
- * That shell leads with a 32px circled `X` and a wrapping hero title, which is
- * right for a create/import form and wrong here: this panel has no form, and it
- * now has a switcher that wants the top-left corner. It wears the house
- * push-column chrome instead. Its entry in
- * `INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST` was removed in the same change; that
- * allowlist is shrink-only.
- *
- * ## ONE band, painted by the shell (2026-08-21)
- *
- * The replacement chrome was still hand-rolled — an eyebrow, a spacer and the
- * reserved host cell — and it sat ABOVE `DeskInspectorIndexShell`, which
- * paints a band of its own. So the moment a paste produced buckets the rail
- * read as two stacked bands, with the shell's Back chevron on the lower one.
- * The shell owns the single band at both stages now (`stance='index'` once
- * there are buckets, `stance='standalone'` before), and the paste feedback
- * that used to sit between them moved to the strip above the composer.
- *
- * **It used to mount its own close, stacked under the host's.** The band paid
- * `pl-1.5` for a `PaneHeaderCloseButton` sitting at exactly the coordinates
- * `RightRailHostCloseAnchor` already occupied — two dismiss controls, one
- * pixel apart, on a non-modal column. The host owns the close; an occupant
- * reserves the cell and renders nothing into it.
- *
- * Composed, never forked: `RightRailHost` for the slot AND the dismiss,
- * `DeskInspectorIndexShell` for result topics, `OmnichannelComposerDock` for
- * the paste dock, `parseTrackingKeys` for the split. Never mounts station
- * Displays push stack on RightRailHost.
- */
+/** The ONE tracking-paste surface on Incoming — one input, two questions. */
 
 import {
   useCallback,
@@ -128,12 +62,7 @@ import type { TrackingRemovalStatusResult } from '@/lib/receiving/tracking-remov
 /** Which question the operator asked last. The results region shows that one. */
 type PasteAction = 'filter' | 'check';
 
-/**
- * Bucket ids are unique ACROSS both actions on purpose. The strip re-keys when
- * the operator switches question, and `resolveActiveTabId` falls back to the
- * first tab whenever the held id is absent — so a filter bucket can never
- * silently "match" a check bucket and open the wrong display.
- */
+/** Bucket ids are unique ACROSS both actions on purpose. */
 type ResultTabId = 'off-list' | 'not-found' | 'received' | 'not-received' | 'unclear';
 
 type CheckResult = {
@@ -194,17 +123,7 @@ const VERDICT_CHIP: Partial<
 const CHIP_CLASS =
   'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset';
 
-/**
- * A residual / check row's identity: **PO title + full PO# on top, carrier
- * tracking under it** (when known).
- *
- * Zoho's `reference_number` IS the inbound tracking — never a third "ref …"
- * line. When the paste key was a PO/order number, that key must not also wear
- * a TrackingChip (that was the double order-number bug).
- *
- * Filter residuals still key by tracking and use the compact chip stack.
- * Check rows pass `vendorName` + full PO display so the PO reads as a title.
- */
+/** A residual / check row's identity: */
 function RowIdentity({
   poNumber,
   tracking,
@@ -263,12 +182,7 @@ function checkCopyBlock(rows: CheckZohoReceivedRow[]): string[] {
   });
 }
 
-/**
- * One display's body: a teaching line + a copy action, then the rows at FULL
- * height. No `max-h-*` and no `overflow-*` — the shell owns the only port on
- * this surface, and a nested one here is what clipped nine rows to two and a
- * half.
- */
+/** One display's body: */
 function BucketBody({
   hint,
   copyLabel,
@@ -371,15 +285,7 @@ function CheckResultRow({
   );
 }
 
-/**
- * One "found, but the lane hides it" row, stating its exit.
- *
- * The reason's `blurb` renders VISIBLY under the chip. A chip has to be short
- * enough for a grid column, so on its own it cannot explain itself — and an
- * operator reading nine of these should not have to hover nine times to learn
- * why each box left. The fuller `tip` stays on the chip for the caveat about
- * the sync time.
- */
+/** One "found, but the lane hides it" row, stating its exit. */
 function HiddenRow({
   row,
   onFocusTracking,
@@ -746,12 +652,7 @@ export function IncomingBulkTrackingPanel({
     return [];
   }, [action, filterResult, checkResult, focusTracking]);
 
-  /**
-   * Paste feedback — errors, the help line, truncation, the active filter chip
-   * and the resolve summary. Rendered as the standalone body before a paste
-   * resolves, and as the strip above the composer once buckets exist. It is
-   * never the top row: the band is.
-   */
+  /** Paste feedback — errors, the help line, truncation, the active filter chip and the resolve summary. */
   const feedback = (
     <>
         {error ? (
@@ -797,10 +698,7 @@ export function IncomingBulkTrackingPanel({
         ) : null}
 
         {!checkOnly && action === 'filter' && filterStats ? (
-          /* "tracking numbers" is load-bearing: these counts are per KEY,
-             while the table below counts LINES, and one PO can carry several.
-             Measured on real data a 42-tracking paste resolved to 46 rows —
-             without the unit the two numbers read as a bug. */
+          /* "tracking numbers" is load-bearing: */
           <p className="text-role-micro text-text-muted">
             {matched} of {filterStats.applied} tracking numbers matched
             {filterStats.not_found > 0 ? ` · ${filterStats.not_found} not found` : ''}
@@ -846,22 +744,7 @@ export function IncomingBulkTrackingPanel({
 
   const panelBody = (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
-        {/*
-          ONE band, and it is the TOP row of the card.
-
-          This panel used to hand-roll its band (an eyebrow, a spacer and the
-          reserved host cell) and then mount `DeskInspectorIndexShell` — which
-          paints a band of its own — a few rows lower. The moment a paste
-          produced buckets the rail read as TWO stacked bands, and the shell's
-          Back chevron sat below a header that had already claimed the top
-          corner. The shell owns the single band at both stages now: it leads
-          with Back on a bucket, carries the current segment as the title, and
-          ends with the cell the host's `⤢ ✕` paints into.
-
-          The paste feedback that used to sit above the shell moved to the
-          strip directly over the composer — beside the control that produced
-          it, and out of the row the host's window controls occupy.
-        */}
+        {/* ONE band, and it is the TOP row of the card. */}
         {leaves.length > 0 ? (
           <DeskInspectorIndexShell
             stance="index"

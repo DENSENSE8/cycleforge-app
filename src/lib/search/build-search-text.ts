@@ -1,20 +1,4 @@
-/**
- * buildSearchText — canonical denormalized text + display fields + facets for
- * one entity_search_docs row (AI search Phase 0,
- * docs/ai-search-modernization-plan.md).
- *
- * Pure functions: the outbox worker (search-outbox-worker.ts) loads parent
- * rows org-scoped with the SQL aliases documented per entity below, then this
- * module turns a row into `{ title, subtitle, searchText, facets }`. Keep the
- * fields here in sync with the trigger UPDATE OF column lists in migration
- * 2026-07-03d — a column searched here but missing there goes stale silently.
- *
- * Mirrors what global-search already queries per entity (order ids, titles,
- * SKUs, serials, tracking, source platform) plus notes/facets. Title SoT
- * rules honored: serial-unit titles prefer `items.name` (joined on
- * zoho_item_id — never the SKU string) with sku_catalog.product_title as
- * fallback; sku_catalog rows are their own namespace and use product_title.
- */
+/** buildSearchText — canonical denormalized text + display fields + facets for one entity_search_docs row (AI search Phase 0,… */
 
 import {
   receivingOrderIdFromParts,
@@ -117,44 +101,13 @@ function subtitleOf(parts: unknown[]): string | null {
   return s ? s : null;
 }
 
-/**
- * Ticket-number tokens. Staff type `#1234` as often as `1234` and the keyword
- * arm is a literal trigram match over search_text, so BOTH spellings go in —
- * `joinSearchText` dedupes, and a bare id is a 4-gram the `#` form does not
- * contain. Returns [] for a blank id so no lone `#` reaches the text.
- */
+/** Ticket-number tokens. */
 function ticketTokens(value: unknown): string[] {
   const bare = str(value).replace(/^#+/, '');
   return bare ? [`#${bare}`, bare] : [];
 }
 
-/**
- * Loader row contract (worker SQL):
- *   id, order_id, product_title, sku, account_source, status, condition,
- *   notes, order_date, created_at, serials (STRING_AGG of
- *   tech_serial_numbers.serial_number), tracking_number (primary STN raw),
- *   linked_trackings (shipment_links STNs, space-joined), carrier
- *   (stn.carrier, UNKNOWN→null), customer_name / customer_email /
- *   customer_phone (LEFT JOIN customers ON orders.customer_id),
- *   note_trail (5 newest order_notes.note_text, newest first, ≤600 chars),
- *   allocated_serials (order_unit_allocations → serial_units.serial_number,
- *   space-joined, RELEASED excluded).
- *
- * BUYER IDENTITY IN THE SUBTITLE
- *   The customer leads the subtitle when there is one. A support call opens
- *   with a person's name, so that is the field which tells the operator "this
- *   is the row you want" at a glance — and putting it first is what keeps the
- *   answer at interaction two instead of three.
- *
- * SEARCH-TEXT ORDER IS A TRUNCATION CONTRACT, NOT A RANKING ONE
- *   The keyword arm matches `lower(search_text)` with =, LIKE and <%
- *   (hybrid-retrieval.ts:120-127) — all position-insensitive, so ordering
- *   cannot change a score. What it DOES decide is what survives the
- *   MAX_SEARCH_TEXT cap. Short high-selectivity terms (ids, serials,
- *   trackings, email, phone) therefore go ahead of unbounded prose; the two
- *   free-text sources (orders.notes, the note trail) go last, where losing a
- *   tail costs the least recall.
- */
+/** Loader row contract (worker SQL): */
 function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.product_title) || `Order #${str(row.id)}`;
   return {
@@ -172,9 +125,6 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.sku,
       row.serials,
       // Serials bound through `order_unit_allocations` — the modern path.
-      // `serials` above is the legacy tech_serial_numbers ledger; an order
-      // allocated the new way had no serial in its doc at all. Short and
-      // high-selectivity, so it sits with the other identifiers, ahead of prose.
       row.allocated_serials,
       row.tracking_number,
       row.linked_trackings,
@@ -205,15 +155,7 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, serial_number, unit_uid, sku, current_status, condition_grade,
- *   current_location, notes, received_at, created_at,
- *   shipping_tracking_number, product_title (COALESCE(items.name via
- *   zoho_item_id, sku_catalog.product_title via sku_catalog_id)),
- *   handling_unit_code (handling_units.code via serial_units.handling_unit_id
- *   — the H- tote label a picker is holding).
- */
+/** Loader row contract: */
 function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.product_title) || str(row.serial_number) || `Unit #${str(row.id)}`;
   return {
@@ -243,15 +185,7 @@ function buildSerialUnitDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, tracking_number (stn raw), carrier, po_number
- *   (zoho_purchaseorder_number), source_order_id, source_platform, intake_type,
- *   exception_code, support_notes, zoho_notes, condition_grade,
- *   qa_status, received_at, created_at, line_item_names, line_skus,
- *   line_count, distinct_sku_count, first_item_name
- *   (aggregates over receiving_line).
- */
+/** Loader row contract: */
 function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
   const poNumber = strOrNull(row.po_number);
   const sourceOrderId = strOrNull(row.source_order_id);
@@ -299,40 +233,14 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, sku, product_title, category, upc, ean, gtin, notes,
- *   lifecycle_status, is_active, created_at, updated_at,
- *   platform_skus / platform_item_ids / platform_accounts (LATERAL over
- *   sku_platform_ids — the ASIN, eBay item id and channel account a seller
- *   actually quotes), kit_part_names / kit_document_titles (LATERAL over
- *   sku_kit_parts — what is in the box and which insert ships with it),
- *   provider_item_id + item_name / item_sku / item_upc / item_ean (LEFT JOIN
- *   items on provider_item_id = zoho_item_id).
- *
- * The `items.*` fields are why there is no ITEM entity type. `items.id` is a
- * uuid and `entity_search_docs.entity_id` is BIGINT by law
- * (2026-07-03d:12-13), so the inventory-provider mirror cannot be its own
- * doc without widening that column for all nine types. It does not need to
- * be: an item is the provider's copy of a catalog row, and the ONE legal
- * join — `sku_catalog.provider_item_id = items.zoho_item_id`
- * (2026-07-22:23-27) — folds its identifiers into the SKU doc, which stays
- * keyed to the integer `sku_catalog.id`. NEVER joined on the SKU string:
- * `items.sku` and `sku_catalog.sku` are independent numbering schemes that
- * collide on the same strings (2026-07-22:5-9), which is also why
- * `item_sku` is indexed as a SEPARATE token from `sku` rather than assumed
- * to be the same value.
- */
+/** Loader row contract: */
 function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.product_title) || str(row.item_name) || str(row.sku) || `SKU #${str(row.id)}`;
   return {
     title,
     subtitle: subtitleOf([row.sku, row.category]),
     searchText: joinSearchText([
-      // Identifiers first: these are what staff paste in, and they must
-      // survive the MAX_SEARCH_TEXT cap that free-text notes can breach.
-      // The Zoho item number is the one an operator reads off the provider
-      // UI or an invoice, so it rides with the internal SKU, not after prose.
+      // Identifiers first:
       row.sku,
       row.item_sku,
       row.provider_item_id,
@@ -364,12 +272,7 @@ function buildSkuDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, ticket_number, product_title, serial_number, issue, notes, status,
- *   source_order_id, source_tracking_number, source_sku, received_at,
- *   created_at.
- */
+/** Loader row contract: */
 function buildRepairDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.product_title) || `Repair #${str(row.id)}`;
   return {
@@ -398,12 +301,7 @@ function buildRepairDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, shipment_ref, amazon_shipment_id, destination_fc, status, notes,
- *   due_date, shipped_at, created_at, item_titles, item_skus, item_fnskus,
- *   item_asins (STRING_AGGs over fba_shipment_items).
- */
+/** Loader row contract: */
 function buildFbaDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.shipment_ref) || `FBA #${str(row.id)}`;
   return {
@@ -432,19 +330,7 @@ function buildFbaDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, claim_number, serial_number, sku, product_title, source_system,
- *   source_order_id, source_tracking_number, zendesk_ticket_id, status,
- *   denial_reason_code, denial_notes (≤400), notes (≤600), created_at,
- *   customer_name / customer_email / customer_phone (LEFT JOIN customers on
- *   warranty_claims.customer_id).
- *
- * TITLE follows the REPAIR precedent: the product is what an operator
- * recognizes in a hit list, and an identifier-shaped title (`WC-2026-00042`)
- * would be crushed to its last 8 characters by `narrowSearchTitleDisplay`.
- * The claim number leads the SUBTITLE and the canonical text instead.
- */
+/** Loader row contract: */
 function buildWarrantyClaimDoc(row: SearchSourceRow): BuiltSearchDoc {
   const claimNumber = str(row.claim_number);
   const title = str(row.product_title) || claimNumber || `Claim #${str(row.id)}`;
@@ -486,15 +372,7 @@ function buildWarrantyClaimDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, provider, external_ticket_id, subject_cache (≤400), status_cache,
- *   created_at, updated_at.
- *
- * Operators call `support_tickets.id` "the ticket number" (#42,
- * 2026-07-01f_support_tickets.sql:3) — so the PK is indexed as text in both
- * spellings, alongside the provider-native id they read off Zendesk.
- */
+/** Loader row contract: */
 function buildSupportTicketDoc(row: SearchSourceRow): BuiltSearchDoc {
   const number = `#${str(row.id)}`;
   const title = str(row.subject_cache) || `Ticket ${number}`;
@@ -520,23 +398,7 @@ function buildSupportTicketDoc(row: SearchSourceRow): BuiltSearchDoc {
   };
 }
 
-/**
- * Loader row contract:
- *   id, barcode, name, display_name, room, row_label, col_label, zone_letter,
- *   bin_type, bin_role, location_kind, is_active, locked_for_count,
- *   description (≤400), created_at, updated_at,
- *   content_skus (LEFT-bounded LATERAL over bin_contents).
- *
- * A bin is a record staff name out loud more often than almost anything else
- * ("it's in A-12-03") and the index could not return it. The BARCODE leads the
- * canonical text: it is what is printed on the label, scanned at the shelf and
- * typed into search — short, high-selectivity, and the one token that must
- * survive the MAX_SEARCH_TEXT cap.
- *
- * TITLE follows the display rule locations already carries
- * (schema.ts:3214-3218 — COALESCE(NULLIF(BTRIM(display_name),''), name)), so a
- * renamed bin reads as its nickname while `name` and `barcode` stay findable.
- */
+/** Loader row contract: */
 function buildLocationDoc(row: SearchSourceRow): BuiltSearchDoc {
   const barcode = str(row.barcode);
   const title = str(row.display_name) || str(row.name) || barcode || `Bin #${str(row.id)}`;

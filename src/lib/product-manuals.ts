@@ -133,14 +133,7 @@ export async function upsertProductManual(params: {
     } catch { /* non-critical — proceed without */ }
   }
 
-  // Core upsert body, parameterized by tenant scoping. `product_manuals` has NO
-  // organization_id column (see docs/tenancy/org-id-coverage.generated.md —
-  // classification: child-scoped(sku_catalog)). When `scoped` is true we constrain
-  // the existing-row lookup to manuals whose sku_catalog parent belongs to this org
-  // (`sku_catalog_id IN (SELECT id FROM sku_catalog WHERE organization_id = $n)`),
-  // so we never cross-tenant match. New rows are attributed via their resolved
-  // sku_catalog_id (resolved above with orgId threaded through). NULL-parent rows are
-  // unattributable to any org and are intentionally excluded from scoped lookups.
+  // Core upsert body, parameterized by tenant scoping.
   const runUpsert = async (client: PoolClient, scoped: boolean): Promise<LegacyProductManualRecord> => {
     const existing = relativePath
       ? await client.query(

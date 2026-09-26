@@ -1,14 +1,4 @@
-/**
- * Account sign-in workspace resolution — the decision half of
- * POST /api/auth/account/signin.
- *
- * Pure on purpose: the route's membership query is the only I/O, and the
- * choice policy (which workspace an account enters) is exactly the part that
- * must never drift between the picker the client renders and the session the
- * server mints. An `organizationId` is honored ONLY when it matches a
- * membership row the server just fetched — the client's word alone decides
- * nothing (NOT_A_MEMBER, not a session for someone else's org).
- */
+/** Account sign-in workspace resolution — the decision half of POST /api/auth/account/signin. */
 
 export interface AccountMembershipRow {
   organization_id: string;
@@ -23,15 +13,7 @@ export type AccountSigninTarget<T extends AccountMembershipRow> =
   | { kind: 'needs_choice'; memberships: readonly T[] }
   | { kind: 'target'; target: T };
 
-/**
- * Resolve which workspace an account signs into.
- *
- *   • no memberships            → no_workspace (403 at the route)
- *   • organizationId supplied   → target when it matches a membership,
- *                                 not_member otherwise (403 at the route)
- *   • no organizationId, >1     → needs_choice (the client's workspace picker)
- *   • no organizationId, 1      → that membership
- */
+/** Resolve which workspace an account signs into. */
 export function resolveAccountSigninTarget<T extends AccountMembershipRow>(
   memberships: readonly T[],
   organizationId: string | null | undefined,

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * SearchDetailWorkspace — `/search?sel=type:id` FIND confirmation.
- *
- * ORDER / UNIT / RECEIVING / SKU / REPAIR / FBA all paint the dossier frame.
- * Work happens on the handoff surface. Record→record uses `swap.focus`, never
- * scan-station carton cadence.
- */
+/** SearchDetailWorkspace — `/search?sel=type:id` FIND confirmation. */
 
 import { useEffect, type ReactNode } from 'react';
 import {

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * `/m/repair-scan/info` — every fact about the counter visit a phone is joined
- * to, read-only. The visit is the tablet's: the only thing a phone changes is
- * a serial, and that happens on the hub, so this screen carries no pencil.
- * Each unit lists EVERY serial it carries (`serial-list.ts`) — the hub's rows
- * show only the first and a count.
- *
- * Callers: `/m/repair-scan/info` (the hub's summary card).
- * Affected API: GET `/api/counter/companion` (via `useRepairScanVisit`).
- * Schemas: `CompanionVisit`.
- */
+/** `/m/repair-scan/info` — every fact about the counter visit a phone is joined to, read-only. */
 
 import { DetailFact, DetailFacts, DetailSectionHeading } from '@/components/mobile/detail/DetailParts';
 import { DetailRecordFrame } from '@/design-system/components/DetailHubScreen';

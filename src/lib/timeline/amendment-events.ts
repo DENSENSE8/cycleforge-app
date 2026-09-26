@@ -1,13 +1,7 @@
 import type { TimelineItem, TimelineItemBadge, TimelineTone } from './types';
 import { substitutionReasonLabel, substitutionReasonTone } from '@/lib/fulfillment/substitution-reasons';
 
-/**
- * One `order_unit_amendments` row — a fulfillment substitution (ordered-vs-
- * fulfilled deviation). Adapts into the shared {@link EventTimeline} so a
- * substitution shows up inline in the order/unit history like any other event,
- * with its ordered→fulfilled delta as the subtitle and the reason + approval
- * state as badges. Never hand-roll a substitution row; feed it through here.
- */
+/** One `order_unit_amendments` row — a fulfillment substitution (ordered-vs- fulfilled deviation). */
 export interface AmendmentTimelineRow {
   id: number;
   created_at: string | null;

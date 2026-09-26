@@ -5,15 +5,7 @@ import {
   getSkuPackChecklist,
 } from '@/lib/packing/order-pack-checklist';
 
-/**
- * GET /api/orders/[id]/pack-checklist
- *
- * Returns every line on the order (same order_id) enriched with sku_catalog
- * photo, kit-parts BOM, and QC verify steps for the packer checklist.
- *
- * Path `[id]` is orders.id (numeric PK). For SKU-only scans with no order row,
- * pass `?sku=` (and optional `?condition=`, `?title=`) with id=0.
- */
+/** GET /api/orders/[id]/pack-checklist */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const segments = request.nextUrl.pathname.split('/').filter(Boolean);
   const idStr = segments[segments.length - 2];

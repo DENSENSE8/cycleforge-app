@@ -1,11 +1,4 @@
-/**
- * Pure CSV → desk import row mapping (client + server safe).
- *
- * Supports:
- * - Cycle Forge desk CSV (kind, source, order_id, sku, …)
- * - Native Amazon Manage Returns / GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE
- *   (space or hyphen headers; ASIN is the catalog match key)
- */
+/** Pure CSV → desk import row mapping (client + server safe). */
 
 export type DeskInboundKind = 'purchase' | 'return';
 

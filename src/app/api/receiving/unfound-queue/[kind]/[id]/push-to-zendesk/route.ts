@@ -1,16 +1,4 @@
-/**
- * POST /api/receiving/unfound-queue/[kind]/[id]/push-to-zendesk
- *
- * Composes a Zendesk ticket from the queue row + source context and writes
- * the ticket id back onto unfound_overlay (zendesk_ticket_id + zendesk_synced_at).
- *
- * Creates the ticket directly via the Zendesk REST API (`createTicket` in
- * src/lib/zendesk.ts), the same client used by /api/receiving/zendesk-claim.
- *
- * Body (optional overrides):
- *   subject?: string       — operator-edited subject; falls back to a generated one
- *   description?: string   — operator-edited body; falls back to generated
- */
+/** POST /api/receiving/unfound-queue/[kind]/[id]/push-to-zendesk */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';

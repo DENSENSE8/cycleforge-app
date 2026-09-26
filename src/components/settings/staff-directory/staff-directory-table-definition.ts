@@ -20,20 +20,7 @@ import {
   type StaffDirectoryGridColumn,
 } from './staff-directory-grid-layout';
 
-/**
- * `inCellEdit: false` is the load-bearing flag on this desk.
- *
- * The retired `auth` cell WAS an in-cell editor — a `<select>` and a checkbox
- * that each wrote to `/api/admin/staff/update` on change. No family in this
- * repo turns that capability on, there is no in-cell editor on a compound row,
- * and minting one would be an engine change. The write is a row verb opening a
- * `DeskStageOverlay` instead (`staff-directory-verbs.ts`), which is also the
- * only way the two controls can be submitted as ONE payload rather than as two
- * independent POSTs racing each other's refetch.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting the roster into an access review is a real reason this page is open.
- */
+/** `inCellEdit: false` is the load-bearing flag on this desk. */
 export const STAFF_DIRECTORY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

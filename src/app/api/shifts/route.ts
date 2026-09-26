@@ -1,15 +1,4 @@
-/**
- * GET /api/shifts?from=YYYY-MM-DD&to=YYYY-MM-DD
- *
- * Lists concrete shifts (status NOT IN cancelled/missed) overlapping
- * [from, to]. Lazy-materializes any staff whose horizon (staff.shifts_
- * materialized_through) is behind `to` by calling the materialize_shifts()
- * function — this is what makes the scheduling system cron-free.
- *
- * Response shape is per-shift rows ready for the calendar:
- *   { shifts: [{ id, staff_id, starts_at, ends_at, status,
- *                covers_shift_id, location_id, staff_name, color_hex }] }
- */
+/** GET /api/shifts?from=YYYY-MM-DD&to=YYYY-MM-DD */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -34,15 +23,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // Materialize the requested window for every active staff.
-    // materialize_shifts is idempotent (skips days that already have a
-    // shift) so calling it for the full range catches both:
-    //   • the "horizon hasn't reached `to` yet" case (forward fill)
-    //   • the "the request starts before our materialization base" case
-    //     (backward fill — e.g. a calendar showing last week after a
-    //     fresh install that only seeded today + 14 days).
-    // staff is org-owned; shifts has no own organization_id and is scoped via
-    // the parent staff row. Run the materialize loop + window read inside one
-    // tenant-scoped connection so the org GUC is set once.
     const r = await withTenantConnection(ctx.organizationId, async (client) => {
       const activeStaff = await client.query<{ id: number }>(
         `SELECT id FROM staff WHERE COALESCE(active, true) = true AND organization_id = $1`,

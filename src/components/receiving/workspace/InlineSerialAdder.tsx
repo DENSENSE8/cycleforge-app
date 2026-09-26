@@ -41,13 +41,7 @@ interface Props {
    */
   editingSerial?: SavedSerial | null;
   onEditingSerialChange?: (serial: SavedSerial | null) => void;
-  /**
-   * Replace a saved serial with a new value (typo fix). When provided, each
-   * saved chip exposes an Edit affordance in a hover dropdown — clicking it
-   * populates the input with the chip's current value and remembers the
-   * original. Submitting calls `onReplaceSerial(lineId, original, next)`.
-   * When omitted, chips show only the X delete button.
-   */
+  /** Replace a saved serial with a new value (typo fix). */
   onReplaceSerial?: (lineId: number, original: SavedSerial, nextSerial: string) => void;
   /** Disable the whole adder (no receiving_id, line is DONE, etc.). */
   disabled?: boolean;
@@ -63,21 +57,7 @@ interface Props {
   collapsible?: boolean;
 }
 
-/**
- * Compact, per-PO-item serial scan input. Mounted INSIDE the active row of
- * {@link PoLinesAccordion} so the operator can scan serials for the
- * specific line they're testing without context-switching to a global
- * SerialCard at the bottom of the column.
- *
- * Visual contract:
- *   ┌────────────────────────────────┐  ┌─────┐
- *   │ Scan or type a serial → ⏎     │  │ ADD │
- *   └────────────────────────────────┘  └─────┘
- *   [SN-1 ×] [SN-2 ×] [SN-3 ×]
- *
- * Comma-paste expands to N submits (sequential, since `/api/receiving/scan-serial`
- * holds a `FOR UPDATE` lock that breaks under parallel writes).
- */
+/** Compact, per-PO-item serial scan input. */
 export function InlineSerialAdder({
   lineId,
   saved,
@@ -170,15 +150,7 @@ export function InlineSerialAdder({
         return;
       }
 
-      // Comma-paste → enqueue each value. Parent queues writes; clear + stay
-      // focused so the wedge can keep typing while optimistic chips land.
-      //
-      // DECODE PER PART, never over the joined string. This is a registered
-      // wedge sink, so it receives the raw buffer — and a printed unit label
-      // does NOT carry a bare serial: it carries a GS1 Digital Link
-      // (`…/01/{gtin}/21/{serial}`), a `(01)…(21)…` element string, or `U-{serial}`.
-      // Stored verbatim, the return lane (the one unit that comes back wearing
-      // OUR label) writes a serial that matches nothing.
+      // Comma-paste → enqueue each value.
       const parts = trimmed
         .split(',')
         .map((s) => unwrapScannedSerial(s))
@@ -235,10 +207,7 @@ export function InlineSerialAdder({
                   onDelete={onDelete ? (target) => onDelete(lineId, target) : undefined}
                 />
               ) : (
-                // Adder without an edit handler — bare emerald chip with an X
-                // delete affordance, matching the original testing layout.
-                // ds-allow-title: truncation reveal of the full serial on a
-                // non-interactive chip span (display is shortened to last-12).
+                // Adder without an edit handler — bare emerald chip with an X delete affordance, matching the original testing layout.
                 <span
                   key={s.id ?? `${sn}-${idx}`}
                   className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-2 py-0.5 font-mono text-role-caption font-semibold text-emerald-800 ring-1 ring-inset ring-emerald-200"

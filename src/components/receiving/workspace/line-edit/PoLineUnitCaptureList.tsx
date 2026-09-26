@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Unbox PO-line capture entry — one invariant {@link PoLineCaptureRow} per
- * line (condition + in-row Serial / Photos dock strip). Qty roll-up over
- * the display cap also mounts {@link BulkQuantityPanel} under the face.
- *
- * Not used for Units Displays flush (`ReceivingUnitRows`) or dock Band 1.
- */
+/** Unbox PO-line capture entry — one invariant {@link PoLineCaptureRow} per line (condition + in-row Serial / Photos dock strip). */
 
 import { useCallback, useState, type ReactNode } from 'react';
 import { Button } from '@/design-system/primitives';

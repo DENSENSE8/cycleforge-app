@@ -1,13 +1,4 @@
-/**
- * Shared NAS archive for receiving claims.
- *
- * Create, Link & send (thread), auto-archive after a claimed unbox photo, and
- * manual Sync-to-NAS all copy EVERY carton photo into
- * `…/2 Zendesk 2026/<ticket#>/`. Zendesk itself only gets the operator-selected
- * subset; the folder is the full local record.
- *
- * Best-effort: never throws. Callers surface `archiveWarning` / `failReason`.
- */
+/** Shared NAS archive for receiving claims. */
 
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import {

@@ -1,12 +1,4 @@
-/**
- * The kiosk repair DEVICE list, as behaviour.
- *
- * The defect these pin: a customer hands over three units, the picker joined
- * their names, the pane asked for one serial and one price, and the visit was
- * recorded as one device — with a serial belonging to none of them.
- *
- * Run: npx tsx --test src/lib/kiosk/repair-devices.test.ts
- */
+/** The kiosk repair DEVICE list, as behaviour. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

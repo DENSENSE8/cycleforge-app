@@ -1,11 +1,4 @@
-/**
- * Orders catalog guards + resolver behaviour.
- *
- * The catalog is persisted-id vocabulary, so the guards here are the ones that
- * fail as silent config bugs otherwise: duplicate ids, a product default that
- * does not parse against its own catalog, a field bindable nowhere. The
- * resolver tests pin the row-alias → paint contract for each field.
- */
+/** Orders catalog guards + resolver behaviour. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -150,11 +143,7 @@ describe('resolveOrdersSlotValue — stage events', () => {
   });
 
   it('picked: a TESTED row with no pick data resolves EMPTY — Pick no longer borrows testing data (2026-09-14)', () => {
-    // The Picker desk's own scan IS a pick signal, but it reaches this resolver
-    // as `picked_*` through PICK_FACTS_LATERALS' `pick_station` arm. The tester
-    // VERDICT family must never stand in for it here: a QC test is a different
-    // verb, and a resolver-level fallback would fix one of the feed's three
-    // readers while leaving the other two blank.
+    // The Picker desk's own scan IS a pick signal, but it reaches this resolver as `picked_*` through PICK_FACTS_LATERALS' `pick_station` arm.
     const tested = row({
       tested_by: 7,
       tester_id: 3,

@@ -50,10 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LIMIT $${params.length}
     `;
 
-    // `v_sku` is a read-only VIEW that does not project organization_id, so the
-    // tenant scope rides on the GUC (RLS on the underlying serial_units rows)
-    // rather than an explicit column filter. The sku_catalog query joins base
-    // tables that DO carry organization_id, so it gets an explicit filter too.
+    // `v_sku` is a read-only VIEW that does not project organization_id, so the tenant scope rides on the GUC (RLS on the underlying…
     const [skuResult, titleResult] = await Promise.all([
       tenantQuery<{
         id: number;

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The order LINE a Shipped package resolved to — read from the live
- * orders feed (`/api/orders?orderId=&includeShipped=true`) under an
- * `['orders', …]` key (the prefix `useOrderAssignment` patches), refetched on
- * `orders.outbound`. The Shipped desk ledger (`ShippedLedger`) arms the open
- * package's action strip with it — the package's primary order line — so
- * this file stays out of the record's deferred bundle.
- */
+/** The order LINE a Shipped package resolved to — read from the live orders feed (`/api/orders?orderId=&includeShipped=true`) under an… */
 
 import { useQuery } from '@tanstack/react-query';
 import { toOrderRecord } from '@/lib/orders/order-record-normalize';

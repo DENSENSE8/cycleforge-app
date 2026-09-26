@@ -1,25 +1,6 @@
-/**
- * Outbound package state — the single source of truth for "where is this package
- * in the pack → leave‑the‑building → carrier‑custody → delivered timeline".
- *
- * Derived, not stored. A package is packed at one time and physically leaves the
- * warehouse at another, so the dashboard models both moments:
- *   • PACK event (station_activity_logs PACK_COMPLETED/PACK_SCAN)  → "scanned by packer"
- *   • SHIP_CONFIRM event (station_activity_logs SHIP_CONFIRM)       → "left the warehouse"
- *   • carrier milestones on shipping_tracking_numbers              → external custody truth
- *
- * "Invisible staging" is not a place — it's the derived PACKED_STAGED bucket:
- * a PACK event exists, no SHIP_CONFIRM yet, and the carrier hasn't taken custody.
- *
- * Pure + isomorphic (no React, no DOM, no Date.now): safe to import on client and
- * server. Stalled/exception time math is passed in by the caller.
- */
+/** Outbound package state — the single source of truth for "where is this package in the pack → leave‑the‑building → carrier‑custody →… */
 
-// The outbound stage vocabulary + derivation + custody predicates now live in
-// the canonical `order-lifecycle.ts` projection (W2 display‑logic
-// consolidation); re‑exported here under their established names so every
-// importer + the color META below keep their stable path. This module keeps
-// only the presentation (the OUTBOUND_STATE_META hues + the seam contract).
+// The outbound stage vocabulary + derivation + custody predicates now live in the canonical `order-lifecycle.ts` projection (W2…
 export {
   carrierHasCustody,
   hasLeftWarehouse,
@@ -43,10 +24,7 @@ export interface OutboundStateMeta {
   dot: string;
 }
 
-// Dot colors are mutually distinct hues (In Custody indigo vs Orphan pink are
-// deliberately far apart). Presentation now flows from the one label registry
-// (`src/lib/labels`) — seeded defaults, tenant‑overridable (Phase 2);
-// `labels/resolve.test.ts` pins this map byte‑identical to the former literals.
+// Dot colors are mutually distinct hues (In Custody indigo vs Orphan pink are deliberately far apart).
 export const OUTBOUND_STATE_META = buildStateMeta('outbound') as Record<OutboundState, OutboundStateMeta>;
 
 /** Fields the table/scan-out view attach to each record after derivation. */

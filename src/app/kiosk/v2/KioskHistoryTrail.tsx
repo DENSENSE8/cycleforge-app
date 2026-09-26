@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * History's trail controls — the search glyph and the kind filter, seated in
- * the shell's ONE header band beside the command dropdown.
- *
- * Callers: `KioskHistoryPane`, through the `chrome` slot `KioskShell` hands
- * it. Affected API: none (the pane owns the query hook). Schemas:
- * `KioskVisitKindFilter`.
- * User 2026-09-22: *"the search bar functions like filter and search icon the
- * same as the repair service mode … remove the top left history text its
- * already in the drop down … switch the tabs below the search bar to just a
- * filter after the search icon."*
- *
- * This IS the catalog trail's bracket (`ProductSelector` kiosk-split), not a
- * second one:
- *
- * - **One search glyph**, and it both opens and closes (`aria-pressed`).
- *   `hideLeadingIcon` silences `SearchField`'s own magnifier so the row never
- *   grows a second one, and closing clears the query — a live query behind a
- *   closed field is a filtered rail whose reason the operator cannot see.
- * - **One filter, a word chip** on `KIOSK_POS_TRAIL_CONTROL` — the same
- *   control the catalog's category dropdown is, in the slot right after the
- *   glyph. It replaced an All/Sales/Repair `TabSwitch` under a second search
- *   box in the left rail: two find-bars, two vocabularies, one band too many.
- *
- * The rail below now owns rows and nothing else.
- */
+/** History's trail controls — the search glyph and the kind filter, seated in the shell's ONE header band beside the command dropdown. */
 
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { Search } from '@/components/Icons';
@@ -46,12 +21,7 @@ import {
 import type { KioskVisitKindFilter } from '@/lib/kiosk/history/kiosk-history-client';
 import { cn } from '@/utils/_cn';
 
-/**
- * All · Sales · Repair service — the counter's three answers to "which paper
- * am I looking for". A visit that produced `repair_service` rows is a repair,
- * one that did not is a sale, and a mixed visit answers to both (see
- * `list-kiosk-visits`).
- */
+/** All · Sales · Repair service — the counter's three answers to "which paper am I looking for". */
 const KIND_OPTIONS: readonly { value: KioskVisitKindFilter; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'sales', label: 'Sales' },

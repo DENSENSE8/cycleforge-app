@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Click-and-hold reorder for facts under the compound title.
- *
- * Headers use HTML5 drag because a header cell is an empty box with
- * `select-none`. The subtitle line is not: qty is a caret editor, condition
- * is a Radix menu (opens on pointerdown), listing is a hover chip, and the
- * painted text is a 1–2 character run Chrome will start selecting instead of
- * dragging. HTML5 `draggable` on the wrapper therefore never starts, which is
- * why hold-and-move under the title felt dead.
- *
- * Pointer tracking on `window` (not HTML5, not dnd-kit) is the display method:
- * arm after a few pixels, drop by `data-subtitle-part` under the cursor, write
- * through the same `onReorderByDrop` the headers use. Playwright `locator.dragTo`
- * speaks this gesture. Nested click handlers check {@link skipClick}.
- *
- * A drag that starts on qty and lifts on condition fires `click` on the common
- * ancestor — the row — which To-ship treats as bulk select and opens the
- * inspector (the grid jumps sideways). Isolation is three layers:
- * pointer-capture on the source so click lands on the fact, a document
- * capture that swallows click/mouseup while the gesture is live, and a
- * module flag row click handlers consult. The layout write is deferred so
- * a remount cannot steal the leftover click.
- */
+/** Click-and-hold reorder for facts under the compound title. */
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { subtitleReorderIgnoresScrubTarget } from './scrub-number';

@@ -49,16 +49,7 @@ function commentImageUrls(c: ZendeskComment): string[] {
     .filter((u): u is string => Boolean(u));
 }
 
-/**
- * Chat-style ticket detail: lean inline title → scrollable conversation →
- * sticky composer (or host-owned dock).
- *
- * Linkage / Connections live on the host rail, not restated in this header.
- *
- * Owns ONE photo gallery aggregated across all message attachments + linked
- * photos, so clicking any photo opens the shared in-app PhotoViewerModal (no new
- * tab) and the viewer can page across the whole ticket.
- */
+/** Chat-style ticket detail: */
 export function SupportTicketDetail({
   ticketId,
   onBack,
@@ -79,30 +70,13 @@ export function SupportTicketDetail({
   receivingId,
   /** Hide linked-context strip (when already shown by SupportContextHub). */
   hideLinkedContext = false,
-  /**
-   * Render the {@link RequesterDetailBand} at the head of the conversation's
-   * scroll port. `/support` sets it and, in the same breath, hides this
-   * component's own requester band — the band is that line's replacement, not a
-   * second copy of it. Station embeds keep the denser header line.
-   */
+  /** Render the {@link RequesterDetailBand} at the head of the conversation's scroll port. */
   showRequesterDetail = false,
   onComposerBridgeChange,
-  /**
-   * `inline` — sticky composer under the thread (default / console).
-   * `host` — station owns the floating {@link SupportTicketComposerDock}; skip
-   * inline I/O. Staging comes from {@link photoStaging} or
-   * {@link TicketComposerStagingProvider}.
-   */
+  /** `inline` — sticky composer under the thread (default / console). */
   composerPlacement = 'inline',
   photoStaging,
-  /**
-   * Interleave warehouse / carrier spine with helpdesk messages.
-   *
-   * **Default `false` (messages only).** Scan-station Ticket Displays (Unbox ·
-   * Testing · Pack) keep the floor spine on the peer **Timeline** Displays tab —
-   * never inside Ticket. Support service workspace may opt in until an explicit
-   * Floor toggle ships.
-   */
+  /** Interleave warehouse / carrier spine with helpdesk messages. */
   mergeFloorTimeline = false,
   /**
    * Forwarded to {@link TicketComposer}. Unbox Ticket Displays passes
@@ -142,10 +116,7 @@ export function SupportTicketDetail({
     () => ({ ticket: String(ticketId) }),
     [ticketId],
   );
-  // Always enabled — linkage / requester band / optional floor merge share one
-  // `SupportContextBundle` fetch (same key as Focus + Displays). Readers only;
-  // never a second query. Floor events reach the stream only when
-  // `mergeFloorTimeline` is on — station Ticket keeps them on Timeline Displays.
+  // Always enabled — linkage / requester band / optional floor merge share one `SupportContextBundle` fetch (same key as Focus + Displays).
   const { data: contextBundle } = useSupportContext(contextAnchor, true);
   const [contextOpen, setContextOpen] = useState(false);
 
@@ -173,11 +144,7 @@ export function SupportTicketDetail({
   const contextStaging = useTicketComposerStaging();
   const localStaging = useTicketPhotoStaging(ticketId);
   const staging = photoStaging ?? contextStaging ?? localStaging;
-  // Drag + pick only. PASTE belongs to the host that owns the whole surface —
-  // on `/support`, `SupportTicketFocus` listens at document scope so a pasted
-  // image both stages AND asks for a draft. If this body also caught paste, the
-  // same gesture would mean "attach quietly" or "attach and draft" depending on
-  // where the cursor happened to be.
+  // Drag + pick only.
   const dz = usePhotoDropzone(staging.addFiles, { paste: false });
   const hostOwnsComposer = composerPlacement === 'host';
   // Live height of the floating composer — the band the thread must keep clear.
@@ -235,11 +202,10 @@ export function SupportTicketDetail({
       {/* `data-conversation-port` marks the scroll ancestor the stream measures
           against when the floating composer resizes. */}
       <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto">
-        {/* The title rides INSIDE the port (operator ruling 2026-08-31): it is
-            the head of the record, not chrome bolted above it, so it scrolls
-            away with the oldest message the same way a subject line does at the
-            top of an email thread. Pinned, it cost a row of thread height on
-            every station line for a string the operator reads once. */}
+        {/*
+ * The title rides INSIDE the port (operator ruling 2026-08-31):
+ * The title rides INSIDE the port (operator ruling 2026-08-31): it is
+ */}
         <SupportChatHeader
           ticket={ticket}
           onBack={onBack}
@@ -247,12 +213,7 @@ export function SupportTicketDetail({
           hideRequesterBand={hideRequester}
           hideTitle={hideTitle}
         />
-        {/* Context FOR the conversation, so it lives in the conversation's own
-            port and scrolls away with it — not pinned chrome.
-            Deliberately NOT `compact={embedded}`: `/support` passes `embedded`
-            to mean "denser chrome, no AI panel", not "360px column", and
-            deriving density from it silently disabled the counts on the one
-            surface the band exists for. `compact` is for a narrow host. */}
+        {/* Context FOR the conversation, so it lives in the conversation's own port and scrolls away with it — not pinned chrome. */}
         {showRequesterDetail ? (
           <RequesterDetailBand ticketId={ticketId} bundle={contextBundle} />
         ) : null}
@@ -268,11 +229,7 @@ export function SupportTicketDetail({
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}
       {hostOwnsComposer ? null : (
-        // FLOATS over the thread rather than sitting in flow under it: the
-        // conversation reads as one continuous plane the composer hovers on.
-        // The port is not padded — the stream spends `composerHeight` as a
-        // spacer above its autoscroll sentinel, so the newest message parks
-        // clear of the dock at every composer height.
+        // FLOATS over the thread rather than sitting in flow under it:
         <div
           ref={composerRef}
           className="pointer-events-none absolute inset-x-0 bottom-0 z-raised"
@@ -297,11 +254,7 @@ export function SupportTicketDetail({
           open={contextOpen}
           onClose={() => setContextOpen(false)}
           embedded={embedded}
-          // FLOAT, not push. One of this component's hosts is
-          // Unbox Displays Ticket (`StationDisplaysPushColumn`) — so pushing
-          // would put two columns on one edge. The reason belongs to the HOST,
-          // which is why `push` is a required prop rather than a default baked
-          // into the panel.
+          // FLOAT, not push.
           push={false}
           // No `tabs`: the Unbox "Links" rail keeps the linkage strip above the
           // hub's own Customer | Team | Activity pills. It has no Conversations

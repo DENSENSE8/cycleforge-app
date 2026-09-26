@@ -1,20 +1,4 @@
-/**
- * Vendor-receipt DISPLAY face for a purchasing-source PO status.
- *
- * The display half of {@link isZohoReceivedLikeStatus} — label, tone and tip
- * for the grid's `zoho` chip. It **composes** both status lists and re-types
- * neither: `zoho-received-status.ts` answers "received?", `ZOHO_TERMINAL_STATUSES`
- * answers "still incoming?", and a fourth hand-typed copy is exactly the drift
- * those two modules were split to end.
- *
- * It stays OUT of `zoho-received-status.ts`, which must remain dependency-free
- * for every altitude; a module carrying tone classes is a display concern
- * (`build-gotchas.md` → bundle altitude).
- *
- * **`null` is not "Open".** No mirror row means the PO has never been synced,
- * which is a different fact from the vendor reporting it open. The caller
- * renders `GridCellDash` for `null` — honest absence, never a COALESCE.
- */
+/** Vendor-receipt DISPLAY face for a purchasing-source PO status. */
 
 import {
   isZohoReceivedLikeStatus,

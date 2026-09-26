@@ -1,34 +1,4 @@
-/**
- * What is this order line worth, and is that number real?
- *
- * ## Why a resolver and not a column
- *
- * There are THREE price facts in this schema and they are not the same number:
- *
- *   - `platform_listings.listing_price_cents` — what we ASK for the SKU, per
- *     channel, right now. Changes every time a lister repriced.
- *   - `orders.sale_amount` — what the buyer actually PAID on this line. Frozen
- *     at checkout; the only figure revenue may be computed from.
- *   - `serial_unit_listings.listing_price_cents` — what we ask for ONE specific
- *     serialized box (a graded unit priced away from its SKU).
- *
- * Collapsing them into a single `price` column would make a repriced listing
- * rewrite historical revenue, and make a historical sale misreport today's
- * ask. So they stay three columns, and this module decides which one a desk
- * gets to see — plus `isEstimate`, so the surface can say "≈" instead of
- * quietly presenting an ask as a sale.
- *
- * ## Why an estimate at all
- *
- * Measured 2026-09-15 on live prod: 6 of 4467 orders carry `sale_amount`
- * (0.1%) — every importer writes null. 1557 `platform_listings` rows are all
- * priced. Waiting for the importers to backfill means every desk shows a dash
- * today; refusing the listing price means the same. A labelled estimate is the
- * only answer that is both useful and honest.
- *
- * Pure module: no I/O, no DB. The SQL that gathers {@link PriceFacts} lives in
- * `lib/neon/orders-queries.ts` (`PRICE_FACTS_LATERALS`).
- */
+/** What is this order line worth, and is that number real? */
 
 export type PriceSource = 'sold' | 'unit' | 'listing' | 'unknown';
 
@@ -60,23 +30,10 @@ const UNPRICED: ResolvedPrice = {
   isEstimate: false,
 };
 
-/**
- * `orders.sale_amount` is NUMERIC(12,2), and node-postgres hands NUMERIC back
- * as a STRING to avoid the float rounding it cannot represent. Ten integer
- * digits max keeps `whole * 100` inside Number.MAX_SAFE_INTEGER, so the cents
- * arithmetic below is exact rather than merely close.
- */
+/** `orders.sale_amount` is NUMERIC(12,2), and node-postgres hands NUMERIC back as a STRING to avoid the float rounding it cannot represent. */
 const MONEY_TEXT = /^-?\d{1,10}(?:\.\d{1,2})?$/;
 
-/**
- * Money → integer cents, or null when the value is not money.
- *
- * Deliberately NOT `Math.round(parseFloat(x) * 100)`: `parseFloat` accepts
- * `"19.00 USD"`, `"$19"` and `"abc"`→NaN, and NaN round-trips to 0 through
- * `Math.round`. A garbage sale_amount must read as "no price known", never as
- * a free order — so the shape is validated first and the fraction is padded to
- * two digits and added as an integer, which never drifts.
- */
+/** Money → integer cents, or null when the value is not money. */
 function moneyToCents(raw: string | number | null): number | null {
   if (raw == null) return null;
   // A caller that already parsed the NUMERIC (or a pg type-parser override)
@@ -92,12 +49,7 @@ function moneyToCents(raw: string | number | null): number | null {
   return negative ? -cents : cents;
 }
 
-/**
- * An asking price of exactly 0 is a sync artifact, not an offer — every
- * channel importer writes 0 for "price not set". Realised revenue of 0 is a
- * different claim (a $0 replacement order really happened), so this floor
- * applies only to the two estimate arms.
- */
+/** An asking price of exactly 0 is a sync artifact, not an offer — every channel importer writes 0 for "price not set". */
 function estimateCents(raw: number | null): number | null {
   if (raw == null || !Number.isFinite(raw) || raw <= 0) return null;
   return Math.trunc(raw);
@@ -106,19 +58,7 @@ function estimateCents(raw: number | null): number | null {
 /** ISO-4217 is three letters; anything else on the row is noise, not a currency. */
 const CURRENCY_CODE = /^[A-Z]{3}$/;
 
-/**
- * Precedence: realised sale → allocated unit → channel listing → nothing.
- *
- * The unit beats the SKU listing because an allocation names the exact box
- * leaving the building; a unit priced away from its SKU was priced away for a
- * reason (grade, damage, bundle), and the SKU ask would overwrite that
- * judgement.
- *
- * A malformed `saleAmount` falls THROUGH to the estimates rather than
- * short-circuiting to `unknown`: the row claims revenue we cannot read, which
- * is exactly the case where a labelled estimate beats a blank cell. With no
- * estimate available it lands on `unknown` with null cents — never 0.
- */
+/** Precedence: realised sale → allocated unit → channel listing → nothing. */
 export function resolveLinePrice(facts: PriceFacts): ResolvedPrice {
   const code = String(facts.currency ?? '').trim().toUpperCase();
   const currency = CURRENCY_CODE.test(code) ? code : DEFAULT_CURRENCY;
@@ -138,10 +78,7 @@ export function resolveLinePrice(facts: PriceFacts): ResolvedPrice {
 
   const listing = estimateCents(facts.listingCents);
   if (listing != null) {
-    // The lateral already ranked an own-channel listing first (see
-    // PRICE_FACTS_LATERALS). Whatever it picked is reported with ITS OWN
-    // platform, never rewritten to the order's — a desk must be able to read
-    // "≈ from ecwid" on an eBay line and distrust it accordingly.
+    // The lateral already ranked an own-channel listing first (see PRICE_FACTS_LATERALS).
     return {
       cents: listing,
       currency,

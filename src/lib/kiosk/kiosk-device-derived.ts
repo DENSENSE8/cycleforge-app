@@ -1,10 +1,4 @@
-/**
- * Derived fleet freshness for one enrolled kiosk tablet.
- *
- * Dwell and hardware_status are read-time signals — not DDL columns. Callers:
- * listKioskDevices (API waist) and unit tests. Thresholds match the fleet SoT
- * (15m stale / 24h offline).
- */
+/** Derived fleet freshness for one enrolled kiosk tablet. */
 
 import type {
   KioskDeviceTableRow,

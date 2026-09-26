@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * **Stock-ledger spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second table
- * component.
- *
- * ```tsx
- * const sheet = useSkuLedgerSpreadsheet({ rows });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * This is a PANE on `/inventory/health/sku/[sku]`, which renders five row
- * sections, and the feed it is handed is the server's `LIMIT 100` window. A
- * header click writing `?sort=` would fight the other panes for one channel and
- * would re-run the page's eight loaders to reorder a hundred rows the client
- * already holds — and it would reorder the WINDOW, not the ledger, which is a
- * different answer wearing the same arrow. Durability in the URL is the rule
- * for a lane that IS a page; it is not a rule for a pane (the same rule
- * `SkuDetailTables` and the Ledger's two mounts already follow).
- */
+/** **Stock-ledger spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

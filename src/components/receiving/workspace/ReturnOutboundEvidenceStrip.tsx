@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Compact testing + packing photo strip for the RETURN serial-match band.
- *
- * Fetches the unit timeline photo spine via the shared
- * {@link unitTimelinePhotosQuery} cache (same key as Displays → Timeline →
- * Units). Only outbound stages render here — inbound arrival/unbox stay on
- * Photos Displays / the full journey.
- *
- * Presentational host: parent owns match state; this owns the photo query.
- */
+/** Compact testing + packing photo strip for the RETURN serial-match band. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

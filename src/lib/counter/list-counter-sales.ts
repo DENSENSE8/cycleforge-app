@@ -1,11 +1,4 @@
-/**
- * Counter visits as Sales-board history rows.
- *
- * Callers: GET /api/walk-in/sales.
- * Affected API: /api/walk-in/sales.
- * Data schemas: SaleRow (id `ct-{visitId}`).
- * User: "I must be able to view the sales record on the slot data table in the sales board under the sales page as an overall history"
- */
+/** Counter visits as Sales-board history rows. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -20,14 +13,7 @@ interface CounterSaleSqlRow {
   staged_square_order_id: string | null;
 }
 
-/**
- * `search` is the Sales board's find text, and it is answered HERE for the same
- * reason `getSquareTransactions` answers it: the board merges these rows with
- * the Square mirror's, so a search the Square half honoured and this half
- * ignored would paint every counter visit as a "match" beside the real ones.
- * The columns are the facts a counter row actually paints — its `ct-<id>`
- * handle, the customer it is billed to, and its status.
- */
+/** `search` is the Sales board's find text, and it is answered HERE for the same reason `getSquareTransactions` answers it: */
 export async function listCounterSalesAsSaleRows(
   orgId: OrgId,
   limit: number,

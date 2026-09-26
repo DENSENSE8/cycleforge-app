@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Inventory › Units browse workspace — the ops-queue Sheets golden applied to
- * the units collection (Wave 0 of the SoT page-violation migrate). Flush sheet
- * chrome over DataTable via {@link useUnitsSpreadsheet}, mounted at
- * `/inventory/units`.
- *
- * Row click opens the unit in the `RightRailHost` push inspector
- * (`InventoryInspectorRail`, keyed on `?open=unit:<ref>` via
- * `useInventoryOpenParam`).
- */
+/** Inventory › Units browse workspace — the ops-queue Sheets golden applied to the units collection (Wave 0 of the SoT page-violation migrate). */
 
 import { useCallback, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';

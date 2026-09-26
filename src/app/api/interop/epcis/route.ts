@@ -1,24 +1,4 @@
-/**
- * GET /api/interop/epcis — the tenant's event history as GS1 EPCIS 2.0 events.
- *
- * READ-ONLY. Writes nothing, adds nothing, and is a projection of
- * `inventory_events` rows that already exist. See `@/lib/interop/epcis-projection`
- * for the mapping rules and why absent fields are absent.
- *
- * Query params:
- *   ?since=<ISO instant>   only events at or after this instant
- *   ?cursor=<opaque>       keyset cursor from a previous page's `nextCursor`
- *   ?limit=<1..1000>       page size (default 200)
- *
- * Response is an EPCIS `EPCISDocument` envelope plus a `cycleforge_page` block
- * carrying the cursor and the skipped-event-type counts. The envelope is what a
- * partner's ingester expects; the page block is namespaced so it cannot be
- * mistaken for standard content.
- *
- * No `recordAudit` call: this is a GET that mutates nothing, and the house
- * skeleton's audit step is for mutations. Access itself is already audited by
- * `withAuth` on a permission denial.
- */
+/** GET /api/interop/epcis — the tenant's event history as GS1 EPCIS 2.0 events. */
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

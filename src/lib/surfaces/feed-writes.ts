@@ -1,16 +1,4 @@
-/**
- * Guarded write helpers for the view-layer projection tables the AI write
- * path (applyAgentMutation) auto-applies to — feed_memberships,
- * staff_rail_exclusions, node_surfaces (universal-feed plan §2.6 trust list).
- *
- * These are the FIRST writers for these Phase-0 tables (Phase 4 will grow
- * richer sync helpers on top). Each runs on a caller-owned tenant client (the
- * applyAgentMutation transaction) — org is stamped explicitly, and every
- * helper returns a small `inverse` descriptor so the mutation is revertable.
- *
- * Registry-validated, pure-ish (no imports beyond the registry + types) so
- * they unit-test DB-free through a fake client.
- */
+/** Guarded write helpers for the view-layer projection tables the AI write path (applyAgentMutation) auto-applies to — feed_memberships,… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -154,13 +142,7 @@ export async function setNodeSurfaceConfig(
   };
 }
 
-/**
- * A node surface belongs to a workflow definition, and node_surfaces' FK to
- * workflow_definitions is NOT org-composite (FK checks bypass RLS). So verify
- * BOTH ownership and draft-status before writing one — otherwise the AI could
- * declare a surface on another org's definition, or on the ACTIVE version
- * (bypassing the publish gate). Same shape as draftGraph's lockDraft.
- */
+/** A node surface belongs to a workflow definition, and node_surfaces' FK to workflow_definitions is NOT org-composite (FK checks bypass RLS). */
 async function lockOwnedDraft(
   client: FeedWriteClient,
   orgId: OrgId,

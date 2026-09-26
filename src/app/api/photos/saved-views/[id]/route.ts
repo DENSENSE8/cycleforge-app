@@ -8,12 +8,7 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * PATCH  /api/photos/saved-views/[id] — rename / retune / share a media view.
- * DELETE /api/photos/saved-views/[id] — remove a view (confirm-then-commit on the
- *   client). Both are ownership-scoped: only the creating staffer's row is
- *   touched, so a non-owner gets 404. Sharing org-wide requires `photos.manage`.
- */
+/** PATCH /api/photos/saved-views/[id] — rename / retune / share a media view. */
 
 function parseId(raw: string): number | null {
   const n = Number(raw);

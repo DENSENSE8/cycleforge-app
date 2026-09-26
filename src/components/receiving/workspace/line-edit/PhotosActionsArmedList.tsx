@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Unbox Displays → Photos → Actions — keyboard-armed verb list.
- *
- * Station Action-plane rows for the Photos Displays leaf (↑↓ / Home / End via
- * {@link useArmedCursorList}). The carton-identity hover PhotoLauncher
- * (`CopyChipHoverMenuPanel`) remains a mouse shortcut into the same verbs —
- * Move / Send from that dropdown open these URL drills. Enter / Space / click
- * runs the verb in the same turn (no hit-marker DOM withhold). Esc stays on
- * the Displays push stack.
- *
- * **Mount budget:** this module paints the nine verb rows + photo-count query
- * only. Gallery viewer · dropzone · Ably phone ride
- * {@link PhotosActionsToolRuntime} via `dynamic()` — first count / Phone /
- * Upload / Download / Details commit mounts that chunk and runs the verb.
- *
- * Verbs: View · Phone · Upload · Download · Media · Move · Send · Compare ·
- * Details. Drill altitude (tools → evidence): Move · Send · Compare open
- * URL-backed leaf bodies (no nested switcher strip). Default leaf = this list.
- */
+/** Unbox Displays → Photos → Actions — keyboard-armed verb list. */
 
 import {
   useCallback,

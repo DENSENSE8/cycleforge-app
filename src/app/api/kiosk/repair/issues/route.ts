@@ -1,18 +1,6 @@
 /**
- * GET/POST /api/kiosk/repair/issues — repair reason vocabulary for a SKU, as
- * the front-desk tablet can reach it.
- *
- * The staff sibling (`/api/repair/issues`, `withAuth` + `repair.view` /
- * `repair.intake`) 401s on a device principal, which is why `skuIssues` was
- * empty on the kiosk and the reason pills fell back to the built-in registry.
- * This route is the device-principal twin: same table, same org scoping, org
- * from the `cf_kiosk` device row — and it names the SKU by STRING, because the
- * kiosk catalog is the Ecwid repair tree, not `favorite_skus.id`.
- *
+ * GET/POST /api/kiosk/repair/issues — repair reason vocabulary for a SKU, as the front-desk tablet can reach it.
  * A device may add a reason for the SKU in front of it (operator 2026-09-14),
- * and only for that SKU: `addSkuReason` refuses a SKU-less create rather than
- * writing a row every repair on the floor would then show. Nothing here can
- * edit or delete — the staff route keeps that.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -1,19 +1,4 @@
-/**
- * Server-side client for the org's local vision box (the RTX 5070 Ti) photo
- * `/analyze` endpoint.
- *
- * IMPORTANT — reachability: the photo-analysis cron runs on Vercel (server-side),
- * which CANNOT reach the office LAN. So unlike the browser identify flow
- * (`src/lib/vision-identify.ts`, which POSTs from the operator's browser to the
- * LAN `NEXT_PUBLIC_VISION_BASE_URL`), this path needs a SERVER-reachable URL — the
- * box's Cloudflare-tunnel hostname — plus the `x-vision-token` shared secret the
- * box checks (`vision/app/server.py:_check_token`). Resolution:
- *   org `photoAnalysis.localVisionBaseUrl`  →  env VISION_ANALYZE_BASE_URL  →  env NEXT_PUBLIC_VISION_BASE_URL
- *
- * Every failure mode (not configured, unreachable, HTTP error, bad JSON) returns
- * null so the orchestrator degrades to the catalog fallback rather than throwing —
- * a single consumer GPU box must never 500 the analyze job.
- */
+/** Server-side client for the org's local vision box (the RTX 5070 Ti) photo `/analyze` endpoint. */
 
 import type { PhotoAnalysisMetadata } from './analyze-types';
 import { DAMAGE_KEYWORDS } from './analyze-types';
@@ -73,12 +58,7 @@ function toStringArray(v: unknown, cap: number): string[] {
     .slice(0, cap);
 }
 
-/**
- * Normalize the box response into PhotoAnalysisMetadata. Exported so it can be
- * unit-tested directly and so damage is derived consistently: the box may set
- * `damage_detected`, but we also OR-in a keyword scan of the OCR/labels so a box
- * that only does OCR still flags an obviously damaged carton.
- */
+/** Normalize the box response into PhotoAnalysisMetadata. */
 export function normalizeLocalVisionResponse(raw: RawAnalyzeResponse): PhotoAnalysisMetadata {
   const ocr_text = toStringArray(raw.ocr_text, 20);
   const labels = toStringArray(raw.labels, 12);

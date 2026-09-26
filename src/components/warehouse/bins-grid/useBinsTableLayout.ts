@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The Bins slot-layout hook — the Bins CONFIG on the shared
- * {@link useSlotTableLayout} engine. The twelfth family on the engine.
- *
- * Bins paints the SHEET morph only: a stored `compound` layout would promise a
- * two-row item cell nothing draws — `paintMorph` coerces, the org write gate
- * (`slotMorphsFor('bins')`) refuses.
- */
+/** The Bins slot-layout hook — the Bins CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   BINS_FIELD_CATALOG,

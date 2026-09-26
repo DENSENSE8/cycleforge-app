@@ -12,17 +12,7 @@ import {
 } from '@/hooks/locations-cache';
 import { EMPTY_FORM, LETTERS, type FormState } from './room-detail-shared';
 
-/**
- * Owns the warehouse room detail form: URL-driven selection (`?room=` / `?new=1`),
- * the locations + bins-overview data, per-room live stats, name/zone validation
- * (taken-name + locked-letter checks), dirty tracking, and the create/rename/delete
- * mutations with URL-param navigation. Returns a controller bag the thin shell +
- * edit-form render from.
- *
- * Form fields hydrate only when the selection identity changes (`creating` /
- * `selectedRoom`) — never on every locations refetch — so a shared-cache
- * invalidate cannot wipe in-progress edits or clear the zone letter mid-rename.
- */
+/** Owns the warehouse room detail form: */
 export function useRoomDetailForm() {
   const router = useRouter();
   const searchParams = useSearchParams();

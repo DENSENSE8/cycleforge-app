@@ -1,14 +1,4 @@
-/**
- * ShipStation v2 webhook helpers — org resolution, signature verification, and
- * applying a `track` event onto the existing tracking spine.
- *
- * Verification (per the ShipStation/ShipEngine docs): webhooks are signed with
- * RSA-SHA256 over `timestamp + "." + rawBody`, key published via JWKS. Headers:
- * x-shipengine-rsa-sha256-key-id / -signature / x-shipengine-timestamp. Older
- * integrations may run UNSIGNED (URL secrecy only) — we still gate on the
- * unguessable per-tenant token in the path (+ an explicitly-configured
- * env-token bootstrap for single-tenant installs).
- */
+/** ShipStation v2 webhook helpers — org resolution, signature verification, and applying a `track` event onto the existing tracking spine. */
 
 import crypto from 'node:crypto';
 import pool from '@/lib/db';
@@ -25,12 +15,7 @@ import type {
 
 // ─── Org resolution ─────────────────────────────────────────────────────────
 
-/**
- * Resolve the tenant that owns a webhook token. Prefers the indexed
- * organization_integrations.webhook_token mirror; falls back to the env token
- * so a single-tenant bootstrap works before the Connect flow populates the
- * column — but only when the target org is explicitly configured.
- */
+/** Resolve the tenant that owns a webhook token. */
 export async function resolveOrgByWebhookToken(token: string): Promise<OrgId | null> {
   if (!token) return null;
   try {
@@ -44,11 +29,7 @@ export async function resolveOrgByWebhookToken(token: string): Promise<OrgId | n
   } catch {
     // webhook_token column may be absent on very old schemas — fall through.
   }
-  // Fail-closed env bootstrap (F09): the env-token registration path is the
-  // documented single-tenant mechanism (docs/shipstation-outbound.md), so it
-  // stays — but it no longer implies the dogfood org. The token maps to a
-  // tenant only when SHIPSTATION_WEBHOOK_ORG_ID names one explicitly;
-  // otherwise the webhook is rejected rather than silently cross-tenanted.
+  // Fail-closed env bootstrap (F09):
   const envToken = process.env.SHIPSTATION_WEBHOOK_TOKEN;
   if (envToken && token === envToken) {
     const envOrgId = (process.env.SHIPSTATION_WEBHOOK_ORG_ID ?? '').trim();
@@ -199,12 +180,7 @@ function mapEvents(data: ShipStationTrackData): CarrierTrackingEvent[] {
   }));
 }
 
-/**
- * Apply a ShipStation `track` event to an EXISTING shipment (STN) resolved by
- * tracking number. We never create the STN here — it was registered at label
- * purchase — so an unknown tracking number is a silent no-op (someone else's
- * package). Returns whether a matching shipment was updated.
- */
+/** Apply a ShipStation `track` event to an EXISTING shipment (STN) resolved by tracking number. */
 export async function applyShipStationTrackEvent(
   orgId: OrgId,
   data: ShipStationTrackData,

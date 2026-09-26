@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * `/search` primary-paint handoff — lets whichever body owns the `?sel=` record
- * tell {@link SearchPrimaryPaintShell} that the interactive surface is ready,
- * so the shell can drop its loading field.
- *
- * Split from the shell for the same reason `/unbox`'s is: the consumers are
- * deep leaf components, and importing the hook must not drag `UniversalLoader`
- * (a canvas + a rAF loop) into their chunks.
- */
+/** `/search` primary-paint handoff — lets whichever body owns the `?sel=` record tell {@link SearchPrimaryPaintShell} that the interactive… */
 
 import { createContext, useContext } from 'react';
 

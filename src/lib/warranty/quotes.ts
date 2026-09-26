@@ -1,13 +1,4 @@
-/**
- * Post-warranty paid-repair quoting (Phase 6).
- *
- * For a DENIED / EXPIRED claim, staff can quote a paid repair. The quote moves
- * DRAFT → SENT → ACCEPTED | DECLINED; on ACCEPTED it hands the job off to a
- * repair_service ticket (paid intake) and links it to the claim — closing the
- * loop into the existing repair module rather than a parallel workflow.
- *
- * `computeQuoteTotals` is pure + unit-tested.
- */
+/** Post-warranty paid-repair quoting (Phase 6). */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
@@ -118,12 +109,7 @@ export async function createQuote(
   const tax = Number(args.tax) || 0;
   const { subtotal, total } = computeQuoteTotals(args.lineItems, tax);
 
-  // ---- Tenant-scoped path (orgId present) ---------------------------------
-  // withTenantTransaction owns the transaction boundary + SET LOCAL
-  // app.current_org, so the duplicate-key retry loop runs OUTSIDE it (one tx
-  // per attempt — a failed INSERT aborts the surrounding tx, so we can't retry
-  // inside a single one). The claim-existence + claim-org join is org-scoped so
-  // a cross-tenant claimId is treated as not-found (404).
+  // ---- Tenant-scoped path (orgId present) --------------------------------- withTenantTransaction owns the transaction boundary + SET…
   if (orgId) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
@@ -246,11 +232,7 @@ export async function setQuoteStatus(
   const rule = QUOTE_TRANSITIONS[nextStatus];
   if (!rule) return { ok: false, status: 400, error: `unsupported quote status ${nextStatus}` };
 
-  // ---- Tenant-scoped path (orgId present) ---------------------------------
-  // withTenantTransaction owns BEGIN/COMMIT/ROLLBACK + SET LOCAL
-  // app.current_org. Every read/write is org-pinned; a cross-tenant quoteId is
-  // treated as not-found (404, never 403). All child rows (repair_service,
-  // warranty_claim_events) derive/pin org from the org-scoped parent claim.
+  // ---- Tenant-scoped path (orgId present) --------------------------------- withTenantTransaction owns BEGIN/COMMIT/ROLLBACK + SET LOCAL…
   if (orgId) {
     try {
       return await withTenantTransaction(orgId, async (client) => {

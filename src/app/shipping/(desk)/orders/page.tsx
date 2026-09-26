@@ -6,17 +6,7 @@ import { seedUnshippedQueue } from '@/lib/queries/unshipped-queue-seed.server';
 import { parseDeskQueueParam } from '@/lib/orders/desk-view-filters';
 import { DESK_QUEUE_PARAM } from '@/lib/outbound/desk-views';
 
-/**
- * `/shipping/orders` — Fulfillment To-ship desk (Pending · Tested · Packed · Shipped).
- *
- * Canonical home for the outbound orders queue. Support › Inquiries aliases
- * here with `?context=support`. Bare `/dashboard` outbound and
- * `/support?mode=orders` 308 here (see `proxy.ts`).
- *
- * Paint order: RSC seeds the Unshipped list into a HydrationBoundary and
- * streams {@link OrdersQueueFirstPaint} as the LCP stand-in; the interactive
- * desk hydrates over the same cache key (Packer golden).
- */
+/** `/shipping/orders` — Fulfillment To-ship desk (Pending · Tested · Packed · Shipped). */
 export default async function ShippingOrdersPage({
   searchParams,
 }: {

@@ -35,12 +35,7 @@ import {
 const dataCell = (col: PickupGridColumn, rule = true) =>
   cn(pickupGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
-/**
- * The order's state — dot + chip through the house {@link GridStatusCellValue}
- * (2026-08-02). The dot is the same `pickupOrderStatusDot` that used to lead the
- * TITLE cell; it belongs here, in the column that owns the fact, where it can be
- * sorted, hidden and resized with its own kind.
- */
+/** The order's state — dot + chip through the house {@link GridStatusCellValue} (2026-08-02). */
 function PickupStatusChip({
   orderStatus,
   receivingId,
@@ -58,15 +53,7 @@ function PickupStatusChip({
   );
 }
 
-/**
- * One pickup product line — CSS-grid columns matching the MOUNTED slot
- * materialization (`pickupSheetColumnsFor`; Wave-2 hand-model kill). The
- * structural tracks (`select · title · order`) keep their bespoke faces;
- * every slot track paints by its BOUND FIELD through the family cell map
- * below — a cell is domain code, per family, and the catalog is the
- * vocabulary of what can appear here. Read-only: no inline editor, no
- * serial/stage clock (those are receiving-only).
- */
+/** One pickup product line — CSS-grid columns matching the MOUNTED slot materialization (`pickupSheetColumnsFor`; Wave-2 hand-model kill). */
 const PickupGridLeafRow = memo(function PickupGridLeafRow({
   line,
   isSelected,
@@ -227,14 +214,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
   );
 });
 
-/**
- * One LCPU order inside the pickup LedgerGrid.
- *
- * Always a flat list of leaf lines — no collapsible order summary (same Sheets
- * golden as Unbox History / Incoming). Grouping still drives upstream ordering;
- * each line is its own selectable record. Parent-style rollups belong only on a
- * drill parent map when that layout exists.
- */
+/** One LCPU order inside the pickup LedgerGrid. */
 export function PickupGridGroupRow({
   group,
   baseStripeIndex: _baseStripeIndex,

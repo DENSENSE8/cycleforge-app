@@ -1,12 +1,4 @@
-// Leaf type-kernel for order rows. Dependency-free by design: low-layer modules
-// (utils/*, hooks/*) import these row shapes WITHOUT pulling in the heavy
-// query module (lib/neon/orders-queries → db). lib/neon/orders-queries
-// re-exports ShippedOrder from here so its existing callers are unaffected.
-//
-// The one import is `import type` on a PURE module (no I/O, no db), so it
-// erases at compile time and the leaf stays dependency-free at runtime. It is
-// here rather than a re-typed string union because a row field that disagrees
-// with the resolver's own vocabulary is a lie the compiler cannot see.
+// Leaf type-kernel for order rows.
 import type { PriceSource } from '@/lib/orders/price-resolve';
 import type { OutboundHandlingFact } from '@/lib/shipping/outbound-handling-facts';
 import type { OutboundStorageLocation } from '@/lib/shipping/outbound-storage-path';
@@ -67,24 +59,13 @@ export interface ShippedOrder {
   /** SHIP_CONFIRM station_activity_logs.staff_id — who scanned it out at the dock. */
   shipped_out_by?: number | null;
   shipped_out_by_name?: string | null;
-  /**
-   * Pre-box facts (`PREBOX_FACTS_LATERAL`): the line's live allocated units, how
-   * many of them sit in a SEALED `label_manifests` PREBOX, who created that
-   * manifest and when it was sealed. `prebox_unit_count` 0 / absent means the
-   * line maps to no serial unit, so its pre-box state is unknown — not "no".
-   */
+  /** Pre-box facts (`PREBOX_FACTS_LATERAL`): */
   prebox_unit_count?: number | null;
   pre_boxed_count?: number | null;
   pre_boxed_by_name?: string | null;
   pre_boxed_at?: string | null;
   next_pack_activity_at?: string | null;
-  /**
-   * Current packing-bench placement (`order_pack_placements` → `locations`),
-   * selected on EVERY orders row by `/api/orders`. Declared here so the grid
-   * cell and the `?packStation=` board filter stop casting the row inline —
-   * both did, which is how a field on the wire stayed invisible to the type.
-   * Null when the order is not staged at a bench.
-   */
+  /** Current packing-bench placement (`order_pack_placements` → `locations`), selected on EVERY orders row by `/api/orders`. */
   pack_location_id?: number | null;
   pack_location_name?: string | null;
   pack_location_kind?: string | null;
@@ -100,31 +81,15 @@ export interface ShippedOrder {
    */
   tracking_added_at?: string | null;
   label_printed_at?: string | null;
-  /**
-   * Legacy single overwritable annotation on `orders`. Superseded by the
-   * append-only `order_notes` trail (see {@link ShippedOrder.note_count}) —
-   * kept because station rows still render it, but new writes belong on the
-   * trail, where they keep an author and a timestamp.
-   */
+  /** Legacy single overwritable annotation on `orders`. */
   notes: string;
-  /**
-   * Operator-set triage tag that tints this row, org-wide, plus who set it and
-   * when. `null` when unflagged. Vocabulary + presentation:
-   * `src/lib/orders/order-row-flags.ts` — an id this build does not know
-   * resolves to no tint rather than an arbitrary colour.
-   */
+  /** Operator-set triage tag that tints this row, org-wide, plus who set it and when. */
   row_flag?: { flag: string | null; by: string | null; at: string | null } | null;
   /** How many `order_notes` entries this order has. Drives the row indicator. */
   note_count?: number | null;
   sale_amount?: string | number | null;
   currency?: string | null;
-  /*
-   * Resolved display price — one number per line, plus its provenance.
-   * `sale_amount` / `currency` above stay the raw sold columns; these five are
-   * what a desk paints, produced by `resolveLinePrice`
-   * (lib/orders/price-resolve.ts) on every `/api/orders` row, including the
-   * thin `listShape=queue` projection the mobile queues fetch.
-   */
+  /* Resolved display price — one number per line, plus its provenance. */
   /** Integer cents. Null = nothing priced this line; render a dash, not $0. */
   price_cents?: number | null;
   /** ISO-4217; 'USD' when the row stored no currency. */
@@ -189,12 +154,7 @@ export interface ShippedOrder {
   verification_outcome?: string | null;
   /** `station_activity_logs.id` when delete has no packer_logs row (e.g. some FBA scans). */
   station_activity_log_id?: number | null;
-  /**
-   * The `orders.id` a Shipped package row resolved to (`packer-logs-week`
-   * `o.id AS order_row_id`); null when the scan matched no order line (FBA /
-   * exception packages). Set on Shipped detail records only — there `id` falls
-   * back to the scan id, so it cannot tell the two apart by itself.
-   */
+  /** The `orders.id` a Shipped package row resolved to (`packer-logs-week` `o.id AS order_row_id`); null when the scan matched no order line… */
   order_row_id?: number | null;
   /** FK to customers — linked buyer (e.g. Amazon MFN shipping contact). */
   customer_id?: number | null;
@@ -209,13 +169,7 @@ export interface ShippedOrder {
    * order has no `customer_id`. Absent on reads without the join.
    */
   shipstation_ship_to?: CustomerBillTo | null;
-  /**
-   * Marketplace buyer checkout note (`orders.buyer_note`, migration 2026-07-03p).
-   * Mirrored raw by the channel sync and projected into `entity_signals`; this
-   * is the display path onto the order record. Present on `SELECT *` reads
-   * (`getOrderById`); absent from leaner queue projections, so every consumer
-   * must render it presence-driven.
-   */
+  /** Marketplace buyer checkout note (`orders.buyer_note`, migration 2026-07-03p). */
   buyer_note?: string | null;
   /** Amazon fulfillment channel: 'AFN' (FBA) | 'MFN'. Null for non-Amazon. */
   fulfillment_channel?: string | null;

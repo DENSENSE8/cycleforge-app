@@ -1,21 +1,4 @@
-/**
- * Receiving photo intent + stage SoT — which surface captured the shot and
- * which entity is allowed to carry it.
- *
- * Stage × entity matrix (docs/todo/photo-evidence-chain-INDEX.md):
- *
- *   arrival_package → Triage / door   → RECEIVING       + 'receiving_package'
- *   unbox_carton    → Unbox header    → RECEIVING       + 'receiving_unbox_carton'
- *   unbox_item      → Unbox line      → RECEIVING_LINE  + 'receiving_item'
- *
- * Identity law: item insurance primary-links the RECEIVING_LINE (the SKU lives
- * on the line) — never a catalog SKU string. Legacy rows used `receiving` as a
- * carton-level alias; filters treat it as a package (arrival) shot.
- *
- * The full five-stage evidence vocabulary (testing / packing included) and the
- * cross-entity write matrix live in `src/lib/photos/stages.ts`, which composes
- * this module. Both are pure and client-safe.
- */
+/** Receiving photo intent + stage SoT — which surface captured the shot and which entity is allowed to carry it. */
 
 export const RECEIVING_PHOTO_PACKAGE = 'receiving_package' as const;
 export const RECEIVING_PHOTO_UNBOX_CARTON = 'receiving_unbox_carton' as const;
@@ -97,23 +80,7 @@ export function receivingEntityTypeForStage(
   return stage === 'unbox_item' ? 'RECEIVING_LINE' : 'RECEIVING';
 }
 
-/**
- * Stage for a capture-queue upload, from the scope's primary entity plus an
- * optional surface hint. Enforces the identity law in both directions:
- *
- * - a line-scoped shot is ALWAYS `unbox_item` — entity wins, so a stale or
- *   wrong hint can never stamp a carton type onto a RECEIVING_LINE;
- * - a carton-scoped shot can never be `unbox_item` (illegal on RECEIVING per
- *   {@link RECEIVING_CARTON_PHOTO_TYPES}), so that hint falls back to default.
- *
- * The carton default is `unbox_carton`, **not** `arrival_package`. The mobile
- * capture pipeline runs at the unbox bench, and `arrival_package` is the
- * door/triage shot of the box AS IT ARRIVED — the only stage the `require_one`
- * photo policy accepts (`./photo-policy.ts`). A bench that defaults to arrival
- * silently satisfies that gate with a photo taken after the box was opened,
- * which is the exact failure this SoT exists to prevent. Arrival surfaces must
- * pass `'arrival_package'` explicitly.
- */
+/** Stage for a capture-queue upload, from the scope's primary entity plus an optional surface hint. */
 export function receivingUploadStage(
   receivingLineId: number | null | undefined,
   hint?: ReceivingPhotoStage | null,
@@ -122,16 +89,7 @@ export function receivingUploadStage(
   return hint === 'arrival_package' || hint === 'unbox_carton' ? hint : 'unbox_carton';
 }
 
-/**
- * Broadened carton-display intent: every RECEIVING-entity photo regardless of
- * capture sub-stage (package/legacy/unbox_carton). Distinct from `unbox_carton`
- * on purpose — the photo-policy gate (`sqlCartonStagePhotoCount`) must keep
- * counting `unbox_carton` strictly (arrival evidence must never satisfy an
- * unbox-carton requirement), so this value is additive and never substituted
- * into that gate's type signature. Use it only for read/display surfaces that
- * want to show a carton's whole evidence set (e.g. the Unbox header pill and
- * carton photo peek) rather than one capture sub-stage.
- */
+/** Broadened carton-display intent: */
 export const RECEIVING_PHOTO_LIST_INTENT_CARTON = 'carton' as const;
 
 /** List-filter intent for a receiving stage. */
@@ -148,16 +106,7 @@ export function photoIntentFromStage(
   }
 }
 
-/**
- * Derive the stage of an existing row from its (entity_type, photo_type) pair.
- *
- * Entity wins for lines: anything primary-linked to a RECEIVING_LINE is item
- * evidence (the identity law), even if a reassign moved a package-typed shot
- * onto the line before types were remapped. Untyped legacy carton rows count
- * as arrival evidence. A `receiving_item` stamp on a carton (the pre-SoT
- * desktop mis-stamp) is unclassifiable → null, so stage buckets never show it
- * as package evidence.
- */
+/** Derive the stage of an existing row from its (entity_type, photo_type) pair. */
 export function receivingStageFromPhotoType(
   entityType: string,
   photoType: string | null | undefined,
@@ -170,12 +119,7 @@ export function receivingStageFromPhotoType(
   return null;
 }
 
-/**
- * SQL fragment (ANDed into the receiving photo list WHERE) for one intent.
- * Lives beside the constants so the query can never drift from the SoT.
- * Package excludes mis-typed `receiving_item`-on-carton rows; item is
- * entity-only (no `OR photo_type` escape that used to pull carton junk in).
- */
+/** SQL fragment (ANDed into the receiving photo list WHERE) for one intent. */
 export function receivingPhotoIntentSql(intent: ReceivingPhotoListIntent): string {
   switch (intent) {
     case 'package':
@@ -191,12 +135,7 @@ export function receivingPhotoIntentSql(intent: ReceivingPhotoListIntent): strin
   }
 }
 
-/**
- * Validate a receiving-entity photo write. Returns an error message for an
- * illegal (entity_type × photo_type) pair, null when the write is allowed.
- * Only judges RECEIVING / RECEIVING_LINE — other entities are out of scope
- * here (see `src/lib/photos/stages.ts` for the full matrix).
- */
+/** Validate a receiving-entity photo write. */
 export function validateReceivingPhotoWrite(input: {
   entityType: string;
   photoType: string | null | undefined;
@@ -231,14 +170,7 @@ export function assertReceivingPhotoWrite(input: {
   if (violation) throw new ReceivingPhotoWriteError(violation);
 }
 
-/**
- * photo_type remap when a photo's primary link moves between receiving
- * entities (Move-to-another-PO / reassign). Returns the new photo_type, or
- * null when the current stamp is already legal on the destination. Without
- * this, a carton→line move would strand a `receiving_package` row where the
- * item filter (entity-only) shows it but the stage vocabulary can't name it —
- * and a line→carton move would re-create the exact mis-stamp this SoT bans.
- */
+/** photo_type remap when a photo's primary link moves between receiving entities (Move-to-another-PO / reassign). */
 export function remapReceivingPhotoTypeOnMove(input: {
   fromEntityType: 'RECEIVING' | 'RECEIVING_LINE';
   toEntityType: 'RECEIVING' | 'RECEIVING_LINE';
@@ -251,22 +183,7 @@ export function remapReceivingPhotoTypeOnMove(input: {
   return isCartonPhotoType(input.photoType) ? null : RECEIVING_PHOTO_PACKAGE;
 }
 
-/**
- * photo_type remap for a same-carton stage claim (bench → door evidence).
- *
- * Distinct from {@link remapReceivingPhotoTypeOnMove}: that helper only fires on
- * entity hops (carton↔line). This one stays on the RECEIVING primary link and
- * promotes a carton sub-stage — the write Arrival Link needs when chrome shows
- * carton shots but the door filter is empty.
- *
- * Returns the canonical type for `toStage`, or `null` when the row is already
- * at that stage (type write is a no-op; aspect may still change). Illegal hops
- * throw {@link ReceivingPhotoWriteError}.
- *
- * Legal for this cut: `unbox_carton` → `arrival_package`. Same-stage
- * `arrival_package` → `arrival_package` returns null. Item evidence and reverse
- * door→bench claims are refused.
- */
+/** photo_type remap for a same-carton stage claim (bench → door evidence). */
 export function remapReceivingPhotoTypeOnStageClaim(input: {
   fromStage: ReceivingPhotoStage | null;
   toStage: ReceivingPhotoStage;

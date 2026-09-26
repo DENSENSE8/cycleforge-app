@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * Catalog pairing — the first section of the exception editor.
- *
- * There are exactly two answers to "this item number resolves to nothing":
- * point it at an inventory item that exists, or make the one it should have
- * been. So there are exactly two controls, on one row, both at
- * {@link triagePanelControl} size so neither reads as the lesser option by
- * accident of height.
- *
- * It used to be nine blocks — a three-line Alert, a labelled `Command` with its
- * own list/empty/loading markup, a `Separator`, a second heading, an echo of
- * the SKU and title already visible in Order Details below, a category `Input`
- * with a `<datalist>` fed by a 500-row catalog fetch, and the button. Every one
- * of those explained the surface instead of operating it, and the `Command`
- * block was a hand-rolled second copy of {@link IntakeCombobox} — the picker
- * order intake already uses. Now it composes that primitive, and category is
- * set where categories are managed rather than in the middle of a triage queue.
- *
- * The "unpaired" notice is NOT here: it states a fact about the ORDER, so it
- * rides above this card in the resolve section ({@link ExceptionUnpairedBanner}).
- * Filing it under a "Catalog Pairing" heading implied the problem was local to
- * this panel — which is also why the header badge kept reading as a duplicate.
- *
- * The search reads the LOCAL Zoho inventory mirror (`searchField=zoho_catalog`
- * → the `items` table joined to `sku_catalog` on `provider_item_id`), never the
- * Zoho API. See `ExceptionResolveSection` for the call.
- */
+/** Catalog pairing — the first section of the exception editor. */
 
 import { AlertCircle, Check } from '@/components/Icons';
 import { Alert, AlertTitle } from '@/components/ui/alert';

@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Shared state for the bin- and rack-label printers.
- *
- * Two surfaces render the picker now — the main pane (mobile, full
- * layout) and the sidebar (desktop-only, compact). Both have to stay in
- * lock-step. Rather than hoist a React Context above the warehouse page
- * (which would cross the dashboard-sidebar mount boundary), we keep one
- * store backed by localStorage + a window CustomEvent. Each writer
- * dispatches the event; every reader is subscribed via
- * useSyncExternalStore. localStorage carries the value across reloads;
- * the event carries the value across components in the same tab.
- *
- * If you add a third surface (e.g. a barcode-scan handler that pre-fills
- * the form) just call `setLabelPrinterState({...})` from it.
- */
+/** Shared state for the bin- and rack-label printers. */
 
 import { useSyncExternalStore } from 'react';
 

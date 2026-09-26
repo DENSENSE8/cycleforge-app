@@ -5,13 +5,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { withAuth } from '@/lib/auth/withAuth';
 
-// ── POST /api/fba/labels/bind ─────────────────────────────────────────────────
-// Combiner scans a shipping label barcode, then binds one or more FNSKUs to it.
-// Transitions bound items from PACKED → LABEL_ASSIGNED (combined under one FBA
-// shipment ID) and records immutable events in fba_fnsku_logs. All operations
-// run in one transaction.
-//
-// Body: { shipment_id, label_barcode, fnskus: string[], station? } — actor from session.
+// ── POST /api/fba/labels/bind ───────────────────────────────────────────────── Combiner scans a shipping label barcode, then binds one…
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

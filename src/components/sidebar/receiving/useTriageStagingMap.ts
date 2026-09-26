@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Staging context for triage rail rows (A3, §3.1/E10) — the "Staged" badge on
- * the combined Triage tab AND the shelf/lane popover chip for any carton with
- * a shelf/lane assigned. Reuses the SAME `/api/receiving/triage/staging-map`
- * endpoint the Done tab and the "Staged" badge both need, indexed by
- * `receiving_id` — mirrors the B3 Zoho-sync-exception dot pattern
- * (`useTriageUnfoundExceptions`): a read-only side-channel annotation query,
- * degrading to an empty map on failure so it never blocks the rail.
- */
+/** Staging context for triage rail rows (A3, §3.1/E10) — the "Staged" badge on the combined Triage tab AND the shelf/lane popover chip for… */
 
 import { useQuery } from '@tanstack/react-query';
 

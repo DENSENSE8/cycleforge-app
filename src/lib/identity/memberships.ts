@@ -1,17 +1,4 @@
-/**
- * Identity-layer data access: resolving an account's org memberships and the
- * switch target for org-switching.
- *
- * EVERY function here is BEST-EFFORT and must NEVER throw — these run inside the
- * hot session-hydration path (/api/auth/session, server-session) which executes
- * on every page load. Before 2026-06-20e_identity_layer_phase1.sql is applied,
- * the accounts/memberships tables and staff.account_id column do not exist;
- * queries against them throw "relation/column does not exist". We swallow those
- * and fall back to a single synthesized membership for the current org, so the
- * UI is correct both before and after the migration.
- *
- * See docs/identity-layer-plan.md.
- */
+/** Identity-layer data access: */
 
 import pool from '@/lib/db';
 import type { OrgMembership } from './types';
@@ -112,12 +99,7 @@ export async function resolveEnvelopeMemberships(input: {
   }
 }
 
-/**
- * Find the staff profile this account should assume when switching INTO an org.
- * Returns null if the account has no active membership there — which is the
- * authorization gate for /api/auth/switch-org. Throws only on genuine DB
- * failure (caller maps to 500); a missing table pre-migration returns null.
- */
+/** Find the staff profile this account should assume when switching INTO an org. */
 export async function findSwitchTarget(
   accountId: string,
   orgId: string,

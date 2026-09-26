@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The Catalog slot-layout hook — the Products-catalog CONFIG on the shared
- * {@link useSlotTableLayout} engine. The fourteenth family on the engine.
- *
- * Catalog paints the SHEET morph only: a stored `compound` layout would promise
- * a two-row item cell nothing draws — `paintMorph` coerces, the org write gate
- * (`slotMorphsFor('catalog')`) refuses.
- */
+/** The Catalog slot-layout hook — the Products-catalog CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   CATALOG_FIELD_CATALOG,

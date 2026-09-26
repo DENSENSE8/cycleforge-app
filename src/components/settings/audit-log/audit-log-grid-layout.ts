@@ -1,18 +1,4 @@
-/**
- * Audit-log column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced five hand-written `AdminTableColumn` objects carrying JSX — a
- * second table engine's column type, with no header sort, no Fields picker and
- * no org binding, because that engine never grew them.
- *
- * The skeleton mounts WHOLE — no `.filter`. The photo gutter has no photo on
- * an audit row and paints the typed placeholder, exactly as `kiosk-slot-events`
- * already does: `COMPOUND_SKELETON_FILTER_DEBT` is documented shrink-only, and
- * a new desk cutting chrome to taste is the fork the law names. Chrome headers
- * are RENAMED into this family's vocabulary instead (Entity id · Action ·
- * When · Entity) — a label is family data, geometry is the engine's.
- */
+/** Audit-log column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -85,14 +71,7 @@ export function auditLogCompoundColumnsFor(
 export const AUDITLOG_COMPOUND_COLUMNS: readonly AuditLogGridColumn[] =
   auditLogCompoundColumnsFor(AUDITLOG_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the four chrome tracks this
- * family paints facts into — a painted DATA header with a dead sort fails
- * `SLOT_TABLE_PAINT_LAW.headerSort`. Chrome that carries no fact (`select`,
- * `thumb`, `_fill`) has no `fieldId` and falls through to null.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function auditLogSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

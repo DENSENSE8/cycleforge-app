@@ -1,10 +1,4 @@
-/**
- * Availability decisions for the kiosk product searcher.
- *
- * The load-bearing rule here is that "untracked" and "zero" are different
- * answers. Most of the projected catalog has no `bin_contents` row, and
- * printing "Out of stock" for one of those sends a paying walk-in out the door.
- */
+/** Availability decisions for the kiosk product searcher. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

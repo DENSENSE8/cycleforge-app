@@ -1,30 +1,4 @@
-/**
- * Which `/m` routes draw their OWN top bar, and therefore which ones the host
- * header (`MobileTopBar`, mounted by `RedesignedMobileShell`) stays off.
- *
- * It lives here rather than inside the shell because TWO components need the
- * same answer and they sit on opposite sides of the children boundary: the
- * shell decides whether to paint its header, and {@link MobileDetailTopBar}
- * decides whether to paint the SCAN seat — which must exist exactly once per
- * screen (`mobile-scan-cta`: *"Scan has ONE door"*). Reading it from one
- * predicate is what makes "exactly once" true by construction instead of by
- * two lists agreeing.
- *
- * This is a DENYLIST on purpose. It replaced an exact-match allowlist of nine
- * paths (2026-08-21), under which every route added since — `/m/identify`,
- * `/m/orders/[orderId]` — silently shipped with no header at all, and therefore
- * no way to start a scan without backing out first. An allowlist fails closed on
- * the routes nobody remembered to add; a denylist fails open, which is the
- * correct default when the thing being withheld is the app's primary action.
- *
- * A trailing slash is load-bearing where the bare path is a queue that keeps
- * the header while its records own a bar (`/m/exceptions/` vs `/m/exceptions`).
- * `/m/pick` has no queue: the bare route IS the directed pick session and
- * draws its own progress band.
- *
- * PRE-SIGN-IN paths are NOT listed here — `isClientPublicPath` owns those, and
- * they get no shell at all.
- */
+/** Which `/m` routes draw their OWN top bar, and therefore which ones the host header (`MobileTopBar`, mounted by `RedesignedMobileShell`)… */
 export const OWN_TOP_BAR_PREFIXES = [
   '/m/receiving/po',
   '/m/r/',
@@ -48,8 +22,6 @@ export const OWN_TOP_BAR_PREFIXES = [
   '/m/exceptions/',
   // Pairing a location (search, then the count keypad) owns its back bar
   // (operator 2026-09-25: "the back button would cover the header … two
-  // headers, the back button and the search bar"). This reverses the
-  // 2026-09-15 host-header ruling: the seat now rides the pair bar, once.
   '/m/pair/',
   // The package hub (one tracking number) and its doors own MobileDetailTopBar.
   '/m/shipping/shipments/',
@@ -67,15 +39,7 @@ export const OWN_TOP_BAR_PREFIXES = [
  */
 const HOST_TOP_BAR_KEEPS = ['/m/orders/new'] as const;
 
-/**
- * Does this route draw its own top bar — i.e. is the host header withheld?
- *
- * `true` also means the route's own bar carries the scan seat, because nothing
- * above it does. `false` means the host header is up there with the seat in it,
- * and a second one in the record bar would be a duplicate door (operator
- * 2026-09-15, on `/m/pair`: *"remove the scan button from the same header with
- * the text pair location"*).
- */
+/** Does this route draw its own top bar — i.e. */
 export function mobileRouteOwnsTopBar(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   if (HOST_TOP_BAR_KEEPS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return false;

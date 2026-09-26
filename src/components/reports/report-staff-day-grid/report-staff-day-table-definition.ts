@@ -1,13 +1,4 @@
-/**
- * `reports.staff-day` — the table definition, capabilities and surface
- * descriptor for the per-staff-per-day shift report.
- *
- * Re-declares nothing: columns are the family SoT by reference.
- *
- * Its OWN tableId, like its two siblings: a (staffer × task) row shares no
- * facts with a SKU dormancy row, and the Fields menu keys off `tableId` —
- * hiding `Ticket` here must not touch Velocity or Bin utilization.
- */
+/** `reports.staff-day` — the table definition, capabilities and surface descriptor for the per-staff-per-day shift report. */
 
 import {
   makeGridSurfaceDescriptor,

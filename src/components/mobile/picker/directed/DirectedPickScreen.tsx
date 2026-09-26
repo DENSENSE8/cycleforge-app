@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Directed pick — `/m/pick`. Opening the route IS the session: ONE task on
- * screen, fed by the system, no queue and no start button.
- *
- * ```
- * ✕  ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬ Unassigned · 3   0 / 2    progress band
- * C-04-09-2                                          the location — biggest text
- * Zone 3 - Parts                        [Pair bin]
- * ┌──────────────────────────────┐
- * │           photo              │                  product card: title only
- * │ Bose Solo & Cinemate    × 4  │
- * │ RC                      each │
- * └──────────────────────────────┘
- * ┌ Amazon · 113-0178053-2920236 ─┐                 order card: SLA (the to-ship
- * │ ◷ Late 3h · 2 units left · 4:12│                 card's face), tote, owner,
- * │ Your SKU · Backups: Ana, Joe   │                 paperwork, listing, and
- * │ [Packing slip] [Amazon listing]│                 Skip / Pass to…
- * │ [Skip]         [Pass to…]      │
- * └──────────────────────────────┘
- * Scan location barcode                              the step's instruction
- * [ ▲ Scan bin ]                                     the house lens (collapsed)
- * [Out of Stock] [Notes]                             dock
- * ```
- *
- * The worker never sees a list here: finishing a line asks the feed for the
- * next one. Scans come from the bottom capture window (`MobileCaptureWindow`,
- * the lens `/m/scan` runs on — collapsed per line so it never reads stray
- * labels on the walk, one tap to lift) or a hardware wedge (always live);
- * each is heard and felt. Pairing a bin lifts the same window.
- */
+/** Directed pick — `/m/pick`. */
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

@@ -5,12 +5,7 @@ import { PairedReviewCollapsedStrip } from './paired-review/PairedReviewCollapse
 import { PairedReviewWorkspace } from './paired-review/PairedReviewWorkspace';
 import { PairedReviewPanelLayout } from './paired-review/PairedReviewPanelLayout';
 
-/**
- * FBA combine-review panel — thin composition shell. All state, event wiring,
- * drag-and-drop, and the multi-step Save live in {@link usePairedReview}; the
- * collapsed strip + workspace kanban + sidebar panel are presentational
- * components under `./paired-review/`.
- */
+/** FBA combine-review panel — thin composition shell. */
 export function FbaPairedReviewPanel(props: FbaPairedReviewPanelProps) {
   const {
     selectedItems,

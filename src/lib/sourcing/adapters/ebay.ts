@@ -21,10 +21,7 @@ async function logCall(
   orgId?: OrgId,
 ) {
   try {
-    // ebay_api_calls is tenant-owned with a usav-fallback default — an unstamped
-    // insert silently misroutes to USAV. Stamp the calling org explicitly; this
-    // adapter runs from session-less scour jobs that may not thread one, so fall
-    // back to the transitional USAV org (the established single-tenant convention).
+    // ebay_api_calls is tenant-owned with a usav-fallback default — an unstamped insert silently misroutes to USAV.
     await pool.query(
       `INSERT INTO ebay_api_calls (method, endpoint, latency_ms, status_code, error_message, created_at, organization_id)
        VALUES ('GET', $1, $2, $3, $4, NOW(), $5::uuid)`,

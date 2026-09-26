@@ -118,21 +118,7 @@ function encodeCursor(cursor: WorkCursor): string {
   return Buffer.from(JSON.stringify(cursor)).toString('base64url');
 }
 
-/**
- * Triage membership (Outbound Triage board): the To-ship desk's own live-work
- * predicates — not dock-scanned, not carrier-shipped, not packed, not FBA —
- * narrowed to orders nobody has acknowledged yet. The same fragments
- * `/api/orders` uses, so the board and the desk cannot disagree about what is
- * shipped or packed. Unlike the desk, triage does NOT apply the pairing gate
- * (`liveWorkingSetSql`): identifying an order — pairing it to the catalog —
- * is a triage step, so a caged, unpaired order belongs here (`product.paired`
- * says which). The warehouse stage alone cannot decide membership: legacy
- * orders carry no units, so they would all read READY forever.
- *
- * Argument order is load-bearing: nested AND args short-circuit left to
- * right, so the column checks and the (already joined) carrier status reject
- * historical rows before either station-activity EXISTS probe runs.
- */
+/** Triage membership (Outbound Triage board): */
 const TRIAGE_MEMBERSHIP_SQL = `o.acknowledged_at IS NULL
             AND stage.value <> 'SCANNED_OUT'
             AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
@@ -141,18 +127,8 @@ const TRIAGE_MEMBERSHIP_SQL = `o.acknowledged_at IS NULL
             AND NOT ${sqlOrderHasPackScan('o')}`;
 
 /**
- * Two layers. The inner `page` decides membership, order and the page cut;
- * the outer layer adds display-only facts (SKU identity, stock, the live
- * label, the acknowledger) to at most `limit + 1` rows, so none of those
- * lookups runs across the tenant's whole order history.
- *
+ * Two layers. The inner `page` decides membership, order and the page cut; the outer layer adds display-only facts (SKU identity, stock,…
  * SKU identity (operator 2026-09-15, "one SKU, one title, one photo"): the
- * catalog and the Zoho item are reached by the EXACT, org-scoped SKU string —
- * never similarity-gated. The Zoho item governs both title and photo; the
- * catalog is the fallback only when no active Zoho item exists, and the
- * catalog photo never stands in for a Zoho item that has none (the
- * `RECEIVING_LINE_IMAGE_URL_SQL` rule). Below the catalog photo sits the SKU's
- * listing-gallery cover — where acquired marketplace media lands.
  */
 const WORK_SQL = `
   SELECT

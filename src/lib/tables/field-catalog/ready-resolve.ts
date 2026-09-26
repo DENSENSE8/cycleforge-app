@@ -1,21 +1,4 @@
-/**
- * Ready slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks. The Ready half of the slot contract: the
- * catalog names the fact, this module reads it off the `AllocationHit` the
- * channel-allocation history feed already returns — one resolver per catalog
- * field, never a `row[path]` generic.
- *
- * It also owns the family's pure LABEL functions (verdict face, destination
- * fallback, the unit's title and identifier handle). They lived in the client
- * cell module before the port, which forced the row comparator to import a
- * `'use client'` file to sort. One SoT, read by the cell, the comparator and
- * this resolver alike.
- *
- * Presentation TONES (verdict chip class, disposition wash, velocity ring,
- * condition grade colour) stay in the family's cell map, which resolves them
- * from the same SoTs — this module answers WHAT the fact says, in display
- * text.
- */
+/** Ready slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

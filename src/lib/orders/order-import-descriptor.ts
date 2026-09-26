@@ -1,16 +1,4 @@
-/**
- * The **orders** table-import descriptor — the first consumer of the seam.
- *
- * Everything family-specific about importing orders lives here: the six
- * canonical fields, their header aliases, the Ready / Action-required rule, the
- * grid row shape, and the ingest endpoint. The mechanism (parse · stage ·
- * select · confirm) is `src/lib/tables/import/`.
- *
- * `csv-order-import.ts` stays the pure vocabulary + parse/classify helpers; this
- * module binds them to the shared shape. Keeping them apart is what lets the
- * Settings-page `CsvOrderImport` keep using the helpers without dragging the
- * staging store into its bundle.
- */
+/** The **orders** table-import descriptor — the first consumer of the seam. */
 
 import {
   CSV_ORDER_CANONICAL_FIELDS,
@@ -32,12 +20,7 @@ export type OrderImportRowView = {
   missing: CsvOrderCanonicalKey[];
   orderNumber: string;
   sku: string;
-  /**
-   * Not on a grid TRACK — carried for `searchValues` only. A marketplace export
-   * routinely leaves the seller SKU blank and names the product by ASIN and
-   * title, so without these the staging find bar cannot locate the very rows
-   * such a file is made of.
-   */
+  /** Not on a grid TRACK — carried for `searchValues` only. */
   itemNumber: string;
   itemTitle: string;
   quantity: string;

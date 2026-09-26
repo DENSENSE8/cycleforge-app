@@ -23,12 +23,7 @@ interface UseStaffScheduleEditorArgs {
   filteredStaff: Staff[];
 }
 
-/**
- * Owns the optimistic / pending schedule state machine: per-cell optimistic
- * toggles, the 5-second debounced single-cell save with undo, immediate
- * next-week saves and bulk-by-role application. Schedule-related mutations live
- * here too so the cache-invalidation contract stays in one place.
- */
+/** Owns the optimistic / pending schedule state machine: */
 export function useStaffScheduleEditor({
   scheduleMap,
   thisWeekDays,

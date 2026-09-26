@@ -1,47 +1,6 @@
 'use client';
 
-/**
- * The ONE hover-open engine for chrome surfaces (tooltip panels, chip menus,
- * rail peeks, carton-bar classify menus). Owns exactly two things: *when* a
- * surface opens/closes, and *which* surface is allowed to be open.
- *
- * Positioning, portalling and chrome stay with the caller — this hook has no
- * opinion about where the surface renders, only about the timing contract.
- *
- * ## Timing — WMS, not consumer web
- *
- * An operator at a scan bench reaches for a cell on muscle memory. Any open
- * delay is artificial latency inserted between the eye and the data, so
- * {@link HOVER_DELAYS.OPEN_MS} is `0` and opening happens in the pointer event
- * itself — not `setTimeout(fn, 0)`, which still defers a task and costs a
- * visible frame on a bench monitor. There is no appear animation to match:
- * this row animates nothing.
- *
- * Closing is NOT symmetric. {@link HOVER_DELAYS.CLOSE_MS} exists only to bridge
- * the physical pixel gap between a trigger and its flush panel. Zero it and the
- * panel becomes unreachable — the pointer can never cross the seam.
- *
- * ## One at a time
- *
- * Opening evicts whatever is open. By default the registry is module-scope, so
- * a carton-bar menu evicts a rail peek and vice versa — different React trees,
- * one pointer, one answer on screen. (A subtree-scoped registry is supported by
- * `HoverSurfaceContext`; no provider is exported until a caller needs one.)
- *
- * Deliberately no provider REQUIREMENT: this hook replaced three engines with
- * ~14 existing call sites across unrelated trees, and forcing every host to
- * mount a provider first would have made the migration a rewrite.
- *
- * ## Why closing is not driven by `mouseleave`
- *
- * `mouseleave` answers "was an element boundary crossed", which on dense flush
- * chrome fires for reasons unrelated to the operator moving: a portal mounting
- * under the cursor, a sibling tooltip painting, a `ResizeObserver` re-measuring
- * and shifting a cell by a pixel. Each of those emits leave→enter with the
- * pointer stationary, and a debounce on top of that is a flashing loop. Callers
- * that portal their surface should therefore prefer the `pointerover` guard in
- * `surfaceProps` over raw leave events.
- */
+/** The ONE hover-open engine for chrome surfaces (tooltip panels, chip menus, rail peeks, carton-bar classify menus). */
 
 import {
   createContext,
@@ -143,17 +102,7 @@ export function useHoverSurface({
     }, closeMs);
   }, [clearCloseTimer, closeMs, registry, surfaceId]);
 
-  /**
-   * Does the REGISTRY say this surface owns the slot right now?
-   *
-   * `isOpen` is React state, so it lags the registry by a commit. A caller that
-   * opens from a mount effect (a deferred surface carrying its first hover in)
-   * can render with `isOpen === false` while the registry already says
-   * otherwise — and an eviction watcher keyed on `isOpen` alone reads that
-   * window as "someone else took the slot" and closes the surface it just
-   * opened. Whether the window ever opens depends on when React flushes the
-   * subscribe effect; ask the registry and it stops mattering.
-   */
+  /** Does the REGISTRY say this surface owns the slot right now? */
   const isActive = useCallback(
     () => !disabled && registry.activeId === surfaceId,
     [disabled, registry, surfaceId],

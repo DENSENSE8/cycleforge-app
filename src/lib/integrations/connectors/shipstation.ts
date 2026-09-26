@@ -1,37 +1,4 @@
-/**
- * ShipStation connector — the sole outbound-order importer.
- *
- * Pulls the org's orders through the LEGACY v1 API (the only ShipStation surface
- * that lists orders with SKUs + weight; v2 has no order-list endpoint) and lands
- * them on `orders`, the operator-facing record. ShipStation is an AGGREGATOR, so
- * every order is attributed to the platform its store sells on and recorded
- * under that platform's `account_source` — never as `shipstation`
- * (`./shipstation-orders.ts` owns attribution, matching and the plan):
- *
- *   • new order                 → inserted under its platform
- *   • same platform row exists  → enriched (blanks, untouched status, customer)
- *   • another spelling / grain  → ADOPTED: enriched, its source kept
- *   • legacy `shipstation` row  → CLAIMED: re-keyed to the platform
- *   • unknown store / number under several platforms
- *                               → QUARANTINED to `order_import_exceptions`
- *
- * Labels made inside ShipStation (`/shipments`) are attached as each order's
- * primary tracking (`./shipstation-tracking.ts`). Provider identity lives in
- * `shipstation_order_refs` / `shipstation_shipment_refs`; every run is recorded
- * in `shipstation_sync_runs`.
- *
- * Two modes, one pipeline:
- *   incremental (default)  modifyDate watermark in `sync_cursors`, advanced
- *                          only on a clean run so a failure re-pulls;
- *   backfill (`opts.backfill`)
- *                          the last 7 days (or `since`) in modifyDate windows, DRY-RUN
- *                          unless `apply`; an applied run checkpoints each page
- *                          and resumes where an interrupted one stopped.
- *
- * Every write is idempotent (re-reading a page changes nothing), so a retry is
- * always safe. Lazily imported by the registry so the connection reader never
- * bundles the ShipStation client.
- */
+/** ShipStation connector — the sole outbound-order importer. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import type { TransferOrderDetail, TransferOrderDetails } from '@/lib/orders-sync/types';
@@ -95,12 +62,7 @@ const BACKFILL_WINDOW_DAYS = IMPORT_SCOPE_DAYS;
 const STALE_RUN_MS = 15 * 60 * 1000;
 /** Quarantined rows carried on the outcome for the desk's run detail. */
 const MAX_DETAIL_ROWS = 200;
-/**
- * The shipments window starts this far BEFORE the orders watermark. The
- * watermark is `Date.parse` of ShipStation's offset-less (Pacific) modifyDate,
- * so it can sit hours off the true instant; starting exactly there could skip
- * labels. The attach is idempotent, so the overlap only costs a re-read.
- */
+/** The shipments window starts this far BEFORE the orders watermark. */
 const SHIPMENTS_OVERLAP_MS = 24 * 60 * 60 * 1000;
 
 // ─── Context: store attribution + catalog placement ─────────────────────────
@@ -820,13 +782,7 @@ export async function shipstationSync(orgId: OrgId, opts?: SyncOpts): Promise<Sy
   return opts?.backfill ? backfill(orgId, client, opts.backfill, progress) : incremental(orgId, client, progress);
 }
 
-/**
- * Re-attribute the rows the pre-attribution connector wrote as `shipstation`,
- * whatever their age: each legacy row's order is fetched from ShipStation BY
- * NUMBER and run through the same plan (it is claimed — re-keyed to its
- * platform — or adopted into / quarantined against the marketplace rows). No
- * other history is read. Dry-run unless `apply`; idempotent.
- */
+/** Re-attribute the rows the pre-attribution connector wrote as `shipstation`, whatever their age: */
 export async function reattributeLegacyShipStationRows(
   orgId: OrgId,
   opts: { apply?: boolean; onProgress?: SyncProgress } = {},

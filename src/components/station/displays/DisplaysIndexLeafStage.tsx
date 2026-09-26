@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Shared index → leaf **stage body** — the Unbox SoT waist for right-edge
- * topic navigation.
- *
- * Compose this from:
- *   - {@link StationDisplaysPushStack} (Action plane — push column + filter footer)
- *   - {@link DeskInspectorIndexShell} (Context plane — RightRailHost)
- *
- * Upgrade {@link StationDisplayIndexList} / stage flex layout **here**. Hosts
- * supply sticky chrome (station history ←→ · desk Back / ⋮) and leaf content
- * only — never fork a page-local index twin.
- */
+/** Shared index → leaf **stage body** — the Unbox SoT waist for right-edge topic navigation. */
 
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import type { SectionTab } from '@/design-system/components';

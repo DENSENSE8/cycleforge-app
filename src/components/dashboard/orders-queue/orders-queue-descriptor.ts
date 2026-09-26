@@ -1,19 +1,4 @@
-/**
- * Outbound Orders queue grid surface descriptor — lifts the mounted column
- * model into TanStack defs + declares surface capabilities (the triage wash is
- * Orders-only today).
- *
- * ONE factory since the Wave-1 hand-model kill
- * (`docs/kill-list/07-slot-table-hand-models.md`): the columns are always a
- * `SlotLayout` materialization (`ordersCompoundColumnsFor`), never a static
- * flat array, and there is no second "tested" mode — `?ustatus=TESTED` is row
- * narrowing, not a column model.
- *
- * Locks and accessors derive from the RESOLVED columns handed in, never from a
- * module constant — a key-only closure over a static list is exactly how the
- * old flat pane math went stale when the mounted model moved (see
- * `CompoundGridCell`'s file docblock for the same lesson on frozen offsets).
- */
+/** Outbound Orders queue grid surface descriptor — lifts the mounted column model into TanStack defs + declares surface capabilities (the… */
 
 import { makeGridSurfaceDescriptor, type GridSurfaceCapabilities, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -29,12 +14,7 @@ export const ORDERS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * State-math accessor per TRACK key (sort/group value — NOT display markup).
- * The compound row's sortable tracks and their facts mirror
- * `COMPOUND_TRACK_SORT_KEYS` (`item` → title, `fulfillment` → order id);
- * every other track resolves null.
- */
+/** State-math accessor per TRACK key (sort/group value — NOT display markup). */
 function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unknown {
   switch (key) {
     case 'item':
@@ -46,13 +26,7 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
   }
 }
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that render.
- * Stable exported reference on purpose: the surface memoizes the descriptor on
- * `[makeDescriptor, visible]`, and an inline arrow would rebuild TanStack
- * columnDefs every render (plumbing guard).
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeOrdersGridDescriptor(
   columns: readonly OrdersQueueColumn[],
 ): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {

@@ -17,12 +17,7 @@ export type ConditionGradeTone = {
   text: string;
   /** {@link CopyChip} icon color — matches active pill hue. */
   chipIconClass: string;
-  /**
-   * Solid dot fill for a status-token chip (`bg-*`), matching the active pill hue.
-   * House grid status faces compose this with {@link ConditionGradeTone.badge}
-   * (fill + ink) inside `GridStatusCellValue` — never re-derive a fill from
-   * {@link ConditionGradeTone.text}.
-   */
+  /** Solid dot fill for a status-token chip (`bg-*`), matching the active pill hue. */
   dotClass: string;
   /**
    * Solid chip — fill + ink, ≥ 4.5:1 (the industrial condition chip, owner
@@ -135,13 +130,7 @@ export function conditionGradeTextClass(code: string | null | undefined): string
   return conditionGradeTone(code).text;
 }
 
-/**
- * Dot-led status-token face for dense grids (legacy Product micro-tag /
- * board surfaces). Returns `null` for empty / dash so callers keep the
- * set-condition control. Bare marketplace `USED` keeps the neutral fallback
- * tone (no A/B/C claim). To-ship sheet Cond column uses
- * {@link conditionGradeTextClass} + table label instead.
- */
+/** Dot-led status-token face for dense grids (legacy Product micro-tag / board surfaces). */
 export function conditionGradeStatusChip(
   code: string | null | undefined,
 ): ConditionGradeStatusChip | null {
@@ -201,12 +190,7 @@ export function conditionGradeChipStyleOrPending(code: string | null | undefined
   return { ...conditionGradeChipStyle(normalized), isPending: false };
 }
 
-/**
- * Density for expanded grade segments.
- * - `pill` — compact abbreviated strip (scroll host; px inset + uppercase).
- * - `barDistribute` — progressive Unbox full-name bar: flush `p-0`, equal
- *   `flex-1` cells across the row (no left-clump dead air).
- */
+/** Density for expanded grade segments. */
 export type ConditionPillDensity = 'pill' | 'barDistribute';
 
 /** Tailwind classes for a single condition picker pill — square flush face. */
@@ -220,17 +204,7 @@ export function conditionPillClass(
   // joined bar edge-to-edge (no top/bottom float). Never soft py that
   // shrinks the face inside the row.
   if (density === 'barDistribute') {
-    // Full-name progressive strip: share remaining width evenly; no pad /
-    // uppercase tracking (labels come from conditionLabel(..., 'full')).
-    //
-    // SEAM (Unbox only — `barDistribute` is passed just by PoLineCaptureRow +
-    // the Unbox dock tabs): these faces sit in a flush `gap-0` strip whose
-    // container overlaps every sibling after the first by 1px
-    // (`[&>*+*]:-ml-px`). Without it two `ring-inset` edges ABUT and the
-    // internal seam renders 2px. The overlap makes the LATER sibling paint the
-    // shared column, so the picked grade must out-stack its neighbours or its
-    // saturated hue is clipped on the right by the next idle pill's pale ring.
-    // `relative` is what makes z apply.
+    // Full-name progressive strip:
     const stack = isActive ? 'relative z-raised' : 'relative z-base hover:z-raised';
     return `${stack} inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-none p-0 text-center text-role-caption font-semibold leading-tight ring-1 ring-inset transition-colors active:scale-[0.98] ${
       isActive ? tone.active : tone.inactive

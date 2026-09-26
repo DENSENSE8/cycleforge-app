@@ -21,20 +21,7 @@ function requiredEnvAny(primaryName: string, aliases: string[] = []): string {
   throw new Error(`Missing required environment variable: ${primaryName}`);
 }
 
-/**
- * POST /api/sku-catalog/sync-ecwid-products
- *
- * Fetches all enabled products from Ecwid and upserts them as
- * sku_platform_ids entries (sku_catalog_id = NULL, platform = 'ecwid').
- * Stores Ecwid product name in display_name and thumbnail in image_url.
- * Does NOT auto-pair to Zoho — all pairing is manual via SKU Pairing tab.
- *
- * Reconcile-missing (reversibility 5.4): after upserting, ecwid rows whose
- * product is absent from the latest fetch are soft-deactivated
- * (is_active = false via deleteSkuPlatformId) — but ONLY when the fetch was
- * complete (terminated on a short page, not the page cap). A product that
- * reappears in a later fetch is reactivated by the upsert.
- */
+/** POST /api/sku-catalog/sync-ecwid-products */
 export const POST = withAuth(async (_req: NextRequest, ctx) => {
   try {
     const storeId = requiredEnvAny('ECWID_STORE_ID', ['ECWID_STOREID', 'ECWID_STORE', 'NEXT_PUBLIC_ECWID_STORE_ID']);

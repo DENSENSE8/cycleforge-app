@@ -19,14 +19,7 @@ import type { RowGroup } from '@/lib/group-rows';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
-/**
- * `StationListTable<TRecord>` — day-banded station/history list shell.
- * Virtualized path composes the Workbench spreadsheet SoT {@link LedgerGrid}
- * (sticky column guide + {@link VirtualGroupedSections}). Dense path keeps an
- * inline day map for small auto-height embeds. Sibling of outbound
- * {@link OrdersGridHost}: week/banner chrome stays here; row + grouping are
- * injected (`renderRow` / `renderGroup`).
- */
+/** `StationListTable<TRecord>` — day-banded station/history list shell. */
 export interface StationListTableProps<TRecord> {
   loading: boolean;
   isRefreshing?: boolean;
@@ -64,15 +57,7 @@ export interface StationListTableProps<TRecord> {
   bannerSubtitle?: string;
   bannerCompact?: boolean;
 
-  /**
-   * The mounting surface's declared capabilities — required, never defaulted.
-   *
-   * This shell mounts `LedgerGrid` on behalf of whoever renders it, so without a
-   * declared bag the surface underneath is unclassified: it reaches the
-   * Workbench spreadsheet SoT with no answer to "what may this grid do".
-   * Required is what makes a new station bench answer that rather than inherit
-   * a neighbour's feature set by accident.
-   */
+  /** The mounting surface's declared capabilities — required, never defaulted. */
   capabilities: GridSurfaceCapabilities;
   /** Multi-select mode — forwarded to the station column guide when enabled. */
   selectMode?: boolean;
@@ -180,11 +165,7 @@ export function StationListTable<TRecord>({
 
   const dayBands = orderGroupsByDate ?? daySections ?? [];
   const isEmpty = dayBands.length === 0;
-  // A surface that did not declare multi-select must not render the select
-  // gutter — the gutter is the affordance, so drawing it on a surface with no
-  // selection wiring is the "inert gutter" the workbench law bans.
-  // The station list's own header fork went with the display teardown; this
-  // body is a rail list, and a rail list has no column header.
+  // A surface that did not declare multi-select must not render the select gutter — the gutter is the affordance, so drawing it on a surface…
   const columnHeader = null;
 
   if (loading) {

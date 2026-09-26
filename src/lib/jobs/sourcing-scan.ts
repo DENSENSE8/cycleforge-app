@@ -2,33 +2,7 @@ import type { PoolClient } from 'pg';
 import { forEachActiveOrg } from '@/lib/cron/for-each-org';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Nightly sourcing scan — turns lifecycle + stock conditions into the
- * sourcing_alerts auto-flag queue.
- *
- * Rules (see docs/bose-parts-sourcing-engine-plan.md §7):
- *   A. EOL/discontinued SKUs at/below their reorder threshold (or zero) →
- *      an 'eol'/'discontinued' alert.
- *   B. Active SKUs with a reorder_threshold breached → a 'low_stock' alert.
- *   C. Compatible parts (referenced by part_compatibility) with zero on-hand →
- *      a 'demand_no_stock' alert.
- *   D. Resolve any live alert whose underlying condition has cleared.
- *
- * Idempotent: the partial unique index uniq_sourcing_alert_live (sku_id,
- * alert_type WHERE status IN ('open','sourcing')) makes every INSERT a no-op
- * on re-run, so the job can run as often as scheduled without duplicating
- * alerts. on_hand is summed from bin_contents by the sku text key.
- *
- * Phase D tenancy: fans out per active org via forEachActiveOrg — each pass
- * runs inside that org's tenant connection (GUC set via SET LOCAL). sku_catalog,
- * bin_contents and sourcing_alerts all carry organization_id, so every read is
- * additionally constrained by an explicit `organization_id = $1` predicate
- * (defense-in-depth BEFORE and AFTER RLS FORCE) and every INSERT stamps the
- * swept org — no more single global pass hardcoded to the transitional USAV org.
- * part_compatibility is global-shared reference data (industry compatibility
- * knowledge), so its EXISTS join is intentionally NOT org-scoped. Per-org
- * failures are isolated by forEachActiveOrg.
- */
+/** Nightly sourcing scan — turns lifecycle + stock conditions into the sourcing_alerts auto-flag queue. */
 
 // Shared on-hand-per-active-sku CTE, inlined into each statement (CTEs don't
 // span statements). bin_contents.sku is the text key matching sku_catalog.sku.

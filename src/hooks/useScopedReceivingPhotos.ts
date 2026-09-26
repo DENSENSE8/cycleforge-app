@@ -13,12 +13,7 @@ export interface ReceivingPhotoRow {
   receivingId: number;
   receivingLineId: number | null;
   photoUrl: string;
-  /**
-   * `photos.taken_by_staff_id` — who pressed the shutter. Server-trusted
-   * (`receiving-photos/route.ts` ignores a body-supplied value), null for
-   * pre-auth or externally imported rows. Carried all the way to the viewer
-   * so photo evidence names its author.
-   */
+  /** `photos.taken_by_staff_id` — who pressed the shutter. */
   uploadedBy: number | null;
   createdAt: string;
 }

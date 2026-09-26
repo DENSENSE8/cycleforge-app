@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * The compound cell, WRAPPER INCLUDED — the one implementation every family
- * mounts.
- *
- * ## Why the wrapper moved here
- *
- * `CompoundCells.tsx` shared the cell BODIES and left each family to supply the
- * surrounding `<div>` — grid-cell class, `data-col`, frozen token, sticky
- * offset. That sounded like a clean seam and was not one: the wrapper is where
- * a cell's POSITION is decided, so leaving it per-family left the layout forked
- * in the one place nobody thinks to compare. Both copies drifted, in opposite
- * directions, from the same column model:
- *
- * - Receiving pinned the `thumb` cell with `receivingGridFrozenLeft('thumb')`,
- *   a closure over the FLAT column constant, where `thumb` does not appear. The
- *   lookup missed, the offset collapsed to the first frozen slot, and under
- *   horizontal scroll the photo pinned on top of the checkbox.
- * - Orders never applied a frozen class to `thumb` at all, so the same column —
- *   declared `frozen: true` in the same shared model — simply scrolled away.
- *
- * One column model, two behaviours, neither of them the declared one. So the
- * wrapper is shared too, and it derives everything from the model that is
- * actually mounted: `col.frozen` decides sticky, `gridFrozenLeft(columns, key)`
- * decides the offset. A family now contributes an ADAPTER and a COLUMN ARRAY.
- * Never a cell — not the body, and not the box around it.
- *
- * ## What a family still passes
- *
- * Only per-surface facts the model cannot carry: the mounted `columns` (a
- * surface may hide tracks per staff) and the one CAPABILITY handler, `onOpen`
- * (present ⇒ the chevron renders). Absence means read-only, never a second
- * component with the control deleted.
- */
+/** The compound cell, WRAPPER INCLUDED — the one implementation every family mounts. */
 
 import type { ReactNode } from 'react';
 import {
@@ -116,17 +84,7 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    * which is what stops a bespoke control reappearing inside the shared row.
    */
   actions?: readonly CompoundRowAction[];
-  /**
-   * The SELECTION capability for this row.
-   *
-   * Present ⇒ the leading gutter paints the checkmark face; absent ⇒ the track
-   * renders as an empty (still edge-to-edge) cell. Inside it, `onToggle`
-   * decides interactive-vs-decorative — see {@link CompoundSelect}.
-   *
-   * What a tick MEANS is the family's: bulk membership on Receiving, Incoming
-   * and To-Ship; row select + Morphing on Tasks. The picture is the same
-   * everywhere, which is the point — an operator learns one mark.
-   */
+  /** The SELECTION capability for this row. */
   select?: {
     checked: boolean | 'mixed';
     /** Receives the click's modifier state so shift-click can extend a range. */
@@ -185,16 +143,7 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   staffRoster?: boolean;
 }
 
-/**
- * Is this a compound track — i.e. will {@link renderCompoundGridCell} paint it?
- *
- * **`select` is deliberately NOT in this list.** Every flat spreadsheet in the
- * repo also has a `select` column, and a family dispatcher that routed the key
- * unconditionally would hand the compound 48px gutter to Pickup, Catalog and
- * Repair — surfaces that never opted into this layout. The select track is
- * claimed by {@link isCompoundColumnModel} instead: the compound cell paints it
- * only when a compound MODEL is mounted.
- */
+/** Is this a compound track — i.e. */
 export function isCompoundCellKey(key: string): boolean {
   return (
     key === 'thumb' ||
@@ -250,24 +199,6 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   if (!gutterSelect && !isCompoundCellKey(col.key)) return null;
 
   // ## The compound cell OWNS the row box
-  //
-  // `inset: 'grid'` (the flat spreadsheet's chrome) adds `py-1.5`. Stacked on
-  // the cell's own 1px bottom rule that turned a 48px constant into a 61px
-  // painted row on every compound table — the constant was sizing the cell's
-  // CONTENT while the goal, the virtualizer estimate and the operator's eye all
-  // mean the ROW. Three consumers, two different numbers, and no test could see
-  // it because they all agreed about the 48.
-  //
-  // So: horizontal inset only, and an explicit border-box height. The row shell
-  // is `items-stretch`, so one cell claiming the box sets the row and every
-  // other track stretches to it. The two-row body inside fills what is left of
-  // the height after the rule (`h-full`), which is why nothing here needs to
-  // know that the rule costs a pixel.
-  //
-  // The two GUTTERS go further and take NO inset at all (`'none'`): the check
-  // and the photo are asked to run edge to edge. `'none'` does not carry
-  // `overflow-hidden` the way the other insets do, so it is re-added by hand —
-  // without it a full-bleed image bleeds into the next track under h-scroll.
   const gutter = isCompoundGutterKey(col.key);
   const className = cn(
     gridDataCellClass(col, {
@@ -325,18 +256,6 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         className={cn(className, 'relative')}
         style={style}
         // Stopped ONLY when this gutter owns a real control.
-        //
-        // Where it does, a click on the flush plane around the button must not
-        // also reach the row and open the record. But on CLICK-SELECT surfaces
-        // (Incoming, Unbox History) the row IS the checkbox and owns the toggle
-        // — the gutter is a painted face there — so the click has to bubble to
-        // it. Swallowing it unconditionally made the leftmost column inert on
-        // exactly those surfaces: a prominent checkmark that did nothing.
-        //
-        // `ReceivingSelectCell`, the flat cell this replaced, carried the same
-        // warning in prose: "the ROW click still ticks the box, so this stays a
-        // painted indicator and must not swallow the click that does the
-        // ticking."
         onClick={
           select?.onToggle || detail
             ? (event) => event.stopPropagation()
@@ -344,24 +263,16 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         }
       >
         {/*
-          FULL-HEIGHT rail, owned by the CELL (operator 2026-09-15: "it should
-          display the full height, it should not be constrained by the drop down
-          icon"). It used to live inside CompoundSelect, which on a detail row
-          is only the TOP half of this box — so the bar stopped at the chevron
-          and the traveler bobbed out of a clipped container. The rail is a ROW
-          edge mark; the check and the chevron are both guests inside it.
-        */}
+ * FULL-HEIGHT rail, owned by the CELL (operator 2026-09-15:
+ * FULL-HEIGHT rail, owned by the CELL (operator 2026-09-15: "it should
+ */}
         {view.edgeMark ?? view.importMark ? (
           <CompoundEdgeRail mark={view.edgeMark ?? view.importMark!} />
         ) : null}
         {/*
-          The MARK plane is the whole cell — `CompoundSelect` pins the checklist
-          square / resting status glyph to the TOP (operator 2026-09-04 "most
-          top of the column per rows", reaffirmed 2026-09-15) and the button
-          underneath it keeps every pixel above the chevron band as its hit
-          plane. It used to sit in the top track of a COMPOUND_TWO_LINE_CLASS
-          stack, which boxed the control into a 23.5px half.
-        */}
+ * The MARK plane is the whole cell — `CompoundSelect` pins the checklist
+ * square / resting status glyph to the TOP (operator 2026-09-04 "most
+ */}
         {selectFace}
         {detail ? (
           <button
@@ -388,15 +299,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
               detail.onToggle();
             }}
           >
-            {/*
-              The chevron is a REACH affordance, not a standing mark (operator
-              2026-09-15). Closed and unreached it paints nothing — same
-              argument that retired the resting faded check: forty chevrons
-              answer "can this expand?" permanently, over the data. OPEN it
-              stands, because then it is state, and keyboard focus / no-hover
-              pointers get it standing too. The BUTTON keeps its full band as a
-              hit plane and its aria-expanded label at every opacity.
-            */}
+            {/* The chevron is a REACH affordance, not a standing mark (operator 2026-09-15). */}
             <span
               className={cn(
                 COMPOUND_GUTTER_CHEVRON_GLYPH_CLASS,
@@ -453,14 +356,9 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
           style={style}
         >
           {/*
-            MEMBERSHIP mark: a group child wears a soft rail on the identity
-            track's leading edge (operator 2026-09-15, replacing the black rule
-            under the fold). Here and not in the select gutter because the
-            gutter's first 3px are the TRIAGE rail — see
-            SLOT_TABLE_GROUP_CHILD_RAIL_CLASS for the measurements. Gated on
-            `quietIdentity` (the group-child marker), so every folding peer —
-            To-ship, Unbox, Incoming — gets it from this one mount.
-          */}
+ * MEMBERSHIP mark:
+ * track's leading edge (operator 2026-09-15, replacing the black rule
+ */}
           {view.quietIdentity ? (
             <span aria-hidden data-group-child-rail="" className={SLOT_TABLE_GROUP_CHILD_RAIL_CLASS} />
           ) : null}

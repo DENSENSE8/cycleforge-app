@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * Presentational layer for {@link useSendToDevice} — the phone-handshake
- * status ("Waiting on phone…" / "Open on your phone" / "Phone unreachable")
- * rendered on the ONE house toast surface (`AppToaster`, bottom-right)
- * instead of an inline status card.
- *
- * Retires `SendToDeviceStatus`: a persistent card mounted above the very rows
- * it sat on (Photos Actions) or popovered under an identity pill is exactly
- * the "never reserve height a body has not asked for" anti-pattern
- * (`ui-design-system.md`) — and every consumer had to hand-roll its own
- * absolute-positioned wrapper to keep it from shoving surrounding chrome.
- *
- * `request_sent` → `peer_active` | `timed_out` update the SAME toast id in
- * place (Sonner morphs it), so the operator watches one card change state
- * rather than three stacking. This is NOT the blind "Sent to phone" toast
- * that shipped before `useSendToDevice` existed — that one fired on click and
- * only ever confirmed the desk had spoken (an Ably publish resolves with zero
- * subscribers). This toast tracks the real handshake: it stays on "Waiting…"
- * until the phone acks, then flips to answered or unreachable — with Retry
- * inline on the unreachable state, no separate button.
- *
- * Fires no render of its own — call once per `useSendToDevice()` instance and
- * mount nothing. Presentational only: imports no channel, no Ably.
- */
+/** Presentational layer for {@link useSendToDevice} — the phone-handshake status ("Waiting on phone…" / "Open on your phone" / "Phone… */
 
 import { useEffect, useId } from 'react';
 import { toast } from '@/lib/toast';

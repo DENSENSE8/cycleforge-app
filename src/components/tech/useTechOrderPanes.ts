@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Right-pane order state for the tech dashboard's shipping mode:
- *   - `activeOrderPane` — a scanned/active order, dispatched by
- *     `useStationTestingController` via `tech-active-order-changed` (null clears
- *     it, returning the pane to the history table).
-   *   - `previewSel` — an Up Next card click or scan-bar preview (`tech-upnext-preview`);
-   *     lower priority than the active order, which clears any standing preview.
-   *     Preview paints the FIND column (`SearchFindPreviewEmbed`), not Displays.
- * Extracted from TechDashboard; behaviour is unchanged.
- */
+/** Right-pane order state for the tech dashboard's shipping mode: */
 
 import { useEffect, useState } from 'react';
 import type { ActiveStationOrder, ResolvedProductManual } from '@/hooks/useStationTestingController';

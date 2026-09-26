@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The day's roster report — who still owes checks.
- *
- * Lives on Operations (`?mode=checks`), not on Home Daily. Same payload the
- * checklist writes (`GET /api/daily-checks`); this is the read of it, not a
- * second store.
- */
+/** The day's roster report — who still owes checks. */
 
 import type { DailyCheckReport, DailyCheckStaffRow } from '@/lib/daily-checks/types';
 import { Panel } from '@/design-system/primitives';

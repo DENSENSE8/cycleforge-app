@@ -1,11 +1,4 @@
-/**
- * Map selection verbs onto the compound/slot track they edit.
- *
- * The table-foot bulk row paints **in the same CSS grid as the header**, so a
- * download sits under Image, copy under Order, ship-by under STATUS, assign
- * under Pick. Verbs with no column (Listing → staff, product-label print,
- * export) stay on the rail, never as a second toolbar.
- */
+/** Map selection verbs onto the compound/slot track they edit. */
 
 export type ColumnActionSlotColumn = {
   key: string;

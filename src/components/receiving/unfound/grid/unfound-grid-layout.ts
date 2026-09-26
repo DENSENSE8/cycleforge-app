@@ -1,18 +1,4 @@
-/**
- * Unfound queue spreadsheet column model — MATERIALIZED from a
- * {@link SlotLayout}, never a hand array.
- *
- * A row is one `v_unfound_queue` hit (unmatched receiving · email PO). The
- * static `UNFOUND_GRID_COLUMNS` died with wave 1.4 of the seller-table program:
- * tracks whose keys WERE fields (`ticket`, `usaNote`, `checked`) are a frozen
- * layout no organization can capture.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `select` gutter
- * (empty; `multiSelect` is off) and the frozen, flexing `title` product track
- * (`unfound.item` is the identity FACT it stands for) — plus the trailing
- * `action` track (Push / Synced), which is an ACTION, not a fact: no `hideKey`,
- * so the Fields menu never offers to hide a control.
- */
+/** Unfound queue spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -127,14 +113,7 @@ export function unfoundGridFrozenLeft(
   return gridFrozenLeft(columns, key);
 }
 
-/**
- * Default direction on first activation.
- *
- * This queue opens ASCENDING on every track, including its date: the oldest
- * uncleared row is the one that needs a human, so "newest first" — the house
- * default for a date — would bury exactly the row the queue exists to surface.
- * The rule is the family's, not a per-key list.
- */
+/** Default direction on first activation. */
 export function defaultDirForUnfoundColumn(
   _columns: readonly UnfoundGridColumn[],
   _key: string,

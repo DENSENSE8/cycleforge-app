@@ -3,13 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { ShipStationStatus } from '@/lib/shipping/shipstation/status';
 
-/**
- * This org's ShipStation key health — GET /api/integrations/shipstation/health.
- * `active` (v1 + v2 both live) switches order sync to ShipStation only.
- *
- * A failed request (403 / network) throws, so it is never cached as a verdict;
- * `status` is then `null` ("unknown") and callers keep today's behaviour.
- */
+/** This org's ShipStation key health — GET /api/integrations/shipstation/health. */
 
 export const shipStationStatusKey = ['shipstation-status'] as const;
 

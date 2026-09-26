@@ -18,16 +18,7 @@ interface SharePayload {
   request_id?: string | null;
 }
 
-/**
- * Phone-side receiver for the desktop "share to phone" action. The receiving
- * workspace's phone button publishes `receiving_share_to_phone` on
- * `staffstation:{staffId}` (implicit pairing — the channel name is the gate, no
- * claim flow). Here we pop a bottom sheet ("Shared from computer") with a Take
- * photos CTA that jumps to the existing `/m/r/{id}/photos` capture page.
- *
- * Mounted once in the global mobile shell so it fires regardless of which /m
- * page the operator's phone is parked on.
- */
+/** Phone-side receiver for the desktop "share to phone" action. */
 export function ReceivingShareToPhoneSheet() {
   const router = useRouter();
   const { user } = useAuth();

@@ -1,25 +1,11 @@
-/**
- * Outbound selection → CSV. Pure string building, no DOM — the bulk bar owns
- * the Blob download, this module owns what the file says.
- *
- * The export mirrors what the operator can SEE on the lane (the Pending grid's
- * columns plus the two attention flags the KPI strip counts), so a spreadsheet
- * pulled off a selection reconciles against the surface it came from. It is a
- * read of the rows already in hand — never a second query, never a second
- * definition of "what a pending order is".
- */
+/** Outbound selection → CSV. */
 
 import { conditionLabel } from '@/lib/conditions';
 import { formatDateTimePST, getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
 import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
-/**
- * The union of fields the export reads. Every one is optional: the dashboard
- * selection scope carries `ShippedOrder` on pre-pack lanes and `PackerRecord`
- * on post-pack ones, and a column absent from a row is honest absence (empty
- * cell), not a reason to fail the export.
- */
+/** The union of fields the export reads. */
 export interface ExportableOrderRow {
   id?: number | string | null;
   order_id?: string | null;
@@ -39,14 +25,7 @@ export interface ExportableOrderRow {
   packed_by_name?: string | null;
   packer_name?: string | null;
   shipment_id?: number | string | null;
-  /*
-   * Lifecycle stamps — who did each step and when.
-   *
-   * Field aliases match the ones `orders-resolve.ts` reads for the status
-   * columns, so the CSV and the on-screen step cells answer from the same
-   * facts. The pick step reads the feed's pick projection (`picked_*`) since
-   * 2026-09-14; the tester/test columns below belong to the TEST lane only.
-   */
+  /* Lifecycle stamps — who did each step and when. */
   picked_by_name?: string | null;
   picked_at?: string | null;
   pack_activity_at?: string | null;
@@ -56,15 +35,7 @@ export interface ExportableOrderRow {
   sale_amount?: string | number | null;
 }
 
-/*
- * The export carries the STATUS story, not just the identity fields.
- *
- * A spreadsheet of orders with no stamps cannot answer the questions the export
- * is taken to answer — who picked this, when was it packed, did it actually
- * leave, what was it worth. Each step contributes a NAME and a TIME as separate
- * columns rather than one "Picked by X on Y" sentence, because a sheet is
- * sorted and filtered per column and a sentence is neither.
- */
+/* The export carries the STATUS story, not just the identity fields. */
 export const ORDER_EXPORT_COLUMNS = [
   'order_id',
   'product_title',

@@ -1,12 +1,4 @@
-/**
- * Assistant tool registry + runner (plan §3.1/§3.2).
- *
- * One export the agent loop consumes; MCP can later expose the same entries
- * (name/description/zod-input → JSON schema) over a second transport with no
- * rework. `runAssistantTool` is the single execution chokepoint: unknown-tool
- * → permission → Zod-validate → run, with the org ALWAYS taken from the
- * authenticated ctx (never from model input).
- */
+/** Assistant tool registry + runner (plan §3.1/§3.2). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps, AssistantToolRunResult } from './types';
@@ -80,18 +72,7 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   listReceivingLinePhotosTool,
 ];
 
-/**
- * The four tool-forge gateway tools (search_tool_registry,
- * submit_approval_decision, execute_build_sandbox, commit_to_git).
- *
- * Registered HERE rather than behind a second gateway, because this map is
- * what src/lib/mcp/tool-server.ts builds tools/list from and dispatches
- * tools/call through — one registry, one chokepoint, one permission check per
- * call. Three of them write, which the read-only registry above does not, so
- * they are kept in a named list: the separation is visible at a glance, and
- * `listAssistantTools` filtering on each tool's OWN permission means a caller
- * holding only `assistant.chat` neither sees them nor can invoke them.
- */
+/** The four tool-forge gateway tools (search_tool_registry, submit_approval_decision, execute_build_sandbox, commit_to_git). */
 const GATEWAY_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = TOOL_FORGE_GATEWAY_TOOLS;
 
 const ALL_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [...READ_TOOLS, ...GATEWAY_TOOLS];

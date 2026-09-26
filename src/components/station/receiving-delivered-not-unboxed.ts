@@ -73,10 +73,7 @@ export function deliveredNotUnboxedToRow(item: DeliveredNotUnboxedItem): Receivi
     last_activity_at: item.delivered_at,
     image_url: null,
     source_platform: null,
-    // Same rank-0 rule as the delivered-unscanned sibling: >48h dwell is the
-    // urgency signal. The claim clock is deliberately NOT folded in here — it is
-    // a separate deadline and gets its own display, not a second meaning for
-    // `is_priority` (which would make the flag mean different things per feed).
+    // Same rank-0 rule as the delivered-unscanned sibling:
     is_priority: item.age_band === 'gt_48h',
     priority_tier: null,
     receiving_source: 'unmatched',

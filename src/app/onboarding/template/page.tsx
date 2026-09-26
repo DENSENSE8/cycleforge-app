@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * /onboarding/template — the first-run ops-SOP chooser (Template Platform
- * Phase 1). A brand-new org has NO active workflow until the owner picks a
- * template here; signup no longer auto-seeds one.
- *
- * Workbench archetype (list → select → confirm): the system template library is
- * the list, a card click is the durable selection, and the primary CTA confirms
- * → POST /api/onboarding/template (installTemplateIntoOrg, activate: 'if_system')
- * → redirect home. Pre-selects the blessed default (is_default) template.
- *
- * House style: linear space-y/divide-y scaffold, semantic-token color, selection
- * = bg-blue-50 ring-1 ring-inset ring-blue-400 (no size shift), icons from
- * @/components/Icons, contextual copy inline (no title=).
- */
+/** /onboarding/template — the first-run ops-SOP chooser (Template Platform Phase 1). */
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';

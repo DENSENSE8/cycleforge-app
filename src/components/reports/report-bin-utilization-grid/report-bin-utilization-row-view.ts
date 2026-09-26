@@ -1,28 +1,4 @@
-/**
- * `BinUtilizationReportRow → CompoundRowView` — the bin-utilization adapter.
- *
- * Pure, strings and enums, no JSX: "the moment a family can pass a node, the
- * fork walks back in wearing a view model." Every fact not named here is a
- * bound SLOT resolved through `report-bin-utilization-resolve.ts`.
- *
- * ## What the compound row says about one bin
- *
- * - TITLE — the ROOM. A compound title is what the thing IS, and a bin's
- *   answer to that is where it is. A bin the MV has no room for is named by
- *   its own key rather than painted "Untitled".
- * - IDS — the bin's scannable HANDLE (`barcode ?? bin_name`), the retired Bin
- *   cell's coalesce. No tracking line: a bin has no carrier, and inventing one
- *   would paint a chip over a fact this feed does not have.
- * - STATE — the DERIVED fill percentage, the number the route orders by. The
- *   word carries the `%`; the FACT behind the header is the bare integer
- *   (`binFillPercent`), so the column sorts numerically and the search box
- *   matches what an operator types ("88", not "88%").
- * - DATES — nothing. This row has no temporal column, the track is declared
- *   inert chrome at the mount, and both lines stay null so the shared cell
- *   paints the honest empty face rather than a borrowed stamp.
- *
- * There is no money and no photo on a bin row either; both stay null.
- */
+/** `BinUtilizationReportRow → CompoundRowView` — the bin-utilization adapter. */
 
 import type {
   CompoundRowView,
@@ -35,12 +11,7 @@ import {
 import type { BinUtilizationReportRow } from '@/lib/reports/report-rows';
 import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
-/**
- * A utilization row is a measurement, not work waiting on a human, and nothing
- * on this desk can act on it. Tone is never the fact; the pill's word is — and
- * banding the percentage into a tone would need thresholds this report does
- * not define.
- */
+/** A utilization row is a measurement, not work waiting on a human, and nothing on this desk can act on it. */
 const BIN_TONE: CompoundStateTone = 'neutral';
 
 /** What the pill says when the MV carries no ratio for the bin. */
@@ -61,10 +32,8 @@ export function reportBinUtilizationCompoundView(
     // Nothing under the title: the layout binds no subtitle, and the three
     // magnitudes are tracks. A fallback note here would repeat a column.
     note: null,
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(handle, 'Bin'),
     orderId: null,
     tracking: null,

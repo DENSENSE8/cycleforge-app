@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Mobile-first rack detail view.
- *
- * Reached by scanning a bay QR (which routes to
- * `/inventory/locations?tab=bays&code={flat}`) or by tapping a bay cell on the
- * warehouse map. Shows the "rack face" — every position on the picked
- * level laid out horizontally as fill-coded tiles — with an expander
- * that surfaces the other levels of the same bay for cross-level
- * putaway / picking.
- *
- * The component is a pure read-of-state view over `useBinsOverview`;
- * tap a position to open the existing `BinDetailFlyout` for the full
- * bin record. Putaway / pick task flows are intentionally out of scope
- * for this first cut — see the followup ticket in the task list.
- */
+/** Mobile-first rack detail view. */
 
 import { useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

@@ -28,11 +28,7 @@ export async function listCompatibility(params: {
   boseModelId?: number | null;
   skuId?: number | null;
 }, orgId?: OrgId): Promise<PartCompatibilityJoinedRow[]> {
-  // part_compatibility has NO organization_id column — it is scoped through its
-  // org-bearing parent sku_catalog (pc.sku_id = sc.id, integer surrogate-PK
-  // join). When orgId is present we run GUC-wrapped and add the explicit
-  // sc.organization_id predicate; when omitted, behavior is byte-identical to
-  // the original raw-pool query.
+  // part_compatibility has NO organization_id column — it is scoped through its org-bearing parent sku_catalog (pc.sku_id = sc.id, integer…
   if (orgId) {
     const result = await tenantQuery<PartCompatibilityJoinedRow>(
       orgId,
@@ -62,10 +58,7 @@ export async function listCompatibility(params: {
 }
 
 export async function getCompatibilityById(id: number, orgId?: OrgId): Promise<PartCompatibilityRow | null> {
-  // No org column on part_compatibility: ownership is asserted via the parent
-  // sku_catalog row (EXISTS subquery). A row owned by another tenant returns
-  // null → caller maps to 404 (never 403). Omitting orgId keeps the original
-  // raw-pool behavior byte-identical.
+  // No org column on part_compatibility:
   if (orgId) {
     const result = await tenantQuery<PartCompatibilityRow>(
       orgId,
@@ -87,12 +80,7 @@ export async function getCompatibilityById(id: number, orgId?: OrgId): Promise<P
   return result.rows[0] ?? null;
 }
 
-/**
- * Create or update a compatibility edge. The DB unique key
- * (bose_model_id, sku_id, part_role) makes a repeat call idempotent — it
- * refreshes the edge's attributes rather than inserting a duplicate.
- * Throws on FK violation (unknown model or sku) — caller maps 23503 → 400.
- */
+/** Create or update a compatibility edge. */
 export async function upsertCompatibility(params: {
   boseModelId: number;
   skuId: number;
@@ -114,13 +102,7 @@ export async function upsertCompatibility(params: {
     params.notes?.trim() || null,
   ];
 
-  // part_compatibility has no organization_id to stamp — tenant ownership is
-  // gated on the target sku_id belonging to the org (INSERT ... SELECT WHERE
-  // EXISTS against the org-bearing parent sku_catalog). A cross-tenant skuId
-  // yields zero rows; we surface that as a 23503-shaped FK error so the caller
-  // keeps mapping it to 400 (unknown sku for this tenant), preserving the
-  // documented contract. The ON CONFLICT key (bose_model_id, sku_id, part_role)
-  // is global; idempotent refresh is unchanged.
+  // part_compatibility has no organization_id to stamp — tenant ownership is gated on the target sku_id belonging to the org (INSERT ...
   if (orgId) {
     const result = await withTenantTransaction(orgId, async (client) => {
       return client.query<PartCompatibilityRow & { _created: boolean }>(
@@ -202,10 +184,7 @@ export async function updateCompatibility(
   if (sets.length === 0) return getCompatibilityById(id, orgId);
   sets.push(`updated_at = NOW()`);
 
-  // No org column to filter on directly: gate the UPDATE on the parent
-  // sku_catalog row belonging to this org (EXISTS subquery). A cross-tenant id
-  // matches nothing → null → caller maps to 404. Omitting orgId keeps the
-  // original raw-pool UPDATE byte-identical.
+  // No org column to filter on directly:
   if (orgId) {
     const idIdx = idx++;
     values.push(id);
@@ -234,17 +213,9 @@ export async function updateCompatibility(
   return result.rows[0] ?? null;
 }
 
-/**
- * Hard-delete an edge. Unlike sku_catalog (which carries downstream
- * references and is soft-deleted), a compatibility edge is pure relationship
- * data — once removed there's nothing to preserve, and the before-state is
- * captured in the audit log by the caller.
- */
+/** Hard-delete an edge. */
 export async function deleteCompatibility(id: number, orgId?: OrgId): Promise<boolean> {
-  // No org column: gate the DELETE on the parent sku_catalog row belonging to
-  // this org (EXISTS subquery). A cross-tenant id deletes nothing → false →
-  // caller maps to 404. Omitting orgId keeps the original raw-pool DELETE
-  // byte-identical.
+  // No org column:
   if (orgId) {
     const result = await withTenantTransaction(orgId, async (client) =>
       client.query(

@@ -1,23 +1,4 @@
-/**
- * Workflow engine — unpark / recovery path (Phase 1.0).
- *
- * advanceItem() parks a unit as `blocked` (a node returned await:true) or
- * `error` (a node threw, or its type vanished). Until now nothing reset those
- * back to `active`, so an errored unit silently died — no UI, no retry. This is
- * that missing path: an operator action that resets one stuck item_workflow_state
- * row to `active` and leaves an audit trail.
- *
- * It writes TWO records (per UNIFIED-ENGINE-MASTER-PLAN §1.0):
- *   1. inventory_events NOTE — recovery is a workflow-POSITION reset, not a
- *      serial_status change, so prev/next_status stay null and the detail lives
- *      in the payload. This surfaces "unit was recovered" on the unit timeline.
- *   2. workflow_runs — the append-only engine log, attributed to the node the
- *      unit was parked on, output 'unpark', so the Studio Live/Flow lenses see it.
- *
- * The serial_units.current_status is deliberately UNCHANGED: the domain truth
- * the unit holds is correct; only the engine's position bookkeeping was stuck.
- * After this, the next tap for that unit advances it normally from where it sat.
- */
+/** Workflow engine — unpark / recovery path (Phase 1.0). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

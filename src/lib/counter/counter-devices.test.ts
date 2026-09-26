@@ -1,11 +1,4 @@
-/**
- *   npx tsx --test src/lib/counter/counter-devices.test.ts
- *
- * Phase 0 of `docs/todo/kiosk-counter-consult-PLAN.md`. Pure projection —
- * no DB. The picker must never offer an unpaired or revoked tablet, must
- * not call the current visit's own iPad "busy", and must sort free-and-awake
- * first so a staffer scanning the list hits the tablet in front of them.
- */
+/** npx tsx --test src/lib/counter/counter-devices.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { OrgId } from '@/lib/tenancy/constants';

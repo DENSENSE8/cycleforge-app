@@ -1,14 +1,4 @@
-/**
- * Forge (Plans Live) `?view=` vocabulary — the forge's own param contract.
- *
- * Lived in `features/home/home-modes.ts` until 2026-08-19, when Home was cut
- * back to Daily + Today and the forge console moved off `/?mode=forge` onto its
- * own `/forge` route. The parser moved WITH the surface: a param vocabulary
- * belongs to the route that owns the param (`query-mode-routes.ts` → `/forge`),
- * not to whichever shell happened to host the console.
- *
- * Pure data + parsers. No JSX, no React.
- */
+/** Forge (Plans Live) `?view=` vocabulary — the forge's own param contract. */
 
 /**
  * Forge (Plans Live) primary pane. `live` is the bookmark/alias for

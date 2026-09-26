@@ -9,26 +9,7 @@ import { gatherQualityInputs, recomputeUnitQualitySafe } from '@/lib/neon/qualit
 import { evaluateGradeAdvice } from '@/lib/quality/gradeAdvice';
 import type { ConditionGrade } from '@/lib/quality/qualityScore';
 
-/**
- * POST /api/serial-units/[id]/grade
- *
- * Records a condition assessment on a serial_unit:
- *   1. Updates `serial_units.condition_grade` to the new grade (or NULL to clear).
- *   2. Appends an `inventory_events` row (event_type=GRADED).
- *   3. Appends a `serial_unit_condition_history` row linked to the event
- *      so the timeline cross-references the audit log (skipped on clear —
- *      history.new_grade is NOT NULL).
- *
- * Body: {
- *   new_grade: 'BRAND_NEW'|'USED_A'|…|'PARTS' | null | '',
- *   cosmetic_notes?: string,
- *   functional_notes?: string,
- *   client_event_id?: string,
- * }
- *
- * Returns 409 when prev_grade == new_grade (the DB CHECK constraint on
- * serial_unit_condition_history rejects no-op writes).
- */
+/** POST /api/serial-units/[id]/grade */
 export const POST = withAuth(async (request, ctx) => {
     const segments = request.nextUrl.pathname.split('/').filter(Boolean);
     // .../api/serial-units/[id]/grade → id is segments[-2]
@@ -98,16 +79,7 @@ export const POST = withAuth(async (request, ctx) => {
             [serialUnitId, newGrade, orgId],
         );
 
-        // Audit + history. inventory_events and serial_unit_condition_history are
-        // both tenant-owned with NOT NULL organization_id whose default reads the
-        // app.current_org GUC. The shared drizzle writers (appendInventoryEvent /
-        // recordChange) run on the stateless neon-http connection with NO GUC and
-        // NO org stamp → org resolves to NULL → NOT NULL violation. We instead
-        // write both rows org-scoped here (GUC set + organization_id stamped) in
-        // one tenant transaction, preserving the prior behavior: GRADED event is
-        // idempotent on client_event_id, and the condition-history row links the
-        // event via inventory_event_id (DB CHECK still rejects no-op grade rows).
-        // Clear skips history — new_grade is NOT NULL on that table.
+        // Audit + history.
         const eventNotes =
             cosmeticNotes || functionalNotes
                 ? `cosmetic: ${cosmeticNotes ?? '-'} | functional: ${functionalNotes ?? '-'}`
@@ -203,10 +175,7 @@ export const POST = withAuth(async (request, ctx) => {
         }
         await recomputeUnitQualitySafe(serialUnitId, orgId);
 
-        // The unit's condition_grade changed — refresh the serial projection for
-        // whatever receiving line it currently sits on so the re-grade shows on
-        // the first frame of the next open (Tier B2). Post-response + best-effort:
-        // the ?include=serials reconcile self-heals any drift.
+        // The unit's condition_grade changed — refresh the serial projection for whatever receiving line it currently sits on so the re-grade…
         after(async () => {
             try {
                 const lines = await resolveCurrentReceivingLineIds([serialUnitId], orgId);

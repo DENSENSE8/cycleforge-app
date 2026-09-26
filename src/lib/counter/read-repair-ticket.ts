@@ -1,26 +1,4 @@
-/**
- * loadKioskRepairHeader — the header for a repair that was never a counter visit.
- *
- * Callers: GET /api/kiosk/repair/[id].
- * Affected API: /api/kiosk/repair/[id] (device principal, `withKioskAuth`).
- * Data schemas: repair_service ⋈ customers. Read-only.
- * User 2026-09-23: *"if I were to create a repair service it will then show up
- *   in the history tab so I would be able to view it."*
- *
- * ## Why this is not `loadCounterVisit`
- *
- * `loadCounterVisit` reads a SUBMITTED TRANSACTION — header, lines, payments,
- * Square linkage. Most repairs in this org have no transaction under them at
- * all (Ecwid drop-offs, inbound shipments, desk tickets), so there is nothing
- * for that reader to find and nothing honest for it to invent. This reads the
- * ticket's own facts — the ones `/repair` prints — and the History face pairs
- * it with `loadVisitProvenance({ repairIds })`, the SAME device section a
- * visit-backed repair gets.
- *
- * Money here is the ticket's quoted price, not a total that was ever charged:
- * `repair_service.price` is free text, so it is parsed, never cast, and a
- * ticket with no quote reads zero rather than failing the read.
- */
+/** loadKioskRepairHeader — the header for a repair that was never a counter visit. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -110,14 +88,7 @@ export async function loadKioskRepairHeader(
   const row = res.rows[0];
   if (!row) return null;
 
-  // `contact_info` is the pre-`customers` intake string ("Name, 714-555-0100")
-  // that every Ecwid-sourced ticket still carries. When the ticket was never
-  // joined to a customer row it is the only identity we hold, and painting
-  // "Walk-in" over it would hide a name that is right there on the paper.
-  //
-  // Read through the shared rule (`@/lib/repair/contact-info`): the positional
-  // `split(',')[1]` this used read an EMAIL as the phone on any ticket whose
-  // buyer had no phone number.
+  // `contact_info` is the pre-`customers` intake string ("Name, 714-555-0100") that every Ecwid-sourced ticket still carries.
   const contact = resolveRepairContact(row);
 
   return {

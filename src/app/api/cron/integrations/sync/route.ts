@@ -1,11 +1,4 @@
-/**
- * GET /api/cron/integrations/sync — connection-driven order sync.
- *
- * For every orders-capable connector with a wired sync(), sync every org that
- * has the provider connected. Auth via Bearer CRON_SECRET. Scheduled every 15
- * minutes as `?providers=square` (walk-in POS); ShipStation — the outbound order
- * importer — runs on its own `/api/cron/shipstation/orders-sync` schedule.
- */
+/** GET /api/cron/integrations/sync — connection-driven order sync. */
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';

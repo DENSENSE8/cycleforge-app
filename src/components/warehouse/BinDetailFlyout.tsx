@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * Bin record inspector. Lighter than the full `/bin/[barcode]` page — it
- * preserves the user's filter state in the table (or the floor plan) behind it.
- *
- * **It was a private `fixed inset-y-0 right-0` aside with its own
- * `fixed inset-0 z-40` scrim until 2026-08-01** — a second owner of the right
- * edge (`lib/right-rail/store.ts` exists to prevent exactly that) and a raw
- * `z-40` outside the z-index scale.
- *
- * It is now a **non-modal** `RightRailHost` occupant: this is a pick-a-row-and-
- * read-it surface, and the scrim was hiding the very floor plan / bin table the
- * operator is comparing against. Modal is reserved for blocking wizards and
- * destructive confirms — the delete here is already a two-step arm-then-confirm
- * inside the panel, not a blocking dialog.
- *
- * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`).
- * Nothing routes through an index above this panel — the bin table / floor plan
- * behind it is the list — so it declares `standalone` and is owed no Back cell.
- * The band carries the contextual verbs (column display · reprint label · open
- * the full page) and then the reserved cell the host paints its `⤢` / `✕` into.
- *
- * **The panel paints NO close.** `RightRailHost` owns the singleton `✕` and
- * `closeRightPanel()` runs both the lifecycle half and this occupant's own
- * `onClose`. Until 2026-08-21 this stacked a `DeskRailChromeRow` over an
- * eyebrow ("Bin") + barcode identity pair — two rows of chrome where the
- * contract allows one. The barcode and its room / row / column line moved into
- * the body, which is where identity that does not fit a one-word title belongs.
- */
+/** Bin record inspector. */
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';

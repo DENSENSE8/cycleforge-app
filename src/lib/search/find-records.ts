@@ -1,32 +1,4 @@
-/**
- * `findRecords` — the one entry point the operator-facing find surfaces call.
- *
- * WHAT IT FIXES
- *   Two engines existed and the wrong one was wired to the palette.
- *   `searchAllEntities` is a broad fan-out across thirteen parent tables —
- *   orders, units, receiving, repairs, SKUs, FBA, tracking holds, manifests,
- *   tickets, import exceptions — matched with exact rules and ILIKE.
- *   `hybridSearch` ranks a denormalized doc index with a pg_trgm arm and a
- *   pgvector arm fused by reciprocal rank. The palette called the first and the
- *   chat assistant called the second, so operators got substring matching while
- *   the LLM got fuzzy and semantic recall.
- *
- * WHY BOTH, RATHER THAN A SWITCH
- *   Neither is a superset. `hybridSearch` reads only `entity_search_docs`,
- *   which holds six entity types — so routing the palette at it alone would
- *   silently drop tracking holds, support tickets, manifests and import
- *   exceptions from every free-text search. The fan-out, in turn, cannot match
- *   a typo. Running the fan-out first and letting the fuzzy arm fill the
- *   remaining slots is additive: nothing that matched before stops matching,
- *   and misspellings that used to dead-end now land.
- *
- * WHAT NEVER GETS WIDENED
- *   Identifier queries and axis-scoped queries are answered by the exact
- *   fan-out alone, and are never relaxed. A serial that is not here must come
- *   back empty — "here are four units whose serials look like yours" is how the
- *   wrong unit gets picked, and no amount of recall is worth that on a
- *   receiving floor.
- */
+/** `findRecords` — the one entry point the operator-facing find surfaces call. */
 
 import { searchAllEntities, type GlobalSearchResult } from '@/lib/search/global-entity-search';
 import { hybridSearch, type HybridSearchResult } from '@/lib/search/hybrid-retrieval';
@@ -119,14 +91,7 @@ async function runOnce(
   return { rows: merged.slice(0, opts.limit), usedSemantic: fuzzy.usedSemantic };
 }
 
-/**
- * Find records, recovering from a miss instead of dead-ending on one.
- *
- * The ladder is only climbed when the literal query returned nothing at all.
- * A query that found even one row is answered with what it found — partial
- * results are not a failure worth second-guessing, and quietly widening them
- * would make the result set stop matching what the operator typed.
- */
+/** Find records, recovering from a miss instead of dead-ending on one. */
 export async function findRecords(
   orgId: OrgId,
   query: string,

@@ -7,13 +7,7 @@ export interface DedupeReserveResult {
   isFresh: boolean;
 }
 
-/**
- * Reserve an (org, event_id) slot. Inserts the row in a single statement so two
- * concurrent deliveries can't both think they're the first. Org-scoped (Wave 3)
- * so a replay is deduped within its own tenant and two tenants can never collide
- * on a synthetic (payload-hashed) event_id. Runs under the tenant GUC.
- * `processed_at` stays NULL until handlers complete successfully.
- */
+/** Reserve an (org, event_id) slot. */
 export async function reserveWebhookEvent(
   event: NormalizedZohoEvent,
   orgId: OrgId,

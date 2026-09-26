@@ -1,44 +1,4 @@
-/**
- * Unbox procedure RECEIPT — what was done to this carton, when, and by whom.
- *
- * ## It is a read model. There is no receipt table, and there must not be one.
- *
- * Every step's state is DERIVED from facts the carton already carries: photos at
- * a stage and aspect, serials, the condition and contents stamps, the label
- * print, the receive. Nothing is ticked by hand, so nothing can be ticked
- * falsely — the org-editable checklist this replaced was deleted 2026-08-01
- * precisely because a box got ticked when someone remembered to tick it.
- *
- * ## One derivation, two readers
- *
- * The bench procedure and the receipt must never disagree about whether a step
- * is done, so this does not re-implement the gates: it calls
- * {@link deriveProcedureSteps} — the same function the bench calls — and adds
- * only the WHEN and the WHO, which the bench does not need and this does.
- * `procedure-receipt-derivation.guard.test.ts` pins that. The day the two
- * derive independently is the day an operator is told two different things
- * about the same box.
- *
- * The commit steps (print · stage · receive) are the receipt's own addition:
- * they are declared `phase: 'commit'`. Print · Receive live on the dogfood
- * strip. A closed-carton receipt is incomplete without the acts that closed it.
- *
- * ## `at` is the SERVER instant, never the device's
- *
- * `photos.client_captured_at` is the camera shutter wall clock and is not
- * server-attested — a drifted tablet yields a wrong-but-plausible time, and a
- * concealed-damage dispute turns on which of the two you are reading. So `at`
- * is always `created_at` (the server INSERT), and the shutter clock rides along
- * as `capturedAt`, secondary and clearly labelled. That is what the column's own
- * docblock demands.
- *
- * ## A pending step shows NO time
- *
- * Evidence is attached only to a step the shared derivation calls done. A step
- * can legitimately hold evidence and still be pending — one required item aspect
- * out of two, say — and printing that partial evidence's timestamp beside a
- * pending row would read as a completion.
- */
+/** Unbox procedure RECEIPT — what was done to this carton, when, and by whom. */
 
 import {
   deriveProcedureSteps,
@@ -76,12 +36,7 @@ export interface StepEvidence {
 }
 
 interface ProcedureReceiptInput {
-  /**
-   * The gate inputs — byte-identical to what the bench feeds
-   * {@link deriveProcedureSteps}. Passing the same shape (rather than a
-   * receipt-specific one) is what makes "one derivation, two readers" a
-   * structural fact instead of a promise.
-   */
+  /** The gate inputs — byte-identical to what the bench feeds {@link deriveProcedureSteps}. */
   gates: DeriveCaptureStepStatesInput;
   /** Evidence per step key. A missing key means nothing was recorded. */
   evidence: Record<string, StepEvidence>;
@@ -107,15 +62,7 @@ function attach(
   label: string,
   state: ProcedureStepState,
   evidence: Record<string, StepEvidence>,
-  /**
-   * The completion instant, already resolved and already done-gated.
-   *
-   * Capture steps take it straight from {@link deriveProcedureSteps}, so the
-   * rule "a time rides only on a done step" is decided in exactly one place for
-   * both readers rather than restated here. The `done` re-check below is a
-   * no-op for those and carries the commit steps, whose instants are this
-   * module's own.
-   */
+  /** The completion instant, already resolved and already done-gated. */
   at: string | null,
 ): ProcedureStepReceipt {
   const found = evidence[key] ?? {};

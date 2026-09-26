@@ -13,18 +13,9 @@ export const UPLOAD_PERM_BY_ENTITY: Record<PhotoEntityType, PermissionString> = 
   BIN_ADJUSTMENT: 'bin.adjust',
   SHARE_PACK: 'photos.share',
   ZENDESK_TICKET: 'integrations.zendesk',
-  // Repair evidence is "internal insurance": attached at counter intake
-  // (drop-off condition photos) and by the tech closing the loop. Gate rides
-  // the repair family's intake verb — the same staff who create the repair
-  // line are the ones photographing the device. Tighten to a dedicated
-  // `repair.upload_photo` permission if techs end up blocked in practice.
+  // Repair evidence is "internal insurance":
   REPAIR_SERVICE: 'repair.intake',
-  // Deliberately the ADMIN perm, not an "everyone" gate: this table answers
-  // "may I upload to someone else's scope". A staffer setting their OWN photo
-  // goes through /api/staff/[id]/avatar, which checks `id === ctx.staffId`
-  // first and only falls back to this permission for the admin-on-behalf case.
-  // Leaving it open here would let the generic /api/photos/upload route attach
-  // a photo to any colleague's profile.
+  // Deliberately the ADMIN perm, not an "everyone" gate:
   STAFF: 'admin.manage_staff',
   // Task media rides the SAME gate as throwing and driving a task: every floor
   // role holds it, and the upload routes additionally require the id to be a
@@ -36,12 +27,7 @@ export function uploadPermissionFor(entityType: PhotoEntityType): PermissionStri
   return UPLOAD_PERM_BY_ENTITY[entityType];
 }
 
-/**
- * The entity a media upload targets, parsed off the request exactly one way for
- * photos (`POST /api/photos/upload`) and videos (`POST /api/photos/upload/video`):
- * a known `PHOTO_ENTITY_TYPES` value (case-insensitive) and a positive id.
- * Gate the result with {@link uploadPermissionFor}.
- */
+/** The entity a media upload targets, parsed off the request exactly one way for photos (`POST /api/photos/upload`) and videos (`POST… */
 export function parseMediaEntityTarget(
   rawType: unknown,
   rawId: unknown,

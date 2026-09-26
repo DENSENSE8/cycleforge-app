@@ -1,15 +1,4 @@
-/**
- * locations repository
- * ────────────────────────────────────────────────────────────────────
- * Typed reads against the bin-addressable locations table and its
- * bin_contents projection. Distinct from the legacy zoho_locations
- * mirror (which lives in itemRepository.ts).
- *
- * Important: bin_contents rows are now MAINTAINED via the sku_stock_ledger
- * + trigger flow (since 2026-04-15). Callers that need to mutate quantity
- * should write to skuStockLedger (see ./stockLedger.ts), not to this
- * module's hypothetical mutators.
- */
+/** locations repository ──────────────────────────────────────────────────────────────────── Typed reads against the bin-addressable… */
 import { db } from '@/lib/drizzle/db';
 import { locations } from '@/lib/drizzle/schema';
 import type { Location } from '@/lib/drizzle/schema';

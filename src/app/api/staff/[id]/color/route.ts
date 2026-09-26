@@ -1,12 +1,4 @@
-/**
- * PATCH /api/staff/[id]/color — set a staffer's identity colour (`color_hex`).
- *
- * Gate — self OR `admin.manage_staff`. Same rationale as
- * `/api/staff/[id]/avatar`: a route-level `permission:` would lock every
- * staffer out of their own mark. Colour is the fallback face when there is no
- * photo, so a silently swapped hue is an attribution change — audited even for
- * self.
- */
+/** PATCH /api/staff/[id]/color — set a staffer's identity colour (`color_hex`). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';

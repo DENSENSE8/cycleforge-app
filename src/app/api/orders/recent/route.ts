@@ -43,20 +43,11 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const days = Math.min(Math.max(parseInt(searchParams.get('days') || '7', 10), 1), 60);
     const query = searchParams.get('q') || '';
     // Personalized ship-out history is ALWAYS the current logged-in staffer.
-    // The presence of `?staff=` opts into it; the bound identity is the session's
-    // staff id (`ctx.staffId` — the same id scan-out stamps onto SHIP_CONFIRM),
-    // never a client-supplied value, so a viewer can only ever see their own
-    // ship-outs. Absent = org-wide recent orders by creation (back-compat).
     const wantsPersonalized = searchParams.has('staff') || searchParams.has('staffId');
     const sessionStaff = Number(ctx.staffId) || 0;
     const hasStaff = wantsPersonalized && sessionStaff > 0;
 
-    // $1 is always the org anchor — orders is tenant-owned, so the result set
-    // is scoped to this tenant. product_manuals has no organization_id column
-    // (child of sku_catalog, matched here by item_number string), so the
-    // has_manual EXISTS subquery is GUC-wrapped only — see needsColTables.
-    // A personalized request with no resolvable session staff must never fall
-    // back to the org-wide (all-staff) list — return an empty history instead.
+    // $1 is always the org anchor — orders is tenant-owned, so the result set is scoped to this tenant.
     if (wantsPersonalized && !hasStaff) {
       ok = true;
       return NextResponse.json({ groups: [], orders: [], total: 0 });

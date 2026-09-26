@@ -1,45 +1,6 @@
 'use client';
 
-/**
- * Reusable CRUD list for one org catalog kind (platform | type): active rows
- * with inline edit, reorder (up/down), hide, and delete; a "Hidden" section
- * with Restore; and an add row. Backed by /api/catalog/{platforms,types} and
- * the catalog query factory.
- *
- * Built-in (`is_system`) rows are protected — badged "Default", slug immutable
- * (rename edits the label only), hide-only — while custom rows are removable.
- * All deletes are soft, so anything hidden/removed is restorable below.
- *
- * Row anatomy — reorder · identity · name · short ……… accent · edit · remove:
- *
- *   [▲▼] [●] [ Label  AMZRN  DEFAULT ] ……… [◍] [ ✎ ] [ 🗑 ]
- *         identity dot                     accent name
- *
- * Platforms carry a SHORT label (`platforms.short_label`, ≤ 8, upper-case) —
- * the dense face the 2x1 carton label, the To-ship ledger band and the phone
- * record print. The pencil edits name + short together; a blank short clears
- * back to the built-in compact / full name ({@link platformShortLabelOverride}).
- *
- * TWO dots, two jobs, and they must not be collapsed into one:
- *
- * - The LEADING dot is a READOUT — the exact mark the carton bar will paint for
- *   this row, resolved through {@link catalogIdentityDot} (org accent → builtin
- *   registry tone). It is what makes the manager legible as "this is what my
- *   pills look like"; a picker-shaped rainbow there was a control impersonating
- *   the data.
- * - The TRAILING dot is the CONTROL, immediately left of the name pencil, so
- *   the row's two editors sit together at the right edge. It shows the CUSTOM
- *   accent (rainbow when none is set — "pick one"), never the builtin tone,
- *   because that is the value it edits.
- *
- * Colour saves on pick (a swatch has nothing to draft); the pencil stays the
- * NAME editor. Live contrast preview derives ink via {@link platformPaintFromHex}.
- *
- * Layout-agnostic (no overlay/card chrome): the {@link CatalogManagerPopover}
- * wraps it in a RightPaneOverlay; the /settings catalog section drops it into a
- * card. When the catalog has no DB rows yet (migration unapplied) it shows the
- * built-in defaults read-only with a one-line notice.
- */
+/** Reusable CRUD list for one org catalog kind (platform | type): */
 
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -69,16 +30,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * `priority` is a catalog HERE — one manager, one look — but it is not an open
- * set. Its rows are the four rungs of the priority ladder
- * (`PRIORITY_OVERRIDE_TIERS`), and the value stored on a carton is the rung's
- * NUMBER (`receiving.priority_tier`), which `RECEIVING_PRIORITY_RANK_SQL` sorts
- * the receiving queue on. So rename and repaint behave exactly as they do for
- * platform / type, while add · hide · reorder are switched off below: there is
- * no fifth rung to add, and hiding or reordering one would change the meaning
- * of a number already written to thousands of rows.
- */
+/** `priority` is a catalog HERE — one manager, one look — but it is not an open set. */
 export type CatalogKind = 'platform' | 'type' | 'priority';
 
 const API_BASE: Record<CatalogKind, string> = {
@@ -90,12 +42,7 @@ const API_BASE: Record<CatalogKind, string> = {
 const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-/**
- * Accessible mid-saturation presets for catalog accents (platforms + types +
- * the priority ladder). Exported so {@link PriorityTierManagerList} offers the
- * SAME swatches — two palettes would let a renamed rung sit beside a platform
- * in a colour the other list cannot express.
- */
+/** Accessible mid-saturation presets for catalog accents (platforms + types + the priority ladder). */
 export const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
   { hex: '#2563eb', label: 'Blue' },
   { hex: '#0ea5e9', label: 'Sky' },
@@ -155,12 +102,7 @@ export function CatalogManagerList({
   enabled?: boolean;
   /** Show the per-type account + workflow-node binding editor (settings page). */
   enableTypeBindings?: boolean;
-  /**
-   * Expand a PLATFORM row into {@link PlatformTypeRulesEditor} — which receiving
-   * types that platform allows. Sibling of {@link enableTypeBindings}; the
-   * compact pill popover gets it too, because an operator who just hit the
-   * constraint at the bench should land on the thing that explains it.
-   */
+  /** Expand a PLATFORM row into {@link PlatformTypeRulesEditor} — which receiving types that platform allows. */
   enablePlatformRules?: boolean;
   /** Focus the "New platform/type" field — hover-menu Add platform / Add type. */
   autoFocusAdd?: boolean;
@@ -169,21 +111,11 @@ export function CatalogManagerList({
   const base = API_BASE[kind];
   const isPlatform = kind === 'platform';
   const isPriority = kind === 'priority';
-  /**
-   * The open-set affordances. True for the catalogs whose rows an org owns;
-   * false for the priority ladder, whose rungs are a code constant and whose
-   * order is a storage contract (see {@link CatalogKind}). Named flags rather
-   * than inline `kind !==` checks so the reasoning lives in one place.
-   */
+  /** The open-set affordances. */
   const canAdd = !isPriority;
   const canReorder = !isPriority;
   const canDeactivate = !isPriority;
-  /**
-   * Both kinds persist an accent (`platforms.color_hex` 2026-08-05 /
-   * `types.color_hex` 2026-08-19). Kept as a named flag rather than an inlined
-   * `true` so a future catalog kind with no accent column has one place to opt
-   * out — every face below reads `Entry.colorHex`, never the kind.
-   */
+  /** Both kinds persist an accent (`platforms.color_hex` 2026-08-05 / `types.color_hex` 2026-08-19). */
   const supportsColor = true;
   /** Only platforms own a `short_label` column (2026-09-24). */
   const supportsShortLabel = isPlatform;
@@ -209,10 +141,7 @@ export function CatalogManagerList({
   );
 
   const entries: Entry[] = isPriority
-    ? // The ladder merged with any org skin — `id` IS the tier, which is what
-      // /api/catalog/priorities/[tier] addresses, so every mutation below works
-      // unchanged. Always active, always "Default"-badged: a rung is seeded by
-      // the constant, never created by an org.
+    ? // The ladder merged with any org skin — `id` IS the tier, which is what /api/catalog/priorities/[tier] addresses, so every mutation below…
       priorityCatalog.options.map((o) => ({
         id: Number(o.value),
         slug: o.value,

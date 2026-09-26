@@ -1,13 +1,4 @@
-/**
- * Arrival open-carton scan split — the DB-free half of "scan a shelf, place the
- * carton in front of me".
- *
- * The regression this pins is the whole reason the split exists: a shelf places
- * the open carton, and EVERYTHING else (Amazon `TBA…` above all) still falls
- * through to tracking ingest unchanged.
- *
- * Run: `npx tsx --test src/lib/receiving/arrival-carton-scan.test.ts`
- */
+/** Arrival open-carton scan split — the DB-free half of "scan a shelf, place the carton in front of me". */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

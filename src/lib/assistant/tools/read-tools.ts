@@ -1,21 +1,4 @@
-/**
- * Assistant read tools (plan §3.1 + Sparkles exact-data wiring) — the AI's
- * eyes over the org's operation: signals, journeys, feeds, graph, benchmarks,
- * KPIs, notes, mutation + chat history, plus the search narrow waist
- * (hybrid / exact / support-ticket resolve).
- *
- * Conventions:
- *   • Every SQL leads with `organization_id = $1` (explicit predicate on top
- *     of the tenant-pool GUC). The single deliberate variation is
- *     insight_links, whose global seeded rows are `organization_id IS NULL`
- *     by design (migration 2026-07-03n).
- *   • workflow_nodes/workflow_edges carry no org column — tenant scope rides
- *     the parent workflow_definitions row, so graph tools verify definition
- *     ownership first and join through it (never trust a bare definition id).
- *   • Search tools return SearchHit[] (or ticket→receiving refs) via existing
- *     domain helpers — never inline SQL for entity lookup.
- *   • Row caps everywhere: these results land in a model context window.
- */
+/** Assistant read tools (plan §3.1 + Sparkles exact-data wiring) — the AI's eyes over the org's operation: */
 
 import { z } from 'zod';
 import { SEARCH_ENTITY_TYPES, type SearchEntityType } from '@/lib/search/build-search-text';

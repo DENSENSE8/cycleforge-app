@@ -44,13 +44,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'supplier.view' });
 
-/**
- * POST /api/suppliers — Create a supplier.
- *
- * eBay sellers are normally auto-created on import; this is the manual-entry
- * path. When `ebaySellerId` is supplied and already exists, returns 409
- * (the existing seller). A retried create replays via `Idempotency-Key`.
- */
+/** POST /api/suppliers — Create a supplier. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

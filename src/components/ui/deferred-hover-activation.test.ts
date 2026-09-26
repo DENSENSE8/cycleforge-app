@@ -1,19 +1,4 @@
-/**
- * Deferred hover activation — the FIRST interaction must still work.
- *
- *   npx tsx --test src/components/ui/deferred-hover-activation.test.ts
- *
- * `HoverTooltip` and `CopyChipHoverMenu` no longer mount their machinery with
- * the trigger: timers, portal clamping and the hover-eviction registry arrive
- * on the first hover/focus (`useDeferredHoverMount`). The failure mode that
- * shape ships with is silent and total — the machinery mounts on `pointerenter`
- * but only listens for a LATER event, so the very hover that paid for the mount
- * shows nothing, and it looks fine in a screenshot taken on the second hover.
- *
- * Mounted rather than reasoned about: every claim below is about behavior
- * ACROSS renders (arm → commit → open), which is exactly what reading source
- * cannot see. Guarded here, not by matching text in the components.
- */
+/** Deferred hover activation — the FIRST interaction must still work. */
 
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
@@ -33,10 +18,7 @@ g.Node = dom.window.Node;
 g.MouseEvent = dom.window.MouseEvent;
 g.IS_REACT_ACT_ENVIRONMENT = true;
 
-// jsdom has no layout: every rect is 0×0, which `readTrustedTriggerRect`
-// correctly refuses to anchor a portal from. Give the whole document a plausible
-// on-screen box so the trust + clamp math runs the same code path it runs in a
-// browser.
+// jsdom has no layout:
 const RECT = {
   x: 100,
   y: 100,
@@ -172,10 +154,7 @@ test('arming changes nothing about the trigger element — no layout shift, no a
   const before = trigger.outerHTML;
   pointerEnter(trigger);
   pointerLeave(trigger);
-  // The engine is mounted for good now; the trigger must be byte-identical to
-  // the pre-hover trigger. This is the CLS pin (same box) AND the accessibility
-  // pin (same tab stop, same attributes, same accessible name — the bubble
-  // contributed no description before this split either, and still does not).
+  // The engine is mounted for good now; the trigger must be byte-identical to the pre-hover trigger.
   assert.equal(m.host.querySelector('span.trig')!.outerHTML, before);
   m.unmount();
 });
@@ -322,10 +301,7 @@ test('one hover surface at a time — opening the next chip evicts the first', (
 
   pointerEnter(a);
   assert.equal(menuPanels().length, 1);
-  // Straight across to the next chip, no leave in between — the registry, not a
-  // mouseleave, is what closes the first. Deferral must not have cost the
-  // one-surface-at-a-time contract, and the eviction watcher must not be so
-  // defensive that it stops evicting.
+  // Straight across to the next chip, no leave in between — the registry, not a mouseleave, is what closes the first.
   pointerEnter(b);
   const panels = menuPanels();
   assert.equal(panels.length, 1, 'exactly one panel is painted');

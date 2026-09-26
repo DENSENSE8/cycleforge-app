@@ -1,29 +1,4 @@
-/**
- * Receiving-scoped to-do list seeded from incoming email order numbers.
- *
- * GET  /api/receiving-lines/incoming/todo
- *   Returns the open (`inbox` / `upload`) and recently-checked (`done`) email
- *   worklist rows — the unmatched-shipping-email pile from
- *   `email_missing_purchase_orders`. Each open email references an order# but
- *   has no PO in the system yet, so it's the first actionable step in the
- *   inbound funnel (see docs/incoming-tracking-todo-plan.md, Tier 0).
- *
- *   Optional `?q=` filters server-side across order numbers / subject / sender
- *   so the sidebar search narrows the list without re-fetching a wider set.
- *
- * PATCH /api/receiving-lines/incoming/todo
- *   Body: { id: string, done: boolean }
- *   Check a to-do off (`done: true` → pile='done') or restore it
- *   (`done: false` → pile='inbox'). Fully reversible — this is a pile move on
- *   an existing row, never a delete. The
- *   `email_missing_purchase_orders_sync_status` trigger keeps `status` /
- *   `resolved_at` in lockstep with `pile`.
- *
- * Both verbs are gated on `receiving.view` (matching the Incoming toolbar
- * siblings — Zoho / Tracking / Email rescan) rather than the `admin.view`
- * triage routes, so floor staff can work the list. The GET returns only the
- * fields the sidebar shows; the admin triage UI keeps its richer surface.
- */
+/** Receiving-scoped to-do list seeded from incoming email order numbers. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

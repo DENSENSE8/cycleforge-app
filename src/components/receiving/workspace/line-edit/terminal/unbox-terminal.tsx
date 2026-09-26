@@ -10,20 +10,7 @@ import {
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { UnboxTerminalContext, UnboxTerminalKind } from './types';
 
-/**
- * The Unbox terminal is **carton-terminal and tab-independent**.
- *
- * It used to be tab-aware: `UNBOX_TAB_TERMINAL` mapped every workbench tab id to
- * a terminal kind, so selecting a display re-labelled the bottom primary
- * (Save to inventory / Check all / Add serial / Copy tracking / Add note). Once
- * the displays moved to the right-edge Displays push column (Lane E) that map
- * became cross-region action-at-a-distance: a click on the RIGHT silently
- * changed the button at the BOTTOM. So the map is gone, `STATION_TERMINAL_REGISTRY.unbox`
- * is `hasSectionTabs: false` + `defaultKind: 'mode-default'`, and each display
- * owns its action locally.
- *
- * What survives: **Print · Receive** — the carton's own commit.
- */
+/** The Unbox terminal is **carton-terminal and tab-independent**. */
 
 const UNBOX_DOCK_MAX = 'max-w-[720px]';
 
@@ -47,10 +34,7 @@ export function resolveUnboxReceiveTerminal(ctx: UnboxTerminalContext): Terminal
   const activeKind = r.activeLabelKind ?? r.selectedLabelKind ?? 'carton';
   const activeName =
     labelOpts.find((o) => o.key === activeKind)?.name ?? 'label';
-  // A received line's remaining bench job is the package label, so the primary
-  // prints instead of print-then-receive. Re-receive is not removed — it moves
-  // to the split menu (labelled "Receive again" by the controller) because a
-  // bounce-back re-receive is a real, supported flow.
+  // A received line's remaining bench job is the package label, so the primary prints instead of print-then-receive.
   const isReceived = r.isReceived === true;
 
   const labelMenuItems = labelOpts.map((opt) => ({

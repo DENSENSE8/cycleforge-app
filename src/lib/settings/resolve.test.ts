@@ -1,9 +1,4 @@
-/**
- * Behavior test for the effective-value resolver — the framework's core logic:
- * the org→staff layering, the whole-setting entitlement lock, the per-option
- * lock, and invalid-value fallback. Uses real registry rows + real plan
- * features so the test tracks the actual catalog.
- */
+/** Behavior test for the effective-value resolver — the framework's core logic: */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

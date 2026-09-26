@@ -1,14 +1,4 @@
-/**
- * `+` drill menu — REQ-PLUS-01/02/03/08/09.
- *
- *   node --import tsx --test src/components/composer/composer-drill-menu.test.ts
- *
- * MOUNTED, not read. Every claim here is about behaviour ACROSS renders — a
- * page push that keeps the panel open, a back that pops without closing, a
- * close that resets the stack — which is exactly what reading the source
- * cannot see. `.test.ts` rather than `.test.tsx` on purpose: `run-unit-tests.mjs`
- * collects `*.test.ts` only, so a `.tsx` sibling would never run in `verify`.
- */
+/** `+` drill menu — REQ-PLUS-01/02/03/08/09. */
 
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';

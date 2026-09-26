@@ -57,15 +57,7 @@ function labelDate(d: Date): string {
   return d.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 }
 
-/**
- * The label payload for a repair, from the facts every surface already has.
- *
- * Two call sites print this label — the desk details panel and the kiosk
- * History face — and they must agree on the FIRST NAME (the label is read
- * across a counter, so it carries a first name, never the stored
- * `"name, phone, email"` blob) and on the due date. Building it twice is how
- * the two faces start promising different turnarounds.
- */
+/** The label payload for a repair, from the facts every surface already has. */
 export function buildRepairLabelPayload(args: {
   repairId: number;
   /** Either the raw `contact_info` blob or an already-clean customer name. */

@@ -4,26 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-/**
- * ToolbarButton — the single visual method for a Linear-style **view toolbar**.
- *
- * Every control in a board/view header (the layout toggle, staff filter, columns
- * config, select) renders through this one primitive — or {@link ToolbarSegmentGroup}
- * for mutually exclusive icon toggles — so the toolbar reads as one consistent
- * system rather than four look-alikes that drift on radius, border, and active color.
- *
- *   • `h-8`, `rounded-lg` — **ghost at rest** (icon only, no ring/border)
- *   • hover soft fill; **solid-blue fill** when `active`
- *   • icon-only square by default (`w-8`); pass children for a labeled pill
- *     (leading icon + text + trailing chevron)
- *
- * It `forwardRef`s and spreads props so it can be a Radix `Popover.Trigger asChild`
- * child (staff/columns popovers) or a plain toggle (select). Wrap in
- * {@link HoverTooltip} where the control has no visible label.
- *
- * This is the presentational shell only — it owns no open/selected state. Active
- * color is semantic-token blue (the house "selected" hue); do not fork per-control.
- */
+/** ToolbarButton — the single visual method for a Linear-style **view toolbar**. */
 export interface ToolbarButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Solid-blue "selected / on" fill. */
   active?: boolean;

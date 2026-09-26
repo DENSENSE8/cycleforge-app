@@ -12,12 +12,7 @@ export const PHOTO_SELECTION_MARK_INSET_X = 'left-2' as const;
 /** Left pad on {@link PhotoEntityGroupHeader} — matches {@link PHOTO_SELECTION_MARK_INSET_X}. */
 export const PHOTO_ENTITY_GROUP_HEADER_PL = 'pl-2' as const;
 
-/**
- * The hover/active selection checkmark. Rendered as its own button (a sibling of
- * the tile's activation button, never nested inside it) so it toggles selection
- * without nested-interactive markup. Hidden until hover unless selection is
- * active, then always shown so the whole grid reads as selectable.
- */
+/** The hover/active selection checkmark. */
 export function SelectionMark({
   checked,
   active,

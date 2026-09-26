@@ -8,13 +8,7 @@ import { HelpdeskNotConnectedError } from '@/lib/integrations/helpdesk';
 import { withIdempotencyClaim, readIdempotencyKey } from '@/lib/api-idempotency';
 import pool from '@/lib/db';
 
-/**
- * POST /api/threads/[id]/escalate — turn a ticketless thread into a support
- * ticket and attach it (D6). `mode='internal'` creates a provider='internal'
- * ticket (no Zendesk round-trip); `mode='zendesk'` creates a live helpdesk
- * ticket via the capability facade + ticket_links. Idempotent: a thread that
- * already has a ticket returns it unchanged (created:false).
- */
+/** POST /api/threads/[id]/escalate — turn a ticketless thread into a support ticket and attach it (D6). */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -33,12 +27,7 @@ export async function POST(
     const parsed = parseBody(ThreadEscalateBody, raw);
     if (parsed instanceof NextResponse) return parsed;
 
-    // Escalation creates a ticket (an external Zendesk one in 'zendesk' mode),
-    // so a double-fire / retry must NOT mint two tickets. A thread escalates at
-    // most once, so the natural idempotency key is the thread itself: the first
-    // request claims `escalate:thread:{id}`, a concurrent second gets 409
-    // in-progress, and a later retry replays the cached response — never a
-    // second createTicket. An explicit Idempotency-Key header still wins.
+    // Escalation creates a ticket (an external Zendesk one in 'zendesk' mode), so a double-fire / retry must NOT mint two tickets.
     const idempotencyKey = readIdempotencyKey(req) ?? `escalate:thread:${threadId}`;
     const claimed = await withIdempotencyClaim(
       pool,

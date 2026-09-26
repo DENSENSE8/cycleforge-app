@@ -13,12 +13,7 @@ function describe(status: ShipStationStatus): string | undefined {
   return parts.join(' · ');
 }
 
-/**
- * GET /api/integrations/shipstation/health — probes both ShipStation keys
- * (v2 GET /carriers, v1 GET /stores). `ok` = both keys active.
- * Served from the per-org 5-min verdict cache; `?fresh=1` (the Settings
- * "Check" button) re-probes and refreshes the verdict the order-sync switch reads.
- */
+/** GET /api/integrations/shipstation/health — probes both ShipStation keys (v2 GET /carriers, v1 GET /stores). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     try {

@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * SoT for a filled order / PO identity chip with hover secondary actions.
- *
- * Parity with {@link TrackingNumberMenuChip} and carton {@link IdentityLinkChip}:
- *   • Chip click = copy (via {@link OrderIdChip})
- *   • Hover → white side menu (prefer trailing/right): **Open** (product /
- *     listing / marketplace order page) · **Edit** (host opens the record
- *     inspector) — never below the chip in LedgerGrid (that blocks vertical
- *     row travel). Placement lives in {@link CopyChipHoverMenu}.
- *   • Dense uppercase verbs + ExternalLink / Pencil
- *
- * Used by Unbox History / Receiving LedgerGrid ORDER cells and the outbound
- * orders queue identity cell (To-Ship / Packed / …). Plain
- * {@link OrderIdChip} remains for read-only / non-menu surfaces.
- */
+/** SoT for a filled order / PO identity chip with hover secondary actions. */
 
 import { ExternalLink, Pencil } from '@/components/Icons';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';

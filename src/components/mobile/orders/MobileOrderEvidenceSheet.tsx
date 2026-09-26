@@ -1,15 +1,7 @@
 'use client';
 
 /**
- * The phone's evidence column — the desk ledger's `OrderRecordView` as a
- * bottom sheet (HANDOFF Step 3: "bottom sheet for evidence"). Opened by
- * tapping a {@link MobileOrderRecord} on `/m/orders?display=ledger`.
- *
- * Top to bottom: state strip (code · word · next) → the thing (photo, title
- * linked to the listing, SKU, item #) → FLOOR verbs (Pick → `/m/pick/[id]`,
- * Pack → `/m/pack/start/[id]`; the next step's verb is ink-filled) → order
- * verbs (pass pick, urgent, hold, listing, photos, documents, details) → the
- * fact list. Everything the record dropped for width lives here, so the owner
+ * The phone's evidence column — the desk ledger's `OrderRecordView` as a bottom sheet (HANDOFF Step 3:
  * can test which facts earn a place back on the row (owner 2026-09-24).
  */
 

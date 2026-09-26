@@ -1,14 +1,4 @@
-/**
- * Account password hashing + verification.
- *
- * Uses the SAME scrypt scheme + storage format as PINs (src/lib/auth/pin.ts) so
- * there is one hashing primitive in the codebase and no native-module
- * dependency. Storage format (accounts.password_hash):
- *   scrypt$N$r$p$saltHex$keyHex
- *
- * Difference from PINs: passwords are free-form text with a length floor, not
- * 4–12 digits.
- */
+/** Account password hashing + verification. */
 
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';

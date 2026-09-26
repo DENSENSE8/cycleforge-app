@@ -1,15 +1,4 @@
-/**
- * Station builder — core contract (Operations Studio layer 2).
- *
- * Stations (receiving Incoming, Unbox, FBA Combine…) are composed from
- * registered BLOCKS bound to DATA SOURCES and ACTIONS; the composition is
- * saved as data in `station_definitions.config`. The split that keeps
- * integrations cheap: blocks are generic (a Checklist doesn't know Gmail
- * exists), integrations ship sources + actions.
- *
- * Everything here is CODE — registered, typed, PR-reviewed. The config rows
- * the Studio edits are DATA. See docs/operations-studio/station-builder-ui-plan.md.
- */
+/** Station builder — core contract (Operations Studio layer 2). */
 
 import type { ComponentType } from 'react';
 
@@ -22,11 +11,6 @@ export const SLOT_IDS = ['trigger', 'queue', 'workspace', 'advance', 'header'] a
 export type SlotId = (typeof SLOT_IDS)[number];
 
 // ─── Field kinds ─────────────────────────────────────────────
-//
-// Semantic kinds are what make binding smart: a `po_ref` field auto-selects
-// the PO renderer and makes PO-scoped actions offerable. Renderers for these
-// kinds MUST delegate to the existing label SoTs (conditions.ts,
-// source-platform.ts, copy-chip-format.ts) — never a second inline map.
 
 export const FIELD_KINDS = [
   'po_ref',
@@ -65,25 +49,11 @@ export interface SourceRow {
 }
 
 // ─── Table lineage ───────────────────────────────────────────
-//
-// The persistent relations an endpoint touches — BPMN's "data store" grain
-// (persistent, shared across processes), as opposed to the transient row/payload
-// a block renders (BPMN's "data object"). Table-level only, deliberately: it is
-// the granularity the industry ships (dbt's native lineage is table-level;
-// OpenLineage keeps column lineage an OPTIONAL facet), and it is the granularity
-// `data-lineage.guard.test.ts` can actually verify by matching the name against
-// the module's SQL. A column-level claim would need a real SQL parser, and a
-// parser that fails open produces the untrusted map that is worse than no map.
 
 export interface TableRef {
   /** Physical relation name, exactly as it appears in migrations and in SQL. */
   table: string;
-  /**
-   * The module whose SQL touches it, when that is NOT the descriptor's own
-   * endpoint route (`@/lib/receiving/serial-attach`). The guard verifies the
-   * named module really touches the named table, so a `via` can never be a
-   * guess — it is a checked claim about where the write lives.
-   */
+  /** The module whose SQL touches it, when that is NOT the descriptor's own endpoint route (`@/lib/receiving/serial-attach`). */
   via?: string;
 }
 
@@ -114,12 +84,7 @@ export interface DataSourceDefinition {
   permission: string;
   /** Live invalidation channel, when the feed has one. */
   realtime?: { ablyChannel?: string };
-  /**
-   * Relations `endpoint` reads. Optional so lineage is adoptable per station,
-   * but NOT optional once declared: `data-lineage.guard.test.ts` fails when the
-   * route's own SQL touches a relation this list omits, and when this list names
-   * one the SQL never touches. Ids in `LINEAGE_REQUIRED` must declare.
-   */
+  /** Relations `endpoint` reads. */
   reads?: TableRef[];
   /** Relations `endpoint` writes. A GET feed normally declares none. */
   writes?: TableRef[];

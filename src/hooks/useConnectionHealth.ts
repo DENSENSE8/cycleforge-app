@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * The connection-health hooks — one source for every offline / degraded surface.
- *
- * Before this, four surfaces each ran their own `navigator.onLine` listener and
- * none of them knew about Ably at all (retired layout/mobile OfflineBanner twins,
- * a dead `station/OfflineBanner`, and an inline `useOnline` in
- * `OperationsTvBoard`). Wiring realtime health into any one of them would have
- * left the rest confidently telling the old, now-incomplete story — and a bench
- * that says "online" while the station's realtime link is dead is worse than a
- * bench that says nothing.
- *
- * Realtime is infrastructure, not an operator-facing connection badge. The
- * **answer** still must not fork per surface.
- *
- * Decision law lives in `@/lib/realtime/connection-health` (pure, unit-tested);
- * these hooks only wire it to the browser and the store.
- */
+/** The connection-health hooks — one source for every offline / degraded surface. */
 
 import { useEffect, useReducer, useSyncExternalStore } from 'react';
 import {
@@ -63,14 +47,7 @@ interface RealtimeLink {
   degraded: boolean;
 }
 
-/**
- * The station's realtime link, debounced.
- *
- * A `wobbling` link (Ably `disconnected`) is not reported until it has held for
- * {@link REALTIME_DEGRADE_GRACE_MS} — nothing in the store fires on a timer, so
- * the hook schedules exactly one wake-up at the moment the grace expires and
- * re-reads. One timeout per transition, not a polling interval.
- */
+/** The station's realtime link, debounced. */
 export function useRealtimeLink(graceMs: number = REALTIME_DEGRADE_GRACE_MS): RealtimeLink {
   const snapshot = useSyncExternalStore(
     subscribeRealtimeConnection,

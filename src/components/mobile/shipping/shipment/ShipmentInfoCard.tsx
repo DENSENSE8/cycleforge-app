@@ -10,12 +10,7 @@ import {
   shipmentShippedLine,
 } from './shipment-faces';
 
-/**
- * The package hub's read-only summary on {@link DetailSummaryCard}: what is in
- * the box, packer · packed at, shipped at (+ Backfilled) · items count, the
- * tracking number bottom-left and the carrier status (or the open unmatched
- * scan) bottom-right. The whole card opens `/info`.
- */
+/** The package hub's read-only summary on {@link DetailSummaryCard}: */
 export function ShipmentInfoCard({ record, href }: { record: ShipmentRecord; href: string }) {
   const units = record.items.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
   return (

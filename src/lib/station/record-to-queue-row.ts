@@ -1,18 +1,4 @@
-/**
- * Station record → queue-row mappers (station-table-unification-plan §5.5).
- *
- * The Tech + Packer cutover (Phase 2) renders station logs through the SAME
- * `OrdersQueueTableRow` the Unshipped board uses, so station rows match the
- * Unshipped row anatomy (success criterion #1). These pure adapters shape a
- * {@link TechRecord} / {@link PackerRecord} into the {@link QueueRowRecord}
- * (ShippedOrder-shaped) the row + grouping consume — mapping the fields the row
- * reads and stashing the ORIGINAL record under a well-known key so the row's
- * detail-open and TSV-copy can recover the domain record without a second fetch.
- *
- * Banding: station rows band by `created_at` (the scan timestamp), so both
- * `created_at` and `deadline_at` are set to it (the queue bands by deadline for
- * non-`newest` sorts — see `useOrdersQueueRows`).
- */
+/** Station record → queue-row mappers (station-table-unification-plan §5.5). */
 
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { TechRecord } from '@/hooks/useTechLogs';

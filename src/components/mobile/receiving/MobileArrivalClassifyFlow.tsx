@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Arrival door classify — Platform → Type → Priority bottom sheets.
- *
- * Options come from desktop classify SoTs (`classify-pill-options` + catalogs).
- * Persist mirrors desktop: PATCH receiving for platform/type, receiving-logs for
- * priority_tier.
- *
- * Two hosts: `/m/scan?rid=&step=` (the default — escape clears to the scan
- * tape) and the carton hub's Classify door `/m/r/[id]/classify` (escape
- * returns to the carton), which passes `stepHref` / `exit`.
- */
+/** Arrival door classify — Platform → Type → Priority bottom sheets. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';

@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Ticket candidates for the Daily chip slider.
- *
- * Lives in `lib` beside the other daily-check hooks so `/m` surfaces can consume
- * it without reaching into a desktop feature dir.
- *
- * `placeholderData: keepPreviousData` is LOAD-BEARING: the operator types a
- * ticket number one digit at a time and every digit is a new query key. Without
- * it the chip row unmounts to empty between keystrokes and the row the thumb was
- * travelling toward jumps out from under it.
- *
- * Failure never reaches render as a throw — the picker is one control inside a
- * checklist sheet, so a dead helpdesk degrades the row, not the sheet.
- */
+/** Ticket candidates for the Daily chip slider. */
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 

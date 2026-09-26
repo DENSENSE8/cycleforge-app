@@ -1,11 +1,4 @@
-/**
- * Studio Simulate — unit tests over the pure ghost-run router.
- * Run: node --import tsx --test src/lib/studio/simulate.test.ts
- *
- * The simulation MUST match the engine's edge router (router.ts
- * selectNextTarget, first-match-wins), so these mirror router.test.ts plus the
- * seed graph's happy path and the test→fail→repair rework loop.
- */
+/** Studio Simulate — unit tests over the pure ghost-run router. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -13,13 +13,7 @@ export type PeekCard = {
    * times the pixels the tile can show.
    */
   imgUrl: string;
-  /**
-   * Full-resolution source for the fullscreen viewer, when `imgUrl` is a thumb.
-   *
-   * The viewer zooms and pans, so it must NOT inherit the tile's downscale —
-   * that is the whole reason this is a second field rather than one lowered URL.
-   * Absent when the two are the same.
-   */
+  /** Full-resolution source for the fullscreen viewer, when `imgUrl` is a thumb. */
   fullUrl?: string;
   alt: string;
   meta?: PhotoMeta;

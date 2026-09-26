@@ -35,12 +35,7 @@ export function useRepairPhotos(repairId: number) {
   };
 }
 
-/**
- * Hub row summary for the Photos screen: photo + video counts and the newest
- * server stamp across both. The
- * screen always opens (it is also where the first photo is taken), so
- * `enabled` is false only for an invalid repair id.
- */
+/** Hub row summary for the Photos screen: */
 export function useRepairPhotosRow(repairId: number): { meta: string; enabled: boolean } {
   const { photos, videos, loading, error } = useRepairPhotos(repairId);
   if (!Number.isFinite(repairId) || repairId <= 0) return { meta: 'Invalid repair id', enabled: false };

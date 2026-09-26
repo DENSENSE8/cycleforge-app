@@ -35,13 +35,7 @@ const STATUS_TONE: Record<TrackingExceptionRow['status'], string> = {
   discarded: 'bg-surface-sunken text-text-muted',
 };
 
-/**
- * One tracking exception — CSS-grid columns matching
- * {@link TRACKING_EXCEPTIONS_GRID_COLUMNS}.
- *
- * Row click opens the record plane (edit dialog). Refresh / Edit buttons are
- * row-scoped and stop propagation so Refresh never also opens the dialog.
- */
+/** One tracking exception — CSS-grid columns matching {@link TRACKING_EXCEPTIONS_GRID_COLUMNS}. */
 export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow({
   row,
   isSelected,

@@ -1,22 +1,4 @@
-/**
- * GET /api/cron/receiving/incoming-tracking-sync  (Vercel cron, every 15 min)
- *
- * Proactive twin of the Incoming "Tracking" button. Re-polls carriers for the
- * exact shipment set backing the Incoming receiving table (via the shared
- * {@link selectIncomingShipmentIds}) so "Delivered · not scanned" stays fresh
- * without anyone clicking. Complements /api/cron/shipping/sync-due, which
- * sweeps *all* shipments slowly — this keeps the *visible* set current.
- *
- * No operator cooldown / rate-limit (those are UI concerns); just the batch
- * cap to stay inside the function budget.
- *
- * Tenancy (Phase D category B — global carrier-poll sweep): like sync-due,
- * carrier reads are global and each shipment carries its own org via its
- * receiving parent, so this polls the cross-org visible set on the owner pool.
- * Phase E follow-up: selectIncomingShipmentIds(cap, orgId) ALREADY exposes a
- * per-org GUC-scoped path — wire it behind a listSweepOrgIds() loop with a
- * budget-sharded per-org cap once the FORCE cutover lands.
- */
+/** GET /api/cron/receiving/incoming-tracking-sync (Vercel cron, every 15 min) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

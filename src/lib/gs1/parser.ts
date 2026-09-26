@@ -1,24 +1,4 @@
-/**
- * GS1 Digital Link parser.
- *
- * Walks a Digital Link URL or bare path and collects every `(AI, value)`
- * pair into `aiMap`. The well-known AIs we care about are also hoisted
- * onto named fields on the returned context for ergonomic access by the
- * resolver. Unknown AIs are kept in `aiMap` so a follow-up can extend
- * routing without touching this parser.
- *
- * Recognised AIs (named):
- *   01  → gtin           (product class)
- *   21  → serial         (unique unit)
- *   10  → batchOrLot     (lot / batch code)
- *   414 → gln            (location identifier, paired with 254)
- *   254 → locationCode   (warehouse address — our flat code, e.g. C0101101)
- *
- * Any other AI ends up in `aiMap` only. The walker tolerates a leading
- * `https://host` prefix, a leading slash, and URL-encoded values.
- *
- * Returns `null` when no AI/value pair is found at all.
- */
+/** GS1 Digital Link parser. */
 import {
   GS1_PATH_RE,
   GS1_LOCATION_RE,
@@ -55,14 +35,7 @@ function extractPath(input: string): string {
   return v.startsWith('/') ? v : `/${v}`;
 }
 
-/**
- * Walk `(ai, value)` segment pairs out of a slash-delimited path.
- *
- * GS1 Digital Link format pairs every numeric AI with the next segment
- * as its value: `/01/{gtin}/21/{serial}/10/{batch}`. We collect every
- * such pair we can find, regardless of ordering, and ignore stray
- * segments (e.g. a trailing path component without a following value).
- */
+/** Walk `(ai, value)` segment pairs out of a slash-delimited path. */
 function collectAiPairs(path: string): Record<string, string> {
   // Drop query/hash and split on '/'. A leading empty segment from the
   // initial '/' is fine — we skip non-numeric segments anyway.

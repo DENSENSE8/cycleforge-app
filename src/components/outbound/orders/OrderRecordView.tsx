@@ -1,34 +1,9 @@
 'use client';
 
 /**
- * The outbound ORDER RECORD — one record view for every desk that shares the
- * industrial ledger (To Ship, Pending, Exceptions, the Search lookup), placed
- * by `DeskRecordPlane`: in place of the fixed-width list by default, beside it
+ * The outbound ORDER RECORD — one record view for every desk that shares the industrial ledger (To Ship, Pending, Exceptions, the Search…
  * when the staffer chooses fullscreen (owner 2026-09-25,
- * `docs/handoff/HANDOFF-desk-surface-law-2026-09-25.md` Step 2). The plane
- * paints the header band (order #, n of N, prev / next, ✕) and owns Esc; the
- * surface owns J / K.
- *
- * Built for the order, not re-flowed from the old evidence column (owner
- * 2026-09-25). Two columns through {@link DeskRecordLayout} (stacked in the
- * split pane by container query):
- *   - CENTER — the items: every line of this order, each with its identity
- *     (photo, the Zoho-governed title via `resolveSkuIdentityTitle`, SKU, item
- *     #, bin, qty, condition) and its FULFILMENT CHAIN — who picked, packed and
- *     QC'd it and when, with the Pick / Pack assign popovers and the line's
- *     auto-assign rule on the same chain.
- *   - RIGHT — shipping and customer (channel, order #, listing, TRK#, ship by,
- *     ship-to), labels, price and the order's own note. No verbs: every order
- *     verb (Out of stock, Label, Scan out, Notes, Select, Copy, Print, tasks,
- *     Delete) lives in the list's action strip under its search row
- *     (`OrderRecordActionStrip`, owner 2026-09-25).
- * The desk MODE picks the sections (`ORDER_RECORD_SECTIONS`), so return /
- * replacement labels never paint on Pending or To Ship.
- *
- * Pre-boxed / pre-boxed-by rides the chain from the feed's
- * `PREBOX_FACTS_LATERAL` (sealed `label_manifests` PREBOX through the line's
- * live allocated units). A line with no allocated unit has no known pre-box
- * state, so it paints no pre-box row — never a placeholder.
+ * (`OrderRecordActionStrip`, owner 2026-09-25).
  */
 
 import { useState, type ReactNode } from 'react';
@@ -305,12 +280,7 @@ export function OrderRecordView({
   );
 }
 
-/**
- * One line of the order: what it is and where it sits, then its fulfilment
- * chain — who picked, packed and QC'd it, and when (the feed's own step
- * projections, the same the ledger row paints), with the assign popovers and
- * the line's auto-assign rule on the chain.
- */
+/** One line of the order: */
 function OrderItem({
   line,
   current,

@@ -20,12 +20,7 @@ export const TECH_EMPLOYEE_IDS: Record<string, string> = {
   '4': 'TECH004',
 };
 
-/**
- * Whether a staff member belongs to a role, by RBAC assignment (staff_roles)
- * with a fallback to the legacy primary-role string. Use this for all
- * technician/packer/etc. picker membership checks instead of `member.role === x`,
- * so membership tracks staff_roles (the source of truth).
- */
+/** Whether a staff member belongs to a role, by RBAC assignment (staff_roles) with a fallback to the legacy primary-role string. */
 export function staffHasRole(
   member: { role?: string | null; roles?: readonly string[] | null },
   roleKey: string,

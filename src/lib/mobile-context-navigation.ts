@@ -34,11 +34,7 @@ export function getMobileAppTitle(
   searchParams?: Pick<URLSearchParams, 'get'> | null,
 ): string {
   if (!pathname) return PRODUCT_NAME;
-  // `/m/home` is the shift checklist since 2026-09-14 — the drawer row and
-  // this title are one word, "Daily". The `/m/checklist` entry (the SKU kit /
-  // QC editor, faced "Checklists") is DELETED with its route, operator
-  // 2026-09-15 — see `nav-registry.ts`. "Daily" is now the only checklist
-  // word on the phone.
+  // `/m/home` is the shift checklist since 2026-09-14 — the drawer row and this title are one word, "Daily".
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Daily';
   if (pathname === '/m/settings' || pathname.startsWith('/m/settings/')) return 'Settings';
   if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Order management';

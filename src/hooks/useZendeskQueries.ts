@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Data layer for the native Zendesk console (/support). Thin TanStack Query
- * wrappers over the existing /api/zendesk/* routes. The optimistic mutation
- * shape mirrors the repair status mutation (`useRepairQueries.ts`, deleted 2026-08-02 as dead).
- *
- * Types are imported `import type` from src/lib/zendesk.ts so none of that
- * module's server-only code is bundled into the client.
- */
+/** Data layer for the native Zendesk console (/support). */
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
@@ -236,14 +229,7 @@ export function useTicketPhotos(id: number | null) {
   });
 }
 
-/**
- * The id a ticket filed right now would land on — the station's DRAFT ticket
- * number. A prediction, not a reservation (see `predictNextTicketNumber`), so
- * it refetches while a draft is open and is never written to the record.
- *
- * `enabled` is the caller's: only a surface actually showing a draft badge
- * should pay for this, and it must not fire on every carton an operator opens.
- */
+/** The id a ticket filed right now would land on — the station's DRAFT ticket number. */
 export function useZendeskNextTicketNumber(enabled: boolean) {
   return useQuery<NextTicketNumber | null, HttpError>({
     queryKey: zendeskKeys.nextTicketNumber(),
@@ -455,9 +441,5 @@ export function useUpdateTicket() {
   });
 }
 
-// `CommentVars` + `useAddComment` were deleted 2026-08-02 with their only
-// consumer, `PackZendeskSection` — itself dead code inside the pack scan
-// column's unreachable standalone branch. Ticket replies go through the
-// composer waist (`TicketComposer` / `ThreadComposerBridge`), which is the
-// one path that also owns visibility and draft-overwrite rules.
+// `CommentVars` + `useAddComment` were deleted 2026-08-02 with their only consumer, `PackZendeskSection` — itself dead code inside the…
 

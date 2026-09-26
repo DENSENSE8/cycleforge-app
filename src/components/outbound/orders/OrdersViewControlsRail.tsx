@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * To Ship View-only inspector shell — Band 3 can open layout / refine chrome
- * with no selected order (`detail:orders-view`). Chrome + View topics only;
- * no fabricated order identity or body.
- *
- * **Sole desk host for sheet View topics** when an order is *not* selected.
- * Selected-order `detail:order` (`ShippedDetailsPanel`) is order facts only —
- * it must never remount {@link OrdersViewTopicsCluster}. Batch / compare rails
- * may still compose the cluster for multi-pane layout chrome.
- *
- * **ONE band, and it is titled** (2026-08-21). This rail used to stack a bare
- * `DeskRailChromeRow` (host-close reserve, nothing else) over a second `h-9`
- * chrome-painted row holding the topics — two bands, and neither said what the
- * panel was. It now mounts {@link DeskInspectorIndexShell} in the `standalone`
- * stance: no index routes here (Band 3 toggles it directly), so it owes no
- * Back and declares that rather than inheriting it. The topics stay CONTENT
- * under the band's hairline — the band's trailing cells belong to the host's
- * `⤢` / `✕`, and this cluster is far too wide to share them.
- */
+/** To Ship View-only inspector shell — Band 3 can open layout / refine chrome with no selected order (`detail:orders-view`). */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';

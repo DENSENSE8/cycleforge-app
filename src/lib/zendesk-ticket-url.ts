@@ -1,13 +1,4 @@
-/**
- * Build a deep link to a Zendesk agent ticket from a ticket id or a "#1234"
- * string.
- *
- * Client-safe: it only reads env, so it can be imported from both server
- * routes and `'use client'` components. On the client only
- * NEXT_PUBLIC_ZENDESK_SUBDOMAIN is inlined; on the server we also fall back to
- * ZENDESK_SUBDOMAIN. Both fall back to the known 'usav' workspace so existing
- * deployments get working links without new env config.
- */
+/** Build a deep link to a Zendesk agent ticket from a ticket id or a "#1234" string. */
 export function zendeskTicketUrl(
   ticketId: string | number | null | undefined,
 ): string | null {

@@ -75,30 +75,12 @@ async function computePendingOrderSkus(
   }
 }
 
-/**
- * Persist the shared unbox/test urgency flag when a door-scanned carton matches
- * a SKU a pending order needs. This is the durable half of the priority_unbox
- * signal: the Ably push nudges the unboxer live, while receiving.is_priority
- * floats the carton to rank-0 in the Prioritize rail AND the tester's queue
- * (RECEIVING_PRIORITY_RANK_SQL) so "urgent to unbox" carries through to test.
- * Idempotent + best-effort — a failure here never blocks the scan response.
- *
- * Also auto-routes `priority_lane` (Phase 4, docs/receiving-triage-redesign-plan.md
- * §6) — the same PO_STOCKOUT/RETURN split `resolveTriageLane` computes client-side
- * (src/lib/receiving/triage-lane-policy.ts), now actually persisted at the
- * moment the priority signal fires instead of only ever being a UI hint.
- * `COALESCE(priority_lane, …)` never overwrites an operator's manual pick — the
- * same "manual always wins" rule as priority_tier vs is_priority.
- */
+/** Persist the shared unbox/test urgency flag when a door-scanned carton matches a SKU a pending order needs. */
 async function markReceivingPriority(receivingId: number | null, orgId: string): Promise<void> {
   if (!receivingId || !Number.isFinite(receivingId)) return;
   try {
     await withTenantTransaction(orgId, async (client) => {
-      // Pending-order match = top urgency: set the manual override to tier 0
-      // (Priority) and keep is_priority in lockstep. Idempotent — skip rows
-      // already at the top tier (which also skips the lane stamp, exactly like
-      // the old single UPDATE). is_priority/priority_tier stay on the spine;
-      // priority_lane is triage street state (receiving_triage.priority_lane).
+      // Pending-order match = top urgency:
       const upd = await client.query<{ is_return: boolean | null }>(
         `UPDATE receiving_carton
             SET is_priority = true,
@@ -163,22 +145,7 @@ interface ReceivingLineLite {
   image_url: string | null;
 }
 
-/**
- * The line shape every branch of this route puts on the wire.
- *
- * ORDER IDENTITY IS PART OF THE SCAN ANSWER, not a follow-up. The six response
- * branches below each hand-spelled a subset that dropped
- * `zoho_purchaseorder_number`, `source_order_id` and `inbound_source_type`, so
- * a scanned marketplace carton reached the client with no order id at all:
- * `buildMatchedStubRow` produced a row whose `getReceivingPoIdentityParts`
- * ladder resolved to '', the station bar fell through to the internal numeric
- * `linkedOrderNumber`, and the operator copied a DASHLESS number that finds
- * nothing when pasted into eBay. The dashed order (`11-15183-54752`) only
- * appeared after `GET /api/receiving-lines?include=serials` landed.
- *
- * These columns are already joined here (`rz`) — selecting them costs the scan
- * nothing and removes the identity waterfall entirely.
- */
+/** The line shape every branch of this route puts on the wire. */
 function serializeLookupLine(l: ReceivingLineLite) {
   return {
     id: l.id,
@@ -196,15 +163,7 @@ function serializeLookupLine(l: ReceivingLineLite) {
 }
 
 async function fetchLines(receivingId: number, orgId: string): Promise<ReceivingLineLite[]> {
-  // Zoho identity reads from receiving_line_zoho (rz) — the spine copies are
-  // write-dead and drop next migration.
-  //
-  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts). Two defects fixed
-  // 2026-09-15: the catalog join carried NO organization_id at all (the only
-  // tenant-blind SKU-keyed join in the tree), and `image_url` came off bare
-  // `sc.image_url` — so a contaminated catalog row put a WRONG PRODUCT PHOTO
-  // on 7 response paths. The image now runs the same ladder as every receiving
-  // grid: Zoho item photo when the item exists, catalog only when it does not.
+  // Zoho identity reads from receiving_line_zoho (rz) — the spine copies are write-dead and drop next migration.
   const result = await tenantQuery<ReceivingLineLite>(
     orgId,
     `SELECT rl.id, rl.sku, rz.zoho_item_id, rz.zoho_purchaseorder_id,
@@ -252,14 +211,7 @@ async function fetchReceivingPackage(receivingId: number, orgId: string): Promis
   return r.rows[0] ?? null;
 }
 
-/**
- * Audit + memoize a successful lookup match. Every successful STN resolution
- * writes a `receiving_scans` row so we have a full event log AND so future
- * identical-byte scans hit the cheap `receiving_scans` fallback path.
- *
- * Distinct from the full `recordScan` below (which captures carrier + staff
- * during the main scan flow) — this is the minimal audit during lookup.
- */
+/** Audit + memoize a successful lookup match. */
 async function memoizeLookupHit(
   receivingId: number,
   trackingNumber: string,
@@ -270,12 +222,7 @@ async function memoizeLookupHit(
   orgId: string,
 ): Promise<number> {
   const scanSource: 'zoho_po' | 'unmatched' = receivingSource === 'zoho_po' ? 'zoho_po' : 'unmatched';
-  // This helper runs ONLY for a carton that already exists — resolving one is
-  // literally what `findScanByTracking` just did — which makes it the EARLIEST
-  // write on the lookup-po path and therefore the first place an inspection can
-  // rename the operator who actually unboxed the box. Classifying downstream
-  // (the ticket / dedup branches) is too late: the overwrite already happened
-  // here. Fails open to `work` inside `resolveUnboxScanKind`.
+  // This helper runs ONLY for a carton that already exists — resolving one is literally what `findScanByTracking` just did — which makes it…
   const scanKind = await resolveUnboxScanKind(orgId, receivingId, intakeSurface);
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, scanSource, {
     intakeSurface,
@@ -283,26 +230,7 @@ async function memoizeLookupHit(
   });
 }
 
-/**
- * Resolve an inbound carrier scan to a local `receiving` row WITHOUT calling
- * Zoho. Authoritative source is `shipping_tracking_numbers` (STN) joined to
- * `receiving` via `receiving.shipment_id`. Zoho webhooks populate STN, so
- * once webhooks are live, this function handles almost every scan locally.
- *
- * Matching is delegated to `resolveShipmentForScan`, which prefers STN's EXACT
- * `tracking_number_normalized` key (UNIQUE → one physical package) and only
- * falls back to last-8 — with a log — on an exact miss. Last-8 is lossy (15
- * live collision groups), so it must stay a fallback, not the primary key. See
- * docs/new-additions/tracking-canonicalization-stn-plan.md §3.2.
- *
- * Order of attempts:
- *   1. STN exact-normalized ⋈ receiving (then last-8 fallback, logged).
- *   2. `receiving_scans` — fallback for rows where `shipment_id` is NULL
- *      (unmatched walk-in scans / pre-webhook legacy data).
- *
- * Ambiguity (≥2 distinct receiving rows on the same last-8 suffix) drops to
- * Zoho where the PO header can disambiguate.
- */
+/** Resolve an inbound carrier scan to a local `receiving` row WITHOUT calling Zoho. */
 async function findScanByTracking(
   trackingNumber: string,
   staffId: number | null,
@@ -317,18 +245,6 @@ async function findScanByTracking(
   scannedCartonId: number | null = null,
 ): Promise<{ scan_id: number; receiving_id: number } | null> {
   // ── 0. OUR OWN PRINTED CARTON LABEL — an exact answer, not a match ───────
-  //
-  // This route composed NO decoder, so a re-scan of a sticker we printed
-  // (`https://{slug}.app.cycleforge.ai/m/r/1234`, or the punctuation-stripped
-  // form an HID wedge in the wrong keyboard country emits) was treated as an
-  // unknown CARRIER number: every rung below missed and the unmatched path
-  // MINTED A NEW CARTON — once per scan. Desktop was protected only because
-  // `useTrackingScan` short-circuits carton codes before it ever calls here;
-  // every other caller (mobile Receive, mobile Arrival) had no such hop, and
-  // the protection was one refactor away from being lost on desktop too.
-  //
-  // Guarding at the shared route rather than per caller is the point: this is
-  // the ingest boundary, so it holds for every surface at once.
   if (scannedCartonId != null) {
     const owned = await tenantQuery<{ id: number }>(
       orgId,
@@ -405,34 +321,15 @@ async function findScanByTracking(
 
 export interface LocalPoResolution {
   poId: string;
-  /**
-   * True when the match came from the PO's registered Reference# — which, per
-   * the inbound contract, IS the carrier tracking for that shipment (see
-   * {@link resolvePoIdLocallyByTracking}). False when it matched the PO's own
-   * `zoho_purchaseorder_number` field — a pure order/PO identity that carries
-   * no separate tracking (e.g. a vendor like Home Depot whose Zoho "PO Number"
-   * literally IS their own order id). Callers use this to decide whether the
-   * scanned value should ALSO be registered as a shipment tracking number.
-   */
+  /** True when the match came from the PO's registered Reference# — which, per the inbound contract, IS the carrier tracking for that… */
   viaTrackingReference: boolean;
 }
 
-/**
- * Order# / PO-reference resolution against the LOCAL incoming mirror — no Zoho.
- * The incoming Zoho sync already materializes receiving_lines (workflow
- * EXPECTED, receiving_id NULL) and a zoho_po_mirror header for every issued PO,
- * so an order number an operator is unboxing is almost always already local.
- * Matches the shared `_norm` (upper + strip non-alphanumeric) on the
- * receiving_lines PO#, then the mirror PO#/reference#. Returns the Zoho PO id
- * plus which field it matched (see {@link LocalPoResolution}).
- */
+/** Order# / PO-reference resolution against the LOCAL incoming mirror — no Zoho. */
 async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<LocalPoResolution | null> {
   const norm = orderNumber.toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (!norm) return null;
-  // order#→poId is an immutable mapping once the incoming sync materializes it,
-  // so cache the FOUND result (5 min). A not-found returns null and getOrSet does
-  // NOT cache null → a just-synced PO is never masked. Skips the two-table probe
-  // (and the "Opening your PO" Zoho fallback) on a hit. Org-scoped.
+  // order#→poId is an immutable mapping once the incoming sync materializes it, so cache the FOUND result (5 min).
   return getOrSet<LocalPoResolution | null>(
     CACHE_NS.poByRef,
     orgId,
@@ -440,12 +337,7 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<L
     300,
     [CACHE_TAGS.poByRef],
     async () => {
-      // Tenant-scoped via the GUC pool: receiving_line_zoho + zoho_po_mirror are
-      // RLS-constrained, so resolution stays in THIS org — a scanned order# can
-      // never resolve to another tenant's PO id.
-      // 1. receiving_line_zoho (the line facts behind the Incoming table) —
-      //    newest line wins. The spine's number/norm/id copies are write-dead.
-      //    This is always a PO-NUMBER match (the line copy has no reference#).
+      // Tenant-scoped via the GUC pool:
       const rl = await tenantQuery<{ zoho_purchaseorder_id: string }>(
         orgId,
         `SELECT zoho_purchaseorder_id
@@ -480,19 +372,7 @@ async function resolvePoIdLocally(orderNumber: string, orgId: string): Promise<L
   );
 }
 
-/**
- * Tracking → PO id resolution against LOCAL data only — no Zoho. The incoming
- * Zoho sync (zoho-receiving-sync.ts) registers each PO's Reference# (the
- * tracking, per the inbound contract) into shipping_tracking_numbers, pre-creates
- * a `zoho_po` receiving row stamped with the zoho_purchaseorder_id, and writes
- * its lines as EXPECTED (receiving_id NULL). So a tracking scan of an
- * incoming-but-unscanned PO can be turned into its PO id entirely locally:
- *   1. the receiving row findScanByTracking already resolved via STN
- *      (preassigned) carries the PO id directly, or
- *   2. the zoho_po_mirror header whose Reference# canonical-matches this tracking.
- * Returning a PO id here lets the matched path adopt the pre-materialized local
- * lines and SKIP the live Zoho tracking search — the "Opening your PO" latency.
- */
+/** Tracking → PO id resolution against LOCAL data only — no Zoho. */
 async function resolvePoIdLocallyByTracking(
   trackingNumber: string,
   preassignedReceivingId: number | null,
@@ -558,16 +438,7 @@ async function resolvePoIdLocallyByTracking(
     : null;
 }
 
-/**
- * Verify a resolved PO id actually carries the scanned PO#/reference. Guards the
- * order-mode local resolution against a normalized-number collision or a
- * mis-synced receiving_line that points at the WRONG purchaseorder_id — without
- * this, scanning one PO# could open a different PO. Checks the authoritative
- * zoho_po_mirror header for that id.
- *   'match'    → the mirror confirms this id carries the scanned number/reference
- *   'mismatch' → the mirror knows this id and it carries a DIFFERENT number
- *   'unknown'  → the mirror has no header for this id (can't disprove; trust it)
- */
+/** Verify a resolved PO id actually carries the scanned PO#/reference. */
 async function verifyPoNumberMatches(
   poId: string,
   orderNumber: string,
@@ -603,14 +474,7 @@ async function linkLocalPoLinesToReceiving(poId: string, receivingId: number, or
   return result.lineCount;
 }
 
-/**
- * Phase 3 (unified inbound) — assign the carton an LPN and propagate the
- * receiving row's shipment_id down to its lines, so a delivered shipment
- * resolves its line-level SKU/order# directly (delivered-unscanned surface) and
- * the carton has a stable plate. Column-gated by RECEIVING_UNIFIED_INBOUND:
- * a no-op (and never touches the new columns) until the migration is applied
- * and the flag is flipped, so an unapplied migration can't error here.
- */
+/** Phase 3 (unified inbound) — assign the carton an LPN and propagate the receiving row's shipment_id down to its lines, so a delivered… */
 async function stampInboundHandlingUnit(receivingId: number, orgId: string): Promise<void> {
   if (!isReceivingUnifiedInbound()) return;
   try {
@@ -642,22 +506,9 @@ async function upsertMatchedReceiving(
 ): Promise<{ receivingId: number; preexisting: boolean }> {
   const now = formatPSTTimestamp();
   // Door-arrival stamp is TRIAGE-owned street state (receiving_triage.
-  // door_received_at/door_received_by — the spine copies are write-dead). An
-  // UNBOX-surface scan must leave it NULL so the carton becomes
-  // unbox_only_intake (bench-first) and never leaks the door-scan timestamp.
-  // Visibility on the unbox surface comes from unbox_opened_at
-  // (recordUnboxScanOpened), not the door stamp — so gating this is safe.
-  // Mirrors record-scan.ts:114.
   const doorAt = intakeSurface === 'triage' ? now : null;
   const doorBy = intakeSurface === 'triage' ? staffId : null;
-  // Carton upsert + triage door stamp in ONE tenant transaction. The Incoming
-  // Zoho sync pre-creates this PO's zoho_po receiving row with no door stamp
-  // (see zoho-receiving-sync.ts); the TRIAGE door scan IS the physical-arrival
-  // event, so stamp it on first triage scan even when the row already existed —
-  // otherwise the matched carton never satisfies the view=scanned predicate
-  // (rt.door_received_at IS NOT NULL) and stays invisible in the Prioritize /
-  // unbox Queue feeds. The street helper is COALESCE-once, so the original scan
-  // time + scanner survive re-scans (idempotent, never resets).
+  // Carton upsert + triage door stamp in ONE tenant transaction.
   return withTenantTransaction(organizationId, async (client) => {
     const result = await client.query<{ id: number; xmax: string }>(
       // Target the base table (not the `receiving` compat view): views cannot do
@@ -698,11 +549,7 @@ async function createUnmatchedReceiving(
     trackingNumber,
     sourceSystem: 'receiving_lookup_po',
   }, organizationId);
-  // Door-arrival stamp is TRIAGE-owned street state (mirrors record-scan.ts:114
-  // / the matched upsert above): receiving_triage.door_received_at/by, written
-  // in the same transaction as the carton INSERT. An UNBOX-surface scan of an
-  // unfound box leaves it NULL so it becomes unbox_only_intake and never leaks
-  // door_received_at; visibility comes from unbox_opened_at.
+  // Door-arrival stamp is TRIAGE-owned street state (mirrors record-scan.ts:114 / the matched upsert above):
   const doorAt = intakeSurface === 'triage' ? now : null;
   const doorBy = intakeSurface === 'triage' ? staffId : null;
   // Stamp organization_id explicitly rather than leaning on the column default
@@ -766,13 +613,7 @@ async function stampReceivingException(
   }
 }
 
-// ── Test / demo shortcut ─────────────────────────────────────────────────────
-// A tracking that starts with "TEST" (e.g. TEST123) skips Zoho and instantly
-// creates a matched test carton + one line, so the door-scan → unbox flow can
-// be exercised end-to-end without a real PO. Fully idempotent: re-scanning
-// returns the same carton/line and NEVER resets unbox progress — the line
-// insert is ON CONFLICT DO NOTHING, and received_at/unboxed_at are each only
-// set once (received_at on first scan, unboxed_at via mark-received's COALESCE).
+// ── Test / demo shortcut ───────────────────────────────────────────────────── A tracking that starts with "TEST" (e.g.
 const TEST_TRACKING_RE = /^TEST/i;
 
 function isTestTracking(tracking: string): boolean {
@@ -800,23 +641,10 @@ async function createOrGetTestReceiving(
   const { receivingId, preexisting } = await upsertMatchedReceiving(poId, carrier, staffId, organizationId);
   const scanId = await recordReceivingScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po');
 
-  // A scanned test carton belongs in receiving triage as a SCANNED line — NOT
-  // the tech testing queue. The testing queue (/api/work-orders) keys on the
-  // receiving HEADER's needs_test, which upsertMatchedReceiving sets true for
-  // real POs; clear it here (also heals an older test carton on re-scan).
+  // A scanned test carton belongs in receiving triage as a SCANNED line — NOT the tech testing queue.
   await tenantQuery(organizationId, `UPDATE receiving_carton SET needs_test = false WHERE id = $1`, [receivingId]);
 
-  // rz-keyed dedupe (Wave-3 writer inversion): the old spine
-  // ON CONFLICT (zoho_purchaseorder_id, zoho_line_item_id) died with the moved
-  // columns — the natural key is now ux_receiving_line_zoho_org_po_line
-  // (organization_id, zoho_purchaseorder_id, zoho_line_item_id). SELECT rz by
-  // key (locking the line row) → hit: heal ONLY rlt.needs_test (the old
-  // DO UPDATE), never touching quantity_received / workflow_status, so unbox
-  // progress survives a re-scan. Miss: thin spine birth + rz + rlt in the same
-  // transaction (birth invariant — explicit rlt values matching the old spine
-  // birth). needs_test=false: a scanned test carton is a SCANNED receiving line
-  // (lands in the receiving triage page, workflow_status MATCHED → "SCANNED"
-  // label) — NOT a testing work-order.
+  // rz-keyed dedupe (Wave-3 writer inversion):
   await withTenantTransaction(organizationId, async (client) => {
     const txDeps = {
       query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
@@ -891,13 +719,7 @@ async function recordScan(
   });
 }
 
-/**
- * Persist the door operator's intake classification onto the carton's
- * `receiving` row (source_platform / is_return / return_platform). The single
- * mapping lives in intake-classification.ts. No-op for UNKNOWN so an un-tagged
- * scan never clobbers an existing classification. This is what lets the door
- * "set FBA Return once, scan the pallet" flow reach the unboxer's context card.
- */
+/** Persist the door operator's intake classification onto the carton's `receiving` row (source_platform / is_return / return_platform). */
 async function applyIntakeClassification(
   receivingId: number | null,
   classification: IntakeClassification | null,
@@ -919,11 +741,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const body = await request.json();
     const rawTracking = String(body?.trackingNumber || '').trim();
     const providedCarrier = String(body?.carrier || '').trim();
-    // Scan route. 'order' = explicit PO/reference (operator armed PO# mode);
-    // 'tracking' = explicit carrier tracking (operator armed Tracking mode);
-    // 'ticket' = explicit Zendesk ticket # (operator armed Ticket mode);
-    // 'auto' (default for an un-armed scan) = deep-scan the value as ticket#,
-    // PO#, and tracking# — try each identity before creating an unfound carton.
+    // Scan route. 'order' = explicit PO/reference (operator armed PO# mode); 'tracking' = explicit carrier tracking (operator armed Tracking…
     const mode: 'tracking' | 'order' | 'ticket' | 'auto' =
       body?.mode === 'order'
         ? 'order'
@@ -932,34 +750,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           : body?.mode === 'auto'
             ? 'auto'
             : 'tracking';
-    // Scan hot path is LOCAL-DB ONLY for every identity (tracking / ticket /
-    // order / auto). Live Zoho Inventory and inventory-provider calls never run
-    // here — crons seed STNs + PO mirrors; operators promote via UnfoundMatchStrip.
-    // `localOnly` on the body is accepted for API compat but ignored.
+    // Scan hot path is LOCAL-DB ONLY for every identity (tracking / ticket / order / auto).
     void body?.localOnly;
-    // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96"
-    // FedEx barcode (e.g. 9632…382141152045) and a pasted human number
-    // (382141152045) — and the local PO mirror Reference# they reconcile against —
-    // all land on ONE identical value for storage, display, and dedup. Only in
-    // tracking mode: an order-mode value is a PO/reference number, not a carrier
-    // barcode. PO#/reference resolution matches against the RAW scanned value;
-    // carrier-tracking resolution matches against the canonical form. In `auto`
-    // the same scan is tried as both, so canonicalize for tracking+auto and keep
-    // the raw value for the PO# phase via `poLookupValue`.
-    // DECODE BEFORE INGEST. `rawTracking` may be one of our own printed labels;
-    // `extractCanonicalTracking` below is a CARRIER canonicalizer and has no
-    // opinion about them, so without this the value reaches the unmatched path
-    // as an unknown carrier number and mints a carton.
+    // Canonicalize carrier scans at the ingestion boundary so a scanned GS1/"96" FedEx barcode (e.g.
     const scannedCartonId = scannedReceivingId(rawTracking);
-    /**
-     * The ticket number when the raw value is a printed TICKET label.
-     *
-     * `looksLikeTicketScan` / `parseTicketScanValue` accept a bare `9395` only —
-     * they answer false for `T-9395` and for the Digital Link the encoder mints,
-     * which is the same defect `looksLikeReceivingRef` had: a bare-handle regex
-     * that cannot see what we print. Without this, a scanned claim sticker
-     * skipped its own branch and fell through to the carrier rungs.
-     */
+    /** The ticket number when the raw value is a printed TICKET label. */
     const scannedTicketValue = (() => {
       const redirect = routeScan(rawTracking)?.redirect ?? '';
       const m = /^\/support\?ticket=(\d+)$/.exec(redirect);
@@ -986,12 +781,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Server-trusted actor from the verified session cookie.
     const staffId = ctx.staffId;
     const intakeSurface = body?.intakeSurface === 'unbox' ? 'unbox' : 'triage';
-    /**
-     * The lookup verdict has to reach the RESPONSE, not just the writes: the
-     * pane decides between the read-only receipt and the work editor from what
-     * comes back. Remembered here because the branch that classifies and the
-     * branch that returns are often far apart.
-     */
+    /** The lookup verdict has to reach the RESPONSE, not just the writes: */
     let lookupScanState: UnboxScanState | null = null;
 
     /**
@@ -1023,27 +813,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           }
         : {};
 
-    /**
-     * Most branches reach `stampUnboxOpened` with a carton they may or may not
-     * have just created — `upsertMatchedReceiving` / `createOrGetTestReceiving`
-     * both report that as `preexisting`, and the zero-line re-scan branch
-     * carries a `preassignedReceivingId` forward. Route every such site through
-     * here so "did I just create this?" is the ONLY question a caller answers.
-     */
+    /** Most branches reach `stampUnboxOpened` with a carton they may or may not have just created — `upsertMatchedReceiving` /… */
     const scanKindForMaybeExisting = (
       receivingId: number,
       preexisting: boolean,
     ): Promise<UnboxScanKind> =>
       preexisting ? scanKindFor(receivingId) : Promise.resolve('work');
 
-    /**
-     * `scanKind` is REQUIRED, deliberately. It defaulted to `'work'` while only
-     * two of the six call sites passed one, so the four that reach a
-     * pre-existing carton silently kept claiming work on an inspection — the
-     * exact defect this classification exists to close. A required parameter
-     * turns that miss into a compile error. Pinned by
-     * `lookup-scan-wiring.guard.test.ts`.
-     */
+    /** `scanKind` is REQUIRED, deliberately. */
     const stampUnboxOpened = async (
       receivingId: number,
       scanId: number | null,
@@ -1177,24 +954,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    // 0. ORDER# mode — resolve a PO / reference number from LOCAL mirror only
-    //    (zoho_po_mirror / receiving_line_zoho / EXPECTED lines). No live Zoho.
-    //    Runs before the tracking dedup path so an order number that happens to
-    //    be mostly digits can't be misread as a tracking suffix.
+    // 0. ORDER# mode — resolve a PO / reference number from LOCAL mirror only (zoho_po_mirror / receiving_line_zoho / EXPECTED lines).
     if (mode === 'order' || mode === 'auto') {
       const localResolution = await resolvePoIdLocally(poLookupValue, ctx.organizationId);
       let poId = localResolution?.poId ?? null;
-      // Whether the scanned value is a real carrier tracking number (matched
-      // the PO's Reference#) vs. a pure order/PO identity (matched the PO's
-      // own number — no separate tracking exists, e.g. Home Depot). Threaded
-      // into `recordScan` below so a PO-number-only match never fabricates a
-      // shipment tracking entry.
+      // Whether the scanned value is a real carrier tracking number (matched the PO's Reference#) vs.
       let poMatchIsTracking = localResolution?.viaTrackingReference ?? false;
       const resolvedVia = 'local' as const;
-      // Guard the local hit: a normalized-number collision or a mis-synced
-      // receiving_line can point at the WRONG purchaseorder_id and open a
-      // different PO than the one scanned. Drop the local id when the mirror
-      // says it carries a different number.
+      // Guard the local hit:
       if (poId) {
         const verdict = await verifyPoNumberMatches(poId, poLookupValue, ctx.organizationId).catch((err) => {
           console.warn('[lookup-po.order] local verify failed', errMessage(err));
@@ -1208,11 +975,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           poMatchIsTracking = false;
         }
       }
-      // `auto` also tries the value as a tracking# against LOCAL data (the
-      // zoho_po_mirror Reference# → PO id), so an un-armed tracking scan that is
-      // already a known incoming PO resolves here with no loader, exactly like a
-      // PO# scan. Order mode skips this — an armed PO# is never a tracking.
-      // This rung is always a Reference#/tracking match by construction.
+      // `auto` also tries the value as a tracking# against LOCAL data (the zoho_po_mirror Reference# → PO id), so an un-armed tracking scan that…
       if (!poId && mode === 'auto') {
         const localByTracking = await resolvePoIdLocallyByTracking(
           trackingNumber,
@@ -1332,24 +1095,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         });
       }
 
-      // PO# resolved → open the matched carton. When `auto` missed the PO# (poId
-      // null), this block is skipped and execution falls out to the carrier-
-      // tracking path below — the same value is tried as a tracking before any
-      // unfound carton is created.
+      // PO# resolved → open the matched carton.
       if (poId) {
 
       const { receivingId, preexisting: orderPreexisting } = await upsertMatchedReceiving(poId, carrier, staffId, ctx.organizationId, intakeSurface);
       const linked = await linkLocalPoLinesToReceiving(poId, receivingId, ctx.organizationId);
-      // `upsertMatchedReceiving` returns an EXISTING carton when this PO was
-      // scanned before, so this site can land on finished work. Classify ONCE
-      // and give the same verdict to both writes — the attribution upsert and
-      // the open stamp must never disagree about what this scan was.
+      // `upsertMatchedReceiving` returns an EXISTING carton when this PO was scanned before, so this site can land on finished work.
       const orderScanKind = await scanKindForMaybeExisting(receivingId, orderPreexisting);
-      // Adopt/claim local lines (unattached + unmatched donors); import only
-      // when still empty — see linkLocalPoLinesToReceiving / adopt-po-lines.
-      // registerTracking=false when the match was a pure PO-number identity
-      // (poMatchIsTracking false) — never fabricate a shipment tracking entry
-      // from a value that is really just the order number.
+      // Adopt/claim local lines (unattached + unmatched donors); import only when still empty — see linkLocalPoLinesToReceiving / adopt-po-lines.
       const orderScanId = await recordScan(
         receivingId,
         trackingNumber,
@@ -1421,10 +1174,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     }
 
     // 1. Dedup short-circuit — scan already logged against a receiving row.
-    //    Short-circuit ONLY when the receiving row has lines. If lines are
-    //    empty (e.g. receiving_lines was truncated, or the row was created
-    //    as 'unmatched' before the PO mirror synced), fall through to the
-    //    local tracking→PO adopt path so we can repopulate linkage on this row.
     const existingScan = await findScanByTracking(
       trackingNumber,
       staffId,
@@ -1594,10 +1343,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     //    Live Zoho last-8 search is never on the scan hot path.
     const zohoPoIds = new Set<string>();
 
-    // 1c. LOCAL-FIRST tracking → PO. The incoming sync already mirrors this PO's
-    //     header + lines locally (the reported "in the Incoming table but never
-    //     scanned" case), so resolve the PO id from local data and seed it here.
-    //     The matched path below then adopts the pre-materialized local lines.
+    // 1c. LOCAL-FIRST tracking → PO.
     const localPoId = await resolvePoIdLocallyByTracking(
       trackingNumber,
       preassignedReceivingId,
@@ -1617,10 +1363,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       let preexisting: boolean;
 
       if (preassignedReceivingId) {
-        // Promote the existing (unmatched) receiving row to 'zoho_po' in
-        // place so we keep its shipment_id/tracking# link. If a separate
-        // 'zoho_po' row already claims this PO (unique index conflict),
-        // fall back to the normal upsert + re-parent the scan.
+        // Promote the existing (unmatched) receiving row to 'zoho_po' in place so we keep its shipment_id/tracking# link.
         try {
           const promoted = await tenantQuery<{ id: number }>(
             ctx.organizationId,
@@ -1665,11 +1408,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         matchedScanKind,
       );
       await stampUnboxOpened(primaryReceivingId, scanId, trackingNumber, matchedScanKind);
-      // If the scan was attached to a different receiving row (rare race
-      // between promote and upsert fallback), re-parent it now. Failure here
-      // leaves an orphan scan pointing at the stale receiving row — log it
-      // so a cleanup job can find it. Don't fail the request: the primary
-      // receiving row is correct, only the scan linkage is stale.
+      // If the scan was attached to a different receiving row (rare race between promote and upsert fallback), re-parent it now.
       if (preassignedScanId && preassignedReceivingId !== primaryReceivingId) {
         await tenantQuery(
           ctx.organizationId,
@@ -1687,17 +1426,11 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         });
       }
 
-      // Adopt the PO's pre-materialized local lines — the incoming sync already
-      // wrote every line into receiving_line (receiving_id NULL), so a PO "in
-      // the system" just needs its lines re-parented onto this carton. Never
-      // live-import from Zoho on the scan hot path.
+      // Adopt the PO's pre-materialized local lines — the incoming sync already wrote every line into receiving_line (receiving_id NULL), so a…
       const linkedPrimary = await linkLocalPoLinesToReceiving(primaryPoId, primaryReceivingId, ctx.organizationId);
       void linkedPrimary;
 
-      // Rare multi-PO tracking: each secondary PO gets its own receiving
-      // row to respect the partial unique (zoho_purchaseorder_id) index.
-      // We collect the secondary receiving ids so the client can show a
-      // "multiple POs matched" prompt and route the operator to triage.
+      // Rare multi-PO tracking:
       const secondaryPoIds: string[] = [];
       const secondaryReceivingIds: number[] = [];
       for (const poId of poIds.slice(1)) {
@@ -1849,16 +1582,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     }
 
     // 3a-bis. REFUSE TO MINT FROM ONE OF OUR OWN HANDLES.
-    //
-    // Everything below this line creates a carton. A value that decodes to a
-    // house handle which is not a carton — a unit label, a receiving line, a
-    // shelf address, a kit manifest — is not a carrier tracking number, and
-    // minting for it produces a phantom carton named after a shelf. Tickets are
-    // excluded above because they have a real branch that resolves to a carton.
-    //
-    // A carton label that reached here means the id is not this org's (rung 0
-    // returned null rather than falling through), which is likewise not a
-    // reason to create anything.
     if (isNonCartonHandle || scannedCartonId != null) {
       return NextResponse.json({
         success: true,
@@ -1870,14 +1593,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       });
     }
 
-    // 3b. UNMATCHED path — no local STN/PO-mirror hit. Log it and upsert a
-    //     tracking_exceptions row so triage can reconcile later (cron / operator
-    //     promote). Never live-calls Zoho here.
-    //
-    //     REUSE the preassigned receiving row when one already exists (a re-scan)
-    //     — createUnmatchedReceiving has no dedup, so calling it again would
-    //     create a DUPLICATE unfound carton for the same tracking. Only create
-    //     a fresh row on a genuine first miss.
+    // 3b. UNMATCHED path — no local STN/PO-mirror hit.
     let unmatchedReceivingId: number;
     let unmatchedShipmentId: number | null;
     if (preassignedReceivingId != null) {

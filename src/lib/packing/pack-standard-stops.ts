@@ -1,26 +1,4 @@
-/**
- * Pack standard time — the stop list one drag control snaps to, and the tier
- * that follows from the number.
- *
- * ONE FACT, not two. Before this module the operator set a TIER (SMALL /
- * MEDIUM / LARGE) *and* typed MINUTES, which could disagree: a SKU could be
- * LARGE at 3 minutes and the KPI would weight it as the operator typed while
- * every chart grouped it as the operator clicked. Minutes is the fact the
- * standard is made of; the tier is a ROLLUP of it, so it is derived here and
- * nowhere else.
- *
- * V1 IS MINUTES, deliberately. `pack_profiles.estimated_minutes` is an
- * `integer` column (migration 2026-07-08e) and every reader — the KPI query's
- * weighted minutes, `org_pack_capacity.workday_minutes`, the CSV export — is
- * denominated in whole minutes. Offering a 45-second stop would round to 1 and
- * lie about it. Sub-minute standard time is a real gap (industry standard time
- * is in seconds) and it is a schema increment, not a slider change.
- *
- * The stops are non-linear on purpose: dense where refurb packs actually live
- * (1–10 min: accessories, PCBs, remotes, Wave units) and coarse at the top
- * (30 / 45 / 60: Lifestyle stacks, double-boxed systems). A linear 1..60 slider
- * spends 5/6 of its travel on times almost nothing takes.
- */
+/** Pack standard time — the stop list one drag control snaps to, and the tier that follows from the number. */
 
 export type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
 

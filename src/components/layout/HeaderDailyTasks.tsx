@@ -33,36 +33,7 @@ import {
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
-/**
- * Daily preview for the global header — a DROPDOWN, like its beam siblings.
- *
- * Two corrections, both arrangement:
- *
- * 1. **Dropdown, not a sheet.** It used to open `BottomSheet` — a scrimmed
- *    modal dialog hanging off a 28px beam icon, the only header control in the
- *    cluster that did. Page · Recents · Pins all open the shared
- *    {@link HeaderChromeMenu} panel under an {@link AnchoredLayer}; this is the
- *    fourth face of that one menu, so the beam has one opening gesture instead
- *    of three menus plus a modal.
- * 2. **Scoped to Daily — the WHOLE agenda.** The panel previews what `/`
- *    previews: today's checklist, the tasks a colleague handed you, and the
- *    helpdesk tickets you owe, banded by the same TYPE and captioned with the
- *    same words ({@link DAILY_AGENDA_TYPE_LABEL}). It read only the checklist
- *    until the ticket band existed, which made the one always-visible reminder
- *    in the app quietly the least complete view of the day.
- *
- *    Both feeds are the SURFACES' own — `useDailyChecks` and `useTaskDesk`,
- *    the same query keys Daily reads — so opening this on `/` costs no
- *    request and a tick there is already reflected here.
- *
- * PREVIEW ONLY: ticking, adding, renaming and retiring stay on the surfaces
- * that own the verb — Home → Daily (desk) and `/m` (phone, mobile-first SoT).
- * Every row is a door onto `/`, and a WORK row opens with its record plane
- * already up, which for a ticket is the helpdesk thread in the right rail.
- *
- * Callers: GlobalHeader. API: GET /api/daily-checks, GET /api/tasks (both
- * read-only here). Schemas: DailyCheckReport, TaskDeskListPayload.
- */
+/** Daily preview for the global header — a DROPDOWN, like its beam siblings. */
 export function HeaderDailyTasks() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -123,12 +94,7 @@ function DailyTasksPreview({ onClose }: { onClose: () => void }) {
   const doneCount = data?.mine.doneCount ?? 0;
   const total = data?.mine.total ?? (data?.items.length ?? 0);
 
-  /**
-   * Every row is a door onto Daily. A work row lands with its record plane
-   * ALREADY open (`?task=`), which for a ticket row is the helpdesk thread in
-   * the right rail — the shortest path from "I was reminded" to "I answered
-   * it", and the reason this panel is a preview rather than a second desk.
-   */
+  /** Every row is a door onto Daily. */
   const openDaily = (row?: DailyAgendaRow) => {
     onClose();
     router.push(row && isDailyAgendaWork(row) ? `/?task=${row.id}` : '/');

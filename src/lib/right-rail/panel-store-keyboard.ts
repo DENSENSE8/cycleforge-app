@@ -1,12 +1,4 @@
-/**
- * Right-rail singleton keyboard — Esc dismisses, Mod+Shift+R resumes the draft.
- *
- * Pure handler so tests drive the same function the React hook mounts.
- * Capture-phase only for the resume chord (beat browser hard-reload). Esc
- * stays bubble-compatible with the overlay stack: we stand down while any
- * popover owns the key. Never blurs. Never preventDefault on unrelated keys
- * (HID wedge bursts must keep flowing).
- */
+/** Right-rail singleton keyboard — Esc dismisses, Mod+Shift+R resumes the draft. */
 
 import type { PanelStoreSnapshot } from '@/lib/right-rail/panel-store';
 

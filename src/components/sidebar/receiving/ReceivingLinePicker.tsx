@@ -10,12 +10,7 @@ interface Props {
   onCancel: () => void;
 }
 
-/**
- * Multi-match picker — surfaces only when a single tracking scan resolves to
- * multiple open receiving lines. Open lines (qty received < qty expected)
- * render in blue; complete lines fall back to muted gray so the tech can
- * still revisit them.
- */
+/** Multi-match picker — surfaces only when a single tracking scan resolves to multiple open receiving lines. */
 export function ReceivingLinePicker({ rows, onPick, onCancel }: Props) {
   return (
     <div className="border-b border-blue-200 bg-blue-50/60 inset-field">

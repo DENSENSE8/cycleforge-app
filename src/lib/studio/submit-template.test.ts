@@ -1,10 +1,4 @@
-/**
- * DB-free tests for submitTemplateFromDefinition (Phase 4). The definition read
- * and the template INSERT are injected, so we assert the plumbing: the org's
- * graph is serialized into a package (requiredNodeTypes DERIVED), persisted as a
- * submission, and a missing definition 404s without a persist.
- *   npx tsx --test src/lib/studio/submit-template.test.ts
- */
+/** DB-free tests for submitTemplateFromDefinition (Phase 4). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

@@ -1,11 +1,4 @@
-/**
- * Server seed for the To-ship Unshipped queue — Packer-style dehydrate so the
- * desk's `useQuery(unshippedOrdersQuery(…))` paints from cache on first HTML.
- *
- * Key + limit must match {@link UnshippedTable}'s mount for the page's view
- * (`strictSearchScope: true`, `limit: 200`, empty search, no stage, plus the
- * desk's `blockedOnly` and desk-sidebar lens — `pair` / `queue`).
- */
+/** Server seed for the To-ship Unshipped queue — Packer-style dehydrate so the desk's `useQuery(unshippedOrdersQuery(…))` paints from cache… */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
@@ -61,9 +54,6 @@ function unshippedCountsKey() {
 
 async function fetchUnshippedRows({ blockedOnly, pair, queue }: UnshippedSeedView): Promise<ShippedOrder[] | null> {
   // Must match `fetchUnshippedOrdersData` (inWarehouse), not fulfillmentScope.
-  // fulfillmentScope ignores dock SHIP_CONFIRM, so a seed of never-packed rows
-  // painted hundreds of already-scanned-out orders against a queue-counts
-  // denominator of the unlabeled leftovers ("171 of 2").
   const params = new URLSearchParams({
     inWarehouse: 'true',
     listShape: 'queue',
@@ -87,14 +77,7 @@ async function fetchUnshippedRows({ blockedOnly, pair, queue }: UnshippedSeedVie
   return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 
-/**
- * Seeded counts MUST be the same shape the browser fetch produces — this key is
- * read by the KPI band, and a seed that narrows the payload wins first paint and
- * then holds for the query's whole staleTime. Normalizing through the shared
- * waist is what keeps the two writers from drifting (it drifted once already:
- * a hand-narrowed seed dropped `packPlacement`, so "At stations" and the
- * per-bench chips read zero benches for the first 60s on every load).
- */
+/** Seeded counts MUST be the same shape the browser fetch produces — this key is read by the KPI band, and a seed that narrows the payload… */
 async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
   const res = await serverSelfFetch('/api/orders/queue-counts');
   if (!res.ok) return null;
@@ -102,22 +85,7 @@ async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
   return normalizeQueueCountsPayload(data);
 }
 
-/**
- * Prefetch unshipped list (+ counts when available). Failures are soft — the
- * client desk still hydrates via `/api/orders`.
- *
- * The two fetches are INDEPENDENT and run CONCURRENTLY. They used to be two
- * sequential `await`s, which serialized two full HTTP round trips back into
- * this same process and put their sum on the RSC's critical path for no
- * ordering reason — neither reads the other's result, and they write different
- * cache keys.
- *
- * `allSettled`, never `all`: the per-call soft-failure contract is load-bearing
- * here. `Promise.all` short-circuits on the first rejection, so a failing list
- * would discard an already-resolved counts payload (and vice versa) and hand
- * the desk an emptier seed than the one it actually paid for. Each result is
- * still consumed under its own branch, so one failing seeds the other.
- */
+/** Prefetch unshipped list (+ counts when available). */
 export async function seedUnshippedQueue(view: UnshippedSeedView = {}): Promise<UnshippedQueueSeed> {
   const queryClient = new QueryClient();
   let rows: ShippedOrder[] = [];

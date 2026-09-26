@@ -1,10 +1,4 @@
-/**
- * POST /api/counter/session/{id}/claim — take or renew the desk lease (plan D4).
- *
- * `takeover: true` is how a second desk says "I know someone holds this" — the
- * prompt naming the holder is the point, so the flag is required rather than
- * implied by a retry.
- */
+/** POST /api/counter/session/{id}/claim — take or renew the desk lease (plan D4). */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * "More information" before committing a pairing.
- *
- * The one fact that changes the decision is WHERE THIS ALREADY LIVES. A person
- * about to pair a product to a third bin while two others hold it is usually
- * making a mistake — scattering one SKU across a room is how picking gets slow
- * — and nothing else on the row can tell them. Title and SKU they can already
- * read; stock locations they cannot.
- *
- * So this sheet is that list, and it carries its own Pair CTA: inspecting and
- * then having to dismiss and find the row again would make looking feel
- * expensive, and an operator who finds looking expensive stops looking.
- */
+/** "More information" before committing a pairing. */
 
 import { useQuery } from '@tanstack/react-query';
 import { BottomSheet } from '@/components/ui/BottomSheet';

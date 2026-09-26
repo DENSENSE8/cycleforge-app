@@ -1,10 +1,4 @@
-/**
- * Pure draft + completeness helpers for Incoming PO screenshot/text intake.
- *
- * The AI extract path must NOT silently default quantity to 1 — missing qty is
- * a question the composer asks. Desk Add's Zod default remains for the legacy
- * manual form; this gate is the AI confirm loop's SoT.
- */
+/** Pure draft + completeness helpers for Incoming PO screenshot/text intake. */
 
 export type PoIntakeConfidence = 'high' | 'medium' | 'low';
 

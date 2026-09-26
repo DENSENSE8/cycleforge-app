@@ -1,10 +1,4 @@
-/**
- * Detect item-level OOS tables/columns so assign does not 500 before migrate.
- * Callers: POST /api/orders/assign (~265, 282, 331), POST /api/orders/missing-parts (~71),
- * order-line-shortage.ts upsert/clear/sync, shortage-inbound.ts earmarks.
- * Schema: order_line_shortages, orders.oos_zoho_item_id. No production data.
- * User: "getting failed to assign order and you must test e2e with control of the browser itself"
- */
+/** Detect item-level OOS tables/columns so assign does not 500 before migrate. */
 
 export type ShortageSchemaClient = {
   query: (sql: string, values?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;

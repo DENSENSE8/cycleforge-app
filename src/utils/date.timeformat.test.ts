@@ -1,9 +1,4 @@
-/**
- * Display formatters must follow the live time-format preference and honor an
- * explicit hour12 override. Runs under TZ=UTC (civil/naive inputs are formatted
- * as warehouse wall-clock, no zone shift here since inputs are naive strings).
- *   TZ=UTC tsx --test src/utils/date.timeformat.test.ts
- */
+/** Display formatters must follow the live time-format preference and honor an explicit hour12 override. */
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {

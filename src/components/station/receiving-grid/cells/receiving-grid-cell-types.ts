@@ -23,14 +23,7 @@ export type ReceivingActivityDateCell = {
 
 export type ReceivingGridCellCtx = {
   row: ReceivingLineRow;
-  /**
-   * The column model actually MOUNTED on this row.
-   *
-   * Sticky-left offsets and the frozen edge must derive from it, never from a
-   * family constant: a key-only closure over one model silently resolves the
-   * wrong slot for another (the compound `thumb` pinned on top of the checkbox
-   * for exactly this reason).
-   */
+  /** The column model actually MOUNTED on this row. */
   columns: readonly ReceivingGridCellColumn[];
   selectMode: boolean;
   /** Either plane is live on this row — used for the row fill only. */
@@ -77,13 +70,7 @@ export type ReceivingGridCellCtx = {
   onEditTracking?: () => void;
   /** Opens the receiving inspector for Edit on a filled order / PO chip. */
   onEditOrder?: () => void;
-  /**
-   * Open this row's record plane (the compound layout's chevron). Distinct from
-   * `onSelect`: selecting is "this is the row I mean", opening is "show me the
-   * record" — the same split the row already makes between click and
-   * double-click. Absent on surfaces with no record plane, which is exactly why
-   * the chevron cell must render nothing rather than a dead control.
-   */
+  /** Open this row's record plane (the compound layout's chevron). */
   onOpenRecord?: () => void;
   serialsCsv: string;
   statusDot: string;

@@ -1,14 +1,4 @@
-/**
- * work_session_purposes — the org catalog (L1).
- *
- * Titles are instances; purposes are the durable bucket a report groups by.
- * Creating "Staff assist" is an INSERT, not a migration. System rows are
- * seeded from ./purpose-catalog.ts and never overwritten on conflict.
- *
- * Collaborators are injected so tests share the work-sessions fake. This
- * module does not import ./work-sessions (that file calls US) so there is
- * no cycle — the queryable shape is restated here, three lines.
- */
+/** work_session_purposes — the org catalog (L1). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { SYSTEM_PURPOSE_KEYS, SYSTEM_PURPOSES } from './purpose-catalog';

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * URL-backed `?sort=` (+ optional `?dir=`) for the repair queue display order —
- * the twin of {@link useQueueDisplaySort} (Pending / Testing). `newest`
- * (created_at DESC, the server default) omits the param; column sorts may carry
- * `dir`. The workbench sort dropdown and the grid header clicks both drive it.
- *
- * Header clicks paint pending before App Router's soft-replace lands.
- */
+/** URL-backed `?sort=` (+ optional `?dir=`) for the repair queue display order — the twin of {@link useQueueDisplaySort} (Pending / Testing). */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

@@ -1,22 +1,4 @@
-/**
- * Completed-tasks slot resolvers — pure.
- *
- * Dates resolve to the ABSOLUTE INSTANT (ISO), never a pre-formatted or
- * relative face: the engine turns a `date` display type into the cell face and
- * keeps the instant behind it, and a resolver whose text depended on `now`
- * would sort and search differently on every render. The row carries epoch ms
- * (`taskDeskRowFromWire` converts once), so the ISO face is rebuilt here
- * rather than a second string being carried down the wire.
- *
- * People resolve to a PERSON value, not to a string: the face reads `staffId`
- * (for {@link StaffAvatar}) plus the name, and a `{ kind: 'value' }` here
- * would render a dash on every row — the bug `report-packer-day` shipped once.
- *
- * Neither the urgency threshold nor the status word is spelled here: the first
- * is `taskUrgencyFromPriority` (`task-vocabulary.ts`), the second is
- * `workStatusLabel` (`work-status-display.ts`). This module only names which
- * fact answers which field id.
- */
+/** Completed-tasks slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { taskDeskRecordLabel, type TaskDeskRow } from '@/lib/tasks/task-desk-row';

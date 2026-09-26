@@ -1,13 +1,4 @@
-/**
- * `KioskDeviceTableRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * DATES chrome (Hash + CalendarClock) is two lines by engine law:
- *   · Hash (start) — last seen, or enrolled when never seen
- *   · Calendar (secondary) — dwell face via CompoundDelay.faceLabel
- * Never jam dwell into the Hash tip while leaving the Calendar line `--`.
- *
- * Callers: useKioskDevicesSpreadsheet → DataTable.
- */
+/** `KioskDeviceTableRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -78,10 +69,8 @@ export function kioskDeviceCompoundView(row: KioskDeviceTableRow): CompoundRowVi
     thumbUrl: null,
     title: String(row.label ?? '').trim() || `Device #${row.id}`,
     note: terminal ? 'Card reader paired' : 'Cash / payment link only',
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(String(row.id), 'Device id'),
     orderId: null,
     tracking: null,

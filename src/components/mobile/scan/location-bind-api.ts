@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The location record's one read, away from the screen that paints it.
- *
- * A sticker scanned before it was print-registered has no `locations` row; the
- * read mints it (Zone {letter}) so every write after it — the ± strip, the
- * keypad, pairing — can assume the location exists.
- */
+/** The location record's one read, away from the screen that paints it. */
 
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { locationCode, type LocationSegments } from '@/lib/barcode-routing';

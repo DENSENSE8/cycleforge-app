@@ -6,20 +6,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { validateAlias } from '@/lib/stations/command-alias-validate';
 
-/**
- * GET|POST /api/station-commands/aliases
- *
- * Tenant-authored scan strings that resolve to a BUILT-IN command.
- *
- * GET is the hydration read the app root performs once per session — the scan
- * path resolves aliases synchronously from that snapshot, because a bench scan
- * that waited on the network to learn whether a sticker is a command is a scan
- * the operator out-runs.
- *
- * POST creates one. `target_code` membership is checked HERE, against the code
- * registries, because Postgres cannot see them: the DB constrains the shape of
- * a code, the route constrains what it is allowed to mean.
- */
+/** GET|POST /api/station-commands/aliases */
 
 interface AliasRow {
   id: number;

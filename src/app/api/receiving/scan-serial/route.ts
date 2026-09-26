@@ -37,11 +37,7 @@ async function loadCandidateLines(
   receivingId: number,
   orgId: OrgId,
 ): Promise<ReceivingLineCandidate[]> {
-  // GUC-scoped read: app.current_org is set for the duration and the explicit
-  // organization_id predicate keeps another tenant's lines invisible (defense in
-  // depth alongside RLS once enforced). Line-level zoho columns live on
-  // receiving_line_zoho (W2 reader cutover) — 1:1 LEFT JOIN keyed on the line PK,
-  // so a line without zoho identity still returns (null zoho fields, as before).
+  // GUC-scoped read:
   const r = await tenantQuery<ReceivingLineCandidate>(
     orgId,
     `SELECT rl.id, rl.receiving_id, rl.sku, rl.quantity_expected, rl.quantity_received,
@@ -57,10 +53,7 @@ async function loadCandidateLines(
   return r.rows;
 }
 
-// Serials are sidecar metadata, not stock — "open vs full" no longer applies to
-// where a scan lands. A single-line carton resolves automatically; anything
-// ambiguous asks the operator which line. The caller always wins when it passes
-// an explicit receiving_line_id.
+// Serials are sidecar metadata, not stock — "open vs full" no longer applies to where a scan lands.
 function pickAutoLine(
   lines: ReceivingLineCandidate[],
 ): ReceivingLineCandidate | 'ambiguous' | null {
@@ -224,13 +217,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     const serialResult = result;
 
-    // ─── Return loop (shipped↔returned) ─────────────────────────────────────
-    // When the scanned serial is a previously-shipped unit, resolve its original
-    // order, flip the open allocation SHIPPED→RETURNED, persist the per-line
-    // source order + listing link, and promote an unfound carton to a found
-    // RETURN. Awaited (not in after()) so the response carries the matched order
-    // for instant workspace auto-populate. Flag-gated (default on) + best-effort:
-    // a linkage failure must never fail the scan itself.
+    // ─── Return loop (shipped↔returned) ───────────────────────────────────── When the scanned serial is a previously-shipped unit, resolve…
     let matchedOrder: ReturnedSerialMatchedOrder | null = null;
     let linePatch: ReturnLinkageLinePatch | null = null;
     if (isReceivingReturnAutolink()) {
@@ -286,11 +273,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         orgId: ctx.organizationId,
       });
 
-      // Refresh the denormalized serial projection for the line this serial
-      // landed on (Tier B2) so the next open paints it on the first frame — BEFORE
-      // the publish below nudges listeners to refetch. Post-commit + best-effort:
-      // the ?include=serials reconcile self-heals any drift, so a refresh failure
-      // never affects the scan.
+      // Refresh the denormalized serial projection for the line this serial landed on (Tier B2) so the next open paints it on the first frame —…
       await refreshLineSerialProjectionSafe(ctx.organizationId, tapReceivingLineId);
 
       try {
@@ -359,21 +342,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   },
 });
 
-/**
- * DELETE /api/receiving/scan-serial
- * Body: { serial_unit_id: number, receiving_line_id: number }
- *   — OR — { serial_number: string, receiving_line_id: number }
- *
- * Removes a previously-scanned serial from a receiving line:
- *   - Deletes the matching `serial_units` row by stable serial_unit_id + org
- *     ("Displayed ⟹ Deletable" — the operator removes a serial they can SEE, and
- *     the Units display keys on the unit's CURRENT line; receiving_line_id is
- *     recompute/audit context, not an identity filter — see detachSerialFromLine).
- *
- * Serials are sidecar metadata: removing one does NOT change
- * `receiving_lines.quantity_received` and writes NO reversing stock-ledger row.
- * Stock/quantity are owned by the PO line item via the Receive action.
- */
+/** DELETE /api/receiving/scan-serial Body: */
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json().catch(() => ({}));

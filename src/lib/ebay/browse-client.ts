@@ -2,18 +2,7 @@ import { normalizeEnvValue } from '@/lib/env-utils';
 import { getIntegrationCredentials, type EbayCredentials } from '@/lib/integrations/credentials';
 import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 
-/**
- * eBay Browse API client (secondary-market sourcing search).
- *
- * Browse needs an **application access token** (client-credentials grant,
- * scope https://api.ebay.com/oauth/api_scope) — distinct from the *user*
- * refresh token we store for order search (see token-refresh.ts). This is the
- * one genuinely new eBay primitive for the sourcing engine.
- *
- * The app token is cached in module memory (per appId) until ~60s before
- * expiry. Browse's default quota is ~5k calls/day, so callers must keep search
- * user-initiated and short-cache identical queries (see sourcing/search.ts).
- */
+/** eBay Browse API client (secondary-market sourcing search). */
 
 const OAUTH_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const BROWSE_SEARCH_URL = 'https://api.ebay.com/buy/browse/v1/item_summary/search';
@@ -192,12 +181,7 @@ export function pickEbayItemImage(payload: BrowseItemImages | null | undefined):
 /** eBay's "this legacy id is a multi-variation listing; ask by item group" error. */
 const BROWSE_ITEM_GROUP_ERROR_ID = 11006;
 
-/**
- * The primary picture of an eBay listing by its legacy (12-digit) item id.
- * A multi-variation listing answers 11006 on the by-legacy-id call and is
- * re-asked through its item group. `null` when the listing has no picture;
- * throws on any other Browse failure (ended listings answer 404).
- */
+/** The primary picture of an eBay listing by its legacy (12-digit) item id. */
 export async function getEbayItemImageUrl(legacyItemId: string, orgId: OrgId): Promise<string | null> {
   const token = await getBrowseAppToken(orgId);
   const headers = {

@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Enriched bin table for the inventory hub main area — the data host that mounts
- * the Workbench spreadsheet SoT (`NonlinearTableHost` + the bins table
- * definition) directly. Flat map: no fold, no day band.
- *
- * Public API unchanged: parent owns bulk selection + the flyout open gesture.
- * Multi-select is parent-controlled (`selected` / `onSelectChange`); this
- * bridges that set onto the header select-all bus so the sticky checkbox stays
- * honest. The `warehouse.bins` definition owns `surface: 'sheet'`.
- */
+/** Enriched bin table for the inventory hub main area — the data host that mounts the Workbench spreadsheet SoT (`NonlinearTableHost` + the… */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DataTable, type DataTableSearch } from '@/components/tables/DataTable';

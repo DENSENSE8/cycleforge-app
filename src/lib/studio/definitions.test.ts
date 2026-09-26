@@ -1,11 +1,4 @@
-/**
- * DB-free unit tests for the Studio draft-copy + publish-flip domain logic
- * (Phase C.3). Mirrors the applyTransition / markUnitListed pattern: a fakes()
- * factory drives an in-memory query responder that captures every SQL call, so
- * we assert on both the return value and what got threaded to the tx client.
- *
- *   node --import tsx --test src/lib/studio/definitions.test.ts
- */
+/** DB-free unit tests for the Studio draft-copy + publish-flip domain logic (Phase C.3). */
 
 import '@/lib/assistant/test-db-url'; // sets DATABASE_URL before the workflow barrel loads
 import '@/lib/workflow'; // register builtin nodes so the publish config-gate sees real schemas

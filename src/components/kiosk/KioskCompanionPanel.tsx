@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The tablet's "Scan with phone" control on Device & quote: a key that opens
- * the phone link, then the QR a signed-in staff phone scans to join this visit
- * and scan serials into it (`/m/repair-scan`).
- *
- * Inline, never a modal: the device cards stay in view under it, so the
- * staffer watches each scanned serial land in its field.
- *
- * Callers: `KioskRepairPane`. Affected API: none (the hook owns the fetches).
- * User: "a QR code that you would be able to scan on your phone to join the
- *   same repair service session".
- */
+/** The tablet's "Scan with phone" control on Device & quote: */
 
 import dynamic from 'next/dynamic';
 import { useState } from 'react';

@@ -1,13 +1,4 @@
-/**
- * Pure channel disposition recommender — no DB, no I/O.
- *
- * Priority (see docs/todo/fba-surface-split-plan.md):
- *   1. Explicit hold → HOLD
- *   2. Amazon OOS + velocity A/B → FBA
- *   3. Open FBA plan remaining > 0 → FBA
- *   4. FBA filled or low velocity → PREBOX_STOCK
- *   5. Tenant default (PREBOX_STOCK unless overridden)
- */
+/** Pure channel disposition recommender — no DB, no I/O. */
 
 import type {
   AllocationReason,

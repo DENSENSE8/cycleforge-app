@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Two-step "set your PIN" pad used by /signin and /m/signin for staff who
- * haven't enrolled yet.
- *
- *   Step 1 (enter):   choose a 4–6 digit PIN
- *   Step 2 (confirm): type the same PIN again — mismatch resets to step 1
- *
- * On 6th digit at step 2 (matched) → calls onSubmit. Auto-advance from step 1
- * to step 2 when the user reaches 4-6 digits and taps the confirm CTA, or
- * when they type the 6th digit (matches the existing StaffPinPad UX).
- */
+/** Two-step "set your PIN" pad used by /signin and /m/signin for staff who haven't enrolled yet. */
 
 import { useCallback, useState } from 'react';
 import { PinPadKey } from '@/components/auth/PinPadKey';

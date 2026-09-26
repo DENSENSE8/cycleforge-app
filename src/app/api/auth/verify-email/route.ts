@@ -1,18 +1,4 @@
-/**
- * GET /api/auth/verify-email?token=…
- *
- * WS6.3 — consumes an email-verification token (single-use, hashed; minted at
- * signup, see src/lib/auth/email-verification.ts). On a valid token it:
- *   1. atomically claims the token (UPDATE … SET used_at WHERE unused & unexpired
- *      RETURNING) so a replay / double-click can't re-run it,
- *   2. marks the staff's account email verified (`account_emails.verified_at`),
- *   3. mints a session so the link doubles as a cross-device sign-in (same
- *      magic-link UX as /api/auth/email-login/verify).
- *
- * Reuses the F1 `email_login_tokens` store + claim mechanism — no new table.
- * On any failure it redirects home with a ?verify_error reason (never leaks token
- * state in the body). Public (no session required).
- */
+/** GET /api/auth/verify-email?token=… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -72,11 +58,6 @@ export const GET = withAuth(async (req: NextRequest) => {
   }
 
   // Mint a session so the verify link also signs the owner in (magic-link UX).
-  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
-  // session must not silently promise indefinite persistence — it gets the
-  // normal device-kind window, and the user opts in by signing in with the box
-  // checked. Deliberate default, not an oversight (see the persistent flag in
-  // src/lib/auth/session.ts).
   const session = await createSession({
     staffId,
     deviceKind: 'personal',

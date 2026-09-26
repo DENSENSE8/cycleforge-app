@@ -3,20 +3,7 @@ import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * The order's ONE live shipping label (Outbound Triage either/or rule).
- *
- * An order has a live label when it carries a `shipping_label` outbound
- * document OR a linked representative shipment (`orders.shipment_id`). The
- * same predicate backs the projection's `shippingLabel` block, the
- * acknowledge gate, the upload/purchase `LABEL_EXISTS` guard and the void
- * route — so there is exactly one definition, and it lives here as SQL.
- *
- * `source` is the label document's `document_data.source`, suffixed with its
- * platform for hand-bought marketplace labels (`marketplace_manual:ebay`).
- * Without a document it falls back to the shipment metadata `labelSource`
- * stamped by upload/purchase; otherwise null (tracking only).
- */
+/** The order's ONE live shipping label (Outbound Triage either/or rule). */
 export interface LiveOrderLabel {
   live: boolean;
   documentId: number | null;
@@ -32,14 +19,7 @@ export const MARKETPLACE_MANUAL_LABEL_SOURCE = 'marketplace_manual';
 /** `document_data.source` of a label bought through ShipStation v2. */
 export const SHIPSTATION_LABEL_SOURCE = 'shipstation_api';
 
-/**
- * Ids of every document attached to an order: the documents row's own
- * ORDER / legacy SHIPPING_LABEL anchor plus `document_entity_links` ORDER
- * links (the listDocumentsForOrder rule). A UNION of two indexed lookups
- * (idx_documents_entity, idx_document_entity_links_entity) — an OR over the
- * two would scan the org's whole documents table per order. Callers filter
- * `document_type` and `organization_id` on the outer `documents` row.
- */
+/** Ids of every document attached to an order: */
 export function orderDocumentIdsSql(orderIdExpr: string, orgIdExpr: string): string {
   return `SELECT de.id FROM documents de
              WHERE de.entity_type IN ('ORDER', 'SHIPPING_LABEL') AND de.entity_id = ${orderIdExpr}
@@ -48,13 +28,7 @@ export function orderDocumentIdsSql(orderIdExpr: string, orgIdExpr: string): str
              WHERE l.organization_id = ${orgIdExpr} AND l.entity_type = 'ORDER' AND l.entity_id = ${orderIdExpr}`;
 }
 
-/**
- * LEFT JOIN LATERAL fragment resolving an order row's live label. `orderAlias`
- * names an `orders` row in scope (org comes from its `organization_id`, so the
- * fragment takes no bind params). Columns: live_label_live,
- * live_label_document_id, live_label_source, live_label_tracking,
- * live_label_carrier, live_label_shipstation_label_id, live_label_shipment_id.
- */
+/** LEFT JOIN LATERAL fragment resolving an order row's live label. */
 export function liveLabelLateralSql(orderAlias: string): string {
   const o = orderAlias;
   return `LEFT JOIN LATERAL (

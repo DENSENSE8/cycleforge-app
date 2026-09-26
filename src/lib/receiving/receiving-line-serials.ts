@@ -15,13 +15,7 @@ export function parseReturnSerialTitle(
   return serial?.trim() || null;
 }
 
-/**
- * Operator face for a generated return-serial title — last-8 serial (chip SoT).
- *
- * Prefer {@link liveSerial} (persisted / projected unit) over the serial baked
- * into `item_name` — edits and rescans update serial units first and can leave
- * a stale `Return serial …` title until linkage renames the product.
- */
+/** Operator face for a generated return-serial title — last-8 serial (chip SoT). */
 export function formatReturnSerialProductTitle(
   itemName: string,
   liveSerial?: string | null,
@@ -32,13 +26,7 @@ export function formatReturnSerialProductTitle(
   return `Return serial ${getLast8(serial)}`;
 }
 
-/**
- * Resolve the serial-column value for a receiving line.
- *
- * Persisted serial units are authoritative. Legacy/optimistic return lines can
- * instead carry the scanned identity in their generated `Return serial …`
- * title, so retain that exact fallback until their serial projection catches up.
- */
+/** Resolve the serial-column value for a receiving line. */
 export function resolveReceivingLineSerialsCsv(
   row: Pick<ReceivingLineRow, 'serials' | 'item_name'>,
 ): string {

@@ -1,36 +1,4 @@
-/**
- * searchToolRegistry — the measurement half of the duplicate gate.
- *
- * Embeds the request prompt and finds the closest ACTIVE tool in this org's
- * registry by cosine similarity. It returns a measurement, never a verdict —
- * `triageBuildRequest` turns the measurement into a decision. Splitting the two
- * is what lets the rule be tested without a database and enforced without a
- * model.
- *
- * ─── WHY THIS IS NOT hybridSearch ──────────────────────────────────────────
- * AGENTS.md says never build a second search engine, and this is not one: it is
- * a single-table nearest-neighbour probe over tool_registry, a corpus that
- * hybridSearch does not index (entity_search_docs.entity_type is a closed
- * six-value CHECK of business entities). More importantly hybridSearch cannot
- * supply what the gate needs — its SearchHit.score is an RRF RANK artifact, and
- * it deliberately degrades to keyword-only when embedding fails. Both
- * behaviours are right for a search box and fatal for a gate: the first would
- * threshold on a number that is not a similarity, the second would silently
- * approve every duplicate for the duration of a provider outage.
- *
- * ─── FAIL CLOSED, IN THREE PLACES ──────────────────────────────────────────
- *   1. The embed call throws  → measured: false (deny).
- *   2. The query throws       → measured: false (deny).
- *   3. Active tools exist but NONE of them are embedded → measured: false.
- *      This third one is the subtle one. The SQL filters `embedding IS NOT
- *      NULL`, so an unembedded registry returns zero rows — indistinguishable
- *      from an empty registry unless we look. Reading "no rows" as "nothing
- *      duplicates this" would approve every request on an org whose backfill
- *      has not run yet, which is precisely when duplicates are most likely.
- *
- * An org with genuinely zero active tools IS measurable: nothing can be
- * duplicated, so it approves. That is a real measurement, not a fallback.
- */
+/** searchToolRegistry — the measurement half of the duplicate gate. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import { embedText } from '@/lib/ai/embed';
@@ -71,18 +39,7 @@ const COVERAGE_SQL = `
      AND status = 'active'
 `;
 
-/**
- * Nearest-neighbour probe. `1 - (embedding <=> $1::vector)` is the cosine
- * SIMILARITY (the operator yields cosine DISTANCE), matching the shape already
- * used in src/app/api/rag/search/route.ts. Ordering is by distance ascending,
- * which is similarity descending.
- *
- * The explicit `organization_id = $2` predicate is mandatory and is not
- * redundant with RLS: the app connects as neondb_owner, which has BYPASSRLS,
- * and BYPASSRLS defeats FORCE. The GUC + policy are defence in depth; this
- * WHERE clause is the thing actually keeping one tenant's registry out of
- * another tenant's dedupe result.
- */
+/** Nearest-neighbour probe. */
 const NEAREST_SQL = `
   SELECT id,
          tool_key,

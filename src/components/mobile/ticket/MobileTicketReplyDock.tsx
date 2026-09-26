@@ -2,24 +2,7 @@
 
 /**
  * The phone's ticket mouth — reply to a helpdesk ticket from `/m/t/[ticketId]`.
- *
- * CHROME ONLY. Every decision this control appears to make — draft, channel,
- * signing, CC folding, staged photo ids, the actual send — belongs to
- * {@link useTicketComposer} (`lib/composer/use-ticket-composer`), the behaviour
- * waist the desk's `TicketComposer` sits on too. That hook assembles the reply
- * through `buildComposerReplyVars`, so a phone reply and a console reply are
- * byte-identical on the wire; hand-assembling `SupportReplyVars` here is
- * exactly the drift the waist exists to prevent.
- *
- * It is NOT the desk composer wearing a smaller hat. `TicketComposer` lives in
- * `src/components/composer/**`, which `/m` may not import (ARCHITECTURE.md rule
- * 2 — the Boundary gate), and it should not: its `+` tree, media library and CC
- * strip are three disclosure layers a 390px screen has no room for. The phone
- * keeps the two controls a reply cannot be sent without — the words and the
- * channel — and a LABELLED commit, because this button emails a customer.
- *
  * PUBLIC-first, inherited from the waist (operator 2026-08-31): ticket work is
- * outbound, so Internal-first put the extra tap on the common case.
  */
 
 import { ComposerStagedPhotoStrip } from '@/components/ui/ComposerStagedPhotoStrip';
@@ -93,15 +76,7 @@ export function MobileTicketReplyDock({
           internalLabel="Internal"
           publicLabel="Public"
         />
-        {/*
-         * A LABELLED commit, never a bare arrow (the TicketComposer contract):
-         * one of these two words is a customer-visible email and the other is
-         * not, and the operator must read which before the thumb lands.
-         *
-         * R9 — a disabled CTA names what is missing: no permission is a
-         * different answer from an empty draft, and only one of them is
-         * something the operator can fix from here.
-         */}
+        {/* A LABELLED commit, never a bare arrow (the TicketComposer contract): */}
         <Button
           variant="primary"
           size="lg"

@@ -17,12 +17,7 @@ export interface UseSerialList {
   resetSerials: () => void;
 }
 
-/**
- * Owns the serial-number list and its mirrored comma-separated text input. Two
- * entry paths stay in sync: free-text editing (`handleSnInputChange`) and
- * single-scan append (`handleSnAdd`). All callbacks are stable so consumers can
- * safely list them in effect/callback dependency arrays.
- */
+/** Owns the serial-number list and its mirrored comma-separated text input. */
 export function useSerialList(): UseSerialList {
   const [snInput, setSnInput] = useState('');
   const [serialNumbers, setSerialNumbers] = useState<string[]>([]);

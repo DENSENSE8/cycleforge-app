@@ -60,11 +60,7 @@ export function ResultRow({
   const media = <ItemRecordThumb imageUrl={item.image_url} />;
 
   const meta = (
-    // Order · SKU — same left-to-right identity order and the same chip
-    // family (CopyChip) as the receiving rail peek (RailPeekIdentityFacts):
-    // order is the primary identifier and reads first; SKU follows. Used to
-    // be raw styled spans (SKU first) — a fork of the house chip vocabulary
-    // (2026-08-24 fix).
+    // Order · SKU — same left-to-right identity order and the same chip family (CopyChip) as the receiving rail peek (RailPeekIdentityFacts):
     <div className="flex flex-wrap items-center gap-1">
       {showOrderMeta && item.order_id ? (
         <OrderIdChip value={item.order_id} display={getLast8(item.order_id)} dense />

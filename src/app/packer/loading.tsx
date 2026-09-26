@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Route-level loading shell for `/packer` (legacy alias of `/pack`) — the
- * house loading field.
- *
- * It used to mount `RouteLoading`, a centred spinner over the words
- * "Loading packing…". SoT: {@link UniversalLoader}.
- */
+/** Route-level loading shell for `/packer` (legacy alias of `/pack`) — the house loading field. */
 
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 

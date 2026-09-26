@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * FBA scan result — the pack bench's active card for the OTHER entity it
- * resolves: an FNSKU / FBA shipment rather than an order.
- *
- * **Lives in the workspace, not the scan column** (moved 2026-08-02). It was the
- * last active-entity display left in the pack scan column (`PackScanColumn`,
- * then still named `StationPacking`), and the
- * only one there that was never gated: the order card had already been switched
- * off under `railSlot`, but an FBA scan had no middle counterpart to switch TO
- * (`pack-active-order-changed` carries orders only), so it stayed. It has one
- * now — `PackActiveFbaPane` on `usePackerOrderPane`.
- *
- * A Station renders its active entity in exactly ONE region, and that region is
- * the middle (`display/station.md`; Unbox is the control). Guard:
- * `station-sidebar-identity.guard.test.ts`.
- */
+/** FBA scan result — the pack bench's active card for the OTHER entity it resolves: */
 
 import { Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

@@ -105,10 +105,7 @@ test('every reason has a face — a lane row can always say why', () => {
 });
 
 test('no face says "upstream" — a label names the object, not a direction', () => {
-  // Reworded 2026-08-03 after an operator asked what the difference between
-  // "Received upstream" and "Cancelled upstream" was. "Upstream" is our word
-  // for the purchasing source and means nothing on the floor; the PO is the
-  // thing whose status actually flipped, and it is a noun operators hold.
+  // Reworded 2026-08-03 after an operator asked what the difference between "Received upstream" and "Cancelled upstream" was.
   for (const reason of INCOMING_REMOVAL_REASONS) {
     const face = INCOMING_REMOVAL_REASON_FACE[reason];
     assert.doesNotMatch(

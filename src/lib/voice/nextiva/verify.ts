@@ -1,19 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-/**
- * Verify a Nextiva webhook delivery by comparing HMAC-SHA256 of the RAW request
- * body against the signature header. Mirrors src/lib/zoho/webhooks/verify.ts.
- *
- * The exact header name + digest encoding is confirmed in the Phase 0 spike
- * (docs/nextiva-voice-support-mode-plan.md §9) — both are env-overridable so the
- * spike's finding is a config change, not a code change. The caller passes the
- * raw (un-parsed) body; JSON.stringify of the parsed body will not match.
- *
- * Required: a per-tenant signing secret (options.secret) or NEXTIVA_WEBHOOK_SECRET.
- * Optional env (defaults shown):
- *   NEXTIVA_WEBHOOK_SIGNATURE_HEADER   default: x-nextiva-signature
- *   NEXTIVA_WEBHOOK_SIGNATURE_ENCODING hex | base64   default: hex
- */
+/** Verify a Nextiva webhook delivery by comparing HMAC-SHA256 of the RAW request body against the signature header. */
 
 type VerifyOk = { ok: true };
 type VerifyFail = { ok: false; reason: string };

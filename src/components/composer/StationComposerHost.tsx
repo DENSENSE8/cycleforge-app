@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * StationComposerHost — Cursor / Claude Code grammar with a hard rule:
- *
- *   ┌─────────────────────────────────────────────┐
- *   │  textarea… (auto-grows)                     │
- *   │ [+]              [Location] [↵] [Print?]    │  ← bottom action bar
- *   └─────────────────────────────────────────────┘
- *   [ Unbox ] [ Ticket ]                    ( ◠ )   ← BELOW outline
- *
- * Shell is flex-col (field above tools). Modes are Unbox | Ticket only —
- * leftmost cluster under the outline (icons left of labels; Unbox blue,
- * Ticket orange). Location pill sits in the bottom action bar left of Print.
- * Plus is circular. Enter is a bare gray icon. Unbox keeps Print·Receive;
- * Ticket hides it. Ring opens Displays (Info folded in).
- */
+/** StationComposerHost — Cursor / Claude Code grammar with a hard rule: */
 
 import {
   useCallback,
@@ -83,12 +69,7 @@ export type StationComposerHostProps = {
   onTicketDraftChange?: (next: string) => void;
   onTicketCommit?: () => void;
   ticketCommitDisabled?: boolean;
-  /**
-   * Ticket `+` tree — “Add to message”. Replaced the free-form `ticketPlusMenu`
-   * node on 2026-08-30: the old prop let a host put ANYTHING in there, and what
-   * it actually put there was the Internal/Public channel switch. Channel is
-   * not an insert; it moved to {@link ticketFooterStart}.
-   */
+  /** Ticket `+` tree — “Add to message”. */
   ticketDrillNodes?: ComposerDrillNode[];
   /**
    * Ticket-mode chrome inside the outline ABOVE the draft — Cc and the
@@ -164,10 +145,7 @@ export function StationComposerHost({
   const [plusOpen, setPlusOpen] = useState(false);
   const ticketDraft = ticketDraftProp ?? internalTicketDraft;
   const setTicketDraft = onTicketDraftChange ?? setInternalTicketDraft;
-  // `null`, not the initial mode: a host has to hear the mode it RESOLVED to,
-  // not only later changes. `?composerMode=ticket` deep-links straight into
-  // Ticket, and the hosts that react to Ticket (band collapse in LineEditPanel /
-  // TestingPanel) never fired for a deep-linked operator.
+  // `null`, not the initial mode:
   const lastMode = useRef<StationComposerMode | null>(null);
   const dockRef = useRef<OmnichannelComposerDockHandle>(null);
 
@@ -208,19 +186,7 @@ export function StationComposerHost({
       : (labelPlaceholder ??
         stationComposerModePlaceholder(mode, { ticketLabel, hasTicket }));
 
-  // DOCUMENT-scoped, not textarea-scoped (2026-08-31). These chords hung off
-  // the composer's own onKeyDown, so they only fired while the field had focus
-  // — which is exactly when an operator is NOT reaching for them. Someone who
-  // just scanned a box, or who is reading the ticket thread, pressed ⌥2 and
-  // nothing happened.
-  //
-  // Bubble phase, so a control that legitimately owns the chord can stop it
-  // first. preventDefault is what takes Shift+Tab off reverse focus traversal
-  // for this surface — the deliberate trade the operator made for one toggle.
-  //
-  // Two mounted hosts both firing is harmless: `cycleMode` derives the next
-  // mode from the CURRENT one rather than toggling, so both compute the same
-  // target and the second call is a no-op write.
+  // DOCUMENT-scoped, not textarea-scoped (2026-08-31).
   useEffect(() => {
     if (!showModeRow || !showModeFaces) return;
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
@@ -269,9 +235,6 @@ export function StationComposerHost({
     <div
       className={cn(
         // Floor only — Unbox | Ticket live HERE, not inside the dock outline.
-        // Same white + COMPOSER_SHELL_CORNER; no overflow clip (that sheared
-        // the dock's raised shadow). isolate keeps z-raised dock above z-base
-        // modes so the shadow paints across the caption.
         'flex min-w-0 isolate flex-col gap-1 bg-surface-card pb-[max(0.25rem,env(safe-area-inset-bottom))]',
         weldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
         className,

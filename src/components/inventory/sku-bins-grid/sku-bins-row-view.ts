@@ -1,33 +1,4 @@
-/**
- * `SkuBinTableRow → CompoundRowView` — pure, strings and enums, no JSX.
- *
- * The family's ONLY contribution to how a bin row paints. Every fact it does
- * not name here is a bound SLOT resolved through `sku-bins-resolve.ts`.
- *
- * ## What the compound row says about one bin assignment
- *
- * - IDS — the BIN, `bin_name ?? bin_barcode ?? #location_id`. That is the
- *   handle a picker walks to, and it is what the retired mono cell printed.
- *   There is no tracking number on a bin, so the cell's second line stays empty
- *   rather than borrowing one.
- * - TITLE — the SKU this page is about, with the raw SKU on the note line when
- *   the catalog gave us a title to put above it. The retired table had no such
- *   column because the page heading says it once; the shared item cell asks the
- *   question per row, and the page already holds the answer.
- * - STATE — the stock LEVEL, from {@link skuBinLevel}: the same word the `bins`
- *   overview publishes, derived from this row's own qty/min/max. Tone is never
- *   the fact — `Low` and `Over` are the two words a replenisher acts on, so
- *   they carry the alert tone and the word carries the meaning.
- * - DATES — Hash line = the civil day of the last count, Calendar line = the
- *   clock. The retired cell printed `toLocaleString()` (day AND time), so
- *   dropping the time would lose a fact the desk had; putting it in the Hash
- *   tip and leaving the Calendar line `--` would hide it (the kiosk dwell
- *   rule). Seconds are not kept: a cycle count is not an audit write, where two
- *   entries a heartbeat apart are a different story (`audit-log-row-view.ts`).
- *
- * There is no money, no photo and no deadline on a bin row; all three stay null
- * and the shared cells paint the honest empty face.
- */
+/** `SkuBinTableRow → CompoundRowView` — pure, strings and enums, no JSX. */
 
 import { format } from 'date-fns';
 import type {
@@ -83,10 +54,8 @@ export function skuBinsCompoundView(row: SkuBinTableRow): CompoundRowView {
     // The raw SKU under a catalog title. When the page found no catalog row the
     // title already IS the SKU, so repeating it would be a lie by repetition.
     note: title === row.sku ? null : str(row.sku),
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(skuBinLabel(row), 'Bin'),
     orderId: null,
     tracking: null,

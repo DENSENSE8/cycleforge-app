@@ -4,27 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { guard, transition, SERIAL_STATES, type SerialState } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/returns/undo — reverse a returns-intake mistake.
- *
- * When a unit was scanned into returns by mistake (it's not a return after all),
- * this walks it back, undoing every effect of processReturnsIntake:
- *   - restores the EXACT pre-return status, read from the RETURNED
- *     inventory_event's prev_status (the intake records it there);
- *   - reopens the SHIPPED allocation the intake flipped to RETURNED (clears
- *     returned_at/returned_reason) — the row was state-flipped, not deleted, so
- *     the original shipped linkage is fully recoverable;
- *   - posts a compensating -1 sku_stock_ledger row so the +1 RETURN_CUSTOMER
- *     delta is reversed (the ledger trigger projects it back off sku_stock);
- *   - emits an ADJUSTED inventory_event documenting the undo.
- *
- * Guard: the unit must currently be RETURNED — a unit already dispositioned or
- * moved on cannot be undone here.
- * Permission: receiving.mark_received.
- *
- * Body (one of): { serial_unit_id } | { serial_number } | { scan };
- * optional { client_event_id, reason }.
- */
+/** POST /api/returns/undo — reverse a returns-intake mistake. */
 export const POST = withAuth(async (request, ctx) => {
   const body = await request.json().catch(() => ({}));
   const scan = String(body?.scan ?? '').trim();
@@ -73,10 +53,7 @@ export const POST = withAuth(async (request, ctx) => {
         return { ok: false as const, status: 409, error: `recorded pre-return status ${priorStatusRaw} is not a known serial state` };
       }
       const priorStatus = priorStatusRaw as SerialState;
-      // Pre-flight the restore edge BEFORE the allocation/ledger writes so a
-      // guard rejection returns a clean 409 with nothing committed (the txn
-      // commits on a normal return). RETURNED → SHIPPED/STOCKED/RMA are the
-      // modeled back-edges; anything else was written raw by a legacy path.
+      // Pre-flight the restore edge BEFORE the allocation/ledger writes so a guard rejection returns a clean 409 with nothing committed (the txn…
       const guarded = guard('RETURNED', priorStatus);
       if (!guarded.ok) {
         return { ok: false as const, status: 409, error: guarded.reason };
@@ -103,9 +80,6 @@ export const POST = withAuth(async (request, ctx) => {
       }
 
       // Restore the unit's pre-return status through the guarded state machine.
-      // transition() writes the status + the ADJUSTED inventory_event atomically
-      // (same shape as the legacy raw pair: prev RETURNED → next priorStatus,
-      // ledger linkage, idempotent client_event_id suffix).
       const tr = await transition({
         unitId: unit.id,
         to: priorStatus,

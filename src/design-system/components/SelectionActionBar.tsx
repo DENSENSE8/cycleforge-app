@@ -41,16 +41,7 @@ interface SelectionActionBarProps<T> {
   primaryLoading?: boolean;
 }
 
-/**
- * Floating bulk-action bar for the generic "Select → pick rows → act" flow.
- *
- * A thin wrapper over {@link StickyActionBar} (the canonical action chrome)
- * that auto-shows when `rows` is non-empty, renders a selection count, and
- * wires "Clear" to the shared toggle-all event so the table deselects.
- *
- * Render it inside a `relative` container (the table region) — it pins to the
- * bottom of that region, mirroring the FBA board's combine bar.
- */
+/** Floating bulk-action bar for the generic "Select → pick rows → act" flow. */
 export function SelectionActionBar<T>({
   scope,
   rows,

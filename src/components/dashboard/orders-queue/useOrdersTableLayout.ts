@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The To-ship (orders) slot-layout hook — the orders CONFIG on the shared
- * {@link useSlotTableLayout} engine (which owns the cascade resolve, the
- * whole-map staff-prefs RMW law, the org capture, and the Fields-picker data;
- * see its docblock for the write semantics). Orders proved the shape; the
- * engine moved to `@/components/tables/useSlotTableLayout` when pickup became
- * the second family (kill-list 07 §4) so the RMW law exists once.
- *
- * To-ship paints the COMPOUND morph only this ship (sheet paint on orders is
- * Phase 4): a stored `sheet` morph must not open subtitle tracks nothing
- * renders — `paintMorph` coerces, the org write gate refuses.
- */
+/** The To-ship (orders) slot-layout hook — the orders CONFIG on the shared {@link useSlotTableLayout} engine (which owns the cascade… */
 
 import {
   ORDERS_FIELD_CATALOG,

@@ -1,10 +1,4 @@
-/**
- * Shared wire + domain types for the Home subscription engine.
- *
- * Kept in a dependency-free module (bundle altitude, build-gotchas.md): the
- * client Inbox imports these types, and must not inherit `lib/db` or the
- * permission registry through them.
- */
+/** Shared wire + domain types for the Home subscription engine. */
 
 export type SubscriptionKind = 'entity' | 'rule' | 'sla';
 export type SubscriptionState = 'subscribed' | 'auto' | 'muted';
@@ -47,12 +41,7 @@ export interface InboxItemDto {
    * open the carton to learn which package it is. Render hint, never a filter.
    */
   trackingNumber: string | null;
-  /**
-   * The PROVIDER ticket number on a `support_ticket` row — the `#48120` an
-   * operator quotes. `entityId` is the LOCAL registry id the row is anchored
-   * to; printing that as "the ticket number" is the two-numbers confusion.
-   * Render hint, never a filter.
-   */
+  /** The PROVIDER ticket number on a `support_ticket` row — the `#48120` an operator quotes. */
   ticketNumber: number | null;
 }
 

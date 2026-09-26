@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * /settings?section=stations — the backend name → operator nickname map.
- *
- * That is the whole job. A station is a `locations` row whose `name` is the
- * warehouse-map identity (globally unique, referenced by seeds and rooms); this
- * surface writes `display_name`, the nickname every floor surface reads through
- * `packBenchShortLabel`. It owns no station record, no counts, and no ledger —
- * a station registry here would be the `packing_stations` twin the guard bans,
- * and per-bench COUNTS live where the work is (Ready to Pack, To-ship).
- *
- * **Grouped by room**, because the room IS the station group in this data model:
- * the packing desks sit under `Pack Floor`, and a testing room's benches will
- * group themselves the day someone adds DESK rows under it. A hardcoded
- * "Testing stations" heading over an empty list would be a group this app does
- * not have — honest absence instead (`display/workbench.md` → hollow sections).
- *
- * **Print is an action; creating a barcode is a link.** A station's barcode is
- * FLAT (`PACK-DESK-01`), and the Bin Tags builder mints STRUCTURED
- * zone/aisle/bay codes from five steps — it cannot print one, so linking there
- * would be a button that leads somewhere useless. The row prints the 2×1 face
- * directly through the shared flat-barcode label shell instead. A bench with no
- * barcode has no matrix to draw and links to Bins to get one.
- */
+/** /settings?section=stations — the backend name → operator nickname map. */
 
 import { useCallback, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -231,12 +209,7 @@ export function StationsSection() {
                       </span>
                     )}
                   </div>
-                  {/* Print is an ACTION, not a destination. Bin Tags builds a
-                      structured zone/aisle/bay code from five steps and cannot
-                      emit a flat `PACK-DESK-01`, so a link there would land the
-                      operator on a page that can't print what they clicked.
-                      A bench with no barcode has nothing to draw — that row
-                      links out to create one instead. */}
+                  {/* Print is an ACTION, not a destination. */}
                   {row.barcode ? (
                     <button
                       type="button"

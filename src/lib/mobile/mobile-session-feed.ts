@@ -1,10 +1,4 @@
-/**
- * Mobile Current session — the small, station-neutral ledger shown above Daily.
- *
- * This is deliberately separate from the identification kernel. The kernel
- * decides what a scan means and where to land; this contract records the
- * settled result so the phone can show one recent-work list for every job.
- */
+/** Mobile Current session — the small, station-neutral ledger shown above Daily. */
 
 export const MOBILE_SESSION_STORAGE_KEY = 'cf.mobile.current-session.v1';
 export const MOBILE_SESSION_EVENT = 'mobile-session-entry';

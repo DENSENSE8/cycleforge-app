@@ -1,22 +1,4 @@
-/**
- * Per-tenant cron fan-out.
- *
- * Background jobs that today run a single global pass must instead iterate every
- * org INSIDE its tenant GUC, so that once RLS is FORCE-enforced (Phase E) each
- * pass only sees that org's rows. Per-org failures are isolated — one bad tenant
- * never aborts the whole sweep.
- *
- * ⚠ TWO-POOL SPLIT (Phase E1): org ENUMERATION must run on a PRIVILEGED
- * connection. Today the app connects as `neondb_owner` (BYPASSRLS), so the
- * shared `pool` enumerates every org fine. After the app moves to the
- * non-bypass `app_tenant` role, this enumeration SELECT must use the
- * admin/owner pool (`ADMIN_DATABASE_URL`) — the tenant role with FORCE on
- * `organizations` would otherwise see only its own row and the sweep would
- * silently collapse to one tenant. Swap `enumerationQuery` to the admin pool
- * when ADMIN_DATABASE_URL lands.
- *
- * See docs/tenancy/multi-tenancy-execution-plan.md §Phase D2.
- */
+/** Per-tenant cron fan-out. */
 import type { PoolClient } from 'pg';
 import { adminPool } from '@/lib/db';
 import { withTenantConnection } from '@/lib/tenancy/db';
@@ -31,11 +13,7 @@ export interface OrgRunResult<T> {
   error?: unknown;
 }
 
-/** Enumerate the tenant orgs to sweep. Excludes cancelled orgs; runs on the
- *  privileged pool (see the two-pool note above). Exported for crons that
- *  manage their own per-org transaction (e.g. one that calls a helper which
- *  already opens `withTenantTransaction`, so the forEachActiveOrg transaction
- *  wrapper would just hold an idle connection). */
+/** Enumerate the tenant orgs to sweep. */
 export async function listSweepOrgIds(): Promise<OrgId[]> {
   const { rows } = await adminPool.query<{ id: string }>(
     `SELECT id FROM organizations WHERE status <> 'cancelled'`,
@@ -65,12 +43,7 @@ export async function forEachActiveOrg<T>(
   return results;
 }
 
-/**
- * Which orgs have `provider` connected. eBay/Amazon track connections in
- * dedicated account tables; everything else lives in the integration vault.
- * Mirrors connectors/orchestrator.connectedOrgsForProvider, but kept here so
- * the cron fan-out doesn't depend on the connector registry.
- */
+/** Which orgs have `provider` connected. */
 async function listOrgsWithProvider(provider: IntegrationProvider): Promise<OrgId[]> {
   if (provider === 'ebay') {
     const { rows } = await adminPool.query<{ organization_id: string }>(
@@ -93,19 +66,7 @@ async function listOrgsWithProvider(provider: IntegrationProvider): Promise<OrgI
   return rows.map((r) => r.organization_id as OrgId);
 }
 
-/**
- * Run `fn` once per org that has `provider` connected. Use for integration
- * crons so the sweep only touches orgs that actually connected the provider —
- * never a global-credential pass. Per-org failures are isolated.
- *
- * Unlike forEachActiveOrg this does NOT open a wrapping tenant transaction:
- * integration syncs do many independent units of work (per PO / per order),
- * each its own short GUC-scoped transaction via withTenantTransaction. Wrapping
- * the whole org pass in one transaction would hold an idle-in-transaction
- * connection open for the entire (up to maxDuration) sync. So `fn` receives
- * only the orgId and is responsible for org-scoping its own writes (which it
- * already does — e.g. the Zoho sync runs through withTenantTransaction(orgId)).
- */
+/** Run `fn` once per org that has `provider` connected. */
 export async function forEachOrgWithProvider<T>(
   provider: IntegrationProvider,
   fn: (orgId: OrgId) => Promise<T>,

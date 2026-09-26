@@ -22,26 +22,7 @@ import {
 // seed can share it. See `@/lib/receiving/rail/rail-carton-key`.
 export { receivingRailCartonKey, receivingRailRowKey, receivingRailShipmentKey };
 
-/**
- * Query-key roots for every receiving feed (Phase 1 of the receiving-triage
- * streamline — see docs/receiving-triage-streamline-plan.md §3.1).
- *
- * A single {@link invalidateReceivingFeeds} call refreshes all of them, so a
- * scan / receive mutation can never leave one rail stale because the wrong DOM
- * CustomEvent fired — the exact bug class that hid freshly-matched cartons from
- * the triage Prioritize tab (a matched scan only dispatched
- * `receiving-lines-prepended`, which the Prioritize rail did not listen to).
- *
- * `invalidateQueries` matches by key PREFIX, so each root covers every key
- * beneath it:
- *   ['receiving-lines-table']            → Prioritize rail, Recent/unbox rail, main table
- *   ['receiving']                        → triage Unfound list
- *   ['incoming-delivered-unscanned']     → delivered-but-not-scanned list
- *   ['receiving-lines-incoming-summary'] → Incoming tile counts
- *
- * New receiving feeds should key under one of these roots so this helper keeps
- * covering them with no extra wiring.
- */
+/** Query-key roots for every receiving feed (Phase 1 of the receiving-triage streamline — see docs/receiving-triage-streamline-plan.md §3.1). */
 const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['receiving-lines-table'],
   ['receiving'],
@@ -52,13 +33,7 @@ const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['incoming-details'],
 ];
 
-// Wall-clock of the last LOCAL receiving-feed invalidation (a scan/receive on
-// THIS client). The Ably `receiving-log.changed` echo of that same mutation
-// arrives a beat later and would re-invalidate the desktop rails — a second
-// refetch + flicker per scan. `receivingFeedsRecentlyInvalidatedLocally()` lets
-// the realtime handler skip the two overlapping rail roots when the local
-// optimistic invalidation already covered them (events from OTHER clients have
-// no recent local stamp, so they still refresh normally).
+// Wall-clock of the last LOCAL receiving-feed invalidation (a scan/receive on THIS client).
 let lastLocalReceivingInvalidationAt = 0;
 
 /**
@@ -70,13 +45,7 @@ export function receivingFeedsRecentlyInvalidatedLocally(withinMs = 800): boolea
   return Date.now() - lastLocalReceivingInvalidationAt < withinMs;
 }
 
-/**
- * Invalidate every receiving feed so all rails + tiles refetch atomically.
- * Call this from any mutation that changes receiving state (scan, match,
- * mark-received) instead of hand-picking a CustomEvent name. Stamps the local
- * invalidation time so the Ably echo of the same mutation can de-dupe its
- * refetch (see {@link receivingFeedsRecentlyInvalidatedLocally}).
- */
+/** Invalidate every receiving feed so all rails + tiles refetch atomically. */
 export function invalidateReceivingFeeds(queryClient: QueryClient): void {
   lastLocalReceivingInvalidationAt = Date.now();
   for (const queryKey of RECEIVING_FEED_ROOTS) {
@@ -235,14 +204,7 @@ export function receivingSiblingsQueryKey(receivingId: number) {
   return ['receiving-siblings', receivingId] as const;
 }
 
-/**
- * TanStack key for the parallel serials-hydration fetch (`include=serials`).
- * Its result is overlaid onto {@link receivingSiblingsQueryKey}'s cache — that
- * remains the single `row.serials` SoT every consumer (accordion rows, the
- * optimistic scan path in `useLineSerials`) reads. Splitting the fetch lets the
- * sibling metadata paint instantly while the heavier serial resolution streams
- * in behind a per-row skeleton, instead of gating the whole row on it.
- */
+/** TanStack key for the parallel serials-hydration fetch (`include=serials`). */
 export function receivingSiblingsSerialsQueryKey(receivingId: number) {
   return ['receiving-siblings-serials', receivingId] as const;
 }
@@ -253,19 +215,7 @@ export interface ReceivingSiblingsCache<L extends { id: number } = { id: number 
   receiving_lines: L[];
 }
 
-/**
- * Pure upsert of one line into a siblings-cache envelope — INSERT when the id is
- * absent (appended, preserving API order), else a shallow field merge onto the
- * existing row. Returns a fresh envelope so React Query notifies; a caller that
- * needs referential no-op semantics can compare `.receiving_lines`.
- *
- * This is the cache-patch primitive behind the unified unfound surface (plan
- * Phase 2): a return import creates a NEW line, which `usePoLinesData`'s
- * `receiving-line-updated` handler can't surface (it only maps over rows that
- * already exist). Upserting into {@link receivingSiblingsQueryKey} makes the new
- * line reflow in the active-row accordion instantly, before the reconciling
- * refetch lands. Pure + DB-free so it is unit-testable.
- */
+/** Pure upsert of one line into a siblings-cache envelope — INSERT when the id is absent (appended, preserving API order), else a shallow… */
 export function upsertSiblingLine<L extends { id: number }>(
   prev: ReceivingSiblingsCache<L> | undefined,
   line: L,
@@ -280,12 +230,7 @@ export function upsertSiblingLine<L extends { id: number }>(
   return { success: prev?.success ?? true, receiving_lines: next };
 }
 
-/**
- * Write one line into the shared {@link receivingSiblingsQueryKey} cache via
- * {@link upsertSiblingLine} — the client wrapper used by the unified unfound
- * surface's return-import path so the just-created line lands on the accordion's
- * own SoT cache (not just a window event). No-op for a non-materialized carton.
- */
+/** Write one line into the shared {@link receivingSiblingsQueryKey} cache via {@link upsertSiblingLine} — the client wrapper used by the… */
 export function writeReceivingSiblingLine<L extends { id: number }>(
   queryClient: QueryClient,
   receivingId: number,
@@ -298,17 +243,7 @@ export function writeReceivingSiblingLine<L extends { id: number }>(
   );
 }
 
-/**
- * Dual-write serials onto the siblings cache + `receiving-line-updated` bus —
- * the shared choke point for matched (`useLineSerials`) and unfound
- * (`useActiveUnfoundLineSerials`) optimistic serial CRUD. Maps an existing row;
- * does not insert (use {@link writeReceivingSiblingLine} for new lines).
- *
- * Optional `units` patches materialised `receiving_line_unit` rows in the same
- * write — used by by-id `include=serials` refresh so the multi-qty green check
- * keeps durable unit ids. Omit `units` on serial-only optimistic CRUD so a
- * scan confirm never blanks a previously hydrated units list.
- */
+/** Dual-write serials onto the siblings cache + `receiving-line-updated` bus — the shared choke point for matched (`useLineSerials`) and… */
 export function publishLineSerials(
   queryClient: QueryClient,
   receivingId: number | null | undefined,
@@ -409,12 +344,7 @@ export function seedReceivingSiblingsCache(
   });
 }
 
-/**
- * Defer a full feed invalidation until after the workspace has painted — keeps
- * scan resolve from stampeding every rail with concurrent refetches during the
- * critical open path. Falls back to `setTimeout` when `requestIdleCallback` is
- * unavailable (SSR/tests).
- */
+/** Defer a full feed invalidation until after the workspace has painted — keeps scan resolve from stampeding every rail with concurrent… */
 export function deferInvalidateReceivingFeeds(queryClient: QueryClient): void {
   const run = () => invalidateReceivingFeeds(queryClient);
   if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
@@ -424,12 +354,7 @@ export function deferInvalidateReceivingFeeds(queryClient: QueryClient): void {
   }
 }
 
-/**
- * Durable AnimatePresence / React list key for a receiving rail row.
- * Prefer an explicit `client_event_id`, then the shipment-first ladder
- * (`stn:{tracking}` → `carton:{receiving_id}`), then line id.
- * Never key carton-deduped feeds on line id alone — stub→real swaps would remount.
- */
+/** Durable AnimatePresence / React list key for a receiving rail row. */
 export function receivingRailReconcileId(row: {
   client_event_id?: string | null;
   tracking_number?: string | null;
@@ -453,15 +378,7 @@ function normalizeRailRows(rows: ReceivingRailRow[]): ReceivingRailRow[] {
   });
 }
 
-/**
- * Identity-only keep-alive patches (`{ id, receiving_id, client_event_id }`) from
- * the workspace must MERGE onto an existing Unboxed row — never PREPEND. A
- * prepend onto an empty/partial cache paints `Line #N` + `/ ?` and leaks
- * Incoming/workspace chrome into the Unbox dock (mode separation).
- *
- * Rail cache rows are typed narrowly but often carry full line display fields;
- * read those via a soft cast (same pattern as title/qty patches).
- */
+/** Identity-only keep-alive patches (`{ id, receiving_id, client_event_id }`) from the workspace must MERGE onto an existing Unboxed row —… */
 function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
   const r = row as ReceivingRailRow & {
     item_name?: string | null;
@@ -472,12 +389,7 @@ function isIdentityOnlyRailRow(row: ReceivingRailRow): boolean {
     zoho_purchaseorder_id?: string | null;
     quantity_received?: number | null;
   };
-  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts): Zoho item title governs.
-  // Deliberately NOT `resolveSkuIdentityTitle(r)`: this is membership, not a
-  // title. The law reads the `'Unfound PO'` stub as ABSENT, and a title patch
-  // carrying that sentinel (useReceivingLineCore → patchUnboxRailTitleByCarton,
-  // qty undefined) must still count as a titled row or the unfound carton is
-  // dropped from the Unboxed dock instead of painted.
+  // SKU IDENTITY LAW (src/lib/sku/sku-identity-law.ts):
   return (
     r.quantity_received == null
     && !(r.zoho_item_title || r.catalog_product_title || r.item_name || r.sku)
@@ -500,11 +412,7 @@ function mergeRailRows(
         || (key != null && r.client_event_id === key),
     );
     if (idx >= 0) {
-      // Key preference: a SHIPMENT key already on the row outranks an incoming
-      // `carton:{id}` one. Identity/title patches (`patchUnboxRailTitleByCarton`,
-      // the workspace keep-alive) stamp the carton key by construction, and
-      // letting that overwrite `stn:{tracking}` would remount the row on every
-      // rename — the exact flicker the shipment key exists to remove.
+      // Key preference:
       const existingKey = next[idx].client_event_id;
       const nextKey =
         isReceivingRailShipmentKey(existingKey) && !isReceivingRailShipmentKey(key)
@@ -551,14 +459,7 @@ export function upsertReceivingRailRows(
   upsertRailSegmentRows(queryClient, UNBOX_RAIL_SEGMENT, rows);
 }
 
-/**
- * Title-only rename on the Unboxed dock, keyed by carton.
- *
- * Unboxed does not subscribe to `receiving-line-updated` — return-serial /
- * product-title upgrades must call this instead of dumping rich bus patches.
- * Allowlisted fields are exactly what `receivingProductTitle` / adaptive-po
- * read. Age (`unbox_opened_at`), qty, status, serials are never written.
- */
+/** Title-only rename on the Unboxed dock, keyed by carton. */
 type UnboxRailTitlePatch = {
   item_name?: string | null;
   catalog_product_title?: string | null;
@@ -602,13 +503,7 @@ export function patchUnboxRailTitleByCarton(
   upsertReceivingRailRows(queryClient, [patch]);
 }
 
-/**
- * Qty / workflow-only patch on the Unboxed dock, keyed by carton.
- *
- * Unboxed ignores `receiving-line-updated` — mark-received must call this for
- * instant dock qty/status instead of a full-row bus dump. Age
- * (`unbox_opened_at`), titles, and serials are never written.
- */
+/** Qty / workflow-only patch on the Unboxed dock, keyed by carton. */
 type UnboxRailQtyPatch = {
   quantity_received?: number;
   quantity_expected?: number | null;
@@ -646,16 +541,7 @@ export function patchUnboxRailQtyByCarton(
   upsertReceivingRailRows(queryClient, [patch]);
 }
 
-/**
- * Set/clear the filed-claim rail flag (`zendesk_ticket`) on every receiving
- * sidebar rail, keyed by carton.
- *
- * Unboxed ignores `receiving-line-updated` (`acceptLineUpdateBus: false`), so a
- * claim unlink that only dispatches the bus leaves the orange Ticket chip on
- * Unfound PO rows. This patches all `receiving-lines-table/rail/*` caches so
- * the flag drops immediately; pair with {@link invalidateReceivingFeeds} for
- * the authoritative refetch.
- */
+/** Set/clear the filed-claim rail flag (`zendesk_ticket`) on every receiving sidebar rail, keyed by carton. */
 export function patchReceivingRailTicketByCarton(
   queryClient: QueryClient,
   receivingId: number,
@@ -683,14 +569,7 @@ export function patchReceivingRailTicketByCarton(
   );
 }
 
-/**
- * Allowlisted fields on the Testing "You / Recent" dock, keyed by **line** id.
- *
- * TestingRecentRail does not subscribe to `receiving-line-updated`. Verdict /
- * qty upgrades must call this instead of dumping a by-id GET row onto the bus.
- * Age (`testing_opened_at`) is never written — membership reconciles via
- * `testing-line-opened` / `testing-result-recorded` refresh.
- */
+/** Allowlisted fields on the Testing "You / Recent" dock, keyed by **line** id. */
 type TestingRailPatch = {
   workflow_status?: string | null;
   qa_status?: string | null;
@@ -771,20 +650,7 @@ function filterRailSegmentRows(
   );
 }
 
-/**
- * After a scan OPENS a carton on the Unbox surface: surgically drop that carton
- * from every triage rail cache (Prioritize / combined / Unfound) and mark the
- * triage feeds stale.
- *
- * Server membership already excludes unbox-opened cartons (`view=scanned`'s
- * NOT-unbox-opened arm + unfound-queue `exclude_unbox_intake`), but the triage
- * rails are `staleTime: 20_000` caches with no cross-surface signal — a soft
- * return to Arrival kept painting the carton as phantom dock inventory until a
- * stale refetch. Surgical remove fixes the very next paint; the light
- * invalidate makes inactive triage queries refetch on their next mount (and
- * stamps the local-invalidation window so a near-simultaneous Ably echo does
- * not double-refetch). Unbox rails are never touched here.
- */
+/** After a scan OPENS a carton on the Unbox surface: */
 export function purgeTriageRailsAfterUnboxOpen(
   queryClient: QueryClient,
   receivingId: number,
@@ -937,13 +803,7 @@ export function reconcileUnboxRailAfterLineDelete(
   );
 }
 
-/**
- * Query-key roots whose cached payloads carry receiving-line rows with a
- * `photo_count` field (the camera ×N badge). Used by the optimistic bump below
- * so the badge moves the instant an upload commits — before the reconciling
- * refetch lands. Kept narrow (only feeds that actually hold rows) so we don't
- * walk unrelated caches.
- */
+/** Query-key roots whose cached payloads carry receiving-line rows with a `photo_count` field (the camera ×N badge). */
 const RECEIVING_PHOTO_COUNT_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['receiving-lines-table'],
   ['receiving-lines'],
@@ -955,12 +815,7 @@ interface PhotoCountRow {
   photo_count?: number | null;
 }
 
-/**
- * Adjust `photo_count` on every row matching `receivingId` inside one cached
- * payload, returning a new reference only when something changed (so React
- * Query skips a no-op notify). Handles both feed shapes: a plain `row[]`
- * (mobile feeds) and the `{ receiving_lines: row[] }` envelope (desktop rails).
- */
+/** Adjust `photo_count` on every row matching `receivingId` inside one cached payload, returning a new reference only when something… */
 function adjustRowsPhotoCount<T>(data: T, receivingId: number, delta: number): T {
   const bumpRow = (row: PhotoCountRow): PhotoCountRow => {
     if (!row || typeof row !== 'object') return row;
@@ -992,12 +847,7 @@ function adjustRowsPhotoCount<T>(data: T, receivingId: number, delta: number): T
   return data;
 }
 
-/**
- * Optimistically move the camera ×N badge for a carton across every cached
- * receiving feed, without waiting for the network refetch. Pair with
- * {@link invalidateReceivingFeeds} (which {@link notifyReceivingPhotoChanged}
- * already calls) so the optimistic value reconciles against the server count.
- */
+/** Optimistically move the camera ×N badge for a carton across every cached receiving feed, without waiting for the network refetch. */
 function bumpReceivingPhotoCount(
   queryClient: QueryClient,
   receivingId: number,
@@ -1055,10 +905,7 @@ export function notifyReceivingPhotoChanged(
   const receivingId = payload.receivingId;
   if (receivingId == null || !Number.isFinite(receivingId) || receivingId <= 0) return;
 
-  // Optimistically move the camera ×N badge before the refetch round-trip, so a
-  // capture on this device updates the feed the moment the upload commits. The
-  // invalidate inside refreshReceivingPhotos() reconciles against the server
-  // count. 'update' touches no photo, so it carries no delta.
+  // Optimistically move the camera ×N badge before the refetch round-trip, so a capture on this device updates the feed the moment the…
   const photoDelta = payload.photoIds?.length ?? 1;
   if (payload.action === 'delete') {
     bumpReceivingPhotoCount(queryClient, receivingId, -photoDelta);
@@ -1084,45 +931,16 @@ export interface ReceivingLinesListResponse {
   offset: number;
 }
 
-/**
- * Fetch tiers for the lines table:
- *  - `full`  — authoritative rows incl. the reconciled `include=serials` resolve.
- *  - `spine` — fast-paint tier (`?phase=spine`): same rows, serial chips served
- *    from the cheap `serial_projection` read-model instead of the expensive
- *    authoritative resolve. Painted first, then upgraded by `full`.
- */
+/** Fetch tiers for the lines table: */
 type ReceivingLinesFetchPhase = 'full' | 'spine';
 
-/**
- * Spine paint window. The list SELECT's per-row laterals (photo_count, catalog
- * title lookups, similarity()) scale with LIMIT, so the paint tier clamps deep
- * windows (500 → 150 measured ~-0.5s server time on view=activity) and lets the
- * `full` pass restore the authoritative depth right behind it. 150 comfortably
- * covers the History tab's current-week slice (~100 rows on a busy week).
- */
+/** Spine paint window. */
 const SPINE_PAINT_LIMIT = 150;
 
-/**
- * Bound the lines fetch so a slow/hung `/api/receiving-lines` can never pin the
- * skeleton forever (the `/incoming` "feels broken" symptom). On timeout the
- * fetch aborts → the query settles `isError` → the surface shows a retryable
- * degraded state instead of an infinite skeleton. Generous enough that a
- * legitimately slow authoritative `include=serials` resolve still completes;
- * the SSR seed (unbox / incoming) is what makes first paint feel instant.
- */
+/** Bound the lines fetch so a slow/hung `/api/receiving-lines` can never pin the skeleton forever (the `/incoming` "feels broken" symptom). */
 export const RECEIVING_LINES_FETCH_TIMEOUT_MS = 15_000;
 
-/**
- * The ONE query-options builder for the receiving/unbox lines table. Every
- * consumer of the table's rows (the table itself via useReceivingLinesQuery,
- * the Unbox KPI strip, prefetchers) MUST build its options here so they share
- * a single cache entry per (mode, context, phase) — a second page-local fetch
- * of the same view is the duplicate-fetch bug this factory exists to prevent.
- *
- * The `full` phase key is exactly `mode.queryKey(ctx)` (unchanged), so all
- * existing `['receiving-lines-table']`-root invalidation keeps covering it;
- * the `spine` key appends a `'spine'` leaf under the same root.
- */
+/** The ONE query-options builder for the receiving/unbox lines table. */
 export function receivingLinesTableQuery(
   mode: ReceivingModeDescriptor,
   ctx: ReceivingModeContext,

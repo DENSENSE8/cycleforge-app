@@ -15,11 +15,7 @@ export const runtime = 'nodejs';
 // fail validation here just because this route wasn't hand-updated.
 const CLAIM_TYPE_VALUES = Object.keys(CLAIM_TYPE_LABEL) as [ClaimType, ...ClaimType[]];
 
-// A positive integer id that may arrive as a string (bigint JSON serialization),
-// number, null, "", or "null" — normalize ALL non-positive/absent shapes to
-// `undefined` up front so an empty `lineId` can never trip `.positive()`.
-// (`z.coerce.number()` turns "" and null into 0, which then fails `.positive()`
-// and produced the opaque "Validation failed" on carton-level archives.)
+// A positive integer id that may arrive as a string (bigint JSON serialization), number, null, "", or "null" — normalize ALL…
 const optionalPositiveId = z.preprocess((v) => {
   if (v === null || v === undefined || v === '' || v === 'null') return undefined;
   const n = Number(v);

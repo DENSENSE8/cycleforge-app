@@ -1,15 +1,4 @@
-/**
- * TicketStatus / AgentLog contract — agentic-loop master plan (ALP-0.4).
- *
- * The master plan is a single MDX string (SoT: `master-plan.mdx` ↔ Y.Text('content')).
- * Inside it, tickets are marked with `<TicketStatus … />` tags. This module is the
- * ONE place that defines the status enum, the tag prop shapes, and the pure
- * string-level scan/mutate helpers every plane uses (web render, plan-agent tool,
- * forge.sh post-VERIFY hook). No dependencies — keep it importable everywhere.
- *
- * Locked contract (master plan §-2): statuses are ONLY `pending` | `in-progress`
- * | `deployed`. Parsers and UI must reject anything else — never coerce.
- */
+/** TicketStatus / AgentLog contract — agentic-loop master plan (ALP-0.4). */
 
 export const TICKET_STATUSES = ['pending', 'in-progress', 'deployed'] as const;
 
@@ -105,12 +94,7 @@ export interface SetTicketStatusResult {
   previousStatus: TicketStatus | null;
 }
 
-/**
- * Pure string transform: rewrite the `<TicketStatus />` tag for `ticketId` to a
- * new status (optionally stamping `resolutionCommit`). Used by the plan-agent's
- * `mutate_master_plan` tool and the forge post-VERIFY hook. Rejects out-of-enum
- * statuses at the type level; preserves all other attributes and ordering.
- */
+/** Pure string transform: */
 export function setTicketStatusInMdx(
   mdx: string,
   ticketId: string,

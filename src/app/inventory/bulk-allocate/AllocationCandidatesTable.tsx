@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * Admin › Bulk allocate — the CLIENT ISLAND for
- * `/inventory/bulk-allocate`.
- *
- * The page stays an RSC: it guards on `admin.view`, runs the candidate query,
- * owns the `?page=` offset links, and declares the per-row server action. None
- * of that moves. This file is only the boundary the slot engine needs (hooks,
- * layout cascade, header sort), and it takes its rows as props — the SQL stays
- * on the server.
- *
- * Same shape as `../returns/RecentReturnsTable.tsx`: spread the family's feed
- * onto DataTable and nothing else.
- *
- * ## How the server action crosses the boundary
- *
- * `allocateOne` is declared in the page with `'use server'` in its body, so
- * Next compiles it to a server-action REFERENCE, and passing that reference
- * through this component's `allocate` prop is exactly what a `<form action={…}>`
- * did before — a client `<form>` was already invoking it over the same channel.
- * What crosses is the id of the action, never its code: the `orders.view`
- * `requirePermission` and the `revalidatePath('/inventory/bulk-allocate')`
- * both still run ON THE SERVER, inside the action, unchanged and un-bypassable
- * from here. This island cannot weaken either one; the worst it can do is fail
- * to call the action.
- *
- * The payload is still `FormData` with one `orderId`, because keeping the
- * action's signature identical is what makes "the gate and the revalidate are
- * untouched" a fact rather than a claim.
- */
+/** Admin › Bulk allocate — the CLIENT ISLAND for `/inventory/bulk-allocate`. */
 
 import { useCallback, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
@@ -82,15 +54,7 @@ export function AllocationCandidatesTable({ rows, allocate }: AllocationCandidat
     [onAllocate, pendingOrderId],
   );
 
-  /**
-   * The binding's `navigate` record plane, wired to the router.
-   *
-   * This is the retired SKU cell's `<Link>`: the reach-through is declared once
-   * on the entity (`ADMIN_BULK_ALLOCATE_TABLE_BINDING.recordPlane`) and the
-   * mount supplies the only thing a binding cannot hold — the router. The
-   * candidate query guarantees a non-blank SKU, so a row with nothing to open
-   * is a malformed row and does nothing.
-   */
+  /** The binding's `navigate` record plane, wired to the router. */
   const openSku = useCallback(
     (row: AllocationCandidateRow) => {
       const sku = row.sku?.trim();

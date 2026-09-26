@@ -1,10 +1,4 @@
-/**
- * Rail hover-peek chrome — one pad / seam / chip-stack rhythm for
- * {@link RailPeekCard} and Receiving's richer popover.
- *
- * Ruled sections (identity · footer) share the same top rule + inset so the
- * card never mixes `pt-3` / `pt-2.5` / stacked `space-y-3` air.
- */
+/** Rail hover-peek chrome — one pad / seam / chip-stack rhythm for {@link RailPeekCard} and Receiving's richer popover. */
 
 /** Outer card inset — 12px on every edge. */
 export const RAIL_PEEK_PAD_CLASS = 'p-3';

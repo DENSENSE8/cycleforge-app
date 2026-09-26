@@ -9,24 +9,9 @@ import {
   type TestVerdict,
 } from '@/lib/tech/recordTestVerdict';
 
-/**
- * POST /api/serial-units/[id]/test
- *
- * Records a per-unit testing verdict. The domain logic (status transition,
- * tech_serial_numbers audit, inventory event, testing_results feed, line
- * rollup, workflow-engine tap) lives in src/lib/tech/recordTestVerdict —
- * this route is the HTTP shell: input validation, the verdict-gated
- * permission split, the formal audit_logs row, and the response shape the
- * workspace expects (`receiving-line-updated` live-refresh).
- */
+/** POST /api/serial-units/[id]/test */
 
-// Formal audit-log verb per verdict. The verdict's timeline display comes from
-// the inventory_events row written by recordTestVerdict; this audit_logs row
-// is the compliance record (actor/role/ip/request-id + before→after) and is
-// what surfaces the verdict in the per-staff audit feed. Tagged
-// entity_type=serial_unit (mirrors receiving.scan-serial) so it does NOT
-// double-render in the PO/tech timelines, which already show the verdict via
-// inventory_events.
+// Formal audit-log verb per verdict.
 const VERDICT_TO_AUDIT_ACTION: Record<TestVerdict, string> = {
   PASS: AUDIT_ACTION.TECH_QC_PASS,
   TEST_AGAIN: AUDIT_ACTION.TECH_QC_RETEST,
@@ -58,11 +43,7 @@ export const POST = withAuth(async (request, ctx) => {
   }
   const verdict = verdictRaw as TestVerdict;
 
-  // Verdict-gated permission split. The floor permission on withAuth
-  // (`tech.qc_pass`) confirms the caller is at least a tester; here we
-  // additionally enforce the `tech.qc_fail` grant for the failure verdict
-  // so a "pass-only" tech can't push units to ON_HOLD. TEST_AGAIN is
-  // non-destructive (re-queue) so the floor is sufficient.
+  // Verdict-gated permission split.
   if (verdict === 'TESTING_FAILED' && !ctx.permissions.has('tech.qc_fail')) {
     return NextResponse.json(
       { ok: false, error: 'You do not have the tech.qc_fail permission' },

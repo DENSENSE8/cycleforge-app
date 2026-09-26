@@ -1,25 +1,6 @@
 /**
- * Staff-directory catalog guards, materialization, adapter and verb behaviour
- * — the family that replaced `/settings/staff`'s seven hand-written
- * `AdminTableColumn` objects.
- *
- * Four assertions here are load-bearing beyond the usual shape checks, because
- * each pins a thing the port could silently lose:
- *
- * - the UNPAINTED-COLUMN non-goal. `default_home_path` and `color_hex` are
- *   selected by the desk's query and painted by no track. A future agent
- *   reading "the row already has the colour" will be tempted to bind it; the
- *   colour is the `person` face's job, not a column's.
- * - the TWO-FACT PILL. `<StatusPill status active>` derived one word from two
- *   columns. Both must stay independent facts, and the derivation must live in
- *   the adapter — a merged `status` fact would be unsortable by either half.
- * - the VERB DECLARATION. Both writes are declared by the family module, and
- *   Deactivate's precondition is row STATE (law §4). A verb minted at the
- *   mount is a fork of the verb.
- * - the STEP-UP PATH. `/api/admin/staff/update` sits behind the sensitive-info
- *   wall and can answer `STEP_UP_REQUIRED`. That answer is an instruction to
- *   re-authenticate, and turning it into a generic error string is a security
- *   regression, not a copy change.
+ * Staff-directory catalog guards, materialization, adapter and verb behaviour — the family that replaced `/settings/staff`'s seven…
+ * re-authenticate, and turning it into a generic error string is a security
  */
 
 import assert from 'node:assert/strict';
@@ -148,11 +129,7 @@ describe('staff-directory catalog', () => {
   });
 
   it('binds FOUR status slots — exactly the whole-skeleton ceiling', () => {
-    // `select` is the house gutter and never counts. The rest —
-    // fulfillment · thumb · item · dates · state · status:1…4 · _fill — is
-    // exactly MAX_DEFAULT_VISIBLE_TRACKS, so a fifth binding would fail
-    // `parseTableDefinition` at module load. The skeleton mounts whole, so
-    // this is a ceiling on BINDINGS, never a licence to cut chrome.
+    // `select` is the house gutter and never counts.
     assert.equal(STAFF_DIRECTORY_PRODUCT_LAYOUT.statusBindings.length, 4);
     assert.equal(
       STAFF_DIRECTORY_COMPOUND_COLUMNS.filter((c) => c.key !== 'select').length,

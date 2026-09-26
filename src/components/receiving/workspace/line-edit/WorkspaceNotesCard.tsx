@@ -1,38 +1,6 @@
 'use client';
 
-/**
- * WorkspaceNotesCard — the auto-saving carton Notes composer.
- *
- * Extracted from {@link LineEditPanel} so the Unbox panel and the standalone
- * {@link TriagePanel} share ONE notes implementation. Pure composition over the
- * controller bag; the panel owns placement (dock vs mid-canvas).
- *
- * GRAIN is a PARAMETER, not an assumption — {@link WorkspaceNotesCardProps.noteGrain}:
- *
- *   - `'line'` (default) — the **item note** (`receiving_line.notes`), the
- *     operator's durable note on this line (Zoho / receive payload). Unbox and
- *     Testing. On Unbox overview the dock draft also live-drives the carton
- *     sticker center; save still patches `notes` only. Durable `label_note` is
- *     edited in the label editor (`LabelEditPopover` / As Listed) and stamped
- *     from the dock draft on carton print — see the two-buffer note in
- *     `useUnboxLineController`.
- *   - `'carton'` — the **door note** (`receiving.support_notes`), a remark about
- *     the BOX. Arrival. It is a separate column because on a multi-line PO the
- *     line buffer would mean silently picking one of N lines, and it would
- *     collide with the note the Unbox operator later writes into that same
- *     field. Law: `source-of-truth.md` → Note vs label grain.
- *
- * The grain decides the baseline it compares against and the column it patches;
- * everything else — chrome, insert rail, trailing terminal, Enter-to-send — is
- * identical, which is the point. One composer face across the stations.
- *
- * It hydrates from the row and saves on blur / Send. With the overview Receive
- * CTA mounted, Enter saves then fires print+receive.
- *
- * Built on {@link OmnichannelComposerDock}. The full view / reload / overwrite of
- * the synced PO note lives in the standalone "PO note" display tab
- * ({@link LinePoNoteCard}).
- */
+/** WorkspaceNotesCard — the auto-saving carton Notes composer. */
 
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
@@ -156,11 +124,7 @@ export function WorkspaceNotesCard({
         receivingId={row.receiving_id ?? null}
         onNotesChange={c.setItemNote}
         onSaveNotes={(override) => {
-          // Returns whether it actually persisted, so the card only flashes
-          // "Saved" when the note changed. Writes ONE column — the grain's own —
-          // and never the printed face (`label_note`), which this composer does
-          // not own at either grain. Optional override covers Enter that also
-          // accepts a ghost suggestion.
+          // Returns whether it actually persisted, so the card only flashes "Saved" when the note changed.
           const next = override ?? c.itemNote;
           if (override != null && override !== c.itemNote) c.setItemNote(override);
           const committed =

@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * Client island for /settings/staff — the team directory.
- *
- * Off `AdminTable` 2026-09-12 (Wave D). The list is the slot `DataTable`
- * (`staff-directory` PRODUCT_TABLES peer): header sort, the Fields picker and
- * org-bindable columns arrive from the engine, none of which the seven
- * hand-written column objects it replaced could ever grow. That history lives
- * in `settings/staff-directory/staff-directory-grid-layout.ts` and in the
- * family catalog.
- *
- * Three affordances changed shape, and each is worth naming at the mount:
- *
- * - **Sign-in policy** was an EDITOR inside the `auth` cell — a `<select>` and
- *   a checkbox, each POSTing on change. It is a row VERB opening a
- *   `DeskStageOverlay`, and the two controls now submit as ONE payload rather
- *   than as two writes racing each other's refetch. The `STEP_UP_REQUIRED`
- *   answer still raises its own toast (`staff-auth-policy-outcome.ts`).
- * - **Deactivate** was a `<Button>` in a trailing actions cell behind
- *   `window.confirm`. It is a `tone: 'danger'` row verb confirmed on a second
- *   plane that can name the teammate and say what revoking does.
- * - **The Role cell was a link** to `/settings/access?staffId=<id>`. A link
- *   inside a cell is gone: the destination is the binding's `navigate` record
- *   plane, wired here with the router, and `role` stays a sortable fact.
- *
- * The invite modal and the page's permission guard are untouched.
- */
+/** Client island for /settings/staff — the team directory. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -107,10 +82,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
     }
   }, [refresh]);
 
-  // WS6.1: persist BOTH policy fields in one write, then refetch. The update
-  // route is itself behind the sensitive-info wall, so a STEP_UP_REQUIRED
-  // answer is an instruction to re-authenticate, not a failure to report —
-  // `staffAuthPolicyFailure` owns that distinction.
+  // WS6.1: persist BOTH policy fields in one write, then refetch.
   const submitAuthPolicy = useCallback(async (
     row: StaffDirectoryRow,
     next: StaffAuthPolicySubmit,

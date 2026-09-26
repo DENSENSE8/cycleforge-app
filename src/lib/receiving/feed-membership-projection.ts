@@ -1,44 +1,4 @@
-/**
- * Receiving-triage → feed_memberships projection (universal-feed plan Phase 4
- * "backfill shared memberships for receiving triage").
- *
- * Mirrors what's currently in the receiving-TRIAGE queue into `feed_memberships`
- * (feed_key='receiving_triage', entity_type='RECEIVING', one row per carton) so
- * the shared read substrate — the AI's `getFeedState` tool today, more surfaces
- * later — sees a real feed instead of an empty table.
- *
- * CARTON-GRAIN + STABLE-COLUMN predicate (deliberately NOT a replica of the
- * rail's line-grain fetch SQL): a carton is "in triage" from arrival until it is
- * triaged or moved to unbox. Using the stable carton facts (door_received_at +
- * triage_complete on the receiving_triage street table, unboxed_at + opened_at
- * on receiving_unbox — both 1:1 LEFT JOINs, no street row ≡ NULL/false — plus
- * spine source) keeps this projection from drifting against the evolving
- * line-grain visibility rules (quantity, workflow_status,
- * serial_unit_provenance) that decide which LINES show inside a carton — those
- * don't change a carton's triage membership.
- *
- *   state:
- *     needs_match — an unmatched carton awaiting a PO match (the Unfound tab).
- *                   Mirrors the LIVE v_unfound_queue = any source='unmatched'
- *                   carton, WITH OR WITHOUT lines (the restrictive no-lines
- *                   redefinition in 2026-07-03b is .BLOCKED / not applied).
- *     active      — matched, arrived, awaiting triage (Prioritize/Scanned)
- *     done        — left triage (triage_complete, or moved to unbox)
- *
- * Reconcile without deletes: upsert the current active/needs_match set, then
- * flip EXISTING rows to 'done' once their carton leaves triage. That keeps
- * 'done' bounded to cartons that were actually tracked (no historical bloat),
- * and hard-deleted cartons are cleaned by the parent-delete trigger
- * (trg_delete_feed_memberships_on_receiving_delete).
- *
- * Tenancy: org-preserving set-based upsert on the OWNER pool (RLS-bypassed),
- * same posture as workflow/node-stats + operations/signal-rollup — every row is
- * stamped with its source `receiving.organization_id` (NOT NULL), never
- * cross-attributed. Deps-injected so it unit-tests DB-free.
- *
- * Other feed_keys (receiving_unbox, testing_queue, orders_unshipped, …) are the
- * same pattern over their own source tables — separate SoT mappings, not here.
- */
+/** Receiving-triage → feed_memberships projection (universal-feed plan Phase 4 "backfill shared memberships for receiving triage"). */
 
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';

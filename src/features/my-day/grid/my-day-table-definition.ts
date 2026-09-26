@@ -1,11 +1,4 @@
-/**
- * `my-day.today` — My Day task table definition (plan Phase 1, wave 2).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry. Browse-only (every capability false but fieldsMenu);
- * frozen pane is `select · task`.
- */
+/** `my-day.today` — My Day task table definition (plan Phase 1, wave 2). */
 
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

@@ -47,13 +47,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const staffId = techId;
 
-    // Tenant-scoped transaction: withTenantTransaction owns BEGIN/COMMIT/ROLLBACK
-    // and SET LOCAL app.current_org, so the GUC flows through every delegated
-    // helper (resolveTechSerialSalContext / insertTechSerialForSalContext) and
-    // the standalone DELETEs below. Domain-error branches throw a typed sentinel
-    // so the wrapper ROLLBACKs (preserving the original abort-without-commit
-    // behavior, e.g. an 'update' that DELETEd before a later insert failed); the
-    // sentinel is caught below and mapped to its original HTTP status.
+    // Tenant-scoped transaction:
     type HandlerOutcome =
       | {
           kind: 'add';
@@ -100,11 +94,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         const serialNumbers = await getTechSerialsBySalId(client, salId);
         logAction = 'insert';
-        // Tell the caller WHERE the serial landed. A scan whose tracking matched
-        // no order carries an `orders_exception_id` on its SAL, so the serial is
-        // held for reconciliation rather than attached to an order. Returning a
-        // bare `{success:true}` for both cases is what let the station render
-        // "1/1 · complete" over an orphaned write (audit CF-02, 2026-07-28).
+        // Tell the caller WHERE the serial landed.
         return {
           kind: 'add',
           serialNumbers,

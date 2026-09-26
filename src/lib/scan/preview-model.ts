@@ -1,27 +1,4 @@
-/**
- * The read-only ID preview — "what would this scan do?" as data.
- *
- * The dispatch table already answers this; what it does not do is say it in
- * words a person can read before committing. This module is the telling layer:
- * it wraps `dispatchScan` (pure, no I/O) and adds the one sentence the operator
- * asked for — WHAT the next process for this ID would be — without rendering,
- * fetching, or writing anything.
- *
- * Read-only is the contract, not a convention. The preview sheet that renders
- * this has no write path: its only action navigates. If a caller ever wants to
- * commit from a preview, that caller is the bug — dock commits are irreversible
- * and a preview that can act is a second dispatch surface (the fork this table
- * exists to prevent).
- *
- * ## Why `armedSession` is an argument the sheet passes as `null`
- *
- * The bar's preview is deliberately the UNARMED view. One armed session exists
- * per org and the sheet does not know it; guessing it would make the preview
- * claim "this advances your block" from a station the operator is not standing
- * at. The honest unarmed answer is what the table itself gives: what the scan
- * would open, with its reason. The Stack's Find band — which DOES know the
- * armed session — can pass it and get the armed answer from the same function.
- */
+/** The read-only ID preview — "what would this scan do?" as data. */
 
 import { dispatchScan, type ScanCard, type DispatchMode } from './dispatch-table';
 import { routeScan, type ScanRoute, type ScanType } from '../barcode-routing';

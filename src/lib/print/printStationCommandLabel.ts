@@ -1,10 +1,4 @@
-/**
- * Station command barcode — 2×1" thermal label (matrix on the right).
- *
- * Reuses the shared {@link LabelFaceModel} / {@link printLabel} shell so the
- * sticker prints on the same stock as receiving carton labels. Encodes the
- * exact CMD-* string as DataMatrix (Arrival traffic cop → command).
- */
+/** Station command barcode — 2×1" thermal label (matrix on the right). */
 
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';

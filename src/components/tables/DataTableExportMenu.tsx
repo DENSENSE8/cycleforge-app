@@ -1,42 +1,6 @@
 'use client';
 
-/**
- * The export panel — INLINE, on the same popover grammar as Sort and Filter.
- *
- * Operator's brief, verbatim: *"The export should not just be a blind download.
- * It should be a configurable download that will be inline — download default,
- * download what's shown, configure more."* Inline is the load-bearing word: this
- * is a `Popover` anchored to the control, never a `Dialog`. A modal for a
- * download stops the desk to ask a question the operator answered by clicking.
- *
- * ## Three tiers, increasing specificity — and tier 1 never gets slower
- *
- * The whole risk in making export configurable is that the common case grows a
- * step. It does not: the panel opens with the default action focused, so the
- * one-click download is now click-then-Enter at worst, and the configure half
- * is below the fold of attention rather than in front of it.
- *
- *   1. **Download this view** — the CURRENT narrowing, after search, filter and
- *      date range. Never the unfiltered collection: an operator looking at 40
- *      rows who asks for a file wants those 40.
- *   2. **Download selected (n)** — only when a selection exists. No selection,
- *      no row: an always-present control that is usually disabled teaches
- *      people to stop reading the panel.
- *   3. **Columns · Format · Reset** — the configure half.
- *
- * ## What is deliberately NOT here
- *
- * **A row-count input.** "Rows" in the plan's sketch means the SCOPE choice
- * above, not a limit box — a file that silently stops at 100 rows is the bug
- * this whole phase exists to avoid.
- *
- * **The `e` shortcut.** §11 asks for it, and binding it today means either a
- * 54th window keydown listener (the finding that section opens with) or a
- * standing keycap on the trigger, which the shortcut-display cohort refuses
- * outright. It belongs to the keyboard REGISTRY. Enter and Escape work here
- * already because the popover focuses the default action and closes on Escape —
- * which is the half of the obligation that does not need a registry.
- */
+/** The export panel — INLINE, on the same popover grammar as Sort and Filter. */
 
 import { Fragment, useCallback, useMemo, useState } from 'react';
 import { Download } from '@/components/Icons';
@@ -165,12 +129,7 @@ export function DataTableExportMenu<Row>({
         data-testid="data-table-export"
         aria-label={ariaLabel}
         aria-expanded={open}
-        // Stays a native `title` on purpose: this button is the
-        // `PopoverTrigger asChild` child, so wrapping it in HoverTooltip would
-        // hand the popover's ref to a component that does not forward one.
-        // MorphCursorLayer lifts a short title onto the cursor chip anyway —
-        // so it gets the same face, and it may as well say something useful
-        // instead of repeating the glyph. ds-allow-title: clone-and-ref trigger.
+        // Stays a native `title` on purpose:
        
         // The retired `DataTableExportButton`'s own chrome, carried over
         // verbatim: the glyph face did not change, only what it opens.

@@ -1,17 +1,4 @@
-/**
- * Focus the Unbox centre capture serial input (Tags + SerialScanField row).
- *
- * Prefer the controller-active line (`data-active-step`), then the empty
- * unfound stub (`data-return-scan-capture`), then any open capture serial.
- * Optimistic — no await; call after paint / soft-replace.
- *
- * Arrow ↑/↓ while typing in a serial field steps between every mounted
- * capture serial in document order (PO lines + unfound stub), and falls back to
- * the sibling record cursor when there is no NEXT mounted field — which is the
- * normal case once per-line collapse is on, because only the line being worked
- * has a capture bar at all. Ambient `useRecordCursorKeyboard` refuses-in-input,
- * so this owns that chord.
- */
+/** Focus the Unbox centre capture serial input (Tags + SerialScanField row). */
 
 import { getRecordCursorTop } from '@/lib/record-cursor/store';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
@@ -92,16 +79,7 @@ function focusUnboxCaptureSerialInLine(lineId: number): boolean {
   return focusInput(el);
 }
 
-/**
- * Step the sibling (PO-line) cursor itself.
- *
- * The fallback for ↑/↓ when the DOM has no neighbouring capture field to jump
- * to. That is not an edge case: with per-line collapse the operator is meant to
- * see exactly one capture bar, so "the next mounted input" is almost always
- * nothing. The keystroke means "next PO LINE" either way — the surface's `open`
- * selects the line, expands it and schedules focus into its own serial, so the
- * caret lands in the same place it would have.
- */
+/** Step the sibling (PO-line) cursor itself. */
 function stepSiblingLineCursor(delta: -1 | 1): boolean {
   const top = getRecordCursorTop('sibling');
   if (!top) return false;

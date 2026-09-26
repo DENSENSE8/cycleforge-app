@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { lookupCompatibility } from '@/lib/neon/bose-model-queries';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/bose-models/lookup?serial=… | ?model=…
- *
- * The compatibility lookup entry point. Resolves a model from a serial number
- * (longest-prefix decode) or a model string (exact model_number, else name
- * search), then returns its compatible parts joined to live stock, lifecycle
- * status and open sourcing alerts. Degrades gracefully: an unresolved input
- * returns 200 with { model: null, parts: [] } rather than a 404, so the UI can
- * show an empty state instead of an error.
- */
+/** GET /api/bose-models/lookup?serial=… | ?model=… */
 export const GET = withAuth(async (req: NextRequest) => {
   try {
     const { searchParams } = new URL(req.url);

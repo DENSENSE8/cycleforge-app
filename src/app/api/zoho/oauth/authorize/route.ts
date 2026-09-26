@@ -4,15 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zoho/oauth/authorize
- *
- * Redirects the browser to Zoho's OAuth 2.0 authorization page.
- * After the user grants access, Zoho redirects to /api/zoho/oauth/callback.
- *
- * Required env vars: ZOHO_CLIENT_ID, NEXT_PUBLIC_APP_URL
- * Optional: ZOHO_DOMAIN (defaults to accounts.zoho.com)
- */
+/** GET /api/zoho/oauth/authorize */
 export const GET = withAuth(async (request: NextRequest) => {
   const clientId = normalizeEnvValue(process.env.ZOHO_CLIENT_ID);
   const domain = normalizeEnvValue(process.env.ZOHO_DOMAIN) || 'accounts.zoho.com';
@@ -35,11 +27,6 @@ export const GET = withAuth(async (request: NextRequest) => {
   const redirectUri = `${appUrl}/api/zoho/oauth/callback`;
 
   // Scopes required for Zoho Inventory receiving lines integration.
-  // settings.READ is required for GET /organizations (discover organization_id
-  // during OAuth callback). Bills scope is required to receive billed POs:
-  // createPurchaseReceive must GET /bills/{id} to map PO line_item_id →
-  // bill_item_id for the purchaseorder_bills shape Zoho requires when a PO
-  // already has bills.
   const scope = [
     'ZohoInventory.settings.READ',
     'ZohoInventory.purchaseorders.READ',
@@ -59,10 +46,7 @@ export const GET = withAuth(async (request: NextRequest) => {
   authUrl.searchParams.set('access_type', 'offline');
   authUrl.searchParams.set('prompt', 'consent');
   authUrl.searchParams.set('redirect_uri', redirectUri);
-  // Org pinning for multi-org Zoho accounts: the callback would otherwise store
-  // the FIRST org from GET /organizations. Zoho appends only its own params to
-  // the fixed redirect_uri, so the requested org travels through OAuth `state`
-  // (`org:<id>`) and the callback prefers it.
+  // Org pinning for multi-org Zoho accounts:
   const pinOrg = (request.nextUrl.searchParams.get('org') || '').trim();
   if (/^\d{6,12}$/.test(pinOrg)) {
     authUrl.searchParams.set('state', `org:${pinOrg}`);

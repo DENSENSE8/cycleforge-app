@@ -1,36 +1,4 @@
-/**
- * cycle-count.ts
- * ────────────────────────────────────────────────────────────────────
- * Operations on the Phase 0 cycle_count_campaigns / cycle_count_lines
- * tables (migration 2026-05-14_cycle_counts.sql).
- *
- * Lifecycle of a campaign:
- *   1. createCampaign(name, varianceTol)
- *        - INSERTs the campaign (status='open').
- *        - Snapshots every (location_id, sku) in bin_contents into
- *          cycle_count_lines (status='pending', expected_qty = qty).
- *   2. submitCount(lineId, countedQty)
- *        - UPDATE counted_qty + counted_by + counted_at.
- *        - Auto-routes status:
- *            within campaign.variance_tol  →  'counted' (will auto-
- *                                              approve on closeCampaign)
- *            outside tolerance            →  'pending_review' (admin
- *                                              must approve or reject)
- *   3. approveLine(lineId)
- *        - UPDATE bin_contents.qty = counted_qty + last_counted = NOW().
- *        - INSERT sku_stock_ledger row with the variance delta
- *          (reason='CYCLE_COUNT_ADJ').
- *        - UPDATE line status='approved' + approved_by + approved_at.
- *   4. rejectLine(lineId)
- *        - UPDATE line status='rejected'. No stock changes.
- *   5. closeCampaign(campaignId)
- *        - Auto-approves remaining 'counted' lines (those that came in
- *          within tolerance) in one pass.
- *        - UPDATE campaign status='closed' + closed_at.
- *
- * All five operations are single-transaction. No feature-flag gate
- * here — cycle count is an always-available admin tool.
- */
+/** cycle-count.ts ──────────────────────────────────────────────────────────────────── Operations on the Phase 0 cycle_count_campaigns /… */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

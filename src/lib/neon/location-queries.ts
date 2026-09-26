@@ -11,18 +11,7 @@ import {
   type LocationSegments,
 } from '../barcode-routing';
 
-/**
- * Tenancy migration note
- * ──────────────────────
- * Every exported query here takes an OPTIONAL `orgId`. When supplied (the
- * routes under /api/locations now thread `ctx.organizationId`), the query runs
- * through `tenantQuery` / `withTenantTransaction` and adds an explicit
- * `organization_id = $n` predicate on reads, stamps `organization_id` on
- * INSERTs, and gates UPDATE/DELETE WHERE clauses on the org. When omitted,
- * behavior is byte-identical to before (raw `pool`, no org filter) so callers
- * outside the /api/locations fileset that haven't been migrated yet keep
- * compiling and behaving as they always have.
- */
+/** Tenancy migration note ────────────────────── Every exported query here takes an OPTIONAL `orgId`. */
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -103,19 +92,7 @@ export async function getRooms(orgId?: OrgId): Promise<Location[]> {
   return result.rows;
 }
 
-/**
- * Upsert the zone-letter for a room. The partial unique index enforces no
- * two active rooms share a letter; we map the constraint violation to a
- * structured error so the API can return 409.
- *
- * Legacy data can have multiple parent rows (row_label/col_label NULL) that
- * share the same `room` value — e.g. "Storage A" and "Storage B" both with
- * room='Zone 2 -'. A naive UPDATE would set the letter on every matching
- * row and trip the partial unique index. We resolve that ambiguity by:
- *   1. clearing zone_letter on every parent row for this room, then
- *   2. setting the letter on exactly one canonical parent (lowest
- *      sort_order, then lowest id), all inside a single transaction.
- */
+/** Upsert the zone-letter for a room. */
 export async function setRoomZoneLetter(
   roomName: string,
   letter: string | null,
@@ -312,14 +289,7 @@ export function buildBinsOverviewWhere(args: {
   return { where, orgParamIdx, specialParamIdx };
 }
 
-/**
- * One-shot read for the inventory bins tab. Joins locations with aggregated
- * bin_contents so the client doesn't need to fan out N queries to enrich
- * the list. Safe up to ~5k bins; switch to a materialized view if it grows.
- *
- * Includes special bare-barcode bins (RETURNS-TEST / TECH-PARTS / UNSORTED)
- * when `specialBarcodes` is provided — those rows have null row/col labels.
- */
+/** One-shot read for the inventory bins tab. */
 export async function getBinsOverview(filter?: {
   room?: string | null;
   q?: string | null;
@@ -514,20 +484,11 @@ export async function renameRoom(
   const to = newName.trim();
   if (!from || !to || from === to) return { updated: 0, barcodesRekeyed: 0 };
 
-  // db is either the org-scoped tenant transaction client or the raw pool
-  // client. Every `room`/`name` predicate is a tenant-scoped string match, so
-  // when an orgId is supplied we add an `organization_id = $n` predicate to
-  // each read/write — and stamp it on the materialise INSERT — so a rename
-  // never touches another tenant's rooms.
+  // db is either the org-scoped tenant transaction client or the raw pool client.
   const runRename = async (
     db: { query: typeof pool.query },
   ): Promise<{ updated: number; barcodesRekeyed: number }> => {
-    // Find every parent row participating in this room — match on either
-    // `room` or legacy `name`. We need to know the count up front because
-    // the `locations.name` column has a UNIQUE index, so we can only rewrite
-    // `name` on ONE row per rename. Sort_order/id picks the canonical row;
-    // siblings keep their distinct names (e.g. "Storage A", "Storage B")
-    // and only get their `room` rewritten.
+    // Find every parent row participating in this room — match on either `room` or legacy `name`.
     const parents = await db.query(
       `SELECT id, name FROM locations
         WHERE row_label IS NULL
@@ -543,10 +504,7 @@ export async function renameRoom(
       const canonicalId = parents.rows[0].id;
       const siblingIds = parents.rows.slice(1).map((r) => r.id);
 
-      // Siblings: room-only rewrite. Keeps their distinct names so the
-      // UNIQUE(name) constraint doesn't fire when multiple parents share a
-      // room (legacy data shape). id = ANY(...) is a surrogate-PK match (safe
-      // bare), but we still org-gate the WHERE when an orgId is threaded.
+      // Siblings: room-only rewrite.
       if (siblingIds.length > 0) {
         const sib = await db.query(
           `UPDATE locations
@@ -600,11 +558,7 @@ export async function renameRoom(
 
     const updated = parentUpdates + (binUpdate.rowCount ?? 0);
 
-    // If neither parent nor any bin matched, the room exists only in client
-    // state (localStorage zoneMap from the legacy label printer). Materialise
-    // the parent row with the new name so subsequent reads see it. Stamp the
-    // org on the INSERT, and org-scope the MAX(sort_order) subquery, when
-    // threaded.
+    // If neither parent nor any bin matched, the room exists only in client state (localStorage zoneMap from the legacy label printer).
     let parentCreated = 0;
     if (updated === 0) {
       const insert = await db.query(
@@ -650,10 +604,7 @@ export async function reorderRooms(order: string[], orgId?: OrgId): Promise<{ up
   const clean = order.map((s) => s.trim()).filter(Boolean);
   if (clean.length === 0) return { updated: 0 };
 
-  // db = org-scoped tenant transaction client or the raw pool client. The
-  // `name`/`room` predicates are tenant-scoped string matches, so when an
-  // orgId is supplied we add an `organization_id = $n` predicate so we only
-  // reorder this tenant's room rows.
+  // db = org-scoped tenant transaction client or the raw pool client.
   const runReorder = async (
     db: { query: typeof pool.query },
   ): Promise<{ updated: number }> => {
@@ -809,26 +760,7 @@ export async function bulkCreateBinRange(data: {
   return runBatch(pool);
 }
 
-/**
- * Upsert location rows for a batch of printer-format addresses
- * ({zone, aisle, bay, level, position}). Called by the Location Label
- * Printer before window.print() so every printed sticker has a backing row
- * — scans of the QR resolve to a real bin, putaway audits work, and the
- * bin appears in bins-overview.
- *
- * Idempotent on `barcode`: the flat code (e.g. "A0101101") is the natural
- * key. Re-printing the same label is a no-op (existing row returned). Soft-
- * deleted rows are reactivated so the print-then-delete-then-print cycle
- * works.
- *
- * `name` is the dashed human-readable form ("A-01-01-1-01") and is the
- * column the UNIQUE(name) index pins.
- * `row_label` / `col_label` are populated so the bin shows up in
- * bins-overview (the SQL there filters `row_label IS NOT NULL AND
- * col_label IS NOT NULL`). We pack the 5-tier address into the 3-tier
- * schema as `row_label = "{aisle}-{bay}"`, `col_label = "{level}-{position}"`.
- * `parent_id` is set to the active parent room row when one exists.
- */
+/** Upsert location rows for a batch of printer-format addresses ({zone, aisle, bay, level, position}). */
 export async function registerPrintedLocations(input: {
   room: string;
   segments: LocationSegments[];
@@ -995,10 +927,7 @@ export async function getTransfersForSku(sku: string, limit = 25, orgId: OrgId):
 
 /** Get all SKUs stored in a specific bin (by location_id). */
 async function getBinContents(locationId: number, orgId?: OrgId): Promise<BinContent[]> {
-  // The locations join is on a globally-unique integer PK (safe bare). The
-  // sku_stock join is on the `sku` string (collides across tenants) so it is
-  // org-aligned, and the bin_contents rows themselves are org-filtered, when
-  // an orgId is supplied.
+  // The locations join is on a globally-unique integer PK (safe bare).
   const sql = `SELECT bc.*, l.name AS location_name, l.room, l.row_label, l.col_label, l.barcode,
             COALESCE(
               NULLIF(ss.display_name_override, ''),
@@ -1073,17 +1002,7 @@ export async function upsertBinContent(data: {
   return result.rows[0];
 }
 
-/**
- * Versioned variant of {@link upsertBinContent} — UPDATE only succeeds when
- * the caller-supplied `expectedUpdatedAt` matches the current row.
- *
- * Returns:
- *   • `{ ok: true,  row }`     — write applied
- *   • `{ ok: false, current }` — stale version; caller should re-fetch
- *
- * Insert path (row doesn't exist yet) never collides with version; the
- * caller should treat that as a successful write.
- */
+/** Versioned variant of {@link upsertBinContent} — UPDATE only succeeds when the caller-supplied `expectedUpdatedAt` matches the current row. */
 export async function upsertBinContentIfVersion(data: {
   locationId: number;
   sku: string;
@@ -1153,24 +1072,7 @@ export async function upsertBinContentIfVersion(data: {
   return run(pool);
 }
 
-/**
- * Adjust bin quantity by delta (positive = put, negative = take).
- * Stock aggregate is updated via sku_stock_ledger → fn_recompute_sku_stock only.
- *
- * **Every bin verb lands here** — `/api/locations/[barcode]` put/take (the gun
- * and `/m`), `/api/transfers` (both legs), `.../swap` (both legs) and the cycle
- * count lines. So this is the one place the realtime fan-out belongs: one
- * `STOCK_DELTA_*` per ledger row, published AFTER the transaction commits, so a
- * subscriber that refetches on the event can never read pre-commit rows.
- *
- * Best-effort by design: the write is already committed and answered, and
- * `publishEvent` swallows its own failures. A dropped publish costs a
- * subscriber one manual refresh, never a lost write.
- *
- * `action: 'set'` (`upsertBinContent`) writes no ledger row, so it emits no
- * event — which is why a desk count change is a `put` / `take`
- * (`src/lib/inventory/stock-bin-verb-writes.ts`), never a `set`.
- */
+/** Adjust bin quantity by delta (positive = put, negative = take). */
 export async function adjustBinQty(data: {
   locationId: number;
   sku: string;

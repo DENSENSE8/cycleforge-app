@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The receiving slot-layout hook — the receiving CONFIG on the shared
- * {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law, org
- * capture, Fields-picker data; see its docblock). The fifth family on the
- * engine and the first COMPOUND port after Orders — proof that the compound
- * morph adopts by config too, not by a second hook.
- *
- * Receiving paints the COMPOUND morph only, on every rail: Unbox, History and
- * Testing are the same table read at different moments. A stored `sheet`
- * layout would open `subtitle:N` tracks nothing draws — `paintMorph` coerces,
- * the org write gate (`slotMorphsFor('receiving')`) refuses.
- */
+/** The receiving slot-layout hook — the receiving CONFIG on the shared {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW… */
 
 import {
   RECEIVING_FIELD_CATALOG,

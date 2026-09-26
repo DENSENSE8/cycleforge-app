@@ -1,16 +1,4 @@
-/**
- * Tiny transactional-email shim.
- *
- * Production: posts to Resend (https://resend.com) when RESEND_API_KEY is
- * set. Resend chosen because it's the lowest-friction modern transactional
- * provider and works from any runtime — no SMTP server, no SDK install.
- *
- * Dev/CI: logs to console and returns ok=true. Lets tests and local runs
- * exercise the email send sites without provisioning a real account.
- *
- * Adding nodemailer/SMTP as a second backend is a small change in
- * `send()` if a customer needs it (add the `nodemailer` dep back first).
- */
+/** Tiny transactional-email shim. */
 
 import { PRODUCT_NAME } from '@/lib/branding/constants';
 import { logger } from '@/lib/observability/logger';

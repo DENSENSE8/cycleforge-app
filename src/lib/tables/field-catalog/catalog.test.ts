@@ -1,9 +1,4 @@
-/**
- * Products-catalog catalog guards + resolver behaviour — wave 1.4's fourth
- * family. The honest-absence tests carry most of the weight here: this family
- * is four roll-up COUNTS and a cost, and a column of zeros is precisely the
- * fake-`0` the standard forbids.
- */
+/** Products-catalog catalog guards + resolver behaviour — wave 1.4's fourth family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

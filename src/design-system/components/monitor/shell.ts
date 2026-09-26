@@ -1,13 +1,4 @@
-/**
- * Shared Monitor card shell tokens.
- *
- * Theme-driven only (`bg-surface-card`, `border-border-soft`) so light/dark and
- * other palettes restyle without page-local hex. See
- *
- * Two KPI altitudes:
- * - {@link MONITOR_KPI_TILE_CLASS} — Monitor / analytics **cards** (rounded-2xl p-4)
- * - {@link MONITOR_KPI_BAND_CLASS} — workbench Band 2 **instrument** (flush, no card shell)
- */
+/** Shared Monitor card shell tokens. */
 
 
 /** Outer bubble — raised card on `bg-surface-canvas`. */

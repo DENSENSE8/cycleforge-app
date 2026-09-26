@@ -1,43 +1,10 @@
 'use client';
 
 /**
- * A triage list row: inspect on the left, commit on the right.
- *
+ * A triage list row:
  * ## BRIEF §4 triage, in one place
- *
- * Every phone triage list (exceptions, on-hold, inbox, pair) mounts this row,
- * so the triage grammar lives here and nowhere else — and it reads like every
- * other record on the phone (`DetailSummaryCard`: title first, identifier
  * bottom-left, status bottom-right; operator 2026-09-25):
- *   - the TITLE leads its line alone; `meta` (SKU, order #) sits under it on
- *     the left and the state code (`code`, a {@link StateCode} from
- *     `LIFECYCLE` or `INTAKE`) sits bottom-right on the same line;
- *   - the selected row wears the 2px INK outline — never a coloured one;
- *   - the commit is a flush cell the full height of the row, split off by one
- *     mode rule and styled like a secondary dock cell — quiet, not an ink
- *     block (operator 2026-09-25: "should not look extremely loud"); press
- *     inverts it to ink, instantly;
- *   - no motion: nothing on the row moves (opacity-only is the ceiling).
- *
- * ## Two targets, deliberately, and never nested
- *
- * A row that only commits forces a blind decision; a row that only opens a
- * detail view costs two taps for the case an operator is already sure about —
- * which is most of them. So the row carries both, and which half you hit says
- * which you meant.
- *
- * They are SIBLINGS. Nesting a button inside a button is invalid HTML, and
- * browsers resolve it by dropping events unpredictably — the "sometimes the
- * CTA doesn't fire" bug that gets chased for an afternoon and blamed on the
- * touch handler.
- *
- * ## The two accessible names must differ
- *
- * Both halves describe the same product, so the obvious labelling gives a
- * screen-reader user two adjacent controls both announcing "Bose Wave Music
- * System III" with no way to tell inspect from commit. The action verb is
- * therefore part of each name, not implied by position — position is exactly
- * the information a non-visual reader does not have.
+ * block (operator 2026-09-25: "should not look extremely loud"); press
  */
 
 import type { ReactNode } from 'react';

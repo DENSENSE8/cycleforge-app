@@ -1,13 +1,4 @@
-/**
- * inbound_purchase_order_mirror — the ONE read-only reconcile mirror for all
- * inbound sources (Zoho, eBay, …). Not a second queue; a place upstream sync
- * lands the source-of-record snapshot the Incoming query joins to decide
- * accounting closure. Legacy zoho_po_mirror keeps running; Zoho sync dual-writes
- * both until readers cut over (plan §3.3, §3.9).
- *
- * Deps-injected `query` (default tenantQuery) so tests run DB-free — same shape
- * as src/lib/receiving/facts/store.ts.
- */
+/** inbound_purchase_order_mirror — the ONE read-only reconcile mirror for all inbound sources (Zoho, eBay, …). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -16,13 +7,7 @@ import { assertRegisteredInboundSource, type InboundSourceType } from './source-
 /** Upstream statuses that mean "this purchase is done" → drop it off Incoming. */
 const MIRROR_TERMINAL_STATUSES = ['cancelled', 'canceled', 'closed', 'received', 'completed', 'refunded', 'returned'] as const;
 
-/**
- * SQL fragment (references the `rl` alias) — TRUE when a line's inbound mirror is
- * NOT terminal for `source`, i.e. the upstream order is still open, so the line
- * stays in Incoming. The polymorphic analogue of NOT_ZOHO_RECEIVED_PREDICATE;
- * one query interface for every source (plan §6.1). `source` is a code constant
- * validated against the registry, so the interpolation is injection-safe.
- */
+/** SQL fragment (references the `rl` alias) — TRUE when a line's inbound mirror is NOT terminal for `source`, i.e. */
 export function notInboundMirrorTerminalPredicate(source: InboundSourceType): string {
   assertRegisteredInboundSource(source);
   const list = MIRROR_TERMINAL_STATUSES.map((s) => `'${s}'`).join(', ');

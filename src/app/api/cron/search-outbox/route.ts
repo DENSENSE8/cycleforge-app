@@ -1,19 +1,6 @@
 /**
  * Cron: drain the entity_search_outbox into entity_search_docs.
- *
- * GET /api/cron/search-outbox?batch=50&maxBatches=10
- *
- * The async half of the AI-search freshness pipeline (trigger → outbox →
- * worker, docs/ai-search-modernization-plan.md locked decision 5). Loops
- * bounded drain batches until the queue is empty or maxBatches is hit, so a
- * burst of writes can't run the function past its duration budget. Embedding
- * is best-effort inside the worker — a down provider still upserts keyword-
- * searchable docs.
- *
- * Auth: CRON_SECRET bearer (same gate as the other
- * /api/cron routes). Cron routes are session-less by design — no staff
  * session wrapper (see docs/security/route-permissions.json exemption
- * pattern for /api/cron/*).
  */
 
 import { NextRequest, NextResponse } from 'next/server';

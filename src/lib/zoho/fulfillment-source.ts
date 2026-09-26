@@ -1,16 +1,4 @@
-/**
- * Source side of the fulfillment sync: enumerate orders that have actually
- * SHIPPED in our authoritative internal system, ready to be pushed to Zoho.
- *
- * Shipped = an `orders` row linked (via shipment_id) to a row in the canonical
- * `shipping_tracking_numbers` table whose carrier status has progressed to
- * accepted / in-transit / out-for-delivery / delivered. This is the same
- * "shipped" gate used by getAllShippedOrders (src/lib/neon/orders-queries.ts).
- *
- * `orders` is line-level (one row per SKU); we group by `order_id` (the channel
- * order id) to assemble a whole order. `order_id` is the join key to a Zoho
- * sales order via salesOrders.referenceNumber.
- */
+/** Source side of the fulfillment sync: */
 
 import { createHash } from 'node:crypto';
 import pool from '@/lib/db';

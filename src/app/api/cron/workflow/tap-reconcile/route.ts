@@ -1,26 +1,6 @@
 /**
  * Cron: re-drive workflow taps that never landed.
- *
- * GET /api/cron/workflow/tap-reconcile?olderThan=10&limit=50
- *
- * The reconciler half of the intended-tap outbox (roi-execution/03 #10).
- * tapWorkflow records an INTENT row (workflow_tap_outbox, status='PENDING')
- * before attempting advance() and marks it LANDED on a durable outcome; a row
- * stuck PENDING past `olderThan` minutes means the tap was lost (crash
- * mid-advance, transient lock). This route claims those rows (attempts bumped,
- * SKIP LOCKED) and re-drives each through the SAME tap entry — tapWorkflow is
- * idempotent by design, so a re-drive of a tap that actually landed is a safe
- * re-park, and the re-driven tap marks its own row LANDED/FAILED. Rows past
- * MAX_ATTEMPTS are flipped FAILED for human triage instead of looping forever.
- *
- * Flag-gated on WORKFLOW_TAP_OUTBOX (default OFF) — fully inert until the
- * 2026-07-09b_workflow_tap_outbox migration is applied and the flag is on.
- * NOT added to vercel.json: scheduling this cron is an owner decision.
- *
- * Auth: CRON_SECRET bearer (same gate as the other
- * /api/cron routes). Cron routes are session-less by design — no staff
  * session wrapper (see docs/security/route-permissions.json exemption
- * pattern for /api/cron/*).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -105,10 +85,7 @@ export async function GET(req: NextRequest) {
           exhausted += 1;
           continue;
         }
-        // Same tap entry as production — never throws; on success it marks the
-        // claimed row LANDED via the redrive deps, on a durable non-apply it
-        // marks FAILED, and on a transient loss it leaves the row PENDING for
-        // the next run.
+        // Same tap entry as production — never throws; on success it marks the claimed row LANDED via the redrive deps, on a durable non-apply it…
         await tapWorkflow(toTapArgs(row), redriveDeps(row.id));
         redriven += 1;
       }

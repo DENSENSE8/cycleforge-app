@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * Displays leaf chrome trail — leaves report nested breadcrumbs UP to
- * {@link StationDisplaysPushStack}; they never mount a second
- * {@link StationDisplayLeafHeader}.
- *
- *   trail = [Inventory]              → Back / Esc → Displays index
- *   trail = [Inventory, PO notes]    → Back / Esc → pop one (Inventory sub-index)
- *   Forward after a nested pop restores via {@link setOnNestedRestore}.
- *
- * There is no leaf footer to register into: the column's bottom band was
- * removed 2026-08-19 (`Filter displays…` is row 2, index only), and the opt-in
- * `/` command stage it hosted had no leaf that ever registered a command.
- *
- * Leaf-wide child perspectives (e.g. Claim New·Link) register via
- * {@link setLeafTrailing} into the sticky header’s trailing slot — never a
- * second sticky band or a second leaf header.
- *
- * The sticky band paints top-left ← → + current title (+ optional trailing) —
- * ancestors are not jump crumbs; depth is Back / Esc / ArrowLeft·ArrowRight.
- */
+/** Displays leaf chrome trail — leaves report nested breadcrumbs UP to {@link StationDisplaysPushStack}; they never mount a second {@link… */
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 

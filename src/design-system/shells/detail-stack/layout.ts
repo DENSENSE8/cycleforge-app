@@ -11,19 +11,7 @@ export const DETAIL_STACK_LAYOUT = {
   headerOffsetPx: TOP_CHROME_ROW_PX,
 } as const;
 
-/**
- * Drag-to-resize contract for NON-MODAL detail inspectors (dashboard order
- * inspector, receiving More details). Modal occupants keep the fixed
- * {@link DETAIL_STACK_LAYOUT} width.
- *
- * `maxWidthPad` is the viewport the panel must leave behind, and it is derived,
- * not taste: the docked sidebar is 360px and the Pending grid's own minimum
- * content width is ~596px (the sum of its column tracks — below that it
- * horizontal-scrolls and starts force-hiding columns). 360 + 596 ≈ 960, so at
- * 1440 the inspector caps near 480px and the queue stays readable; at 1920 it
- * can reach ~960. Sizing past that trades the collection map for the record,
- * which is the trade this whole surface exists to avoid.
- */
+/** Drag-to-resize contract for NON-MODAL detail inspectors (dashboard order inspector, receiving More details). */
 export const DETAIL_STACK_RESIZE = {
   storageKey: 'detail-inspector-width',
   defaultWidthPx: DETAIL_STACK_LAYOUT.widthPx,
@@ -31,14 +19,7 @@ export const DETAIL_STACK_RESIZE = {
   maxWidthPadPx: 960,
 } as const;
 
-/**
- * Collapse contract for NON-MODAL detail inspectors on {@link RightRailHost}.
- *
- * Open: collapse chevron on the leading {@link HorizontalEdgeResizeHandle}
- * (`onCollapse`). Collapsed: width-drawer to 0 + a slim expand strip on the
- * right edge ({@link detailStackCollapseStripClassName}). Persists beside
- * {@link DETAIL_STACK_RESIZE}. Modal + assistant dock do not use this.
- */
+/** Collapse contract for NON-MODAL detail inspectors on {@link RightRailHost}. */
 export const DETAIL_STACK_COLLAPSE = {
   storageKey: 'detail-inspector-collapsed',
   /** Slim expand strip width when the inspector is parked (Tailwind twin: `w-8`). */
@@ -49,11 +30,7 @@ export const DETAIL_STACK_COLLAPSE = {
 export function detailStackAsideStyle(widthPx?: number): CSSProperties {
   const { insetPx, widthPx: defaultWidthPx } = DETAIL_STACK_LAYOUT;
   const width = widthPx ?? defaultWidthPx;
-  // Floats near the top-right of the viewport with an even gap on every side —
-  // ABOVE the (backdrop-dimmed) global header, not below it. `top: insetPx`
-  // moves it up; `right: insetPx` pulls it in off the flush edge (over to the
-  // left); `bottom: insetPx` keeps a matching gap so the padding wraps the whole
-  // card. Height fills top→bottom within those insets.
+  // Floats near the top-right of the viewport with an even gap on every side — ABOVE the (backdrop-dimmed) global header, not below it.
   return {
     top: insetPx,
     right: insetPx,
@@ -90,21 +67,7 @@ export function detailStackCollapseStripStyle(): CSSProperties {
 const DETAIL_STACK_ASIDE_SURFACE =
   'isolate flex flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-2xl shadow-scrim/40';
 
-/**
- * The IN-FLOW flush push column — right-edge mirror of
- * {@link CONTEXT_PANEL_COLUMN_CLASS} (ruled 2026-08-03 exact flush planes).
- *
- * - **The card itself owns painted width** (`style.width` snap on desk
- *   `RightRailHost` / Station Displays — never a layout tween). Not an
- *   `overflow-hidden` host wrapping a fixed-width absolute child (the spine's
- *   shape in `SidebarNavColumn`). The leading resize grip is
- *   `placement="inset"` — hit sash inside the card, 1px paint on this
- *   `border-l` seam (the display hairline). Nothing hangs into the work
- *   surface. Left context rail still uses `outset` on its trailing edge.
- * - **Flat elevation + leading hairline** against the sunken/canvas center —
- *   outer `m-*` islands and cast shadows are not depth (source-of-truth → Depth
- *   elevation · Frame column budget).
- */
+/** The IN-FLOW flush push column — right-edge mirror of {@link CONTEXT_PANEL_COLUMN_CLASS} (ruled 2026-08-03 exact flush planes). */
 export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
   'relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden',
   'border-l border-border-soft bg-surface-card',
@@ -118,70 +81,27 @@ export const DETAIL_STACK_PUSH_COLUMN_CLASS = cn(
 export const DETAIL_STACK_PUSH_STRIP_CLASS =
   'relative flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card pt-3';
 
-/**
- * Right-rail **industrial flush** body host (Cybertruck / WMS instrument plane).
- *
- * The single flush contract for a Station **Displays** push-column body (Unbox
- * golden · Arrival · Testing) and any right-edge occupant that mounts reference
- * tools. It carries **NO default horizontal inset** — the column IS the card, so
- * depth comes from surface steps + the `border-l` seam, never an outer `px-*`
- * gutter that every occupant then has to cancel with `-mx-4`.
- *
- * Chrome rows (the SpaceX topic plate, nested verb strips) sit edge-to-edge for
- * free. Body content that genuinely needs a readable gutter opts into
- * {@link DISPLAYS_BODY_INSET} on its own rows — it is **never** the host's job
- * and **never** a second nested card wrapper.
- *
- * Ruled 2026-08-05: this inverts the legacy `px-4` push host + ad-hoc `-mx-4`
- * cancel dance. The four-edge topic-plate handoff already pointed at this as the
- * proper remediation ("restructure so the strip is outside the `px-4` host").
- */
+/** Right-rail **industrial flush** body host (Cybertruck / WMS instrument plane). */
 export const DISPLAYS_FLUSH_HOST = cn(
   'flex h-full min-h-0 flex-col overflow-hidden px-0 pt-0',
 );
 
-/**
- * Opt-in readable gutter for right-rail body **content rows** under
- * {@link DISPLAYS_FLUSH_HOST}. Use on a text cluster / list row that would jam
- * to the column edge — never on the host, never as a second card wrapper, and
- * never on a chrome row that should read edge-to-edge (plate, verb strip). This
- * is the "rows own their gutter" grammar the flush claim column already ships.
- */
+/** Opt-in readable gutter for right-rail body **content rows** under {@link DISPLAYS_FLUSH_HOST}. */
 export const DISPLAYS_BODY_INSET = 'px-4';
 
 /** Default detail stack — panel band (`z-panel`). */
 export const detailStackAsideClassName = `fixed z-panel ${DETAIL_STACK_ASIDE_SURFACE}`;
 
-/**
- * Elevated variant — sits in the dedicated `detailStack` band (above a
- * workbench workspace overlay + its popovers, below modals). Opt-in per
- * occupant via the `elevated` flag so only surfaces that open OVER a
- * `panel`-band workspace (receiving Unbox/Triage) rise; every other detail
- * stack keeps `z-panel` so its own sub-dialogs (portaled at
- * `panelPopover`/`panelOverlay`) stay on top.
- */
+/** Elevated variant — sits in the dedicated `detailStack` band (above a workbench workspace overlay + its popovers, below modals). */
 export const detailStackAsideElevatedClassName = `fixed z-detailStack ${DETAIL_STACK_ASIDE_SURFACE}`;
-/**
- * Viewport backdrop behind a detail stack. Two variants pair with the two aside
- * bands above and pull their z-band from the SoT scale
- * (`src/design-system/tokens/z-index.ts`) — never a raw `z-[NNN]`:
- * - default: `panelBackdrop` (just under `panel`), a light dim.
- * - elevated: `detailStackBackdrop` (just under `detailStack`), a deeper dim +
- *   blur so the workbench canvas recedes with slide-over depth.
- */
+/** Viewport backdrop behind a detail stack. */
 export const detailStackBackdropClassName =
   'fixed inset-0 z-panelBackdrop bg-scrim/55 backdrop-blur-[2px]';
 
 export const detailStackBackdropElevatedClassName =
   'fixed inset-0 z-detailStackBackdrop bg-scrim/70 backdrop-blur-md';
 
-/**
- * Invisible dismiss layer for NON-MODAL inspectors that still want click-off
- * close (receiving details). Same z-band as the modal backdrop pair, but no
- * scrim / blur — the queue stays visually undimmed while the first outside
- * click closes the panel. Opt-in via `closeOnOutsideClick`; dashboard order
- * inspector leaves this off so the grid stays live underneath.
- */
+/** Invisible dismiss layer for NON-MODAL inspectors that still want click-off close (receiving details). */
 export const detailStackDismissLayerClassName = 'fixed inset-0 z-panelBackdrop';
 
 export const detailStackDismissLayerElevatedClassName =

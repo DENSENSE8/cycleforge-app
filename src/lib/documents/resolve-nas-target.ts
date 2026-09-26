@@ -1,9 +1,4 @@
-/**
- * NAS upload target for manual outbound-document attach (labels + slips).
- * Shared by src/app/api/orders/[id]/documents/route.ts (GET) and the
- * deprecated src/app/api/order-labels/route.ts (GET) so both surfaces the
- * same base URL / folder to the browser-direct WebDAV PUT flow.
- */
+/** NAS upload target for manual outbound-document attach (labels + slips). */
 
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getActiveNasBaseUrl, getNasStorageTarget } from '@/lib/tenancy/settings';

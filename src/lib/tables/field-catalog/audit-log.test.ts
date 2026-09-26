@@ -1,19 +1,4 @@
-/**
- * Audit-log catalog guards, materialization and adapter behaviour — the family
- * that replaced `/settings/audit`'s five hand-written `AdminTableColumn`
- * objects.
- *
- * Two assertions here are load-bearing beyond the usual shape checks:
- *
- * - the DIFF NON-GOAL. `metadata` / `before_data` / `after_data` are selected
- *   by the desk's query and painted by nothing; the page docblock used to
- *   promise a before/after expansion that was never built. A future agent
- *   reading "the row already has the data" will be tempted to bind it. The
- *   catalog must not name those columns until a plane actually paints them.
- * - the CLOCK face. The retired `fmtTs` cell printed the stamp to the second,
- *   and an audit log that silently drops the seconds has lost the fact it
- *   exists to record.
- */
+/** Audit-log catalog guards, materialization and adapter behaviour — the family that replaced `/settings/audit`'s five hand-written… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Batch-loads kit compositions for visible order rows (sku_catalog_id → composition).
- * Prefer sku_relationships; fall back to sku_kit_parts; never Zoho `-P`.
- *
- * Callers: useOrdersSpreadsheet → OrdersQueueTableRow kitFace.
- * API: POST /api/sku-catalog/composition/batch.
- * User: Implement multi-tenant kit / bundle display (Shopify-like).
- */
+/** Batch-loads kit compositions for visible order rows (sku_catalog_id → composition). */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

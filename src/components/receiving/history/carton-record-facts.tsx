@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The carton record's identity facts — the right column's read blocks:
- * purchase (platform, PO, vendor, source, listing, carton #), shipment
- * (tracking, carrier, status, delivered, last event), location (staging,
- * lane, bins), claims and notes. Blocks with nothing to say are omitted.
- */
+/** The carton record's identity facts — the right column's read blocks: */
 
 import { EvidenceDisclosure, EvidenceFactRow } from '@/design-system/components/record-ledger/EvidenceDisclosure';
 import { RecordListingLink } from '@/design-system/components/record-ledger/RecordIdentity';

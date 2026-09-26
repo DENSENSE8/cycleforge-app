@@ -9,16 +9,7 @@ import {
   workflowNodes,
 } from '@/lib/drizzle/schema';
 
-/**
- * GET /api/studio/items/stuck?v=<definitionId>&status=blocked|error|all
- *
- * The recovery/triage feed: the individual blocked|error items the Live lens
- * only counts in aggregate. Each row carries enough to triage + recover: the
- * unit identity, its domain status, where it's parked, and the last error
- * captured on the position context. Scoped to the org's active definition by
- * default (or ?v). One point-read; the client refetches on the engine's Ably
- * db-events, never on a poll (Studio law #4).
- */
+/** GET /api/studio/items/stuck?v=<definitionId>&status=blocked|error|all */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

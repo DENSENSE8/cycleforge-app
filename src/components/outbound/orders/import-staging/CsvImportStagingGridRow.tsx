@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * One CSV staging row — the parsed record's REAL details in the data table,
- * with its triage state in the `status` column.
- *
- * **Read-only.** A value is corrected on the record plane (the rail's Row leaf)
- * or by re-mapping the source column, never in the cell; the row's triage state
- * is derived on read, so the fix flips Ready / Action required either way.
- *
- * Click opens the row on the rail's Row leaf; the gutter check toggles bulk
- * membership. A missing mapped field paints its own cell rose, so the operator
- * sees *which* value is the reason without opening it.
- */
+/** One CSV staging row — the parsed record's REAL details in the data table, with its triage state in the `status` column. */
 
 import { memo } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
@@ -157,10 +146,7 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
       template={csvImportStagingGridTemplate(columns)}
       selected={focused}
       capabilities={CSV_IMPORT_STAGING_GRID_CAPABILITIES}
-      // No `role="row"`: LedgerGrid body rows sit outside the header rowgroup,
-      // so the role would be orphaned (`grid-aria-roles.guard.test.ts`). The
-      // gutter checkbox, the editable cells and the rail are the keyboard-
-      // reachable controls.
+      // No `role="row"`:
       data-staging-row={row.index}
       data-staging-status={row.status}
       className="cursor-pointer"

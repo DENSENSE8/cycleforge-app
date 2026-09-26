@@ -23,25 +23,7 @@ export type FetchAllQueuesOpts = {
   unified?: boolean;
 };
 
-/**
- * Single SoT for all work-order queue rows — used by /api/work-orders and
- * /api/ops-plans/inbox when OPS_PLANS_UNIFIED_INBOX is enabled.
- *
- * **The five queues run CONCURRENTLY, and that is the whole performance story
- * here.** This used to await `getOrders` first and only then `Promise.all` the
- * other four, which made the fan-out two serial waves for no reason: the queues
- * are independent, and none of them reads the orders result.
- *
- * The cost is per-QUERY latency, not row volume — measured on the dogfood tenant
- * 2026-08-02, each leg sits between 350ms and 1.0s regardless of what it
- * returns (`getSkuStockWorkOrders` takes 736ms to return ONE row;
- * `listTechQueueItemsForStaff` takes ~1.0s to return zero). So serializing waves
- * costs a full round-trip each time, while narrowing a result set buys almost
- * nothing. Keep new queues inside the same `Promise.all`.
- *
- * The pool is `PG_POOL_MAX` (default 5), so beyond that these queue rather than
- * truly parallelise — still strictly better than an imposed serial wave.
- */
+/** Single SoT for all work-order queue rows — used by /api/work-orders and /api/ops-plans/inbox when OPS_PLANS_UNIFIED_INBOX is enabled. */
 export async function fetchAllWorkOrderQueues(
   orgId: string,
   opts?: FetchAllQueuesOpts,

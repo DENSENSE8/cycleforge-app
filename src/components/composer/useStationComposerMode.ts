@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * URL + session persistence for the station composer mode.
- * Deep-link via `?composerMode=unbox|ticket` (legacy `label` → unbox);
- * sessionStorage survives a sibling-line switch on the same carton without
- * rewriting the URL thrash.
- */
+/** URL + session persistence for the station composer mode. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

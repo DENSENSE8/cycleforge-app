@@ -48,12 +48,7 @@ export interface OrderBinFace {
   source: 'allocation' | 'sku_home' | null;
 }
 
-/**
- * The record's BIN: every allocated unit's path when anything is allocated;
- * otherwise the SKU's home bin (`sku_stock.location`), so a freshly set bin
- * shows before allocation runs. Allocation always wins — it is where the unit
- * physically is.
- */
+/** The record's BIN: */
 export function resolveOrderBin(
   storageLocations: readonly OutboundStorageLocation[] | null | undefined,
   skuHome: OutboundStorageLocation | null | undefined,

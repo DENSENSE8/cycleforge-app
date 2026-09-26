@@ -6,13 +6,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { CompoundLine } from './CompoundCell';
 
-/**
- * Shared product-title listing face for compound and triage rows.
- *
- * The title is the listing target, not a separate glyph beneath it. Keeping the
- * anchor and its event boundary here prevents each station from inventing a
- * slightly different clickable-title implementation.
- */
+/** Shared product-title listing face for compound and triage rows. */
 export function ProductTitleLink({
   title,
   href,

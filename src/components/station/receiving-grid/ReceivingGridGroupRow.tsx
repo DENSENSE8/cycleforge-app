@@ -56,24 +56,6 @@ interface ReceivingGridGroupRowProps {
 
 /**
  * One PO group inside the Unbox / History LedgerGrid.
- *
- * Leaves stay always-expanded and individually selectable (Sheets click-select
- * golden). When the fold holds MORE THAN ONE line it now carries the shared
- * {@link SlotTableGroupParentRow} band — the identical row To-ship paints, so
- * the floor reads one grammar instead of a per-desk dialect.
- *
- * ## This reverses the 2026-08 "no PO summary" ruling, on purpose
- *
- * That ruling had two reasons and both are answered rather than ignored:
- *
- *  1. *"duplicated Order / PO already on every leaf"* — leaves in a multi-line
- *     fold now receive `quietIdentity`, so the PO is spoken ONCE, by the band.
- *     A singleton fold still renders a bare leaf with its own identity intact.
- *  2. *"sheared sticky columns under h-scroll"* — the old summary rolled its own
- *     geometry. The shared band derives every frozen offset from the same
- *     `gridFrozenLeft` call the leaves use, so parent and children are one rigid
- *     grid under horizontal scroll.
- *
  * Operator 2026-09-05: Unbox and Inbound must display exactly like To-ship.
  */
 export function ReceivingGridGroupRow({
@@ -107,10 +89,8 @@ export function ReceivingGridGroupRow({
   const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
    const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : 'mixed';
 
+  // Band rollups (operator 2026-09-14, "implement all 1-3"):
   // Band rollups (operator 2026-09-14, "implement all 1-3"): the band is a
-  // summary row — rolled status pill ("2 RECEIVED", worst tone wins) and
-  // summed qty (received/expected) under the lead product title, the same
-  // grammar To-ship's band already speaks via parentOrderLineTotals.
   const rollup = receivingGroupRollup(group.rows);
   const bandView = receivingCompoundView(group.rows[0]!, {
     title: displayReceivingProductTitle(group.rows[0]!),
@@ -141,12 +121,7 @@ export function ReceivingGridGroupRow({
         index={stripeIndex}
         isMobile={isMobile}
         selectMode={selectMode}
-        // Two independent planes: `isOpen` is the focused record, `isChecked` is
-        // bulk membership. Collapsing them into one flag is what let an always-on
-        // select mode turn the whole row into a checkbox. On a surface that has
-        // NOT split them, only one can be true at a time — the row click writes
-        // whichever the mode says — so `isOpen` stays gated on `!selectMode`
-        // there, preserving the legacy fill exactly.
+        // Two independent planes:
         isOpen={isOpen}
         isChecked={isChecked}
         isLinked={isLinked}

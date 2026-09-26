@@ -4,24 +4,7 @@ import type { ReactNode } from 'react';
 import { motion, type Variants } from '@/design-system/motion';
 import { motionBezier } from '../foundations/motion-framer';
 
-/**
- * Stagger reveal — list items cascade in for freshly-loaded queues.
- *
- * Two layers:
- *   • {@link staggerRevealContainer} / item variants — the raw variants, for
- *     wiring straight onto an existing `motion.ul` + `motion.li` pair (used by
- *     SidebarRailShell, which owns its own list/row markup and AnimatePresence).
- *     The container orchestrates the cascade; each item inherits `hidden → show`.
- *   • {@link StaggerReveal} / {@link StaggerRevealItem} — turnkey wrappers for
- *     the common case (showroom, desk tables, simple lists). Default item motion
- *     is the vertical RISE ({@link staggerRevealRiseItem}) — full-bleed queues
- *     must not wipe left→right. Set `replayKey` to re-run.
- *
- * The cascade fires once on mount (when the parent transitions hidden → show).
- * Children mounted later — e.g. a freshly-scanned row arriving via
- * AnimatePresence — slide in individually rather than re-orchestrating the
- * whole list, so steady-state updates stay calm.
- */
+/** Stagger reveal — list items cascade in for freshly-loaded queues. */
 
 /** Default cascade step (seconds) between consecutive children. */
 export const STAGGER_REVEAL_STEP = 0.05;
@@ -38,12 +21,7 @@ export const staggerRevealContainer = (step: number = STAGGER_REVEAL_STEP): Vari
  * rail — `overflow-y: auto` clips horizontal overflow.
  */
 
-/**
- * Sidebar-rail stagger — rows are legible from first paint while a short upward
- * settle preserves the cascade. Safe inside `overflow-y-auto` scroll bodies:
- * nothing translates past the left edge. Pair with
- * {@link staggerRevealContainer} on the list parent.
- */
+/** Sidebar-rail stagger — rows are legible from first paint while a short upward settle preserves the cascade. */
 export const staggerRevealSidebarItem: Variants = {
   hidden: { opacity: 1, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.28, ease: motionBezier.easeOut } },
@@ -56,19 +34,7 @@ export const staggerRevealSidebarItem: Variants = {
   },
 };
 
-/**
- * Horizontal sidebar-rail stagger — the scan-in language for Unboxed / scan-dock
- * rails. Rows genuinely APPEAR from nothing: opacity fades 0 → 1 while the row
- * slides in left→right (x:-12 → 0). The two axes run on DIFFERENT transitions on
- * purpose — opacity is a short ease-out TWEEN, x is the spring. Opacity must not
- * ride the spring: framer approximates a spring as a long WAAPI keyframe array,
- * and on completion it briefly drops the composited animation before committing
- * the final style, flashing the `hidden` opacity:0 through for a frame (a blink
- * as the row lands). A plain-duration tween commits cleanly, so the fade-in has
- * no end-of-reveal flicker. Stays inside `overflow-x-clip` without clipping
- * status dots (under a leftward x:-20 wipe). Exit fades out on
- * dismiss; steady-state add/delete presence is owned by `sidebarRailRow`.
- */
+/** Horizontal sidebar-rail stagger — the scan-in language for Unboxed / scan-dock rails. */
 export const staggerRevealSidebarSlideItem: Variants = {
   hidden: { opacity: 0, x: -12 },
   show: {
@@ -87,15 +53,7 @@ export const staggerRevealSidebarSlideItem: Variants = {
   },
 };
 
-/**
- * Vertical "settle" reveal item — full-width stacked cards / desk TABLE rows
- * rise + fade in sequence. Default for {@link StaggerRevealItem} and
- * `CardShell` `entrance="stagger"`. Use wherever a horizontal left wipe
- * would read wrong on full-bleed work surfaces. Opacity + y only
- * (GPU-composited; never animates layout). Pair with
- * {@link staggerRevealContainer} on the parent, and collapse to opacity-only at
- * the call site under `prefers-reduced-motion`.
- */
+/** Vertical "settle" reveal item — full-width stacked cards / desk TABLE rows rise + fade in sequence. */
 export const staggerRevealRiseItem: Variants = {
   hidden: { opacity: 0, y: 12 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: motionBezier.easeOut } },

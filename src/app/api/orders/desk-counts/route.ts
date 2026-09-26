@@ -10,12 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
 
-/**
- * GET /api/orders/desk-counts — the outbound desk sidebar's five badges in one
- * request: `{ exceptions, po, pick, triage, shippedToday }` for the caller's
- * org. Membership rules live in `@/lib/orders/desk-counts`; each is the rule
- * of the list its view opens. Same 60s `orders`-tagged cache as queue-counts.
- */
+/** GET /api/orders/desk-counts — the outbound desk sidebar's five badges in one request: */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const startedAt = Date.now();
   let ok = false;

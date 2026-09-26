@@ -1,16 +1,4 @@
-/**
- * `admin-returns.recent` — the Returns dock table definition.
- *
- * A SIBLING of the Ledger's `inventory-events.browse`: the same entity read
- * through a narrower `WHERE`, mounting the same cells (`cellMapKey:
- * 'inventory-events'`) under its OWN prefs bucket, because hiding a fact on
- * the returns dock must not densify the Ledger. That is the `incoming` /
- * `receiving` pattern verbatim — two tableIds, one cell map.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`ADMIN_RETURNS_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `admin-returns.recent` — the Returns dock table definition. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -27,12 +15,7 @@ import {
   type AdminReturnsGridColumn,
 } from './admin-returns-grid-layout';
 
-/**
- * A returns log is a READ surface: the intake already happened, and the one
- * verb this page has (record a return) is the FORM above the table, not a cell.
- * `multiSelect` stays off — there is no bulk verb to select rows for, and the
- * gutter checkbox would be a control with no verb behind it.
- */
+/** A returns log is a READ surface: */
 export const ADMIN_RETURNS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -41,13 +24,7 @@ export const ADMIN_RETURNS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the `grid-default`
- * debt the discover scanner deletes — inheriting a column model by silence is
- * how a second SoT gets minted.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeAdminReturnsGridDescriptor(
   columns: readonly AdminReturnsGridColumn[],
 ): GridSurfaceDescriptor<RecentReturnRow, AdminReturnsGridColumn> {
@@ -90,13 +67,7 @@ export const ADMIN_RETURNS_TABLE_BINDING: TableSurfaceBinding<
   definition: ADMIN_RETURNS_TABLE_DEFINITION,
   columns: ADMIN_RETURNS_COMPOUND_COLUMNS,
   makeDescriptor: makeAdminReturnsGridDescriptor,
-  /**
-   * The row IS a unit's timeline entry, and the page's own docblock names the
-   * reach-through it has always had: "each unit linked through to its
-   * timeline". That destination is a ROUTE (`/inventory?unit=<id>`),
-   * not a panel — so the plane is `navigate`, and the retired `<Link>` in the
-   * unit cell becomes the row's declared record plane instead of per-cell JSX.
-   */
+  /** The row IS a unit's timeline entry, and the page's own docblock names the reach-through it has always had: */
   recordPlane: {
     kind: 'navigate',
     reason:

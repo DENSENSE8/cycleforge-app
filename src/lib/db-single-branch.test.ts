@@ -1,14 +1,4 @@
-/**
- * DB-free tests for the one-branch assertion.
- *
- * These pin the exact 2026-09-14 outage shape: the app's `DATABASE_URL` on a
- * lane branch while tooling's `PGHOST` / `POSTGRES_URL` sat on main. That cost
- * a day of diagnosis because nothing reported it — the only symptom was joins
- * returning nothing, since picker/packer scans and their orders had landed on
- * different computes.
- *
- * Run: npx tsx --test src/lib/db-single-branch.test.ts
- */
+/** DB-free tests for the one-branch assertion. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

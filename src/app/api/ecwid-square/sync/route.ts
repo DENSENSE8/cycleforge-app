@@ -4,16 +4,7 @@ import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { formatPSTTimestamp } from '@/utils/date';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * POST /api/ecwid-square/sync
- * Triggers one-way Ecwid -> Square catalog sync.
- *
- * Optional body:
- * {
- *   "dryRun": true,
- *   "batchSize": 199
- * }
- */
+/** POST /api/ecwid-square/sync Triggers one-way Ecwid -> Square catalog sync. */
 export const POST = withAuth(async (req: Request) => {
   try {
     if (!isAllowedAdminOrigin(req)) {

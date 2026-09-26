@@ -11,19 +11,6 @@ import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 
 /**
  * `/shipping` — the frame every Shipping mode shares.
- *
- * The modes are route segments now (`labels` / `ready` / `fba` / `scan-out`),
- * so being on the path IS the mode; there is no `?mode=` to branch on. Each
- * segment's `page.tsx` supplies only its workspace, and this layout holds the
- * parts that must not remount when the operator switches: the surface gate, the
- * realtime subscription, and the shell.
- *
- * It owns no sidebar: the Shipping desk's search · views · focus · saved views
- * live in the master nav (`OutboundDeskSpine`). `RouteShell`'s `actions` slot
- * is the MOBILE tab only and this frame is `hidden md:flex`, so it is empty.
- *
- * Permission is unchanged: `shipping.view` is enforced per API route and by nav
- * filtering, exactly as before. Adding a server-side page gate here would be a
  * change to the security model, not to routing — out of scope for this slice.
  */
 export default function ShippingLayout({ children }: { children: ReactNode }) {

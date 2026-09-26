@@ -1,18 +1,4 @@
-/**
- * Receiving sidebar-rail status-dot logic — the single source of truth for the
- * left status dot + its hover label across every receiving rail (Unboxed /
- * Queue / Viewed / Triage / Prioritize / Unfound).
- *
- * Pure, DB-free, display-agnostic: every function maps a {@link ReceivingLineRow}
- * to a Tailwind dot class or a tooltip string. Colors come from the shared
- * lifecycle registry (workflow-stages.ts) so the dot, the badge, and every other
- * surface agree. Lifted out of `ReceivingRecentRail.tsx` so the sibling rails no
- * longer import status logic from a component (the coupling that forced the
- * `unfound-stub` circular-import workaround) and so the logic is unit-testable.
- *
- * Scope: receiving rails plus the QC Recent feed (`testing` status id). The
- * mobile scan feeds keep their own mappers.
- */
+/** Receiving sidebar-rail status-dot logic — the single source of truth for the left status dot + its hover label across every receiving… */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -27,19 +13,7 @@ import {
 } from '@/lib/receiving/workflow-stages';
 import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
 
-/**
- * Operator-facing 3-state model (Scanned → Unboxed → Received), the single
- * coarse status every rail dot + label reads. Derived from the SoT
- * (`deriveReceivingLineStatus`, workflow-stages.ts) so the rail, the table chip,
- * and the Overview can never drift, with two row-level special cases the bare
- * workflow_status can't express:
- *   - Unmatched cartons have no PO/receive step → unboxed locally reads Received.
- *   - Vendor-side already-received (Zoho) reads Received even if the local
- *     line has not yet been promoted (provider can lead).
- *   - Local DONE / coarse RECEIVED always reads Received. A still-open
- *     provider PO is a *pending confirmation* tip, never a badge demotion —
- *     staff floor work is the staff face (PO 06-14980-30824, 2026-08-21).
- */
+/** Operator-facing 3-state model (Scanned → Unboxed → Received), the single coarse status every rail dot + label reads. */
 function providerReceiveStillOpen(row: ReceivingLineRow): boolean {
   return (
     Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) &&
@@ -177,16 +151,7 @@ export function getUnboxRecentStatusDotLabel(row: ReceivingLineRow): string {
   return COARSE_LABEL[railCoarseStatus(row)];
 }
 
-/**
- * Time label for the "Received" rail's rows (formerly "Unboxed") — now a
- * recency-merged feed of unboxed ∪ new-scanned ∪ unfound cartons. MUST mirror
- * the merge sort in `buildUnboxReceivedFetcher` so relative times read
- * monotonically down the rail. Prefers the unbox stamp, then the door-scan /
- * received time, then the line's own activity, then arrival — every received
- * carton (matched or unfound) carries at least one, so a row never drops to the
- * NULLS-last bottom. Module-scope for stable identity (the rail shell wires it
- * into a listener effect).
- */
+/** Time label for the "Received" rail's rows (formerly "Unboxed") — now a recency-merged feed of unboxed ∪ new-scanned ∪ unfound cartons. */
 export function getReceivedActivityAt(r: ReceivingLineRow): string | null {
   return (
     r.unboxed_at ??
@@ -220,13 +185,7 @@ function getTestingStatusDotLabel(row: ReceivingLineRow): string {
   return workflowStage(row.workflow_status).label;
 }
 
-/**
- * Status-dot strategy registry. A rail feed selects one by id; the dot + tooltip
- * are resolved here so feeds stay declarative.
- *   - `receiving`    → shared lifecycle dot (Queue / Viewed / Triage / Unfound).
- *   - `unbox-recent` → Unboxed rail (all rows read Received; Scanned is Queue-only).
- *   - `testing`      → QC Recent (fine workflow stage, not coarse receive).
- */
+/** Status-dot strategy registry. */
 export const RAIL_STATUS = {
   receiving: {
     getStatusDot: getReceivingStatusDot,

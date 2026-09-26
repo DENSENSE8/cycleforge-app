@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Shared leaf-detail facts — serial / location / sku / View unit.
- *
- * Callers: CompoundRowDetailBand (desktop item cell), CompoundRowDetailSheet
- * (mobile BottomSheet). Affected API: CompoundRowDetailFacts. Schema:
- * CompoundRowDetail { serials, location, unitRef, sku }. User verbatim:
- * "Rendered fewer hooks than expected… Still getting this on the two ship page.
- * What exactly is the problem?" — Sheet imported Facts from Band; Turbopack
- * reported export missing → UnshippedTable crash (hooks message is the symptom).
- */
+/** Shared leaf-detail facts — serial / location / sku / View unit. */
 
 import Link from 'next/link';
 import { Button } from '@/design-system/primitives';

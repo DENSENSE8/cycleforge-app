@@ -1,18 +1,4 @@
-/**
- * /api/stations — station-builder definitions (Operations Studio layer 2).
- *
- * GET  ?page=receiving — the active definition per (page, mode), plus the
- *      latest draft per mode for holders of `stations.manage`. Gated
- *      `dashboard.view`: any signed-in staff member needs the active configs
- *      to render their station pages; per-block visibility is enforced at
- *      render time by each block's required/bound-action permissions.
- *
- * POST — save a DRAFT for (pageKey, modeKey). Upsert semantics make retries
- *      idempotent: if a newer-than-active draft row already exists it is
- *      updated in place; otherwise a new version row (is_active=false) is
- *      inserted. Publishing is a separate explicit step (/api/stations/publish)
- *      — the active version is never mutated here.
- */
+/** /api/stations — station-builder definitions (Operations Studio layer 2). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -107,12 +93,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // One statement, atomic: update the existing newer-than-active draft in
-    // place, or insert a new version row. (No multi-statement transaction —
-    // see the publish route for the same constraint.) Idempotency-Key headers
-    // are intentionally not honored: the upsert IS the idempotency story — a
-    // retried save lands on the same draft row, and a surplus version row in
-    // the worst race is harmless (publish targets an explicit id).
+    // One statement, atomic:
     const draft = await withTenantTransaction(ctx.organizationId, async (client) => {
       const { rows } = await client.query<DbRow>(
         `WITH active AS (

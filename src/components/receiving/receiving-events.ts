@@ -1,28 +1,4 @@
-/**
- * Typed contract for the receiving cross-pane event bus — the single source of
- * truth for every `receiving-*` window CustomEvent name and its payload.
- *
- * Why this exists: the receiving surface coordinates its sidebar, right pane,
- * and workspace through ~110 hand-wired `window.dispatchEvent(new CustomEvent(
- * 'receiving-…'))` / `addEventListener('receiving-…')` call sites. Untyped and
- * one-shot, that bus silently drops events when a listener mounts late (the
- * Suspense mount-order race behind the Unbox refresh-stickiness bug) and hides
- * every producer/consumer edge behind a string literal.
- *
- * The migration target (see `AGENTS.md` → URL-as-SoT + this cluster's docs):
- *   - durable selection lives in the URL, not events;
- *   - volatile cross-pane state flows through the TanStack Query cache;
- *   - the residual fire-and-forget notifications route through THIS registry so
- *     they are typed, greppable, and counted.
- *
- * Dispatch with `emitReceiving(name, detail)`. Subscribe with
- * `useReceivingEvents({ [name]: (detail) => … })` (`@/hooks/useReceivingEvents`).
- * A ratchet guard (`receiving-events.guard.test.ts`) bans raw
- * `new CustomEvent('receiving-…')` / `addEventListener('receiving-…')` outside
- * the sanctioned bus modules and only lets the count shrink.
- *
- * Add a new receiving event by adding its name + payload type here first.
- */
+/** Typed contract for the receiving cross-pane event bus — the single source of truth for every `receiving-*` window CustomEvent name and… */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingPackageUpdatedDetail } from '@/components/station/receiving-lines-table-helpers';
@@ -72,42 +48,18 @@ export interface ReceivingEventDetail {
    * The Unbox pane shows a read-only receipt over the editor.
    */
   'receiving-lookup-scan': UnboxLookupScanDetail;
-  /**
-   * Preview → real scan. The read-only lock's **Scan it** asks the sidebar to
-   * re-run the value it previewed, for real. The pane cannot do it itself: the
-   * scan is an INGEST act and belongs to the bar that owns the value, and
-   * routing it back keeps one submit path rather than a second writer.
-   */
+  /** Preview → real scan. */
   /** Hand focus back to the scan wedge after a procedure face/chip click. */
   'receiving-focus-scan': undefined;
-  /**
-   * Arm the **sidebar ingestion** scan bar for the next carton (clear + focus).
-   * Distinct from `receiving-focus-scan` (dock-first wedge while a carton is
-   * open). Preferred producer today is the ⌘. owner in `scan-hotkey/store`
-   * (StationScanBar clears itself via `armNext`); this name is reserved for
-   * typed producers that need the same semantics without a mounted bar stack.
-   */
+  /** Arm the **sidebar ingestion** scan bar for the next carton (clear + focus). */
   'receiving-arm-next-scan': undefined;
-  /**
-   * Procedure locus → **ingest** hand-back: a payload the open-carton dock
-   * scanned but does not own (i.e. not a shelf) is a tracking, so it goes to
-   * the sidebar bar's own submit rather than being swallowed.
-   *
-   * This is the one direction that is legal. The reverse — the sidebar bar
-   * placing cartons — is not: ingest and procedure are two loci, and the
-   * sidebar's job is "which carton", never "which shelf".
-   */
+  /** Procedure locus → **ingest** hand-back: */
   'receiving-submit-tracking': { tracking: string };
   /** Table row pulse after MRU / deep-link navigation. */
   'receiving-highlight-line': number;
   /** Workspace / triage / History chrome: step prev/next line in the open table. */
   'receiving-navigate-table': 'prev' | 'next';
-  /**
-   * Dock / PO-line strip Link → LineEditPanel: open the Photos Displays leaf on
-   * its `link` drill. LineEditPanel owns `openDisplays`; the emitter does not.
-   * Pass `lineId` (PO item) and/or `cartonAspect` (Shipping label · The box ·
-   * Packing material) to default the leaf's "Link to" combobox — at least one.
-   */
+  /** Dock / PO-line strip Link → LineEditPanel: */
   'receiving-open-photo-link': {
     lineId?: number;
     cartonAspect?: PhotoAspect;
@@ -125,12 +77,7 @@ export interface UnboxLookupScanDetail {
   receivingId: number;
   trackingNumber: string;
   unboxedAt: string | null;
-  /**
-   * Who actually completed the unbox. Server-resolved rather than read off the
-   * workspace row: the receipt renders the instant the scan resolves, which on
-   * the stub-open rungs is before the row carries `unboxed_by_name`, so
-   * sourcing it from the row left the fact silently blank.
-   */
+  /** Who actually completed the unbox. */
   unboxedByName?: string | null;
   /** PO number — the receipt's "open details" jump searches on it. */
   poNumber?: string | null;
@@ -143,13 +90,7 @@ type BareReceivingEvent = {
   [K in ReceivingEventName]: ReceivingEventDetail[K] extends undefined ? K : never;
 }[ReceivingEventName];
 
-/**
- * Typed dispatch for a receiving event. Bare (payload-less) events take no
- * second argument; all others require their typed detail.
- *
- *   emitReceiving('receiving-clear-line');
- *   emitReceiving('receiving-line-deleted', { id: 42 });
- */
+/** Typed dispatch for a receiving event. */
 export function emitReceiving<K extends BareReceivingEvent>(name: K): void;
 export function emitReceiving<K extends Exclude<ReceivingEventName, BareReceivingEvent>>(
   name: K,

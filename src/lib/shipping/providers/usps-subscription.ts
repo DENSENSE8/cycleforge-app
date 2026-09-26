@@ -1,31 +1,4 @@
-/**
- * USPS Tracking 3.2 subscription client.
- *
- * USPS now supports webhook subscriptions **by tracking number** (not just by
- * Mailer ID), which is exactly our case — we track third-party inbound numbers.
- * Subscribing tells USPS to POST tracking events to our listener URL
- * (/api/webhooks/usps). It is **free** with a USPS developer account.
- *
- * Mirrors the FedEx/UPS subscription clients with two USPS-specific shapes:
- *   1. **Per-tracking-number** — USPS documents no bulk-association batch endpoint
- *      the way FedEx does, so we subscribe one number per request and the job
- *      fans out with bounded concurrency.
- *   2. **Synchronous** — like UPS, there is no async jobId to poll; a 2xx means
- *      subscribed (COMPLETED), anything else is FAILED.
- *
- * ⚠️ CONFIRM BEFORE GO-LIVE (USPS's contract is behind the JS-rendered dev
- * portal; the *capability* is confirmed, the literal wire format is not):
- *   A. Endpoint path — default `/tracking/v3/subscriptions`; override via
- *      USPS_SUBSCRIPTION_PATH.
- *   B. Request body field names (trackingNumber / callbackUrl / sharedSecret) —
- *      adjust buildSubscriptionRequestBody() to match the portal schema.
- *   C. Callback authentication — we send a shared secret USPS can echo back for
- *      HMAC/secret verification at the receiver; confirm USPS's actual scheme.
- *   D. The "API Access Control" initiative USPS is rolling out (April 2026) may
- *      gate access — verify eligibility.
- *
- * Docs: https://developers.usps.com/subscriptions-trackingv3r2
- */
+/** USPS Tracking 3.2 subscription client. */
 
 import { USPS_BASE_URL, getAccessToken } from './usps';
 import { normalizeTrackingNumber } from '../normalize';
@@ -147,12 +120,7 @@ export async function subscribeTrackingNumber(
   }
 }
 
-/**
- * Subscribe a list of tracking numbers with bounded concurrency. De-dupes,
- * caps at {@link USPS_SUBSCRIPTION_BATCH_LIMIT}, and partitions the outcome into
- * completed / failed so the caller can persist each group's status distinctly
- * (USPS is per-number, so unlike FedEx this is not all-or-nothing).
- */
+/** Subscribe a list of tracking numbers with bounded concurrency. */
 export async function subscribeTrackingNumbers(
   trackingNumbers: string[],
   action: UspsSubscriptionAction = 'ADD',

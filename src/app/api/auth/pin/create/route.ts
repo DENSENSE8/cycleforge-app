@@ -1,17 +1,6 @@
 /**
  * POST /api/auth/pin/create
- *
- * Self-serve PIN creation for an unenrolled staff. Public endpoint that ONLY
- * succeeds when staff.pin_hash IS NULL — it cannot be used to reset or
- * overwrite an existing PIN. After setting the PIN, mints a session and sets
- * the cf_sid session cookie so the user lands authenticated.
- *
- * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'phone' | 'personal',
- *         deviceLabel?: string, persistent?: boolean }
- *
  * Security trade-off (intentional, small-shop UX): anyone at the kiosk can
- * pick an unenrolled staff and set their PIN. Once set, only the owner of
- * that PIN can sign in. To rotate later, an admin must clear pin_hash first.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

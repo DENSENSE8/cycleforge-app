@@ -11,30 +11,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * PATCH /api/photos/[id]/aspect — say what an existing receiving photo SHOWS.
- *
- * The classify-after-the-fact half of `photos.photo_aspect`, whose only other
- * writer is the INSERT in `create-photo.ts`. Rationale, the stage-legality
- * control and the overwrite-never-COALESCE rule all live on the domain helper
- * (`@/lib/photos/set-photo-aspect`); this handler validates, delegates, maps the
- * status, audits, and fans out.
- *
- * ## Permission
- *
- * `receiving.upload_photo`, matching the `reassign` sibling. Deliberately NOT a
- * new permission: naming a shot is floor work, and an ADMIN-only gate 403'ing
- * the bench operator this exists for is the `integrations.zendesk` failure.
- *
- * ## Body
- *
- * `{ aspect: PhotoAspect | null }` — REQUIRED, with `null` meaning *clear the
- * claim*. `undefined` / a missing key is a 400 rather than a no-op, because a
- * caller that could not name the shot must be told, not quietly given one
- * (`@/lib/photos/photo-aspects` rule 1). An unknown string is a 400 for the same
- * reason: `parsePhotoAspect` returns `null` on an unrecognised value, so
- * accepting its output blindly would silently turn a typo into a retraction.
- */
+/** PATCH /api/photos/[id]/aspect — say what an existing receiving photo SHOWS. */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -100,10 +77,7 @@ export async function PATCH(
 
       after(async () => {
         const org = orgId as OrgId;
-        // Same channel the phone capture publishes on, so a pair made at the
-        // desk lands on the phone's gallery and vice versa — and so the deck and
-        // the right-edge checklist, which both read the carton photo query,
-        // re-derive in the same beat.
+        // Same channel the phone capture publishes on, so a pair made at the desk lands on the phone's gallery and vice versa — and so the deck…
         await publishReceivingPhotoChanged({
           organizationId: org,
           // No photo arrived or left; only the claim about one changed.

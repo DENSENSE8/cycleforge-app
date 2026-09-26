@@ -2,18 +2,7 @@
 
 /**
  * Triage (Arrival) browse workbench.
- *
- * Its four bodies are rail lists rather than tables, so the one thing this desk
- * owns is which body is on screen. That used to be a foot strip — the same
- * {@link TableStatusBar} every table draws, minus a row count it had no honest
- * way to know.
- *
  * **The tabs moved to the top (operator ruling 2026-08-31)** along with every
- * other station's: the frame is now the design system's {@link DeskPageChrome},
- * so Arrival wears the same title / CTA / tab row as the Shipping desk. The
- * row count is still absent, and now honestly so — the chrome has no place to
- * print one, which is better than a bar that exists to hold a number it cannot
- * know.
  */
 
 import { useSearchParams } from 'next/navigation';

@@ -5,15 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ItemRecordRow } from './ItemRecordRow';
 import { STATION_SCAN_INSET_BEVEL_CLASS } from '@/components/station/scan-depth';
 
-/**
- * Per-row disclosure of the `body`.
- *
- * The row owns the FACE and the unmount; the host owns the state. What these
- * pin is the pair of claims a collapse can quietly break: a collapsed row must
- * remove its body from the TREE (not hide it — hidden bodies keep their queries
- * and their focus targets alive, which is how a scan lands in an invisible
- * field), and the toggle must stay reachable so a collapsed row can be reopened.
- */
+/** Per-row disclosure of the `body`. */
 const ITEM = {
   id: 7,
   title: 'ThinkPad X1 Carbon Gen 9',
@@ -76,10 +68,7 @@ describe('ItemRecordRow disclosure', () => {
   });
 
   it('a row with NO body paints no toggle, however the host asks', () => {
-    // This is what lets one host hand the same controller to every line list it
-    // owns without first working out which of them render bodies: the
-    // ledger-only surfaces (Testing centre, /search Items, Arrival) opt out by
-    // construction rather than by a flag each caller has to remember.
+    // This is what lets one host hand the same controller to every line list it owns without first working out which of them render bodies:
     for (const expanded of [true, false]) {
       const html = renderToStaticMarkup(
         React.createElement(ItemRecordRow, {

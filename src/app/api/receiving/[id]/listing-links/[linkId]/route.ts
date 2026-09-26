@@ -1,12 +1,4 @@
-/**
- * Carton listing links — one row.
- *
- *   PATCH  /api/receiving/[id]/listing-links/[linkId]  → edit href / label / binding
- *   DELETE /api/receiving/[id]/listing-links/[linkId]  → remove it
- *
- * Binding to a line carries `bound_by` from the session staff — never the body,
- * and never inferred (see `listing-link-store`).
- */
+/** Carton listing links — one row. */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

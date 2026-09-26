@@ -1,11 +1,4 @@
-/**
- * Prop-driven receiving mode state for Unbox compare panes.
- *
- * The page-level {@link useReceivingModeContext} reads the URL once. Compare
- * mounts 2–4 grids that must NOT fight over `?unboxview=` — each pane owns a
- * {@link ReceivingPaneQuery} that builds the same {@link ReceivingModeContext}
- * bag the descriptors already consume.
- */
+/** Prop-driven receiving mode state for Unbox compare panes. */
 
 import {
   getReceivingTableModeDescriptor,

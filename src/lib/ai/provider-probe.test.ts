@@ -1,13 +1,4 @@
-/**
- * DB-free unit tests for the save-time AI endpoint probe.
- *
- * The policy here is the whole point: what counts as "this endpoint works" has
- * to be narrow enough to catch a localhost URL a deployed server cannot see,
- * and wide enough not to reject a working endpoint that simply lacks an
- * optional listing API.
- *
- * Run: node --import tsx --test src/lib/ai/provider-probe.test.ts
- */
+/** DB-free unit tests for the save-time AI endpoint probe. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { modelWarning, probeAiEndpoint } from './provider-probe';

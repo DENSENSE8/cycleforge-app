@@ -34,14 +34,7 @@ test('buildPendingScanStubRow stays rail-only (not openable unmatched)', () => {
   assert.equal(isOptimisticUnmatchedPaneStub(row), false);
 });
 
-/**
- * The two stubs deliberately DIVERGED (they shared `scan:{tracking}` until the
- * rail moved to a shipment key). The rail stub keys on the shipment so the
- * resolved carton lands on that same React key and the row updates in place
- * instead of exiting and re-entering; the pane stub is not in the rail cache, so
- * it keeps the scan key. What still has to hold is that both key off the SAME
- * canonical scan — that is what lets `applyUnboxCartonOpened` sweep either one.
- */
+/** The two stubs deliberately DIVERGED (they shared `scan:{tracking}` until the rail moved to a shipment key). */
 test('rail stub keys on the shipment; pane stub keeps the scan key; both canonical', () => {
   const tracking = '9400 1118-9922 3344 556677';
   const rail = buildPendingScanStubRow(tracking);

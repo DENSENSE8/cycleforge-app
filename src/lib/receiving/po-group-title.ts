@@ -1,11 +1,4 @@
-/**
- * PO-group display title — shared by drill / identity chrome (collapsed PO
- * rows in the receiving table) and receiving sidebar rails.
- * Title = platform · buyer account · PO/Order when multi-SKU; product title when single-SKU.
- * Marketplace returns (`intake_type` / `receiving_type` RETURN) paint
- * `{SHORT} – return – {last8}` via {@link formatMarketplaceReturnIdentityTitle}
- * — never `Amazon · Order {full id}`.
- */
+/** PO-group display title — shared by drill / identity chrome (collapsed PO rows in the receiving table) and receiving sidebar rails. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
@@ -48,11 +41,7 @@ export function getReceivingPoIdentityParts(
   const storedPlatform = (row.source_platform || inboundSource || '').trim();
   const isEcwidOrderIdentity =
     storedPlatform.toLowerCase() === 'ecwid' && !(row.zoho_purchaseorder_id || '').trim();
-  // An id an operator linked by hand (link-carton-identifier.ts) is the only
-  // identity a still-unfound carton has: `source_order_id` with no Zoho PO and
-  // — on a carton that has no line yet — no `inbound_source_type` either. It
-  // was invisible under the marketplace-only gate below, so the chip read "—"
-  // right after the operator linked it and the link looked like it failed.
+  // An id an operator linked by hand (link-carton-identifier.ts) is the only identity a still-unfound carton has:
   const hasZohoIdentity = Boolean(
     (row.zoho_purchaseorder_number || '').trim() || (row.zoho_purchaseorder_id || '').trim(),
   );
@@ -142,15 +131,7 @@ export function receivingPoGroupKey(row: PoGroupKeySource): string {
   return `line:${row.id}`;
 }
 
-/**
- * Keep lines that share the anchor's PO group key.
- *
- * Uses line-level PO fields (`zoho_purchaseorder_number` /
- * `zoho_purchaseorder_id`), same as table grouping — not the carton header.
- * Mixed-PO cartons (one `receiving_id`, multiple Zoho POs) therefore isolate
- * when the operator selects a PO-titled sidebar row. Unmatched stubs fall
- * through to `line:{id}` and stay single-line.
- */
+/** Keep lines that share the anchor's PO group key. */
 export function filterLinesByPoGroup<T extends PoGroupKeySource>(
   lines: ReadonlyArray<T>,
   anchor: PoGroupKeySource,
@@ -213,15 +194,7 @@ export function stampCartonRailTitleContext(
   });
 }
 
-/**
- * Operator-recognition product title — aligned with mobile `unitTitle`.
- *
- * The ladder is {@link resolveSkuIdentityTitle} (`src/lib/sku/sku-identity-law.ts`):
- * the Zoho item name governs, the marketplace catalog title is the fallback for
- * lines with no `zoho_item_id`. Until 2026-09-15 this read
- * `catalog_product_title` first, contradicting the SoT its own callers' SQL
- * declared, and painted the Ecwid product for 132 contaminated catalog rows.
- */
+/** Operator-recognition product title — aligned with mobile `unitTitle`. */
 export function receivingProductTitle(row: ReceivingLineRow): string {
   // The law treats the `'Unfound PO'` stub as absent so a real later field
   // wins; when nothing real exists the stub is still the operator's face, so
@@ -242,12 +215,7 @@ export function receivingProductTitle(row: ReceivingLineRow): string {
   return rawStr;
 }
 
-/**
- * Workspace accordion / line-picker title — same product SoT as the rail, but
- * never paints bare `Line #N` when the carton already has a PO/order identity
- * (common on multi-SKU Unboxed opens: adaptive rail shows "Goodwill · PO …"
- * while a thin placeholder still lacks item_name until siblings hydrate).
- */
+/** Workspace accordion / line-picker title — same product SoT as the rail, but never paints bare `Line #N` when the carton already has a… */
 export function receivingWorkspaceLineTitle(
   row: ReceivingLineRow,
   resolvePlatformLabel: (raw: string) => string = (raw) => raw,

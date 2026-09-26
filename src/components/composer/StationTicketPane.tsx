@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Ticket thread / claim surface above the station composer. One textarea lives
- * in {@link StationComposerHost}; this pane never nests a second dock
- * (`composerPlacement="host"`).
- *
- * A filed ticket shows in EVERY composer mode (ruling 2026-08-31), so touching
- * the thread hands the composer to Ticket and takes focus — see
- * {@link useTicketThreadActivation}, which the Displays mount shares.
- */
+/** Ticket thread / claim surface above the station composer. */
 
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
 import { useTicketThreadActivation } from './useTicketThreadActivation';

@@ -1,20 +1,4 @@
-/**
- * The visit's ticket decision — what the step gate counts and what the submit
- * posts.
- *
- * Three invariants are worth a test here and the rest is plumbing:
- *
- * 1. **COMPLETE vs SETTLED.** The slider auto-selects Create, so an untouched
- *    choice must not block a signed drop-off — while a half-finished link
- *    (slid to Link, nothing picked) must.
- * 2. **A signed drop-off never loses its conversation.** Whatever the UI does,
- *    a service visit posts `create` unless a real ticket id was picked — the
- *    fallback exists so this decision can never become a way to file a repair
- *    with no helpdesk row behind it.
- * 3. **A retail-only visit asks for no ticket work at all.**
- *
- *   npx tsx --test src/lib/kiosk/repair-ticket-choice.test.ts
- */
+/** The visit's ticket decision — what the step gate counts and what the submit posts. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -34,9 +18,6 @@ test('nobody has answered yet: not complete, and nothing to state', () => {
 /**
  * SETTLED is the gate's reading and it differs from COMPLETE in exactly one
  * place. Operator 2026-09-15: *"automatically select create new ticket"* — so
- * an untouched slider is an answer (a new ticket), and the only state that may
- * block a signed drop-off is the half-finished one: slid to Link, nothing
- * picked. If `null` blocked, the default position would refuse its own default.
  */
 test('an untouched choice is settled; a half-finished link is not', () => {
   assert.equal(isKioskTicketChoiceSettled(null), true);

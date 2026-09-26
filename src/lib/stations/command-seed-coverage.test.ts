@@ -10,15 +10,7 @@ import { STATION_COMMAND_CODES } from './station-command-codes';
 
 const MIGRATIONS_DIR = join(process.cwd(), 'src', 'lib', 'migrations');
 
-/**
- * Admin-catalog coverage.
- *
- * The defect this guards against already happened: `seedOrgCatalog` iterated
- * STATION_COMMAND_CODES alone, which was the whole vocabulary when it was
- * written. Every code later added to the nav or action registry was therefore
- * invisible in Admin for every org — and nothing could notice, because the
- * seeder was not wrong about anything it knew about.
- */
+/** Admin-catalog coverage. */
 describe('command seed coverage', () => {
   it('the seedable list is every registered code, once', () => {
     const seeded = listSeedableCommandCodes().map((r) => r.code).sort();
@@ -39,15 +31,7 @@ describe('command seed coverage', () => {
   });
 
   it('every registered code appears in some station_command seed migration', () => {
-    // Existing orgs are backfilled by migration; new orgs by the derived
-    // seeder. This asserts the FIRST half — a code added to a registry with no
-    // seed migration is invisible for every org that already exists, which is
-    // every real tenant.
-    //
-    // Deliberately a union across migrations, not one named file: an applied
-    // migration is immutable (the ledger is keyed on sha256), so code #28 gets
-    // a NEW migration rather than an edit to this one. Failing here is the
-    // prompt to write it.
+    // Existing orgs are backfilled by migration; new orgs by the derived seeder.
     const sql = readdirSync(MIGRATIONS_DIR)
       .filter((f) => f.endsWith('.sql'))
       .map((f) => readFileSync(join(MIGRATIONS_DIR, f), 'utf8'))

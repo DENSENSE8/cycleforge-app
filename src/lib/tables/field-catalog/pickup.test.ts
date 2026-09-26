@@ -1,11 +1,4 @@
-/**
- * Pickup catalog guards + resolver behaviour — the second family's mirror of
- * `orders.test.ts`. The catalog is persisted-id vocabulary, so the guards are
- * the ones that fail as silent config bugs otherwise: duplicate ids, a product
- * default that does not parse against its own catalog, a field bindable
- * nowhere. The materialization smoke pins the adoption contract's core-view
- * parity, and the resolver tests pin the row → paint contract per field.
- */
+/** Pickup catalog guards + resolver behaviour — the second family's mirror of `orders.test.ts`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

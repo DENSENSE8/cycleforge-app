@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Scan-out floor mouth — the **same** {@link StationComposerHost} Unbox uses
- * (OmnichannelComposerDock shell). Modes (Unbox | Ticket) stay off; the below-
- * outline row still paints with **only** the bottom-right context / procedure
- * ring — opens Displays so the operator can verify the carton.
- */
+/** Scan-out floor mouth — the **same** {@link StationComposerHost} Unbox uses (OmnichannelComposerDock shell). */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';

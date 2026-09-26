@@ -1,13 +1,4 @@
-/**
- * GET /api/receiving/lines/[id]/suggested-location
- *
- * The directed putaway target for one line — "put this product HERE", with the
- * BASIS the leaf shows underneath it. Read-only, so no audit row; the writer is
- * `POST /api/receiving/lines/[id]/stage`.
- *
- * SoT: {@link fetchSuggestedPutawayLocation}. Returns `{ suggestion: null }`
- * when there is nothing honest to point at — never a guessed bin.
- */
+/** GET /api/receiving/lines/[id]/suggested-location */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

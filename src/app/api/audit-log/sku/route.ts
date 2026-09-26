@@ -3,13 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { parseFilters } from '@/lib/audit-log/filters';
 import { getSkuDetail, listSkus } from '@/lib/audit-log/sku-aggregator';
 
-/**
- * GET /api/audit-log/sku
- *   ?sku=<code>   → cross-station event feed for one SKU
- *   no `sku`      → SKUs with the most activity (paged)
- *
- * Gate: admin.view_logs.
- */
+/** GET /api/audit-log/sku ?sku=<code> → cross-station event feed for one SKU no `sku` → SKUs with the most activity (paged) */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

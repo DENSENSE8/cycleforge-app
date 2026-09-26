@@ -94,10 +94,7 @@ export async function GET(
   }
 }
 
-// ── PATCH /api/fba/shipments/[id] ─────────────────────────────────────────────
-// Update mutable shipment fields.
-// Body (all optional): { shipment_ref, destination_fc, due_date, notes,
-//                        amazon_shipment_id, assigned_tech_id, assigned_packer_id, status }
+// ── PATCH /api/fba/shipments/[id] ───────────────────────────────────────────── Update mutable shipment fields.
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params }
@@ -208,10 +205,7 @@ export async function PATCH(
   }
 }
 
-// ── DELETE /api/fba/shipments/[id] ────────────────────────────────────────────
-// Hard-delete a shipment. Only allowed when status = 'PLANNED'.
-// CASCADE removes all fba_shipment_items for this shipment.
-// Destructive — requires step-up auth and writes a rich audit row.
+// ── DELETE /api/fba/shipments/[id] ──────────────────────────────────────────── Hard-delete a shipment.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Params }

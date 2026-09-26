@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Scan-station preview of a resolved identifier — the FIND column, not
- * a station pane / ActiveOrderWorkspace Displays.
- *
- * Declares `density="compact"` because this pane is a few hundred px wide on a
- * desk monitor. That is the case the dossier's old `md:` gates got wrong: a
- * viewport query saw 1440, fired, and reserved a 224px outline rail inside a
- * pane with no room for one. The measure is a property of the MOUNT.
- *
- * Callers: TechRightPane shipping preview overlay.
- * User: continue to the next phase (Phase 5 scan preview embed).
- */
+/** Scan-station preview of a resolved identifier — the FIND column, not a station pane / ActiveOrderWorkspace Displays. */
 
 import { Button } from '@/design-system/primitives';
 import { SearchDossier } from '@/components/search/dossier/SearchDossier';

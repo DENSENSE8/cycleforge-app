@@ -15,26 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * The cage gate for ONE order (To-ship intake).
- *
- * Named `cage-release` and not `release` because
- * `POST /api/orders/[id]/release` already exists and means something else
- * entirely — it unwinds `order_unit_allocations` back to STOCKED. Two verbs
- * called "release" on the same noun is how an operator cancels an allocation
- * while trying to open a cage.
- *
- * | Method | Does |
- * |---|---|
- * | GET | live G1/G2/G3 evaluation for this order |
- * | POST `{action:'release'}` | re-evaluates and releases, or 409s with the failures |
- * | POST `{action:'cage'}` | puts a not-yet-released order back in the cage |
- * | POST `{action:'docs-not-required', value}` | sets/clears the G2 exemption |
- * | POST `{action:'set-parcel', weightOz?, lengthIn?, widthIn?, heightIn?}` | persists the parcel on the order |
- *
- * `withAuth` ignores Next's route-`params`, so this uses the plain handler form
- * with `requireRoutePerm` inside — the house pattern for `[id]` routes.
- */
+/** The cage gate for ONE order (To-ship intake). */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

@@ -8,19 +8,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import pool from '@/lib/db';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 
-/**
- * The order's triage flag — the operator-set tag that tints its queue row.
- *
- *   PUT — set or clear the flag (`{ flag: <id> | null }`)   (orders.create)
- *
- * One verb for both directions on purpose: setting and clearing are the same
- * operator gesture (pick from the menu, or pick "None"), and a separate DELETE
- * would give the client two code paths to keep in sync for one toggle.
- *
- * Gated on `orders.create` (the edit-an-order permission) rather than
- * `orders.view`: a flag is ORG-WIDE shared state, so anyone who can set one is
- * writing something the whole floor reads.
- */
+/** The order's triage flag — the operator-set tag that tints its queue row. */
 
 const FlagBody = z.object({
   flag: z.enum(ORDER_ROW_FLAG_IDS).nullable(),

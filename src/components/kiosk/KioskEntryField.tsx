@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * KioskEntryField — the ONE text entry control of the kiosk step path, and of
- * every desk flow that wears the kiosk face (desk repair pickup sign-off).
- *
- * Placeholder-in-box, no floating label, no divider, the kiosk's one corner
- * radius. Every input answers to ONE token ({@link KIOSK_POS_ENTRY}), which
- * holds the 16px floor that stops iOS from zooming the whole surface on focus.
- * Accessibility rides an sr-only `<label>` element — the visible prompt is the
- * placeholder.
- *
- * Its own module on purpose: it used to live inside `KioskCustomerIntake`,
- * whose module binds the kiosk session store — so a desk flow that only wanted
- * the field would have imported the counter's cart root to get it. The field
- * is session-free; the intake is not.
- *
- * Callers: `KioskCustomerIntake`, `KioskRepairPane`, `KioskTicketStep`,
- * `KioskReasonStep`, `ReasonSelector`, `RepairPickupFlow`, `KioskSerialListField`.
- * Affected API: none. Schemas: none.
- */
+/** KioskEntryField — the ONE text entry control of the kiosk step path, and of every desk flow that wears the kiosk face (desk repair… */
 
 import type { KeyboardEvent, ReactNode } from 'react';
 import {
@@ -58,24 +40,10 @@ export function KioskEntryField({
   autoComplete?: string;
   maxLength?: number;
   multiline?: boolean;
-  /**
-   * Leading glyph inside the field — states the field's KIND before anyone
-   * reads the placeholder. Mount the house glyph (money is `Receipt`); the
-   * slot supplies position and inset via `KIOSK_POS_ENTRY_ICON*`, so a caller
-   * never hand-positions one. Single-line only: a textarea's first line is not
-   * where a mark belongs.
-   */
+  /** Leading glyph inside the field — states the field's KIND before anyone reads the placeholder. */
   icon?: ReactNode;
   testId?: string;
-  /**
-   * Disambiguator for the derived DOM id.
-   *
-   * REQUIRED when the same field NAME repeats on one screen — the repair
-   * pane's device repeater asks every device for its own "Serial number".
-   * Without it every copy after the first shares an id with the first, so its
-   * `<label for>` resolves to the wrong input and a screen reader announces
-   * the wrong device's field.
-   */
+  /** Disambiguator for the derived DOM id. */
   idScope?: string;
   /**
    * Return key → this (single-line only). The iPad key reads `go`, so the

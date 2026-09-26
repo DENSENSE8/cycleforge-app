@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Inventory shell › by-filter unit list — the same `inventory-units` family as
- * `/inventory/units`, pointed at the state/condition feed. Display is
- * {@link useUnitsSpreadsheet} → DataTable. This file is the FEED (paged
- * `/api/inventory/units`); it is not a second table.
- */
+/** Inventory shell › by-filter unit list — the same `inventory-units` family as `/inventory/units`, pointed at the state/condition feed. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';

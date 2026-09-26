@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * /signin/reset — public password reset.
- *
- * Two modes, chosen by the presence of `?token=`:
- *   • no token  → request a reset link (enter email → POST /api/auth/password-reset/request)
- *   • token     → set a new password (POST /api/auth/password-reset/confirm)
- *
- * Simple centered form (Notion-like, semantic tokens only) — not a dashboard.
- * Public: covered by proxy.ts `^/signin` PUBLIC_PATH.
- */
+/** /signin/reset — public password reset. */
 
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

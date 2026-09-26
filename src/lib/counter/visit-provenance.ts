@@ -1,36 +1,4 @@
-/**
- * Repair PROVENANCE for a counter visit — the facts the History detail pane
- * paints beside the money: when the device was dropped off and picked up, who
- * actually repaired it, which parts went in, and both signatures.
- *
- * Callers: GET /api/kiosk/visit/[id], GET /api/kiosk/repair/[id].
- * Affected API: /api/kiosk/visit/[id] (device principal).
- * Data schemas: repair_service ⋈ unit_repairs ⋈ repair_actions ⋈
- *   work_assignments ⋈ documents ⋈ staff. Read-only.
- * User: "who repaired it, what part was used, the drop-off and pick-up times,
- *   and both signatures".
- *
- * ## Why this is a sibling of `loadCounterVisit`, not a change to it
- *
- * `loadCounterVisit` is the RECEIPT reader: it is what
- * `/api/kiosk/visit/[id]/receipt` and the desk's printed copy are built from,
- * and every column it selects is on a receipt. Drop-off/pick-up stamps, the
- * technician and the parts list are not — they are the counter staff's
- * question, asked once, on a face the customer never sees. Widening the
- * receipt reader for them would make every receipt pay for four extra joins.
- *
- * ## Technician resolution order — and why it is not one column
- *
- * `unit_repairs` is the INVENTORY repair domain (keyed by `serial_unit_id`); a
- * customer-owned device has no serial unit, so on most counter repairs that
- * table is empty and `repair_actions` is where the bench actually wrote what
- * it did (see `2026-05-19_repair_actions.sql`). Reading only one of them would
- * report "nobody repaired this" on whichever half of the book the caller did
- * not pick. So: the completed-by staffer wins, then who started it, then the
- * most recent bench action's staffer, then the standing assignment. The chosen
- * arm is returned in `technicianSource` so the pane can say *assigned* rather
- * than claim work that has not happened yet.
- */
+/** Repair PROVENANCE for a counter visit — the facts the History detail pane paints beside the money: */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -80,12 +48,7 @@ export interface VisitRepairProvenance {
   intakeSignatureStrokes: unknown | null;
   pickupSignatureUrl: string | null;
   pickupSignatureStrokes: unknown | null;
-  /**
-   * WHERE IT CAME FROM. Omitting these was why the detail pane's provenance
-   * section could only render on standalone tickets: a drop-off rung up at the
-   * counter AND linked to an Ecwid order showed no link back to the storefront,
-   * because the visit arm never selected the columns that hold it.
-   */
+  /** WHERE IT CAME FROM. */
   sourceSystem: string | null;
   sourceOrderId: string | null;
   sourceTrackingNumber: string | null;
@@ -177,12 +140,7 @@ export function benchActionAsPart(row: {
   };
 }
 
-/**
- * Which repairs to read. A counter visit names its devices through
- * `counter_transaction_id`; a standalone repair — an Ecwid drop-off, an inbound
- * shipment, a desk ticket — has no transaction at all and names itself. Both
- * arms read the SAME row, so History paints one device section either way.
- */
+/** Which repairs to read. */
 export type VisitProvenanceScope =
   | { counterTransactionId: number }
   | { repairIds: number[] };

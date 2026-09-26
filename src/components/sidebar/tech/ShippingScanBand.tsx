@@ -42,26 +42,7 @@ interface ShippingScanBandProps {
   onPreviewFilterText?: (next: string) => void;
 }
 
-/**
- * Shipping-mode scan band — order / FNSKU / repair / serial input. Used by
- * {@link ShippingSidebarPanel} and the legacy {@link StationTesting} embed.
- * Flush 40px {@link ScanBandShell} — same geometry as Unbox / Testing (no py).
- *
- * **The scan column carries the BAR and nothing else** (2026-08-02). It used to
- * render an active-order confirmation card under the bar as well, so a scanned
- * order was drawn twice — here, and in the middle as
- * `ShippingEntityContextHeader`. Two renders of one entity are two things that
- * can disagree, on the surface whose only job is telling an operator what is in
- * their hands. That card moved to `ActiveOrderWorkspace`, and in 2026-08-18 it
- * was deleted there too: the identity row already says what is in hand, and its
- * one real verb (undo a serial) lives on Displays → Units. `ReceivingSidebarPanel`
- * carries no identity at all — same shape.
- *
- * This component still OWNS the controller — it is the only
- * `useStationTestingController` instance in the app, and the middle receives its
- * active order through `tech-active-order-changed` (`useTechOrderPanes`). Moving
- * the controller out is a separate job; moving the DISPLAY out is this one.
- */
+/** Shipping-mode scan band — order / FNSKU / repair / serial input. */
 export function ShippingScanBand({
   userId,
   userName,

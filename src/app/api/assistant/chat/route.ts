@@ -17,19 +17,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * POST /api/assistant/chat — the global English assistant (plan §3.2/§3.3).
- * Claude tool-use loop over the org-scoped read-tool registry; SSE stream out
- * (meta → delta/tool/ui_tool → done).
- *
- * Pre-loop: local_ops fast path + enrichAssistantMessage (parity with Hermes
- * /api/ai/chat). Both brains resolve PER ORG: the agent loop takes the org's
- * Anthropic key (vault, else the platform key), and the OpenAI-wire fallback
- * takes the org's provider chain when no Anthropic brain is available (or when
- * ASSISTANT_HERMES_FALLBACK forces it).
- *
- * org/staff/permissions come from ctx — never the body.
- */
+/** POST /api/assistant/chat — the global English assistant (plan §3.2/§3.3). */
 
 const ContextSchema = z
   .object({
@@ -55,13 +43,7 @@ function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-/**
- * Whether to consider the OpenAI-wire fallback at all.
- *
- * The env flag forces it on. Otherwise the decision is made per ORG by the
- * caller, from whether that org has an Anthropic brain — it used to read the
- * platform key here, which answered the same way for every tenant.
- */
+/** Whether to consider the OpenAI-wire fallback at all. */
 function hermesFallbackForced(): boolean {
   const flag = String(process.env.ASSISTANT_HERMES_FALLBACK || '').trim().toLowerCase();
   return flag === '1' || flag === 'true' || flag === 'yes';
@@ -162,10 +144,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   const { sessionId, message, context } = parsed.data;
 
-  // Both halves are now per-org. The agent loop needs an ANTHROPIC-native brain
-  // (its tool-use protocol is not the OpenAI wire format), so an org's own
-  // Anthropic key is preferred over the platform's; everything else falls to
-  // the OpenAI-wire chain.
+  // Both halves are now per-org.
   const brain = await resolveOrgAnthropicBrain(ctx.organizationId);
   const hasAnthropic = brain !== null;
   const fallbackConfig =

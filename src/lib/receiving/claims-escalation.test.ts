@@ -1,18 +1,4 @@
-/**
- * Unit tests for claim-deadline escalation (Phase 4 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md). DB-free, and creates no tickets.
- *
- * Load-bearing assertions:
- *   1. eBay-only — a vendor PO (claim_by_date NULL) is never escalated,
- *   2. the flag defaults to report-only, so a deploy files nothing,
- *   3. one ticket per line, ever (existing-ticket skip + date-free idempotency key),
- *   4. expired claims are still surfaced, not silently dropped,
- *   5. the per-run clamp is reported, never silent,
- *   6. a single provider failure does not abort the remaining deadlines,
- *   7. civil-date math does not drift by a day.
- *
- * Run: `npx tsx --test src/lib/receiving/claims-escalation.test.ts`
- */
+/** Unit tests for claim-deadline escalation (Phase 4 of docs/todo/ebay-delivered-not-unboxed-PLAN.md). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

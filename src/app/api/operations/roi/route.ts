@@ -5,23 +5,7 @@ import { computeLaborThroughput } from '@/lib/operations/labor-throughput';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
-/**
- * GET /api/operations/roi — the first-week ROI proof.
- *
- * One org-scoped rollup the owner can glance at to SEE the throughput lift:
- *   - unitsThisWeek / unitsLastWeek / pctChange — captured throughput from
- *     workflow_node_stats.completed_count (the daily snapshot; no recompute).
- *     completed_count is per node-exit, so this is total stage-completions over
- *     the rolling 7-day window — the throughput series, not distinct units.
- *   - unitsPerLaborHour — the headline productivity number, from
- *     computeLaborThroughput over the last 7 days (units advanced / clocked hours).
- *   - avgCycleHoursByStage — mean time-in-node per stage, from workflow_runs.
- *   - unitsStuck — Σ(blocked + error) from the latest workflow_node_stats snapshot.
- *
- * Monitor archetype: org-scoped tenant reads only (tenantQuery + the labor helper
- * are all scoped to ctx.organizationId), never a cross-tenant rollup. Read-only —
- * no mutation, no audit. `operations.view` gates it (an existing read permission).
- */
+/** GET /api/operations/roi — the first-week ROI proof. */
 export const GET = withAuth(async (_request: NextRequest, ctx) => {
   const orgId = ctx.organizationId;
 

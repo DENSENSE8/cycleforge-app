@@ -1,12 +1,4 @@
-/**
- * GET /api/receiving/recent-label-note?excludeLineId=
- *
- * Sticker-center note from the **newest scanned carton that has a face note**
- * (walk `receiving_scans` newest-first ACROSS THE ORG; skip blank cartons;
- * exclude the open carton), taken from the line on that carton touched last and
- * reading `notes` before the older `label_note`. Powers Unbox notes-composer
- * Recent.
- */
+/** GET /api/receiving/recent-label-note?excludeLineId= */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

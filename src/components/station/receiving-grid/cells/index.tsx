@@ -54,13 +54,7 @@ export function renderReceivingGridCell(
 ): ReactNode {
   const rule = !last;
   const props = { col, rule, ctx };
-  // Compound (two-row) tracks — the shared renderer paints them, wrapper and
-  // all. Checked BEFORE the flat switch on purpose: presentation swaps by
-  // column model, so the row shell and the engine below it never learn which
-  // layout is mounted.
-  //
-  // `select` is claimed only under a compound model — the FLAT Unbox / Testing
-  // / Pickup grids keep `ReceivingSelectCell` and its 16px checklist square.
+  // Compound (two-row) tracks — the shared renderer paints them, wrapper and all.
   if (claimsCompoundCell(col.key, ctx.columns)) {
     return renderReceivingCompoundCell(col, rule, ctx, detail);
   }

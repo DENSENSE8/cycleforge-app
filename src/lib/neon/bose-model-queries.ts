@@ -71,11 +71,7 @@ export async function getBoseModelList(params: {
         AND ($2 = '' OR bm.family = $2)
         AND ($3::uuid IS NULL OR bm.organization_id = $3)`;
 
-  // bose_models now HAS organization_id (live coverage: org=✅). When orgId is
-  // present we GUC-wrap via tenantQuery AND add the explicit predicate — the
-  // load-bearing isolation pre-E1 (RLS inert under the BYPASSRLS owner). Legacy
-  // callers (orgId omitted) pass NULL → the predicate is a no-op (back-compat).
-  // The integer surrogate-PK join (pc.bose_model_id = bm.id) stays org-safe bare.
+  // bose_models now HAS organization_id (live coverage:
   const result = orgId
     ? await tenantQuery<BoseModelListRow>(orgId, listSql, [search, family, limit, offset, orgId])
     : await pool.query<BoseModelListRow>(listSql, [search, family, limit, offset, null]);
@@ -97,10 +93,7 @@ export async function getBoseModelById(id: number, orgId?: OrgId): Promise<BoseM
 }
 
 export async function getBoseModelByModelNumber(modelNumber: string, orgId?: OrgId): Promise<BoseModelRow | null> {
-  // model_number is a GLOBAL natural key today; scope by org when present so a
-  // caller can't probe another tenant's catalog by model number. (The upsert's
-  // ON CONFLICT (model_number) write-clobber still needs a per-org UNIQUE
-  // migration — tracked as the bose_models slice.)
+  // model_number is a GLOBAL natural key today; scope by org when present so a caller can't probe another tenant's catalog by model number.
   const sql = `SELECT * FROM bose_models WHERE model_number = $1 AND ($2::uuid IS NULL OR organization_id = $2) LIMIT 1`;
   const result = orgId
     ? await tenantQuery<BoseModelRow>(orgId, sql, [modelNumber.trim(), orgId])
@@ -133,12 +126,7 @@ export async function upsertBoseModel(params: {
     params.isActive ?? true,
   ];
 
-  // Org-scoped SELECT-then-INSERT/UPDATE. This REPLACES `INSERT ... ON CONFLICT
-  // (model_number)` — model_number is a GLOBAL natural key, so the old upsert let
-  // a second tenant clobber the first's catalog row (real_leak, 2026-06-19). This
-  // shape is org-correct AND independent of which UNIQUE exists, so it is safe to
-  // deploy before or after 2026-06-19_bose_models_per_org_unique.sql is applied.
-  // (reactivates a soft-deleted row by matching on model_number regardless of is_active.)
+  // Org-scoped SELECT-then-INSERT/UPDATE.
   const runUpsert = async (client: import('pg').PoolClient): Promise<BoseModelRow> => {
     const existing = await client.query<{ id: number }>(
       `SELECT id FROM bose_models
@@ -256,13 +244,7 @@ export async function softDeleteBoseModel(id: number, orgId?: OrgId): Promise<Bo
 
 // ─── Compatible parts for a model (joined to stock / lifecycle / alerts) ────
 
-/**
- * Returns the compatible parts for a model, each resolved against:
- *   - live on-hand (SUM of bin_contents.qty for the part's sku text key)
- *   - the part's sku_catalog.lifecycle_status
- *   - count of open/sourcing sourcing_alerts on that sku
- * so the lookup pane can flag "compatible but unavailable / EOL" at a glance.
- */
+/** Returns the compatible parts for a model, each resolved against: */
 export async function getCompatibleParts(boseModelId: number, orgId?: OrgId): Promise<CompatiblePartRow[]> {
   // OMITTED path: byte-identical legacy SQL on the raw pool.
   if (!orgId) {
@@ -298,13 +280,7 @@ export async function getCompatibleParts(boseModelId: number, orgId?: OrgId): Pr
     return result.rows;
   }
 
-  // PRESENT path: GUC-wrap (part_compatibility has no org column) + explicit org
-  // gating on the tenant-owned tables this fans out to:
-  //   - sku_catalog sc is tenant-owned → AND sc.organization_id = $2
-  //   - bin_contents bc is tenant-owned and joined on the SKU string key
-  //     (bc.sku = sc.sku) → align with AND bc.organization_id = sc.organization_id
-  //   - sourcing_alerts sa joins by integer surrogate PK (sa.sku_id = sc.id), so
-  //     it's org-safe bare (it carries no own organization_id; child of sku_catalog)
+  // PRESENT path:
   const result = await tenantQuery<CompatiblePartRow>(
     orgId,
     `SELECT
@@ -358,12 +334,7 @@ export interface CompatibilityLookupResult {
   parts: CompatiblePartRow[];
 }
 
-/**
- * Resolve a model from either a serial number (longest-prefix decode via
- * bose_serial_prefixes) or a model string (exact model_number, else name
- * search), then return its compatible parts. Degrades gracefully: an unknown
- * serial prefix or model returns { model: null, parts: [] }.
- */
+/** Resolve a model from either a serial number (longest-prefix decode via bose_serial_prefixes) or a model string (exact model_number, else… */
 export async function lookupCompatibility(params: {
   serial?: string | null;
   model?: string | null;

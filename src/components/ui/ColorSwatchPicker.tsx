@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Controlled color swatch picker — preset grid + native custom `<input type="color">`.
- *
- * SoT for any-color picks (Role identity, Appearance accent, Column display
- * highlight). Callers pass their own preset list; this module never invents a
- * palette.
- */
+/** Controlled color swatch picker — preset grid + native custom `<input type="color">`. */
 
 import { useRef } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

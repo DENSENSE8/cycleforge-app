@@ -1,23 +1,4 @@
-/**
- * Scan-focus hotkey — a tiny framework-agnostic store shared by EVERY
- * StationScanBar across the app.
- *
- * Responsibilities:
- *   1. Hold the current focus binding (any non-reserved key; default "Insert").
- *      Hydrated from localStorage; durable SoT is staff_preferences.
- *      Insert / ScrollLock / F1–F12 reclaim even while an input is focused;
- *      other bindings yield over editable targets so typing is not stolen.
- *   2. Keep a stack of mounted scan-bar targets. Most-recently-registered wins.
- *   3. ONE global keydown listener:
- *        - bare reclaim key → focus + select (reclaim mid-carton)
- *        - ⌘. / Ctrl+. → **arm next scan** (clear value + focus + select)
- *          — the station ingestion bar for the next carton, not the Unbox dock
- *          wedge (`receiving-focus-scan` / `⌘; m → s` owns that locus).
- *   4. Pointer APIs (`requestScanFocus` / `requestScanNext`) for the gear
- *      popover chips — same focus path as the keys, without entering rebind.
- *
- * Pure module, no React imports — consumed via useScanHotkey / useRegisterScanTarget.
- */
+/** Scan-focus hotkey — a tiny framework-agnostic store shared by EVERY StationScanBar across the app. */
 
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import {
@@ -53,12 +34,7 @@ type ScanBarTarget = {
    * Sidebar ingestion only; dock wedge fields never register here.
    */
   armNext: () => void;
-  /**
-   * Hand a wedge payload to the bar instead of letting the app resolve it.
-   * Preview stance's escape hatch at the wedge waist — see
-   * {@link deliverScanToTarget}. Optional: a bar that cannot accept a value
-   * (no controlled `onChange`) simply declines and the scan falls through.
-   */
+  /** Hand a wedge payload to the bar instead of letting the app resolve it. */
   deliver?: (value: string) => boolean;
 };
 
@@ -137,12 +113,7 @@ export function registerScanTarget(target: ScanBarTarget): () => void {
   };
 }
 
-/**
- * Fired on `window` immediately before focus / arm-next moves to the active
- * scan bar. Transient chrome that can cover the bench listens and dismisses.
- * Kept module-private — listeners use the string literal or a future SoT import
- * if a consumer remounts.
- */
+/** Fired on `window` immediately before focus / arm-next moves to the active scan bar. */
 const SCAN_FOCUS_REQUESTED_EVENT = 'scan-focus-requested';
 
 /** Fired immediately before ⌘. arms the next-scan bar (clear + focus). */
@@ -152,21 +123,7 @@ function topTarget(): ScanBarTarget | undefined {
   return targets[targets.length - 1];
 }
 
-/**
- * Is a scan bar mounted — i.e. is a wedge scanner ARMED on this screen?
- *
- * The suppressor every single-key verb owes (`table-key-layer.ts`). A wedge
- * scanner types its payload as ordinary keydowns: `SKU-1129` is `s`, `k`, `u`,
- * digits, then Enter. On a screen where single letters run verbs, that scan is
- * Ship-by, then Print, then a cursor move, then whatever Enter does — which is
- * why the plan's key flow makes single-key verbs INERT while a scanner is armed
- * unless a modifier is held.
- *
- * Deliberately "a bar is mounted" rather than "a scan is in flight": the whole
- * point is to be safe BEFORE the first character arrives, and by the time a
- * wedge machine has enough keystrokes to recognise a scan the verbs have
- * already fired.
- */
+/** Is a scan bar mounted — i.e. */
 export function hasScanTarget(): boolean {
   return targets.length > 0;
 }
@@ -186,15 +143,7 @@ function armNextTopTarget(): void {
   topTarget()?.armNext();
 }
 
-/**
- * Route a wedge payload into the mounted scan bar rather than resolving it.
- *
- * The one door Preview stance uses from {@link useGlobalWedgeScanner}: a
- * physical scan lands wherever focus happens to be, so without this the stance
- * was only ever honored on the typed-Enter path and a real scanner navigated
- * straight past it. Returns false when no mounted bar can take the value, so
- * the caller keeps its normal ladder.
- */
+/** Route a wedge payload into the mounted scan bar rather than resolving it. */
 export function deliverScanToTarget(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) return false;

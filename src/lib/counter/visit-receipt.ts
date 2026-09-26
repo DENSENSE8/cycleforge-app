@@ -1,33 +1,4 @@
-/**
- * visit-receipt — the CUSTOMER-facing document model for a counter visit.
- *
- * `loadCounterVisit` (read-visit.ts) is the OPERATOR ledger: every line,
- * voided or not, every audit row, both payment answers. A receipt is a
- * different document handed to a different reader, and the two must not be
- * the same object wearing a different template:
- *
- *   - A voided `counter_session_lines` row is evidence for the desk. It is
- *     NOT something the customer paid for, so it is dropped here — the one
- *     deliberate divergence from the operator view (see `lineItems` below).
- *   - The repair section is built from `visit.devices` (the `repair_service`
- *     rows), never from `visit.lines`. A session-originated repair visit has
- *     BOTH — a `counter_session_lines` row of type `REPAIR` (the cart's own
- *     ledger entry) and the `repair_service` row it produced (the work
- *     order) — and printing both would bill the same repair twice on paper.
- *     `devices` carries the RS number and the canonically-parsed quote;
- *     `lines` does not. Devices wins.
- *   - `visit.payment.sessionPaymentState` (the TERMINAL's answer) never
- *     appears here. A receipt reports what was actually charged — the
- *     `square_transactions` row — not a Terminal state that can legitimately
- *     disagree with it before the settlement webhook lands.
- *
- * PURE. No React, no HTML, no I/O — this module never imports `@/lib/db` or
- * anything that touches a socket. `buildVisitReceipt` takes the tenant's
- * `OrgLetterhead` (src/lib/branding/letterhead.ts — the SAME shop-identity
- * source the printed repair paper uses) as an argument rather than resolving
- * one itself, so the pricing/inclusion rules below are exercised with zero
- * DB in visit-receipt.test.ts.
- */
+/** visit-receipt — the CUSTOMER-facing document model for a counter visit. */
 
 import type { OrgLetterhead } from '@/lib/branding/letterhead';
 import { formatRepairPaperTicketNumber } from '@/lib/repair/repair-paper-ticket';
@@ -106,12 +77,7 @@ export interface VisitReceipt {
   /** subtotal + every repair quote — mirrors `counter_transactions.total_cents`. */
   totalCents: number;
   payment: VisitReceiptPayment;
-  /**
-   * What a scanner reads off the printed copy: the single device's RS code
-   * (`RS-{id}`) when there is exactly one, otherwise the visit itself
-   * (`CT-{id}`) — a multi-device or retail-only visit has no single RS code
-   * to stand in for the whole receipt.
-   */
+  /** What a scanner reads off the printed copy: */
   barcodeValue: string;
   footer: string;
 }
@@ -149,16 +115,7 @@ function toLineItem(line: CounterVisitLine): VisitReceiptLineItem {
 
 // ── Payment summary ─────────────────────────────────────────────────────────
 
-/**
- * What to print for "paid" and "still owed".
- *
- * `paid`/`voided` never show a balance — a voided visit was cancelled, not
- * partially collected, so it owes nothing rather than "totalCents short by
- * whatever a stray square_transactions row happens to record". Every other
- * status reports exactly what the (at most one) settled square_transactions
- * row collected, which is the money's own answer — never the Terminal's
- * `sessionPaymentState` (see module doc).
- */
+/** What to print for "paid" and "still owed". */
 function paymentSummary(visit: CounterVisit): VisitReceiptPayment {
   const sq = visit.payment.squareTransaction;
   const tender = sq?.paymentMethod ?? null;

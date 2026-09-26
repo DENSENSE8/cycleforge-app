@@ -18,12 +18,7 @@ const supplierTypeEnum = z.enum([
 
 // ─── POST /api/suppliers ─────────────────────────────────────────────────────
 
-/**
- * Create a supplier (vendor) record. `name` is required; everything else is
- * optional metadata. `ebaySellerId` is the dedupe key for auto-created eBay
- * sellers — supplying it again replays/links the existing row. `idempotencyKey`
- * lets a retried create replay the original 201.
- */
+/** Create a supplier (vendor) record. */
 export const SupplierCreateBody = z
   .object({
     name: trimmed.min(1, 'name is required'),

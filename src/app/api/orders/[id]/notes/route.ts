@@ -7,22 +7,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import pool from '@/lib/db';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 
-/**
- * Internal ops annotations on an order (`order_notes`).
- *
- *   GET  — this order's notes, newest first, with author + timestamp (orders.view)
- *   POST — append one note (`{ noteText }`)                          (orders.create)
- *
- * These are the FIRST consumers of `order_notes`, which shipped ahead of its
- * API in `2026-07-28_order_notes.sql`. Its scope boundary holds: this is the
- * internal ops trail, while the customer/support CONVERSATION stays in Entity
- * Threads (`ThreadPanel entityType="ORDER"`). Do not add a writer that blurs
- * the two.
- *
- * There is deliberately no PATCH/DELETE. The trail is append-only — a note is a
- * statement someone made at a time, and letting the next staffer rewrite it
- * reproduces the exact failure of the legacy scalar `orders.notes`.
- */
+/** Internal ops annotations on an order (`order_notes`). */
 
 const NoteBody = z.object({
   noteText: z.string().trim().min(1, 'Note cannot be empty').max(4000),

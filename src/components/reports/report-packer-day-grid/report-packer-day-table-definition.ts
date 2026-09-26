@@ -1,13 +1,4 @@
-/**
- * `reports.packer-day` — the table definition, capabilities and surface
- * descriptor for the per-pack shift report.
- *
- * Re-declares nothing: columns are the family SoT by reference.
- *
- * Its OWN tableId, like its three siblings: a pack-scan row shares no facts
- * with a SKU dormancy row, and the Fields menu keys off `tableId` — hiding
- * `Tier` here must not touch Staff day or Velocity.
- */
+/** `reports.packer-day` — the table definition, capabilities and surface descriptor for the per-pack shift report. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -24,13 +15,7 @@ import {
   type ReportPackerDayGridColumn,
 } from './report-packer-day-grid-layout';
 
-/**
- * Nothing on this desk writes. A pack scan is a RECORD of something that
- * happened — the editable thing is the SKU's standard, and that lives on the
- * product record the row title links to. `multiSelect` stays on for the shared
- * copy-TSV bar: lifting a packer's day into a message is a reason this table
- * is opened.
- */
+/** Nothing on this desk writes. */
 export const REPORT_PACKER_DAY_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

@@ -1,11 +1,4 @@
-/**
- * Guards the contract between unit-id minting and scan routing: every id
- * `formatUnitId` produces must be classified by `routeScan` as a serial-unit
- * and routed to the unit page, so a scanned products-label QR (which now
- * encodes the bare unit id, not a GS1 link) resolves instead of 404'ing.
- *
- * If the format and the routing regex ever drift, these fail — pure, no DB.
- */
+/** Guards the contract between unit-id minting and scan routing: */
 
 import { test } from 'node:test';
 import { ok, equal, deepEqual } from 'node:assert';

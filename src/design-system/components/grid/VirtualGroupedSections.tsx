@@ -26,34 +26,9 @@ import {
   subscribeCompoundRowDetailOpen,
 } from '@/components/tables/compound/useCompoundRowDetail';
 
-/**
- * `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered
- * ledgers (optionally day-banded). Owned by `@/design-system/components/grid`
- * and composed by {@link LedgerGrid}. Outbound spreadsheets
- * (`useOrdersSpreadsheet` / LedgerGrid) pass `showDayHeaders={false}`: absolute
- * Date lives in a per-row column. Station / receiving feeds may still emit
- * sticky {@link DateGroupHeader} bands (`showDayHeaders` default true).
- *
- * A surface supplies EITHER folded order groups per day (`orderGroupsByDate`,
- * with a `renderGroup` that owns the singleton/multi-product collapse) OR a flat
- * `daySections` list (each day is just rows — testing history, station logs), and
- * a `renderRow`. Both shapes flatten into ONE linear item stream — optionally a
- * `header` per day, then either `group` items or `row` items — handed to a single
- * `useVirtualizer`, so only the items intersecting the viewport (plus overscan)
- * are in the DOM regardless of list length.
- *
- * The scroll container is caller-owned (`scrollParentRef`). When embedded in a
- * stacked SwimlaneBoard lane that shares the board's single scroll region, pass
- * `useAncestorScroll` so the virtualizer offsets its window by this list's
- * position within that region (`scrollMargin`) — via {@link useAncestorScrollMargin}.
- */
+/** `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered ledgers (optionally day-banded). */
 
-/**
- * Where an item sits in a labelled section's outline. `undefined` = not in a
- * section, which is every item on a surface that passes no `sectionHeaders`.
- * The virtualizer positions each row absolutely, so a section cannot be a box —
- * the edges are painted per item instead.
- */
+/** Where an item sits in a labelled section's outline. */
 type SectionEdge = 'inner' | 'last';
 
 type FlatItem<T> =
@@ -124,13 +99,7 @@ interface VirtualGroupedSectionsProps<T> {
    *  virtualizer scrolls to that item whenever this changes — works even when the
    *  target isn't currently windowed (unlike a DOM `scrollIntoView`). */
   scrollToKey?: string | null;
-  /**
-   * CSS `top` for the pinned day-band header (default `'0'`). A ledger/spreadsheet
-   * shell that renders its own sticky column header ABOVE this list passes the
-   * header's measured height (e.g. `var(--cf-grid-header-h)`) so day bands dock
-   * directly beneath it instead of colliding at `top:0`. Ignored when
-   * `showDayHeaders` is false.
-   */
+  /** CSS `top` for the pinned day-band header (default `'0'`). */
   stickyHeaderTop?: string;
   /**
    * When true (default), emit a sticky {@link DateGroupHeader} per day.
@@ -138,20 +107,7 @@ interface VirtualGroupedSectionsProps<T> {
    * floating day chrome.
    */
   showDayHeaders?: boolean;
-  /**
-   * Band key → SECTION label. A band listed here renders an in-flow
-   * {@link GridSectionHeader} and an outline around its rows, independent of
-   * `showDayHeaders` — that flag governs CIVIL DAY bands (the only sticky
-   * pin), and a surface with a per-row Date column (the outbound spreadsheet)
-   * keeps it off while still fencing off "Added today".
-   *
-   * Section bands must not join the sticky pin: on ancestor page-Y desks they
-   * would dock under the column header for the whole queue. They stay in the
-   * virtualizer stream and are only on screen while that run of rows is.
-   *
-   * Keys not present here are unaffected, so a surface can name one band and
-   * leave the rest of the table exactly as it was.
-   */
+  /** Band key → SECTION label. */
   sectionHeaders?: Record<string, string>;
 }
 
@@ -327,11 +283,7 @@ export function VirtualGroupedSections<T>({
     virtualizer.measure();
   }, [detailEpoch, virtualizer]);
 
-  // Deep-link / keyboard focus: scroll the target row into view even when it is
-  // outside the current window (DOM scrollIntoView can't reach an unmounted row).
-  // `auto`, not `center`: a row already on screen must not move the list — an
-  // opened record would otherwise re-centre the list under it, and the staffer
-  // closes the record onto a different scroll than the one they left.
+  // Deep-link / keyboard focus:
   useEffect(() => {
     if (!scrollToKey) return;
     const idx = items.findIndex((it) => {
@@ -377,18 +329,9 @@ export function VirtualGroupedSections<T>({
             key={vRow.key}
             data-index={vRow.index}
             ref={virtualizer.measureElement}
-            // Positioning shell only. `role="table"` requires row/rowgroup
-            // children, and a generic div between them breaks that chain — so
-            // this wrapper is removed from the a11y tree and the real row /
-            // rowgroup roles live on the rendered content itself.
+            // Positioning shell only.
             role="presentation"
-            // The active header pins via position:sticky; every other item is
-            // absolutely positioned with `top` (not `transform: translateY`).
-            // Transform creates a containing block that breaks sticky-left frozen
-            // cells (select pane) — they jitter/bounce while Y-scrolling. TanStack
-            // Virtual's position mode uses top/left for the same reason. When
-            // embedded in a shared ancestor scroll region, subtract `scrollMargin`
-            // to lay out within this list's own wrapper.
+            // The active header pins via position:sticky; every other item is absolutely positioned with `top` (not `transform:
             className={cn(
               'left-0 w-full',
               pinned ? 'z-20' : header ? 'z-10' : 'z-0',

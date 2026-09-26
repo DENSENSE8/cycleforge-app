@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Band 1 RIGHT recipe for every Unbox photo procedure step:
- *   [ LEFT procedure waist ] | [ Link a photo | Upload photos | Send to phone ]
- *
- * Three equal `flex-1` flush segments inside a `flex-1` strip host (abuts the
- * always-left `UnboxDockScanEntry`), hairline divide, no host gap / padding.
- * Callers own verb wiring (pair popover · dropzone · phone publish) and pass
- * the three segment buttons. Guard: `unbox-dock-one-shell.guard.test.ts`.
- */
+/** Band 1 RIGHT recipe for every Unbox photo procedure step: */
 
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import { Camera, Images, Upload } from '@/components/Icons';
@@ -21,13 +13,7 @@ import { cn } from '@/utils/_cn';
 export const PHOTO_STEP_SEGMENT =
   'ds-raw-button inline-flex h-11 min-w-0 flex-1 items-center justify-center px-3 text-role-caption font-semibold transition-colors disabled:cursor-not-allowed disabled:text-text-faint';
 
-/**
- * Send-to-phone third — same blue face as carton Photos chrome
- * ({@link STATION_CONTEXT_PHOTO_FLUSH_CLASS}): `border` + PHOTO_TONE.
- * Tone alone is not enough — without `border`, `border-blue-200` never paints
- * and the third reads as washed card. Geometry stays `flex-1` strip third.
- * Icon = SoT {@link Camera} (same as {@link ReceivingPhotoButton}), never phone.
- */
+/** Send-to-phone third — same blue face as carton Photos chrome ({@link STATION_CONTEXT_PHOTO_FLUSH_CLASS}): */
 export const PHOTO_STEP_PHONE_FACE = `border ${STATION_CONTEXT_PHOTO_TONE} disabled:border-border-hairline disabled:bg-surface-sunken disabled:text-text-faint`;
 
 export type PhotoStepSegmentProps = {

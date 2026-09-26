@@ -1,19 +1,4 @@
-/**
- * Single source of truth for "delivered but not scanned" (dock hunt queue).
- *
- * Every read path — the Incoming tile count, the standalone list endpoint, and
- * the main receiving-lines `delivery_state` — derives its delivered-unscanned
- * set from the ONE predicate defined here, so the tile count, the list length,
- * and the row badges agree by construction.
- *
- * The unit is the **shipment**, not the PO line: a delivered-unscanned package
- * is an inbound STN row that is delivered, within the window, and has no
- * operator `receiving_scans` against any linked receiving row.
- *
- * Exit rule (physical-first): a dock `receiving_scans` match (or window
- * age-out) is the only way off this queue. Zoho terminal status must NEVER
- * hide an unscanned delivered box — ERP state is enrichment/badge only.
- */
+/** Single source of truth for "delivered but not scanned" (dock hunt queue). */
 
 import { ZOHO_TERMINAL_STATUSES } from '@/lib/receiving/zoho-received-status';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -64,52 +49,8 @@ export const INBOUND_SHIPMENT_PREDICATE = `(
   OR stn.source_system IN (${INBOUND_SOURCE_SYSTEMS_SQL})
 )`;
 
-/**
- * SQL predicate (references alias `stn`) — TRUE when an operator has scanned this
- * shipment at the dock, in ANY receiving mode. This is the one rule that drops a
- * row off Incoming, so it's deliberately tracking-number-first and tolerant of
- * the broken `receiving_id` / `shipment_id` linkage we actually see in the data:
- *
- *   (a) Last-8 tracking match — the shipment's tracking# (the value pasted into
- *       Zoho, stored as `stn.tracking_number_normalized`) and the value the
- *       scanner reads are DIFFERENT representations of the same package: Zoho
- *       holds the short human number, the dock scan reads the full IMpb (USPS
- *       420+ZIP routing prefix, and often several barcodes concatenated). The
- *       carrier-stable common denominator is the trailing package serial, so we
- *       match on the LAST 8 chars of the Zoho number appearing inside the scanned
- *       barcode digits. `position(right(norm,8) in canonical(rs.tracking_number))`
- *       is a substring test so the 8-char tail is found whether the scan is a
- *       clean number, a routing-prefixed IMpb, or a concatenated multi-scan. This
- *       path needs NO receiving_id/shipment_id link — it just compares numbers,
- *       and last-8 subsumes a full-number match (if the whole number is in the
- *       scan, its last 8 are too). Guarded to >=8 chars; an 8-digit run colliding
- *       inside an unrelated scan is ~0.02 expected across the whole table.
- *
- *   (b) Shipment link — a scan tied to a receiving row for this shipment
- *       (`receiving_carton.shipment_id`), or the scan's own `shipment_id`. Kept as a net
- *       for the rare box whose scanned barcode shares no last-8 with the Zoho
- *       number but whose carton row WAS resolved to the shipment.
- *
- * Either path means "the warehouse has touched it", so Incoming drops it the
- * instant a scan lands (honoring that view's contract) and it surfaces in the
- * `scanned` view instead. Shipment-anchored on `stn` (not the picked carton row)
- * so the Incoming base, the DELIVERED_UNOPENED facet/CASE, and the tile count in
- * {@link deliveredUnscannedBaseSql} all read the same set (count === rows).
- *
- * Perf: `receiving_scans` is ~1.6k rows, so the correlated regexp scan is
- * negligible. If it ever grows large, store a `tracking_last8` column on
- * receiving_scans (written via last8FromStoredTracking) + an index and swap the
- * inline regexp for an equality/index lookup against it.
- */
-/**
- * The bare scan→shipment match condition — references `rs` (a `receiving_scans`
- * row), `r2` (its `receiving` row), and the outer `stn`. Extracted so the EXISTS
- * predicate below AND the delivered-from-scan derivation (reconcile-delivered's
- * 'receiving_scan' pass, which needs the earliest matching `rs.scanned_at`) share
- * ONE definition of "this scan is for this shipment" — last-8 of the tracking, or
- * the shipment link. Callers must join `receiving_scans rs LEFT JOIN receiving_carton r2
- * ON r2.id = rs.receiving_id`.
- */
+/** SQL predicate (references alias `stn`) — TRUE when an operator has scanned this shipment at the dock, in ANY receiving mode. */
+/** The bare scan→shipment match condition — references `rs` (a `receiving_scans` row), `r2` (its `receiving` row), and the outer `stn`. */
 export const SHIPMENT_SCAN_MATCH_CONDITION = `(
   (
     length(stn.tracking_number_normalized) >= 8
@@ -129,27 +70,9 @@ export const SHIPMENT_SCANNED_PREDICATE = `EXISTS (
    WHERE ${SHIPMENT_SCAN_MATCH_CONDITION}
 )`;
 
-/**
- * The canonical delivered-unscanned base query body. Selects one shipment row
- * per normalized tracking# (carriers emit master+child numbers for one box),
- * most-recent delivery winning the dedupe.
- *
- * @param windowParam SQL placeholder holding the window in days, e.g. `'$1'`.
- *                    Bind it as a string (e.g. `String(WINDOW_DAYS)`).
- *
- * Callers wrap this:
- *   - count: `SELECT COUNT(*)::int AS n FROM ( <base> ) d`
- *   - list:  `WITH base AS ( <base> ) SELECT base.*, <PO enrichment> FROM base ...`
- * The row-set is identical in both, so count === list.length.
- */
+/** The canonical delivered-unscanned base query body. */
 export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string): string {
-  // shipping_tracking_numbers (alias `stn`) and zoho_po_mirror are NEEDS-COL
-  // (no organization_id), so the shipment row itself can only be GUC-scoped.
-  // When an org param is supplied we additionally pin the org-BEARING aliases
-  // referenced through the shared scan/inbound/PO predicates — `receiving` and
-  // `receiving_scans` — so cross-tenant scans/receiving rows can't suppress (or
-  // resolve) another tenant's shipment. The base string stays byte-identical
-  // when `orgParam` is omitted (the un-migrated callers' contract).
+  // shipping_tracking_numbers (alias `stn`) and zoho_po_mirror are NEEDS-COL (no organization_id), so the shipment row itself can only be…
   const inboundPredicate = orgParam
     ? `(
   EXISTS (SELECT 1 FROM receiving_carton r WHERE r.shipment_id = stn.id AND r.organization_id = ${orgParam})
@@ -206,20 +129,7 @@ export function deliveredUnscannedBaseSql(windowParam: string, orgParam?: string
   `;
 }
 
-/**
- * Zoho PO statuses that mean "no longer incoming" — re-exported from the leaf
- * SoT so this module's existing import path keeps working.
- *
- * The constant MOVED to `zoho-received-status.ts` on 2026-08-02: this module
- * `await import`s `@/lib/tenancy/db`, and a dynamic import is still an edge in
- * the client graph, so a client surface reaching the pure list through here
- * pulled `server-only` into the browser bundle and failed the build. Unit tests
- * could not see it — a Node probe only executes top-level imports, while
- * Turbopack follows the dynamic one.
- *
- * The Refresh-Zoho action refreshes `zoho_po_mirror.status` so this guard takes
- * effect on the next read. A NULL/missing mirror status is still-incoming.
- */
+/** Zoho PO statuses that mean "no longer incoming" — re-exported from the leaf SoT so this module's existing import path keeps working. */
 export { ZOHO_TERMINAL_STATUSES };
 
 const ZOHO_TERMINAL_STATUSES_SQL = ZOHO_TERMINAL_STATUSES.map((s) => `'${s}'`).join(',');
@@ -231,12 +141,7 @@ const ZOHO_TERMINAL_STATUSES_SQL = ZOHO_TERMINAL_STATUSES.map((s) => `'${s}'`).j
  */
 export const NOT_ZOHO_RECEIVED_PREDICATE = `COALESCE(mirror.status, '') NOT IN (${ZOHO_TERMINAL_STATUSES_SQL})`;
 
-/**
- * Shipment-anchored counterpart to {@link NOT_ZOHO_RECEIVED_PREDICATE}.
- * Kept for Incoming PO-line surfaces and badge resolution. The delivered-
- * unscanned hunt queue does NOT use this — physical dock scan is the sole exit
- * (see {@link deliveredUnscannedBaseSql}).
- */
+/** Shipment-anchored counterpart to {@link NOT_ZOHO_RECEIVED_PREDICATE}. */
 export const NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE = `NOT EXISTS (
   SELECT 1 FROM zoho_po_mirror mm
    WHERE COALESCE(mm.status, '') IN (${ZOHO_TERMINAL_STATUSES_SQL})
@@ -254,12 +159,7 @@ export const NOT_ZOHO_RECEIVED_SHIPMENT_PREDICATE = `NOT EXISTS (
      )
 )`;
 
-/**
- * SQL predicate (references alias `stn`) — TRUE when the shipment ties to a
- * Zoho PO (reference# match or a linked `receiving_carton.zoho_purchaseorder_id`).
- * Required for delivered-unscanned: unfound / unmatched dock scans must not
- * surface as "Delivered · not scanned".
- */
+/** SQL predicate (references alias `stn`) — TRUE when the shipment ties to a Zoho PO (reference# match or a linked… */
 export const ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE = `(
   EXISTS (
     SELECT 1 FROM zoho_po_mirror mm
@@ -274,19 +174,7 @@ export const ZOHO_PO_RESOLVED_SHIPMENT_PREDICATE = `(
   )
 )`;
 
-/**
- * SQL predicate (references alias `stn`) for a shipment the carrier API can't
- * resolve against its records — the carrier/number don't match:
- *   - the tracking# matched no known carrier at registration (carrier='UNKNOWN',
- *     so there's no provider to poll it), OR
- *   - a carrier we DO poll has no record of the number (last_error_code is
- *     NOT_FOUND or UNKNOWN_CARRIER).
- * These never resolve on their own — a human must fix the number or reassign the
- * carrier. Guarded to alive shipments (not delivered, not terminal) so a
- * delivered/closed box never lands here. Distinct from PENDING_CARRIER (a real
- * carrier we simply haven't gotten a first status from yet) and from
- * TRACKING_UNAVAILABLE (carrier is reachable but access-blocked, e.g. USPS 403).
- */
+/** SQL predicate (references alias `stn`) for a shipment the carrier API can't resolve against its records — the carrier/number don't match: */
 export const CARRIER_MISMATCH_PREDICATE = `(
   stn.id IS NOT NULL
   AND COALESCE(stn.is_delivered, false) = false

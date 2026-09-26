@@ -1,18 +1,4 @@
-/**
- * SearchHit — the single tool-calling-friendly result shape every AI-search
- * consumer (CommandBar, global-search, chat tools, future agents) renders.
- *
- * STRICT SUPERSET of global-search's SearchResult
- * (`{ id, entityType, title, subtitle, href, matchField }`) so CommandBar and
- * existing consumers keep working with minimal change; the additions are
- * `score`, `chips[]`, and optional `facets`/`actions`.
- *
- * Vocabulary note — two discriminator layers, one mapping (here, nowhere else):
- *   DB (entity_search_docs.entity_type, uppercase):
- *     ORDER | SERIAL_UNIT | RECEIVING | SKU | REPAIR | FBA_SHIPMENT
- *   UI (SearchHit.entityType, lowercase — matches global-search + ENTITY_ICONS):
- *     order | unit | receiving | sku | repair | fba
- */
+/** SearchHit — the single tool-calling-friendly result shape every AI-search consumer (CommandBar, global-search, chat tools, future… */
 
 import type { SearchEntityType } from '@/lib/search/build-search-text';
 import { getLast8 } from '@/lib/copy-chip-format';
@@ -47,21 +33,7 @@ export interface SearchHitAction {
   payload: unknown;
 }
 
-/**
- * Standards identifiers for a hit, when it has any.
- *
- * Optional and usually absent. This exists so an external agent or a partner's
- * system can reconcile a Cycle Forge record against its own by a key BOTH
- * sides recognise, without this repo growing a second search engine — the
- * AGENTS.md hard law ("never build a second search engine") is not relaxed by
- * the word "interop".
- *
- * `internal` is always present, `gs1` only when the record really resolves to
- * a licensed GS1 key. The split is the whole point: a consumer can trust
- * anything under `gs1` as globally resolvable and must treat `internal` as
- * meaningful only to this tenant. Populate via `@/lib/interop/gs1-keys`;
- * never hand-format either string at a call site.
- */
+/** Standards identifiers for a hit, when it has any. */
 export interface SearchHitIdentifiers {
   /** `urn:cycleforge:{kind}:{value}` — always available. */
   internal: string;
@@ -125,25 +97,9 @@ export function isUiEntityType(value: string): value is SearchHitEntityType {
   return value in UI_TO_DB;
 }
 
-/**
- * Deep-link per entity — mirrors the hrefs global-search already emits so a
- * hit opens the same surface regardless of which engine produced it.
- * SERIAL_UNIT uses the inventory workbench's `?unit=` view (ByUnitView →
- * /api/serial-units/:id, which accepts the numeric id).
- *
- * Orders have two destinations by job:
- *   • Shareable / Find / threads → {@link searchOrderFeedbackHref} (`/search?sel=order:…`)
- *   • Desk durable edit → `/shipping/orders?openOrderId=` (`dashboardOrderHref`)
- * {@link orderRecordHref} is a thin alias of search feedback (`/o` is retired).
- * Desk table row click keeps the right-rail `ShippedDetailsPanel` (tabbed).
- */
+/** Deep-link per entity — mirrors the hrefs global-search already emits so a hit opens the same surface regardless of which engine produced it. */
 
-/**
- * The cross-entity search surface's route. One constant so the two builders
- * below cannot drift (it used to be a `/dashboard` mode spelled out in ~10
- * places). Deliberately NOT exported: callers compose {@link globalSearchHref}
- * rather than re-assembling the path, and an unused export fails the knip gate.
- */
+/** The cross-entity search surface's route. */
 const SEARCH_SURFACE_PATH = '/search';
 
 /**
@@ -183,35 +139,15 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
       // (query-mode-routes.ts:151, useWarrantyClaims.ts:36).
       return `/support?mode=warranty&open=${entityId}`;
     case 'SUPPORT_TICKET':
-      // Tickets is Support's DEFAULT mode, so `?ticket=` alone lands there
-      // (useSupportTicketParam.ts:29,37). The value is support_tickets.id —
-      // resolveSupportContext probes the PK first, provider id second
-      // (src/lib/support/context.ts:117-133).
+      // Tickets is Support's DEFAULT mode, so `?ticket=` alone lands there (useSupportTicketParam.ts:29,37).
       return `/support?ticket=${entityId}`;
     case 'LOCATION':
-      // Inventory ▸ Locations ▸ Bins — the live list surface
-      // (locations-path.ts:10-19, INVENTORY_LOCATIONS_ROUTE_PARAMS
-      // query-mode-routes.ts:510-527).
-      //
-      // NAMED GAP, not a fabricated param: every bin RECORD surface in the app
-      // is keyed by BARCODE, never by locations.id — `?bin=` feeds
-      // LocationDetailView's barcode fetch (`/api/locations/[barcode]`,
-      // ByBinView.tsx:19-25) and `/l/[ref]` resolves barcode-or-name only. This
-      // signature carries an id, so the honest destination is the Bins tab that
-      // lists the record rather than `?loc=<id>`, which no parser reads and
-      // which route-param hygiene would reject.
+      // Inventory ▸ Locations ▸ Bins — the live list surface (locations-path.ts:10-19, INVENTORY_LOCATIONS_ROUTE_PARAMS…
       return '/inventory/locations?tab=bins';
   }
 }
 
-/**
- * Identifier heuristic for the exact bypass: serial / tracking / order-id /
- * numeric-id shaped input (no spaces, digit-bearing token or a pure id).
- * Natural-language queries fall through to the hybrid arms. Lives in this
- * pure module (not hybrid-retrieval) so the client — CommandBar skips its
- * redundant global-search fetch for identifier queries — can import it
- * without pulling the server-only pool/tenancy graph into the bundle.
- */
+/** Identifier heuristic for the exact bypass: */
 export function looksLikeIdentifier(query: string): boolean {
   const q = String(query ?? '')
     .trim()
@@ -222,12 +158,7 @@ export function looksLikeIdentifier(query: string): boolean {
   return /^[A-Za-z0-9#:_\-\.\/]+$/.test(q) && /\d{2,}/.test(q) && q.length >= 4;
 }
 
-/**
- * Narrow-rail title display (header dropdown + sidebar AI matches). Long
- * tracking/PO/serial-shaped titles share a prefix and truncate to identical
- * `94…` crumbs — show last-8 instead and keep the full value for a tooltip.
- * Product titles (spaces) and short ids stay intact.
- */
+/** Narrow-rail title display (header dropdown + sidebar AI matches). */
 interface NarrowSearchTitleDisplay {
   display: string;
   full: string;
@@ -257,14 +188,7 @@ type JourneyHandoffHit = {
   facets?: Record<string, string | null> | null;
 };
 
-/**
- * Map a search hit → Operations ▸ History Trace when a journey dimension can
- * be resolved. Returns null when no Trace anchor exists — callers must not
- * open an empty Trace (action simply does not render).
- *
- * Unit hits use `dim=unit&unit={id}` (server resolves serial_units.id) so we
- * never depend on a serial facet / search-index backfill.
- */
+/** Map a search hit → Operations ▸ History Trace when a journey dimension can be resolved. */
 export function journeyHandoffHref(hit: JourneyHandoffHit): string | null {
   const facets = hit.facets ?? undefined;
   switch (hit.entityType) {
@@ -299,18 +223,7 @@ export function shouldAutoOpenSearchOrder(
   return hits.length === 1 && hits[0]?.entityType === 'order';
 }
 
-/**
- * Sole-result auto-open, ANY entity type — the destination for a settled list
- * of exactly one hit.
- *
- * {@link shouldAutoOpenSearchOrder} only ever covered orders, so a search that
- * resolved to a single receiving carton / unit / repair still parked the
- * operator on a one-row list they had to click. One row is not a choice.
- *
- * Returns null for 0 or 2+ hits (a real list — never force a destination), an
- * unusable id, or an entity vocabulary this build does not know. ORDER hits
- * open search feedback via {@link searchHitHref}.
- */
+/** Sole-result auto-open, ANY entity type — the destination for a settled list of exactly one hit. */
 export function soleHitHref(
   hits: ReadonlyArray<{ id: number; entityType: string }>,
 ): string | null {
@@ -330,15 +243,7 @@ type SoleOrderMatchHit = {
   facets?: Record<string, string | null> | null;
 };
 
-/**
- * Identifier lookup miss → retrieve bridge: auto-open when retrieve settled to
- * **exactly one ORDER** whose marketplace order # equals the query (dash-
- * insensitive; last-8 when the paste has ≥8 digits). Numeric `orders.id` is
- * not an order number.
- *
- * Returns null for Zoho PO / multi-order / true miss — callers must fall
- * through to the cross-entity results list, never force a dead `openOrderId`.
- */
+/** Identifier lookup miss → retrieve bridge: */
 export function soleMatchingOrderHit(
   hits: ReadonlyArray<SoleOrderMatchHit>,
   query: string,
@@ -361,18 +266,7 @@ export function soleMatchingOrderHit(
   return null;
 }
 
-/**
- * Header Enter / "See all" handoff.
- *
- * Confidence decides the destination:
- *   • identifier query resolving to **exactly one** ORDER → search feedback
- *     (`/search?sel=order:…`). Typing a full order number is unambiguous intent.
- *   • otherwise → Search results (ORDER preview hits also open feedback via
- *     {@link searchHitHref} / {@link searchOrderFeedbackHref}).
- *
- * Journey Trace stays a **secondary** action (`journeyHandoffHref` / ⌘Enter) —
- * never the Enter default. Durable edit stays on the desk inspector.
- */
+/** Header Enter / "See all" handoff. */
 export function globalSearchHandoffHref(
   query: string,
   previewHits: ReadonlyArray<{ id: number; entityType: string }> = [],
@@ -388,15 +282,7 @@ export function globalSearchHandoffHref(
   return globalSearchHref(trimmed);
 }
 
-/**
- * AI-suggested filter application (plan §8.4, Phase 3): map an entity scope +
- * distilled query to the LIST SURFACE that can show "all matches" with the
- * query applied as its own URL filter — the Ask-AI path's toolArgs become a
- * real table/workbench filter, not just a hit list. Param names are each
- * surface's existing URL-state contract (dashboard `?search=`, inventory
- * `?q=`). Types without a URL-searchable list surface return null — the
- * action simply doesn't render (never a dead link).
- */
+/** AI-suggested filter application (plan §8.4, Phase 3): */
 export function searchScopeHref(dbType: SearchEntityType, query: string): string | null {
   const q = encodeURIComponent(query.trim());
   if (!q) return null;
@@ -417,28 +303,12 @@ export function searchScopeHref(dbType: SearchEntityType, query: string): string
       // unlike the hit href, the SCOPE href is a real applied filter.
       return `/inventory/locations?tab=bins&q=${q}`;
     default:
-      // RECEIVING / REPAIR / FBA_SHIPMENT: no URL-searchable list yet.
-      // WARRANTY_CLAIM deliberately joins them: `/support?mode=warranty&search=`
-      // feeds only the coverage-lookup CARD (WarrantyWorkspace.tsx:23); the
-      // claims table's own search box is local state
-      // (useWorkbenchSearchParam.ts:18), so that href would not filter the list.
+      // RECEIVING / REPAIR / FBA_SHIPMENT:
       return null;
   }
 }
 
-/**
- * The GLOBAL cross-entity search surface with a query pre-applied.
- *
- * Distinct from {@link searchScopeHref}, which narrows to one entity's list
- * surface and returns null for the types that have none (RECEIVING among them).
- * This is the "just search for this string" jump: `/search` runs hybrid
- * retrieval across every entity, so a PO number resolves to its carton, its
- * order, and its units without the caller knowing which surface owns them.
- *
- * It is its OWN route rather than a `/dashboard` mode: cross-entity results are
- * not the outbound order workbench with a different filter, and the `?warranty=`
- * precedent already showed the house answer for a surface that outgrew a mode.
- */
+/** The GLOBAL cross-entity search surface with a query pre-applied. */
 export function globalSearchHref(query: string): string {
   const q = encodeURIComponent(query.trim());
   return q ? `${SEARCH_SURFACE_PATH}?q=${q}` : SEARCH_SURFACE_PATH;

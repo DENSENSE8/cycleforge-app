@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Incoming marketplace + inventory Import — single-shot POSTs →
- * {@link IncomingSyncDialog}.
- *
- *   • Zoho (inventory) — issued POs + mirror status
- *   • eBay (marketplace) — buyer purchase ingest
- *
- * Tracking / email stream CTAs were removed from the chrome; cron and other
- * surfaces still refresh those feeds.
- */
+/** Incoming marketplace + inventory Import — single-shot POSTs → {@link IncomingSyncDialog}. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

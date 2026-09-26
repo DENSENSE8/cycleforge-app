@@ -15,18 +15,7 @@ import { syncZendeskTicketRegistryCaches } from '@/lib/support/tickets';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * In-website staff assignment of a Zendesk ticket (separate from the Zendesk
- * assignee). Assigning drops a notification into the staffer's inbox bell so they
- * follow up; it does NOT change anything in Zendesk.
- *
- * Home Today "Watch ticket" (Add CTA) is self-assign — same table, same route.
- * On assign we always refresh `support_tickets` caches from live Zendesk so
- * Today has a subject and the ticket-watch cron has a baseline.
- *
- *   GET  /api/zendesk/tickets/:id/assign           → { assignment | null }
- *   POST /api/zendesk/tickets/:id/assign { staffId } → assign (null clears)
- */
+/** In-website staff assignment of a Zendesk ticket (separate from the Zendesk assignee). */
 
 /** Parse the ticket id from /api/zendesk/tickets/:id/assign. */
 function ticketIdFromUrl(req: NextRequest): number {

@@ -1,10 +1,4 @@
-/**
- * Section-tab model — the pure shape behind the station Displays strip.
- *
- * Rescued out of `@/design-system/components/SectionTabsSlider` (Warehouse-OS)
- * so `display-index` can derive rows from a tab list without importing a
- * React component.
- */
+/** Section-tab model — the pure shape behind the station Displays strip. */
 import type { ReactNode } from 'react';
 
 export type SectionTabPriority = 'primary' | 'overflow';

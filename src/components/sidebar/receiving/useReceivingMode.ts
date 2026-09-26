@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * URL ⇄ state for the receiving sidebar's mode switcher and Unbox sub-view.
- *
- * The sidebar-mode contract keeps `mode` / `unboxview` / `triview` in the URL so
- * a refresh or deep-link is preserved. This hook centralizes the parsing + the
- * `router.replace` navigation helpers, and fires the cross-pane focus/clear
- * events that a mode change implies. Extracted from ReceivingSidebarPanel;
- * behaviour is unchanged.
- */
+/** URL ⇄ state for the receiving sidebar's mode switcher and Unbox sub-view. */
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -36,16 +28,7 @@ import {
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
 
-/**
- * Unbox sub-view from `?unboxview=`. Reads the tab SoT
- * (`utils/unbox-workspace-state.ts`) instead of re-deriving the param — this
- * hook used to carry its own `'recent' | 'queue' | 'viewed'` union with its own
- * parse and its own write, i.e. a second copy of one URL contract. That was
- * survivable while the two agreed; it stopped being survivable when the UI
- * vocabulary moved to Recent · Queue · History and the wire kept `viewed`,
- * because `updateUnboxView('recent')` then read as the Recent tab in one file
- * and the History tab in the other.
- */
+/** Unbox sub-view from `?unboxview=`. */
 type UnboxView = UnboxWorkspaceTab;
 
 export interface ReceivingModeState {
@@ -167,14 +150,7 @@ export function useReceivingMode(): ReceivingModeState {
   };
 
   const updateMode = (nextMode: ReceivingMode) => {
-    // The target URL is CONSTRUCTED from a declared set — the current query
-    // string is never copied forward. That is what replaced `MODE_SCOPED_PARAMS`:
-    // there is no list of keys to remember to delete, because nothing rides
-    // along unless it is named right here.
-    //
-    // The one deliberate carry is the staff filter: it is an operator-level
-    // preference ("show me my cartons"), not mode state, and losing it on every
-    // rail click was never the intent of the isolation rule.
+    // The target URL is CONSTRUCTED from a declared set — the current query string is never copied forward.
     const staff = searchParams.get('staff') ?? searchParams.get('staffId');
     router.replace(buildRouteUrl(RECEIVING_MODE_ROUTE_PARAMS[nextMode], { staff }));
   };

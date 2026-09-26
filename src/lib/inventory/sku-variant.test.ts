@@ -1,15 +1,4 @@
-/**
- * Tests for the COLOR-axis decoder (sku-reconciliation plan, Step B).
- *
- * The decoder must:
- *   - decode ONLY the owner-confirmed suffixes (-B → Black, -W → White);
- *   - return null for the UNCONFIRMED suffixes (-N / -S / -SW) so they can never
- *     mis-tag data until the owner supplies a value;
- *   - never decode a -P-N part index or a non-color suffix;
- *   - extract the base correctly.
- *
- * Pure config-driven logic — fully DB-free, no env wiring.
- */
+/** Tests for the COLOR-axis decoder (sku-reconciliation plan, Step B). */
 
 import { test } from 'node:test';
 import { equal, deepEqual } from 'node:assert';

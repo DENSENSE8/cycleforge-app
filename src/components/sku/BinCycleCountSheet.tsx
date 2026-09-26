@@ -35,12 +35,7 @@ interface BinCycleCountSheetProps {
   invalidateKey: readonly unknown[];
 }
 
-/**
- * Inline cycle-count sheet — lists every cycle_count_lines row for this bin
- * in the active campaign and lets the receiver type a counted qty per row.
- * Submits each row independently so partial counts don't get lost on
- * connection drops.
- */
+/** Inline cycle-count sheet — lists every cycle_count_lines row for this bin in the active campaign and lets the receiver type a counted… */
 export function BinCycleCountSheet({
   open,
   onClose,

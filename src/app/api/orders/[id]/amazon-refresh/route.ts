@@ -8,20 +8,7 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 
-/**
- * POST /api/orders/[id]/amazon-refresh
- *
- * Operator-triggered single-order Amazon SP-API reimport: getOrderItems → stamp
- * ASIN onto `item_number` (and title/SKU when still empty). Product-tab empty
- * item-number path — not the bulk watermark sync.
- *
- * Gate: `orders.create` (same family as set-item-number / document fetch —
- * operator order mutation, not settings-level `integrations.amazon`).
- *
- * Naturally idempotent: conditional UPDATE is a no-op if item_number already
- * stamped. No formal idempotency header (matches set-item-number /
- * marketplace-refresh). A retry may emit a redundant audit row only.
- */
+/** POST /api/orders/[id]/amazon-refresh */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);

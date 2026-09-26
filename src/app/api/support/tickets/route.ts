@@ -36,19 +36,7 @@ const Body = z.object({
   linkages: Linkages,
 });
 
-/**
- * POST /api/support/tickets — station-generic ticket create.
- *
- * Mints a live helpdesk ticket via the capability facade and (optionally) links
- * it to an anchor / resolved linkages through the shared link waist
- * ({@link createSupportTicket} → `linkTicketToAnchor` + shipment references).
- * Returns the provider id so the caller can open it (`?ticket=<providerTicketId>`).
- * Idempotent: an `Idempotency-Key` header dedupes a retried submit (the facade
- * caches an identical-key create).
- *
- * Gated on `integrations.zendesk` (the station-generic create capability); a
- * disconnected helpdesk returns an operator-actionable 409, not a 500.
- */
+/** POST /api/support/tickets — station-generic ticket create. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

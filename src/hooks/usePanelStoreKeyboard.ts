@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Mount-only: Esc → `closeRightPanel`, Mod+Shift+R → reopenDraft.
- *
- * Esc routes through the ONE closer (`lib/right-rail/close.ts`), not
- * `closeAndCachePanel` directly — otherwise the keyboard dismiss and the
- * host's `X` would run different halves of "close" (see that module).
- *
- * Capture phase is used only while the draft toast is armed so the resume
- * chord beats the browser's hard-reload. Esc stays on bubble so an open
- * overlay keeps ownership. Never blurs; unrelated keys are ignored.
- */
+/** Mount-only: Esc → `closeRightPanel`, Mod+Shift+R → reopenDraft. */
 
 import { useEffect } from 'react';
 import { useAnyOverlayOpen } from '@/design-system/hooks';

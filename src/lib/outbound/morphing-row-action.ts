@@ -1,10 +1,4 @@
-/**
- * CYC-82 roster for the left-gutter morphing action menu.
- *
- * Packers are Tuan and Thuy only (Kai is never a packer here).
- * Pickers are live staff whose names are Sang, Ajax, Lien, or Michael —
- * never invented names, never a hard-coded fake roster.
- */
+/** CYC-82 roster for the left-gutter morphing action menu. */
 
 import { PACKER_IDS } from '@/utils/staff';
 
@@ -134,19 +128,7 @@ export function morphingAssignedName(
   return name.length > 0 ? name : null;
 }
 
-/**
- * CYC-82 gutter click — **the rule now lives in the engine.**
- *
- * The checkbox ALWAYS toggles, including unselect; opening the assign menu is a
- * side-effect of becoming selected, never a substitute for the toggle, and
- * shift stays the range walk.
- *
- * It moved to `compound/compound-row-plane.ts` when the shared compound row
- * gained the plane seam: three unrelated surfaces (To-ship's desktop gutter,
- * the mobile {@link MorphingSelectGutter}, Tasks) already obeyed a rule named
- * after one of them. Re-exported here so every existing caller and import path
- * still resolves — one implementation, not two.
- */
+/** CYC-82 gutter click — **the rule now lives in the engine.** */
 export {
   compoundRowPlaneGutterClick as morphingGutterClick,
   applyCompoundRowPlaneGutterClick as applyMorphingGutterClick,

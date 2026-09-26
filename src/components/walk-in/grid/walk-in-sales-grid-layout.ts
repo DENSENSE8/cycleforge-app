@@ -1,12 +1,4 @@
-/**
- * Walk-in sales column model — MATERIALIZED from a SlotLayout onto the shared
- * compound skeleton, never a hand array.
- *
- * Callers: table definition + spreadsheet hook.
- * Affected API: none.
- * Data schemas: SlotLayout + SaleRow (via catalog).
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** Walk-in sales column model — MATERIALIZED from a SlotLayout onto the shared compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {

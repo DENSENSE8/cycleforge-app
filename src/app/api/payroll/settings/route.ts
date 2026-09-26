@@ -1,16 +1,4 @@
-/**
- * GET / PATCH /api/payroll/settings
- *
- * Singleton row (id=1) holding shop-wide payroll defaults — break window,
- * OT/DT thresholds and multipliers, timezone. Admin-only on both methods.
- *
- * Wired up so the admin payroll UI can drop in later without API work:
- *   • GET returns the current row.
- *   • PATCH accepts a partial body and updates only the fields that change.
- *
- * The defaults seeded in the migration are CA-standard (8 hr/day, 40 hr/wk
- * for 1.5×, 12 hr/day for 2×) with a 30-minute lunch from 12:30–1:00.
- */
+/** GET / PATCH /api/payroll/settings */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -35,10 +23,7 @@ interface PayrollSettingsRow {
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   try {
-    // payroll_settings is a shop-wide singleton (id=1) with no organization_id
-    // column and no parent to scope by, so it can't carry an explicit org
-    // predicate. Routing through tenantQuery sets the app.current_org GUC
-    // (the RLS backstop) on the session for this read.
+    // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so it can't carry an explicit…
     const r = await tenantQuery<PayrollSettingsRow>(
       ctx.organizationId,
       `SELECT * FROM payroll_settings WHERE id = 1`,
@@ -97,10 +82,7 @@ export const PATCH = withAuth(async (req: NextRequest, me) => {
   setClauses.push(`updated_at = NOW()`);
 
   try {
-    // payroll_settings is a shop-wide singleton (id=1) with no organization_id
-    // column and no parent to scope by, so the WHERE can't carry an explicit
-    // org predicate. Running the write inside withTenantTransaction sets the
-    // app.current_org GUC (the RLS backstop) for this UPDATE.
+    // payroll_settings is a shop-wide singleton (id=1) with no organization_id column and no parent to scope by, so the WHERE can't carry an…
     const r = await withTenantTransaction(me.organizationId, (client) =>
       client.query<PayrollSettingsRow>(
         `UPDATE payroll_settings SET ${setClauses.join(', ')} WHERE id = 1 RETURNING *`,

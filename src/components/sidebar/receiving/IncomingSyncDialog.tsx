@@ -62,25 +62,7 @@ function SummaryStat({ label, value, tone }: SyncDialogTile) {
   );
 }
 
-/**
- * Incoming Zoho / marketplace Import progress — non-modal RightRailHost
- * occupant (`detail:incoming-sync`). Same float metric as Add eBay purchase /
- * order import progress; dismiss blocked while a sync is in flight.
- *
- * **ONE band, and it is the shell's** (2026-08-21). The panel used to paint its
- * own header: a stacked `Inventory Sync` eyebrow over a `Sync complete` title,
- * a `disabled` `X` beside the elapsed float, and a footer `Close` twin under
- * the report. Three dismiss-shaped controls for the one the host already paints
- * at the flush top-right, and a two-line title where the band contract wants a
- * single current segment. It now mounts {@link DeskInspectorIndexShell} in the
- * `standalone` stance — no index routes here (the Incoming chrome opens it
- * directly), so it owes no Back and says so — with the elapsed float as the
- * band's read-only metric and the reserved host-close cell after it.
- *
- * The run status (`Refreshing purchase orders` / `Sync complete` / `Sync
- * failed`) and which connector ran are IDENTITY that does not fit one word, so
- * they lead the body rather than growing a second header line.
- */
+/** Incoming Zoho / marketplace Import progress — non-modal RightRailHost occupant (`detail:incoming-sync`). */
 export function IncomingSyncDialog({
   open,
   kind,
@@ -210,10 +192,7 @@ export function IncomingSyncDialog({
             </div>
           }
         />
-        {/* NO footer `Close`. The dismiss is the host's singleton `X` at the
-            flush top-right, and `canClose` above already refuses it mid-run —
-            which is all the old disabled footer button and header `X` did, at
-            the cost of two more dismiss-shaped controls. */}
+        {/* NO footer `Close`. */}
       </div>
     </DetailStackRailRegistrar>
   );

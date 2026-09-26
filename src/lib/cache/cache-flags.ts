@@ -1,17 +1,4 @@
-/**
- * Redis cache kill-switch + per-namespace gating (Phase 0.5).
- *
- * Env-only, sync, fail-safe. The cache substrate always fails open to the DB,
- * so these flags choose whether to *attempt* Redis at all:
- *
- *   - REDIS_CACHE_DISABLED = truthy  → global kill-switch, no namespace is cached.
- *   - REDIS_CACHE_NS = "a,b,c"       → allowlist. When set, ONLY the listed
- *     namespaces are cached; everything else short-circuits to the loader.
- *     When unset/empty, all namespaces are eligible (subject to the kill-switch).
- *
- * Kept separate from feature-flags.ts because that module imports the DB pool,
- * and the cache substrate must stay DB-free and import-cheap on the hot path.
- */
+/** Redis cache kill-switch + per-namespace gating (Phase 0.5). */
 function readBoolEnv(name: string, defaultValue = false): boolean {
   const raw = process.env[name];
   if (raw == null || raw.trim() === '') return defaultValue;

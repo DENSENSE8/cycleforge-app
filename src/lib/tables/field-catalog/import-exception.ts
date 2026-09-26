@@ -1,30 +1,4 @@
-/**
- * Import-exception field catalog — the bindable missing-item-number facts, as
- * DATA. Wave 1.3's sixth and last family
- * (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `import-exception` row:
- * "second store, second hand model, one page. Two catalogs, two layouts — not
- * two engines.").
- *
- * That row is the whole design in one sentence, and this port makes it literal:
- * Review's two queues live on one page, mount the same compound cells, and now
- * carry two catalogs and two layout documents — the same shape as
- * incoming/receiving and daily/tasks.
- *
- * Every entry names a fact `ImportExceptionRow` already carries off
- * `/api/review/import-exceptions`. Resolution is
- * `./import-exception-resolve.ts`, kept separate so this module stays a LEAF.
- *
- * `import-exception.order` is the identity fact — the marketplace order id the
- * sheet row carried, which the shared `fulfillment` chrome track already
- * paints.
- *
- * **`status` is deliberately absent**, for the same reason as
- * `catalog-link.status`: this queue is the OPEN exceptions, so the state pill
- * reads "No item #" for every row by construction. A column painting one
- * identical value on 100% of rows is ink that teaches operators to stop reading
- * chips.
- */
+/** Import-exception field catalog — the bindable missing-item-number facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';

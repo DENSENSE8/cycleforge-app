@@ -103,13 +103,7 @@ type IncomingCarrierEventMeta = {
   lastCheckedAt?: string | null;
 };
 
-/**
- * Incoming delivery icon + optional Unverified chip / carrier city — one tooltip,
- * shared between the grid status cell and dashboard order rows.
- *
- * City text is list-row only (`showCarrierCity`); the Incoming grid Status track
- * keeps city out of the cell (tooltip only when provided without show).
- */
+/** Incoming delivery icon + optional Unverified chip / carrier city — one tooltip, shared between the grid status cell and dashboard order… */
 export function IncomingTrackingStatusCluster({
   deliveryState,
   sellerReported,

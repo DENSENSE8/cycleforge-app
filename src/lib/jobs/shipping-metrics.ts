@@ -1,19 +1,4 @@
-/**
- * Phase G — observability for carrier tracking / receiving-delivered health.
- *
- * G1: collect one structured snapshot of the numbers that tell us whether the
- *     delivered surface is honest — delivered-unscanned, per-carrier delivered
- *     throughput, TRACKING_UNAVAILABLE (blocked) counts, error-stuck shipments,
- *     and unmatched-tracking (receiving rows with a tracking# but no STN link).
- * G2: derive alerts from that snapshot — USPS access still blocked (IP-Agreement
- *     reminder), a backlog of error-stuck shipments, or a carrier that has live
- *     in-transit volume but zero delivered detections over a week (a likely sign
- *     a carrier introduced a status code our maps don't catch — see R3).
- *
- * Pure reads. The cron logs the snapshot (`[metrics.shipping.tracking]`) and any
- * alerts (`[alert.shipping.tracking]`) as structured lines the log scrapers key
- * off — the codebase's established "alert" channel (no Slack integration here).
- */
+/** Phase G — observability for carrier tracking / receiving-delivered health. */
 import pool from '@/lib/db';
 import { getDeliveredUnscannedCount } from '@/lib/receiving/delivered-unscanned';
 

@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers/callers: node:test only (adapter + resolve coverage).
- * Affected API: none.
- * Data schemas: KioskSlotEventTableRow, CompoundRowView, CompoundSlotValue.
- * User instruction (verbatim): Continue to the next phase
- */
+/** Gate preamble (Fact-Forcing): */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

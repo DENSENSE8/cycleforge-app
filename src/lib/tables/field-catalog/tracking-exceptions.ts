@@ -1,21 +1,4 @@
-/**
- * Tracking-exception field catalog — the bindable unmatched-scan facts, as
- * DATA. Wave 1.4's ninth family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `tracking-exceptions`
- * row: "exception facts (carrier, age, last scan) are bindable; a frozen
- * exception grid cannot be tenant-captured").
- *
- * Every entry names a fact `TrackingExceptionRow` already carries off
- * `GET /api/tracking-exceptions`. Resolution is
- * `./tracking-exceptions-resolve.ts`, kept separate so this module stays a LEAF.
- *
- * Tracking-exceptions is a SHEET morph. `tracking-exceptions.tracking` is the
- * IDENTITY fact — the scanned number the whole row is about — which the
- * structural Tracking track paints as a copy chip.
- *
- * The `actions` track (retry / edit) is an ACTION, not a fact: no `hideKey`, so
- * it is structural and the Fields menu never offers to hide a control.
- */
+/** Tracking-exception field catalog — the bindable unmatched-scan facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -106,12 +89,7 @@ export const TRACKING_EXCEPTIONS_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default layout — visual parity with the retired hand model's CORE
- * view (`select · title · carrier · reason · status · created · actions`): the
- * questions an ops operator scanning unmatched receiving scans actually asks.
- * Guard: `tracking-exceptions.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default layout — visual parity with the retired hand model's CORE view (`select · title · carrier · reason · status ·… */
 export const TRACKING_EXCEPTIONS_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'tracking-exceptions.tracking',

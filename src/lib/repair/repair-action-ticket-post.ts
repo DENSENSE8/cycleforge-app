@@ -1,18 +1,4 @@
-/**
- * Post one bench-log entry to its repair's Zendesk ticket as a note — after the
- * entry has committed (`POST /api/repair/actions` schedules it with
- * `scheduleAfterResponse`) or on demand (`POST /api/repair/actions/[id]/ticket-post`).
- *
- * Idempotent: the post is claimed with one guarded UPDATE (never after a
- * `posted` status or a stored comment id, never while another attempt is inside
- * `TICKET_POST_STALE_MS`), so the after-commit job and a Retry tap cannot both
- * post. The outcome is written back on the action (`ticket_post_*`); a failure
- * is recorded there and never touches the saved entry.
- *
- * Not the `ticket_work_outbox`: its pending-dedupe key is one row per
- * (work type, entity, ticket), so two entries logged on the same repair before
- * the drain would collapse into one note. The per-action columns are the queue.
- */
+/** Post one bench-log entry to its repair's Zendesk ticket as a note — after the entry has committed (`POST /api/repair/actions` schedules… */
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { recordStaffForPostedComment } from '@/lib/integrations/helpdesk/comment-staff';
 import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendesk-ticket-cache';

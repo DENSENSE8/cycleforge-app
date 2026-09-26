@@ -10,20 +10,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zendesk/next-ticket-number
- *
- * The id a ticket filed right now would land on — the station's draft ticket
- * number, shown while a claim is still a draft.
- *
- * A PREDICTION, not a reservation: Zendesk mints ids on create and has no
- * reserve endpoint, so this reads the newest ticket and adds one. See
- * {@link predictNextTicketNumber} for why the caller must treat it as
- * provisional and never persist it.
- *
- * Reads a small page rather than one row so a single odd sort result cannot
- * throw the max off.
- */
+/** GET /api/zendesk/next-ticket-number */
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {
     const context = 'GET /api/zendesk/next-ticket-number';

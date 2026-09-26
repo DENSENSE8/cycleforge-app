@@ -1,14 +1,4 @@
-/**
- * POST /api/auth/email-login/request
- *
- * Passwordless owner login. Body: { email }. Resolves the GLOBAL account by
- * verified email (account_emails → accounts → memberships) and, if it maps to an
- * active membership, emails a one-time magic link (15-min, hashed token) that
- * signs into that workspace. ALWAYS returns { ok: true } — it must not reveal
- * whether an email is registered. IP-throttled.
- *
- * Public (no session). Pair: GET /api/auth/email-login/verify.
- */
+/** POST /api/auth/email-login/request */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -44,11 +34,7 @@ export const POST = withAuth(async (req: NextRequest) => {
     return NextResponse.json({ error: 'INVALID_INPUT' }, { status: 400 });
   }
 
-  // Account-based resolution (account_emails → accounts → memberships) — NOT a
-  // `staff WHERE email LIMIT 1` scan (which silently cross-org-ambiguated). If
-  // the account belongs to multiple orgs, prefer the workspace the request is
-  // for (x-tenant-slug); else the first membership. The emailed link then signs
-  // into that org via the staff-keyed token (verify route unchanged).
+  // Account-based resolution (account_emails → accounts → memberships) — NOT a `staff WHERE email LIMIT 1` scan (which silently…
   const account = await getAccountByEmail(email);
   const memberships = account && account.status === 'active'
     ? await listMembershipsForAccount(account.id)

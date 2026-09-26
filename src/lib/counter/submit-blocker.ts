@@ -1,28 +1,9 @@
-/**
- * What still stands between this visit and a receipt — as a pure function the
- * DESK can call, not just the server.
- *
- * This used to live in `session-store`, which imports `pg`. That put the gate
- * out of reach of the client, so the desk could only learn a visit was
- * unfinishable by pressing Pay and reading a 422 back. An operator standing in
- * front of a customer should see "needs a phone number" on the button itself,
- * before the card comes out of the wallet — same codes, same order, one
- * implementation. `session-store` re-exports it, so the server path is
- * unchanged and there is still exactly one answer to "can this be submitted".
- *
- * Returned as a CODE, not a sentence, so the desk, the tablet and the E2E all
- * name the same gate.
- */
+/** What still stands between this visit and a receipt — as a pure function the DESK can call, not just the server. */
 
 import { isLinkedRepairLine, isRepairPayload } from '@/lib/kiosk/cart-line';
 import type { CounterSessionSnapshot } from './session-events';
 
-/**
- * The refusals a *staged cart* can carry, as opposed to the refusals a *write*
- * can carry (claim conflicts, version conflicts, a closed session). A strict
- * subset of `CounterSessionError`, so `session-store` can keep using it as a
- * write guard without widening anything.
- */
+/** The refusals a *staged cart* can carry, as opposed to the refusals a *write* can carry (claim conflicts, version conflicts, a closed… */
 export type CounterSubmitBlocker = 'EMPTY_CART' | 'MISSING_CUSTOMER' | 'UNSIGNED_REPAIR';
 
 /**

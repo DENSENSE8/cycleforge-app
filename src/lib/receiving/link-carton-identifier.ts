@@ -1,39 +1,4 @@
-/**
- * Link ANY identifier to a carton — whether or not the order exists yet.
- *
- * The unbox operator holds a box with SOME identifier printed on it: a Zoho PO
- * number, a marketplace order number, an RMA, a supplier reference. Two things
- * were wrong before this helper:
- *
- *   1. The pairing surface could only link a candidate that already existed in
- *      `zoho_po_mirror`. An id the system had never imported was a dead end —
- *      "No purchase orders match “X”." with nothing to press — so the carton
- *      stayed Unfound and the id the operator was holding was never recorded.
- *   2. The inline PO# field DID accept free text, but wrote it to
- *      `zoho_purchaseorder_number`, which makes `PATCH /api/receiving/[id]`
- *      promote `source` 'unmatched' → 'zoho_po'. The carton then CLAIMS to be a
- *      matched Zoho PO while carrying zero imported lines. A lie plus no items.
- *
- * One entry point, two honest outcomes:
- *
- *   • RESOLVED — the id matches a PO in the mirror (by id, normalized number,
- *     or normalized reference). Delegate to {@link relinkReceivingPo} with
- *     scope 'both', which re-points the carton + line AND runs
- *     `ensurePoLinesOnReceiving({ importIfEmpty: true })` — that is the SKU/item
- *     import: adopt this PO's unattached lines, else pull them from Zoho.
- *   • PENDING — nothing matches yet. Record the identifier on the carton
- *     (`receiving_carton.source_order_id`, the column that exists for exactly
- *     this) and write a `manual` row into `inbound_purchase_order_links`, the
- *     purchase-identity SoT. The carton STAYS `source = 'unmatched'`: it is not
- *     matched, it is waiting for an import. When that order lands,
- *     `claimPendingIdentifierCartons` (link-pending-identifier.ts) finds it by
- *     this id and performs the same resolved path, items included.
- *
- * Never writes `zoho_purchaseorder_number` for an unresolved id — that column
- * means "this carton is a Zoho PO", and an un-imported marketplace order is not.
- *
- * Deps-injected (real impls by default) so the unit test runs DB-free.
- */
+/** Link ANY identifier to a carton — whether or not the order exists yet. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -103,12 +68,7 @@ export interface LinkCartonIdentifierDeps {
     identifier: string,
   ) => Promise<ResolvedPurchaseOrder | null>;
   relink: typeof relinkReceivingPo;
-  /**
-   * Second namespace: a SALES order number (marketplace / storefront). Resolves
-   * against `orders` and imports that order's item onto the line as a return
-   * linkage. Returns `imported: false` for a value that is not an order, which
-   * is a clean no-op — the identifier then falls through to pending.
-   */
+  /** Second namespace: */
   importSalesOrder: typeof importSalesOrderByNumber;
   listLinks: (orgId: OrgId, receivingLineId: number) => Promise<PurchaseLinkRow[]>;
   upsertLink: typeof upsertPurchaseLink;
@@ -222,10 +182,7 @@ export async function linkCartonIdentifier(
     };
   }
 
-  // ── Second namespace: a SALES order number the storefront already knows. ───
-  // "Found in the system" is not only Zoho POs — a marketplace order number
-  // resolves through `orders` and brings ITS item (sku, title, condition) onto
-  // the line, which is the same promise for the operator holding the box.
+  // ── Second namespace:
   if (lineId) {
     const sale = await deps.importSalesOrder(
       { orderNumber: identifier, receivingLineId: lineId, receivingId },
@@ -244,13 +201,7 @@ export async function linkCartonIdentifier(
     }
   }
 
-  // ── Pending: keep the id, keep the truth (still unmatched). ─────────────────
-  //
-  // The platform comes with the id: `111-8911758-3549041` IS an Amazon order
-  // number and `03-15100-78272` an eBay one (marketplace-order-id.ts). Without
-  // stamping it the carton banner has no channel to paint and reads blank /
-  // "Unfound" even though the operator just told it which marketplace this box
-  // came from. COALESCE — an already-classified carton is never overwritten.
+  // ── Pending: keep the id, keep the truth (still unmatched).
   const inferredPlatform = inferMarketplaceFromOrderId(identifier);
   await deps.runTx(orgId, async (client) => {
     await client.query(

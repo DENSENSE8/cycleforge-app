@@ -1,32 +1,4 @@
-/**
- * Durable, cross-instance OAuth access-token cache.
- *
- * WHY (2026-09-14 Zoho blackout): every provider client cached its minted
- * access token in a per-process `Map`. On Vercel that is per LAMBDA INSTANCE —
- * plus every local dev server pointed at the same vault row — so the token
- * endpoint got hit once per cold instance, per health poll, per cron tick.
- * Zoho allows 10 mints per refresh token per 10 minutes; we crossed it, the
- * mint failed, and the failure latched the connection off for 25 hours.
- *
- * Fix: one token per (org, provider, scope) lives in the DB with its expiry,
- * so every instance shares the same mint for the token's whole lifetime.
- *
- * COORDINATION — two layers, both pool-safe:
- *   1. in-process: concurrent callers in one instance await ONE promise;
- *   2. cross-instance: a short `UPDATE … RETURNING` claims the right to mint
- *      (`access_token_mint_claimed_at`); losers poll the token row briefly and
- *      adopt the winner's token.
- *
- * It must NOT hold a dedicated client while minting. The first cut used a
- * blocking `pg_advisory_lock` on a checked-out client; with PG_POOL_MAX=5 a
- * 12-caller stampede exhausted the pool ("timeout exceeded when trying to
- * connect") and every caller fell through to its own mint — reproducing the
- * exact failure this module exists to prevent. Measured: 12 callers → 12
- * mints. Keep every DB touch here short and released.
- *
- * The token is stored with the same envelope helpers as the credential payload
- * (AES-256-GCM when INTEGRATION_KMS_KEY is set, dev JSON otherwise).
- */
+/** Durable, cross-instance OAuth access-token cache. */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
@@ -162,14 +134,7 @@ const WAIT_POLL_MS = 250;
  */
 const inFlight = new Map<string, Promise<SharedAccessTokenResult>>();
 
-/**
- * Claim the right to mint. Returns true for the one caller (fleet-wide) that
- * should hit the provider; false means someone else is already minting.
- * A stale claim (crashed minter) is re-claimable after MINT_CLAIM_TTL_SEC.
- *
- * Exported as the coordination seam: the claim/adopt behaviour is what stops a
- * fleet-wide stampede, so it has to be exercisable on its own.
- */
+/** Claim the right to mint. */
 export async function claimMint(
   orgId: OrgId,
   provider: IntegrationProvider,
@@ -213,15 +178,7 @@ export async function releaseMintClaim(
   }
 }
 
-/**
- * Return the shared token, minting at most once across the whole fleet.
- *
- * 1. read the shared token → return it;
- * 2. join this instance's in-flight attempt, if any;
- * 3. claim the fleet-wide mint: winner mints + persists;
- * 4. losers poll for the winner's token, and mint only if it never lands
- *    (bounded by WAIT_FOR_WINNER_MS — a stuck peer must not fail the request).
- */
+/** Return the shared token, minting at most once across the whole fleet. */
 export async function getSharedAccessToken(
   orgId: OrgId,
   provider: IntegrationProvider,

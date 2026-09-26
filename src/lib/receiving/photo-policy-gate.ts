@@ -1,34 +1,4 @@
-/**
- * mark-received photo-policy gate — server-side count assembly for the pure
- * evaluator (WS-PHOTO Plan 5,
- * docs/todo/photo-evidence-policy-claims-insurance-plan.md).
- *
- * `evaluateReceivingPhotoPolicy` (./photo-policy.ts) judges already-typed
- * evidence counts; this module owns HOW a receive route assembles them:
- *
- * - Carton stage counts come from `sqlCartonStagePhotoCount` (entity AND
- *   photo_type pinned per stage) — never the entity-only po-level count,
- *   which over-reports arrival evidence.
- * - Line item counts are entity-only per the identity law
- *   (`sqlLinePhotoCount`).
- * - "Non-cancelled lines" = every `receiving_line` row under the carton.
- *   The schema has no cancelled state for lines (removal is a hard DELETE),
- *   and both the unbox accordion and mark-received-po's carton-line loads
- *   read all rows under `receiving_id` unfiltered — the gate judges the same
- *   set the operator sees.
- *
- * Fast paths run ZERO queries (deps untouched):
- * - policy `optional` (or any unrecognized value) — the default must stay
- *   byte-identical to the ungated route;
- * - `alreadyReceived` — a re-receive/retry of a line that already advanced
- *   past the pre-receive stages must never newly 409 (Zoho-pending replays,
- *   testing bounce-backs, idempotent client retries);
- * - no resolvable carton id — nothing to scope evidence to (degrade-not-block;
- *   such a line has no unbox photo surface either).
- *
- * Deps-injected (default = real tenant-scoped query) so unit tests run
- * DB-free per.
- */
+/** mark-received photo-policy gate — server-side count assembly for the pure evaluator (WS-PHOTO Plan 5,… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import {
@@ -55,13 +25,7 @@ export interface ReceivingPhotoPolicyGateDeps {
   }) => Promise<ReceivingPhotoEvidenceCounts>;
 }
 
-/**
- * One statement, one row: both carton stage counts as scalar subqueries plus
- * the per-line item counts aggregated to json. The FROM-less SELECT always
- * returns exactly one row, so a carton with zero lines still reports its
- * carton counts (an empty `line_counts` array is vacuously ok under
- * `require_per_item`). Bind `[organizationId, receivingId]`.
- */
+/** One statement, one row: */
 export function receivingPhotoEvidenceCountsSql(): string {
   return `SELECT
   ${sqlCartonStagePhotoCount('$2::int', '$1', 'package')}::int AS package_count,
@@ -116,13 +80,7 @@ const defaultReceivingPhotoPolicyGateDeps: ReceivingPhotoPolicyGateDeps = {
   loadEvidenceCounts: loadEvidenceCountsFromDb,
 };
 
-/**
- * `inbound_workflow_status_enum` values a line holds BEFORE its first receive.
- * Everything else (UNBOXED, DONE, and the testing/disposition states) means
- * the physical receive already happened once — a repeat mark-received call is
- * a replay/bounce-back the photo gate must not newly block. Blank/unknown
- * counts as pre-receive: an untouched line is exactly what the gate insures.
- */
+/** `inbound_workflow_status_enum` values a line holds BEFORE its first receive. */
 const PRE_RECEIVE_WORKFLOW_STATUSES: ReadonlySet<string> = new Set([
   '',
   'EXPECTED',

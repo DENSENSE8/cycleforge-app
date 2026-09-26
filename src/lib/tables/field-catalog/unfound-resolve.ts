@@ -1,11 +1,4 @@
-/**
- * Unfound-queue slot resolvers — row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks.
- *
- * The `checked` cell is an interactive checkbox; this module still answers what
- * the fact SAYS, so a bound column with no bespoke face — or any later export —
- * reads "Checked" / null rather than a raw boolean.
- */
+/** Unfound-queue slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { QueueRow } from '@/components/receiving/unfound/queue-table/unfound-queue-shared';

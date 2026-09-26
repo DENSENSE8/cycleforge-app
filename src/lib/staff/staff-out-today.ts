@@ -1,18 +1,4 @@
-/**
- * Which staff are OUT on a PST date — the signal listing automations use to
- * fall back from a rule's primary assignee to its backup.
- *
- * Out = inactive, not scheduled that day, or on approved time off. Schedule
- * precedence copies GET /api/staff?presentToday=true exactly:
- *   COALESCE(staff_schedule_overrides, staff_week_plans, staff_weekly_schedule, true)
- *   AND staff_availability_rules (weekday_allowed) lateral
- * — minus that route's weekend shortcut: schedule rows decide every day.
- *
- * A schedule / time-off table that does not exist yet reads as "present" for
- * that signal. Existence is probed once (to_regclass never errors, so a
- * caller's transaction is never aborted by a 42P01) and cached; the steady
- * state is one round trip per call.
- */
+/** Which staff are OUT on a PST date — the signal listing automations use to fall back from a rule's primary assignee to its backup. */
 
 import { fromZonedTime } from 'date-fns-tz';
 import { tenantQuery } from '@/lib/tenancy/db';

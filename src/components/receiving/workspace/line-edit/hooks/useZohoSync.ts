@@ -20,23 +20,7 @@ function isLocallyReceived(row: ReceivingLineRow): boolean {
   );
 }
 
-/**
- * Refresh ↔ Zoho for a single receiving line. Always searches by tracking#
- * (PO# search is a future upgrade). Flow:
- *   1. find-po by tracking# — Zoho is the source of truth.
- *   2. Reconcile the line: if Zoho's purchaseorder_id or number differs from
- *      the local line, PATCH /api/receiving-lines. No-op on match.
- *   3. Reconcile the carton (receiving row): PATCH with PO# + tracking# when
- *      `receiving_id` is set. Otherwise fall back to /api/receiving/lookup-po
- *      which creates/links a carton from the tracking#.
- *
- * Also wires the workspace header's Refresh button (the
- * `receiving-workspace-refresh-line` window event) so the panel doesn't need a
- * prop-drilled ref or to lift this up to the workspace.
- *
- * Listing/Zendesk are prefilled from PO notes only when still empty — the
- * setters are passed in so the values stay owned by the panel.
- */
+/** Refresh ↔ Zoho for a single receiving line. */
 export function useZohoSync(
   row: ReceivingLineRow,
   {
@@ -74,13 +58,7 @@ export function useZohoSync(
     return false;
   }, [row.id, dispatchLine]);
 
-  /**
-   * Pull-from-Zoho for the whole carton: re-imports the linked PO so
-   * receiving.zoho_notes (PO header notes), receiving_lines.unit_price (price),
-   * and receiving_lines.zoho_notes (item descriptions) all refresh from Zoho.
-   * Returns ok + notes so Inventory Refresh can toast; thin `string | null`
-   * wrapper stays for older callers.
-   */
+  /** Pull-from-Zoho for the whole carton: */
   const syncCartonFromZohoResult = useCallback(async (): Promise<InventoryDossierRefreshResult> => {
     if (!row.receiving_id) {
       return { ok: false, error: 'No carton linked — cannot pull inventory' };
@@ -110,10 +88,7 @@ export function useZohoSync(
       const syncedNotes =
         data && 'zoho_notes' in data ? ((data.zoho_notes ?? null) as string | null) : undefined;
 
-      // Re-fetch the line so the sidebar/table/panel pick up price + notes +
-      // zoho_status (by-id SQL joins zoho_po_mirror). Always patch
-      // receiving_zoho_notes from the sync response so PO-notes draft
-      // dirty-state reseeds (false "Unsaved" after a clean pull).
+      // Re-fetch the line so the sidebar/table/panel pick up price + notes + zoho_status (by-id SQL joins zoho_po_mirror).
       try {
         const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
         const lineData = await lineRes.json();
@@ -145,16 +120,7 @@ export function useZohoSync(
     return result.ok ? result.zohoNotes : null;
   }, [syncCartonFromZohoResult]);
 
-  /**
-   * Inventory Displays Refresh — refresh the Zoho PO mirror (header · line_items ·
-   * activity) then pull carton notes/prices. Incoming desk Sync's twin.
-   * Callers that toast (header Refresh / F5) read {@link InventoryDossierRefreshResult}.
-   * Always re-fetches the open line afterward so coarse Received paint updates
-   * from the local mirror even when live Zoho credentials fail.
-   *
-   * Already-received lines never return `{ painted: true }` — that drives the
-   * yellow "Inventory status updated locally" toast, which is noise once DONE.
-   */
+  /** Inventory Displays Refresh — refresh the Zoho PO mirror (header · line_items · activity) then pull carton notes/prices. */
   const refreshInventoryDossier = useCallback(async (): Promise<InventoryDossierRefreshResult> => {
     if (inventoryRefreshing) {
       return { ok: false, error: 'Refresh already in progress' };

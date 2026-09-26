@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * The task sheet's MEDIA LINKS — a photo or video that lives elsewhere (an
- * unlisted YouTube walkthrough, a Loom, a Vimeo, a Drive clip, a hosted image
- * or video file), attached by URL.
- *
- * Video links PLAY IN PLACE: a hosted player is the provider's `embedUrl` in an
- * iframe, a direct file is a `<video>`. Photo links join the uploaded photos in
- * the grid and swipe viewer (`taskMediaTimeline`); all linked media is listed
- * here with source, edit and remove controls.
- *
- * The field previews what the SERVER will store: it runs the same
- * `parseMediaLink` the route uses, and speaks its refusals in the same
- * `MEDIA_LINK_REFUSAL_COPY` the desk does. Both URL and caption are editable
- * on the phone.
- */
+/** The task sheet's MEDIA LINKS — a photo or video that lives elsewhere (an unlisted YouTube walkthrough, a Loom, a Vimeo, a Drive clip, a… */
 
 import { useState } from 'react';
 import { ExternalLink, Pencil, X } from '@/components/Icons';

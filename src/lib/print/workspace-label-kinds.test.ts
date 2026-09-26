@@ -102,15 +102,7 @@ test('UNBOX_LABEL_KINDS filters by availability', () => {
   assert.equal(resolveActiveLabelKind('missing', opts), 'carton');
 });
 
-/**
- * Grain: the PO/carton label and the per-item label must be two visibly
- * DISTINCT faces, not the same face with different text. `labelFace.ts` encodes
- * that as two layout families — `receiving` (4-corner grid with a center band)
- * vs `product` (full-width title row, no center) — so the divergence is
- * structural and cannot be undone by editing copy. Pinned here because the
- * carton face is the only one that carries the printed note (`label_note`),
- * which is exactly the buffer split out of `notes` on 2026-07-31.
- */
+/** Grain: the PO/carton label and the per-item label must be two visibly DISTINCT faces, not the same face with different text. */
 test('carton and unit labels resolve to structurally different faces', () => {
   const ctx: WorkspaceLabelContext = {
     hasCarton: true,
@@ -181,12 +173,7 @@ test('the carton face center is the label buffer, so an item note cannot leak on
   assert.equal(workspaceLabelToFace('carton', withItemNote)!.center, 'printed face text');
 });
 
-/**
- * Grain must be legible in the PICKER, not just in the face geometry. An
- * operator choosing between "Carton label" and "Unit label" is choosing what the
- * sticker goes on; the names alone do not say so, and Testing used to hand-type
- * them (so it carried no grain at all).
- */
+/** Grain must be legible in the PICKER, not just in the face geometry. */
 test('every label kind declares a grain, and the picker carries it', () => {
   const ctx: WorkspaceLabelContext = {
     hasCarton: true,

@@ -1,39 +1,6 @@
 'use client';
 
-/**
- * @domain-job Station Displays top-band utility cluster — the carton Macro
- *   verbs, anchored to the column's top-right corner.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse desk `InspectorActionFloor` (C2 — station
- *   Displays vs RightRailHost are separate hosts by ruling), and cannot reuse
- *   the retired bottom `StationDisplaysActionFloor` host: this row seats in the
- *   existing `STATION_DISPLAYS_PUSH_TOP_BAND` (`STATION_CHROME_ROW_FACE` /
- *   `h-7`, `items-stretch`), not in
- *   an in-flow `FlushTerminalFooter` sibling.
- *
- * Layout (ruled 2026-08-18 — utilities moved from the bottom floor to the
- * header):
- *
- *   [ maximize ] ……………………………… [ ring? ][ Refresh ][ Print? ][ Edit ][ ⋯ ]
- *
- * **`⋯` is always the last cell**, on the trailing edge. It is the universal
- * anchor for secondary and destructive verbs, and it never moves — so an
- * operator reaching for it lands on the same pixel on every station regardless
- * of which optional peers (Refresh, Print) that station wired.
- *
- * **Destructive verbs live inside `⋯`, never as an exposed peer.** A bench
- * operator clicks fast; putting Delete one click from the surface is how a
- * carton disappears mid-scan. The menu's extra click plus the existing
- * `CARTON_DELETE_UNDO_MS` toast are the two layers of safety.
- *
- * **There is deliberately NO progressive-collapse machinery.** The column's
- * floor is `STATION_DISPLAYS_MIN_WIDTH_PX` (280) and the band holds at most
- * maximize + ring + four 28px cells (~190px), so it cannot overflow — a
- * `ResizeObserver` here would be measurement for a case that does not arise.
- * If a station ever wires enough peers to overflow, collapse into `⋯` (which is
- * already the overflow host) rather than adding a second row.
- */
+/** @domain-job Station Displays top-band utility cluster — the carton Macro verbs, anchored to the column's top-right corner. */
 
 import type { ReactNode } from 'react';
 import {

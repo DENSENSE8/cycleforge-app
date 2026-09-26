@@ -8,16 +8,7 @@ import pool from '@/lib/db';
 
 export const maxDuration = 60;
 
-/**
- * POST /api/sourcing/search — eBay Browse secondary-market proxy.
- *
- * Body: { query?, modelNumber?, partRole?, conditions?, maxPriceCents?, limit?,
- *         save?, skuId?, boseModelId?, sourcingAlertId? }
- *
- * Normalizes hits and returns them. Persists as watchlist candidates only when
- * `save: true`. User-initiated only; one Browse round-trip per call, logged to
- * ebay_api_calls (Browse quota ~5k/day).
- */
+/** POST /api/sourcing/search — eBay Browse secondary-market proxy. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

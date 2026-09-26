@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * /settings/devices — enroll, list, and revoke customer-facing kiosk tablets
- * (FOH/BOH surface split, doc 06). Manager-only (`walk_in.enroll_kiosk`).
- *
- * Enrolling mints a ONE-TIME pairing code shown once here; the manager carries
- * it to the tablet dogfood URL (`/kiosk/v2` on the staff app host until
- * subdomain DNS J7b). Only hashes live server-side — this surface never sees a token.
- *
- * List paint is the slot DataTable (`kiosk-devices` PRODUCT_TABLES peer) on md+,
- * and a stackable card face of the same feed below md. Revoke opens a
- * stage-overlay confirm plane — never window.confirm.
- *
- * Phase 2 `kiosk-slot-events` is a sibling PRODUCT_TABLES peer. The page
- * {@link KioskDevicesWorkspace} switches peers with TabSwitch + `?view=` —
- * this section paints ONE table (never both stacked). See KIOSK_DEVICES_PAGE_LAW.
- */
+/** /settings/devices — enroll, list, and revoke customer-facing kiosk tablets (FOH/BOH surface split, doc 06). */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -157,13 +142,7 @@ export function KioskDevicesSection({ view = 'devices' }: { view?: KioskDevicesP
     }
   }, [refresh]);
 
-  /**
-   * Pair (or clear) the card reader that sits at this lane (SQ3).
-   *
-   * Clearing is a real configuration — a cash-only counter — not an unset: a
-   * lane with no stand refuses a card prompt rather than reaching for the
-   * deployment fallback and waking a reader at another counter.
-   */
+  /** Pair (or clear) the card reader that sits at this lane (SQ3). */
   const pairTerminal = useCallback(
     async (deviceId: number, current: string | null) => {
       const next = window.prompt(

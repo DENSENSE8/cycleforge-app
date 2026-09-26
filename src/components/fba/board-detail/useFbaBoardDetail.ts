@@ -6,13 +6,7 @@ import type { FnskuCatalogMeta } from '../FnskuCatalogInfoPanel';
 import type { FbaBoardItem } from '@/lib/fba/types';
 import type { PlanEntry, ScanLog } from './board-detail-shared';
 
-/**
- * Owns the FBA board detail panel's data: the per-FNSKU plan entries + scan
- * logs fetch (parallel, with catalog-snapshot reset on item change), the
- * refetch-on-change handler, the audit panel actions, and the derived
- * expected/actual totals + resolved header title. Returns a controller bag
- * the thin shell renders from.
- */
+/** Owns the FBA board detail panel's data: */
 export function useFbaBoardDetail({ item, onSaved }: { item: FbaBoardItem; onSaved: () => void }) {
   const [entries, setEntries] = useState<PlanEntry[]>([]);
   const [scanLogs, setScanLogs] = useState<ScanLog[]>([]);

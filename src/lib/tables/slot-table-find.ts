@@ -1,11 +1,4 @@
-/**
- * Slot-table find → row. Identifier paste highlights the first painted row;
- * prose stays a filter. Scroll matching covers both flat `r:` keys and
- * grouped `g:date:groupKey` folds (To-ship).
- *
- * The identifier heuristic is a copy of `looksLikeIdentifier` so the table
- * engine does not import the search stack. The test asserts they agree.
- */
+/** Slot-table find → row. */
 
 export function slotTableQueryLooksLikeIdentifier(query: string): boolean {
   const q = String(query ?? '')

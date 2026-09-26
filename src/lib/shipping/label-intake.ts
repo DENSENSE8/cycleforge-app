@@ -1,19 +1,4 @@
-/**
- * Label intake — the global `+` flow: type an order number, see what it
- * pairs to, buy a return and/or replacement label against it, on one surface.
- *
- * Two anchors:
- *   paired     the number is an order in this org. Rates and purchases go
- *              through the order-bound routes (`/api/shipping/order-rates`,
- *              `/api/shipping/order-labels/purchase`) so tracking, documents,
- *              notes and the buyer-note interlock all apply.
- *   reference  the number is NOT in the system. The label is rated and bought
- *              from the typed address here, and recorded in the SAME ledger
- *              (`shipping_label_purchases`) with `order_id` NULL, the typed
- *              `order_ref` and the `ship_to` it was bought for (migration
- *              2026-09-25f). When the order later exists, {@link pairReferenceLabels}
- *              attaches those rows to it.
- */
+/** Label intake — the global `+` flow: */
 
 import 'server-only';
 import { ApiError } from '@/lib/api';

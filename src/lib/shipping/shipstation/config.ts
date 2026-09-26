@@ -1,9 +1,4 @@
-/**
- * ShipStation tenant config — the only file that couples the ShipStation clients
- * to the vault + tenant layer. Resolves per-org credentials (v2 label engine +
- * optional v1 order pull) and the warehouse ship-from origin, and hands back
- * bound clients. Keeps ./client and ./orders-v1 pure/injectable.
- */
+/** ShipStation tenant config — the only file that couples the ShipStation clients to the vault + tenant layer. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getIntegrationCredentials, type ShipStationCredentials } from '@/lib/integrations/credentials';

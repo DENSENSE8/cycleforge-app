@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The counter visit a phone is joined to, as the hub's summary card: whose
- * visit (the cart's customer), how many units and how many still need a
- * serial, and which tablet it lives on. The whole card opens `/info`.
- *
- * Callers: `RepairScanCompanion` (`/m/repair-scan` card slot).
- * Schemas: `CompanionVisit`.
- */
+/** The counter visit a phone is joined to, as the hub's summary card: */
 
 import { DetailSummaryCard } from '@/design-system/components/DetailSummaryCard';
 import type { CompanionVisit } from '@/lib/kiosk/companion-shape';

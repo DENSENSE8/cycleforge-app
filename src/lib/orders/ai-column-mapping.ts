@@ -1,28 +1,4 @@
-/**
- * AI-assisted column mapping for order-list import — a thin adapter over the
- * existing engine, NOT a second import path.
- *
- * `autoMapCsvOrderHeaders` (deterministic header aliases) runs first and always
- * wins. This module only ever proposes mappings for canonical fields that the
- * alias map left unclaimed — the case where an operator's export uses a header
- * nobody has aliased yet ("Buyer Ref", "Despatch By", a localised column).
- *
- * ## Three rules this module enforces, because a model cannot be trusted to
- *
- * 1. **Deterministic wins.** A field already mapped by aliases is never
- *    proposed for. A model second-guessing a known-correct mapping is a pure
- *    downside: it can only turn a right answer into a wrong one.
- * 2. **Only headers that exist.** A suggestion naming a column absent from the
- *    file is DROPPED, not surfaced. Inventing a plausible column name is the
- *    single most likely failure here, and it is the one that would silently
- *    import blanks over real data.
- * 3. **Never auto-applied.** This returns `suggestions`. The operator confirms
- *    each one in the mapping panel. An AI mapping that applied itself would
- *    make a wrong guess indistinguishable from a right one at commit time.
- *
- * The model call goes through `hermesToolCall`, so it inherits the org's
- * provider chain, local-first ordering, and failover for free.
- */
+/** AI-assisted column mapping for order-list import — a thin adapter over the existing engine, NOT a second import path. */
 
 import { hermesToolCall, type HermesTool } from '@/lib/ai/hermes-tool-call';
 import {

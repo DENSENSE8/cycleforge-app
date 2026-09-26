@@ -17,12 +17,7 @@ interface DbPhotoRow {
   taken_by_staff_id: number | null;
   po_ref: string | null;
   created_at: string;
-  /**
-   * Device-reported shutter instant. REQUIRED on the row type (nullable value,
-   * not an optional key) so a SELECT that forgets the column is a type error
-   * here rather than a silently-null field in the viewer — the exact way this
-   * provenance was write-only on first landing.
-   */
+  /** Device-reported shutter instant. */
   client_captured_at: string | null;
 }
 

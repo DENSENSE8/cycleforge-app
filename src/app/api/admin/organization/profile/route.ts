@@ -49,13 +49,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
 
   const patch: Partial<OrgSettings> = {};
   const b = body as Record<string, unknown>;
-  /*
-   * `updateOrgSettings` merges with jsonb `||`, which is SHALLOW: writing
-   * `kiosk` replaces the whole object. Every nested branch below therefore
-   * needs the block it is amending, or saving a select would silently drop the
-   * tenant's other keys in that block (the reason `brand` and `letterhead`
-   * rebuild theirs wholesale).
-   */
+  /* `updateOrgSettings` merges with jsonb `||`, which is SHALLOW: */
   const current = (await getOrganization(ctx.organizationId as OrgId))?.settings;
   if (!current) {
     return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
@@ -138,12 +132,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     }
     patch.letterhead = nextLetterhead;
   }
-  /*
-   * KIOSK behaviour. `idleTimeoutSeconds` is deliberately NOT accepted as an
-   * input — idle and attract are off on the counter and nothing reads it, and
-   * re-opening a write for a number nothing reads is how that leftover got
-   * there — but it is CARRIED so a `defaultCommand` save does not drop it.
-   */
+  /* KIOSK behaviour. */
   if (b.kiosk != null && typeof b.kiosk === 'object' && !Array.isArray(b.kiosk)) {
     const kiosk = b.kiosk as Record<string, unknown>;
     const nextKiosk = { ...(current.kiosk ?? {}) };
@@ -167,12 +156,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (touched) patch.kiosk = nextKiosk;
   }
 
-  /*
-   * SHIP-FROM. Either empty (clears it — the env fallback applies) or complete
-   * (line 1, city, state, ZIP): a half-filled origin would save and still fail
-   * every rate with SHIP_FROM_NOT_CONFIGURED, so it is refused here instead.
-   * The whole block is rebuilt (the shallow `||` merge replaces it anyway).
-   */
+  /* SHIP-FROM. Either empty (clears it — the env fallback applies) or complete (line 1, city, state, ZIP): */
   let shipFromChanged = false;
   if (b.shipFrom !== undefined) {
     const parsed = parseShipFromInput(b.shipFrom ?? {});

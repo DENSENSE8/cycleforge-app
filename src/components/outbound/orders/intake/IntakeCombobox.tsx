@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * Searchable combobox for the order-intake surface — the canonical shadcn
- * combobox recipe (Button trigger + Popover + Command), composed from the
- * `ui/*` shadcn lane rather than the design-system `SearchableSelectField`.
- *
- * The trigger carries `role="combobox"` + `aria-expanded` exactly as the
- * upstream recipe does, which is also what the E2E-DS check asserts.
- *
- * ## Two modes, one control
- *
- * **Local** (default) — pass `options` and Command filters them itself.
- *
- * **Async** — additionally pass `onQueryChange`, and the caller owns the term:
- * `shouldFilter` goes off, `options` are taken as already-matched server rows,
- * and `loading` renders the pending state in the list. That mode exists because
- * the order-exceptions catalog picker was a second hand-rolled
- * Popover+Command+CommandInput with its own empty/loading/selected markup — a
- * fork of this file that could drift from it on every axis. A combobox that
- * fetches is still a combobox; the difference is who filters, and that is one
- * prop, not a second component.
- *
- * Callers: `ProductSelector` kiosk-split, `KioskCommandMenu` (KioskTopChrome),
- * `ConsultStanceControls` header, `OrderIntakeForm`, `ExceptionCatalogPairing`.
- * Affected API: none. Schemas: `IntakeComboboxOption`.
- * User: "execute now" / "ensure icons for the repair sales buy back and more" /
- * "work show verify should be word and drop downs" / "access the kisok from
- * the bottom left side or the top right of the global header"
- */
+/** Searchable combobox for the order-intake surface — the canonical shadcn combobox recipe (Button trigger + Popover + Command), composed… */
 
 import * as React from 'react';
 import { Check, ChevronDown, Package } from '@/components/Icons';
@@ -144,12 +117,7 @@ export function IntakeCombobox({
   footer?: React.ReactNode;
   /** `data-testid` per option, e.g. `(o) => \`hit-\${o.value}\``. */
   optionTestId?: (option: IntakeComboboxOption) => string;
-  /**
-   * Extra classes for the dropdown panel. Pass a corner here whenever the
-   * trigger carries one: `Command` fills the panel with its own square
-   * background, so a radius on the panel alone paints under it. `overflow-hidden`
-   * on the panel is what makes the child take the corner.
-   */
+  /** Extra classes for the dropdown panel. */
   contentClassName?: string;
   /**
    * `ghost` = label + chevron, no outline, shrink-to-content (kiosk All products).

@@ -1,16 +1,4 @@
-/**
- * Bins slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks.
- *
- * Presentation faces (the fill BAR, the flag chip row) stay in the family's
- * cell map — this module answers WHAT the fact says, in display text, which is
- * also what a bound column with no bespoke face and any future export will
- * carry.
- *
- * `bins.last_counted` resolves to the ABSOLUTE day rather than the cell's
- * relative age ("3mo"). A resolver that read the clock would make one row's
- * answer depend on when it happened to be called.
- */
+/** Bins slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';

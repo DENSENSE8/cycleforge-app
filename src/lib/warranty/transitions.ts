@@ -1,11 +1,4 @@
-/**
- * Warranty claim state machine — pure, so the allowed transitions are locked by
- * a unit test and shared by every verb in mutations.ts.
- *
- *   LOGGED → SUBMITTED → APPROVED → IN_REPAIR → REPAIRED → CLOSED
- *                      ↘ DENIED → CLOSED
- *   (EXPIRED is set by the cron; CLOSED is terminal.)
- */
+/** Warranty claim state machine — pure, so the allowed transitions are locked by a unit test and shared by every verb in mutations.ts. */
 
 import type { WarrantyClaimStatus } from './types';
 

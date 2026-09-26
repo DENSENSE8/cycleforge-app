@@ -18,25 +18,7 @@ import {
   type SelectionAnchorState,
 } from '@/lib/selection/selection-anchor';
 
-/**
- * Table-side wiring for always-on multi-select (left-gutter checkboxes → act),
- * factored out of {@link ReceivingLinesTable} so any list can opt in with one call.
- *
- * Owns the checked-id set and:
- *   • broadcasts the resolved selected rows on `scope` (for useTableSelection),
- *   • mirrors the header Select-all / Clear toggle (onToggleAll),
- *   • publishes the selectable total so the action bar's ring can fill,
- *   • clears the selection when select mode turns off.
- *
- * The owning page keeps selectMode always on for selectable surfaces and mounts
- * the right-rail selection plane; the table just calls this with its visible rows.
- *
- * `rows` / `getId` are read through refs so the broadcast fires only when the
- * *selection* changes — not on every parent re-render. That matters because the
- * page collects the broadcast into React state (useTableSelection); re-emitting
- * on each render would ping-pong page → table → page in a loop. Callers
- * therefore need NOT memoize `rows`.
- */
+/** Table-side wiring for always-on multi-select (left-gutter checkboxes → act), factored out of {@link ReceivingLinesTable} so any list can… */
 export function useTableSelectMode<T>({
   scope,
   selectMode,
@@ -56,14 +38,7 @@ export function useTableSelectMode<T>({
   /** Toggle one row. Pass `extend` (shift-click) to apply the clicked row's NEW
    *  state to every visible row between the last-clicked anchor and this one. */
   toggle: (id: number, extend?: boolean) => void;
-  /**
-   * Replace the whole set with exactly this row.
-   *
-   * The rail-selection model (dashboard orders) needs a plain row-body click to
-   * MEAN "select only this" — the check-set is the single selection SoT there,
-   * so a click that merely added would grow a batch the operator never asked
-   * for. Distinct from `toggle`, which is the checkbox gesture.
-   */
+  /** Replace the whole set with exactly this row. */
   selectOnly: (id: number) => void;
   /** Check every row in the current view — ⌘A. */
   selectEvery: () => void;
@@ -102,12 +77,7 @@ export function useTableSelectMode<T>({
     [scope],
   );
 
-  /**
-   * Apply one anchor result. Returning `prev` when nothing changed is not an
-   * optimisation — the page collects the broadcast into React state, so a fresh
-   * Set for a no-op gesture would re-render the grid and re-emit the same
-   * selection (the ping-pong this hook's docblock warns about).
-   */
+  /** Apply one anchor result. */
   const applyAnchor = useCallback(
     (run: (state: SelectionAnchorState) => SelectionAnchorResult<number>) => {
       setSelectedIds((prev) => {
@@ -119,10 +89,7 @@ export function useTableSelectMode<T>({
     [anchorStateFor],
   );
 
-  // The RANGE WALK used to live inline here, reachable only from a pointer
-  // event. Shift+↑/↓ is the same gesture with a different input device, so it
-  // moved to `selection-anchor` where both call one implementation — and where
-  // it can be tested without mounting React.
+  // The RANGE WALK used to live inline here, reachable only from a pointer event.
   const toggle = useCallback(
     (id: number, extend = false) => {
       applyAnchor((state) => (extend ? extendTo(state, id) : toggleAt(state, id)));

@@ -6,12 +6,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { updateThreadStatus, softDeleteThread } from '@/lib/threads/threads';
 import pool from '@/lib/db';
 
-/**
- * PATCH /api/threads/[id]  — update thread status (open | snoozed | resolved).
- * DELETE /api/threads/[id] — soft-delete (tombstone; non-destructive, the
- *                            ops_events / audit trail stays intact). Idempotent.
- * Both gated by support.thread.manage.
- */
+/** PATCH /api/threads/[id] — update thread status (open | snoozed | resolved). */
 function parseThreadId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;

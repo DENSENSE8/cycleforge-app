@@ -1,12 +1,4 @@
-/**
- * DB-free tests for the task desk reader.
- * Run: npx tsx --test src/lib/tasks/list-tasks.test.ts
- *
- * The SQL string itself is deliberately NOT asserted — pinning it would make
- * every column rename a test edit. What is pinned is the contract a caller can
- * observe: which statuses a lane reads, which org the query is scoped to, what
- * the limit clamps to, and which rows are allowed out.
- */
+/** DB-free tests for the task desk reader. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

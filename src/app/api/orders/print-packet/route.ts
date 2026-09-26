@@ -9,16 +9,7 @@ import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/orders/print-packet — "the packer print station is down": the
- * paperwork for one order (the Labels walk's Print all) or many (the orders
- * verb catalog's Print paperwork), in pack order, for the browser to print in
- * one dialog. Each page is ledgered in `document_print_jobs` as
- * `fallback_browser` so pack history stays true. Never buys postage and never
- * dispatches to a print station.
- *
- * Body: { orderIds: number[] (1..100), batchId: string }
- */
+/** POST /api/orders/print-packet — "the packer print station is down": */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

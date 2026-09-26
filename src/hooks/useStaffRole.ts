@@ -33,11 +33,7 @@ export interface UseStaffRoleResult {
 }
 
 /**
- * Client-side role resolver. Reads the role from the verified session via
- * AuthContext — no network round-trip needed.
- *
- * Used to hide destructive UI affordances for non-admins. Note: this is a
- * UX nicety — the server-side gates in /lib/auth/permissions.ts are the
+ * Client-side role resolver.
  * actual security boundary.
  */
 export function useStaffRole(): UseStaffRoleResult {

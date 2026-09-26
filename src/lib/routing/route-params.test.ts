@@ -151,11 +151,7 @@ test('Unbox Displays URL keys are stripped by surface hygiene', () => {
 });
 
 test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
-  // When History got an explicit wire (`?unboxview=history`, 2026-08-08) the
-  // route enum still only listed `recent|queue|viewed`. Hygiene stripped History
-  // on the next pass and the strip bounced back to Queue (the bare-/unbox
-  // default). Round-trip the SoT writer so a new tab cannot land without
-  // surviving hygiene.
+  // When History got an explicit wire (`?unboxview=history`, 2026-08-08) the route enum still only listed `recent|queue|viewed`.
   const tabs: UnboxWorkspaceTab[] = ['incoming', 'queue', 'recent', 'history', 'all'];
   for (const tab of tabs) {
     const written = new URLSearchParams();
@@ -274,10 +270,7 @@ test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', ()
     null,
   );
 
-  // `/shipping/labels` was DELETED (2026-08-30) — route and spec both. The
-  // assertion is kept and inverted rather than removed: the registry must find
-  // NO spec for it, which is what proves the spec went with the route instead
-  // of lingering as a boundary parse for a page that cannot be reached.
+  // `/shipping/labels` was DELETED (2026-08-30) — route and spec both.
   assert.equal(
     routeParamsFor('/shipping/labels'),
     null,
@@ -350,11 +343,7 @@ test('/products validates each view vocabulary through its own parser', () => {
   // would reject cannot sit in the URL pretending to be real.
   assert.equal(parse('view=qc').get('view'), 'qc');
   assert.equal(parse('view=nope').get('view'), null);
-  // Reference + Kit Parts were REMOVED 2026-09-15, and removal means the wire
-  // value dies at the boundary too — a stale bookmark folds back to Manuals
-  // rather than half-opening a body nobody maintains. This is the line that
-  // separates a removed tab from a parked one (`@/lib/nav/parked-tabs`), where
-  // the URL keeps working on purpose.
+  // Reference + Kit Parts were REMOVED 2026-09-15, and removal means the wire value dies at the boundary too — a stale bookmark folds back…
   assert.equal(parse('view=catalog').get('view'), null);
   assert.equal(parse('view=kit').get('view'), null);
   assert.equal(parse('labelsView=recent').get('labelsView'), 'recent');
@@ -439,10 +428,7 @@ test('/sourcing owns the two keys both of its clear lists forgot', () => {
   assert.equal(spec.route, '/sourcing');
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
 
-  // `by` (Scout's field toggle) and `range` (the Analytics window) were absent
-  // from BOTH the panel's `goMode` deletes and the nav targets' null-maps, so
-  // they leaked across every mode switch. Declared, they now survive a paste
-  // and are dropped by construction on a switch.
+  // `by` (Scout's field toggle) and `range` (the Analytics window) were absent from BOTH the panel's `goMode` deletes and the nav targets'…
   assert.equal(parse('by=serial'), 'by=serial');
   assert.equal(parse('range=1y'), 'range=1y');
   // Values outside each vocabulary are still refused.
@@ -454,10 +440,7 @@ test('/sourcing owns the two keys both of its clear lists forgot', () => {
 });
 
 test('/test owns the tab params that are read through a CONSTANT', () => {
-  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)`
-  // from `@/utils/*-workspace-state` — outside any surface tree and not a string
-  // literal, so neither the method's grep nor the ownership guard can see them.
-  // This test is the standing check that they stayed declared.
+  // `ship` / `testTab` are read as `searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM)` from `@/utils/*-workspace-state` — outside any surface…
   const spec = routeParamsFor('/test')!;
   assert.equal(spec.route, '/test');
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
@@ -493,11 +476,7 @@ test('/walk-in keeps the legacy deep-link keys its redirect reads', () => {
   const spec = routeParamsFor('/walk-in')!;
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).toString();
 
-  // `useWalkInTaskRedirect` reads these off the URL and forwards them to
-  // `/pickup?job=repair`. Undeclared, the hygiene hook this page mounts would
-  // strip them and a `?new=true` link would land on a plain history page. The
-  // read guard could not catch it — `/repair` declares all three, so nothing
-  // looked undeclared.
+  // `useWalkInTaskRedirect` reads these off the URL and forwards them to `/pickup?job=repair`.
   assert.equal(parse('new=true'), 'new=true');
   assert.equal(parse('openRepair=42'), 'openRepair=42');
   assert.equal(parse('search=abc'), 'search=abc');

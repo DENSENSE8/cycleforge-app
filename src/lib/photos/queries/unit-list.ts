@@ -1,13 +1,6 @@
 import pool from '@/lib/db';
 
-/**
- * Serial-unit photo read helpers — the unit mirror of `packer-list.ts`.
- *
- * SERIAL_UNIT photos are stored polymorphically on `photos`, linked via
- * `photo_entity_links` with `entity_type='SERIAL_UNIT'`, `entity_id=serial_units.id`.
- * Same `pool` + explicit `organization_id` predicate convention as the receiving
- * and packer lists (tenant boundary is the predicate, not a per-call GUC txn).
- */
+/** Serial-unit photo read helpers — the unit mirror of `packer-list.ts`. */
 
 const LINK_JOINS = `
   INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id

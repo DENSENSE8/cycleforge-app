@@ -1,14 +1,4 @@
-/**
- * Move all primary receiving photos from one carton onto another.
- *
- * Used when an unmatched carton is paired onto a busy matched PO shell — the
- * orphan's gallery must land on the winner so operators keep every shot. Does
- * not invent a second ownership model: only rewrites primary
- * `photo_entity_links` rows (RECEIVING + RECEIVING_LINE on the orphan's lines)
- * onto `toReceivingId` as RECEIVING, and refreshes denorm `photos.po_ref`.
- *
- * Caller supplies an open tenant tx client (relink / reconcile).
- */
+/** Move all primary receiving photos from one carton onto another. */
 import type { TxClient } from './relink-po';
 
 interface ReparentReceivingCartonPhotosInput {

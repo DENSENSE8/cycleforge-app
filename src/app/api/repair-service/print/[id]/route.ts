@@ -3,18 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { renderRepairPaperHtml } from '@/lib/repair/render-repair-paper';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/repair-service/print/[id] - Render printable repair service form
- *
- * withAuth's wrapped handler only receives (req, ctx) — it discards Next's
- * typed `{ params }` route arg (see withAuth.ts's RouteHandler comment) — so
- * the `[id]` segment is parsed from the pathname instead, same as other
- * dynamic routes wrapped in withAuth (e.g. warranty's `claimIdFromPath`).
- *
- * The document itself lives in `@/lib/repair/render-repair-paper` because the
- * kiosk tablet prints the SAME paper under a device cookie — this route only
- * decides that a staff session with `repair.view` may ask for it.
- */
+/** GET /api/repair-service/print/[id] - Render printable repair service form */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const segments = req.nextUrl.pathname.split('/').filter(Boolean);

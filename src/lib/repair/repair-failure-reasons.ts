@@ -1,16 +1,4 @@
-/**
- * Repair-failure reason vocabulary — the GLOBAL built-in SoT for repair intake
- * reasons. Repair already has a per-SKU DB-backed source (`repair_issue_templates`
- * → the `skuIssues` prop); this registry is the generic fallback used when a SKU
- * has no template. Seeded into reason_codes (flow_context='repair_failure') so a
- * tenant can manage the generic set, and the offline fallback when the DB is
- * unseeded / unreachable. Descriptive — repair reasons are concatenated into the
- * `repair_service.issue` text; nothing branches on a specific value.
- * See docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md D1.
- *
- * The repair flow stores the LABEL (free text), so the label is the meaningful
- * unit; `code` is the stable slug used as the reason_codes natural key.
- */
+/** Repair-failure reason vocabulary — the GLOBAL built-in SoT for repair intake reasons. */
 
 interface RepairFailureReason {
   code: string;

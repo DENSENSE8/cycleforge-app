@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Unbox Station Displays carton Macro floor:
- *   [ ⋯ ][ Sync ][ Print ][ Edit ][ Delete ]
- *
- * Thin station recipe over {@link CartonDisplaysActionFloor} (Print + Sync).
- * Never desk `InspectorActionFloor`.
- */
+/** Unbox Station Displays carton Macro floor: */
 
 import { CartonDisplaysActionFloor } from '@/components/station/displays';
 import type { InventoryDossierRefreshResult } from './hooks/useZohoSync';

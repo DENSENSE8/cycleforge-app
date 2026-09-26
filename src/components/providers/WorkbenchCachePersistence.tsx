@@ -38,14 +38,7 @@ function restoreStored(storageKey: string): PersistedClient | undefined {
   }
 }
 
-/**
- * A `sessionStorage` persister for one identity. Writes are trailing-throttled
- * (the latest client wins); `flush` writes a pending one now, for `pagehide`,
- * so a refresh right after data lands still finds it. A quota or storage error
- * drops the entry rather than leaving a stale one — never a throw. While
- * `holding()` (a stored entry not yet put back) saves are skipped, so an early
- * cache event cannot overwrite the entry with an empty one.
- */
+/** A `sessionStorage` persister for one identity. */
 function createSessionPersister(storageKey: string, holding: () => boolean) {
   let pending: PersistedClient | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -93,34 +86,7 @@ function createSessionPersister(storageKey: string, holding: () => boolean) {
   return { persister, flush, cancel };
 }
 
-/**
- * Lets the phone repair workbench (`/m/rs/[id]` and its sub-screens) survive a
- * browser refresh: the `['repairs', 'workbench', …]` queries are kept in
- * `sessionStorage` under the signed-in identity and put back into the
- * QueryClient before the route's queries decide whether to fetch, so the card
- * and door metas paint from cache and staleness (the global 3 min) decides
- * the background refetch.
- *
- * Renders nothing. Mounted as the FIRST child of `AuthProvider` in
- * `WarehouseShell`, so the server-provided user is known on the first render.
- *
- * When the entry goes back in: it is read on the first client render, but
- * put into the cache only when the first workbench query subscribes. The
- * route was server-rendered without it (no sessionStorage on the server), so
- * the route's hydration render must see an empty cache too — seeding in
- * render, or even in this component's layout effect, made React discard the
- * server HTML with a hydration error, because the route hydrates in a later
- * pass than the shell. A query subscribes in its component's effect, after
- * that component hydrated and before it decides to fetch on mount; the
- * subscription then re-renders it with the restored data.
- *
- * No cross-staff leak: the key and the entry both carry
- * `organizationId:staffId`; another identity's entry is never restored, and a
- * staff/org switch or sign-out removes every workbench entry in the tab (plus
- * the in-memory workbench queries on a switch). `signOut` clears storage
- * itself, because signing out unmounts this component before it can see
- * `user` go null.
- */
+/** Lets the phone repair workbench (`/m/rs/[id]` and its sub-screens) survive a browser refresh: */
 export function WorkbenchCachePersistence() {
   const queryClient = useQueryClient();
   const { user, isLoaded } = useAuth();

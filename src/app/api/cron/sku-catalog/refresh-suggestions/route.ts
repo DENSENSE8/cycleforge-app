@@ -8,20 +8,7 @@ import { listSweepOrgIds } from '@/lib/cron/for-each-org';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-/**
- * GET /api/cron/sku-catalog/refresh-suggestions  (Vercel cron, nightly)
- *
- * Rebuilds sku_pairing_suggestions for every catalog row that has any
- * un-paired, plausible candidate. Writes ONLY to sku_pairing_suggestions —
- * never touches sku_platform_ids.sku_catalog_id. Every actual pairing
- * remains human-reviewed via the Product Hub + /pair-batch endpoint.
- *
- * Tenant-safe: iterates EVERY active org and calls the org-scoped branch of
- * `refreshAllSuggestions(orgId)` (DELETE-by-org + org-aligned rebuild join), so
- * it never runs the legacy `TRUNCATE sku_pairing_suggestions` global wipe nor
- * pairs one org's catalog to another org's listing. Per-org failures are
- * isolated — one bad tenant never aborts the sweep.
- */
+/** GET /api/cron/sku-catalog/refresh-suggestions (Vercel cron, nightly) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {

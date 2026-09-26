@@ -1,12 +1,4 @@
-/**
- * Warranty reporting (Phase 6) — the supplier-escalation dataset.
- *
- * Rolls each claim up with its denial reason, repair outcome + parts/labor cost,
- * and RMA / repair-ticket links so the team can argue failure patterns with a
- * supplier. Exposed as CSV (or JSON) via /api/warranty/reports/export.
- *
- * `toCsv` is pure + unit-tested; the query is the only DB-touching part.
- */
+/** Warranty reporting (Phase 6) — the supplier-escalation dataset. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -98,12 +90,7 @@ export async function buildWarrantyReportRows(
     repair_ticket: string | null;
   };
 
-  // Build the column-projection + FROM/JOIN body once. The tenant-aware path
-  // additionally aligns the string-key reason_codes join on organization_id and
-  // scopes the warranty_repair_attempts LATERAL to the same org, then adds an
-  // explicit `wc.organization_id = $6` predicate. Integer surrogate-PK joins
-  // (customers.id, repair_service.id, rma_authorizations.id) are safe bare;
-  // rma_authorizations has no organization_id column (see needsColTables).
+  // Build the column-projection + FROM/JOIN body once.
   const repairAttemptsOrgPredicate = orgId
     ? '\n         AND wra.organization_id = wc.organization_id'
     : '';

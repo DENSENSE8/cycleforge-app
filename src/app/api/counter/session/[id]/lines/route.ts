@@ -1,10 +1,4 @@
-/**
- * POST /api/counter/session/{id}/lines — stage a line. Desk only (plan D5).
- *
- * `unitAmountCents` is deliberately allowed to be NEGATIVE: a buyback credit
- * subtracts from the visit. Clamping it here would silently eat trade-ins, the
- * exact bug `computeCounterTotals` carries a comment about.
- */
+/** POST /api/counter/session/{id}/lines — stage a line. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

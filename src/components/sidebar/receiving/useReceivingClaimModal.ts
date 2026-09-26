@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * B2 — claim-modal state machine for filing a Zendesk claim from a receiving row.
- * Owns the open/close state and the success side-effect (toast + data refresh);
- * the component renders the actual `<ReceivingClaimModal>` from `claimRow`. This
- * keeps the triage Unfound list a pure composition — behavior here, markup there.
- */
+/** B2 — claim-modal state machine for filing a Zendesk claim from a receiving row. */
 
 import { useCallback, useState } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

@@ -1,18 +1,4 @@
-/**
- * GET/POST /api/repair/issues — the org's repair reason vocabulary.
- *
- * GET answers for a SKU STRING (`?sku=`), or for nothing (the globals). It used
- * to take `?favoriteSkuId=`, a `favorite_skus.id`, which only the favorites
- * rail could supply; that rail is gone (2026-09-16 — favorites are a scope of
- * the catalog picker now), and the intake form knows the SKU the operator
- * picked, not a curation row id. Resolving the anchor is `listSkuReasons`'
- * job, exactly as on the device twin (`/api/kiosk/repair/issues`), so both
- * principals read one vocabulary through one code path.
- *
- * POST still names the anchor by id: it is the staff CRUD desk
- * (Settings › Repair issues) writing globals (`favoriteSkuId: null`) or one
- * SKU's own row, and it already holds the id it is editing.
- */
+/** GET/POST /api/repair/issues — the org's repair reason vocabulary. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createIssueTemplate, getIssuesForFavorite } from '@/lib/neon/repair-issue-queries';

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * `/settings/me` — Personal settings as ONE scroll page with sticky
- * PageHeader + TabSwitch pills. Deep links: `/settings?section=appearance`
- * redirects here as `/settings/me#appearance`.
- *
- * Caller: Next.js App Router route `/settings/me` (and redirects from
- * `/settings?section=` for Personal section ids). No prior me/ page in this
- * tree. No data-file I/O / schemas.
- *
- * User instruction: "Implement the plan as specified, it is attached for your
- * reference. Do NOT edit the plan file itself. ... Port Settings landing from main"
- */
+/** `/settings/me` — Personal settings as ONE scroll page with sticky PageHeader + TabSwitch pills. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HardwareSection } from '@/components/settings/sections/HardwareSection';

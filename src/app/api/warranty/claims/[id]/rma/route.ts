@@ -7,13 +7,7 @@ import { getClaimTicketRef } from '@/lib/warranty/claims';
 import { claimIdFromPath, idempotentJson, warrantyFlagEnabled, warrantyFlagOff } from '@/lib/warranty/route-helpers';
 import { WarrantyRmaBody } from '@/lib/schemas/warranty';
 
-/**
- * POST /api/warranty/claims/[id]/rma
- *
- * Issue a new INBOUND_FROM_CUSTOMER RMA for the claim (default), or link an
- * existing RMA when `rmaNumber` is supplied. Sets warranty_claims.rma_id.
- * Gated by WARRANTY_LOGGER. Permission: warranty.manage.
- */
+/** POST /api/warranty/claims/[id]/rma */
 export const POST = withAuth(async (request, ctx) => {
   if (!warrantyFlagEnabled()) return warrantyFlagOff();
   if (typeof ctx.staffId !== 'number' || ctx.staffId <= 0) {

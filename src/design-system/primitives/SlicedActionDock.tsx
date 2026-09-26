@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * SlicedActionDock — bottom-docked floating terminal CTA (DoorDash/Uber sticky job).
- *
- * Fully rounded pill track (`rounded-2xl` on all corners). Optional menu/primary
- * segments share one tone track with a hairline between:
- *   flush / float — [ ▾ menu ]|[ primary CTA ]
- *   composer pill  — [ primary CTA ]|[ ▾ menu ]  (chevron farthest right)
- *   composer pill + menuAnchor=primary — [ face (opens menu) ]|[ scan ]
- *
- * Placement:
- *   - `bottom` (default) — absolute float at host bottom
- *   - `bottom` + `docked` — in-flow band under other docked bands (receive feedback)
- *   - `embedded` — bare flush-square track inside another control's chrome
- *     (Unbox Band 1 trailing Print · Receive). Ops chrome — never a soft pill.
- *
- * Host must be `position: relative` + full-height; scroll body reserves
- * {@link STATION_TERMINAL_SCROLL_CLEARANCE} (`pb-32`) when absolute.
- */
+/** SlicedActionDock — bottom-docked floating terminal CTA (DoorDash/Uber sticky job). */
 
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
@@ -106,18 +89,7 @@ export interface SlicedActionDockProps {
   endSegmentExtra?: ReactNode;
   /**
    * How the chevron's menu is rendered.
-   *
-   * `ops` (default) — the historic Popover list: ALL-CAPS ops chrome, flush
-   * square. Unbox's Print · Receive is this, and it stays this.
-   *
-   * `dropdown` — the house {@link DropdownMenu} (Radix, shadcn-shaped): items
-   * in **sentence case** at the same `text-role-caption` role as the CTA label,
-   * on a {@link COMPOSER_SHELL_CORNER} panel that matches the composer-pill
    * track it hangs off. Operator direction (2026-08-31): "no caps lock" — the
-   * To-ship intake CTA reads as a page-header control, not station chrome.
-   *
-   * Only meaningful when the chevron is the menu anchor (`menuAnchor="end"`);
-   * a `primary`-anchored dock keeps the Popover.
    */
   menuChrome?: 'ops' | 'dropdown';
   /** aria-label for the chevron trigger. Defaults to "More actions". */
@@ -139,25 +111,9 @@ export interface SlicedActionDockProps {
    * (composer footer · Arrival/Testing Band 1).
    */
   embedded?: boolean;
-  /**
-   * When `embedded`, choose track chrome.
-   * - `flush` (default) — ops square (Unbox Band 1).
-   * - `pill` — {@link COMPOSER_SHELL_CORNER} divided track for the composer footer.
-   * - `header` — {@link cornerClass}(`'pill'`) capsule for the desk page-header
-   *   slot. Same token {@link DeskHeaderAction} locks on Button. Not a licence
-   *   to round a station floor dock.
-   * - `segment` — the industrial desk bar's cell (`DeskPageChrome`
-   *   `stage="flush"`): no fill, no ring, full bar height, mono label, square,
-   *   hover wash, no press motion. Reached through `DeskHeaderSplitAction`,
-   *   which reads the bar's face — never chosen by a desk.
-   */
+  /** When `embedded`, choose track chrome. */
   embeddedChrome?: SlicedActionEmbeddedChrome;
-  /**
-   * Which way the split menu opens. Defaults to `top` — correct for a
-   * bottom-docked terminal CTA, where the menu must rise off the dock. An
-   * `embedded` dock mounted in a TOP band (the To-ship intake CTA) needs
-   * `bottom`, or the menu opens above the viewport edge and is unreachable.
-   */
+  /** Which way the split menu opens. */
   menuPlacement?: 'top' | 'bottom';
   /** Dock placement. Default `bottom`. */
   edge?: SlicedActionEdge;
@@ -181,18 +137,7 @@ const TONE_BG_SOLID: Record<SlicedActionTone, string> = {
   gray: 'bg-surface-inverse',
 };
 
-/**
- * Segment ink for a tone.
- *
- * Every solid tone paints white-on-color; `surface` is the one QUIET track —
- * a white fill with ink text, for a second pill sitting beside an accent
- * primary (Unbox notes footer: Print owns accent, Location must not shout a
- * second green CTA). It is a TONE rather than a `className` hue override so
- * the ring, the divider, and the focus ring stay coherent with the track —
- * a `className` fill would leave a white-on-white label and a white divider.
- *
- * Pure so the ratchet test can assert the quiet track without rendering React.
- */
+/** Segment ink for a tone. */
 export function slicedActionDockToneInk(tone: SlicedActionTone): {
   text: string;
   divider: string;
@@ -377,10 +322,7 @@ export function SlicedActionDock({
 
   const wrapperClass = slicedActionDockWrapperClass({ edge, docked, embedded });
 
-  // Embedded flush = Band 1 ops square. Embedded pill = composer-footer bubble
-  // (compact h-8 so + / recent / sync sit on one tight bottom row). Embedded
-  // header = the same compact split on the desk title row, with the pill
-  // token DeskHeaderAction uses. Floating bottom docks keep the 48px HIG track.
+  // Embedded flush = Band 1 ops square.
   const headerPill = embedded && embeddedChrome === 'header';
   const composerPill = embedded && embeddedChrome === 'pill';
   const compactPill = composerPill || headerPill;
@@ -443,11 +385,7 @@ export function SlicedActionDock({
           align={menuOnEnd ? 'end' : 'start'}
           sideOffset={barSegment ? 0 : 6}
           aria-label={menuLabel ?? 'More actions'}
-          // The panel matches the composer-pill track it hangs off: same
-          // COMPOSER_SHELL_CORNER, so control and menu read as one object.
-          // Rows take COMPOSER_MENU_ITEM_CORNER (16 − p-1 = 12px) so a hover
-          // fill tracks the shell instead of leaving a square sliver. A bar
-          // segment hangs a square panel straight off the bar's rule.
+          // The panel matches the composer-pill track it hangs off:
           className={cn('min-w-[14rem] p-1', barSegment ? cornerClass('flush') : COMPOSER_SHELL_CORNER)}
         >
           {menu!.map((item) => (

@@ -4,16 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
 import { itemWorkflowState, workflowDefinitions } from '@/lib/drizzle/schema';
 
-/**
- * GET /api/studio/live?v=<definitionId>
- *
- * The Live lens feed: per-node in-flight occupancy for one workflow
- * definition — active/blocked/error counts and the oldest entry timestamp
- * (the aging signal compared against the node's slaHours). One grouped
- * point-read per call; the client refreshes it on the engine's Ably
- * db-events (db:public:item_workflow_state), NEVER on a poll interval —
- * Studio law #4 (Neon CU cost).
- */
+/** GET /api/studio/live?v=<definitionId> */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(
@@ -25,10 +16,7 @@ export const GET = withAuth(
     }
 
     try {
-      // GUC-scoped (RLS-ready): item_workflow_state is FORCE-slated, so both the
-      // org-verification read and the occupancy aggregate run on a GUC-bearing
-      // tenant connection. The org predicate on item_workflow_state is explicit
-      // (defense in depth) — added vs. the prior definition-only scoping.
+      // GUC-scoped (RLS-ready):
       const result = await withTenantDrizzle(ctx.organizationId, async (tx) => {
         // Resolve the definition org-scoped (default: the active one).
         const [definition] = await tx

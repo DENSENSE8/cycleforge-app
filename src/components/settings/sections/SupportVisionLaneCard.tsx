@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Settings → Organization → **Support vision lane**.
- *
- * Asks whether a customer's pasted photo may leave the tenant's hardware when
- * Assist drafts a reply. Local-first is the product default; cloud is an
- * explicit opt-in.
- *
- * ## Two things this card is careful about
- *
- * **1. It stores the REQUEST, never the resolved lane.** Precedence
- * (org → deployment env → `local-only`) and the cloud-availability downgrade
- * live only in the vision-lane resolver. A card that re-implemented
- * "org wins over env" would be a second answer to one question — and would
- * drift the moment either side changed.
- *
- * **2. "Inherit" is a real third state.** Clearing the choice deletes the org
- * key so the env / local-first default returns. A checkbox that defaulted to
- * local-only would stamp an explicit value on first Save and hide the
- * deployment override forever.
- *
- * Same route as GS1 (`/api/admin/organization/settings`) — that is where the
- * jsonb merge + validation already live.
- */
+/** Settings → Organization → **Support vision lane**. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Panel } from '@/design-system/primitives';

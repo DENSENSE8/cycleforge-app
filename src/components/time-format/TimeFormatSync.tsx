@@ -4,19 +4,7 @@ import { useEffect, useRef } from 'react';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { hydrateTimeFormat, setTimeFormatPersister } from '@/lib/time-format/store';
 
-/**
- * Bridges the server-backed staff_preferences `timeFormat` to the in-memory
- * time-format store. Mount once inside the authenticated tree (next to
- * <ScanHotkeySync/> / <ThemeSync/>).
- *
- *   • Hydrates the store from the server value once prefs settle (server is
- *     the durable cross-device SoT; the store stayed instant from localStorage).
- *     One-shot — never re-apply on later prefs writes; absent server value
- *     leaves the localStorage cache alone (null must not snap back to 12h).
- *   • Registers the persister so every change PUTs back to the server.
- *
- * Renders nothing.
- */
+/** Bridges the server-backed staff_preferences `timeFormat` to the in-memory time-format store. */
 export function TimeFormatSync() {
   const { prefs, update } = useStaffPreferences();
   const hydratedRef = useRef(false);

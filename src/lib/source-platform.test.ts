@@ -13,16 +13,7 @@ import {
   type SourcePlatformMeta,
 } from '@/lib/source-platform';
 
-/**
- * These tests pin the ONE definition of platform colour.
- *
- * The failure they exist to prevent is drift, not a crash: a second place that
- * decides "Amazon is orange" will agree on the day it is written and disagree
- * six months later, and nothing about the app breaks when it does — an operator
- * simply learns two different colours for one channel. The rule enforced here
- * is that `hue` is the definition and every painted class on a row has to name
- * it.
- */
+/** These tests pin the ONE definition of platform colour. */
 
 /** Hues that paint from semantic tokens rather than a Tailwind colour ramp. */
 const SEMANTIC_HUES: ReadonlySet<PlatformHue> = new Set(['neutral']);
@@ -114,10 +105,7 @@ test('the slider tone vocabulary derives from the registry, not its own table', 
   assert.equal(platformSliderTone('ebay'), 'yellow');
   assert.equal(platformSliderTone('amazon'), 'orange');
   assert.equal(platformSliderTone('fba'), 'orange');
-  // The slider's palette is narrower than the registry's, so near hues are
-  // approximated to the closest one it can say — Walmart's amber lands on
-  // orange. The non-brand hues (Square's slate, Other, unknown) land on the
-  // neutral pill, which is the one case where borrowing would be wrong.
+  // The slider's palette is narrower than the registry's, so near hues are approximated to the closest one it can say — Walmart's amber…
   assert.equal(platformSliderTone('walmart'), 'orange');
   assert.equal(platformSliderTone('square'), 'zinc');
   assert.equal(platformSliderTone('other'), 'zinc');

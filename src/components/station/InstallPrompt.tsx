@@ -71,10 +71,7 @@ export function InstallPrompt() {
     setDeferredPrompt(null);
   };
 
-  // An in-flow flex child at the foot of `#app-root` (see `WarehouseShell`),
-  // never `fixed`: the route shell above shrinks while it is up, so a sticky
-  // bottom dock stays visible and tappable above the banner instead of under
-  // it. Height animates with it so the dock slides rather than jumps.
+  // An in-flow flex child at the foot of `#app-root` (see `WarehouseShell`), never `fixed`:
   return (
     <AnimatePresence>
       {show && (

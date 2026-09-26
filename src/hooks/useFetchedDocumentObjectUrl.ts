@@ -9,13 +9,7 @@ export interface FetchedDocumentObjectUrl {
   error: string | null;
 }
 
-/**
- * Download document bytes (session cookies on same-origin routes) and expose a
- * `blob:` object URL for an iframe. Chrome's PDF plugin hangs on streamed
- * API responses without a finished Content-Length and blanks Vercel Blob URLs
- * because of the store's `default-src 'none'` CSP. A completed blob: document
- * is same-origin and finite, so the viewer paints.
- */
+/** Download document bytes (session cookies on same-origin routes) and expose a `blob:` object URL for an iframe. */
 export function useFetchedDocumentObjectUrl(
   src: string | null | undefined,
 ): FetchedDocumentObjectUrl {

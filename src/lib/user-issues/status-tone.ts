@@ -1,11 +1,4 @@
-/**
- * Presentation SoT for reported-issue status (+ type chips).
- *
- * Status vocab matches master-plan TicketStatus verbatim
- * (`pending | in-progress | deployed`). UIC-5 promotes a shared
- * `ticketStatusTone` consumed by both `/forge` and this console — until then,
- * views stay dumb and import from here (never inline a status→color map).
- */
+/** Presentation SoT for reported-issue status (+ type chips). */
 
 import type { UserIssueStatus, UserIssueType } from '@/lib/user-issues/issues';
 

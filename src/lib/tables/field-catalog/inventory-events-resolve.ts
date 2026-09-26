@@ -1,16 +1,4 @@
-/**
- * Inventory-events slot resolvers — row + fieldId → the resolved fact a slot
- * cell paints. Pure functions; no React, no hooks.
- *
- * Presentation faces (the event tag, the status transition chips, the copyable
- * serial) stay in the family's cell map — this module answers WHAT the fact
- * says, in display text, which is what a bound column with no bespoke face and
- * any future export carries.
- *
- * `inventory-events.occurred` resolves to the ABSOLUTE timestamp rather than
- * the cell's relative age ("16m ago"): a resolver that read the clock would
- * make one row's answer depend on when it happened to be called.
- */
+/** Inventory-events slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { PulseEventRow } from '@/components/inventory/types';
@@ -28,12 +16,7 @@ function transitionText(prev: string | null, next: string | null): string | null
   return b ?? a;
 }
 
-/**
- * Legacy rows stored extra serials as "Supplemental serial <SN> (beyond
- * expected qty)". Multiple serials per line is normal, so it reads as a plain
- * "Serial <SN>" — the same normalization the retired card did, kept with the
- * fact rather than with the display it used to live in.
- */
+/** Legacy rows stored extra serials as "Supplemental serial <SN> (beyond expected qty)". */
 function notesText(notes: string | null): string | null {
   const raw = str(notes);
   if (!raw) return null;

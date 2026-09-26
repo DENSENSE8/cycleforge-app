@@ -71,12 +71,7 @@ interface SearchableSelectFieldProps<T = unknown> {
   renderOption?: (opt: SearchableSelectOption<T>, state: { active: boolean }) => ReactNode;
   /** Custom filter predicate. Default: case-insensitive match on label + meta. */
   filter?: (opt: SearchableSelectOption<T>, query: string) => boolean;
-  /**
-   * Remote mode. When set, the host owns filtering — the field reports every
-   * query change here (debounce + refetch in the host) and stops filtering the
-   * passed `options` in-memory (they are already the server result). Keep the
-   * currently-picked option present in `options` so the trigger label resolves.
-   */
+  /** Remote mode. When set, the host owns filtering — the field reports every query change here (debounce + refetch in the host) and stops… */
   onSearchChange?: (query: string) => void;
   /** Remote fetch in flight — shows a searching row instead of the empty state. */
   loading?: boolean;
@@ -154,15 +149,7 @@ function focusAdjacentTabStop(origin: HTMLElement, backward: boolean) {
   next?.focus({ preventScroll: true });
 }
 
-/**
- * House **searchable combobox** (shadcn/cmdk list + DS Popover).
- * Fully controlled via `value` + `onChange`; owns open + query only.
- * `appearance="flush"` = zero radius, square panel (claim type golden).
- *
- * Keyboard: Tab focuses trigger · ArrowDown/Up/Enter/Space (and typeahead)
- * open the list · arrows + Enter pick · Escape closes · focus returns to
- * trigger so Tab walks the next field.
- */
+/** House **searchable combobox** (shadcn/cmdk list + DS Popover). */
 export function SearchableSelectField<T = unknown>({
   value,
   onChange,

@@ -5,13 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/label-manifests/[id] — manifest detail + its member units with line
- * attribution (origin_receiving_line_id per unit). Accepts a numeric id OR a
- * `KIT-…` manifest_uid (a scanned master label), so the same endpoint serves the
- * app's links and a raw scan. Read side for the manifest panel + prebox wizard.
- * Auth: `print.label`.
- */
+/** GET /api/label-manifests/[id] — manifest detail + its member units with line attribution (origin_receiving_line_id per unit). */
 export const GET = withAuth(
   async (request, ctx) => {
     const segments = request.nextUrl.pathname.split('/').filter(Boolean);

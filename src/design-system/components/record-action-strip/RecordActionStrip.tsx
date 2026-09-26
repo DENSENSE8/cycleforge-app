@@ -1,53 +1,6 @@
 'use client';
 
-/**
- * `RecordActionStrip` — the ONE place a desk record's verbs paint (owner
- * 2026-09-25, supersedes "actions in the record header / right column").
- *
- * ## Where it paints
- *
- * Under the list's search row, inside the element the list marks with
- * `DESK_RECORD_ANCHOR_ATTR` (search row + strip together). In place, the open
- * record opens BELOW that anchor, so the search row and this strip stay
- * visible and live over it; in split, the strip sits under the list's search
- * bar beside the record pane. The record header and the record's own columns
- * carry no verbs. Lists host it through their strip slot: `DataTable`
- * `actionStrip`, `RecordLedger` `actionStrip`, the outbound ledger's own row.
- * Idle (no verbs — nothing open, nothing checked) it paints nothing.
- *
- * ## Chrome
- *
- * Primary verbs left, in the order given. `overflow` verbs behind one ⋮ menu.
- * `isolated` verbs (Delete) on the far right, and they take a SECOND press:
- * the same button re-labels ("Delete — press again"), so an irreversible verb
- * cannot fire on a mis-click without adding a confirm control. Any other
- * press disarms it.
- *
- * ## Morph
- *
- * A verb with `display` morphs the strip into that display (the OOS product
- * picker, the scan-out staff picker, the notes composer, the task composer),
- * with a Back control before it; `done()` morphs it back. The swap is instant
- * — no geometry tween (repo motion law: never animate layout size; the record
- * below re-measures its top edge off this strip).
- *
- * ## Keys
- *
- * Each verb's `hotkey` runs it from the verbs view (not while typing, not
- * while a popover / menu owns the keyboard). `?` reveals the letters with
- * {@link KeyboardKey} (the shared selection-hotkey reveal store). Escape
- * ladder: an open popover inside a display → the display (back to the verbs)
- * → `onDismiss` when the host passes one (a row-anchored bulk strip) →
- * otherwise the key passes on (the record plane closes the record, then
- * fullscreen).
- *
- * Key the strip by the record it acts on (`key={record.id}`) so walking to
- * the next record resets an open display and an armed second press.
- *
- * Precedent: `src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx`
- * (orders is consumer #1 — its row-anchored bulk strip and the open-record
- * strip both render through this primitive).
- */
+/** `RecordActionStrip` — the ONE place a desk record's verbs paint (owner 2026-09-25, supersedes "actions in the record header / right… */
 
 import { useState, type ReactNode } from 'react';
 import { Button } from '@/design-system/primitives/Button';

@@ -43,10 +43,7 @@ export async function POST(req: NextRequest) {
       persistent,
     });
 
-    // The QR must point at the host the DESK is on. `NEXT_PUBLIC_APP_URL` is a
-    // deployment's canonical address (pinned to one host), so using it here
-    // sent every lane / localhost desk's phone to a different server: the
-    // phone's session cookie landed on that host and the desk never paired.
+    // The QR must point at the host the DESK is on.
     const claimUrl = `${oauthOrigin(req).replace(/\/$/, '')}/m/claim?token=${encodeURIComponent(handoff.token)}`;
 
     await audit({

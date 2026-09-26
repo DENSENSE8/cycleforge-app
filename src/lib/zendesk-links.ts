@@ -1,10 +1,4 @@
-/**
- * Zendesk ticket ↔ internal entity linking + Blob-photo resolution.
- *
- * Photos for a ticket live in OUR Vercel Blob (the `photos` table), not as
- * Zendesk attachments. To show them we resolve the ticket's internal entity,
- * then fetch that entity's photos. See migration 2026-06-01_ticket_links.sql.
- */
+/** Zendesk ticket ↔ internal entity linking + Blob-photo resolution. */
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { getTicket, updateTicket } from './zendesk';
@@ -50,25 +44,7 @@ const defaultLinkSupportTicketEntityDeps: LinkSupportTicketEntityDeps = {
   runInTenantTx: (orgId, fn) => withTenantTransaction(orgId, (c) => fn(c)),
 };
 
-/**
- * Canonical entity-link writer — the ONE place a support ticket's PRIMARY entity
- * link (its anchor) is written, provider-agnostic. Both the Zendesk path
- * ({@link linkTicket}) and the internal-escalation path (threads/escalate.ts)
- * compose this rather than forking a second link writer.
- *
- * Keyed on `support_ticket_id` (2026-07-21 re-key), so it works for INTERNAL
- * tickets (whose `zendesk_ticket_id` is NULL) as well as Zendesk ones. The
- * ON CONFLICT arbiter is `ux_ticket_links_support_entity`; it is safe to name
- * that arbiter while the legacy zendesk-led uniques still exist because they are
- * equivalent (1:1) for Zendesk rows — an equivalent conflict resolves on the same
- * row — and internal rows only ever conflict on the support-led index.
- *
- * REQUIRES the 2026-07-21 expand migration to be applied (support-led indexes +
- * nullable zendesk_ticket_id). Do not deploy this ahead of that migration.
- *
- * Handles all three cases: fresh anchor (insert), re-anchor to a different entity
- * (demote + insert), and promote an existing reference row (conflict → anchor).
- */
+/** Canonical entity-link writer — the ONE place a support ticket's PRIMARY entity link (its anchor) is written, provider-agnostic. */
 export async function linkSupportTicketEntity(args: {
   orgId: string;
   supportTicketId: number;
@@ -79,10 +55,7 @@ export async function linkSupportTicketEntity(args: {
   staffId?: number | null;
 }, deps: LinkSupportTicketEntityDeps = defaultLinkSupportTicketEntityDeps): Promise<void> {
   await deps.runInTenantTx(args.orgId, async (c) => {
-    // Demote whatever else held this ticket's anchor, so ux_ticket_links_support_anchor
-    // can never see two anchors mid-statement. Keyed on support_ticket_id so it
-    // covers internal tickets too. (is_primary follows link_role via the DB sync
-    // trigger; we set both explicitly and consistently.)
+    // Demote whatever else held this ticket's anchor, so ux_ticket_links_support_anchor can never see two anchors mid-statement.
     await c.query(
       `UPDATE ticket_links
           SET is_primary = false, link_role = 'reference', updated_at = NOW()
@@ -144,21 +117,7 @@ export async function linkTicket(args: {
   return { supportTicketId: supportTicket.id };
 }
 
-/**
- * Link a ticket to a shipment (STN id) AS ITS PRIMARY ANCHOR, so cartons
- * anchored to that tracking number resolve the ticket via receiving.shipment_id.
- * Skips when the ticket already has a primary (never steals an anchored ticket).
- *
- * The guard is a `WHERE NOT EXISTS` rather than `ON CONFLICT (org, ticket)
- * DO NOTHING` because that inference target no longer exists on its own: the
- * primary index is partial. Keeping the ON CONFLICT on the support-led natural
- * key (2026-07-21 re-key) means a ticket that already references this STN as a
- * non-primary row gets PROMOTED instead of erroring on
- * ux_ticket_links_support_entity.
- *
- * NOTE: this is the anchor writer. Adding an extra STN to a ticket that already
- * has an anchor is a *reference* link — see addTicketShipmentReference.
- */
+/** Link a ticket to a shipment (STN id) AS ITS PRIMARY ANCHOR, so cartons anchored to that tracking number resolve the ticket via… */
 export async function linkTicketToShipment(args: {
   orgId: string;
   zendeskTicketId: number;
@@ -219,14 +178,7 @@ export async function unlinkTicket(args: {
   return (res.rowCount ?? 0) > 0;
 }
 
-/**
- * Clear a Zendesk ticket's `external_id` — but ONLY when it still resolves to
- * the given entity. Called on unlink (receiving + warranty) so a detached
- * ticket can't be silently re-attached to the same entity via the external_id
- * fallback in {@link getTicketEntity}. Best-effort: never throws — the
- * `ticket_links` delete is the authoritative detach, this is the clean-up.
- * Returns true when an external_id was cleared.
- */
+/** Clear a Zendesk ticket's `external_id` — but ONLY when it still resolves to the given entity. */
 export async function clearTicketExternalIdIfMatches(args: {
   orgId: string;
   zendeskTicketId: number;
@@ -255,11 +207,7 @@ export async function getTicketEntity(
   orgId: string,
   zendeskTicketId: number,
 ): Promise<ResolvedTicketEntity | null> {
-  // 1. ticket_links (cheapest, authoritative)
-  // `AND is_primary` is load-bearing since ticket_links became many-per-ticket:
-  // a ticket may now hold extra reference rows (e.g. additional STNs), and the
-  // bare LIMIT 1 would return an arbitrary one of them as "the" entity.
-  // ux_ticket_links_ticket_primary guarantees at most one primary per ticket.
+  // 1. ticket_links (cheapest, authoritative) `AND is_primary` is load-bearing since ticket_links became many-per-ticket:
   const links = await tenantQuery<{ entity_type: string; entity_id: string }>(
     orgId,
     `SELECT entity_type, entity_id FROM ticket_links

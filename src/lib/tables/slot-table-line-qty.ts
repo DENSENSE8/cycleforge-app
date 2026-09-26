@@ -1,14 +1,4 @@
-/**
- * Line-qty identity — engine law for every PRODUCT_TABLES peer.
- *
- * Qty is not a column between Status and Amount. It is the first fact under
- * the Item title on the compound morph (a `subtitle:1` track after Title on
- * sheet). A family that catalogs `{family}.qty` as a number subtitle field
- * gets that place automatically: product defaults, org overrides, and a table
- * added next week all resolve through {@link ensureLineQtySubtitle}.
- *
- * `bins.total_qty` is occupancy, not line qty — the id must be exactly `.qty`.
- */
+/** Line-qty identity — engine law for every PRODUCT_TABLES peer. */
 
 import type { CompoundSlotValue, CompoundSubtitlePart } from '@/components/tables/compound/compound-row-model';
 import { orderRowQtyTone } from '@/lib/condition-tone';
@@ -95,18 +85,7 @@ export function pinLineQtyFirst(
 
 /**
  * What a line qty MEANS on this surface, which is what decides its tone.
- *
- * - `order-line` (default) — a line of an ORDER. `2+` warns, because two units
- *   on one line is a pick-and-pack risk: the packer has to notice. This is the
- *   To-ship face and every outbound peer's.
- * - `on-hand` — a COUNT of what is sitting somewhere. Four on a shelf is not
- *   an exception, it is a shelf with four on it, so the number stays quiet at
- *   every value (operator 2026-09-15, Inventory › Stock: the qty must not paint
- *   warning-yellow above one).
- *
- * Still ONE count face — same bare number, same two-character reservation,
- * same weight. A family picks the QUESTION, never a palette, so nobody invents
- * a second count tone.
+ * every value (operator 2026-09-15, Inventory › Stock: the qty must not paint
  */
 export type LineQtyMeaning = 'order-line' | 'on-hand';
 

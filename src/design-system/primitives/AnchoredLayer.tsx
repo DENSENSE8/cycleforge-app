@@ -15,37 +15,6 @@ import { useEscapeClose, useRegisterOverlay } from '@/design-system/hooks';
 import { zIndex, type ZIndexToken } from '@/design-system/tokens/z-index';
 
 // ─── AnchoredLayer ───────────────────────────────────────────────────────────
-//
-// The canonical building block for an ANCHORED popover/dropdown/menu — anything
-// that opens positioned relative to a trigger element and participates in the
-// global stacking order.
-//
-// It is the anchored sibling of <Layer>. Where <Layer> portals a full-screen /
-// centered overlay, AnchoredLayer:
-//   1. Portals its panel to <body> so a high z-index can never be trapped by an
-//      ancestor that established a stacking context (transform, filter,
-//      backdrop-filter, will-change, perspective, contain) — the bug that makes
-//      an in-flow `absolute top-full z-dropdown` silently render behind a panel.
-//   2. Tracks the trigger's on-screen rect (getBoundingClientRect +
-//      ResizeObserver + scroll/resize) and pins the panel to the chosen
-//      `placement`, so it follows the trigger exactly like the old
-//      `absolute top-full` did — modelled on RightPaneOverlay's rect tracking.
-//   3. Owns dismissal: Escape + outside-click that accounts for BOTH the anchor
-//      and the (now-portaled) panel — so callers can delete their bespoke
-//      `rootRef.contains(target)` handlers, which would otherwise misfire once
-//      the panel left the trigger's DOM subtree.
-//
-// It owns no visual chrome (no backdrop/scroll-lock/motion); compose those in
-// the panel children. z-index defaults to `dropdown` — the band these anchored
-// menus belong to (open in normal page flow, never over a slide-over panel).
-//
-// Usage:
-//   const triggerRef = useRef<HTMLButtonElement>(null);
-//   <button ref={triggerRef} onClick={() => setOpen(o => !o)} />
-//   <AnchoredLayer open={open} onClose={() => setOpen(false)}
-//                  anchorRef={triggerRef} placement="bottom-stretch">
-//     …menu…
-//   </AnchoredLayer>
 
 export type AnchoredPlacement =
   | 'bottom-start'
@@ -65,17 +34,7 @@ export type AnchoredPlacement =
 
 /**
  * Which edge the panel's horizontal alignment is measured from.
- *
- * `anchor` (default) aligns to the TRIGGER — the normal dropdown behaviour.
- * `viewport` aligns to the SCREEN, so a panel opened from a trigger that sits
- * inside a padded bar still reaches the edge. The header's inset would
- * otherwise become a visible gutter down the side of the open panel.
- *
  * Operator 2026-09-22: *"the drop down for the inbox on click must have no
- * spacing to the right of the screen when clicked."*
- *
- * Vertical-edge placements only (`top-*` / `bottom-*`, excluding `-stretch`
- * and `-center`, which are already defined against the trigger's box).
  */
 export type AnchoredEdgeAlign = 'anchor' | 'viewport';
 
@@ -122,12 +81,7 @@ export interface AnchoredLayerProps {
 /** Breathing room kept between a clamped panel and the viewport edge. */
 const VIEWPORT_GUTTER_PX = 8;
 
-/**
- * Where a vertical-edge (top-/bottom-) panel's LEFT wants to sit, in viewport
- * coordinates, before any clamp — mirrors {@link computeStyle}'s horizontal
- * alignment. Returns null for placements the clamp does not own (stretch and
- * the left-/right-edge placements, which anchor against a viewport edge already).
- */
+/** Where a vertical-edge (top-/bottom-) panel's LEFT wants to sit, in viewport coordinates, before any clamp — mirrors {@link… */
 function intendedPanelLeft(
   rect: DOMRect,
   placement: AnchoredPlacement,
@@ -231,10 +185,7 @@ export function AnchoredLayer({
     setTarget(document.body);
   }, []);
 
-  // Claim keyboard ownership while open so ambient Escape owners (the outbound
-  // queue keyboard bridge, the right-rail inspector) stand down — otherwise the
-  // capture-phase queue listener closes the inspector and this panel stays up.
-  // See `src/lib/overlay-stack/store.ts`.
+  // Claim keyboard ownership while open so ambient Escape owners (the outbound queue keyboard bridge, the right-rail inspector) stand down —…
   useRegisterOverlay(open);
   useEscapeClose(open && closeOnEscape, onClose);
 
@@ -259,14 +210,7 @@ export function AnchoredLayer({
     };
   }, [open, anchorRef]);
 
-  // Horizontal viewport clamp. A wide panel anchored `*-end` / `*-center` from a
-  // trigger near the left/center of the work surface (e.g. an in-row Link on the
-  // Unbox capture strip) would otherwise render its left edge past the viewport
-  // / under chrome. Measure the panel and, ONLY when it overflows, pin a clamped
-  // left. useLayoutEffect runs before paint, so the correction is flash-free; a
-  // panel that already fits gets `null` and positions exactly as before, so no
-  // existing menu moves. Vertical-edge placements only — the left/right-edge and
-  // stretch placements anchor against an edge already.
+  // Horizontal viewport clamp.
   useLayoutEffect(() => {
     const panel = panelRef.current;
     if (!open || !rect || !panel) {

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * BlockRenderer — mounts one configured block instance: resolves its
- * registered definition, fetches its bound data source, binds its actions
- * (permission-filtered to the viewer), and lazy-loads the block component.
- *
- * Permission model (station-builder-ui-plan §2.4): a viewer who lacks a
- * block's required permissions or its source's read permission doesn't get
- * the block at all; a viewer who holds those but lacks some bound-action
- * permission just doesn't see that button. The builder never grants — it
- * only selects among existing withAuth-gated routes.
- */
+/** BlockRenderer — mounts one configured block instance: */
 
 import { lazy, Suspense, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

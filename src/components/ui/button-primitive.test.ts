@@ -4,14 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Button } from './button';
 
-/**
- * The shadcn/ui Button primitive, and the chrome that must sit on it.
- *
- * Every expand / collapse control in the station centre was a raw
- * `<button className="ds-raw-button …">` with the focus ring, the hover fill and
- * the disabled state hand-copied at each site — five copies that could drift
- * one at a time. They compose this now.
- */
+/** The shadcn/ui Button primitive, and the chrome that must sit on it. */
 describe('shadcn Button primitive', () => {
   const render = (props: Partial<React.ComponentProps<typeof Button>> = {}) =>
     renderToStaticMarkup(React.createElement(Button, props, 'Press'));

@@ -8,13 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-/**
- * GET /api/sku-kit-parts/[id]/document
- *
- * Same-origin preview for a kit-part insert (PDF/image on Vercel Blob).
- * Packers cannot use `/api/documents/:id/content` (`orders.view`); this route
- * is session + org-scoped so the pack slide-over can iframe the file.
- */
+/** GET /api/sku-kit-parts/[id]/document */
 
 function partIdFromPath(pathname: string): number | null {
   // /api/sku-kit-parts/:id/document

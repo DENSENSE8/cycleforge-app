@@ -1,15 +1,4 @@
-/**
- * Products-catalog slot resolvers — row + fieldId → the resolved fact a slot
- * cell paints. Pure functions; no React, no hooks.
- *
- * Presentation faces (the inventory linkage chip, the status pill) stay in the
- * family's cell map — this module answers WHAT the fact says, in display text.
- *
- * Roll-up counts resolve to `null` at zero rather than `0`. A product with no
- * channels is one nobody has listed yet, and a column of zeros is the fake-`0`
- * the honest-absence law names: it reads as a measured result rather than as
- * "nothing here to measure".
- */
+/** Products-catalog slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { CatalogListRow } from '@/components/products/catalog/types';

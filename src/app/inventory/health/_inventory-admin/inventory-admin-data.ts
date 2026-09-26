@@ -26,13 +26,7 @@ export interface BackfillRow {
   serial_units_total: number;
 }
 
-/**
- * The two DRIFT feeds' row shapes live in `@/lib/inventory/drift-rows` — the
- * registered families read them, and a loader is not the place a family's row
- * type is declared. `SkuDriftRow` needs no translation (every fact is a
- * scalar); the alert row's `triggered_at` is ISO-normalized on the way out, so
- * the resolver reads the same instant on both sides of the RSC boundary.
- */
+/** The two DRIFT feeds' row shapes live in `@/lib/inventory/drift-rows` — the registered families read them, and a loader is not the place… */
 
 export interface AllocationRow {
   state: string;
@@ -67,10 +61,7 @@ export interface PreflightCheck {
   detail: string;
 }
 
-// The inventory system is V2-only and always-on — there are no longer any
-// INVENTORY_V2_* feature flags to toggle. This table now documents the live
-// lifecycle phases (all active) so the diagnostics page still reads as a map of
-// what the unit-level engine covers.
+// The inventory system is V2-only and always-on — there are no longer any INVENTORY_V2_* feature flags to toggle.
 async function loadFlags(): Promise<FlagRow[]> {
   const phases: Array<{ key: string; phase: string }> = [
     { key: 'RECEIVING_PUTAWAY', phase: 'Phase 2 — receive+putaway' },
@@ -269,10 +260,7 @@ export async function loadInventoryAdminData(orgId: OrgId): Promise<InventoryAdm
   const schemaAllOk = schema.every((s) => s.exists);
   const driftClean = drift.length === 0;
 
-  // Preflight: the gating conditions that should be green before flipping
-  // ANY phase flag. Per-phase data preconditions (e.g. Phase 5 needs Phase 4
-  // allocations) are noted in the row body rather than baked into the
-  // status colour, since they require live operational data to validate.
+  // Preflight: the gating conditions that should be green before flipping ANY phase flag.
   const tsnBackfillOk = (backfill?.unlinked_eligible ?? 1) === 0;
   const gtinBackfillOk = (gtinCoverage?.without_gtin ?? 1) === 0;
   const openDriftCount = openDriftAlerts.length;

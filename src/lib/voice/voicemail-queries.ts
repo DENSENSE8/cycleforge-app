@@ -1,10 +1,4 @@
-/**
- * Voicemail read paths for the Workbench picker + detail pane.
- *
- * The to-do list = voicemails JOIN voicemail_followups, filtered by the
- * follow-up status; ordered newest voicemail first. All reads go through
- * `tenantQuery` (org GUC) so they are tenant-scoped by construction.
- */
+/** Voicemail read paths for the Workbench picker + detail pane. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

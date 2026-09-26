@@ -1,11 +1,4 @@
-/**
- * Walk-in-sales slot resolvers — row + fieldId → display fact.
- *
- * Callers: `useWalkInSalesSpreadsheet`.
- * Affected API: none.
- * Data schemas: `SaleRow`.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** Walk-in-sales slot resolvers — row + fieldId → display fact. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { SaleRow } from '@/lib/walk-in/transactions';

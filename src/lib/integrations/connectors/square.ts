@@ -1,22 +1,4 @@
-/**
- * Square connector sync adapter — connection-driven order ingestion.
- *
- * Square is the Nango pilot: auth (the hosted Connect flow + token rotation)
- * already lands a connection in organization_integrations. This adapter is the
- * "only net-new code per provider" the README describes — it pulls the org's
- * Square orders through the tenant-aware client and upserts them into `orders`
- * with the SAME shape eBay/Amazon use (account_source / sale_amount / currency),
- * so every downstream surface (price chip, tracker, source-platform label)
- * renders it generically.
- *
- * Reuses:
- *   - resolveSquareConfig / squareFetchForOrg (Nango token, env fallback)
- *   - the shared `orders` writer via ingestConnectorOrders
- *   - getSyncCursor / updateSyncCursor for the incremental updated_at watermark
- *
- * Lazily imported by the registry so the connection reader never pulls in the
- * Square client.
- */
+/** Square connector sync adapter — connection-driven order ingestion. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestConnectorOrders } from './ingest-connector-orders';

@@ -1,11 +1,4 @@
-/**
- * POST /api/auth/account/passkey/register/finish
- *
- * Body: { response: RegistrationResponseJSON, label?: string }
- *
- * Verifies the attestation against the challenge cookie set by /begin and
- * stores the credential on the account. Does not sign anyone in.
- */
+/** POST /api/auth/account/passkey/register/finish */
 
 import { NextRequest, NextResponse } from 'next/server';
 import {

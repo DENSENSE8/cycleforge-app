@@ -22,13 +22,7 @@ interface GaugeDonutProps {
   /** Enable per-arc hover: the hovered arc lifts, the others dim, and the center
    *  readout swaps to that segment's label · value · share. */
   interactive?: boolean;
-  /**
-   * Monitor filter-only click: when set, arcs become toggle affordances. Clicking
-   * an arc calls `onSelect(key)`; the `activeKey` arc stays lit (raised, others
-   * dimmed) even without hover — the visual twin of the toolbar legend's lit chip.
-   * Keyboard access is provided by that legend; the arcs are a secondary pointer
-   * affordance, so they add focus semantics but never a durable selection.
-   */
+  /** Monitor filter-only click: */
   onSelect?: (key: string) => void;
   /** The currently-filtered segment key (drives the lit/pinned arc). */
   activeKey?: string | null;

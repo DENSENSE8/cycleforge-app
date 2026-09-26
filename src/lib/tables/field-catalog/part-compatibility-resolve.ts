@@ -1,18 +1,4 @@
-/**
- * Part-compatibility slot resolvers — pure. One function is the WHOLE
- * vocabulary the engine reads: the slot cells, the header-sort comparator and
- * the search index all go through it, so a fact can never be searchable as one
- * string and sortable as another.
- *
- * Two rules this family leans on:
- *
- * - Enums resolve to the OPERATOR'S WORD (`partFitLabel`, `partSourceLabel`),
- *   not the wire token: a column of `csv_import` is storage leaking onto a
- *   desk, and the label maps live beside the row type so the pill and the
- *   track cannot disagree about what `salvage` is called.
- * - The date resolves to the ABSOLUTE INSTANT. `compareGridValues` needs the
- *   instant to order by, and the compact civil face is the row adapter's job.
- */
+/** Part-compatibility slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

@@ -1,20 +1,4 @@
-/**
- * placement-parity — the OBSERVE-ONLY shim for the placement strangle
- * (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x).
- *
- * Each hardcoded placement site is converted in two moves:
- *   1. (this) OBSERVE — alongside the live hardcoded bin pick, compute what the
- *      declarative `resolveDecision → resolvePlacementBin` mechanism WOULD pick,
- *      and log match / DIVERGENCE / unseeded. Zero behavior change; the hardcoded
- *      path stays the source of truth. This proves the new mechanism returns the
- *      identical bin before anything is flipped.
- *   2. (later) CUTOVER — behind a per-site PLACEMENT_STRANGLE_* flag, the site
- *      consumes the resolved placement and the hardcode is deleted.
- *
- * The observer is fire-and-forget and SELF-GUARDED: it never throws, so a parity
- * fault (bad config, missing bin, lookup error) can never disturb the real move —
- * the same degrade-not-fail discipline `sortSerialUnitToParts` already follows.
- */
+/** placement-parity — the OBSERVE-ONLY shim for the placement strangle (UNIFIED-ENGINE-MASTER-PLAN §1.6 Track 1, Stage 1.x). */
 
 import { isPlacementParityObserve } from '@/lib/feature-flags';
 import { logger } from '@/lib/observability/logger';
@@ -76,12 +60,7 @@ function defaultLog(entry: PlacementParityLog): void {
   }
 }
 
-/**
- * Observe (don't act on) placement parity for one unit at one site. No-op unless
- * PLACEMENT_PARITY_OBSERVE is on. Awaitable for tests, but call sites should
- * fire-and-forget (`void observePlacementParity(...)`) so observation never sits
- * on the move's critical path. Never throws.
- */
+/** Observe (don't act on) placement parity for one unit at one site. */
 export async function observePlacementParity(input: PlacementParityInput): Promise<void> {
   if (!isPlacementParityObserve()) return;
   const log = input.log ?? defaultLog;

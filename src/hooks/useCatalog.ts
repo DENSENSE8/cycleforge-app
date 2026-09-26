@@ -74,33 +74,13 @@ export function usePlatformCatalog() {
   return { ...q, rows, options };
 }
 
-/**
- * The org's platform → receiving-type dependency matrix (dependent picklist).
- *
- * Returns `[]` while loading, which reads as "no platform is constrained" — the
- * safe direction: the picker shows every type for a beat rather than briefly
- * hiding the operator's real answer. The PATCH route re-checks server-side, so
- * a stale client can never write an illegal pair.
- */
+/** The org's platform → receiving-type dependency matrix (dependent picklist). */
 export function usePlatformTypeRules(): PlatformTypeRule[] {
   const q = useQuery(platformTypeRulesQuery());
   return q.data ?? [];
 }
 
-/**
- * Org priority-ladder catalog — the rungs an operator picks from the urgency
- * pill, with any org rename / repaint applied.
- *
- * Shaped DELIBERATELY unlike its siblings. `usePlatformCatalog` / `useReceivingTypeCatalog`
- * swap the built-ins OUT the moment the DB has rows (`rows.length ? … : BUILTIN`)
- * because there a row is the thing itself. Here the ladder is a code constant
- * and a row is only a skin, so rows are MERGED OVER the built-ins by tier: the
- * four rungs and their order always come from `PRIORITY_OVERRIDE_TIERS`, and an
- * org that has customised nothing gets exactly the built-in ladder.
- *
- * That is also why a missing row is not a gap to fill — it is the default, and
- * why resetting a rung is a DELETE rather than writing the built-in values back.
- */
+/** Org priority-ladder catalog — the rungs an operator picks from the urgency pill, with any org rename / repaint applied. */
 export function usePriorityCatalog() {
   const q = useQuery(prioritiesQuery());
   const rows: PriorityTierRow[] = q.data ?? [];
@@ -147,12 +127,7 @@ export function useReceivingTypeCatalog() {
   return { ...q, rows, options };
 }
 
-/**
- * Catalog-aware platform tone/label resolver. Returns `resolve(value)` →
- * {@link SourcePlatformMeta} via {@link catalogPlatformMeta} (org label,
- * `color_hex` accent, catalog tone), falling back to the built-in
- * `sourcePlatformMeta` for a slug the catalog does not hold.
- */
+/** Catalog-aware platform tone/label resolver. */
 export function usePlatformMeta(): (value: string | null | undefined) => SourcePlatformMeta {
   const { rows } = usePlatformCatalog();
   return useMemo(() => {
@@ -175,12 +150,7 @@ export function usePlatformShortLabelLookup(): (value: string | null | undefined
   return useMemo(() => buildPlatformShortLabelLookup(rows), [rows]);
 }
 
-/**
- * Catalog-aware receiving-type label resolver. Returns `resolve(code)` → the
- * org catalog's label for that type slug (so a renamed or custom type reads
- * correctly), falling back to the built-in `receivingLabelTypeDisplay`. Empty
- * code → '' (no type shown). Mirror of {@link usePlatformMeta} for types.
- */
+/** Catalog-aware receiving-type label resolver. */
 export function useReceivingTypeLabel(): (code: string | null | undefined) => string {
   const { rows } = useReceivingTypeCatalog();
   return useMemo(() => {
@@ -193,12 +163,7 @@ export function useReceivingTypeLabel(): (code: string | null | undefined) => st
   }, [rows]);
 }
 
-/**
- * Org storefront accounts (platform_accounts). `byPlatform` groups active rows
- * under their platform id for the accounts manager. No built-in fallback —
- * accounts are entirely org-defined (seeded from ebay_accounts + one default
- * per platform).
- */
+/** Org storefront accounts (platform_accounts). */
 export function usePlatformAccountCatalog(opts: { includeInactive?: boolean; platformId?: number } = {}) {
   const q = useQuery(platformAccountsQuery(opts));
   const rows: PlatformAccountRow[] = q.data ?? [];
@@ -230,32 +195,7 @@ export function useWorkflowNodeOptions() {
 const NO_PLATFORM_ROWS: readonly PlatformRow[] = [];
 const NO_ACCOUNT_ROWS: readonly PlatformAccountRow[] = [];
 
-/**
- * ONE catalog subscription for every consumer of {@link useOrderChannel}.
- *
- * ## Why this is not just `useQuery` twice
- *
- * The resolver is a PER-ROW hook: `OrdersQueueTableRow` calls it, and a To-ship
- * window holds ~30 rows. Written as two `useQuery` calls it minted two
- * `QueryObserver`s per row — ~60 live observers that react-query has to build,
- * register on the query, run `select` for, structurally compare and tear down
- * again on every virtualizer scroll — plus ~90 `Map` builds, for one lookup
- * table that is identical on every row. React Query dedupes the FETCH, never
- * the observer.
- *
- * So the observers are hoisted out of the component tree entirely: one pair per
- * `QueryClient`, and components attach to it through `useSyncExternalStore`
- * (a listener in a `Set` — no observer, no `select`, no structural sharing).
- * `select` runs once, the Maps are built once, and every row is handed the SAME
- * resolver function, which is also what makes the row's `memo` comparator work.
- *
- * These are REAL `QueryObserver`s rather than a `getQueryData` peek, because a
- * peek is only as fresh as whoever else happens to be mounted: `useInvalidateCatalog`
- * refetches ACTIVE queries, and on the To-ship desk this resolver is often the
- * only consumer of the platform catalog on the page. Attaching on the first
- * listener and detaching on the last reproduces `useQuery`'s mount semantics
- * (fetch-on-mount, refetch-on-invalidate, staleTime) — once instead of 60 times.
- */
+/** ONE catalog subscription for every consumer of {@link useOrderChannel}. */
 function createOrderChannelCell(client: QueryClient) {
   const platformObserver = new QueryObserver(client, platformsQuery());
   const accountObserver = new QueryObserver(client, platformAccountsQuery());
@@ -321,18 +261,7 @@ function orderChannelCell(client: QueryClient): OrderChannelCell {
   return cell;
 }
 
-/**
- * Catalog-aware order-channel resolver. Returns `resolve(orderId,
- * accountSource)` → {@link PlatformDisplay}: the full `label`, the dense
- * `shortLabel` (connection → platform `short_label` → built-in compact →
- * label), the `connectionName` when the storefront says more than the label,
- * and the catalog-aware dot `meta`. Built by {@link buildOrderChannelResolver};
- * the order-number shape (Amazon 3-7-7 / eBay 2-5-5) stays the fallback and
- * wins over a stale `account_source`.
- *
- * Safe to call per row: every caller shares ONE catalog subscription and ONE
- * resolver instance (see {@link createOrderChannelCell}).
- */
+/** Catalog-aware order-channel resolver. */
 export function useOrderChannel(): OrderChannelResolver {
   const cell = orderChannelCell(useQueryClient());
   return useSyncExternalStore(cell.subscribe, cell.getResolver, cell.getResolver);

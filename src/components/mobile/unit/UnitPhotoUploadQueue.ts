@@ -8,18 +8,7 @@ import {
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 
-/**
- * Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads —
- * the exact mirror of the receiving `photoUploadQueue`, in a fully separate
- * namespace (localStorage key `cf.unit.upload_queue.v1`, entityType
- * `SERIAL_UNIT`, photoType `testing_photo`). The packer scans a printed unit
- * label at the station → the phone captures photos → they upload here.
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
- *
- * Per-photo state machine:   queued → uploading → done | failed
- * Two persistence layers (in-memory blob ref + localStorage base64) so a tab
- * refresh auto-resumes anything still `queued`.
- */
+/** Module-singleton store for in-flight SERIAL_UNIT testing-scan photo uploads — the exact mirror of the receiving `photoUploadQueue`, in a… */
 
 export type UploadState = 'queued' | 'uploading' | 'done' | 'failed';
 
@@ -39,13 +28,7 @@ export interface UnitPhotoScope {
   packerLogId?: number | null;
   /** Order / shipment ref for poRef filing. */
   poRef?: string | null;
-  /**
-   * Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs`
-   * — stored as `photos.client_captured_at`, beside (never instead of)
-   * `created_at`. It rides in `scope` so `PersistedEntry.meta` carries it
-   * through a localStorage rehydration; see the receiving queue's `PhotoScope`
-   * for the full rationale. Optional: pre-2026-07-29 persisted entries have none.
-   */
+  /** Device-reported capture instant (epoch ms) from `CapturedShot.capturedAtMs` — stored as `photos.client_captured_at`, beside (never… */
   capturedAtMs?: number | null;
 }
 
@@ -77,10 +60,7 @@ interface PersistedEntry {
   dataUrl: string;
 }
 
-// ─── State + subscribers ────────────────────────────────────────────────────
-// Fired once per photo the moment it commits (GCS upload + DB link both ok).
-// The capture surface wires this to an Ably `unit_photo_uploaded` publish on
-// `phone:{staffId}` so the desktop refreshes. Persists across unmounts.
+// ─── State + subscribers ──────────────────────────────────────────────────── Fired once per photo the moment it commits (GCS upload + DB…
 export interface UnitUploadNotice {
   serialUnitId: number;
   photoId: number;

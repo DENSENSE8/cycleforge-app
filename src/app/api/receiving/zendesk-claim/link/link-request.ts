@@ -1,13 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Positive integer id that may arrive as a string (JSON / query), number, null,
- * "", or "null". Non-positive shapes (incl. unfound stub ids `id = -receiving_id`)
- * become `undefined` so `.positive()` never rejects carton-level claims.
- *
- * Same contract as archive-only — `z.coerce.number()` alone turns ""/null into 0
- * which then fails `.positive()` and surfaces as opaque "Validation failed".
- */
+/** Positive integer id that may arrive as a string (JSON / query), number, null, "", or "null". */
 export const optionalPositiveId = z.preprocess((v) => {
   if (v === null || v === undefined || v === '' || v === 'null') return undefined;
   const n = Number(v);

@@ -33,17 +33,7 @@ export type NoteComposerInsertAction = {
   loading?: boolean;
 };
 
-/**
- * Insert control for note composers. Faint `+` at rest; hover/open shows white
- * surface + gray ring. Menu uses the house dropdownPanel motion.
- *
- * @param placement — `overlay` (default) absolute corner; `inline` for
- *   OmnichannelComposerDock footer rows (no absolute positioning).
- * @param trigger — `chip` (default 22×22); `dock` = flush h-11 edge cell;
- *   `composer` = circular h-8 + in the station composer action bar.
- * @param className — absolute inset override when `placement="overlay"`.
- *   Default is {@link WORKSPACE_NESTED_OVERLAY_CORNER}.
- */
+/** Insert control for note composers. */
 export function NoteComposerInsertRail({
   actions,
   className,

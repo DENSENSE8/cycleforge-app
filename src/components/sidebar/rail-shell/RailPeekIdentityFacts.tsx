@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Shared identity-chip grammar for rail hover peeks.
- *
- * **Paired stack** — two columns with air in the middle (`justify-between`):
- *   order#                    trk#   ← order always start-pinned (quiet `—` if empty)
- *   sku#                       sn#
- *   ticket#
- *   bin
- *
- * Missing pair partners collapse the row to the present chip alone (start).
- * Optional `headerRight` (Receiving pickup pill) only when tracking is absent —
- * that is the only dedicated `ml-auto` carve-out (pickup pill, not tracking).
- *
- * Platform / carrier paint resolve here from raw `platformValue` / `carrierHint`.
- * Pad / seam SoT: {@link rail-peek-chrome}.
- *
- * Used by {@link RailPeekCard} and Receiving's `ReceivingPopoverContent`.
- */
+/** Shared identity-chip grammar for rail hover peeks. */
 
 import type { ReactNode } from 'react';
 import {

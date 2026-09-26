@@ -11,12 +11,7 @@ import { readFileSync } from 'node:fs';
 
 const ORG_A = '11111111-1111-4111-8111-111111111111';
 const ORG_B = '22222222-2222-4222-8222-222222222222';
-/**
- * The fixture derives `material` from the row it describes rather than
- * carrying an independent copy: a fixture that can contradict the server rule
- * it stands in for stops being evidence (the lesson from the aged at-risk
- * deadlines in V1.1).
- */
+/** The fixture derives `material` from the row it describes rather than carrying an independent copy: */
 const row = (overrides: Record<string, unknown> = {}) => {
   const merged = {
     id: 875, order_reference: '00875', account_source: 'AMAZON', product_title: 'Soundbar', sku: 'TECH-00875', item_number: '114455667788', paired: true, zoho_item_title: null, catalog_product_title: null, thumbnail_url: null, condition: 'USED', quantity: '1', sale_amount: '149.00', is_urgent: true, is_out_of_stock: false, ship_by: '2026-09-18T14:30:00.000Z', warehouse_stage: 'PACKED', view_ids: ['all', 'at-risk', 'ship-now'], shipment_id: 8, tracking_number: '1Z999AA10123456784', carrier: 'UPS', tracking_category: 'LABEL_CREATED', label_ingestion_id: 9, label_state: 'MATCHED', document_count: 1, updated_at: '2026-09-18T13:00:00.000Z', created_at: '2026-09-18T12:00:00.000Z',
@@ -192,9 +187,6 @@ test('the row revision follows unit progress, not only the order row', async () 
 
 test('the fingerprint moves with material state and ignores the display revision', async () => {
   // §2.3 needs a token that changes exactly when the decision would change.
-  // A timestamp cannot do that job (V1.1 said so in writing), so these are the
-  // two properties that make the fingerprint usable instead: state-sensitive,
-  // and clock-insensitive.
   const fingerprintOf = async (overrides: Record<string, unknown>) => {
     const page = await listOutboundWork(ORG_A, {}, { query: async () => ({ rows: [row(overrides)] as never[] }) });
     return page.items[0]?.fingerprint ?? '';
@@ -207,11 +199,7 @@ test('the fingerprint moves with material state and ignores the display revision
     base,
     'the display revision is not material state and must not disturb the token',
   );
-  // The material set the digest covers is the LOGICAL ORDER SET: apply
-  // requires every active allocation of every sibling row to be PACKED, so a
-  // sibling's unit moving, or a sibling appearing at all, must invalidate the
-  // token — otherwise two operators command two siblings and the second apply
-  // fails mid-command with ALLOCATION_NOT_PACKED.
+  // The material set the digest covers is the LOGICAL ORDER SET:
   const material = (changes: Record<string, unknown>) => ({
     material: {
       orderId: '875', stage: 'PACKED', labelState: 'MATCHED', labelIngestionId: '9', labelRowVersion: 3,

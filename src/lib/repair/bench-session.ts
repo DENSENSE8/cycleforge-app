@@ -1,13 +1,4 @@
-/**
- * Bench session (the repair timer) — shared vocabulary and pure derivations for
- * `/api/repair/bench-sessions`, the `/m/rs/[id]/work` timer, and the hub row.
- *
- * Both stamps are the server's (`started_at` / `ended_at` = `NOW()` on
- * Start / Stop). Duration is derived, never typed. While a session is open the
- * phone ticks it against the server clock: every read also returns the
- * server's `now`, and the client keeps only the offset between the two clocks
- * — so a wrong phone clock shifts nothing.
- */
+/** Bench session (the repair timer) — shared vocabulary and pure derivations for `/api/repair/bench-sessions`, the `/m/rs/[id]/work` timer,… */
 
 export interface RepairBenchSessionRecord {
   id: number;

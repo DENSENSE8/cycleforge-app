@@ -1,9 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * Importers: kiosk-slot-events-table-definition (makeDescriptor / capabilities).
- * Affected API: none. Data schemas: GridSurfaceCapabilities + KioskSlotEventTableRow.
- * User instruction: Continue to the next phase (kiosk-slot-events history peer).
- */
+/** Gate preamble (Fact-Forcing): */
 
 import {
   makeGridSurfaceDescriptor,

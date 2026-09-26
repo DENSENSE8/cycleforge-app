@@ -1,14 +1,4 @@
-/**
- * Repair service record → {@link ItemRecord}.
- *
- * A repair is one device, so this returns a one-element list like the order and
- * unit adapters. Before it existed, `/search?sel=repair:{id}` rendered an
- * `EmptyState` with the ticket number and a button to go and open the record
- * somewhere else — a search result that answered nothing and sent the operator
- * off the surface.
- *
- * Pure — no fetch, no hook, no React.
- */
+/** Repair service record → {@link ItemRecord}. */
 
 import type { ItemRecord } from '@/design-system/components/item-record';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';

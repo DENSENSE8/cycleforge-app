@@ -1,14 +1,4 @@
-/**
- * Carton listing links — collection endpoints.
- *
- *   GET    /api/receiving/[id]/listing-links   → the buyer's ordered links
- *   POST   /api/receiving/[id]/listing-links   → append one
- *   PATCH  /api/receiving/[id]/listing-links   → rewrite the triage order
- *
- * Durable rows only (`receiving_listing_links`); the computed `catalog` /
- * `derived` tiers are resolved at read time by `collectCartonListingLinks` and
- * are not addressable here. Handlers stay thin — validate, delegate, map, audit.
- */
+/** Carton listing links — collection endpoints. */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

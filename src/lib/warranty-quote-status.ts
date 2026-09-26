@@ -1,10 +1,4 @@
 // Single source of truth for warranty repair-QUOTE status tones.
-//
-// Distinct from warranty CLAIM status (see lib/warranty/types.ts). Flat chip.
-// Single surface today (components/warranty/WarrantyQuotesSection). Classes
-// preserved verbatim; hues follow the color story (DESIGN_SYSTEM.md):
-// DRAFT=neutral, SENT=info, ACCEPTED=success, DECLINED=danger, EXPIRED=neutral.
-// src/lib is in Tailwind's content globs.
 
 export type WarrantyQuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'DECLINED' | 'EXPIRED';
 

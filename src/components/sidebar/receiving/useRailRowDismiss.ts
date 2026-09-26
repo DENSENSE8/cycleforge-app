@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Single-row rail dismiss for the ⋮ menu — the per-row half of the flow the
- * Select verb + bulk bar owns for a checked batch ({@link useRailEditMode}).
- *
- * The mechanics are shared (`./rail-dismiss`); what differs is the
- * interaction. The bulk path confirms first, because entering select, checking
- * rows, and pressing a button in a bar at the far end of the column is a
- * three-step act whose blast radius the operator cannot see at the moment of
- * pressing. A single row's Dismiss is one gesture on one visible row and it is
- * REVERSIBLE — `staff_rail_exclusions` has a DELETE — so it fires immediately
- * with an Undo instead. A confirmation dialog there would tax every correct
- * dismiss to guard the rare accident; undo is the cheaper trade, and the
- * interruption is reserved for the irreversible verbs.
- */
+/** Single-row rail dismiss for the ⋮ menu — the per-row half of the flow the Select verb + bulk bar owns for a checked batch ({@link… */
 
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

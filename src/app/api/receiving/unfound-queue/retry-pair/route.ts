@@ -3,20 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { reconcileUnmatchedReceiving } from '@/lib/receiving/reconcile-unmatched';
 
-/**
- * POST /api/receiving/unfound-queue/retry-pair — on-demand pairing retry
- * (docs/receiving-triage-redesign-plan.md §7 Q4, resolved: on-demand button
- * over a background poll — `reconcileUnmatchedReceiving` already existed as a
- * pure re-run of lookup-po's Zoho tracking search, but had no live trigger
- * anywhere in the app until this route). The Unfound strip's "Retry pair"
- * action calls this to re-check Zoho right now instead of waiting for the
- * carton's next cron tick.
- *
- * Body: { receiving_id }
- *
- * The reconciliation helper scopes both the carton and Zoho credentials to
- * the authenticated organization.
- */
+/** POST /api/receiving/unfound-queue/retry-pair — on-demand pairing retry (docs/receiving-triage-redesign-plan.md §7 Q4, resolved: */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);
   const receivingId = Number((body as { receiving_id?: unknown })?.receiving_id);

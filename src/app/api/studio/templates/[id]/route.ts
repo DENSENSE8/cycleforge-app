@@ -7,15 +7,7 @@ import { getNode, hasNode } from '@/lib/workflow';
 import type { TemplateGraph } from '@/lib/studio/templates';
 import type { StudioTemplateDetail } from '@/components/studio/studio-types';
 
-/**
- * GET /api/studio/templates/[id]
- *
- * One system template's full graph (Studio ST6 / Phase E4), shaped like the
- * /api/studio/graph node/edge feed (each node enriched with the engine
- * registry's palette metadata) so the canvas could preview a template before a
- * tenant imports it. Read-only, studio.view — the template table is global
- * (no organization_id), so there is no tenant predicate.
- */
+/** GET /api/studio/templates/[id] */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

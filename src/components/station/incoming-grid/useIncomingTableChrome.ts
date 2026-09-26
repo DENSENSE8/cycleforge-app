@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Incoming's chrome, as DATA — the same job {@link useToShipChrome} does for
- * To-ship.
- *
- * {@link DataTable} takes a list of filter OPTIONS, never JSX. Delivery state
- * (`?state=`) and purchasing source (`?inbound=`) used to live in a hunt-tile
- * bar and a Band-3 FilterMenu cluster; both were forks of the one funnel that
- * sits to the right of this desk's search field. The table already prints
- * those facts on every row (`incoming.status`, `incoming.platform`).
- *
- * `all` is the absence of a filter on each axis: picking the active option
- * clears it. The two axes compose.
- */
+/** Incoming's chrome, as DATA — the same job {@link useToShipChrome} does for To-ship. */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

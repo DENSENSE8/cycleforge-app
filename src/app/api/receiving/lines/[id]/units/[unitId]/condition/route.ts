@@ -1,20 +1,4 @@
-/**
- * PATCH /api/receiving/lines/[id]/units/[unitId]/condition
- *
- * Per-unit condition grade for a materialised `receiving_line_unit` row —
- * Phase 4 of the per-unit no-serial plan. Replaces the ephemeral
- * `pendingGrade` map in ReceivingUnitRows so a grade chosen for an unscanned
- * slot survives reload.
- *
- * Writes ONLY `receiving_line_unit.condition_grade`. A linked serial's grade
- * stays on `serial_units` via the existing `/api/serial-units/[id]/grade`
- * path — the client dual-calls when both exist so the two SoTs stay aligned
- * without this route reaching into serial_units.
- *
- * Body: `{ condition_grade: 'USED_A' | … | null }`. `null` / `''` clears.
- * withAuth (no extra permission) matches the line-level condition + per-unit
- * serial-absent siblings.
- */
+/** PATCH /api/receiving/lines/[id]/units/[unitId]/condition */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

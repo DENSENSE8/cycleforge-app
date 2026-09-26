@@ -1,11 +1,4 @@
-/**
- * Admin staff management.
- *   GET  /api/admin/staff           — list all (active + invited + disabled)
- *   POST /api/admin/staff           — create a new invited staff row
- *
- * Both require admin.manage_staff. The legacy /api/staff endpoint is left
- * untouched so existing consumers keep working.
- */
+/** Admin staff management. */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -19,10 +12,7 @@ export const runtime = 'nodejs';
 
 export const GET = withAuth(async (_req, ctx) => {
   const orgId = ctx.organizationId;
-  // staff is tenant-owned: only list staff in the caller's org. The
-  // passkey_count subquery anchors on the parent staff row (s.id), which is
-  // already org-filtered, so it cannot count another tenant's passkeys
-  // (staff_passkeys itself has no organization_id).
+  // staff is tenant-owned:
   const r = await tenantQuery(
     orgId,
     `SELECT id, name, role, status, active, employee_id, employee_code, sort_order,
@@ -58,17 +48,7 @@ export const POST = withAuth(async (req, ctx) => {
     return NextResponse.json(planLimitResponseBody('maxStaff'), { status: 403 });
   }
 
-  // Create the staff row AND its matching `staff_roles` assignment in one
-  // transaction. Effective permissions are resolved from `staff_roles × roles`
-  // (see current-user.ts) — the `staff.role` column is only a display-label
-  // fallback. Inserting the staff row alone leaves the new hire with an empty
-  // permission set, so every gated route 403s even though the UI shows their
-  // role. Roles can still be edited afterward via PUT /api/admin/staff/[id]/roles.
-  //
-  // staff is tenant-owned: stamp the new row with the caller's org so an admin
-  // can never create staff into another tenant. The staff_roles assignment is
-  // gated by this freshly-created (org-stamped) staff parent; `roles` is a
-  // system-global table so it carries no org predicate of its own.
+  // Create the staff row AND its matching `staff_roles` assignment in one transaction.
   const orgId = ctx.organizationId;
   const created = await withTenantTransaction(orgId, async (client) => {
     const r = await client.query(

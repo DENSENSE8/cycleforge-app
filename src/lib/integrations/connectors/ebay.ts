@@ -1,14 +1,4 @@
-/**
- * eBay connector validate + refresh adapters — the /api/ebay/health check logic
- * and scoped token rotation across the org's active eBay accounts. Lazily
- * imported by the registry so the lightweight connection reader never pulls in
- * the eBay client.
- *
- * No order sync: ShipStation is the sole outbound-order importer (owner
- * 2026-09-24), and it already aggregates the eBay stores.
- *
- * User tokens live in organization_integrations (scoped seller:/buyer:).
- */
+/** eBay connector validate + refresh adapters — the /api/ebay/health check logic and scoped token rotation across the org's active eBay… */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { EbayClient } from '@/lib/ebay/client';
 import {
@@ -73,12 +63,7 @@ export async function ebayRefresh(
   return last;
 }
 
-/**
- * connector.validate() (INT-011) — thin adapter over the /api/ebay/health
- * check: for each active account, getValidAccessToken() refreshes a
- * near-expiry token (a dead refresh token surfaces here), then a light
- * identity probe confirms eBay still accepts the token (401/403 ⇒ re-consent).
- */
+/** connector.validate() (INT-011) — thin adapter over the /api/ebay/health check: */
 export async function ebayValidate(orgId: OrgId): Promise<HealthResult> {
   const accounts = await listActiveEbayAccounts(orgId);
   if (accounts.length === 0) {

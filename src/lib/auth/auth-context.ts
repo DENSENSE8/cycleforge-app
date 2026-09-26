@@ -1,11 +1,6 @@
 import type { CurrentUser } from './current-user';
 
-/**
- * Auth context shapes handed to route handlers by `withAuth`. Extracted into a
- * leaf module so lower-level helpers (e.g. `lib/audit-logs`) can reference them
- * as types without importing `withAuth` — which imports `recordAudit` back,
- * forming a cycle. `withAuth` re-exports both for backwards compatibility.
- */
+/** Auth context shapes handed to route handlers by `withAuth`. */
 export interface AuthContext {
   user: CurrentUser;
   session: CurrentUser['session'];

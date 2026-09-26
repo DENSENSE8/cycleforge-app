@@ -1,11 +1,4 @@
-/**
- * Pack papers / manuals print-bundle client helpers.
- *
- * Auto-print still fires from the sidebar scan column after ORDERS pack
- * (`printBundleSuggested`). Status + Reprint live in the middle
- * {@link PackPapersStatusCard} so a pointer click never sits next to the
- * focus-locked scan bar.
- */
+/** Pack papers / manuals print-bundle client helpers. */
 
 import { printPackBundleFallback } from '@/lib/print/printPackBundleFallback';
 

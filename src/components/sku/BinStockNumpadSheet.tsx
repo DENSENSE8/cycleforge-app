@@ -164,10 +164,7 @@ export function BinStockNumpadSheet({
     setError(null);
     try {
       const action = mode === 'minus' ? 'take' : 'put';
-      // Fresh UUID per Confirm tap — the server replays the cached response
-      // on retry so a flaky network can't double-apply this take/put. The
-      // queueOrFetch wrapper persists the request if we're offline and
-      // returns a synthetic 202 so the receiver's flow stays smooth.
+      // Fresh UUID per Confirm tap — the server replays the cached response on retry so a flaky network can't double-apply this take/put.
       const idempotencyKey = randomId();
       const res = await queueOrFetch({
         url: `/api/locations/${encodeURIComponent(binBarcode)}`,

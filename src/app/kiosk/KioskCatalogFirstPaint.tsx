@@ -1,37 +1,6 @@
 /**
  * SSR first-paint stand-in for the landscape kiosk shell.
- *
- * Callers: `/kiosk` + `/kiosk/v2` loading + `KioskV2Runtime` bind wait.
- * Affected API: none.
- * Data schemas: none.
- * User: "Converting the left sidebar into just a top left drop down so repair
- * or sales or more and then an exit button so you can exit out of the kiosk
- * mode. The right sidebar should also be removed as well and everything placed
- * into the top header, the cart, the paperwork, the work, show, verify, etc."
- *
- * One trail row: command ghost, search glyph, All-products ghost, utilities.
- * Server-safe — no `'use client'`.
- *
- * ## It must wear the SAME tokens the live trail wears
- *
- * This mounted `KIOSK_PANE_HEADER_BAND` until 2026-09-15 — the band bolted to
- * a PANE, which is opaque card-white and carries `border-b border-border-soft`.
- * Its own docblock says that fill and seam are wrong inside the trail. The live
- * row is {@link KIOSK_POS_TRAIL_BAND}: transparent, no seam. So every reload
- * flashed a bottom hairline under the header and the All-products row that the
  * hydrated surface does not have (operator 2026-09-15: *"there seems to be
- * hard-coded CSS that is displaying the mode bottom hairline for the header and
- * all products on page reload"*).
- *
- * The ghosts were hand-written literals for the same reason, so the skeleton
- * was a second, differently-shaped design of one row: bare text where the live
- * control is a bordered pill (`KIOSK_POS_TRAIL_CONTROL`), `HEADER_ICON_WRAP`
- * squares where the live glyph is a round chip (`KIOSK_POS_TRAIL_ICON`), and
- * two inline chevron `<svg>`s where the icon SoT exports `ChevronDown`.
- *
- * Rule for this file: NO literal paint. Ground, band, pill and glyph all come
- * from the kiosk axis (`ds_tokens({ axis: 'kiosk' })`), so the skeleton cannot
- * drift from the thing it stands in for.
  */
 
 import { cn } from '@/utils/_cn';
@@ -59,22 +28,7 @@ function TrailWordGhost({ children }: { children: string }) {
   );
 }
 
-/**
- * The seeded first row, painted as real `<img>` tags in the SERVER HTML.
- *
- * This is the whole point of the seed: `lcp-discovery` failed
- * `requestDiscoverable` because the LCP photo's URL only existed after JS had
- * booted and fetched the catalog — a measured 3.5 s of resource-load DELAY.
- * Emitting the first screen's URLs here lets the browser start those requests
- * while the runtime is still hydrating, and the live grid then renders the same
- * `src` values, so React reconciles without re-requesting a byte.
- *
- * Geometry is the real grid's (`KIOSK_POS_GRID` + `KIOSK_POS_CARD` +
- * `KIOSK_POS_IMAGE_WELL`), so nothing shifts when the live grid replaces this
- * one — CLS stays where it is. Captions are deliberately absent: a price the
- * server read a second ago is a number the live grid may correct, and a
- * corrected price is worse than a price that arrives with the row.
- */
+/** The seeded first row, painted as real `<img>` tags in the SERVER HTML. */
 function SeededTiles({ seed }: { seed: KioskCatalogSeed }) {
   const tiles = seed.products.filter((p) => p.thumbnailUrl).slice(0, KIOSK_EAGER_TILE_COUNT);
   if (tiles.length === 0) return null;

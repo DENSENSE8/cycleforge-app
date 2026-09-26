@@ -1,29 +1,4 @@
-/**
- * `ingestCanonicalOrders` — the ONE domain writer for order ingest.
- *
- * Every source (Google Sheets, Ecwid, and — as they migrate — ShipStation,
- * Shopify, Square, eBay, Amazon) normalizes to `CanonicalOrderLine[]` at its
- * own edge and hands them here. This module owns everything that requires the
- * tenant's own data and therefore cannot live in a source adapter:
- *
- *   • tracking → shipment resolution + `shipment_links` (the linkage SoT)
- *   • catalog identity (sku / platform item id / title → `sku_catalog_id`)
- *     and the catalog-link chores for unmatched item numbers
- *   • customer matching
- *   • duplicate-order collapse (keep the richest row, delete the rest)
- *   • the canonical `work_assignments` deadline row
- *   • cache invalidation + the realtime `order_changed` publish
- *
- * Extracted verbatim-in-behavior from the Google Sheets transfer job (since
- * removed), which had grown into this pipeline plus a Sheets reader. Splitting them is
- * what lets a second source reuse the pipeline instead of copying an
- * `INSERT INTO orders` — there were nine such copies when this was written.
- *
- * Tenancy: when `orgId` is supplied every tenant-table read/write goes through
- * the GUC-carrying helpers (`tenantQuery` / `withTenantDrizzle`) and is scoped
- * by org. When omitted the legacy raw-pool path runs and writes are stamped
- * with `transitionalDogfoodOrgId()` — byte-identical to the prior behavior.
- */
+/** `ingestCanonicalOrders` — the ONE domain writer for order ingest. */
 import { and, desc, eq, inArray } from 'drizzle-orm';
 import pool from '@/lib/db';
 import { db } from '@/lib/drizzle/db';
@@ -78,16 +53,7 @@ const buyerChannel = (order: CanonicalOrderLine) => order.buyer?.channel || orde
 /** Tracking resolution is fanned out in batches of this size. */
 const TRACKING_RESOLVE_BATCH = 10;
 
-/**
- * SQL form of {@link normalizeItemNumber} — uppercase, trimmed, non-alphanumerics
- * stripped. The two must stay identical: the query normalizes the CATALOG side
- * and TypeScript normalizes the ORDER side, so a divergence would silently stop
- * matching rather than fail.
- *
- * Same expression the 2026-04-07 catalog backfill used to link
- * `product_manuals.item_number`, so a listing id resolves the same way
- * whichever surface asks.
- */
+/** SQL form of {@link normalizeItemNumber} — uppercase, trimmed, non-alphanumerics stripped. */
 const normalizedSql = (column: string) =>
   `regexp_replace(UPPER(BTRIM(COALESCE(${column}, ''))), '[^A-Z0-9]', '', 'g')`;
 
@@ -191,33 +157,12 @@ function customerNameKey(name: string): string {
   return name.trim().replace(/\s+/g, ' ').toLowerCase();
 }
 
-/**
- * `customerNameKey` in SQL. Collapse FIRST, then trim: Postgres `btrim` with no
- * character set strips spaces only, so trimming first leaves a stored
- * `"John Smith\t"` with a trailing tab that the collapse turns into a trailing
- * space — a key JS would never produce, and therefore a duplicate customer.
- */
+/** `customerNameKey` in SQL. */
 function customerNameKeySql(expr: string): string {
   return `lower(btrim(regexp_replace(${expr}, '\\s+', ' ', 'g')))`;
 }
 
-/**
- * Resolve name-only buyers to `customers` rows, match-then-create, in two
- * queries total regardless of batch size.
- *
- * **Exact name is the only signal these sources carry**, so that is what we
- * match on — the same rule `findCustomerByName` already applies on the repair
- * intake path, not a new one. Two distinct people with the same name do collapse
- * onto one customer; that is a known limit of a name-only source, and it is
- * strictly better than the alternative this replaced (the name as prose in
- * `orders.notes`, reachable by no customer query at all). A source that carries
- * an email, phone, or platform customer id must NOT route through here — match
- * on the stronger identifier instead.
- *
- * The created row carries `order_id`, so the next import of the same order
- * matches through the existing per-order path above and never reaches this
- * function again.
- */
+/** Resolve name-only buyers to `customers` rows, match-then-create, in two queries total regardless of batch size. */
 async function resolveCustomersByName(
   requests: Array<{ name: string; sourceOrderId: string }>,
   effectiveOrgId: OrgId,
@@ -396,33 +341,9 @@ interface IngestCanonicalOrdersOptions {
   /** Provenance recorded on `shipment_links`. */
   source: string;
   progress?: SyncProgress;
-  /**
-   * Which existing order an incoming one is considered to BE.
-   *
-   *  • `'orderId'` (default) — match on `order_id` alone, and collapse every
-   *    duplicate found onto the richest row. This is the spreadsheet contract:
-   *    one sheet describes one channel's orders, and the same id appearing
-   *    twice is a duplicate row to clean up.
-   *  • `'accountSourceAndOrderId'` — match within the channel, mirroring the
-   *    `idx_orders_unique_account_order` constraint the API connectors upsert
-   *    against. REQUIRED for connectors: order numbers are only unique per
-   *    marketplace, so Shopify "1001" and ShipStation "1001" are different
-   *    orders and matching on the id alone would delete one of them.
-   *    One exception, when the channel has no row: the aggregator
-   *    (ShipStation) ADOPTS the marketplace rows carrying its order number, and
-   *    a marketplace CLAIMS the aggregator's row — see `order-source-match.ts`.
-   *    Neither ever deletes a row.
-   */
+  /** Which existing order an incoming one is considered to BE. */
   matchOn?: 'orderId' | 'accountSourceAndOrderId';
-  /**
-   * Fields this source is AUTHORITATIVE for and may refresh on an order that
-   * already exists. Default is none — every field is additive-only, i.e. it
-   * fills a blank and never overwrites, so an operator's correction survives
-   * the next sync.
-   *
-   * API connectors set these because the marketplace, not the operator, is the
-   * system of record for them.
-   */
+  /** Fields this source is AUTHORITATIVE for and may refresh on an order that already exists. */
   authoritative?: {
     /** Overwrite `product_title` when the source supplies a non-empty one. */
     productTitle?: boolean;
@@ -433,48 +354,13 @@ interface IngestCanonicalOrdersOptions {
      */
     status?: boolean;
   };
-  /**
-   * Maintain the canonical `work_assignments` TEST deadline row. Default true.
-   *
-   * Connectors pass false: they carry no ship-by, and upserting a null deadline
-   * would CREATE an OPEN TEST assignment for every synced order — filling the
-   * tech queue with in-store Square sales that are already fulfilled.
-   */
+  /** Maintain the canonical `work_assignments` TEST deadline row. */
   manageDeadlines?: boolean;
-  /**
-   * Fold every row matching `matchOn` onto the richest one and DELETE the
-   * losers. Default true — the spreadsheet contract, where the same id twice is
-   * a duplicate row to clean up.
-   *
-   * A **user-uploaded** file passes false. `POST /api/orders/import-csv` used to
-   * express that by pre-filtering every already-existing order out of the batch
-   * before the writer saw it, which made the lane insert-only — and therefore
-   * unable to BACKFILL. A re-upload of a file whose rows had gained a tracking
-   * number, a ship-by or a title wrote none of them, and reported the whole
-   * file as `skipped`. This is the same guarantee expressed at the right layer:
-   * existing orders reach the additive backfill path (which fills blanks and
-   * never overwrites), and nothing is deleted.
-   */
+  /** Fold every row matching `matchOn` onto the richest one and DELETE the losers. */
   collapseDuplicates?: boolean;
-  /**
-   * Title stored on INSERT when neither the source nor the catalog knows one
-   * (e.g. `'Square order'`). It is deliberately NOT used on update, so a real
-   * title that arrives later replaces it, and it can never overwrite one.
-   *
-   * This is what the connectors' `COALESCE(NULLIF(EXCLUDED.product_title,
-   * '<placeholder>'), orders.product_title)` expressed: adapters emit `''` for
-   * "unknown" and the placeholder only ever seeds a brand-new row.
-   */
+  /** Title stored on INSERT when neither the source nor the catalog knows one (e.g. */
   fallbackProductTitle?: string;
-  /**
-   * The lines come from an AGGREGATOR (ShipStation) that has already
-   * attributed each order to its platform account_source. With no row under
-   * that exact source, the order ADOPTS the one platform's rows carrying its
-   * number (or claims a legacy aggregator row) — see
-   * `matchAggregatorOrderRows`; a number spread across platforms is skipped
-   * and reported in `ambiguousOrderIds`. `platformOf` places an account_source
-   * in the org catalog. Only meaningful with `matchOn: 'accountSourceAndOrderId'`.
-   */
+  /** The lines come from an AGGREGATOR (ShipStation) that has already attributed each order to its platform account_source. */
   aggregator?: { platformOf: PlatformOf };
 }
 
@@ -518,11 +404,7 @@ export async function ingestCanonicalOrders(
     new Set(sourceTrackings.map((t) => normalizeTrackingNumber(t)).filter(Boolean)),
   );
 
-  // ─── Resolve tracking → shipment ids ────────────────────────────────
-  // `shipping_tracking_numbers` has NO organization_id column (NEEDS-COL) and
-  // these standalone lookups have no org-bearing parent to JOIN, so when an
-  // orgId is supplied we GUC-wrap only and leave the predicate unchanged; until
-  // the column lands this is the strongest scoping available.
+  // ─── Resolve tracking → shipment ids ──────────────────────────────── `shipping_tracking_numbers` has NO organization_id column…
   const shipmentTrackingById = new Map<number, string>();
   const shipmentByNormalized = new Map<string, { id: number; tracking: string }>();
   const shipmentIdCache = new Map<string, number | null>();
@@ -558,16 +440,7 @@ export async function ingestCanonicalOrders(
     const normalized = normalizeTrackingNumber(tracking);
     if (!normalized) return null;
     if (shipmentIdCache.has(normalized)) return shipmentIdCache.get(normalized) ?? null;
-    // PASS THE ORG. `resolveShipmentId`'s orgId is optional only as a migration
-    // affordance for un-migrated callers, and this — the single shared order
-    // ingest writer — was the last one still omitting it. Every row it created
-    // through the register path landed with `organization_id NULL` and
-    // `source_system = 'scan'`: 369 such rows by 2026-09-14, of which 287 were
-    // already carrier-active. NULL loses every RLS policy comparison
-    // (`organization_id = current_setting('app.current_org')::uuid` is NULL,
-    // not true), so the app's own tenant role could not see carrier state on
-    // any of them — a tenant-scoped reader concludes "not shipped" and counts
-    // a moving parcel as pick work.
+    // PASS THE ORG.
     const resolved = await resolveShipmentId(tracking, effectiveOrgId);
     shipmentIdCache.set(normalized, resolved.shipmentId ?? null);
     return resolved.shipmentId ?? null;
@@ -701,11 +574,7 @@ export async function ingestCanonicalOrders(
     String(customer.orderId || '').trim(),
   );
 
-  // ─── Resolve buyers with real identity ──────────────────────────────
-  // The strong tier ABOVE the name resolution below: a source that carries a
-  // channel customer id / email / phone (ShipStation) resolves and creates
-  // `customers` rows with the full buyer record here — name-only sources
-  // never enter this path (their orders carry no `buyer`).
+  // ─── Resolve buyers with real identity ────────────────────────────── The strong tier ABOVE the name resolution below:
   const customerIdByBuyer = await resolveBuyerCustomers(
     {
       orgId: effectiveOrgId,
@@ -719,15 +588,7 @@ export async function ingestCanonicalOrders(
     },
   );
 
-  // ─── Resolve name-only buyers to real customers ─────────────────────
-  // A source that carries a buyer NAME but no id/email/phone (a mapped CSV
-  // column) still names a real person. Match the tenant's book first, create
-  // only what is genuinely new, and hand the loop below a customer id — the
-  // name never becomes prose in `orders.notes`.
-  //
-  // Batched on purpose: a CSV import is up to 10k rows, and a per-row
-  // find-or-create would be 10k round trips against the same handful of names.
-  // Orders carrying a `buyer` block are excluded — they resolved above.
+  // ─── Resolve name-only buyers to real customers ───────────────────── A source that carries a buyer NAME but no id/email/phone (a mapped…
   const customerIdByName = await resolveCustomersByName(
     canonicalOrders
       .filter(
@@ -744,33 +605,6 @@ export async function ingestCanonicalOrders(
   );
 
   // ─── Hydrate catalog identity ───────────────────────────────────────
-  //
-  // Two jobs that used to be one, and the conflation was an import blocker.
-  //
-  // IDENTITY (`sku_catalog_id`) is what allocation needs: without it a line's
-  // SKU is whatever string the channel sent, `selectDemand` resolves no SKU,
-  // and the order can never enter a pick list. TITLE is cosmetic hydration for
-  // rows whose source sent none.
-  //
-  // Both lookups used to require `sc.product_title <> ''`, so a catalog row
-  // with no title withheld the ID as well as the title — a display gap
-  // silently costing an allocation. The title predicate is gone; a blank title
-  // simply isn't added to `titleBySku`.
-  //
-  // And both matched with `=` on the raw string, while every other consumer of
-  // these columns (product manuals, listing automations, the 2026-04-07
-  // backfill) matches on `normalizeItemNumber`'s form. An Amazon ASIN arriving
-  // as `b09m52b2c4`, or an eBay id with a stray space, therefore missed a
-  // crosswalk row that was sitting right there. Measured on org 1 (2026-09-15):
-  // exact matching reached 13 of 70 unallocated lines, normalized reaches 19.
-  // The tables are small (1.4k catalog rows, 5.8k crosswalk rows) and the
-  // normalized scan measured 3.5ms, so there is no index to trade away.
-  //
-  // Normalization is collision-checked, not assumed: zero `sku_catalog` SKUs
-  // and zero `platform_sku` values collide under it. The one colliding
-  // `platform_item_id` is a duplicate ASIN listed against two catalog rows —
-  // an ambiguity that predates normalization, and first-insert-wins below
-  // resolves it exactly as before.
   const titleBySku = new Map<string, string>();
   const catalogByLookupKey = new Map<string, SkuCatalogTitleMatch>();
   const catalogByTitle = new Map<string, SkuCatalogTitleMatch>();
@@ -994,10 +828,7 @@ export async function ingestCanonicalOrders(
 
     const matchedCustomer = latestCustomerByOrderId.get(orderId);
     const matchedCustomerId = matchedCustomer ? Number(matchedCustomer.id) : Number.NaN;
-    // Identity precedence: the source's own per-order customer link, then the
-    // strong buyer tier (channel id/email/phone), then the name-only tier.
-    // All produce a real `customers` row, so downstream reads cannot tell
-    // which path found it.
+    // Identity precedence:
     const buyerKey = order.buyer ? buyerIdentityKey(buyerChannel(order), order.buyer) : null;
     const customerId =
       (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
@@ -1218,12 +1049,7 @@ export async function ingestCanonicalOrders(
     await Promise.all(orderDeadlinesToUpsert.map((e) => upsertOrderDeadline(e.id, e.shipByDate, orgId)));
   }
 
-  // Auto-cage — the accepted/exception SPLIT (R-FLOW-2, 2026-08-31). Freshly
-  // INSERTED rows only, evaluated by the one gate rule after shipment links
-  // and deadlines are in place so the tracking fact is honest. Runs before
-  // cache invalidation below so the first client refetch already sees the
-  // cage. Best-effort: a cage failure must never lose an ingested order —
-  // but it is loud, because a silent skip means orders bypass triage.
+  // Auto-cage — the accepted/exception SPLIT (R-FLOW-2, 2026-08-31).
   if (insertedOrderIds.length > 0) {
     try {
       const { autoCageNewOrders } = await import('./auto-cage');

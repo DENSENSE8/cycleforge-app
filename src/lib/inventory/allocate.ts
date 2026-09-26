@@ -1,17 +1,4 @@
-/**
- * allocate.ts
- * ────────────────────────────────────────────────────────────────────
- * Shared allocation transaction. Both /api/orders/[id]/allocate and
- * the admin bulk-allocate page call this so there's one source of
- * truth for the FIFO selection rule, the per-unit event emission,
- * and the idx_oua_open_unit contention pattern.
- *
- * Caller responsibilities:
- *   - Resolve actorStaffId from the session.
- *   - Decide whether to retry on partial allocation (this helper
- *     returns { allocated, requested, partial } and lets the caller
- *     decide).
- */
+/** allocate.ts ──────────────────────────────────────────────────────────────────── Shared allocation transaction. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -61,18 +48,7 @@ export function isValidConditionGrade(value: string): value is ConditionGrade {
   return (VALID_GRADES as readonly string[]).includes(value);
 }
 
-/**
- * Run the allocation transaction. Idempotent via the per-unit suffixed
- * clientEventId on inventory_events. Returns 409 when no STOCKED units
- * match (caller should retry later or relax the condition filter).
- *
- * Tenancy: `orgId` is REQUIRED. The whole allocation runs inside a tenant-scoped
- * transaction (`withTenantTransaction`, which sets the `app.current_org` GUC via
- * SET LOCAL) and the order load, candidate selection and allocation INSERT all
- * carry explicit `organization_id` predicates. The org-less raw-pool path is
- * gone. `transition()` receives the same org and inherits the GUC from this
- * transaction client.
- */
+/** Run the allocation transaction. */
 export async function allocateOrder(
   input: AllocateOrderInput,
   /**
@@ -97,15 +73,7 @@ async function allocateOrderInTx(
   input: AllocateOrderInput,
   orgId: OrgId,
 ): Promise<AllocateOrderResult> {
-  // 1. Load the order line. Resolve the canonical SKU via sku_catalog_id
-  //    when the order has been paired; otherwise fall back to the raw
-  //    order.sku string (which usually holds the marketplace platform_sku).
-  //
-  //    Why: serial_units.sku stores the internal catalog SKU ('00001-BK'),
-  //    but orders.sku stores whatever the marketplace sent ('01279-B').
-  //    Matching verbatim never hits — sku_platform_ids + the manual
-  //    pairing flow at /api/sku-catalog/pair exist precisely to bridge
-  //    that gap, and orders.sku_catalog_id is the resolved link.
+  // 1. Load the order line.
   const orderQ = await client.query<{
     id: number;
     sku: string | null;
@@ -138,13 +106,6 @@ async function allocateOrderInTx(
     : Math.max(1, Math.floor(Number(order.quantity ?? '1') || 1));
 
   // 2. Select candidate units — pickable, matching SKU, oldest first.
-  //    The pickability predicate centralizes the exclusion rules
-  //    (status, bin role, cycle-count lock, expiry) — see
-  //    src/lib/inventory/pickability.ts. FOR UPDATE SKIP LOCKED so
-  //    concurrent allocators get disjoint subsets; idx_oua_open_unit
-  //    partial UNIQUE is the final guarantee against double-allocation.
-  //    The su.sku match is a string key — scope serial_units to the same org
-  //    so an identical SKU string in another tenant can never be picked.
   const pickableWhere = pickableSerialUnitsWhereClause();
   const pickableJoin = pickableSerialUnitsLeftJoin();
   const candidatesQ = await client.query<{
@@ -201,12 +162,7 @@ async function allocateOrderInTx(
       throw new Error(`allocation insert returned no id for unit ${unit.id}`);
     }
 
-    // Guarded STOCKED→ALLOCATED transition + atomic ALLOCATED event, replacing
-    // the former raw status UPDATE + manual event INSERT. Candidates were
-    // selected STOCKED-only under FOR UPDATE SKIP LOCKED on this same client,
-    // so the guard/expectedFrom passes in the normal path; a drift means a
-    // concurrent mutation and must abort the allocation we just inserted.
-    //
+    // Guarded STOCKED→ALLOCATED transition + atomic ALLOCATED event, replacing the former raw status UPDATE + manual event INSERT.
     const perUnitClientEventId = input.clientEventId
       ? `${input.clientEventId}:${unit.id}`
       : null;

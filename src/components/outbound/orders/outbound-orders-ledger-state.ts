@@ -32,12 +32,7 @@ export function worstState(states: readonly LifecycleState[]): LifecycleState {
   );
 }
 
-/**
- * A seed group's WHERE: every child's live allocation paths, deduped in
- * stable order, plus how many lines have nowhere to pick from. The parent
- * never guesses one bin for a multi-line order, and a partly-unallocated
- * order says so rather than reading as fully located.
- */
+/** A seed group's WHERE: */
 export function groupLocation(rows: readonly ShippedOrder[]): {
   path: string | null;
   unassigned: number;

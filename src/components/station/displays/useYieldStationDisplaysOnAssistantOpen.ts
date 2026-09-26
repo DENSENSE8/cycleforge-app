@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Station AI yield — when the header assistant opens, close Displays.
- *
- * Desk occupancy is `RIGHT_RAIL_PRIORITY` on `RightRailHost` (forked mechanism).
- * Stations must not leave tools open beside AI during active capture (C2
- * Principle 6). Unbox also clears URL peer params via
- * {@link yieldUnboxStationPushesOnAssistantOpen}; sibling stations pass a
- * simple `closeDisplays`.
- */
+/** Station AI yield — when the header assistant opens, close Displays. */
 
 import { useEffect, useRef } from 'react';
 import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';

@@ -9,15 +9,7 @@ interface PoRefQueryable {
   ): Promise<{ rows: R[]; rowCount: number | null }>;
 }
 
-/**
- * Resolve po_ref denorm from the primary linked entity at upload time.
- *
- * `db` follows the house executor pattern: default to the pool, but let a
- * caller that already owns a transaction pass its client so the read joins
- * that transaction instead of taking a second connection. The AI mutation
- * chokepoint needs this — its photo move and the `agent_mutations` row have to
- * commit together.
- */
+/** Resolve po_ref denorm from the primary linked entity at upload time. */
 export async function resolvePoRef(
   entityType: PhotoEntityType,
   entityId: number,

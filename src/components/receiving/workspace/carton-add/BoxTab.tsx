@@ -8,12 +8,7 @@ import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 // ─── Box tab — handling unit (LPN) ───────────────────────────────────────────
 
-/**
- * Friendly message from a handling-unit API failure. `withAuth` serializes a
- * 500 as `{ error: 'INTERNAL', message }`, so the bare `error` code reads as
- * "INTERNAL" to operators — almost always the unapplied migration. Prefer the
- * `message`, demote the raw code, and hint at the real cause on a 500.
- */
+/** Friendly message from a handling-unit API failure. */
 function boxApiError(
   body: { error?: string; message?: string },
   status: number,

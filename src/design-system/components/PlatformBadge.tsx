@@ -8,13 +8,7 @@ interface PlatformBadgeProps {
   className?: string;
 }
 
-/**
- * Renders the platform label (Amazon, eBay, ECWID, FBA, etc.) with the
- * correct color. Encapsulates the getOrderPlatformLabel + getOrderPlatformColor
- * pattern used across 10+ files.
- *
- * Returns null when no platform can be determined.
- */
+/** Renders the platform label (Amazon, eBay, ECWID, FBA, etc.) with the correct color. */
 export function PlatformBadge({ orderId, accountSource, showBorder = false, className = '' }: PlatformBadgeProps) {
   const label = getOrderPlatformLabel(orderId, accountSource);
   if (!label) return null;

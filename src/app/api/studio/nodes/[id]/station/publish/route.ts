@@ -1,15 +1,4 @@
-/**
- * POST /api/studio/nodes/[id]/station/publish — flip a node-bound draft station
- * live (Operations Studio Phase D / ST5).
- *
- * Body: { id } — the draft station_definitions row to activate. Atomic by
- * construction (the /api/stations/publish deactivate+activate CTE): one
- * statement deactivates the ('studio-node', nodeId) current active version and
- * activates the target. Registry validation runs before the flip so a config
- * referencing a block/source/action removed from code since the draft was saved
- * can never go live. Mirrors /api/stations/publish, scoped to the reserved
- * node-station page namespace.
- */
+/** POST /api/studio/nodes/[id]/station/publish — flip a node-bound draft station live (Operations Studio Phase D / ST5). */
 
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';

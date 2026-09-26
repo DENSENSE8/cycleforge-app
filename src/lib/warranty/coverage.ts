@@ -1,14 +1,4 @@
-/**
- * Warranty coverage lookup — the read-only "is this still under warranty?" check
- * a support rep runs while on the phone with a customer. Resolves an order #,
- * serial, or SKU to its shipped order, then computes the same warranty clock the
- * Log Claim flow stamps (computeWarranty + resolveWarrantyDays) — WITHOUT writing
- * anything. Returns null-ish (found:false) when no shipped order matches.
- *
- * Order resolution mirrors mutations.resolveClaimContext (carrier-delivered date
- * from shipping_tracking_numbers; packed date from packer_logs) so a coverage
- * check and a subsequently-logged claim agree on the clock.
- */
+/** Warranty coverage lookup — the read-only "is this still under warranty?" check a support rep runs while on the phone with a customer. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';

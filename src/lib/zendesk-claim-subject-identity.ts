@@ -57,17 +57,7 @@ export function knownReturnClassification(input: {
   return null;
 }
 
-/**
- * First subject segment: classify identity (platform / type / intake label).
- *
- * Order:
- * 1. Known intake return → `FBA Return`, `eBay Return`, … — or just the
- *    platform (`FBA`) when the claim TYPE segment already says "Return", so
- *    the assembled subject never duplicates it (`FBA Return // Return // …`).
- * 2. Platform + type → `FBA - Return`
- * 3. Platform only / type only — never emit a bare type that equals the claim
- *    type label (`Return // Return`); use `Unknown - Return` instead.
- */
+/** First subject segment: */
 export function resolveClaimSubjectIdentity(input: ClaimSubjectIdentityInput): string {
   const known = knownReturnClassification({
     isReturn: input.isReturn,

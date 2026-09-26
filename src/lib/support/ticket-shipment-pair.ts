@@ -20,13 +20,7 @@ export type PairTicketShipmentFromReceivingDeps = {
   }) => Promise<{ shipmentId: number; isPrimary: boolean; added: boolean }>;
 };
 
-/**
- * After anchoring a ticket to a receiving carton/line, also reference the
- * carton's STN on `ticket_links` (non-primary when RECEIVING is already the
- * anchor). Idempotent; best-effort callers should catch.
- *
- * Returns null when the carton has no shipment_id (nothing to pair).
- */
+/** After anchoring a ticket to a receiving carton/line, also reference the carton's STN on `ticket_links` (non-primary when RECEIVING is… */
 export async function pairTicketShipmentFromReceiving(
   args: {
     orgId: OrgId;
@@ -59,13 +53,7 @@ export type UnpairTicketShipmentFromReceivingDeps = {
   }) => Promise<{ removed: boolean; promotedShipmentId: number | null }>;
 };
 
-/**
- * Reverse of {@link pairTicketShipmentFromReceiving}: when detaching a ticket
- * from a receiving carton/line, also drop the carton's STN reference so
- * package-scoped readers (by-entity chip, shipment fallback) clear.
- *
- * Returns null when the carton has no shipment_id (nothing to unpair).
- */
+/** Reverse of {@link pairTicketShipmentFromReceiving}: */
 export async function unpairTicketShipmentFromReceiving(
   args: {
     orgId: OrgId;

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * The audit-log slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline (`source · role`) — `paintMorph`
- * coerces, and the org write gate (`slotMorphsFor('audit-log')`) refuses the
- * foreign morph.
- */
+/** The audit-log slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   AUDITLOG_FIELD_CATALOG,

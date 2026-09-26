@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /sourcing?mode=models — picker for the Bose model catalog.
- *
- * URL-state contract:
- *   ?search=<q>   — search box value
- *   ?model=<id>   — selected model id (read by the main pane); 'new' = create form
- */
+/** Sidebar for /sourcing?mode=models — picker for the Bose model catalog. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

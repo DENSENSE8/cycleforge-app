@@ -1,19 +1,4 @@
-/**
- * ShipStation key health — is this org's ShipStation live on BOTH APIs?
- *
- *   v2 `apiKey`              → rate-shop / buy / void / label download. Probe: GET /v2/carriers.
- *   v1 `v1ApiKey`+`v1ApiSecret` → order pull, stores, stored weight.  Probe: GET /stores.
- *
- * `active` means both keys answer 200 — the health line on the order shipping
- * panel and Settings › Integrations read it.
- *
- * A network / 5xx / 429 failure is `error`, NEVER `rejected` — a flaky call must
- * not flip an org's health to broken. So `active` is sticky on `error`: a key
- * that errors keeps its last definitive verdict (active → still active; never
- * proven → not active).
- *
- * Results are cached per org (5 min; 30 s while any key is in `error`).
- */
+/** ShipStation key health — is this org's ShipStation live on BOTH APIs? */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ShipStationCredentials } from '@/lib/integrations/credentials';

@@ -1,18 +1,4 @@
-/**
- * GET /api/auth/sso/start?slug=<tenant>[&persist=1]
- *
- * Kicks off an OIDC PKCE flow for the tenant identified by `slug`.
- * Persists the state row, then 302s the browser to the IdP's authorize
- * endpoint. The callback at /api/auth/sso/callback consumes the state row
- * and creates the session.
- *
- * `persist=1` carries the sign-in page's "Keep me signed in" checkbox across
- * the IdP redirect (stored on the state row, the only thing that survives it),
- * so a federated sign-in honours the box exactly like a password sign-in.
- *
- * Gated by the tenant's `sso` entitlement (enterprise-plan-only by
- * default — see src/lib/billing/plans.ts).
- */
+/** GET /api/auth/sso/start?slug=<tenant>[&persist=1] */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

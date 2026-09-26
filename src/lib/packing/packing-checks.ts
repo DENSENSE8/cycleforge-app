@@ -1,30 +1,4 @@
-/**
- * Packing-checklist tick persistence (packing-checklist-plan Phase 2).
- *
- * Records a packer's per-item confirmation ("this kit part / verify step is in
- * the box") into `tech_verifications` — the existing polymorphic checklist
- * results store — anchored on the order line:
- *
- *   source_kind    = 'order'
- *   source_row_id  = orders.id (the line PK the packer is packing)
- *   step_type      = 'PACKING'       (qc_check_templates verify steps)
- *                  | 'PACKING_PART'  (sku_kit_parts BOM rows)
- *   step_id        = the template / kit-part id
- *
- * Two step_type values because kit-part ids and check-template ids live in
- * different tables and would collide inside the single
- * `(source_kind, source_row_id, step_type, step_id)` idempotent-upsert key.
- * Both roll up under `step_type LIKE 'PACKING%'`.
- *
- * An untick upserts `passed = NULL` (clears the confirmation) rather than
- * deleting, so re-marks stay a single-row UPDATE and the verified_by/at trail
- * survives. The upsert key itself is the idempotency guarantee — a client
- * retry with the same tick is a no-op re-mark.
- *
- * Parent-existence validation happens here in the domain helper (order line +
- * step must exist in the caller's org), per the polymorphic-tables contract —
- * never in a DB trigger.
- */
+/** Packing-checklist tick persistence (packing-checklist-plan Phase 2). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -41,15 +15,7 @@ export const PACKING_STEP_TYPE: Record<PackingTickKind, string> = {
   PACKING_CHECK: 'PACKING',
 };
 
-/**
- * How the tick was earned. Ruled 2026-08-01
- * (`docs/todo/step-document-reveal-RULING.md` §3): a print/spool event is the
- * durable default for an insert; a UI tap is a zero-trust acknowledgement and
- * must stay distinguishable in the write so a later audit cannot confuse the
- * two. Stored on `tech_verifications.value_text` — the existing free-text slot
- * that upsertVerification already threads — so no schema change is needed for
- * Phase 1. Absent ⇒ legacy tick (pre-origin callers), treated as acknowledgement.
- */
+/** How the tick was earned. */
 export type PackingTickOrigin = 'print' | 'acknowledgement';
 
 export interface RecordPackingTickArgs {

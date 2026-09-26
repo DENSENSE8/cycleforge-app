@@ -108,27 +108,14 @@ export const X = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
-/**
- * Arrow-right-to-line (`>|`) — "push this panel away to the right".
- *
- * The dismiss glyph for a right-edge PUSH surface. An `X` says "destroy /
- * cancel"; a push column is not cancelled, it is parked back against the edge
- * it came from, and the arrow says which way it goes. Same family as the
- * collapse chevrons on the resize grips.
- */
+/** Arrow-right-to-line (`>|`) — "push this panel away to the right". */
 export const ArrowRightToLine = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h12m0 0-4-4m4 4-4 4M20 4v16" />
     </svg>
 );
 
-/**
- * Arrow-left-to-line (`|<`) — "park this left dock against the left edge".
- *
- * Twin of {@link ArrowRightToLine} for left context rails / LedgerDrill parent
- * maps. Filter-bar trailing collapse (`RailFilterCollapseButton`) uses this —
- * not an `X`, and not a raw page-local chevron.
- */
+/** Arrow-left-to-line (`|<`) — "park this left dock against the left edge". */
 export const ArrowLeftToLine = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H8m0 0 4-4M8 12l4 4M4 4v16" />
@@ -336,12 +323,7 @@ export const PaintBucket = ({ className = "w-6 h-6" }: { className?: string }) =
     </svg>
 );
 
-// ── Spreadsheet formatting glyphs ───────────────────────────────────────────
-// The Sheets toolbar marks (§ `docs/todo/one-sheet-table-sot-PLAN.md` § 4.2).
-// Drawn as LETTERFORMS rather than outline paths: a bold "B" is the only glyph
-// an operator reads as bold without a tooltip, and the stroke-based house style
-// cannot express weight. `fill="currentColor"` + no stroke, so they inherit the
-// control's colour the same way the stroked glyphs do.
+// ── Spreadsheet formatting glyphs ─────────────────────────────────────────── The Sheets toolbar marks (§…
 
 /** Bold mark — the toolbar's B. */
 export const Bold = ({ className = "w-6 h-6" }: { className?: string }) => (

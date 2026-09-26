@@ -1,26 +1,6 @@
 /**
  * GET /api/kiosk/staff-for-stepup?scope=payment|adjust_price|signin
- *
- * The counter tablet's staff roster, resolved from the DEVICE's org. Three
- * scopes, because the tablet asks three different questions:
- *
- *   • `payment` (default) — who can AUTHORIZE money. PIN-holders who hold
- *     `walk_in.take_payment`; the pad behind this pick verifies the PIN.
- *   • `adjust_price` — who can change a line's price (adjust, keypad, comp,
- *     void). PIN-holders who hold `walk_in.adjust_price`.
- *   • `signin` — who is STANDING HERE. Every active staffer, PIN or not,
- *     because the History face signs in pinlessly (operator 2026-09-22:
- *     *"remove the pin, use the same pinless sign in for the switching
- *     staff — this is dogfood"*), exactly as the desk's `SwitchStaffSheet`
- *     has since 2026-09-15.
- *
- * One route, because it is one roster with one tenancy rule; a second endpoint
- * would be a second place for the org scoping to drift.
- *
- * The response shape is `StaffPickerList`'s `StaffRow` — the tablet mounts the
- * SAME picker component as `/signin` and the desktop switcher, so this route
- * answers in that component's vocabulary. No secrets: id / name / role /
- * colour / avatar / has_pin.
+ * because the History face signs in pinlessly (operator 2026-09-22:
  */
 
 import { NextRequest, NextResponse } from 'next/server';

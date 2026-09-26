@@ -1,10 +1,4 @@
-/**
- * Stripe webhook signature verification.
- *
- * We re-implement the v1 signing scheme here (HMAC-SHA256 over
- * `<ts>.<rawBody>`) and check that our verifier accepts valid signatures
- * and rejects every flavor of bad one.
- */
+/** Stripe webhook signature verification. */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

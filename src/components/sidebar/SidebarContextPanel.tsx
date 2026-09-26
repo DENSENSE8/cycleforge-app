@@ -6,12 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
 import { getSidebarTitle } from '@/lib/sidebar-titles';
 
-// Every panel is code-split on the route key. Static imports here would drag
-// every feature area's sidebar graph (orders, FBA, studio, support, …) into
-// the shared shell bundle on every page — this dispatcher is exactly where the
-// per-route chunk boundary belongs. SSR stays on (default), so the active
-// route's panel is still server-rendered into the first HTML; the client only
-// downloads the one chunk its route needs.
+// Every panel is code-split on the route key.
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
 const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/OperationsSidebarPanel').then((m) => m.OperationsSidebarPanel));
 const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
@@ -85,22 +80,13 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
     );
   }
 
-  // `ops-photos` has no branch and no rail — the Media library is RAIL-LESS
-  // (Pattern E, 2026-08-09). Its lifecycle scopes are Band-1 tabs and its
-  // capture days ride the Band-2 refine popover; `CONTEXT_PANEL_ROUTE_KEYS`
-  // drops the key so the column collapses rather than reserving 360px of empty
- // chrome. SoT:.
+  // `ops-photos` has no branch and no rail — the Media library is RAIL-LESS (Pattern E, 2026-08-09).
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   // `outbound` has no branch: the Shipping desk's search · views · focus ·
   // saved views live IN the master nav (`OutboundDeskSpine`), not in a
   // second left column (operator 2026-09-26).
   if (routeKey === 'review') return <ReviewSidebarPanel />;
-  // `/search` has NO context rail. It used to carry a find bar over "Recently
-  // searched" — the documented exception to "find lives only in
-  // GlobalHeaderSearch". That exception stopped paying for itself once ⌘K grew
-  // its own Recent group: the same list, one keystroke away, on every route
-  // rather than only this one. Returning null here drops the key so the column
-  // collapses instead of reserving 360px for a duplicate.
+  // `/search` has NO context rail.
 
   return null;
 }

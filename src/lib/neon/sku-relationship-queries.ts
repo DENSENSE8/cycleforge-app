@@ -142,12 +142,7 @@ export interface SkuTreeResult {
   nodes: SkuGraphNode[];
 }
 
-/**
- * Full descendant tree below a root SKU. Depth-capped to guard against any
- * accidental cycle. Returns edges (ids) plus the deduped set of catalog nodes
- * that appear anywhere in the tree (root included), so the client can render
- * without N round-trips.
- */
+/** Full descendant tree below a root SKU. */
 export async function getTree(rootSkuId: number, maxDepth = 10, orgId?: OrgId): Promise<SkuTreeResult> {
   // org-scope BOTH recursive arms so a mixed-org edge can't pull foreign nodes
   // into the descendant walk; $3 = orgId when provided.
@@ -200,13 +195,7 @@ export async function findRelationship(
   return result.rows[0] ?? null;
 }
 
-/**
- * Is `targetId` reachable by walking DOWN (parent→child) from `rootId`?
- * Used for cycle prevention: before inserting parent→child, reject if `parent`
- * is already a descendant of `child` (i.e. isDescendant(childId, parentId)),
- * which would otherwise close a loop. UNION (not UNION ALL) terminates even if
- * a cycle somehow already exists.
- */
+/** Is `targetId` reachable by walking DOWN (parent→child) from `rootId`? */
 export async function isDescendant(rootId: number, targetId: number, orgId?: OrgId): Promise<boolean> {
   const orgClause = orgId ? ' AND organization_id = $3' : '';
   const orgClauseR = orgId ? ' AND r.organization_id = $3' : '';

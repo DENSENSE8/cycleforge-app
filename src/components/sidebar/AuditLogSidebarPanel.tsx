@@ -14,12 +14,7 @@ import { ReceivingPOPicker } from './audit-log-panel/ReceivingPOPicker';
 import { PackingTrackingPicker, TechSessionPicker, SkuPicker } from './audit-log-panel/AuditSectionPickers';
 import { TraceSerialPicker } from './audit-log-panel/TraceSerialPicker';
 
-/**
- * Audit-log sidebar — thin composition shell. Search / filter chrome live here;
- * L2 section nav lives in GlobalHeader. Each section's list-picker is a
- * presentational component under `./audit-log-panel/` (Packing/Tech/SKU share
- * one generic {@link useAuditSectionList}-backed picker).
- */
+/** Audit-log sidebar — thin composition shell. */
 export function AuditLogSidebarPanel() {
   const pathname = usePathname() || '';
   const router = useRouter();

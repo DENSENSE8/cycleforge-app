@@ -1,29 +1,9 @@
-/**
- * Receiving scan — domain types for the resolution pipeline.
- *
- * The scan ladder is being decomposed (strangler) out of the ~570-line
- * `submitTrackingScan` closure in `useTrackingScan` into small, pure,
- * dependency-injected resolver steps under `./resolvers/`. Each step takes a
- * {@link ScanInput} plus its own injected deps and returns a {@link ScanResolution}
- * (or `null` = "I can't resolve this, try the next rung") — NEVER touching React
- * state or firing events. The hook's apply layer switches on `kind` and owns all
- * the side-effects. That split is what keeps the rungs DB/React-free unit-testable.
- *
- * Today only the Phase-0 cached-carton rung is extracted; the remaining rungs
- * (internal-code, local-tracking, lookup-po matched/unmatched/not_found) add
- * their own variants to {@link ScanResolution} as they move out of the hook.
- */
+/** Receiving scan — domain types for the resolution pipeline. */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedTestingScan, ResolvedVia } from '@/lib/testing/resolve-testing-scan';
 
-/**
- * How a scanned value is routed. `auto` (un-armed) deep-scans PO#, tracking#,
- * and ticket#; an armed mode restricts to that one identity. Defined here
- * (not derived from the UI scan-bar's `UnboxScanMode`) so the pipeline carries
- * no dependency on a component — `UnboxScanMode` (`'tracking' | 'order' | 'ticket'`) is the
- * armed subset of this type.
- */
+/** How a scanned value is routed. */
 export type ScanResolutionMode = 'tracking' | 'order' | 'ticket' | 'auto';
 
 /** A classified scan ready to run through the ladder. */
@@ -85,14 +65,7 @@ export interface CachedCartonDeps {
   readCachedRows: () => ReceivingLineRow[];
 }
 
-/**
- * Local-first tracking rung output (Phase 1a). Three-way: a `local-matched`
- * carton already in the system (open + short-circuit), a `retarget` control
- * signal (no local carton, but the tracking maps to exactly one known incoming
- * PO — redirect the lookup-po call to the order-mode local-adopt path), or
- * `null` (fall through to lookup-po unchanged). Kept separate from
- * {@link ScanResolution} because `retarget` is pipeline control, not a UI result.
- */
+/** Local-first tracking rung output (Phase 1a). */
 export type LocalTrackingResolution = LocalMatchedResolution | RetargetResolution;
 
 export interface LocalMatchedResolution {
@@ -154,14 +127,7 @@ export interface LookupPoDeps {
   lookupPo: (body: LookupPoRequest) => Promise<LookupPoData>;
 }
 
-/**
- * lookup-po rung output (local-DB only). Each carries the raw response `data`
- * for the hook's apply layer:
- *   • `matched`           → openMatchedCarton(data)
- *   • `unmatched`         → an unfound carton was created; optimistic-open
- *   • `not_found`         → clean miss (no carton); toast, no open
- *   • `integration-error` → Zoho not connected; toast + reconnect
- */
+/** lookup-po rung output (local-DB only). */
 export type LookupPoResolution =
   | { kind: 'matched'; data: LookupPoData }
   | { kind: 'unmatched'; data: LookupPoData }

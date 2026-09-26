@@ -1,85 +1,10 @@
 'use client';
 
 /**
- * A mobile station's capture window — the camera every scan-identification
- * kernel on the phone runs on.
- *
- * This is the SoT lens. `/m/scan` mounts it, and every floor station cloned
- * from that shape mounts it too: one `getUserMedia` owner, one dedup window,
- * one decode-to-`onDecode` contract, one set of controls. A station that wants
- * a camera does NOT open its own — it mounts this and supplies copy.
- *
- * Station-neutral: it knows how to hold a lens open and hand up decoded
- * strings. It does not know what a scan-out is, and it carries no station copy
- * — the title and the running count belong to `MobileStationShell`'s header, on
- * the page above it.
- *
+ * A mobile station's capture window — the camera every scan-identification kernel on the phone runs on.
  * ## A panel with a glass bar, not a sheet (operator 2026-09-11)
- *
- * The chrome lives in {@link MobileCameraPanel}: a fixed, square-lipped bottom
- * panel whose picture runs edge to edge, with ONE blurred bar floating on top
- * of it and three fixed slots —
- *
- *   [ type-a-label ]      what is happening now      [ Done ]
- *
- * — replacing a draggable sheet whose dismiss was a gesture and whose controls
- * were scattered over the feed in three unrelated corners. What this file
- * supplies to that panel is the LEADING slot (below), a status string and a
- * pending count; it positions nothing over the image itself.
- *
- * ## No STANDING text field — but a keyed fallback in the leading slot
- *
- * The desk mouth carries a keyboard cell because a desk has a keyboard and a
- * wedge gun pointed at it. A phone on the dock has neither: the operator has a
- * box in one hand and the phone in the other, and an input sitting on that
- * screen is a thing to accidentally focus, a keyboard that eats half the tape,
- * and a second way to do the one thing the camera already does.
- *
- * That argument is about a STANDING field, and it was over-applied: with no
- * keyed path at all, a scuffed, wet or over-taped label could not be confirmed
- * on the dock — the operator had to carry the box to a desk. A damaged label is
- * the most common dock exception there is. So the field is here, behind the
- * header's left control, closed by default, and it commits through the same
- * `onDecode` the lens does.
- *
- * ## Typing REPLACES the camera, and docks flush above the keyboard
- *
- * Two decisions that are really one. Nobody aims a lens while typing, so a
- * keyed entry that floats over a live feed is paying for a viewfinder nobody is
- * looking at — and worse, the lens keeps decoding, so a label drifting through
- * frame can commit a package while the operator is mid-word. Opening the field
- * stops the camera outright.
- *
- * The typed bar collapses the panel's STAGE to content height so its lip stays
- * flush under the focus tape row — never a tall empty stage between the last
- * entry and the field. `useKeyboard` lifts that short bar with `marginBottom`
- * so it still rides the keys. The header does not move: same three slots, so
- * the status line and Done stay exactly where they were and the left control
- * swaps its glyph for cancel.
- *
- * ## ONE bar on the feed, and nothing else
- *
- * Every control on this surface is ABOUT the camera, so the bar sits ON the
- * camera — glass, blurred, top of the stage — rather than as a strip outside
- * the viewfinder that the eye has to leave the picture to collect
  * (operator 2026-09-11, reversing the opaque band the first pass shipped).
- *
- * That is the whole chrome budget. No dimming mask, no corner reticle, no
  * sweep line, no title, no counter (operator 2026-09-04), and no second pill
- * in another corner — each of those has been here and each was deleted. The
- * frame IS the aim box, so a drawn one only repeats it. Beyond the bar, the
- * only things that ever cover the picture are the two states that REPLACE it —
- * warm-up and a dead lens — and both inset themselves clear of it.
- *
- * ## Three states, and they must not look alike
- *
- * `starting`, `live` and `errored`. Between mount and first frame the stage used
- * to be an unlabelled black rectangle, so a slow permission prompt was
- * indistinguishable from a dead camera — the operator waits on something that
- * is never coming, or gives up on something that was about to work.
- *
- * The lens is owned here and is the only one on the screen: two `getUserMedia`
- * streams contend, so nothing else may mount one while this is live.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -93,24 +18,10 @@ import { cn } from '@/utils/_cn';
 import { MobileCameraPanel } from './MobileCameraPanel';
 import { STATION_EYEBROW_CLASS } from './station-chrome';
 
-/**
- * How long the same code is ignored after a read.
- *
- * A dock operator points the phone at a label and holds it there while the
- * commit lands, so a short window re-commits the same package several times
- * from one aim. Six seconds is long enough to cover that hold and short enough
- * that a genuine second scan of the same tracking — the operator re-checking a
- * box — still reads.
- */
+/** How long the same code is ignored after a read. */
 const DEDUP_MS = 6000;
 
-/**
- * The header's left control: 28px painted, 44px hit.
- *
- * The `inline` rung of MOBILE_CONTROL_LADDER — paint small, hit big. The extra
- * 8px on every side rides a pseudo-element, so the control row stays 36px tall
- * while the thumb still gets its full target.
- */
+/** The header's left control: */
 const LEADING_CONTROL_CLASS =
   "relative before:absolute before:-inset-2 before:content-['']";
 
@@ -120,12 +31,7 @@ export function MobileCaptureWindow({
   label,
   /** What the collapsed bar says once the operator presses Done. */
   collapsedLabel = 'Scan',
-  /**
-   * The header's middle slot — the shift count, or the number still settling.
-   * A COUNT, not a sentence: the lip lane says whether anything is pending,
-   * so this line no longer has to spell it out. Painted whether or not the
-   * operator is typing.
-   */
+  /** The header's middle slot — the shift count, or the number still settling. */
   status,
   statusAlert,
   /**
@@ -189,9 +95,6 @@ export function MobileCaptureWindow({
   const [manual, setManual] = useState('');
 
   // Held in refs so the decode effect can key strictly off the scanned VALUE.
-  // Depending on the handler (or on `scanner`, which is a fresh object every
-  // render) would re-fire the decode on unrelated state changes — the same scan
-  // committed twice.
   const onDecodeRef = useRef(onDecode);
   onDecodeRef.current = onDecode;
   const acceptRef = useRef(acceptScan);
@@ -219,14 +122,7 @@ export function MobileCaptureWindow({
   useEffect(() => {
     if (!lastScannedValue) return;
     onDecodeRef.current(lastScannedValue.trim());
-    // Accept first (arms the cooldown), then clear the value so the NEXT read of
-    // this same label is a fresh state transition. Without the clear, React bails
-    // out on the identical string and the effect never re-runs: an operator who
-    // scans a package, sets the phone down, and scans that package again gets
-    // absolutely nothing — verified 2026-09-04 against a barcode reel showing the
-    // same label twice with a gap, which fired exactly one POST.
-    // `keepDedup` leaves DEDUP_MS armed so the still-pointed camera does not
-    // immediately re-commit the label it just accepted.
+    // Accept first (arms the cooldown), then clear the value so the NEXT read of this same label is a fresh state transition.
     acceptRef.current();
     resetRef.current({ keepDedup: true });
   }, [lastScannedValue]);
@@ -305,14 +201,7 @@ export function MobileCaptureWindow({
         onOpenChange={setOpen}
         fitContent={manualOpen}
         stageClass={manualOpen ? 'bg-surface-card' : 'bg-stage'}
-        /*
-          ONE slot, both modes — and it rides the bar, not the picture. It used
-          to be pinned `absolute left-2 top-1.5` over the live image on its own,
-          a control scattered in a corner with no relationship to the two beside
-          it. `tone="glass"` is the sanctioned face for chrome on live media
-          (the scrim carries the contrast); over the typed field there is no
-          picture, so it drops back to the neutral tone.
-        */
+        /* ONE slot, both modes — and it rides the bar, not the picture. */
         leading={
           manualOpen ? (
             <IconButton
@@ -335,14 +224,7 @@ export function MobileCaptureWindow({
           )
         }
       >
-        {/*
-          Unmounted while typing, not merely covered. The effect above already
-          stops the stream, but leaving the element in the tree keeps a paused
-          frame of the dock behind a form and invites the next reader to assume the
-          camera is still live. Replaced means replaced. ZXing binds to whichever
-          element is present when `startScanning` runs, so a fresh one on reopen is
-          exactly what it expects.
-        */}
+        {/* Unmounted while typing, not merely covered. */}
         {!manualOpen && (
           <video
             ref={scanner.videoRef as React.RefObject<HTMLVideoElement>}
@@ -353,13 +235,7 @@ export function MobileCaptureWindow({
           />
         )}
 
-        {/*
-          Warm-up. Says which of the two silences this is.
-
-          `pt-9` clears the floating bar: this text is centred in the STAGE, and
-          the stage now runs under the glass, so without the inset the first
-          line sits behind Done.
-        */}
+        {/* Warm-up. Says which of the two silences this is. */}
         {starting && (
           <div
             role="status"
@@ -374,16 +250,7 @@ export function MobileCaptureWindow({
           </div>
         )}
 
-        {/*
-          Keyed fallback — a MODE, not an overlay on the lens.
-
-          The stage collapses to content (`fitContent`) so the tape meets the
-          field with no empty stage between them, and the bar comes off the
-          glass onto an opaque ground above it — there is no picture to float
-          on. The cancel lives in its left slot; Enter or the check commits.
-          Parent `marginBottom` rides the OS keyboard without parking the bar
-          mid-screen.
-        */}
+        {/* Keyed fallback — a MODE, not an overlay on the lens. */}
         {manualOpen && (
           <form
             onSubmit={(e) => {
@@ -395,12 +262,7 @@ export function MobileCaptureWindow({
               paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
             }}
           >
-            {/*
-              Check is `size="md"` so IconButton's own flex centering owns the
-              glyph — a bare h-8 w-8 without `size` left the mark off-axis in
-              the trailing slot. Enter still submits; the check is the thumb
-              fallback.
-            */}
+            {/* Check is `size="md"` so IconButton's own flex centering owns the glyph — a bare h-8 w-8 without `size` left the mark off-axis in the… */}
             <TextField
               value={manual}
               onChange={setManual}

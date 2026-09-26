@@ -1,17 +1,4 @@
-/**
- * Date-hierarchy breadcrumb model for the photo library.
- *
- * The library's "folder breadcrumb" IS the active date filter rendered as a
- * clickable Year → Month → Week → Day path (e.g. `2026 / June / Jun 15-21 / June 17`).
- * Each crumb carries the date range that clicking it applies, so the breadcrumb
- * doubles as a widen-the-filter navigator.
- *
- * All math is calendar arithmetic on the `YYYY-MM-DD` PST date strings the rest
- * of the library already uses (see `date-tree.ts`); we compute in UTC purely to
- * dodge DST, never to shift the calendar day. Weeks are ISO-8601 (Monday start,
- * week 1 = the week containing the first Thursday) so "Week 25" matches what
- * operators read off a calendar.
- */
+/** Date-hierarchy breadcrumb model for the photo library. */
 
 export interface PhotoDateRange {
   dateFrom: string;
@@ -121,12 +108,7 @@ function rangeEquals(a: PhotoDateRange, from: string, to: string): boolean {
   return a.dateFrom === from && a.dateTo === to;
 }
 
-/**
- * Derive the clickable Year → Month → Week → Day crumbs for the active date
- * filter. Returns `[]` when no date is selected (the breadcrumb shows just its
- * "All dates" root). An arbitrary span that matches none of the day/week/month/
- * year boundaries collapses to a single `custom` crumb labelled with its range.
- */
+/** Derive the clickable Year → Month → Week → Day crumbs for the active date filter. */
 export function describePhotoDatePath(filters: {
   dateFrom?: string;
   dateTo?: string;

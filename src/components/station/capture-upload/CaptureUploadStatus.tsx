@@ -15,26 +15,7 @@ import {
   type CaptureUploadSummary,
 } from './capture-upload-model';
 
-/**
- * **The capture-upload status card — one compound for every Station bench.**
- *
- * Replaces the toast as the completion/failure signal for background photo
- * uploads. Station law: pass/fail is a big card state the operator can read at
- * ~3 ft with their hands full, never a four-second corner toast
- * (6). A failed upload stays on screen with
- * a **Retry** the operator can actually press — before this, `retry()` existed
- * on all three queues and was reachable from no UI at all.
- *
- * Presentational by construction: it takes entries + summary + callbacks and
- * imports no queue. That is what lets Receiving, Pack and Unit share one face
- * today (via {@link useCaptureUploadStatus}) and lets a desk-side surface mount
- * the same component against a different source in P1 — rather than each bench
- * growing the page-local upload strip this program exists to prevent.
- *
- * Motion: `framerPresence.composerDock` (a bottom-anchored dock rising into
- * place — the same job, so the same preset) routed through the reduced-motion
- * bridge, per D10. Pinned by `station-motion-bridge.guard.test.ts`.
- */
+/** **The capture-upload status card — one compound for every Station bench.** */
 
 const TONE_GLYPH = {
   active: <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600" />,

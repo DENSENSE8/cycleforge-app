@@ -1,11 +1,4 @@
-/**
- * `isPurchaseOrderFlaggedReceived` — the rule that tells a genuine no-op apart
- * from a PO that must fall back to whole-PO markasreceived.
- *
- * Regression: PO 06-14980-30824 (2026-08-21) survived seven Receive clicks
- * because `mark-received-po` treated "no line quantity left to post" as
- * "received". Zoho's own header said otherwise.
- */
+/** `isPurchaseOrderFlaggedReceived` — the rule that tells a genuine no-op apart from a PO that must fall back to whole-PO markasreceived. */
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

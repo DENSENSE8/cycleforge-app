@@ -1,10 +1,4 @@
-/**
- * Webhook org resolver — fail-closed decision logic, DB-free via injected deps.
- *
- * The invariant under test: a session-less webhook may only ever write under
- * an org the payload provably belongs to. Anything ambiguous (2+ candidate
- * orgs) or unknown resolves to null — the caller skips the event.
- */
+/** Webhook org resolver — fail-closed decision logic, DB-free via injected deps. */
 
 import { test } from 'node:test';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';

@@ -1,51 +1,10 @@
 'use client';
 
 /**
- * The RESTING face of the select gutter — the row's status where the selection
- * square will be.
- *
+ * The RESTING face of the select gutter — the row's status where the selection square will be.
  * Operator 2026-09-15: "on hover it will display the checklist icon, on
- * non-hover it will display the current status of the order … if the order is
- * urgent then it will display a flashing lightning bolt". So the 16px box has
- * two altitudes and the pointer chooses between them:
- *
- * - **at rest** — these glyphs, from {@link compoundSelectStatusMarks}.
- * - **row hovered / keyboard focus on the checkbox / no-hover pointer** — the
- *   selection square ({@link GridSelectSquareFace}), which paints itself in
- *   exactly those conditions. This face fades out under the same three, so the
- *   two never overlap and neither has to know about the other's timing.
- *
- * A TICKED row is not a resting row: membership has to be readable straight
- * down the column, so the caller drops this face entirely once `checked` is
- * true or mixed and the accent square stands alone.
- *
- * ## Several marks TAKE TURNS in the one box
- *
- * An urgent order that is also short carries two marks, and the box alternates
  * between them on the shared clock (operator 2026-09-15: "it should flash
- * between out of stock Alert icon and the is-urgent lightning bolt"). Every
- * mark is a layer in the same 16px square and `edgeMarkFlashOpacity` gives each
- * its slot, so only one is ever visible and the glyph never jumps position.
- * Two glyphs side by side would need a wider track; a single "worst" mark would
- * hide the other fact. Under reduced motion there is no rotation to watch, so
- * the HOTTEST mark stands alone and still.
- *
- * ## Why it is decorative
- *
- * `aria-hidden`, no tooltip. It is the one face an operator can never point at
- * — reaching for it replaces it — so a hover label would be unreachable by
- * construction. The fact is already spoken twice: the edge rail carries
- * `mark.label` on its own tooltip, and the item track paints the same product
- * flag with an `sr-only` word beside the title. A third announcement of
- * "Urgent" on the same row is noise for a screen reader.
- *
- * ## Geometry is the HOST's
- *
- * Where the 16px box sits inside the gutter is decided by the host, and the
- * host hands those same classes to BOTH planes (`items-center` plus the rail
- * inset, `COMPOUND_GUTTER_RAIL_INSET_CLASS`) — this file re-deriving them is
  * how a glyph starts jumping on hover. Operator 2026-09-15: centred in the
- * middle, which on a 24px track means centred in what the 3px rail leaves.
  */
 
 import type { ReactNode } from 'react';
@@ -63,12 +22,7 @@ import { edgeMarkFlashOpacity } from './edge-mark-pulse';
  */
 const FLASH_SEC = framerDuration.edgeMarkPulse / 2;
 
-/**
- * The mark's BOX is the 16px square's box and the glyph is 14px inside it — the
- * same optical weight as the rail tick, and the same outer box the checklist
- * square wears so the two faces cannot land on different lines when the host
- * pins them (`COMPOUND_GUTTER_MARK_TOP_PIN_CLASS`: both at cy = rowTop + 12).
- */
+/** The mark's BOX is the 16px square's box and the glyph is 14px inside it — the same optical weight as the rail tick, and the same outer… */
 const BOX_CLASS = 'h-4 w-4';
 const GLYPH_CLASS = 'h-3.5 w-3.5';
 

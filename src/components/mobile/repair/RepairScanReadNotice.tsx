@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * What the last read did — the one place on the phone the staffer's eye goes
- * after the camera beeps. A write says WHICH unit it was added to, the value
- * and how many serials that unit now carries, with Undo beside it; a serial
- * the unit already has says so (nothing written); a link says it is a link
- * (and offers to open it); noise says it was not a serial. Nothing here
- * writes except Undo, which is the hub's own write handed down — and this is
- * the ONLY Undo on the screen (the bottom is the lens, with no verbs), so it
- * rides every notice while there is a last read to take back.
- *
- * Callers: `RepairScanCompanion` (`/m/repair-scan` content slot).
- */
+/** What the last read did — the one place on the phone the staffer's eye goes after the camera beeps. */
 
 import { AlertTriangle, Check, ExternalLink, RotateCcw, X } from '@/components/Icons';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

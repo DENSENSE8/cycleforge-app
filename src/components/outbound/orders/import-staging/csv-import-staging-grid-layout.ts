@@ -1,17 +1,4 @@
-/**
- * CSV import staging spreadsheet column model — the triage map an operator
- * reads BEFORE anything is written to To-Ship.
- *
- * A row is one parsed CSV record projected through the current column mapping
- * (`listCsvImportStagingRows`). The `status` track is the **triage state**
- * (Ready · Action required) — a fact with its own column, never a dot parked in
- * the identity cell (`source-of-truth.md` → Grid ROW anatomy).
- *
- * Frozen pane = `select` + `order`: the order number is this surface's unique
- * row handle, exactly as the PO is on Unbox History. `status` is structural
- * (no `hideKey`) — a triage queue whose triage state can be hidden is a queue
- * that can lie about why Confirm skipped a row.
- */
+/** CSV import staging spreadsheet column model — the triage map an operator reads BEFORE anything is written to To-Ship. */
 
 import {
   gridFrozenLeft,
@@ -59,21 +46,7 @@ export interface CsvImportStagingGridColumn extends SlotTrackFields {
   sortable?: boolean;
 }
 
-/**
- * The structural sheet skeleton — what staging paints with ZERO bindings.
- *
- * `select · order` is the frozen identity pane; `status` is the triage state,
- * structural because a staffer who could unbind it would be looking at an
- * import queue that no longer says which rows block the commit.
- *
- * **The port's one geometry change, with its reason.** The retired hand model
- * hung the sheet's sole `1fr` on the `customer` track, which "absorbs the
- * sheet's slack". `customer` is a FACT, so it is now a bound track sized by its
- * display type — and a sheet with no flex track leaves its slack unallocated.
- * The trailing `_fill` takes it instead, which is the house law every other
- * family already follows (`GRID_FILL_COLUMN`): geometry only, no label, no
- * hideKey, never in Fields.
- */
+/** The structural sheet skeleton — what staging paints with ZERO bindings. */
 const CSV_IMPORT_STAGING_SHEET_BASE: readonly CsvImportStagingGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {

@@ -1,14 +1,4 @@
-/**
- * Manual paste → Zoho received check for Incoming / Unbox.
- *
- * Operators paste tracking numbers **or** order/PO numbers; we resolve each
- * against Zoho PO `reference_number` or `purchaseorder_number` (mirror-first,
- * live Zoho fallback) and split into received-in-Zoho vs not-received-in-Zoho.
- * Read-only — no writes.
- *
- * Server deps (`tenantQuery`, Zoho client) load lazily so pure helpers stay
- * unit-testable without `server-only`.
- */
+/** Manual paste → Zoho received check for Incoming / Unbox. */
 
 import {
   canonicalizeTrackingKey,
@@ -33,36 +23,20 @@ import {
 import { resolveCheckRowCarrierTracking } from '@/lib/receiving/check-zoho-received-carrier';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Warehouse-membership mapping — re-exported from its leaf SoT. It moved out
- * for the same altitude reason as the paste parser: this module `await import`s
- * `@/lib/tenancy/db`, and a client surface composing the pure function would
- * have pulled `server-only` into the browser graph.
- */
+/** Warehouse-membership mapping — re-exported from its leaf SoT. */
 export { resolveWatchState };
 export type { CheckZohoReceivedWatchState };
 
 /** Carrier-tracking display helper — leaf SoT; re-exported for server callers. */
 export { resolveCheckRowCarrierTracking };
 
-/**
- * Paste vocabulary — re-exported from the leaf SoT so this module's existing
- * import path keeps working. The parser MOVED to `tracking-paste.ts` (2026-08-02)
- * because the bulk-filter panel is a client component and this module reaches
- * the Zoho client + `tenantQuery`; the same altitude split `build-gotchas.md`
- * prescribes. There is still exactly one splitter.
- */
+/** Paste vocabulary — re-exported from the leaf SoT so this module's existing import path keeps working. */
 export { CHECK_ZOHO_RECEIVED_MAX_INPUTS, parseTrackingPaste };
 
 const CHECK_ZOHO_RECEIVED_MAX_ZOHO_LOOKUPS = 50;
 const CHECK_ZOHO_RECEIVED_CONCURRENCY = 3;
 
-/**
- * Received-status vocabulary — re-exported from the leaf SoT so this module's
- * existing import path keeps working. There is no local copy any more: the twin
- * that used to live here (and a third inline `Set` in `rail/status.ts`) were
- * three declarations of one mapping, each asking a human to keep them in sync.
- */
+/** Received-status vocabulary — re-exported from the leaf SoT so this module's existing import path keeps working. */
 export { ZOHO_RECEIVED_LIKE_STATUSES, isZohoReceivedLikeStatus };
 
 export type CheckZohoReceivedReason =
@@ -72,18 +46,7 @@ export type CheckZohoReceivedReason =
   | 'error'
   | 'zoho_cap';
 
-/**
- * The reasons that mean **we do not know** the answer, as opposed to knowing the
- * answer is "no".
- *
- * This distinction is the whole reason the result has three buckets rather than
- * two. `error` (Zoho was down) and `zoho_cap` (we chose not to look) carry no
- * information at all; `no_match` and `ambiguous` mean we could not identify the
- * PO, not that a PO exists and is still open. Filing any of them under
- * "Not received in Zoho" states a fact the check never established — during a
- * Zoho outage the old shape reported every single tracking as not-received, and
- * an operator chasing that list would chase POs the vendor had already fulfilled.
- */
+/** The reasons that mean **we do not know** the answer, as opposed to knowing the answer is "no". */
 const UNDETERMINED_REASONS: ReadonlySet<CheckZohoReceivedReason> = new Set([
   'no_match',
   'ambiguous',
@@ -323,29 +286,7 @@ async function lookupMirrorByTrackings(
   return out;
 }
 
-/**
- * Local warehouse state for a paste list — the join that makes this check part
- * of the same system as the Incoming watch surfaces instead of a second report.
- *
- * Tenant scoping: `shipping_tracking_numbers` DOES carry `organization_id` and
- * runs FORCE RLS (verified against the live schema 2026-08-02), so `tenantQuery`
- * scopes the shipment row itself. Every org-BEARING alias reached through it —
- * `receiving_carton`, `receiving_scans` — is additionally pinned to `$2`, the
- * same belt-and-braces {@link deliveredUnscannedBaseSql} applies, so another
- * tenant's rows can neither resolve nor suppress this answer.
- *
- * The shipment join is a plain indexed equality on `tracking_number_normalized`
- * (unique + btree). It deliberately does NOT carry the last-8 tolerance the scan
- * matcher has: that tolerance exists because a *scanned* IMpb barcode carries
- * routing prefixes the typed number does not, which is a scan-side problem —
- * already handled inside `SHIPMENT_SCAN_MATCH_CONDITION`, which this composes
- * rather than restates. What the operator pastes IS the canonical stored form,
- * so an `OR right(...) = last8` arm here would buy nothing and cost the index:
- * measured, it planned as a nested-loop seq scan at ~357k cost for a SINGLE key.
- *
- * Keys that are order/PO numbers (not trackings) resolve via cartons linked to
- * `zoho_po_mirror.zoho_purchaseorder_number_norm` — same canon vocabulary.
- */
+/** Local warehouse state for a paste list — the join that makes this check part of the same system as the Incoming watch surfaces instead… */
 async function lookupLocalByTrackings(
   orgId: OrgId,
   trackings: string[],
@@ -491,29 +432,11 @@ const UNKNOWN_LOCAL: CheckZohoReceivedLocal = {
   watch: 'unknown',
 };
 
-/**
- * The reconciliation verdict for one row — ERP answer × warehouse answer.
- *
- * `erp_ahead` is the value this whole check exists to find, and it is the one
- * state no continuous feed reports: a Zoho-received PO is excluded from Incoming
- * and from delivered-not-unboxed by `NOT_ZOHO_RECEIVED_PREDICATE`, and
- * `reconcileZohoReceivedLines` only auto-closes cartons that were actually
- * door-scanned. A PO marked received upstream that the warehouse never scanned
- * is therefore invisible everywhere except the delivered-unscanned hunt queue —
- * and only while the carrier reported delivery inside its 14-day window.
- */
+/** The reconciliation verdict for one row — ERP answer × warehouse answer. */
 export function resolveVerdict(args: {
   reason: CheckZohoReceivedReason;
   status: string | null;
-  /**
-   * `null` means the warehouse half could not be looked up at all (the query
-   * failed) — NOT that the warehouse has no record. The two are opposite
-   * claims and only one of them is actionable, so a null must never resolve to
-   * `erp_ahead`: that would re-create, on the local half, exactly the
-   * false-certainty this module's three-bucket split removed from the ERP half.
-   * A row we *did* look up and found nothing for is `{ known: false }`, which
-   * is real evidence and does resolve.
-   */
+  /** `null` means the warehouse half could not be looked up at all (the query failed) — NOT that the warehouse has no record. */
   local: CheckZohoReceivedLocal | null;
 }): CheckZohoReceivedVerdict {
   if (isUndeterminedReason(args.reason)) return 'unknown';
@@ -651,11 +574,7 @@ export async function checkZohoReceived(
 
   const lookupLocal = deps.lookupLocal ?? lookupLocalByTrackings;
 
-  // The ERP probe and the local-state join are independent, so they run
-  // together: the local half must never add a serial round-trip to a check the
-  // operator is waiting on.
-  // `null` (not an empty Map) when the local half could not be consulted, so a
-  // degraded lookup reads as "unknown" rather than "no warehouse record".
+  // The ERP probe and the local-state join are independent, so they run together:
   const [mirrorMap, localMap] = await Promise.all([
     lookupMirror(orgId, parsed.trackings),
     lookupLocal(orgId, parsed.trackings).catch(() => null),

@@ -36,17 +36,7 @@ export async function runStaffGoalHistorySnapshotJob(
     throw new Error('loggedDate must be in YYYY-MM-DD format');
   }
 
-  // Phase D: fan out per active org instead of one global snapshot pass. Each
-  // org's snapshot runs through snapshotStaffGoalHistoryForDate(date, _, orgId),
-  // which opens its OWN tenant-scoped tenantQuery (GUC set + explicit
-  // staff/SAL org predicates), so a pass only writes that org's staff rows.
-  // staff_goal_history is staff-scoped (no own org column) and keyed by
-  // (staff_id, station, logged_date) — staff belong to exactly one org, so the
-  // union of per-org passes is identical to the previous global pass, now
-  // tenant-isolated. We use listSweepOrgIds (not forEachActiveOrg) because the
-  // snapshot helper already manages its own per-org transaction; wrapping it in
-  // another would just pin an idle connection. Per-org failures are isolated —
-  // one bad tenant never aborts the sweep.
+  // Phase D: fan out per active org instead of one global snapshot pass.
   const orgIds = await listSweepOrgIds();
   const uniqueStaffIds = new Set<number>();
   const stations = new Set<string>();

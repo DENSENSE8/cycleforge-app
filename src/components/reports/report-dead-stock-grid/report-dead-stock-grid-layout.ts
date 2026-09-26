@@ -1,19 +1,4 @@
-/**
- * Dead-stock column model — MATERIALIZED from a {@link SlotLayout} onto the
- * SHARED compound skeleton, never a hand array.
- *
- * It replaced `DEAD_COLUMNS`, a page-local `AdminTableColumn[]` literal
- * carrying four JSX cells over `Record<string, unknown>` rows: a second table
- * engine's column type, with no header sort, no Fields picker and no org
- * binding, because that engine never grew them.
- *
- * The skeleton mounts WHOLE — no `.filter`. A dead-stock row has no photo, so
- * the gutter paints the typed placeholder exactly as `cycle-counts`,
- * `part-compatibility` and `kiosk-slot-events` already do; filtering `thumb`
- * off the mount would need a new `COMPOUND_SKELETON_FILTER_DEBT` row and that
- * list is documented shrink-only. Chrome headers are family DATA and are
- * relabelled (SKU · Product · Last move · Dormant); geometry is the engine's.
- */
+/** Dead-stock column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -72,11 +57,7 @@ export function reportDeadStockCompoundColumnsFor(
     if (t.key === 'item') return { ...t, label: 'Product', gridLabel: 'Product' };
     // One temporal fact on this report: the instant the dormancy counts from.
     if (t.key === 'dates') return { ...t, label: 'Last move', gridLabel: 'Last move' };
-    // The pill carries the DORMANCY COUNT. `slotDisplayType` is set WITHOUT a
-    // `fieldId` on purpose: the engine types the sort comparator from it (so
-    // 184 beats 90 instead of losing to it lexically) and reads `fieldId` to
-    // decide which tracks get a resolved slot value — and the state cell
-    // paints `view.stateLabel`, never a slot.
+    // The pill carries the DORMANCY COUNT.
     if (t.key === 'state') {
       return {
         ...t,
@@ -93,14 +74,7 @@ export function reportDeadStockCompoundColumnsFor(
 export const REPORT_DEAD_STOCK_COMPOUND_COLUMNS: readonly ReportDeadStockGridColumn[] =
   reportDeadStockCompoundColumnsFor(REPORT_DEAD_STOCK_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the four the chrome paints: a
- * labeled header with a dead click fails `SLOT_TABLE_PAINT_LAW.headerSort`.
- * Structural chrome is named by `isSlotTableChromeTrack`, never by a hand list
- * that could drift from the law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function reportDeadStockSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

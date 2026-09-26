@@ -1,18 +1,4 @@
-/**
- * Completed-tasks catalog guards, materialization, resolver and adapter.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - IDENTITY PURITY. A task carries two people, and the identity slot is the
- *   one place neither may land. The
- *   layout parse pins the assignment id there.
- * - LATENESS IS MEASURED AGAINST THE DEADLINE, NOT `now`. A record does not
- *   become later while it is read, so the DATES cell's age is computed from
- *   completion — the desk adapter's `now`-relative delay is the thing this
- *   family must NOT inherit.
- * - THE DEADLINE FACT RESOLVES BLANK WHEN THERE IS NONE. A stand-in date would
- *   sort a promise-free task in among the dated ones instead of sinking it.
- */
+/** Completed-tasks catalog guards, materialization, resolver and adapter. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

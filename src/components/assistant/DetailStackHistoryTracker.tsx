@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * DetailStackHistoryTracker — watches the URL for any known detail-stack open
- * param (openShipmentId, openReceivingId, openOrderId, …) and records them into
- * the recent-detail-stacks history the context rail shows. Zero per-page
- * wiring: every page that already deep-links a slide-over via one of these
- * params is captured for free.
- *
- * Renders nothing. Mounted once by AssistantProvider inside a Suspense boundary
- * (useSearchParams requires it in the App Router).
- */
+/** DetailStackHistoryTracker — watches the URL for any known detail-stack open param (openShipmentId, openReceivingId, openOrderId, …) and… */
 
 import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';

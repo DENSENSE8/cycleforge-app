@@ -21,26 +21,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Universal ticket ↔ entity link waist.
- *
- *   GET  ?anchorType=&…&query=   → link candidates for the resolved entity
- *   GET  ?anchorType=&…&mode=reference
- *                                → candidates for attaching an EXTRA shipment
- *   GET  ?ticketId=&list=shipments → the STNs a ticket already references
- *   POST { ticketId, anchor }    → set the ticket's ANCHOR (one per ticket)
- *   POST { ticketId, reference } → add an extra STN reference (many per ticket)
- *   DELETE ?ticketId=&anchorType=&…       → entity-scoped unlink of the anchor
- *   DELETE ?ticketId=&shipmentId=&reference=1 → drop one STN reference
- *
- * Anchor types: receiving (receivingId + optional lineId), tracking, shipment, order.
- *
- * ANCHOR vs REFERENCE: a ticket has at most ONE anchor (what it is about,
- * enforced by ux_ticket_links_ticket_primary) and any number of references (other
- * shipments it touches). The anchor POST keeps its already-linked-elsewhere 409;
- * the reference POST deliberately does not, because attaching a second STN to an
- * anchored ticket is the whole point.
- */
+/** Universal ticket ↔ entity link waist. */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

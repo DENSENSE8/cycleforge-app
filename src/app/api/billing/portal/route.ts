@@ -1,10 +1,4 @@
-/**
- * POST /api/billing/portal
- *
- * Mints a Stripe-hosted billing portal URL for the caller's tenant so they
- * can update payment methods, cancel, download invoices, etc. Requires
- * the caller to have admin.view.
- */
+/** POST /api/billing/portal */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

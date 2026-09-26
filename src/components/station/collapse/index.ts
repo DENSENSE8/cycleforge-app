@@ -19,12 +19,7 @@ export {
 export type { LineCollapseEvent, LineCollapseState } from './line-collapse';
 export { useLineCollapse } from './useLineCollapse';
 export type { LineCollapseController } from './useLineCollapse';
-/**
- * Between the two: which BAND is open inside a centre that is not fully
- * yielding its column. {@link StationBandStack} is the one component that
- * renders them, because only something that owns every band can know they are
- * all closed and offer Expand all on the first header.
- */
+/** Between the two: */
 export {
   BAND_COLLAPSE_INITIAL,
   bandCollapseReducer,

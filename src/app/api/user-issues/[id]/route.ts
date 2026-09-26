@@ -1,14 +1,4 @@
-/**
- * GET    /api/user-issues/[id] — single reported issue (UIC-1).
- * PATCH  /api/user-issues/[id] — field edit + status change (UIC-3 Claim/Resolve/Reopen/Edit).
- * DELETE /api/user-issues/[id] — soft-delete tombstone (UIC-4); confirm-then-commit in UI.
- *
- * Param route: requireRoutePerm (Next route-params are not available to the
- * collection-style auth wrapper). Read = support.issues.view; write =
- * support.issues.manage. Status changes only via setIssueStatus(expectedFrom)
- * → 409 on conflict. Machine webhook POST /api/user-issues/resolve is
- * untouched (sibling path).
- */
+/** GET /api/user-issues/[id] — single reported issue (UIC-1). */
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -64,13 +54,7 @@ export async function GET(
   }
 }
 
-/**
- * PATCH /api/user-issues/[id] — Claim / Resolve / Reopen / Edit.
- *
- * Body: { title?, description?, issueType?, status?, expectedFrom?,
- *         resolutionCommit?, clientEventId? }
- * Status changes require expectedFrom; mismatch → 409.
- */
+/** PATCH /api/user-issues/[id] — Claim / Resolve / Reopen / Edit. */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

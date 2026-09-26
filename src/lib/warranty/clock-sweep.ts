@@ -1,24 +1,4 @@
-/**
- * Warranty clock maintenance (Phase 3).
- *
- *  1. recomputeProvisionalClocks — for non-terminal claims still on a provisional
- *     (PACKED_PLUS_ESTIMATE) or unknown clock, re-resolve the carrier delivered
- *     date + packed date from the order and recompute the window. When a real
- *     DELIVERED date has landed, the basis flips DELIVERED and the expiry moves
- *     off the +4-day estimate onto the true delivered date.
- *
- *  2. expireLapsedClaims — un-adjudicated claims (LOGGED / SUBMITTED) whose window
- *     has passed are moved to EXPIRED. Adjudicated claims (APPROVED / IN_REPAIR /
- *     REPAIRED / DENIED) are left alone — they were already honored or decided.
- *
- * Both are batch-limited and run from the hourly shipping reconcile cron (no new
- * interval — see /api/cron/shipping/reconcile-delivered), so they piggyback on a
- * wake-up that already exists right after carrier delivered-state is reconciled.
- *
- * Cost shape (Neon CU-hours): each pass does ONE read + at most TWO set-based
- * writes (a bulk UPDATE via `unnest` + a bulk event INSERT) per run — never a
- * per-claim connection or round-trip loop, regardless of batch size.
- */
+/** Warranty clock maintenance (Phase 3). */
 
 import pool from '@/lib/db';
 import { isWarrantyLogger } from '@/lib/feature-flags';

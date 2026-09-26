@@ -3,23 +3,7 @@ import 'server-only';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Internal ops annotations on an order (`order_notes`) — the append-only trail
- * of "box arrived damaged", "packer forgot the cable".
- *
- * The table shipped ahead of its API in `2026-07-28_order_notes.sql` and had no
- * writers until now. This module is that first writer, and it is deliberately
- * the ONLY one: the migration's scope boundary says `order_notes` is internal
- * ops annotations while the customer/support CONVERSATION stays in Entity
- * Threads (`ThreadPanel entityType="ORDER"`). Do not make the same note
- * writable in both.
- *
- * **Append-only, with an author.** The queue's legacy `orders.notes` is a single
- * overwritable string: the second person to touch a row destroys what the first
- * one wrote, and nobody can tell who said it or when. That is the whole reason
- * this table exists — every entry keeps `author_staff_id` and `created_at`, so
- * a note is a statement someone made at a time, not an anonymous field value.
- */
+/** Internal ops annotations on an order (`order_notes`) — the append-only trail of "box arrived damaged", "packer forgot the cable". */
 
 interface OrderNote {
   id: string;
@@ -30,14 +14,7 @@ interface OrderNote {
   createdAt: string;
 }
 
-/**
- * This order's notes, newest first.
- *
- * Author name is joined rather than denormalized onto the note so a staff
- * rename corrects the whole history; `LEFT JOIN` keeps a note whose author was
- * deleted (the FK is `ON DELETE SET NULL`) instead of dropping the note with
- * the person — the annotation is still true.
- */
+/** This order's notes, newest first. */
 export async function listOrderNotes(
   orderId: number,
   organizationId: OrgId,
@@ -110,23 +87,7 @@ export async function createOrderNote({
     );
     const row = rows[0];
 
-    /*
-     * Keep the denormalized latest-note column in step, in the SAME write.
-     *
-     * `orders.notes` is what every LIST read paints — the compound row's
-     * subtitle resolves `orders.notes` straight off the queue payload, and
-     * `ordersCompoundView` treats it as "the latest thing somebody said". The
-     * trail (`order_notes`) is the source of truth and stays append-only; this
-     * column is a cached face of its newest row.
-     *
-     * Without this the two disagreed the moment a note was written: the trail
-     * gained an entry and every queue kept showing the stale scalar, which is
-     * why an inline note editor could not be wired at all (it would display one
-     * value and change a different one). This is not the two-writers problem
-     * the assign route's `notes` branch was removed for — that was a SECOND
-     * independent author of the same field. Here there is one write path, and
-     * it maintains its own read column.
-     */
+    /* Keep the denormalized latest-note column in step, in the SAME write. */
     await client.query('UPDATE orders SET notes = $1 WHERE id = $2', [body, orderId]);
 
     // Resolve the author's name from the same transaction rather than trusting
@@ -154,13 +115,7 @@ export async function createOrderNote({
   });
 }
 
-/**
- * Append the SAME note onto many orders in one tenant transaction.
- *
- * Ids the org does not own are dropped, not fatal — same honesty as
- * {@link setOrderFlagBulk}. The trail stays append-only; `orders.notes` is the
- * denormalized latest face, updated in the same write as the single-row path.
- */
+/** Append the SAME note onto many orders in one tenant transaction. */
 export async function createOrderNotesBulk({
   orderIds,
   organizationId,

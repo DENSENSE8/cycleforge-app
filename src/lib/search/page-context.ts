@@ -1,14 +1,4 @@
-/**
- * page-context — maps the surface a search was issued FROM to the entity
- * types it most likely targets (AI search Phase 2, plan §8.1 / §12 "context
- * layers": per-page context injected on every AI search call).
- *
- * Pure + dependency-free. The retrieve route turns the CommandBar's
- * `pageContext` (a pathname) into a BOOST scope for hybridSearch — never a
- * hard filter: ⌘K is the global palette, and a receiving operator searching
- * an order id must still see order hits. Boosting only reorders equal-ish
- * candidates toward the surface the user is standing on.
- */
+/** page-context — maps the surface a search was issued FROM to the entity types it most likely targets (AI search Phase 2, plan §8.1 / §12… */
 
 import type { SearchEntityType } from '@/lib/search/build-search-text';
 

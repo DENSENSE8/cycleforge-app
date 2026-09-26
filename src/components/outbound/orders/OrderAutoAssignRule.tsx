@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The open record's listing rule — item # (+ SKU) → who picks and who packs,
- * each with a backup used when the primary is out that day. Reads the rule
- * that keys this order (`GET /api/automations/listing-assign`, the exact
- * pair first, then the item-#-only rule) and saves through the same
- * `save_and_assign` waist as the bulk Listing → staff card, so every painted
- * order sharing the pair is assigned now and future imports follow the rule.
- */
+/** The open record's listing rule — item # (+ SKU) → who picks and who packs, each with a backup used when the primary is out that day. */
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

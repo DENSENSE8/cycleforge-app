@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Overlay wrapper around {@link CatalogManagerList} — the CRUD manager for the
- * org platform / type catalog, opened from the pencil next to Platform or Type
- * in {@link LabelEditPopover}. Same RightPaneOverlay shell as the
- * label editor / ReceivingClaimModal, but `anchor="viewport"`: this is an ORG
- * SETTINGS surface, not a fact about the open carton, so it centres on the
- * page rather than over whichever pane happened to launch it (it read as
- * shoved right, hard against the pane edge, on a wide bench). The carton identity bar composes
- * {@link CatalogManagerList} inline under the centered pills (not this overlay).
- * The /settings catalog section renders the same list without overlay chrome.
- *
- * `kind="platform"` is "Edit platforms": the platform list (display label +
- * short label) AND, under it, the connections ({@link PlatformAccountsManager}
- * — connection name + short label). Opened from Unbox's platform pill and the
- * To-ship ledger toolbar, so both surfaces edit the one catalog they paint.
- */
+/** Overlay wrapper around {@link CatalogManagerList} — the CRUD manager for the org platform / type catalog, opened from the pencil next to… */
 
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { IconButton } from '@/design-system/primitives';

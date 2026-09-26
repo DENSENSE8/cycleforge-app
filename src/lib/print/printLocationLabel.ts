@@ -1,19 +1,4 @@
-/**
- * Structured location (bin / rack) stickers on the shared 2×1" {@link printLabel}
- * face. Preview ({@link LabelFacePreview}) and print consume {@link locationLabelToFace}
- * so the warehouse builder cannot drift from Unbox / special-bin stock.
- *
- * Callers: LocationLabelFacePreview, useBinLabelPrinter, useRackLabelPrinter,
- * StationNewLocationForm, StationLocationsDisplay, LocationCrudDialog.
- * `roomName` stays on the args so those callers do not change; it is never
- * painted. User: remove "Zone 3 - Parts", eliminate the stray "C", drop
- * redundant "Lv 1", enlarge the primary identifier, no HRI under the matrix.
- *
- * The encoded identity is still `encodePrintMatrix({ kind: 'location' })` —
- * 2×1 is the paper, not a new barcode format. Batching (USB sequential vs one
- * multi-page iframe) is not this module's job: that is {@link printLabelFacesJob},
- * shared with the handling-unit tote run.
- */
+/** Structured location (bin / rack) stickers on the shared 2×1" {@link printLabel} face. */
 
 import {
   locationCode,

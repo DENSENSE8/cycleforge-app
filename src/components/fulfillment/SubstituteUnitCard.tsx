@@ -12,17 +12,7 @@ import {
 } from '@/hooks/fulfillment/useSubstitution';
 import { useSubstitutionReasons } from '@/hooks/useSubstitutionReasons';
 
-/**
- * Drop-in substitution surface for the testing / packing cards. Loads the
- * order's open allocations (pick-tasks) to supply the "ordered" context, lets
- * the operator pick which allocated unit to replace when there's more than one,
- * scans the substitute via SubstitutePanel, and posts through useSubstituteUnit.
- * The order's substitution history renders below via OrderAmendmentsSection.
- *
- * Stateless beyond selection + a reset nonce — all data + mutation live in the
- * hooks, so this is the single piece both stations mount. Gate the mount on the
- * substitution feature where it's hosted; this component assumes it's wanted.
- */
+/** Drop-in substitution surface for the testing / packing cards. */
 export interface SubstituteUnitCardProps {
   orderId: number;
   orderLabel: string;

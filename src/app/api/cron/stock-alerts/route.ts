@@ -11,17 +11,7 @@ export const maxDuration = 60;
 
 const STALE_DAYS = Number(process.env.STOCK_ALERT_STALE_DAYS || 60);
 
-/**
- * GET /api/cron/stock-alerts  (Vercel cron, daily)
- *
- * Scans bin_contents and:
- *   • Opens new alerts where conditions are met (LOW_STOCK, NEVER_COUNTED,
- *     STALE_COUNT).
- *   • Resolves open alerts whose underlying condition cleared.
- *
- * Idempotent — the UNIQUE-on-open constraint dedupes new inserts; resolutions
- * just stamp resolved_at on still-open rows that no longer match.
- */
+/** GET /api/cron/stock-alerts (Vercel cron, daily) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {

@@ -1,14 +1,4 @@
-/**
- * Carrier brand visual SoT — DisplayCarrier → mark chrome (brand hex + label).
- *
- * Marketplace channels live in {@link source-platform.ts} / PlatformMark.
- * Carriers (UPS · FedEx · USPS · …) are a separate registry: detection stays in
- * {@link carrier-patterns.ts}; this module owns peripheral-vision brand paint.
- *
- * Native brand hex is intentional (operators ID carriers at a glance). Hex lives
- * ONLY here behind `ds-allow-hex` — never scatter in cells. Unknown keeps the
- * house tracking blue ring via {@link carrierBrandDotPaint} (no hex).
- */
+/** Carrier brand visual SoT — DisplayCarrier → mark chrome (brand hex + label). */
 
 import {
   detectCarrierFromTracking,
@@ -104,12 +94,7 @@ export function hasCarrierBrandPaint(meta: CarrierBrandMeta): boolean {
   return meta.brandHex != null && meta.carrier !== 'Unknown';
 }
 
-/**
- * Dense Sheets brand-identity micro-dot fill for tracking#. Known carriers →
- * native {@link CarrierBrandMeta.brandHex}; Unknown → house tracking blue
- * (`bg-blue-500`, same family as CHIP_TONES.tracking.dot).
- * Not a lifecycle status dot (`GridStatusCellValue`).
- */
+/** Dense Sheets brand-identity micro-dot fill for tracking#. */
 export function carrierBrandDotPaint(meta: CarrierBrandMeta): {
   className?: string;
   style?: { backgroundColor: string };

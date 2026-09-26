@@ -1,14 +1,6 @@
 /**
- * DB-free unit tests for the first-run predicate behind the To-ship queue's
- * teaching state.
- *
+ * DB-free unit tests for the first-run predicate behind the To-ship queue's teaching state.
  * The defect this pins (operator 2026-09-14): `/shipping/orders` showed
- * "No orders yet — connect a sales channel" on an org with 4,422 orders and
- * three live integrations, because the gate read an empty QUEUE as an empty
- * ORG. The queue result set cannot answer that question; these are the facts
- * that can.
- *
- * Run: npx tsx --test src/hooks/useOnboardingStats.test.ts
  */
 
 import assert from 'node:assert/strict';

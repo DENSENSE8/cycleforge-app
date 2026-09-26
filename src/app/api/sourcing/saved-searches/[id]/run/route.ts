@@ -10,13 +10,7 @@ import type { BrowseCondition } from '@/lib/ebay/browse-client';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * POST /api/sourcing/saved-searches/[id]/run — run a standing search now.
- *
- * Runs one scour across the search's channels, saves the hits to the watchlist
- * (linked to its sku/alert), and stamps last_run_at. The user-initiated mirror
- * of the scour-watch cron.
- */
+/** POST /api/sourcing/saved-searches/[id]/run — run a standing search now. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'sourcing.search');

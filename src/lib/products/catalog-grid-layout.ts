@@ -1,18 +1,4 @@
-/**
- * Catalog spreadsheet column model — MATERIALIZED from a {@link SlotLayout},
- * never a hand array.
- *
- * The static `CATALOG_GRID_COLUMNS` died with wave 1.4 of the seller-table
- * program: tracks whose keys WERE fields (`channels`, `qc`, `status`) are a
- * frozen layout no organization can capture as `tableLayouts.catalog`.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `select · title`
- * identity pane (`catalog.sku` is the identity FACT; the Product track paints
- * the title). Everything after it is a catalog fact an org/staffer binds.
- *
- * Sort and frozen-offset helpers derive from the MOUNTED model, never a module
- * constant.
- */
+/** Catalog spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -126,14 +112,7 @@ export function defaultDirForCatalogColumn(
   return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
-/**
- * Sticky-left offset for a frozen cell, derived from the MOUNTED model.
- *
- * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Catalog
- * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
- * widths — and it read a module constant until the wave 1.4 port, which went
- * stale the moment a staffer bound a column. See {@link gridFrozenLeft}.
- */
+/** Sticky-left offset for a frozen cell, derived from the MOUNTED model. */
 export function catalogGridFrozenLeft(
   columns: readonly CatalogGridColumn[],
   key: string,
@@ -145,12 +124,7 @@ export function catalogDisplayTitle(row: CatalogListRow): string {
   return (row.display_title || row.product_title || row.sku || '').trim();
 }
 
-/**
- * Row order for a column sort, keyed by SORT FACT — the structural `title` plus
- * catalog field ids (`catalogSortFactFor` maps a mounted column to one), so a
- * `?colsort=` key resolves through the mounted model and rebinding a slot
- * re-points the sort with it.
- */
+/** Row order for a column sort, keyed by SORT FACT — the structural `title` plus catalog field ids (`catalogSortFactFor` maps a mounted… */
 export function compareCatalogGridRows(
   a: CatalogListRow,
   b: CatalogListRow,

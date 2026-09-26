@@ -152,12 +152,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
      * Union of pre-pack + packed-staged: no SHIP_CONFIRM / carrier leave.
      * Labels (awaitingOnly) and Scan-out history stay on their own routes.
      */
-    /**
-     * Desk-sidebar lenses (`@/lib/orders/desk-view-filters`). Each IMPLIES its
-     * base scope so the param alone answers the view: `queue=pick` is a
-     * refinement of the in-warehouse To-ship queue, `pair=po` of the blocked
-     * (Shortage) queue.
-     */
+    /** Desk-sidebar lenses (`@/lib/orders/desk-view-filters`). */
     const { pair: pairFilter, queue: queueFilter } = readDeskViewFilters(searchParams);
     const pickQueue          = queueFilter === 'pick';
     const poPaired           = pairFilter === 'po';
@@ -192,11 +187,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const limitRaw = Number(searchParams.get('limit'));
     const pageLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
     // Keyset cursor over the ORDER BY.
-    // Fulfillment (To Ship) is newest-first (`o.id DESC`) so manual add-order
-    // and fresh imports paint at the head of Pending instead of under a
-    // virtualized deadline-sorted backlog. Other `/api/orders` callers keep
-    // `deadline_at ASC NULLS LAST, id ASC`.
-    // Cursor payload stays base64(JSON{ d: iso|null, id }).
     const cursorRaw = searchParams.get('cursor');
     let cursor: { d: string | null; id: number } | null = null;
     if (cursorRaw) {
@@ -241,10 +231,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       queueFilter:        queueFilter ?? '',
       membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
-      // Payloads cached before the price projection existed have no price_*
-      // fields at all, and this cache lives 300s — without a version bump the
-      // desks would paint dashes for five minutes after deploy and blame the
-      // data. Bump this string whenever the resolved price changes shape.
+      // Payloads cached before the price projection existed have no price_* fields at all, and this cache lives 300s — without a version bump…
       priceProjectionVersion: 'price_facts_v1',
       // Same reason: payloads cached before buyer_note / sku_home_location /
       // customer / shipstation_ship_to would paint no NOTE badge, no home bin
@@ -295,10 +282,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         NULL::numeric AS replenishment_quantity_to_order,
         NULL::text AS replenishment_po_number,
         NULL::text AS replenishment_notes,`;
-    // listShape=queue omits the heavy per-order multi-tracking arrays (a
-    // details-panel concern) — the row chip uses the single stn.tracking_number.
-    // With those columns unreferenced, Postgres prunes the order_trackings LATERAL,
-    // so this trims both the JSON payload and the per-row lateral scan.
+    // listShape=queue omits the heavy per-order multi-tracking arrays (a details-panel concern) — the row chip uses the single…
     const trackingArraysSelect = queueShape
       ? `'[]'::json AS tracking_numbers,
         '[]'::json AS tracking_number_rows,`
@@ -905,24 +889,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (fulfillmentScope) {
-      /*
-       * Pre-pack board = every order that has not been packed yet, INCLUDING
-       * the ones with no label (2026-08-30 operator ruling).
-       *
-       * This used to require `shipment_id IS NOT NULL` and a non-blank
-       * tracking number, on the rule "blank tracking belongs on Labels". That
-       * rule made needing a label a different TABLE instead of a different
-       * STATE, and the cost was a queue that silently swallowed its own
-       * intake: an order typed or synced without tracking vanished from the
-       * desk with no count, no status and no way back to it. It is now a
-       * lifecycle stage on this board — `resolveOrderLifecycleStage` returns
-       * AWAITING_LABEL for `shipment_id IS NULL`, which the row paints as
-       * "Needs label" beside Pending / Tested / Packed.
-       *
-       * A tracked-but-blank `tracking_number_raw` reads the same way: the
-       * shipment row exists but carries no number, so the order still needs a
-       * label and belongs in the same lane rather than nowhere.
-       */
+      /* Pre-pack board = every order that has not been packed yet, INCLUDING the ones with no label (2026-08-30 operator ruling). */
       // CF-04: exclude only when THIS order has a pack fact — not when a sibling
       // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
@@ -1233,18 +1200,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       nextCursor = Buffer.from(JSON.stringify({ d, id: Number(last?.id) }), 'utf8').toString('base64');
     }
 
-    /*
-     * Three facts in, one number out. The resolution runs HERE, on every row
-     * of every shape, rather than as SQL CASE arms: precedence and cents
-     * parsing are one decision (lib/orders/price-resolve.ts) shared with the
-     * price-edit and backfill paths, and a second copy in SQL is how the
-     * pick/pack projections drifted apart before.
-     *
-     * The raw fact columns are destructured OFF the row on the way out. A
-     * consumer that read listing_price_cents directly would be re-deriving
-     * the precedence — and would paint a channel ask as revenue, which is the
-     * exact confusion price_is_estimate exists to prevent.
-     */
+    /* Three facts in, one number out. */
     interface PriceColumns {
       sale_amount?: string | number | null;
       currency?: string | null;

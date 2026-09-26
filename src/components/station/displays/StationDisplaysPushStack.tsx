@@ -1,45 +1,6 @@
 'use client';
 
-/**
- * Station Displays — right-edge **push** column SoT (Unbox golden · Arrival ·
- * Testing · Pack · Shipping · Review).
- *
- * **Action Plane host** (Station Action vs Context planes): every scan station
- * mounts this stack. Leaf densify / keyboard grammar lives in
- * {@link StationActionDossierShell} · {@link StationDenseFactStrip} ·
- * {@link useStationActionKeyBindings} — builders only register leaves. Esc / Back
- * stay here; leaf legends must not bind Escape. On leaf open, focus restores
- * into `[data-station-action-dossier]` when present.
- *
- * Navigation is Root-to-Leaf drill-down — ONE grammar, no mode prop:
- *   - `activeTab === 'index'` → grouped status / topic rows
- *   - leaf id → sticky top-left ← → + current title (+ optional leaf-wide
- *     trailing perspective via {@link useDisplaysLeafChrome} `setLeafTrailing`)
- *     + full-height body
- *   - Esc / Back pops one trail level (nested leaf drill → leaf root →
- *     visit back → index → close). Leaves report trail via
- *     {@link useDisplaysLeafChrome}; they never mount a second
- *     {@link StationDisplayLeafHeader}.
- *   - Forward restores nested drill first, then the visit future stack.
- *
- * Chrome is two rows and no bottom band (ruled 2026-08-19):
- *   - Row 1 — the header band (`< Back` · title · verbs · `⋮` · `⤢` · `→|`).
- *   - Row 2 — `Filter displays…` on the **Root Index only**, full width,
- *     directly above the first group eyebrow. A find field belongs above the
- *     list it filters; a leaf must never inherit list-filter chrome that does
- *     not refine the leaf.
- *   - There is no footer. The filter was the bottom band's only remaining
- *     occupant once `→|` moved into the header (2026-08-18), and the opt-in
- *     `/` command footer had zero leaves registering commands.
- *
- * When {@link headerActions} is set (Unbox carton Macro), those verbs sit in the
- * single header band's right group, `⋮` last before fullscreen + close. Delete
- * and Resolve live inside `⋮`. The bottom band keeps the **filter** only and is
- * still the left context rail's twin.
- *
- * Host body is {@link DisplaysIndexLeafStage} (shared with desk
- * `DeskInspectorIndexShell`) inside the push column.
- */
+/** Station Displays — right-edge **push** column SoT (Unbox golden · Arrival · Testing · Pack · Shipping · Review). */
 
 import {
   useCallback,
@@ -517,11 +478,7 @@ export function StationDisplaysPushStack({
             data-testid="unbox-displays-filter-row"
             className="shrink-0 border-b border-border-hairline"
           >
-            {/* Same find face as the Unbox workbench sheet's Band 3
-                (`variant="chrome"` + `min-w-0 flex-1`), so the field an
-                operator types into above a list is one component and one
-                rhythm on both surfaces. Index only — a leaf inherits no
-                list-filter chrome. */}
+            {/* Same find face as the Unbox workbench sheet's Band 3 (`variant="chrome"` + `min-w-0 flex-1`), so the field an operator types into above… */}
             {/* The index's ↑↓/Enter/Esc nav belongs to the ROW that hosts the
                 field, not to the field: a text input owns text. */}
             <div className="flex min-w-0 flex-1 items-center" onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}>

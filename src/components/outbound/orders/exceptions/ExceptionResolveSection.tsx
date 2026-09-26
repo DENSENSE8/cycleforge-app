@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Exceptions — the held order's JOB inside its order record: pair the item
- * number to a Zoho catalog SKU (the write that un-cages the order), with the
- * routing it is held under and the three facts the pair reads.
- *
- * The `resolve` section of {@link OrderRecordView} in `exceptions` mode, so the
- * pairing form rides the same record view the other outbound desks open — in
- * place of the ledger by default, beside it in fullscreen (`DeskRecordPlane`).
- * The plane owns the header, Esc and the walk; the ledger is the queue.
- * Mounted keyed by order id, so a different record reseeds every field and a
- * refetch after a save never does.
- */
+/** Exceptions — the held order's JOB inside its order record: */
 
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';

@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Kiosk ticket search — the device-principal adapter over the shared
- * {@link useTicketSearch}.
- *
- * Sibling of `useClaimTicketSearch` (the receiving claim flow's adapter). The
- * ONLY kiosk-specific parts are the URL and the transport:
- *
- * - **URL:** `/api/kiosk/repair/ticket-candidates`, the `withKioskAuth` read
- *   sibling. The staff waist (`/api/support/tickets/link`) is `withAuth` +
- *   `integrations.zendesk` and 401s on a tablet — the same trap the per-SKU
- *   reason vocabulary hit before `/api/kiosk/repair/issues` existed.
- * - **Transport:** `kioskFetchHealed`, because a device cookie can be stale
- *   after another surface re-bound the row and production has no server-side
- *   re-bind.
- *
- * There is no anchor to resolve: the `repair_service` row is written when the
- * cart submits, so the route asks for candidates against the unsaved-repair
- * anchor and nothing reads back as already linked. See that route's docblock.
- *
- * Callers: `KioskTicketStep`.
- * Affected API: GET `/api/kiosk/repair/ticket-candidates`. Schemas: none.
- */
+/** Kiosk ticket search — the device-principal adapter over the shared {@link useTicketSearch}. */
 
 import {
   useTicketSearch,

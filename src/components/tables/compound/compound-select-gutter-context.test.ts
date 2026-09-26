@@ -7,22 +7,7 @@ import { renderCompoundGridCell } from './CompoundGridCell';
 import { SlotTableGroupFold, SlotTableGroupParentRow } from './SlotTableGroupParentRow';
 import type { CompoundRowView } from './compound-row-model';
 
-/**
- * The CONTEXTUAL select gutter (operator 2026-09-15), asserted on the mounted
- * cell rather than on the source:
- *
- * 1. at rest the box carries the row's triage glyph, and reaching for the row
- *    hands it back to the checkbox,
- * 2. the detail chevron is a reach affordance (closed ⇒ transparent, open ⇒
- *    standing) while the BUTTON keeps its hit plane either way,
- * 3. the edge rail hangs off the gutter CELL at full height — the failure this
- *    pins is the rail living inside the check, where a detail row clipped it to
- *    the top half of the box and the traveler bobbed out of view.
- *
- * Class strings are the subject on purpose: the swap is CSS (`group-hover/row`),
- * so "does the glyph yield to the square" is a question about emitted classes,
- * and nothing else in the stack can answer it.
- */
+/** The CONTEXTUAL select gutter (operator 2026-09-15), asserted on the mounted cell rather than on the source: */
 
 const VIEW: CompoundRowView = {
   id: '1',
@@ -281,10 +266,8 @@ describe('the fold parent gutter matches its leaves', () => {
 
 describe('a multi-line fold speaks with two soft marks', () => {
   it('gives a group CHILD a membership rail on the identity track', () => {
+    // Operator 2026-09-15:
     // Operator 2026-09-15: the black rule under the fold is replaced by a soft
-    // rail down the children. Mounted on the identity cell, NOT in the select
-    // gutter — the first 3px there belong to the triage rail, which is per-row
-    // and conditional, so the same slot would mean two different facts.
     const html = renderToStaticMarkup(
       React.createElement(
         React.Fragment,
@@ -320,10 +303,7 @@ describe('a multi-line fold speaks with two soft marks', () => {
   });
 
   it('closes the fold in a BORDER token, never in body-text ink', () => {
-    // The 2026-09-14 "black and more visible" ruling is superseded: that ink
-    // was only load-bearing while the close was the group's only evidence of
-    // being a group. The close lives on the FOLD wrapper so it paints in both
-    // states — collapsed under the band, expanded under the last leaf.
+    // The 2026-09-14 "black and more visible" ruling is superseded:
     const html = renderToStaticMarkup(
       React.createElement(
         SlotTableGroupFold,

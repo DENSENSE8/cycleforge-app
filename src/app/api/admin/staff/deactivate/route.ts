@@ -1,17 +1,4 @@
-/**
- * POST /api/admin/staff/deactivate
- *
- * Soft-deactivates a staff member: sets active=false, status='deactivated',
- * revokes all active sessions, and unsets their PIN so a leaked PIN can't
- * be re-used.
- *
- * The row stays for audit/history — actual deletion is reserved for the
- * GDPR org-purge flow. Scoped to the caller's tenant.
- *
- * Body: { id }
- *
- * Step-up required because this is a destructive action.
- */
+/** POST /api/admin/staff/deactivate */
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';

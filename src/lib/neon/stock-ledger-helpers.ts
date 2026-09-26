@@ -5,22 +5,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 type Queryable = Pick<PoolClient, 'query'>;
 
-/**
- * Emit SHIPPED/BOXED ledger rows for a shipment — idempotent.
- *
- * Called when a shipping_tracking_numbers row transitions to "carrier accepted"
- * (the point where we've handed the package to the carrier). Drains the
- * boxed_stock counter that was incremented at pack time.
- *
- * Idempotency: if any SHIPPED row already exists for this shipment_id, this
- * function is a no-op. Safe to call from retries, webhooks replaying events,
- * or multiple carrier-sync jobs racing.
- *
- * Caller must run inside `withTenantTransaction(orgId, …)` so the GUC and
- * fn_recompute_sku_stock trigger see the correct organization_id.
- *
- * Returns the inserted ledger rows (empty if already emitted or no orders).
- */
+/** Emit SHIPPED/BOXED ledger rows for a shipment — idempotent. */
 export async function emitShippedLedgerForShipment(
   db: Queryable,
   shipmentId: number,

@@ -15,31 +15,7 @@ import { Panel } from '@/design-system/primitives';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/throughput
- *
- * Diagnostic aggregation: events/hour by station + actor over the
- * last 24 or 72 hours. Pure read; no flag gate (numbers might be
- * sparse until phases 2+ are active, but the panel still renders).
- *
- * Query params:
- *   range  '24h' (default) | '72h' | '7d'
- *
- * Sections:
- *   - Totals card (events seen, unique actors, unique units)
- *   - By event_type bar
- *   - By station × hour heatmap (last 24h only — fits a 6×24 grid)
- *   - By actor table
- *
- * Tenant scoping: every loader goes through `tenantQuery(orgId, …)` with an
- * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
- * (`requirePermission` → `user.organizationId`) — never from a query param.
- * The only filter here is a time window, which is org-blind, so a bare
- * owner-pool read aggregated every tenant's events into one tenant's
- * throughput numbers and leaked other orgs' staff names in the actor table
- * (RLS does not bite on the owner pool). Live in all four loaders until
- * 2026-08-21.
- */
+/** /inventory/throughput */
 
 type Range = '24h' | '72h' | '7d';
 

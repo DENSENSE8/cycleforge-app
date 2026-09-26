@@ -36,24 +36,7 @@ export interface ButtonProps
   iconOnly?: boolean;
   /** Accessible label — required when `iconOnly` and children aren't a plain string. */
   ariaLabel?: string;
-  /**
-   * Corner. Default `surface` — desk / workbench CTAs.
-   *
-   * Scan-station chrome that must sit flush on the bench passes `flush`.
-   * Composer-dock CTAs pass `composer`. Header desk actions stay `pill`
-   * (`DeskHeaderAction`).
-   *
-   * This is a PROP because the alternative is `className="rounded-2xl"`, and a
-   * radius override on a primitive is exactly what the DS bans.
-   *
-   * - `flush` — `cornerClass('flush')`. Scan stations, grid cells, hairline rows.
-   * - `composer` — {@link COMPOSER_SHELL_CORNER}. ONLY for a CTA inside the
-   *   `OmnichannelComposerDock` shell family.
-   * - `surface` — `cornerClass('surface')`. Default desk CTA.
-   * - `pill` — `cornerClass('pill')`. Header actions.
-   * - `mode` — `rounded-mode`: the enclosing `ModeRegion`'s radius (triage 4,
-   *   counter 12, industrial 0). For controls inside a declared task mode.
-   */
+  /** Corner. Default `surface` — desk / workbench CTAs. */
   radius?: 'flush' | 'composer' | 'surface' | 'pill' | 'mode';
 }
 
@@ -79,16 +62,7 @@ const desktopSize: Record<ButtonSize, string> = {
   lg: 'h-10 gap-2 px-4 text-sm',
 };
 
-// Mobile — the `MOBILE_CONTROL_LADDER` rungs (28 / 36 / 44), not three sizes
-// above the touch floor.
-//
-// These were `h-11 / h-12 / h-14`: every rung at or above 44px, because the
-// house read Apple's 44×44 as the size of the PAINTED control. It is the hit
-// REGION — the HIG says outright that the visible control may be smaller — and
-// applying it to the paint is what put 56px confirms and 48px rows on a 390px
-// screen. Paint small, hit big: `sm`/`md` carry their extra target with padding
-// or a pseudo-element at the call site, and `lg` stays at 44 because it is the
-// screen's one primary action, the single place paint == hit.
+// Mobile — the `MOBILE_CONTROL_LADDER` rungs (28 / 36 / 44), not three sizes above the touch floor.
 const mobileSize: Record<ButtonSize, string> = {
   sm: 'h-8 gap-1.5 px-3 text-role-caption',
   md: 'h-9 gap-2 px-4 text-role-data',
@@ -108,41 +82,13 @@ const iconBox: Record<ButtonSize, string> = {
   lg: 'h-4 w-4',
 };
 
-/**
- * Press feedback is CSS, not the motion engine.
- *
- * This primitive is on the critical JS graph of EVERY route (989 call sites),
- * so a static `@/design-system/motion` import here put the whole engine
- * (~48KB gz) in front of first paint on routes that animate nothing —
- * `/signin`, the one public route, most of all. A `whileTap` scale is a
- * transform on a single element with no orchestration, no presence and no
- * shared layout: exactly the case CSS already does, on the compositor, for
- * zero bytes. Duration/curve are the perceptual match for the old
- * `{ stiffness: 520, damping: 36 }` spring — a spring that stiff reads as a
- * fast ease, not a bounce.
- *
- * `enabled:` mirrors the old `whileTap={isDisabled ? undefined : …}` guard.
- */
+/** Press feedback is CSS, not the motion engine. */
 const PRESS_FEEDBACK =
   'enabled:active:scale-[0.96] motion-reduce:transform-none';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-/**
- * Button — the canonical button primitive.
- *
- * One component, seven variants (`primary` · `brand` · `secondary` · `ghost` ·
- * `danger` · `success` · `execute`). Replaces the ~1,300 hand-rolled
- * `<button className="bg-… px-… rounded-…">` scattered across the app.
- *
- * - Corner SoT: `radius` prop, default `surface` → `rounded-xl`. Soft opt-ins:
- *   `radius="composer"` (the `OmnichannelComposerDock` shell family) and
- *   `radius="flush"` (scan-station bleed chrome).
- * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
- * - CSS press feedback (`active:scale`) on every variant — no motion engine
- * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`
- * - Built-in `loading` (spinner swap) and `iconOnly` (mobile square) states
- */
+/** Button — the canonical button primitive. */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     children,

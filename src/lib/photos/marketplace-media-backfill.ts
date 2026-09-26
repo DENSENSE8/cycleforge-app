@@ -1,36 +1,6 @@
 /**
- * Marketplace media backfill — an Amazon/eBay picture for every product on a
- * recent order that has NO photo under `productImageUrl`.
- *
+ * Marketplace media backfill — an Amazon/eBay picture for every product on a recent order that has NO photo under `productImageUrl`.
  * Owner TODO 2026-09-24: "Backfill Amazon/eBay images for the past week … Add
- * marketplace-media acquisition only where images are missing; do not replace
- * curated/Zoho photos."
- *
- * Where the picture goes. The acquired image becomes a `photos` row (storage =
- * the marketplace CDN URL, `photo_type = 'listing'`, linked to the SKU) and
- * the COVER of that SKU's listing gallery (`listing-photos.ts`). That gallery
- * cover is `productImageUrl`'s last tier and `listingCoverThumbUrlSql`'s SQL
- * twin — below the Zoho item photo and the catalog photo — so the backfill can
- * only paint a product nothing else paints. Per product, the photo, its SKU
- * link, its storage row and the gallery row are ONE transaction: a failure
- * leaves nothing behind and the run moves on to the next product.
- *
- * What it never touches:
- *   - a SKU an active Zoho item owns (the SKU identity law: the Zoho item
- *     governs the photo; a missing Zoho photo is repaired in Zoho, not here);
- *   - a catalog row with its own `image_url`;
- *   - a SKU whose listing gallery already has any photo (curated, or this
- *     backfill's own earlier write — which is what makes a re-run a no-op);
- *   - `orders` — read-only; the order is only how "recent" is measured.
- *
- * An order with no catalog row has nothing to hang a gallery on; it is counted
- * (`no_product`) and left for SKU pairing.
- *
- * Credentials gate: each provider is checked once per run through the
- * existing validate paths. A blocked provider is REPORTED with its reason and
- * repair, never attempted — so a half-broken connection cannot write junk.
- *
- * Deps-injected: the planner and runner are DB-free under test.
  */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';

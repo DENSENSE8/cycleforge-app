@@ -1,12 +1,4 @@
-/**
- * SSR first-paint stand-in for the Incoming work surface.
- *
- * A neutral canvas only — no empty-state copy. Text that reads as "the table is
- * empty" blocks Playwright scroll specs and lies when rows hydrate a beat later.
- * Mobile empty copy lives on `MobileReceivingList` via {@link INCOMING_EMPTY_TITLE}.
- *
- * Server-safe — no `'use client'`.
- */
+/** SSR first-paint stand-in for the Incoming work surface. */
 
 import { cn } from '@/utils/_cn';
 

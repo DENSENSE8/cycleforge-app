@@ -1,9 +1,4 @@
-/**
- * Gate preamble:
- * - Importers: REGISTERED_BINDINGS, useKioskSlotEventsSpreadsheet.
- * - recordPlane: none — event is a fact; Revoke stays on kiosk-devices.
- * - User: "Continue to the next phase".
- */
+/** Gate preamble: */
 
 import type { KioskSlotEventTableRow } from '@/lib/kiosk/kiosk-slot-event-row';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

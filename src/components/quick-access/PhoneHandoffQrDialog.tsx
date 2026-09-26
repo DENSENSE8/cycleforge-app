@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Desk → phone session handoff QR.
- *
- * Radix Dialog + Motion enter/exit matching shadcn Dialog:
- *   overlay fade · content fade + zoom 95% · 200ms
- * (see shadcn new-york dialog: fade-in-0 / zoom-in-95 / duration-200).
- *
- * Callers: StaffAccountFooter. API /api/auth/qr/handoff/begin.
- */
+/** Desk → phone session handoff QR. */
 
 import { useCallback, useEffect, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';

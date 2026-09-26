@@ -6,15 +6,7 @@ import {
   resolvePackPlaceableLocations,
 } from '@/lib/packing/pack-placement';
 
-/**
- * GET /api/orders/pack-placement — packing DESK/STAGING locations + open
- * ready-to-pack package counts per location.
- *
- * `?excludeOrderId=` additionally returns `recent` — the desk this operator
- * last placed an order on, minus the open one (Ready-to-Pack "Last entry").
- *
- * Readable with either tech or packing view (Ready to Pack + Pack + To-ship).
- */
+/** GET /api/orders/pack-placement — packing DESK/STAGING locations + open ready-to-pack package counts per location. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const excludeRaw = new URL(req.url).searchParams.get('excludeOrderId');

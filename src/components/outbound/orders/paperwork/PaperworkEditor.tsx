@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * One-order paperwork record — the triage face the To-ship Labels walk opens.
- *
- * Understand-then-decide, on a desk: the carton identity header (order #,
- * tracking and listing as last-8 copy chips; ◁ leaves the walk) over a walk
- * bar (position · previous · skip / next · exit), then grouped cards in one
- * centred scroll ({@link TriageScrollLayout}):
- *
- *   Order                  — the item, platform, who picked and packed it and when.
- *   Parcel & shipping label — weight / L·W·H (remembered per SKU) → rate-shop → buy
- *                            ({@link OrderShippingPanel}). Directly under Order:
- *                            the buy is the job.
- *   Paperwork              — label · slip · manuals inline ({@link PaperworkDocuments}):
- *                            view, upload, replace, delete, pair, download all.
- *
- * Escape reaches EXIT through the walk's record cursor (the desk's ambient
- * keyboard), which stands down while a field is focused — there Escape only
- * lets go of the field.
- */
+/** One-order paperwork record — the triage face the To-ship Labels walk opens. */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';

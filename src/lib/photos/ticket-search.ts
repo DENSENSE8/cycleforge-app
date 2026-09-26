@@ -1,11 +1,4 @@
-/**
- * Media Library claims search — promote a ticket number carried by a claims
- * deep link into the `ticketId` leaf filter (the same folder the NAS archive
- * uses).
- *
- * The library find-bar does NOT come through here: it is session-local state
- * matched by `filterPhotosByQuery`, never URL state.
- */
+/** Media Library claims search — promote a ticket number carried by a claims deep link into the `ticketId` leaf filter (the same folder the… */
 
 /** Digits-only ticket id from a search face (`9599`, `#9599`), or null. */
 export function parsePhotoLibraryTicketSearch(raw: string | null | undefined): string | null {

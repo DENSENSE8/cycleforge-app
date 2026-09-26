@@ -18,14 +18,7 @@ export interface UseManualSelection {
   runBulkDelete: () => Promise<void>;
 }
 
-/**
- * Owns the bulk-select state and the move/delete operations. The selection is
- * dropped whenever the underlying list refetches (`reloadToken`) since the ids
- * may no longer exist. Delete shows a 10s toast with an Undo that restores the
- * soft-deleted rows.
- *
- * @param reloadToken Bumped by the data hook on every refetch.
- */
+/** Owns the bulk-select state and the move/delete operations. */
 export function useManualSelection(reloadToken: number): UseManualSelection {
   const [selection, setSelection] = useState<Set<number>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);

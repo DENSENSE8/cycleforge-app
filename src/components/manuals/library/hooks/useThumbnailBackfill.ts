@@ -6,19 +6,7 @@ import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
 import { saveManualThumbnail } from '../manuals-library-api';
 import type { ManualRow } from '../manuals-tree';
 
-/**
- * Background thumbnail backfill. Walks the files in the current folder and
- * client-side-generates a first-page thumbnail for any without one, then saves
- * it (sequential, one at a time, so we don't peg CPU rendering 50 PDFs at once).
- * Skips files already attempted this session and bails if the folder changes.
- *
- * On success it optimistically patches the in-memory row via `setManuals` so the
- * UI flips to the image without waiting for the next refetch.
- *
- * @param filesHere       Files in the current folder.
- * @param debouncedQuery  When set, the search view is shown — skip backfill.
- * @param setManuals      Optimistic patch for a freshly-saved thumbnail.
- */
+/** Background thumbnail backfill. */
 export function useThumbnailBackfill(
   filesHere: ManualRow[],
   debouncedQuery: string,

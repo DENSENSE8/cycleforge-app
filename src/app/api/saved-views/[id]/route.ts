@@ -9,12 +9,7 @@ import { isGenericSavedViewSurface } from '@/lib/saved-views/surfaces';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * PATCH  /api/saved-views/[id] — rename / retune a generic (dashboard/station) view.
- * DELETE /api/saved-views/[id] — remove a view. Both are ownership-scoped: only
- *   the creating staffer's row is touched, so a non-owner gets 404. Ops/media
- *   views are rejected (those keep dedicated routes).
- */
+/** PATCH /api/saved-views/[id] — rename / retune a generic (dashboard/station) view. */
 
 function parseId(raw: string): number | null {
   const n = Number(raw);

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Shared work-order assignment waist — staff options + the confirm write.
- *
- * `WorkOrderAssignmentCard` is a CAROUSEL over N rows (prev/next, per-row
- * drafts, confirm→advance), so the same machinery serves one record from the
- * order inspector and a whole multi-select from the dashboard bulk bar. Only the
- * post-confirm side-effect differs, which is what `onAssigned` is for.
- *
- * Extracted from `useShippedAssignment` when the dashboard selection bar needed
- * the identical staff load + PATCH: forking it would have been a second writer
- * to `/api/work-orders` with its own drift path.
- */
+/** Shared work-order assignment waist — staff options + the confirm write. */
 
 import { useCallback, useState } from 'react';
 import { getPresentStaffForToday, type StaffMember } from '@/lib/staffCache';

@@ -19,11 +19,7 @@ describe('integration registry parity', () => {
     }
   });
 
-  // Regression: shopify shipped with authKind 'nango' but was never added to
-  // NANGO_BACKED_PROVIDERS, so its hosted connect flow was unreachable (the
-  // session route rejects any provider absent from that map) and it could never
-  // obtain a connection marker. Nothing failed loudly — the connector simply
-  // threw "No Nango connection" at sync time.
+  // Regression: shopify shipped with authKind 'nango' but was never added to NANGO_BACKED_PROVIDERS, so its hosted connect flow was…
   it("every authKind 'nango' connector is registered in NANGO_BACKED_PROVIDERS", () => {
     for (const connector of listConnectors()) {
       if (connector.authKind !== 'nango') continue;

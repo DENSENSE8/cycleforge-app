@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The open package's verbs — the strip under the Shipped ledger's toolbar, in
- * both views. The package's own verbs first (Resolve exception while an
- * unmatched pack scan is open, Copy tracking, Track), then its primary order
- * line's (`OrderRecordActionStrip`, Shipped mode, via `shipped-order-line`)
- * when an order owns the box. Keyed by the open package, so walking J / K
- * resets an armed verb or an open dialog.
- */
+/** The open package's verbs — the strip under the Shipped ledger's toolbar, in both views. */
 
 import { useMemo, useState } from 'react';
 import { Copy, ExternalLink, PackageCheck } from '@/components/Icons';

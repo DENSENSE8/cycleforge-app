@@ -1,12 +1,6 @@
 import type { ThemePalette } from './registry';
 
-/**
- * Paper — warm cream light. Stone-family neutrals over a soft cream canvas;
- * ink-dark text; functional tones re-tempered onto warm pastels. Reads like a
- * printed pick-sheet — calm under bright warehouse lighting.
- *
- * No `accent` block: staff accents apply as in light.
- */
+/** Paper — warm cream light. */
 export const paperPalette: ThemePalette = {
   name: 'paper',
   label: 'Paper',

@@ -1,20 +1,4 @@
-/**
- * WS6.3 — email verification tokens.
- *
- * Reuses the existing F1 magic-link primitive (`email_login_tokens`): one-time,
- * expiring, HASHED tokens (the raw token only ever lives in the emailed URL; we
- * store sha256). A "verify your email" link IS a magic link that additionally
- * flips `account_emails.verified_at`, so it shares the same storage + atomic
- * single-use claim as owner email login (src/app/api/auth/email-login/*). No new
- * table.
- *
- * TTL is kept identical to the F1 login token (15 minutes) on purpose: these
- * tokens land in the SAME pool that `/api/auth/email-login/verify` will honor, so
- * matching the login posture means the verification link can never become a
- * longer-lived sign-in token than login itself — it does not weaken the existing
- * flow. (If a longer-lived verification window is ever needed, give it a dedicated
- * table so the login-token posture stays untouched.)
- */
+/** WS6.3 — email verification tokens. */
 
 import { randomBytes, createHash } from 'node:crypto';
 import type { Pool, PoolClient } from 'pg';

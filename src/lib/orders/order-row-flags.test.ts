@@ -1,15 +1,4 @@
-/**
- * Order row flag registry — the vocabulary contract.
- *
- * The flag id set lives in TWO places by necessity: the app registry (which
- * renders it) and the current `order_flags_flag_chk` CHECK migration
- * (which is the only thing stopping a bad writer from persisting free text).
- * A discriminator whose two lists drift is the exact regression the house
- * polymorphic contract calls out — `reason_codes_flow_context_chk` survived
- * five migrations that each dropped values the previous one added, and was
- * saved only by filename ordering. This test is the cheap version of not
- * repeating that.
- */
+/** Order row flag registry — the vocabulary contract. */
 
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

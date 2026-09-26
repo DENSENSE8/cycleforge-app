@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * ShipStation store → platform links (`integration_store_links`). One row per
- * connected storefront (live from ShipStation, retired ones included): pick
- * the EXISTING platform its orders belong to and, when the store is one of
- * that platform's storefront accounts, the account. Saving is the whole verb —
- * the next sync attributes the store's orders there and never creates a
- * platform or account for it. Lives in Settings → Platforms & Types and on the
- * ShipStation connection page.
- */
+/** ShipStation store → platform links (`integration_store_links`). */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';

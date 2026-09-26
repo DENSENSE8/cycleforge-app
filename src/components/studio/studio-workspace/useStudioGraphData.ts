@@ -21,12 +21,7 @@ interface StudioGraphDataParams {
   canManage: boolean;
 }
 
-/**
- * Owns the graph definition + draft working copy + template-library state, the
- * data-loading effects that hydrate them, and every value derived from the
- * draft-vs-published split (nodes / edges / annotations / diagnostics). The
- * mutation + lifecycle hooks operate on the setters this returns.
- */
+/** Owns the graph definition + draft working copy + template-library state, the data-loading effects that hydrate them, and every value… */
 export function useStudioGraphData({ active, v, canManage }: StudioGraphDataParams) {
   const [graph, setGraph] = useState<StudioGraphResponse | null>(null);
   const [error, setError] = useState<string | null>(null);

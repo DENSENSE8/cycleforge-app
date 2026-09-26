@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Every label on the open order, as the Label block lists it: purpose code
- * (OUT / RTN / RPL) · how it got here (bought here / imported / linked) ·
- * carrier + service · cost (+ insurance) · who and when · tracking · the
- * support tickets its tracking is referenced by — and its verbs: Print (the
- * stored document, else the ShipStation PDF through the label proxy), Ticket
- * (link the label and the order to a helpdesk ticket), Unlink (paired labels
- * only — a label bought here is voided in the Labels walk instead).
- */
+/** Every label on the open order, as the Label block lists it: */
 
 import { useState } from 'react';
 import { Printer, X } from '@/components/Icons';

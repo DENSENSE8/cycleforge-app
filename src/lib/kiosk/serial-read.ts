@@ -1,19 +1,4 @@
-/**
- * What a camera read on the repair phone companion actually is — a serial to
- * add to a unit, a link that CARRIES one, a link that does not, or noise —
- * and whether a serial is already on a unit of the same visit.
- *
- * Pure (no DB, no React): the phone screen classifies every decoded string
- * here before it writes anything, so a product-page QR never lands on a line
- * as its "serial".
- *
- * Callers: `RepairScanCompanion` (`/m/repair-scan`).
- * Affected API: none (the write stays POST `/api/counter/companion`).
- * Schemas: `CompanionDevice` (`companion-shape.ts`); a unit's serials are a
- *   joined list (`serial-list.ts`).
- * User: "reject obvious non-serials (a URL QR → offer to open it, or extract a
- *   serial param), duplicate-serial warning across units" (2026-09-25).
- */
+/** What a camera read on the repair phone companion actually is — a serial to add to a unit, a link that CARRIES one, a link that does not,… */
 
 import { parseGs1DigitalLink } from '@/lib/gs1/parser';
 import { parseGs1AiPayload } from '@/lib/scan-resolver';

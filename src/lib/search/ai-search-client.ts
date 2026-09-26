@@ -1,10 +1,4 @@
-/**
- * Shared client-facing SearchHit wire shape for operator find rows
- * (header dropdown, CommandBar, `/search` browse).
- *
- * Ranking fields (`matchField` / `score`) are optional — classic
- * `/api/global-search` rows often omit them; row renderers do not need them.
- */
+/** Shared client-facing SearchHit wire shape for operator find rows (header dropdown, CommandBar, `/search` browse). */
 
 export interface AiSearchHitChip {
   label: string;

@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Repair reason labels for the SKU in front of the customer, on the KIOSK.
- *
- * Sibling of {@link useRepairIntakeData}, which stays on the staff path: that
- * hook fetches `/api/repair/issues` (`withAuth`) and therefore skips the fetch
- * entirely in `kioskMode`, so the kiosk had NO per-SKU reasons at all. This
- * hook reads the device-authed twin (`/api/kiosk/repair/issues?sku=…`) and adds
- * to it, keyed by the SKU string the catalog hands the pane.
- *
- * The paint is the feedback (`useOptimisticMutation`'s law) — but the kiosk
- * tree mounts no `QueryClientProvider`, and this is a CREATE with no cached row
- * to patch, so the optimistic step is local state: append, POST, and on failure
- * put the list back and `toast.error` bottom-right.
- */
+/** Repair reason labels for the SKU in front of the customer, on the KIOSK. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
@@ -35,13 +22,7 @@ export function useKioskSkuReasons(sku: string | null | undefined): KioskSkuReas
   const [labels, setLabels] = useState<string[]>([]);
   const [adding, setAdding] = useState(false);
 
-  /**
-   * Labels this tablet added for the CURRENT sku, replayed onto every load
-   * result. The mount fetch is in flight while the operator can already tap
-   * Add (React's dev double-effect makes a second one arrive later still), and
-   * a response issued BEFORE the add would otherwise land after it and erase
-   * a reason that is already saved.
-   */
+  /** Labels this tablet added for the CURRENT sku, replayed onto every load result. */
   const addedRef = useRef<{ sku: string | null; labels: string[] }>({ sku: null, labels: [] });
   const skuKey = sku ?? null;
   if (addedRef.current.sku !== skuKey) {

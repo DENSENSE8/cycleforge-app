@@ -1,18 +1,4 @@
 // Single source of truth for condition-grade display strings.
-//
-// The same 7 grades (BRAND_NEW … PARTS) are shown in several different shapes
-// across the app. Historically each surface hand-rolled its own grade→label
-// map, so a one-word wording change (e.g. "Refurb" → "Refurbished") meant
-// editing many files and the renderings drifted apart. Add or change a grade's
-// wording HERE — never re-inline a grade→label map in a component.
-//
-// Each VARIANT is one shape of the same data:
-//   pill    — picker pills (the UI CSS-uppercases them): NEW · L-New · REFURB · A · B · C · PARTS
-//   table   — compact list/table chips:                  NEW · L-NEW · REF · A · B · C · PARTS
-//   compact — short rail / label copy:                   New · Like New · Refurb · A · B · C · Parts
-//   label   — printed + previewed receiving label:       New · Like New · Refurbished · Used - A · … · Parts
-//   full    — Zendesk / exports / pickup work orders:    Brand New · Like New · Refurbished · Used — A · … · For Parts
-//   option  — generic dropdown (raw, CSS may up-case):   BRAND NEW · LIKE NEW · REFURBISHED · USED A · … · PARTS
 
 export const CONDITION_GRADES = [
   'BRAND_NEW',
@@ -26,14 +12,7 @@ export const CONDITION_GRADES = [
 
 export type ConditionGrade = (typeof CONDITION_GRADES)[number];
 
-/**
- * Marketplace / display strings → canonical grade codes. Order rows ingested
- * from marketplaces carry raw strings ("NEW", "L-NEW", "REFURB", "A"…) rather
- * than grade codes; resolving them HERE is what lets the tone + label SoTs
- * color-code those rows exactly like grade-coded inventory. Bare "USED" stays
- * unmapped on purpose — it names no specific grade (A/B/C), so it keeps the
- * neutral fallback tone instead of claiming one.
- */
+/** Marketplace / display strings → canonical grade codes. */
 const CONDITION_GRADE_ALIASES: Record<string, ConditionGrade> = {
   NEW: 'BRAND_NEW',
   'BRAND NEW': 'BRAND_NEW',
@@ -87,14 +66,7 @@ export const CONDITION_LABELS: Record<ConditionLabelVariant, Record<string, stri
   option:  { BRAND_NEW: 'BRAND NEW', LIKE_NEW: 'LIKE NEW', REFURBISHED: 'REFURBISHED', USED_A: 'USED A',   USED_B: 'USED B',   USED_C: 'USED C',   PARTS: 'PARTS' },
 };
 
-/**
- * Human-readable label for a condition grade in the requested {@link
- * ConditionLabelVariant}. Unknown codes fall back to an underscore-stripped
- * upper-case form (matches the legacy hand-rolled maps); empty/nullish codes
- * default to BRAND_NEW (the receiving-line default), except callers that want
- * an empty meta placeholder should guard for empty before calling — prefer
- * {@link orderRowConditionLabel} / {@link conditionGradeTableLabel}.
- */
+/** Human-readable label for a condition grade in the requested {@link ConditionLabelVariant}. */
 export function conditionLabel(
   code: string | null | undefined,
   variant: ConditionLabelVariant = 'label',
@@ -149,12 +121,7 @@ export function conditionOptions(
   return CONDITION_GRADES.map((value) => ({ value, label: conditionLabel(value, variant) }));
 }
 
-/**
- * One-line meaning for each grade — surfaced as a HoverTooltip on the condition
- * pills so new staff (and new tenants) learn the grades in place instead of
- * guessing what A vs B vs C means. Same single-source-of-truth discipline as the
- * labels: add/adjust wording HERE, never inline a description in a component.
- */
+/** One-line meaning for each grade — surfaced as a HoverTooltip on the condition pills so new staff (and new tenants) learn the grades in… */
 export const CONDITION_DESCRIPTIONS: Record<string, string> = {
   BRAND_NEW:   'Brand new — unused, in original packaging.',
   LIKE_NEW:    'Like new — open-box; no visible wear, fully functional.',
@@ -170,14 +137,7 @@ export function conditionDescription(code: string | null | undefined): string {
   return CONDITION_DESCRIPTIONS[resolveConditionGrade(code)] ?? '';
 }
 
-/**
- * Inline-TEXT color for a condition — the substring-matched, lenient style used
- * by the "condition + title" inline text (not chips): new → yellow-500,
- * for-parts → orange-900 (brown), else (used/unknown) → black. Single source of
- * truth; `ConditionText.getConditionColor` delegates here. (Chip/badge condition
- * tones are a separate, per-surface concern — see receiving-constants
- * `conditionBadgeTone` / {@link CONDITION_GRADE_TONE}.)
- */
+/** Inline-TEXT color for a condition — the substring-matched, lenient style used by the "condition + title" inline text (not chips): */
 export function conditionTextColor(condition: string | null | undefined): string {
   const c = String(condition || '').toLowerCase().trim();
   if (c.includes('new')) return 'text-yellow-500';

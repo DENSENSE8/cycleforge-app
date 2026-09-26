@@ -59,14 +59,7 @@ function edgeElement(
   };
 }
 
-/**
- * Build cytoscape elements for the active mode. Edges are always directed
- * parent → child.
- *
- * - parents:  others are parents, edges other → focused
- * - children: others are children, edges focused → other
- * - tree:     full node/edge set from the recursive API result
- */
+/** Build cytoscape elements for the active mode. */
 export function toElements(
   focused: FocusedSku,
   mode: SkuGraphMode,

@@ -4,12 +4,7 @@ import { getPhotoReceivingContext } from '@/lib/photos/queries/photo-receiving-c
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Viewer-only provenance detail for one photo — serial(s), tracking, claim.
- * Gated by `photos.view` (the base photo-viewing grant) via the canonical route
- * guard, and strictly org-scoped in the query so a caller only ever sees their
- * own tenant's provenance. Read-only sibling of the photo content route.
- */
+/** Viewer-only provenance detail for one photo — serial(s), tracking, claim. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

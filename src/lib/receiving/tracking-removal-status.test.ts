@@ -1,13 +1,4 @@
-/**
- * The bulk-paste residual report — DB-free, via the injected lookup.
- *
- * The two residuals it reports are DIFFERENT CLAIMS and the whole panel depends
- * on not confusing them: **not found** means this org has no inbound shipment
- * for that number, while **hidden** means it exists and the lane drops it. One
- * invites "check the number", the other answers "where did it go".
- *
- * Run: `npx tsx --test src/lib/receiving/tracking-removal-status.test.ts`
- */
+/** The bulk-paste residual report — DB-free, via the injected lookup. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

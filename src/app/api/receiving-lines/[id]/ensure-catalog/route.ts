@@ -2,13 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { resolveOrCreateLineCatalog } from '@/lib/receiving/line-catalog';
 
-/**
- * POST /api/receiving-lines/[id]/ensure-catalog
- *
- * Resolve — creating on demand — the sku_catalog row for a line, returning its
- * id. Backs the testing panel's "Create catalog entry" action so a tech can
- * start authoring a checklist / pairing manuals for an uncatalogued SKU.
- */
+/** POST /api/receiving-lines/[id]/ensure-catalog */
 function lineIdFromPath(pathname: string): number {
   const segments = pathname.split('/').filter(Boolean);
   // .../api/receiving-lines/[id]/ensure-catalog → id is segments[-2]
@@ -22,10 +16,7 @@ export const POST = withAuth(async (request, ctx) => {
   }
 
   try {
-    // [id]/verb write: thread the org so loadLine()/firstScannedCatalogId()
-    // scope receiving_lines + serial_units to ctx.organizationId — a foreign
-    // tenant's line resolves to no row (404 below), and create-on-demand stamps
-    // the catalog row to this org instead of silently defaulting to USAV.
+    // [id]/verb write:
     const resolved = await resolveOrCreateLineCatalog(lineId, ctx.organizationId);
     if (!resolved) {
       return NextResponse.json({ ok: false, error: 'line not found' }, { status: 404 });

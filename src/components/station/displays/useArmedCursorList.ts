@@ -1,30 +1,4 @@
-/**
- * Absolute armed-cursor list — character-select navigation waist.
- *
- * Owns: seed from `activeId`, filter-safe cursor, ↑↓ wrap / Home / End,
- * autofocus on mount. Host owns: row paint, Enter/Space wiring (calls
- * {@link commitArmed}).
- *
- * When {@link regionActive} is true (keyboard-region Right owns), ↑↓ / Home /
- * End are claimed on `window` capture so they work after a pointer into the
- * Displays column — not only when a row already holds focus. Ambient table
- * cursors already yield while Displays is open (`list-key-scope`); without
- * this listener those keys were swallowed with no owner.
- *
- * **Commit paints DOM immediately** — `onCommit` runs in the same turn as
- * Enter / Space / pointerdown / click. Never a hit-marker timer that withholds
- * the leaf / verb mount (right-rail law). SelectionPulse / press depth juice
- * stays on the scan-station **middle**, not on Displays open.
- *
- * **Mouse = keyboard.** Primary-button `pointerdown` commits (table twin:
- * `OrdersPaneTable` / `ReceivingPaneTable`); click is deduped so a11y /
- * Space-generated clicks still work without a double navigate. Never arm the
- * chevron for a frame before the rail updates.
- *
- * Arm is a binary-cut snap — no one-shot wash on cursor change. Golden
- * consumer: {@link StationDisplayIndexList}. Next cohort composes this hook +
- * {@link armed-cursor-face} tokens — do not fork wrap math.
- */
+/** Absolute armed-cursor list — character-select navigation waist. */
 
 'use client';
 

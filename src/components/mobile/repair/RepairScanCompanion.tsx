@@ -3,48 +3,6 @@
 /**
  * RepairScanCompanion — the phone's half of the counter tablet's repair visit,
  * on the mobile exoskeleton (`DetailHubScreen`, operator 2026-09-25).
- *
- * The staffer scans the QR on the tablet's Device & quote step and lands here:
- *
- * ```
- * bar     Cart #42 · 1 of 3 units with serials
- * card    the visit — customer, units, which tablet  (→ /info)
- * notice  what the last read did: which unit, the value, Undo
- * target  where the next read goes: Unit 1 · Wave, adds to its 2 serials
- * rows    one per unit: its serials (first +N), or "Needs serial"; tap = aim
- * bottom  the house lens (`MobileCaptureWindow`): camera, Done → "Scan a
- *         serial" bar, and the keyed fallback — no verbs, no second field
- * ```
- *
- * A unit carries any number of serials (a Wave and its CD changer): a read is
- * ADDED to the unit in focus (`appendSerial`), never replaces it. Focus is
- *
- * 1. the unit the staffer tapped, once it has a serial — it STAYS aimed after
- *    each read, so every label on one chassis is one scan each, until they
- *    tap Release (a tapped unit with no serial yet takes one read, then focus
- *    moves on as below);
- * 2. else the first unit still missing a serial — focus moves on by itself,
- *    so three radios are three scans and no taps;
- * 3. else, every unit having one, the unit the last read went to (the last
- *    unit before any read) — a further label is most likely that chassis's.
- *
- * Each read — camera or the lens's keyed fallback, both through `onDecode` —
- * is classified first (`classifySerialRead`): a product-page QR gives up the
- * serial inside it or is offered as a link, noise is refused. A
- * serial the unit already has is a no-op ("already on this unit"); one on
- * another unit is written with a warning. Undo takes exactly the last read's
- * serial back off its unit (`removeSerial`).
- *
- * The tablet owns the visit: this page never adds, removes or prices a unit.
- * It reads the tablet's snapshot (polled) and queues serials; the tablet
- * applies them through the same line write its serial field makes.
- *
- * Callers: `/m/repair-scan`.
- * Affected API: GET/POST `/api/counter/companion` (via `useRepairScanVisit`).
- * Schemas: `CompanionVisit`, `CompanionDevice`.
- * User: "scan something like a serial number to input and update the form on
- *   your phone as well" (2026-09-24); "more useful, on the mobile exoskeleton,
- *   barcode AND QR" (2026-09-25).
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -110,11 +68,7 @@ export function RepairScanCompanion({ token }: { token: string }) {
   const commit = useCallback(
     async (serial: string, via: 'scan' | 'link') => {
       if (!focus) return;
-      // The camera still pointed at the label it just read re-reads it after
-      // its dedup window. That echo is dropped — never written as a
-      // "duplicate" — and the notice about the real write, which already
-      // shows this serial on its unit and carries the Undo, stays up (or
-      // comes back, if the staffer had dismissed it).
+      // The camera still pointed at the label it just read re-reads it after its dedup window.
       if (lastWrite?.echo && sameSerial(lastWrite.serial, serial)) {
         if (!notice) setNotice({ kind: 'already', target: lastWrite.target, serial });
         return;

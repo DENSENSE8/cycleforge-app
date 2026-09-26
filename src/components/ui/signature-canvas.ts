@@ -1,15 +1,4 @@
-/**
- * Canvas plumbing for {@link SignaturePad} — DPR scaling and the cropped
- * export. DOM, no React.
- *
- * Split out of the component (2026-09-15) so the component is the pad's
- * BEHAVIOUR and this is the pixel work. The geometry LAW these two obey is
- * `src/lib/repair/signature-geometry.ts`, which is pure and unit-tested; this
- * module only addresses the backing store.
- *
- * Callers: `src/components/ui/SignaturePad.tsx`.
- * Affected API: none. Schemas: none.
- */
+/** Canvas plumbing for {@link SignaturePad} — DPR scaling and the cropped export. */
 
 import { signatureInkBox, type SignatureStrokeGroup } from '@/lib/repair/signature-geometry';
 
@@ -28,18 +17,7 @@ export function scaleSignatureCanvas(canvas: HTMLCanvasElement): void {
 
 /**
  * PNG of the INK, not of the canvas.
- *
- * `signature_pad.toDataURL()` exports the whole canvas, empty regions included,
- * so a finger signature drawn high on the pad shipped a PNG that was mostly
- * transparent — and the paperwork's `object-fit:contain` then scaled that dead
- * space along with the strokes, floating the ink ~45px above the ruled line it
  * was anchored to (operator 2026-09-15). Cropping to the ink is what makes the
- * signature print seated on the line WHEREVER on the pad it was drawn. The
- * print CSS is correct and deliberately untouched.
- *
- * Crop bounds, stroke-cap padding and the aspect clamp are `signatureInkBox`.
- * `whole` is the no-ink / no-2d-context fallback: the un-cropped export, so a
- * failure here degrades to the previous behaviour rather than to nothing.
  */
 export function exportSignaturePng(
   canvas: HTMLCanvasElement,

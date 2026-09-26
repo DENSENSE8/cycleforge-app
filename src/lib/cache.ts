@@ -1,16 +1,4 @@
-/**
- * ID-keyed in-memory cache with TTL support and window event invalidation.
- *
- * Architecture:
- * - Cache store lives outside React's render cycle (singleton object)
- * - Invalidation fires custom window events so any mounted component can react
- *   without prop drilling or global state managers
- * - TTL-based expiry is checked lazily on read
- *
- * Usage:
- *   import { cacheGet, cacheSet, cacheInvalidate } from '@/lib/cache';
- *   import { useCache } from '@/hooks';
- */
+/** ID-keyed in-memory cache with TTL support and window event invalidation. */
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -47,14 +35,7 @@ function isExpired(entry: CacheEntry<unknown>): boolean {
 
 // ─── Core API ───────────────────────────────────────────────────────────────────
 
-/**
- * Writes a value into the cache under `domain:id`.
- *
- * @param domain  Logical namespace (e.g. 'order', 'staff', 'sku')
- * @param id      Entity identifier
- * @param value   Data to store
- * @param ttlMs   Time-to-live in ms. Pass null for a permanent entry.
- */
+/** Writes a value into the cache under `domain:id`. */
 export function cacheSet<T>(
   domain: string,
   id: string | number,
@@ -145,13 +126,7 @@ export function cacheGetDomain<T>(domain: string): Record<string, T> {
   return result;
 }
 
-/**
- * Subscribes to invalidation events for a domain.
- * Returns an unsubscribe function — call it in your cleanup.
- *
- * @example
- * useEffect(() => onCacheInvalidate('order', (id) => refetch()), []);
- */
+/** Subscribes to invalidation events for a domain. */
 export function onCacheInvalidate(
   domain: string,
   cb: (id: string | number | '*') => void,

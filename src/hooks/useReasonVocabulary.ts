@@ -2,17 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-/**
- * Generic client read for a Class-D reason vocabulary: fetches tenant
- * `reason_codes` rows for a `flow_context` and caches them per session. Each
- * vocabulary's component/hook merges these {code,label} rows with its built-in
- * registry for display metadata (tone/hint) and falls back to the built-ins when
- * the DB is unseeded or the fetch fails — see
- * docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md D1.
- *
- * Returns null until the first load resolves (so callers render their built-in
- * fallback immediately, no empty flash).
- */
+/** Generic client read for a Class-D reason vocabulary: */
 interface ReasonRow {
   code: string;
   label: string;

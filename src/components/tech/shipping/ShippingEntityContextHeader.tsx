@@ -7,17 +7,7 @@ import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import { displayPlatformSlugFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveShippingListingLinks } from './shipping-listing-links';
 
-/**
- * Shipping adapter for the station entity-context header SoT
- * (`CartonContextCard` via `@/components/station/entity-context`).
- *
- * Maps an active outbound order onto the Unbox one-row station identity face
- * (listing · order# · tracking · classify). Claim / photos / lifecycle / PO$
- * are omitted — the ship session stays scan-driven. Classify is read-only.
- * Mount inside {@link StationContextBar}; pair host with `placement="flow"` +
- * `reserveIdentityClearance={false}`. Out-of-stock / sub-pending live in
- * StationMoreDetails corner chips — never a centre advisory strip.
- */
+/** Shipping adapter for the station entity-context header SoT (`CartonContextCard` via `@/components/station/entity-context`). */
 export function ShippingEntityContextHeader({
   activeOrder,
   onExitToList,

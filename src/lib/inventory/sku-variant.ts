@@ -1,23 +1,4 @@
-/**
- * SKU variant — COLOR axis decoder (sku-reconciliation plan, Step B).
- *
- * Owner-confirmed: the 1-letter stock suffixes encode **color**, NOT condition.
- * This is a NEW, separate axis from the condition grade (`src/lib/conditions.ts`
- * / `src/lib/condition-tone.ts`). Do NOT conflate the two — a color suffix on a
- * SKU string says nothing about the unit's condition grade, and vice-versa.
- *
- * This is a CONFIG-DRIVEN decoder, not a hardcoded guess. The map below is the
- * single source of truth for suffix → color. Only the two **confident** entries
- * are seeded; the ambiguous suffixes (`-N` / `-S` / `-SW`) are explicit
- * `UNCONFIRMED` placeholders so they decode to `null` and can NEVER mis-tag data
- * until the owner confirms their real color value.
- *
- * Guarded-pattern discipline (mirrors `strippableVariantBase` in
- * `resolve-sku-catalog.ts`): the decoder fires ONLY on a precise color-suffix
- * pattern. It will never decode a `-P-N` part index, a numeric counter suffix
- * (`00010-2`), or any non-color suffix — so it cannot collide with the listing
- * dedup strip or mis-classify a distinct product.
- */
+/** SKU variant — COLOR axis decoder (sku-reconciliation plan, Step B). */
 
 /** A decoded color value, or the explicit UNCONFIRMED placeholder. */
 interface SkuColorSuffixEntry {
@@ -32,22 +13,13 @@ interface SkuColorSuffixEntry {
   confirmed: boolean;
 }
 
-/**
- * Suffix (without the leading dash, upper-cased) → color entry.
- *
- * SEED ONLY the confident entries. Leave `-N` / `-S` / `-SW` as explicit
- * `UNCONFIRMED` placeholders — do NOT guess Navy / Silver / Natural. The owner
- * must confirm the color value for each before it is allowed to tag data.
- */
+/** Suffix (without the leading dash, upper-cased) → color entry. */
 export const SKU_COLOR_SUFFIX_MAP: Record<string, SkuColorSuffixEntry> = {
   // ── Confirmed ──────────────────────────────────────────────────────────────
   B: { code: 'BLACK', label: 'Black', confirmed: true },
   W: { code: 'WHITE', label: 'White', confirmed: true },
 
-  // ── UNCONFIRMED — needs owner confirmation of the color value ───────────────
-  // Do NOT guess. These decode to null (see decodeSkuColorSuffix) until the
-  // owner supplies the real color, so they can never mis-tag a unit's color.
-  // -N  → ? (e.g. Navy / Natural / "New"? — color value UNCONFIRMED)
+  // ── UNCONFIRMED — needs owner confirmation of the color value ─────────────── Do NOT guess.
   N: { code: null, label: null, confirmed: false },
   // -S  → ? (e.g. Silver / Sand? — color value UNCONFIRMED)
   S: { code: null, label: null, confirmed: false },
@@ -65,29 +37,12 @@ interface DecodedSkuColor {
   colorLabel: string;
 }
 
-/**
- * A color suffix is a base (>= 1 char, not purely a part-index) + dash + one of
- * the known LETTER-ONLY suffix tokens. Letter-only is what keeps this from ever
- * matching the numeric counter form (`00010-2`) handled by the listing-dedup
- * strip, and the `-P-N` part index (the segment between dashes is `P`, numeric
- * tail) is explicitly guarded below.
- */
+/** A color suffix is a base (>= 1 char, not purely a part-index) + dash + one of the known LETTER-ONLY suffix tokens. */
 const COLOR_SUFFIX_RE = /^(.+)-([A-Z]+)$/i;
 /** A protected multi-part component index — never treat as a color. */
 const PROTECTED_PART_INDEX = /^.+-P-[0-9]+$/i;
 
-/**
- * Decode the COLOR variant encoded in a SKU suffix.
- *
- * Returns `{ base, colorCode, colorLabel }` ONLY for an owner-confirmed color
- * suffix (`-B` → Black, `-W` → White). Returns `null` for:
- *   - an UNCONFIRMED suffix (`-N` / `-S` / `-SW`) — never guesses a value;
- *   - a non-color suffix (`-P-N` part index, `-2` numeric counter);
- *   - a bare base (`00046`) or empty input.
- *
- * The decode is additive and read-only: it derives a variant view of a SKU
- * string; it never mutates the SKU or its resolution.
- */
+/** Decode the COLOR variant encoded in a SKU suffix. */
 export function decodeSkuColorSuffix(sku: string | null | undefined): DecodedSkuColor | null {
   const s = String(sku ?? '').trim();
   if (!s) return null;

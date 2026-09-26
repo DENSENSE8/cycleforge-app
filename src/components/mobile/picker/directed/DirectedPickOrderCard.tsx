@@ -16,13 +16,7 @@ const OWNER_VIA_LABEL: Record<PickOwnerVia, string> = {
   backup: 'Backup for this SKU',
 };
 
-/**
- * The order the current line belongs to: channel, deadline, remaining units,
- * tote, whose pick it is (and its backups), its attached paperwork, and the
- * two ways to hand it back — Skip (put it back, never offered again this run)
- * and Pass to… (assign another picker). Listing opens the exact item URL in a
- * new tab.
- */
+/** The order the current line belongs to: */
 export function DirectedPickOrderCard({
   order,
   tote,

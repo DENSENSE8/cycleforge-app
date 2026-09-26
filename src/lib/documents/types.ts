@@ -1,10 +1,4 @@
-/**
- * Outbound documents — shared types (docs/outbound-documents-plan.md §4).
- *
- * `documents` + `document_entity_links` are raw-SQL tables (no Drizzle
- * definition), same precedent as `photos` / `photo_entity_links` — see
- * src/lib/photos/image-types.ts. Types live here instead.
- */
+/** Outbound documents — shared types (docs/outbound-documents-plan.md §4). */
 
 /** Owner kinds a document can link to. Mirrors photo_entity_links' entity_type.
  * SKU / SERIAL_UNIT added for manuals + unit inserts (JIT pack Phase 3). */

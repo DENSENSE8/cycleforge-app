@@ -7,13 +7,7 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/orders/delete - Delete one or more orders
- * Body: { orderId?: number, orderIds?: number[] }
- *
- * Destructive — requires step-up auth (via orders.void on STEP_UP_PERMISSIONS).
- * Writes a rich audit row per deleted order with full before-state.
- */
+/** POST /api/orders/delete - Delete one or more orders Body: */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json();
@@ -28,17 +22,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     const requestedIds: number[] = orderId ? [orderId] : orderIds;
 
-    // An order number (order_id) can carry multiple rows in `orders`: accidental
-    // same-product dupes (which the dashboard de-dupes to one visible row) AND
-    // genuinely different products (shown as separate lines under one expandable
-    // order). A delete carries only the visible row's id, so expand it to its
-    // same-product siblings — otherwise an accidental dupe reappears after refetch
-    // (the delete "doesn't stick"). Scope the expansion to the SAME product
-    // identity (sku_catalog_id → sku → normalized title, mirroring the table's
-    // dedupeByOrderProduct) so deleting one product never nukes a different line
-    // of a multi-product order.
-    // Product identity for a row under the given alias, mirroring the table's
-    // dedupeByOrderProduct (sku_catalog_id → non-empty sku → normalized title).
+    // An order number (order_id) can carry multiple rows in `orders`:
     const productKeyExpr = (a: string) => `COALESCE(
         NULLIF('cat:' || ${a}.sku_catalog_id::text, 'cat:'),
         NULLIF('sku:' || lower(trim(${a}.sku)), 'sku:'),

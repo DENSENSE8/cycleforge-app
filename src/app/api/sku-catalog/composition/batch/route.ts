@@ -6,16 +6,7 @@ import {
   normalizeCompositionCatalogIds,
 } from '@/lib/orders/order-kit-composition-load';
 
-/**
- * POST /api/sku-catalog/composition/batch
- *
- * Body: `{ ids: number[] }` (capped). Returns `{ byId: { [id]: { composition, source } } }`.
- * Prefer sku_relationships; fall back to sku_kit_parts; never Zoho `-P`.
- *
- * Callers: useKitCompositionMap → order desk Item kitFace.
- * Schema: sku_relationships + sku_kit_parts (read).
- * User: Implement multi-tenant kit / bundle display (Shopify-like).
- */
+/** POST /api/sku-catalog/composition/batch */
 
 type Body = { ids?: unknown };
 

@@ -1,10 +1,4 @@
-/**
- * The Automations surface must ANSWER the operator's four questions for the
- * designated-tag job — cadence, gate, health, counters — and must not crash or
- * invent a number when the live join is missing, empty, or shaped differently.
- *
- *   npx tsx --test src/components/studio/AutomationsView.test.tsx
- */
+/** The Automations surface must ANSWER the operator's four questions for the designated-tag job — cadence, gate, health, counters — and… */
 
 import React from 'react';
 import assert from 'node:assert/strict';

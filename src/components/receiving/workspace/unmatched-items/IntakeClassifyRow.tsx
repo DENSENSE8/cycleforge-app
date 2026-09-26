@@ -27,15 +27,7 @@ const INTAKE_INACTIVE: Record<IntakeTone, string> = {
   emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
 };
 
-/**
- * "Receiving as" door-classification pill row — desktop triage parity with the
- * mobile selector. Flat, always-visible (no collapse), one tap re-classifies the
- * carton via the intake-classification SoT. `motion.button` (not raw `<button>`)
- * keeps it off the raw-button ratchet, matching `InlinePillPicker`.
- *
- * Extracted from {@link UnmatchedItemsSection} so the legacy list body and the
- * unified accordion surface share the identical control (plan Phase 2).
- */
+/** "Receiving as" door-classification pill row — desktop triage parity with the mobile selector. */
 export function IntakeClassifyRow({
   value,
   onSelect,

@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * /account/signin → /signin (canonical unified login).
- *
- * The account-level email/password/passkey flow now lives on the unified
- * `/signin` page (org-login-gate wave 3). This route is kept only as a
- * redirect so old links/bookmarks keep working; the API routes under
- * /api/auth/account/* are unchanged.
- *
- * Public: listed in PUBLIC_PATHS (src/proxy.ts) + CLIENT_PUBLIC_PATHS.
- */
+/** /account/signin → /signin (canonical unified login). */
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

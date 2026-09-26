@@ -1,12 +1,6 @@
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
-/**
- * Kind keys produced by STATION_TERMINAL_REGISTRY for unbox.
- *
- * There is exactly one live kind: the Unbox dock is carton-terminal, so it does
- * not vary with the selected display (see `unbox-terminal.tsx`). `none` stays so
- * the registry can still hide the dock.
- */
+/** Kind keys produced by STATION_TERMINAL_REGISTRY for unbox. */
 export type UnboxTerminalKind = 'mode-default' | 'none';
 
 /**

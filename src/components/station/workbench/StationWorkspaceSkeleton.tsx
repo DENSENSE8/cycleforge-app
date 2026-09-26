@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Station focused-overlay workspace skeleton — **SoT**.
- *
- * Mirrors StationWorkbench identity + section tabs + stacked flush cards so the
- * handoff to LineEditPanel / TriagePanel feels continuous. Section cards use
- * flush Panel radius (ops chrome) — never soft `rounded-2xl` / pill bars.
- * Bar geometry is flush ops chrome: `cornerClass('flush')`.
- *
- * Domain wrappers (`TriageWorkspaceSkeleton`)
- * pick the header variant, body preset, and column recipe.
- */
+/** Station focused-overlay workspace skeleton — **SoT**. */
 
 import { SkeletonBase } from '@/design-system';
 import {

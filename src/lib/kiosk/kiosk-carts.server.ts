@@ -1,32 +1,6 @@
 import 'server-only';
 
-/**
- * Recent carts — the counter's ONE kiosk cart, persisted per org so several
- * customers can be juggled at once and any paired tablet can pick a cart up by
- * its `#id`.
- *
- * ## Single writer
- *
- * A cart is saved by exactly one tablet: `held_by_device_id`. Opening it on
- * another tablet MOVES the hold (and bumps `version`), so the previous holder's
- * next save is refused with `held_elsewhere` and that tablet lets go of it.
- * That is the whole conflict model — no merge. Two staffers editing one basket
- * at once is a mistake to surface, not a state to reconcile.
- *
- * The list columns (`label`, `item_count`, `total_cents`) are derived HERE from
- * the validated snapshot on every write, never taken from the client, so a list
- * row cannot disagree with the cart it opens.
- *
- * Every query is org-scoped under the tenant GUC (`withTenantTransaction` /
- * `tenantQuery`) and stamps the org + device from `withKioskAuth`'s context,
- * never the request.
- *
- * Callers: `/api/kiosk/carts` (list, create), `/api/kiosk/carts/[id]` (save,
- * clear), `/api/kiosk/carts/[id]/open`, `/api/kiosk/carts/[id]/done`.
- * Schema: `kiosk_carts` (2026-09-24d). Snapshot shape: `kiosk-cart-snapshot.ts`.
- * User 2026-09-24: "recent carts for juggling multiple customers at the same
- * time, IDed for multiple devices".
- */
+/** Recent carts — the counter's ONE kiosk cart, persisted per org so several customers can be juggled at once and any paired tablet can… */
 
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
@@ -158,12 +132,7 @@ export async function saveKioskCart(
   });
 }
 
-/**
- * Take the hold for this tablet and hand back the cart. The version bump is
- * what retires the previous holder: its in-flight save now fails either check.
- * `null` → no such open cart, or a stored snapshot that no longer parses (a
- * cart that cannot be shown faithfully is not opened half-way).
- */
+/** Take the hold for this tablet and hand back the cart. */
 export async function openKioskCart(
   orgId: OrgId,
   deviceId: number,

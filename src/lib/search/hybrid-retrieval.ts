@@ -1,23 +1,4 @@
-/**
- * hybrid-retrieval — the single retrieval engine behind AI search
- * (docs/ai-search-modernization-plan.md, locked decision 4).
- *
- * Keystroke latency contract: **hybrid only, LLM never inline.**
- *
- *   1. Exact/ID/serial bypass — identifier-looking queries hit the parent
- *      tables via the extracted global-entity-search helpers (last-8, exact
- *      id, normalized tracking). Non-empty bypass hits SHORT-CIRCUIT: no
- *      keyword arm, no vector arm, no embed call.
- *   2. Keyword arm — buildTextSearchVariants (exact/prefix/contains/pg_trgm)
- *      over entity_search_docs.search_text, org-filtered.
- *   3. Vector arm — one query-embedding call (bounded ~300ms) + pgvector
- *      cosine, org-filtered. Embed failure/timeout/unconfigured degrades to
- *      keyword-only — NEVER blocks or errors the search.
- *   4. RRF merge (k=60), deterministic tie-break, mapped to SearchHit[].
- *
- * Every SQL arm filters organization_id first; called through tenantQuery so
- * the GUC + RLS backstop applies.
- */
+/** hybrid-retrieval — the single retrieval engine behind AI search (docs/ai-search-modernization-plan.md, locked decision 4). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -107,16 +88,7 @@ async function keywordSearchImpl(
   entityTypes: SearchEntityType[] | undefined,
   limit: number,
 ): Promise<DocHitRow[]> {
-  // Every OR branch is hand-built against the EXACT indexed expression
-  // `lower(search_text)` (idx_entity_search_docs_search_trgm) using only
-  // operators pg_trgm's GIN opclass accelerates (=, LIKE, <%). We
-  // deliberately do NOT use buildTextSearchVariants here: its shapes —
-  // `LOWER(BTRIM(expr))` normalization and ILIKE on the raw column — don't
-  // textually match the index expression, and EXPLAIN on the live index
-  // proved they force a per-org Seq Scan (~140ms at 7.6k docs) instead of a
-  // bitmap index scan. search_text never carries edge whitespace (the
-  // builder trims every part), so dropping BTRIM loses nothing. Fuzzy
-  // threshold = pg_trgm.word_similarity_threshold (default 0.6).
+  // Every OR branch is hand-built against the EXACT indexed expression `lower(search_text)` (idx_entity_search_docs_search_trgm) using only…
   const variants: RankedSearchVariant[] = [
     { predicate: `lower(search_text) = LOWER($2)`, score: 400 },
     { predicate: `lower(search_text) LIKE LOWER($3)`, score: 300 },
@@ -308,13 +280,7 @@ function exactResultToHit(result: GlobalSearchResult, rank: number): SearchHit {
   };
 }
 
-/**
- * Reciprocal-rank fusion across the keyword and vector arms. Deterministic:
- * equal fused scores tie-break on (entityType, entityId). `boostTypes`
- * multiplies fused scores for page-context-matching entity types (1.3× —
- * enough to reorder near-ties toward the surface the user is on, never
- * enough to bury a strong cross-entity match).
- */
+/** Reciprocal-rank fusion across the keyword and vector arms. */
 export function rrfMerge(
   arms: DocHitRow[][],
   limit: number,

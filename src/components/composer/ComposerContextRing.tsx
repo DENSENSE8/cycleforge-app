@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Hollow context ring — ported from Warehouse OS `AssistantFeed` ContextRing
- * (shell.css `.context-ring` / `.context-ring-dot`).
- *
- * Sits BELOW the composer outline, bottom-right of `.composer-row`.
- * A ring is an ANNULUS: transparent centre, stroke is the whole mark.
- * Count > 0 deepens the stroke (+ optional badge); never fills the disc solid
- * as a bullet. Colour/opacity only — never geometry (M1).
- */
+/** Hollow context ring — ported from Warehouse OS `AssistantFeed` ContextRing (shell.css `.context-ring` / `.context-ring-dot`). */
 
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';

@@ -14,12 +14,7 @@ import { mobileRouteOwnsTopBar } from '@/lib/mobile/host-top-bar';
 import { Button } from '@/design-system/primitives';
 import { WmsRealtimeStatus } from '@/components/mobile/realtime/WmsRealtimeStatus';
 
-/**
- * Phone fallback when a page subtree throws. Without this, a render crash bubbles
- * to global-error and blanks the whole app to a WHITE SCREEN with nothing to act
- * on. Here it degrades to a readable, retryable card (house "degrade-not-fail")
- * and `ErrorBoundary` logs the true cause to the console for diagnosis.
- */
+/** Phone fallback when a page subtree throws. */
 function MobilePageError(error: Error, reset: () => void) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
@@ -64,14 +59,7 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
     setIsHydrated(true);
   }, []);
 
-  /**
-   * PRE-SIGN-IN: the page, and nothing else. Same predicate AuthContext and
-   * the desktop frame already use — matches `/signin` and `/m/signin` both
-   * (survives the UA rewrite) and `/m/qr-auth` (workstation authorize).
-   * No drawer, no scan provider, no phone bridge: none of them can do
-   * anything without a session, and mounting them here is the hamburger +
-   * SCAN leak on the phone QR-auth page.
-   */
+  /** PRE-SIGN-IN: the page, and nothing else. */
   if (pathname && isClientPublicPath(pathname)) {
     return (
       <div
@@ -86,12 +74,7 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
 
 
   return (
-    // Both providers wrap the header AND the page, for the same reason: the
-    // top-right cluster lives in the header while the surface that drives it is
-    // in `children`. Scan re-arms the mounted scan surface; the action slot is
-    // how a page puts its ONE verb left of scan (`MobileActionSlot.tsx`) —
-    // previously impossible, because the bar's `actions` prop had no reachable
-    // caller from inside `children`.
+    // Both providers wrap the header AND the page, for the same reason:
     <MobileScanProvider>
       <MobileActionSlotProvider>
       <div
@@ -104,10 +87,10 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
           <WmsRealtimeStatus />
 
           <div className="relative min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-contain">
-          {/* No route animation (operator 2026-09-25: "it shouldn't even display
-              an animation at all"). The crossfade held every tap for 150ms of
-              exit + 150ms of enter; the new screen now paints the frame it
-              is ready. `key` still resets the error boundary per route. */}
+          {/*
+ * No route animation (operator 2026-09-25:
+ * No route animation (operator 2026-09-25: "it shouldn't even display
+ */}
           <div className="h-full">
             <ErrorBoundary key={pathname} label="mobile-page" fallback={MobilePageError}>
               {children}

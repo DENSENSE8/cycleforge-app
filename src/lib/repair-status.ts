@@ -1,15 +1,4 @@
 // Single source of truth for repair-service (RS) status tones.
-//
-// Reconciles two previously-divergent inline maps: the mobile repair station
-// (app/m/rs/[id]) rendered bordered `-100` pills, while the ops KpiDetailsModal
-// rendered flat `-50` chips — and the two assigned CONFLICTING hues to the same
-// status (e.g. "Awaiting Pickup" was amber on mobile, emerald in ops). Per the
-// design color story (DESIGN_SYSTEM.md → Functional Color Mapping), each status
-// now has ONE canonical hue, rendered in two shape variants:
-//   badge — bordered pill (mobile station + status toggle buttons)
-//   chip  — flat chip (desktop ops modal)
-//
-// src/lib is in Tailwind's content globs, so these classes are generated.
 
 export type RepairStatusHue = 'warning' | 'info' | 'success' | 'danger' | 'neutral';
 

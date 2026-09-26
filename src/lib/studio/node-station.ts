@@ -1,29 +1,4 @@
-/**
- * studio/node-station — the node-scoped station-binding domain logic
- * (Operations Studio Phase D / ST5).
- *
- * The page-bound station builder (/api/stations) keys compositions by
- * (page_key, mode_key) — the screen a sidebar MODE renders. Phase D adds the
- * ORTHOGONAL binding: "this composed station IS the UI for workflow node X",
- * recorded on station_definitions.workflow_node_id. The two axes coexist —
- * node.config.station (department key, drives L0 grouping) is untouched here.
- *
- * Node-bound stations live under a reserved page namespace so they never
- * collide with the page-bound rows:
- *   page_key = 'studio-node'
- *   mode_key = <workflow_node_id>
- * One (org, 'studio-node', nodeId, version) per node, same versioned
- * draft-first + atomic-publish semantics as /api/stations.
- *
- * Same discipline as studio/definitions.ts: every collaborator that isn't the
- * raw tx client is INJECTED (real impls by default) so the helpers unit-test
- * DB-free. The route owns the withTenantTransaction boundary, the body parse,
- * and the audit; these helpers run inside that tx and return a
- * { status, body, audit? } verdict the route maps to HTTP.
- *
- * The SQL mirrors the /api/stations upsert + /api/stations/publish flip
- * (the deactivate+activate CTE) verbatim — do not change its semantics.
- */
+/** studio/node-station — the node-scoped station-binding domain logic (Operations Studio Phase D / ST5). */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -109,13 +84,7 @@ export interface SaveNodeStationDraftDeps {
 
 const defaultSaveDeps: SaveNodeStationDraftDeps = { validate: validateStationConfig };
 
-/**
- * Upserts a DRAFT station_definition bound to `nodeId` (workflow_node_id),
- * under the reserved ('studio-node', nodeId) namespace. Registry-validates the
- * config first (a config referencing a removed block/source/action never lands),
- * then runs the same single-statement update-in-place-or-insert upsert the
- * /api/stations route uses — a retried save lands on the same draft row.
- */
+/** Upserts a DRAFT station_definition bound to `nodeId` (workflow_node_id), under the reserved ('studio-node', nodeId) namespace. */
 export async function saveNodeStationDraft(
   args: SaveNodeStationDraftArgs,
   deps: SaveNodeStationDraftDeps = defaultSaveDeps,
@@ -218,12 +187,7 @@ export interface PublishNodeStationDeps {
 
 const defaultPublishDeps: PublishNodeStationDeps = { validate: validateStationConfig };
 
-/**
- * Atomically activates a node-bound draft station: registry-validate the saved
- * config, then deactivate the (org, page, mode) sibling + activate the target in
- * ONE statement (the /api/stations/publish CTE). Idempotent: re-publishing the
- * already-active version is a no-op success.
- */
+/** Atomically activates a node-bound draft station: */
 export async function publishNodeStation(
   args: PublishNodeStationArgs,
   deps: PublishNodeStationDeps = defaultPublishDeps,

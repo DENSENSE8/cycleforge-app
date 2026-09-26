@@ -23,16 +23,7 @@ import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments
 import type { ScanClassification } from '@/utils/packer';
 import { createPackerLog, touchPackerLog } from '@/lib/packing/packer-log-writer';
 
-/**
- * LEGACY packer aliases — the old station UI sent packer "1/2/3", which meant
- * staff 4/5/6. It maps a CLIENT-SUPPLIED legacy id only.
- *
- * NEVER run a server-trusted `ctx.staffId` through this map. Real staff ids 1,
- * 2, and 3 exist (Michael / Thuc / Sang), so aliasing the session actor silently
- * stamped their pack scans as staff 4/5/6 — the scans wrote fine but vanished
- * from Pack → History, which filters `station_activity_logs.staff_id` by the
- * signed-in staff and applies no alias. Use {@link sessionStaffId} for the actor.
- */
+/** LEGACY packer aliases — the old station UI sent packer "1/2/3", which meant staff 4/5/6. */
 const LEGACY_PACKER_ALIAS_TO_STAFF_ID: Record<string, number> = {
     '1': 4,
     '2': 5,
@@ -777,10 +768,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             });
         }
 
-        // Non-order scans (SKU, FNSKU, etc.): store raw input in scan_ref.
-        // For SKU scans, resolve product_title from sku_stock BEFORE building
-        // the response so the packer UI can render the actual product name
-        // instead of "Unknown product" / the raw SKU string.
+        // Non-order scans (SKU, FNSKU, etc.):
         let skuUpdated = false;
         let resolvedSkuTitle: string | null = null;
         let resolvedSkuBase: string | null = null;
@@ -793,10 +781,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             resolvedSkuQty = addQty;
 
             // 1) Prefer the Ecwid platform mapping (sku_platform_ids platform='ecwid').
-            //    For scans like '1071-B:A12', skuBase = '1071-B' — match against
-            //    platform_sku/platform_item_id and read the canonical product_title
-            //    from sku_catalog (falling back to the platform display_name if the
-            //    Ecwid row is unpaired).
             const ecwidLookup = await client.query(
                 `SELECT COALESCE(
                             NULLIF(BTRIM(sc.product_title), ''),

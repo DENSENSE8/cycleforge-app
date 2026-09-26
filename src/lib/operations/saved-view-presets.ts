@@ -1,25 +1,6 @@
 import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 
-/**
- * Code-defined SYSTEM saved-views — the former `/audit-log` sections re-expressed
- * as Operations History browse presets (plan §3.3 + §4.1 redirect targets).
- *
- * Chosen over per-org **seeded DB rows**: Cycle Forge is multi-tenant, so a code
- * constant applies to every org with no seed step and no migration (a new tenant
- * gets them for free). User-created views still live in `saved_views`
- * (`surface = 'operations'`) and render *below* these; the sidebar merges the
- * two lists. A system view is
- * applied via `?view=sys:<id>` (the `sys:` prefix can never collide with a user
- * view's numeric id).
- *
- * Two deliberate constraints:
- *  - Presets carry **no `audit` source**. The audit spine is admin-only (plan
- *    §3.2 Option B); baking it into a preset would 403 for floor staff. Admins
- *    add audit via the explicit source toggle on top of a preset.
- *  - Presets narrow by **station/source only** — no dynamic date bound. A strict
- *    "today"/"7d" window is deferred to the open Q3 window decision so a preset
- *    stays a pure static object.
- */
+/** Code-defined SYSTEM saved-views — the former `/audit-log` sections re-expressed as Operations History browse presets (plan §3.3 + §4.1… */
 export interface SystemSavedView {
   /** Stable id, applied via `?view=sys:<id>`. */
   id: string;

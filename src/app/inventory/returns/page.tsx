@@ -15,31 +15,9 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/returns
- *
- * Operations tool for Phase 7's returns dock.
- *
- * Top form: paste one or more serials (newline OR comma separated) +
- * optional tracking number + reason. Server action splits the textarea,
- * resolves GS1 URLs via parseScannedUrl, and calls processReturnsIntake.
- *
- * Recent returns table: last 50 inventory_events of type='RETURNED', painted
- * by the slot engine (`admin-returns`), with each unit reachable through the
- * binding's `navigate` record plane.
- */
+/** /inventory/returns */
 
-/**
- * Recent RETURNED events for the signed-in operator's tenant.
- *
- * `tenantQuery` (app.current_org GUC) AND the explicit `organization_id`
- * predicates, both: the GUC is the backstop for a forgotten filter, not a
- * substitute for one — `tenantPool` still aliases the BYPASSRLS owner role, so
- * today the predicate is the only thing actually isolating this read. The
- * staff join is narrowed too, so a cross-org `actor_staff_id` yields a NULL
- * name (LEFT JOIN — the return row itself is never dropped) instead of
- * leaking another tenant's staff name.
- */
+/** Recent RETURNED events for the signed-in operator's tenant. */
 async function loadRecentReturns(orgId: string): Promise<RecentReturnRow[]> {
   try {
     const { rows } = await tenantQuery<RecentReturnQueryRow>(
@@ -66,18 +44,7 @@ async function loadRecentReturns(orgId: string): Promise<RecentReturnRow[]> {
 
 async function intakeAction(formData: FormData): Promise<void> {
   'use server';
-  // A Server Action is independently POST-able: the `requirePermission` call in
-  // the page component below gates RENDERING, never action invocation. Gate
-  // here — and outside the intake's catch below, so the guard's own redirect
-  // reaches the caller instead of being swallowed as an intake failure.
-  //
-  // The permission is the MUTATION's, not the page's. `admin.view` is what
-  // gates rendering; the twin entrypoint POST /api/returns/intake enforces
-  // `receiving.mark_received` for the identical write. `admin.view` is an
-  // ordinary registry permission — a non-admin role, or a per-staff
-  // `permissions_added` grant, can carry it without carrying
-  // `receiving.mark_received` — so gating the action on the page's permission
-  // makes this form the weaker of two doors onto the same code path.
+  // A Server Action is independently POST-able:
   const user = await requirePermission('receiving.mark_received', { enforce: true });
 
   const serialsText = String(formData.get('serials') ?? '').trim();
@@ -109,27 +76,14 @@ async function intakeAction(formData: FormData): Promise<void> {
     );
   }
 
-  // The catch is scoped to the intake call itself, and every redirect() below
-  // sits outside it. redirect() signals by THROWING a NEXT_REDIRECT error, so a
-  // bare `catch` around it swallows the redirect: the 404 branch's
-  // `?error=not_found&missing=…` used to throw straight into the catch, get
-  // logged as an intake failure, and land on the generic `?error=failed` — so
-  // the operator never saw which serials failed to resolve, and the UI that
-  // renders that list was unreachable. Narrowing the catch is the fix.
+  // The catch is scoped to the intake call itself, and every redirect() below sits outside it.
   const result = await processReturnsIntake({
     serials: normalizedSerials,
     serialUnitIds,
     trackingNumber: tracking,
     reason,
     actorStaffId: null,
-    // Tenant safety, not just filtering. This is now a REQUIRED, un-defaulted
-    // field on ReturnsIntakeInput, so omitting it is a compile error rather
-    // than a silent escalation — which is what it used to be: with it absent
-    // the intake ran on the BYPASSRLS owner pool with both org predicates
-    // collapsed, so the serial resolver matched any tenant's serial_units row
-    // and the order_unit_allocations SHIPPED→RETURNED flip ran unpredicated.
-    // That org-less branch no longer exists in returns.ts; the requirement is
-    // what keeps it from coming back.
+    // Tenant safety, not just filtering.
     organizationId: user.organizationId,
   }).catch((err: unknown) => {
     console.error('[returns.intake] failed:', err);

@@ -20,13 +20,7 @@ export const WALK_IN_JOB_ITEMS: HorizontalSliderItem[] = [
   { id: 'repair', label: 'Repair', icon: Wrench },
 ];
 
-/**
- * Extra permission a job needs on top of the page gate (`walk_in.view`).
- *
- * Sales and Local Pickup are the walk_in family the page gate already covers.
- * Repair is a separate tech-family domain (`repair.*`), so an operator who may
- * work the counter is not thereby allowed into the repair queue.
- */
+/** Extra permission a job needs on top of the page gate (`walk_in.view`). */
 export const WALK_IN_JOB_PERMISSIONS: Record<WalkInJob, PermissionString | null> = {
   sales: null,
   pickup: null,

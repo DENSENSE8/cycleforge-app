@@ -1,19 +1,4 @@
-/**
- * Frame-budgeted apply for live NDJSON / Ably bursts.
- *
- * A 400-line exceptions stream or a reconnect flood of `order.changed`
- * messages must not `setState` per line on the same task — that is the
- * Speed Index + INP cliff on Incoming / Unshipped during import. This
- * helper:
- *
- *  • flushes control events (`phase` / `result` / `error`) immediately so
- *    the decaying-timestamp status label stays honest
- *  • batches row events up to `batchSize` or `timeBudgetMs`
- *  • yields to input between batches so a wedge scan can land mid-stream
- *
- * Orthogonal exception dimensions (SCANNED + PROBLEM) ride along as row
- * payloads — this module never collapses them to pass/fail.
- */
+/** Frame-budgeted apply for live NDJSON / Ably bursts. */
 
 import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 

@@ -1,11 +1,6 @@
 import { z } from 'zod';
 
-/**
- * Validation for the Packer Review Station verification endpoints
- * (docs/todo/packer-review-station-plan.md Phase 3c). Two surfaces, two Zod
- * bodies — each restricts the route to the outcome family its permission owns;
- * the domain state machine (recordPackVerificationEvent) is the ultimate guard.
- */
+/** Validation for the Packer Review Station verification endpoints (docs/todo/packer-review-station-plan.md Phase 3c). */
 
 const trimmed = z.string().trim();
 

@@ -1,26 +1,4 @@
-/**
- * Throw a task at a colleague — the pure orchestration half.
- *
- * Split from its server binding so the refusals, the urgency coupling and the
- * degrade rules unit-test with zero database and zero helpdesk network
- * (Dependency injection for testability).
- *
- * ## The two effects, and why one of them may fail without failing the throw
- *
- * A throw does two things: it creates the task, and — when the thrower marked
- * it urgent — it promotes the underlying record through the cross-entity
- * urgency SoT so it also surfaces in the Urgent lanes everyone already watches.
- *
- * The second one is allowed to fail. Urgency promotion can reach a helpdesk
- * that is down, or a record that was deleted between the resolve and the throw;
- * a task that lands with `urgency: 'failed'` is strictly better than an
- * operator being told their handoff did not happen when it did. The task is the
- * commitment; the promotion is an amplifier. Degrade-not-fail, per the Station
- * contract that governs the surface this is thrown from.
- *
- * The inverse is NOT true: if the task insert fails, the whole throw fails. We
- * never promote a record to urgent on behalf of a handoff that does not exist.
- */
+/** Throw a task at a colleague — the pure orchestration half. */
 
 import {
   isInboxAnchorable,
@@ -94,12 +72,7 @@ export interface CreateTaskInput {
   /** Free text the thrower typed. Optional — the record is often the whole message. */
   note?: unknown;
   urgency?: TaskUrgency;
-  /**
-   * Optional promised day, so the composer can capture assignee · priority ·
-   * deadline in ONE create. Without it the desk would POST then PATCH, which
-   * shows the assignee a half-made task and splits one act across two audit
-   * rows. ISO string, or null/absent for none.
-   */
+  /** Optional promised day, so the composer can capture assignee · priority · deadline in ONE create. */
   deadlineAt?: unknown;
   /** Optional reminder instant, ISO string, or null/absent for none. */
   remindAt?: unknown;
@@ -110,33 +83,13 @@ export interface CreateTaskInput {
   actorStaffId: number | null;
 }
 
-/**
- * `urgency` reports what happened to the RECORD, not to the task row:
- *   • `promoted`   — the record was moved to urgent by this throw
- *   • `already`    — it was already urgent; nothing was written
- *   • `not_urgent` — the thrower did not mark it urgent
- *   • `failed`     — promotion was attempted and did not land (see above)
- *   • `no_record`  — marked urgent, but a standalone task has no record to
- *                    promote; the task's own priority carries the urgency
- */
+/** `urgency` reports what happened to the RECORD, not to the task row: */
 export type CreateTaskResult =
   | {
       ok: true;
       task: TaskRow;
       urgency: 'promoted' | 'already' | 'not_urgent' | 'failed' | 'no_record';
-      /**
-       * Whether the recipient was told:
-       *   • `sent`           — durable inbox row written and pushed
-       *   • `skipped_entity` — this record kind cannot be anchored in the
-       *                        inbox (`isInboxAnchorable`). No kind a task can
-       *                        point at is in that state today; the branch is
-       *                        for the next `work_entity_type_enum` value.
-       *   • `failed`         — attempted and did not land
-       *
-       * `skipped_entity` is reported rather than hidden because a task nobody
-       * is notified about looks identical to one that was delivered, and the
-       * thrower deserves to know which they got.
-       */
+      /** Whether the recipient was told: */
       notified: 'sent' | 'skipped_entity' | 'failed';
       notifications: Array<{ staffId: number; status: 'sent' | 'skipped_entity' | 'failed' }>;
     }
@@ -275,10 +228,7 @@ async function notifyQuietly(
   args: NotifyAssigneeArgs,
   entityType: TaskEntityType | null,
 ): Promise<'sent' | 'skipped_entity' | 'failed'> {
-  // Refuse in the domain rather than letting the insert raise a CHECK
-  // violation: `staff_inbox_items.entity_type` does not admit every throwable
-  // kind yet, and a constraint error is not something an operator can act on.
-  // A standalone task anchors on itself (`task`), which the CHECK admits.
+  // Refuse in the domain rather than letting the insert raise a CHECK violation:
   if (entityType != null && !isInboxAnchorable(entityType)) return 'skipped_entity';
 
   try {

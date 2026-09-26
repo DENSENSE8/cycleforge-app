@@ -1,19 +1,4 @@
-/**
- * registerTool — the writer for tool_registry.
- *
- * Without this the table stays empty, and an empty registry is a MEASURABLE
- * "nothing to duplicate", which approves every request. That is correct
- * behaviour for a genuinely new org and a silent hole for an established one,
- * so seeding the registry is part of standing the pipeline up, not a follow-up.
- *
- * ─── EMBEDS INLINE, AND SAYS SO WHEN IT CANNOT ─────────────────────────────
- * Registry writes are rare (a handful per org, ever), so there is no outbox:
- * the description is embedded in the same call. When the provider is down the
- * row is still written with a NULL embedding and `embedded_at` left unset —
- * losing the tool entirely would be worse. A NULL embedding is not "matches
- * nothing": dedupe.ts reads an unembedded corpus as unmeasurable and denies,
- * which is why backfillEmbeddings exists and why it is worth running.
- */
+/** registerTool — the writer for tool_registry. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { embedText } from '@/lib/ai/embed';

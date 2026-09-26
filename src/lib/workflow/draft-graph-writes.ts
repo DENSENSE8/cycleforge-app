@@ -1,20 +1,4 @@
-/**
- * Granular draft-graph writers for the AI write path (applyAgentMutation
- * draft-scoped kinds; universal-feed plan §2.6 / ops-studio law #6).
- *
- * Every writer:
- *   • runs on a caller-owned tenant client (the applyAgentMutation tx);
- *   • verifies the target definition is a NON-ACTIVE DRAFT owned by the org
- *     (FOR UPDATE) — the active version is never mutated in place;
- *   • returns an `inverse` descriptor so the edit is revertable (the draft is
- *     the safety layer, revert is the undo).
- *
- * These apply the SAME table shape as the Studio wholesale graph-save
- * (workflow_nodes / workflow_edges / workflow_definitions.annotations), but
- * granularly, so one conversational edit = one small mutation, not a full
- * replace. Node-type validity is checked against the engine registry (hasNode)
- * exactly like the save route.
- */
+/** Granular draft-graph writers for the AI write path (applyAgentMutation draft-scoped kinds; universal-feed plan §2.6 / ops-studio law #6). */
 
 import { hasNode } from '@/lib/workflow';
 import { validateNodeConfig } from './validate-config';

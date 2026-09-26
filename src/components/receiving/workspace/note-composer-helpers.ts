@@ -145,21 +145,7 @@ export const NOTE_INSERT_MENU_ICON_TONE: Record<string, string> = {
 export const NOTE_CLEAR_BTN =
   'ds-raw-button rounded inset-chip text-role-micro font-semibold text-text-faint transition hover:bg-surface-sunken/80 hover:text-text-muted';
 
-/**
- * Which ghost the notes composer paints, and what accepting it applies.
- *
- * Two ghost sources share one overlay: the Recent hover preview (the DB
- * sticker center) and the MRU prefix autocomplete. They must never be confused
- * for each other — the overlay is a promise about what the next gesture
- * inserts, and Recent's click always inserts `recentPhrase`.
- *
- * - Empty field + Recent hovered → paint the whole Recent phrase; accepting it
- *   is the same gesture as clicking Recent.
- * - Non-empty field + Recent hovered → paint NOTHING. The full phrase cannot
- *   render as a suffix after the typed text, and leaving the MRU ghost up
- *   previews an older device-bank phrase that Recent would never insert.
- * - Recent not hovered → the MRU prefix ghost, unchanged.
- */
+/** Which ghost the notes composer paints, and what accepting it applies. */
 export function resolveNoteGhostPaint(opts: {
   /** Recent (History) is hovered / focused. */
   recentHover: boolean;

@@ -58,32 +58,13 @@ export interface AttachLegacyPhotoInput {
   contentType?: string;
   /** When true, return existing id instead of throwing on duplicate URL. */
   idempotent?: boolean;
-  /**
-   * Device-reported capture instant → `photos.client_captured_at` (see
-   * `./capture-provenance.ts`). Optional: the legacy-URL attach surfaces
-   * (NAS picker, packing/packer log imports) mostly have no device timestamp
-   * and correctly leave it null.
-   */
+  /** Device-reported capture instant → `photos.client_captured_at` (see `./capture-provenance.ts`). */
   clientCapturedAt?: Date | null;
-  /**
-   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). Optional and
-   * nullable everywhere: NULL means *unclassified evidence*, never *missing
-   * evidence*, and is what every pre-2026-08-01b row carries.
-   *
-   * Legality (aspect × stage) is decided at the route edge against the stage
-   * the ENTITY resolves to — not here — because only the route knows the
-   * caller's claimed stage, and validating against a claim rather than the
-   * resolved value is how a mis-claimed stage gets to mis-claim an aspect too.
-   */
+  /** What this shot SHOWS, within its stage (`./photo-aspects.ts`). */
   photoAspect?: PhotoAspect | null;
 }
 
-/**
- * Write waist for the stage × entity matrix (`./stages.ts`): every upload /
- * attach validates (entityType × photoType) here, so no capture surface can
- * stamp e.g. `receiving_item` onto a carton. Violations map to HTTP 400 via
- * the routes' `errorResponse`.
- */
+/** Write waist for the stage × entity matrix (`./stages.ts`): */
 function assertPhotoWriteAllowed(
   entityType: PhotoEntityType,
   photoType: string | null | undefined,
@@ -219,10 +200,7 @@ async function uploadPhotoToAdapter(input: UploadPhotoInput): Promise<UploadPhot
       staffId: input.staffId,
       photoType: input.photoType ?? null,
       poRef,
-      // Device-reported, already normalized at the route edge. Deliberately NOT
-      // derived from the buffer here: `generateThumbnail` re-encodes, and the
-      // mobile capture path already stripped EXIF client-side before the bytes
-      // ever reached us (see ./capture-provenance.ts).
+      // Device-reported, already normalized at the route edge.
       clientCapturedAt: input.clientCapturedAt ?? null,
       // Aspect legality was decided at the route edge against the RESOLVED
       // stage; by here it is a value to persist, not a claim to re-check.

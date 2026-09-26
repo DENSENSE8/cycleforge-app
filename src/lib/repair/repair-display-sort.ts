@@ -1,27 +1,8 @@
-/**
- * URL-backed display-sort vocabulary for the repair queue — the twin of the
- * dashboard's `queue-display-sort` (Pending / Testing). A quiet trailing
- * dropdown in the workbench chrome plus click-to-sort grid headers share one
- * `?sort=` (+ optional `?dir=`) state.
- *
- * `newest` (created_at DESC, the server default) omits the param; column sorts
- * carry `?dir=` only when it differs from that column's default direction.
- */
+/** URL-backed display-sort vocabulary for the repair queue — the twin of the dashboard's `queue-display-sort` (Pending / Testing). */
 
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
-/**
- * The sortable column vocabulary, declared here rather than derived from a
- * column model.
- *
- * It used to read `RepairGridColumnKey` / `isRepairGridSortable` off
- * `repair-grid-layout`, which was deleted with the repair grid on 2026-08-20.
- * This module is NOT part of that display — it is URL vocabulary, and
- * `query-mode-routes` / `receiving-routes` parse `?sort=` through it on routes
- * that still exist. Keeping the list local means a rewritten repair display
- * cannot silently change the meaning of a URL someone has bookmarked; when the
- * grid returns, re-derive this from its column model in ONE direction.
- */
+/** The sortable column vocabulary, declared here rather than derived from a column model. */
 export type RepairDisplaySortColumn =
   | 'title'
   | 'date'
@@ -35,14 +16,7 @@ const REPAIR_SORTABLE_COLUMNS: readonly string[] = [
   'title', 'date', 'customer', 'phone', 'price', 'order', 'ticket',
 ];
 
-/**
- * Recency/urgency words open most-urgent-first; the rest ascend.
- *
- * Named for the WORD, not for a grid: these used to be `*GridSort*`, which read
- * as the column model's answer and shadowed the display helpers the wave 1.4
- * slot port retired. The distinction this module's docblock draws — URL
- * vocabulary, not layout — is now in the names.
- */
+/** Recency/urgency words open most-urgent-first; the rest ascend. */
 function defaultDirForRepairSortWord(key: RepairDisplaySortColumn): GridSortDir {
   return key === 'date' ? 'desc' : 'asc';
 }

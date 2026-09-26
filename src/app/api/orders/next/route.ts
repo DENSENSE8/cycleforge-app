@@ -7,17 +7,7 @@ import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { withAuth } from '@/lib/auth/withAuth';
 import { sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 
-/**
- * GET /api/orders/next - Get next order(s) for the signed-in tech.
- * Identity is server-derived from the session cookie. Admin.view_logs
- * holders can override with ?techId=N to inspect another tech's queue.
- *
- * Rules:
- *  - orders.shipment_id must be set (linked to shipping_tracking_numbers)
- *  - order must NOT be carrier-accepted/in-transit/delivered
- *  - order must be assigned to this tech (wa.assigned_tech_id) OR have no test assignment
- *    (unassigned orders are visible to all techs)
- */
+/** GET /api/orders/next - Get next order(s) for the signed-in tech. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;
@@ -135,10 +125,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // outOfStock='false'.
     const queryParams: unknown[] = [techIdScope, orgId];
 
-    // The main query below is DISTINCT ON (o.id) over the exact same FROM/WHERE,
-    // so its row count equals COUNT(DISTINCT o.id). A separate COUNT pass would
-    // just double this endpoint's (expensive) DB work — it gates the Up Next
-    // skeleton — so we derive `all_completed` from the main result instead.
+    // The main query below is DISTINCT ON (o.id) over the exact same FROM/WHERE, so its row count equals COUNT(DISTINCT o.id).
     const mainConditions = [...countConditions];
 
     const mainQuery = `

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Sales mode table — Square walk-in charges as a PRODUCT_TABLES slot peer.
- *
- * Callers: `WalkInHistoryHub` / Sales board tabs. Existing file — replaces
- * `WalkInFeedPane` mount with `useWalkInSalesSpreadsheet` + `DataTable`.
- * Affected API: `/api/walk-in/sales`. Schemas: `SaleRow`.
- * User: "the completed visit appears as history on the Sales board slot table"
- * / "execute now"
- */
+/** Sales mode table — Square walk-in charges as a PRODUCT_TABLES slot peer. */
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -20,16 +12,7 @@ import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import type { SalesTab } from '@/lib/walk-in/history-modes';
 
 export function SalesHistoryTable({ tab }: { tab: SalesTab }) {
-  /*
-   * The find text is SESSION-LOCAL and rides the FETCH KEY. It is not a URL
-   * param (the Sales board's tabs own the URL here), and it is not a client
-   * substring pass either: `/api/walk-in/sales` answers `?q=` over the whole
-   * merged feed, and re-filtering that answer against the five painted facts
-   * would drop a sale the server matched on its phone number or a line item
-   * beyond the two the detail cell summarises.
-   *
-   * `SearchField` already debounces at 320ms, so the raw value is the key.
-   */
+  /* The find text is SESSION-LOCAL and rides the FETCH KEY. */
   const [query, setQuery] = useState('');
   const q = query.trim();
 

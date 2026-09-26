@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Read-only Shopify-like bundle components strip on Products.
- * Edit pairs deep-links to Inventory Graph (sku_relationships SoT).
- * Distinguishes catalog edges from packing kit_parts names.
- *
- * Callers: ProductDetail. (KitPartsWorkspace was its second caller until that
- * view was removed 2026-09-15.)
- * API: GET /api/sku-catalog/[id]/composition.
- * Schema: sku_relationships + sku_kit_parts (read via composition merge).
- * User: Implement multi-tenant kit / bundle display (Shopify-like).
- */
+/** Read-only Shopify-like bundle components strip on Products. */
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';

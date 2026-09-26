@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Unbox line putaway writer — `POST /api/receiving/lines/:id/stage`.
- *
- * ONE writer for the two surfaces that place an open Unbox line: the notes
- * footer location pill and the Displays → Locations leaf. Both must dispatch
- * the same optimistic row update and invalidate the same Last-entry read, or
- * placing from the leaf leaves the pill reading the stale bin.
- *
- * Unbox storage only (`receiving_line_putaway`); never triage
- * `staging_location_id`, never the packing-desk ledger.
- */
+/** Unbox line putaway writer — `POST /api/receiving/lines/:id/stage`. */
 
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

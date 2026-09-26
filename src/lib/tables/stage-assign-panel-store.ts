@@ -1,10 +1,4 @@
-/**
- * Which bulk stage-assign panel is open under the column-action foot.
- *
- * The Pick / Pack person icons live in {@link DataTableColumnActionRow}; hotkeys
- * and rail verbs flip this store so the same upward search opens without a
- * Dialog or Popover.
- */
+/** Which bulk stage-assign panel is open under the column-action foot. */
 
 'use client';
 

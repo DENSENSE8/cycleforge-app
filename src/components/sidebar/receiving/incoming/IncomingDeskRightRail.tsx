@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * ONE RightRailHost occupant for Incoming desk Band-1 tools — Check receipts
- * and tracking filter paste. Opening a second tool replaces the first; host ✕
- * clears the whole rail (no stacked registrars / no Resume toast from a buried
- * panel resurfacing).
- */
+/** ONE RightRailHost occupant for Incoming desk Band-1 tools — Check receipts and tracking filter paste. */
 
 import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';

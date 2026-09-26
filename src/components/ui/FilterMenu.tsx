@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * The filter menu for RAILS and sidebars — a lit trigger and a list of rows.
- *
- * ## Why this exists after the teardown
- *
- * `WorkbenchFilterPopover` was deleted on 2026-08-29
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.1) because of one feature:
- * `density="field"`, which mounted the funnel INSIDE a `SearchField` trailing
- * slot. That is how the To-ship desk ended up with a funnel in the field and a
- * second funnel beside it — two controls, one job (§ 2.1).
- *
- * The rails were never the problem. `ReceivingRecentRailFilters`,
- * `StationHistoryRailFilters`, the Incoming source/kind facets and the staff
- * scope button are sidebar chrome beside a list, not table chrome, and they
- * still need somewhere to put their options.
- *
- * So this is the same menu with the field density **removed**. There is no way
- * to seat it inside a text input, which is the whole correction: a control that
- * narrows rows sits beside the field, never in it.
- *
- * A binding-backed table does NOT use this — {@link DataTable} draws its own
- * single filter control from `filter.options`. Reaching for this from a table
- * surface is the fork coming back.
- */
+/** The filter menu for RAILS and sidebars — a lit trigger and a list of rows. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';

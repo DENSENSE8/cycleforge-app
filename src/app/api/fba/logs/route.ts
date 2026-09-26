@@ -11,10 +11,7 @@ const VALID_EVENTS = ['SCANNED', 'READY', 'VERIFIED', 'BOXED', 'ASSIGNED', 'SHIP
 type SourceStage = (typeof VALID_STAGES)[number];
 type EventType = (typeof VALID_EVENTS)[number];
 
-// ── GET /api/fba/logs ─────────────────────────────────────────────────────────
-// List fba_fnsku_logs with optional filters.
-// Query params: fnsku, source_stage, event_type, staff_id, fba_shipment_id,
-//               from (ISO date), to (ISO date), limit, offset
+// ── GET /api/fba/logs ───────────────────────────────────────────────────────── List fba_fnsku_logs with optional filters.
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -115,13 +112,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'fba.view', feature: 'fba' });
 
-// ── POST /api/fba/logs ────────────────────────────────────────────────────────
-// Manually insert an fba_fnsku_log entry.
-// Useful for admin corrections, tech-station scans, and testing.
-// Body: { fnsku, source_stage, event_type,
-//         fba_shipment_id?, fba_shipment_item_id?, tech_serial_number_id?,
-//         quantity?, station?, notes?, metadata? }
-// Actor is from the verified session.
+// ── POST /api/fba/logs ──────────────────────────────────────────────────────── Manually insert an fba_fnsku_log entry.
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

@@ -6,12 +6,7 @@ import {
   compoundSlotInstantFace,
 } from './compound-slot-face';
 
-/**
- * The faces the inventory-events cell map used to own, now engine capability.
- * The test exists because the port that added the cell map was rejected for
- * adding it — so the replacement has to be provably the same behaviour, chosen
- * by display type rather than by family.
- */
+/** The faces the inventory-events cell map used to own, now engine capability. */
 describe('compound slot faces', () => {
   const NOW = Date.UTC(2026, 8, 4, 12, 0, 0);
   const at = (msAgo: number) => new Date(NOW - msAgo).toISOString();

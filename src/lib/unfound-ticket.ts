@@ -1,10 +1,4 @@
-/**
- * Shared building blocks for unfound-queue → Zendesk tickets.
- *
- * Extracted so the push route and the AI-draft route compose the SAME
- * human-friendly ticket from the SAME queue-row query. Pure + DB helpers only;
- * the Zendesk REST call stays in the route.
- */
+/** Shared building blocks for unfound-queue → Zendesk tickets. */
 
 import pool from '@/lib/db';
 

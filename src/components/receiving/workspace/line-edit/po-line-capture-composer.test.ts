@@ -5,18 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { PoLineCaptureRow } from './PoLineCaptureRow';
 import { STATION_SCAN_INSET_BEVEL_CLASS } from '@/components/station/scan-depth';
 
-/**
- * The Unbox capture composer's ANATOMY, pinned in the rendered DOM rather than
- * in prose.
- *
- *     [ Tags ][ Serial ……… grows ][ ✓ exact │ 📷 photos ]
- *
- * Left is the job (which grade, which identifier); right is what verifies it.
- * The two properties worth a test are the two that silently broke before: the
- * trailing controls must come AFTER the field in document order, and they must
- * be ONE group — otherwise a state that drops the commit cell (a waived line)
- * leaves the camera floating in the middle of the bar.
- */
+/** The Unbox capture composer's ANATOMY, pinned in the rendered DOM rather than in prose. */
 function render(props: Partial<React.ComponentProps<typeof PoLineCaptureRow>> = {}) {
   return renderToStaticMarkup(
     React.createElement(PoLineCaptureRow, {
@@ -102,10 +91,7 @@ describe('PO-line capture composer anatomy', () => {
   });
 
   it('draws no rules at all — no bar hairlines, no cell seams', () => {
-    // The cells already separate themselves: Tags is a filled plate, Serial is
-    // a recessed field, the check is emerald, Photos is blue. A seam between two
-    // cells that are already different colours draws a line over a boundary
-    // that was never in question.
+    // The cells already separate themselves:
     const html = render();
     // A rule is a non-zero WIDTH utility (`border`, `border-t`, `border-2`,
     // `divide-x`). `border-0` is a removal. The Serial field's inset bevel

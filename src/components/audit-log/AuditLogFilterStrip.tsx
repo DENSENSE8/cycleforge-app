@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Shared date + staff filter strip for every audit-log section.
- *
- * URL contract:
- *   ?day=YYYY-MM-DD   — single-day shortcut (clears start/end)
- *   ?start=ISO&end=ISO — explicit custom range (clears day)
- *   ?staffId=<int>    — actor filter
- *
- * The strip is intentionally section-agnostic so it can sit above any picker
- * (PO, tracking, serial, SKU…). Selections persist across section switches.
- */
+/** Shared date + staff filter strip for every audit-log section. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

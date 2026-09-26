@@ -1,11 +1,4 @@
-/**
- * POST /api/receiving/inbound/import-csv
- *
- * Batch desk import — client parses CSV rows and posts them here. Each row
- * goes through importDeskInboundRow (same UPSERT as Add). Amazon native
- * returns still ingest when ASIN is not in sku_catalog so Tracking IDs
- * register for unbox.
- */
+/** POST /api/receiving/inbound/import-csv */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

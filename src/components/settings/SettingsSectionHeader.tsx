@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Settings child-page chrome — the kiosk-devices back + title, shared.
- *
- * One component so `/settings/ai` (and every other hub card) can leave the
- * same way `/settings/devices` already can. Do not fork a second chevron.
- *
- * Callers: KioskDevicesWorkspace + every `/settings/<section>` page except the
- * hub (`/settings`). Nested integration detail backs to `/settings/integrations`.
- */
+/** Settings child-page chrome — the kiosk-devices back + title, shared. */
 
 import type { ReactNode } from 'react';
 import Link from 'next/link';

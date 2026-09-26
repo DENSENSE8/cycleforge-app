@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Right-pane workspace editor for a single receiving line — the UNBOX display,
- * and the MASTER/anchor for the workspace UX. All form state, effects, and
- * handlers live in `useUnboxLineController` (which composes the mode-agnostic
- * `useReceivingLineCore`); this file is pure composition.
- *
- * **The centre is the carton.** There is no tab strip in the workbench body:
- * `overview` (PO-line ledger → label preview) IS the body, and every other
- * display — Ticket, Photos, Linkage, Inventory, Claim included — lives in the
- * right-edge {@link StationDisplaysPushStack}. Not a `RightRailHost` occupant
- * (`detail:receiving` keeps the float host).
- *
- * Centre `ProcedureDeck` stays parked. Bottom dock is the raised Omnichannel
- * notes bubble ({@link WorkspaceNotesCard}) with trailing divided Print ·
- * Receive — not the flush two-band procedure floor (that stack is parked on
- * the `unbox-work` worktree for a later task). Enter on notes = chat Send →
- * Print · Receive; ghost autocomplete uses the label-note MRU bank.
- *
- * Triage (the identify-before-unbox pass) is its own lean panel
- * ({@link TriagePanel}); the two no longer share a JSX shell or a capability
- * matrix. The testing display (/tech) composes the SAME core + cards with its
- * own controller, so the carton/identity logic lives in exactly one place.
- */
+/** Right-pane workspace editor for a single receiving line — the UNBOX display, and the MASTER/anchor for the workspace UX. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
@@ -163,22 +141,7 @@ export function LineEditPanel({
   const ticketMode = composerMode === 'ticket';
   const [ticketClaimMode, setTicketClaimMode] = useState<'create' | 'link'>('link');
 
-  /*
-   * The composer no longer collapses the context blocks — operator ruling,
-   * 2026-08-30.
-   *
-   * Auto-collapse had three composer triggers: entering Ticket mode, the mode
-   * change callback, and FOCUS. Focus is the one that made it unusable: a click
-   * into the note field on Unbox — the station's whole job — folded Items and
-   * Label away and left the centre empty above the dock. Ticket mode is no
-   * better now that the dock holds the claim draft itself: the operator is
-   * writing ABOUT the items, so hiding them is backwards.
-   *
-   * Collapse-all and the band toggles still drive it. Scroll does NOT — a
-   * 24px nudge used to fold Items + Label, remount the serial field, and
-   * scrollIntoView the caret, which rubber-banded the label the operator was
-   * trying to read.
-   */
+  /* The composer no longer collapses the context blocks — operator ruling, 2026-08-30. */
 
   // New line → sticker hidden again (the Label row starts shut).
   useEffect(() => {
@@ -186,13 +149,7 @@ export function LineEditPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- close is stable enough; only the line flips
   }, [row.id]);
 
-  /**
-   * Filing a claim opens it in BOTH surfaces — the transitional rule and its
-   * end date live in {@link CLAIM_RENDERS_IN_BOTH}, shared with Testing so the
-   * two stations cannot drift. Open lights both in the same mode; CLOSING is
-   * centre-only (`closeClaimView`) — the rail is the surface the floor already
-   * trusts.
-   */
+  /** Filing a claim opens it in BOTH surfaces — the transitional rule and its end date live in {@link CLAIM_RENDERS_IN_BOTH}, shared with… */
   const onOpenClaim = useCallback(
     (mode: 'create' | 'link') => {
       // Centre — where the claim is going.
@@ -289,19 +246,7 @@ export function LineEditPanel({
     ? formatDraftTicketNumber(nextTicketNumber.data ?? null)
     : null;
 
-  /**
-   * Carton open → the composer is on UNBOX. Always.
-   *
-   * This effect used to flip the composer to Ticket whenever the carton landed
-   * linked or unfound. Two things made that wrong: the mode is session-sticky,
-   * so a Ticket flip outlived the carton that justified it; and the Ticket tab
-   * is no longer a passive chat — on an unlinked carton it is now the CLAIM
-   * (`useComposerTicketClaim`), so auto-landing there pointed a claim body at
-   * an operator who had only walked up to scan a box. Ticket is one press away
-   * (⌥2 / the mode face). Scanning is the station's job and it gets the field.
-   *
-   * The claim MODE seed stays — it is what the rail's Ticket leaf opens on.
-   */
+  /** Carton open → the composer is on UNBOX. */
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveUnboxTicketContextOpen(row, hasTicket);
@@ -426,11 +371,7 @@ export function LineEditPanel({
     yieldUnboxStationPushesOnAssistantOpen(yieldPeersRef.current);
   }, [assistantOpen]);
 
-  // Cockpit auto-follow yields to an EXPLICIT close (per CARTON — the parent, not
-  // the active child line). Holds the carton the operator closed the rail on;
-  // a different carton passes the gate and defaults open again. Keying this on
-  // the child line let a sibling switch re-open the rail every time
-  // (`display/scan-cockpit.md`).
+  // Cockpit auto-follow yields to an EXPLICIT close (per CARTON — the parent, not the active child line).
   const cartonKey = row.receiving_id ?? row.id ?? null;
   const cockpitClosedForCartonRef = useRef<number | null>(null);
   const closeDisplays = useCallback(() => {
@@ -504,18 +445,7 @@ export function LineEditPanel({
     openDisplays,
   ]);
 
-  // Cockpit auto-follow — the right rail is the CURRENT step's reference
-  // (`display/scan-cockpit.md`, DO/KNOW split). On carton open and each step
-  // advance, open the step's `railLeaf`; the leaf swaps as the step changes.
-  // Yields to: an explicit close this carton (cockpitClosedForCartonRef); an
-  // operator reading an exception surface (Ticket); ticket-context cartons
-  // (linked chat / unfound claim — Ticket wins, never classify railLeaf);
-  // a mid photo drill (Move/Send); Displays Root Index **or any other leaf
-  // the operator picked**. `item_photos` is owned by the Compare effect above.
-  //
-  // Refs update only after `activeKey` is ready — advancing them on a null
-  // early-return consumed `cartonChanged` and let a later classify settle
-  // overwrite Ticket (unfound recent-click bug).
+  // Cockpit auto-follow — the right rail is the CURRENT step's reference (`display/scan-cockpit.md`, DO/KNOW split).
   const prevCockpitActiveKeyRef = useRef<string | null>(null);
   const prevCockpitCartonRef = useRef<number | null>(null);
   useEffect(() => {
@@ -539,10 +469,7 @@ export function LineEditPanel({
 
     const ticketCtx = resolveUnboxTicketContextOpen(row, hasTicketId);
     if (ticketCtx.open) {
-      // Exception carton — leave the rail where the operator put it rather
-      // than driving it to this beat's reference. The composer is NOT flipped
-      // to Ticket here any more: arrival lands on Unbox (see the carton-open
-      // effect above), and this runs on every step advance besides.
+      // Exception carton — leave the rail where the operator put it rather than driving it to this beat's reference.
       return;
     }
 
@@ -553,10 +480,7 @@ export function LineEditPanel({
     ) {
       return; // never interrupt a Move/Send drill
     }
-    if (showDisplays && activeSideTab === railLeaf) return; // already showing it
-    // Operator browse — Index (Back/Esc) OR a leaf that is not this beat's
-    // reference (picked Photos while railLeaf is Units). Resume on step
-    // advance OR a new carton (same first step must still land on railLeaf).
+    if (showDisplays && activeSideTab === railLeaf) return; // already showing it Operator browse — Index (Back/Esc) OR a leaf that is not this beat's reference (picked Photos while railLeaf is Units).
     if (showDisplays && activeSideTab !== railLeaf && !stepChanged && !cartonChanged) {
       return;
     }
@@ -595,25 +519,12 @@ export function LineEditPanel({
     openDisplays('photos');
   }, [openDisplays]);
 
-  /**
-   * OPEN-only, never a toggle (2026-08-19). This is a menu ROW inside the
-   * ticket chip's dropdown, and a row that closes the column it just named
-   * reads as a dead click — the operator picked "Message" to go read the
-   * thread. Dismissing Displays belongs to the column's own chrome
-   * (`→|` / ⌘]), the same split Photos already has (`openPhotosDisplay` opens
-   * and never closes).
-   */
+  /** OPEN-only, never a toggle (2026-08-19). */
   const openTicketView = useCallback(() => {
     setComposerMode('ticket');
   }, [setComposerMode]);
 
-  /**
-   * Auto-match "Find ticket" → the Ticket surface.
-   *
-   * Unlinked carton → this is a CLAIM, so it goes through `onOpenClaim` and
-   * lights both surfaces. Linked carton → the body is chat, which has never
-   * been paired; the centre opens alone.
-   */
+  /** Auto-match "Find ticket" → the Ticket surface. */
   const openFindTicketDisplay = useCallback(() => {
     if (hasTicketId) {
       setComposerMode('ticket');
@@ -777,22 +688,7 @@ export function LineEditPanel({
     [focusStep],
   );
 
-  /* ── Replay the last receive (the composer's ⓘ) ────────────────────────────
-   * Dismissing the receive panel used to destroy the only record of what just
-   * happened: `setReceiveResult(null)` and the verdict was gone. An operator
-   * who cleared it to get the note field back — or who moved a carton and came
-   * back — had no way to re-read whether inventory actually took it.
-   *
-   * So the last verdict is REMEMBERED here, keyed to the line it belongs to.
-   * The key is the whole safety property: a "Receive complete" replayed above
-   * a different carton's composer would be a lie about which carton it
-   * describes, and the panel does not name one. No line match, no offer — the
-   * ⓘ falls back to its Displays → Timeline job.
-   *
-   * Memory is per-mount and in-process on purpose. This is "what did I just
-   * do", not an audit trail; the durable record is the carton's timeline, one
-   * click away through the same glyph.
-   * ─────────────────────────────────────────────────────────────────────── */
+  /* ── Replay the last receive (the composer's ⓘ) ──────────────────────────── Dismissing the receive panel used to destroy the only record… */
   const [remembered, setRemembered] = useState<{
     lineId: number;
     result: ReceiveResult;
@@ -930,20 +826,7 @@ export function LineEditPanel({
 
   const showRightPushChrome = showDisplays;
 
-  /**
-   * Scan-station chrome for Displays `←|` + carton `↑ ↓`.
-   *
-   * **Closed:** {@link ScanStationUtilityRail} — vertical `↑↓` top, `←|` in the
-   * bottom footer (left-dock expand twin).
-   * **Open (2026-08-18):** the utility rail unmounts and the carton cursor does
-   * NOT re-mount — the column's top-right corner is the Macro verb cluster's
-   * (`headerActions`, `⋮` last). So carton prev/next is unreachable while
-   * Displays is open; hide the column (`→|` on the footer search trailing
-   * track) to get it back. Ruled deliberately — revisit if the bench reports
-   * hopping cartons with reference open.
-   *
-   * Cursor mapping matches left sidebar / DeskRailChromeRow: ↑ prev · ↓ next.
-   */
+  /** Scan-station chrome for Displays `←|` + carton `↑ ↓`. */
 
   const utilityRailBody = !showDisplays ? (
     <StationDisplaysUtilityRail
@@ -967,11 +850,8 @@ export function LineEditPanel({
     />
   ) : null;
 
+  // TODO(daily-triage F0→F1):
   // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
-  // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`). Unbox has no free
-  // slot for it: the left context column already renders the Queue/Viewed/
-  // History rail, and the right edge is Displays ∪ `detail:receiving` ∪ AI.
-  // In-flow identity — hairline abuts PO lines (no absolute float + clearance air).
   const stationContextBar = (
     <StationContextBar
       placement="flow"
@@ -984,10 +864,7 @@ export function LineEditPanel({
           onToggleTicketView={openTicketView}
           ticketViewActive={ticketViewActive}
           onToggleClaimView={() => {
-            // One door: `onOpenClaim` is what lights BOTH surfaces. Flipping
-            // the composer here directly is how this chip used to open the
-            // claim in the centre and leave the rail on whatever it was
-            // showing. Close stays centre-only.
+            // One door: `onOpenClaim` is what lights BOTH surfaces.
             if (claimViewActive) closeClaimView();
             else onOpenClaim('link');
           }}
@@ -1097,10 +974,7 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
-                      {/* One box for the pair. No margin between them — a gap
-                          would break the shared silhouette the peel hinges on
-                          — and the focus ring lives out here, on the whole
-                          shape, rather than around the composer half only. */}
+                      {/* One box for the pair. */}
                       <WeldedStack welded={showReceiveFeedback}>
                       {showReceiveFeedback ? (
                         <ReceiveFeedbackRegion
@@ -1167,10 +1041,7 @@ export function LineEditPanel({
                             }
                             openDisplays('checklist');
                           }}
-                          // The corner is ONE slot. When this line has a
-                          // receive to re-read, the glyph offers it; otherwise
-                          // ⓘ opens the local status stamps dialog. Never both, and
-                          // never a second glyph beside it.
+                          // The corner is ONE slot.
                           headerAction={
                             recentVerdict && !liveReceiveFeedback
                               ? {
@@ -1192,21 +1063,7 @@ export function LineEditPanel({
                 <motion.div initial={false} animate="show" variants={revealContainer}>
                   <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                 </motion.div>
-                {/*
-                  A FILED ticket is part of this carton's record, so it shows
-                  whenever one exists — Unbox mode included (operator ruling
-                  2026-08-31). It used to mount only in Ticket mode, which meant
-                  an operator taking a scan note could not see the conversation
-                  that explains why the carton is a claim without changing modes
-                  first. Mode picks what the COMPOSER writes to; it does not
-                  decide whether the record is visible.
-
-                  An unlinked carton still has no pane here: the composer's
-                  Ticket tab is the claim (template body in the field, Enter
-                  files it), and mounting the old form above it meant two
-                  editors for one message. The rail's Ticket leaf still carries
-                  the full claim form for the floor — see CLAIM_RENDERS_IN_BOTH.
-                */}
+                {/* A FILED ticket is part of this carton's record, so it shows whenever one exists — Unbox mode included (operator ruling 2026-08-31). */}
                 {hasTicketId ? (
                   <StationTicketPane
                     row={row}
@@ -1222,13 +1079,7 @@ export function LineEditPanel({
             </div>
 
             {row.receiving_id != null ? (
-              /* Carton evidence fan — the carton's whole evidence set (arrival
-                 package + unbox-carton + legacy), so a carton whose photos
-                 predate the unbox_carton stage split still shows here instead of
-                 reading empty. Item evidence (RECEIVING_LINE + receiving_item)
-                 currently has NO desktop capture surface — see the note in
-                 `photo-evidence-chain-INDEX`. New captures taken from this peek
-                 still stamp `receiving_unbox_carton` (write path unaffected). */
+              /* Carton evidence fan — the carton's whole evidence set (arrival package + unbox-carton + legacy), so a carton whose photos predate the… */
               <ReceivingPhotoPeek
                 receivingId={row.receiving_id}
                 staffId={Number(staffId) || 0}
@@ -1259,15 +1110,7 @@ export function LineEditPanel({
                 }
                 const tab = id as UnboxSideTab;
                 if (tab === 'ticket') {
-                  // TRANSITIONAL — Ticket renders in BOTH surfaces, so this row
-                  // OPENS the leaf instead of forwarding.
-                  //
-                  // It used to jump into centre Ticket mode and bounce the rail
-                  // straight back to the index ("not a second primary editor in
-                  // the right column"), which is why pressing Ticket out here
-                  // read as a dead row: the centre changed behind the open
-                  // Displays column and the rail never moved. Retire
-                  // {@link CLAIM_RENDERS_IN_BOTH} and it forwards again.
+                  // TRANSITIONAL — Ticket renders in BOTH surfaces, so this row OPENS the leaf instead of forwarding.
                   if (!hasTicketId) {
                     onOpenClaim('link');
                     return;

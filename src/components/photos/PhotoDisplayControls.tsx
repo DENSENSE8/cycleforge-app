@@ -15,24 +15,7 @@ import { cn } from '@/utils/_cn';
 import { PHOTO_GRID_DENSITY_ICONS } from './PhotoGridDisplayControls';
 import { mediaBandCellClass, mediaBandCellGroupClass } from './photo-library-controls';
 
-/**
- * Band 3 control strip for `/ops/photos`: density · refresh · select ·
- * icons/list. Sort / Views / media type / filters live on Bands 1–2.
- *
- * **Every control is a full-height band CELL** — `self-stretch aspect-square`
- * via {@link mediaBandCellClass}, never a pinned `h-8` square and never an
- * `h-7` button inside a `p-0.5` bordered box. Those two shapes are what made
- * this strip 32px and 34px tall inside a 28px row, so the controls overflowed
- * the band and no two of them shared a top or bottom edge. Cells abut inside a
- * group (one collapsed hairline) and groups separate by one gap unit, so the
- * row reads as three clusters of peers.
- *
- * It renders the density cells itself rather than delegating to
- * {@link PhotoGridDisplayControls}: that component serves the embedded ATTACH
- * pickers (claim · move · media picker), which are not on a 28px chrome band
- * and legitimately keep the boxed-group face. Only the icon MAP is shared, so
- * the two surfaces cannot disagree about which glyph means which size.
- */
+/** Band 3 control strip for `/ops/photos`: */
 type DisplayItem = {
   id: 'icons' | 'list';
   label: string;
@@ -131,16 +114,7 @@ export function PhotoDisplayControls({
         </HoverTooltip>
       </div>
 
-      {/*
-        Display toggle — Icons (the flat photo stream) vs List. ALWAYS rendered,
-        including at any surviving folder drill level: it is the only chrome
-        control that escapes folder mode, so hiding it made the old default
-        landing state inescapable. Switching either way keeps the active date
-        range, so a drill degrades into a filter.
-
-        Icons targets DEFAULT_PHOTO_LIBRARY_VIEW (the flat grid), NOT `folders`
-        — pointing it back at the hierarchy would make the escape hatch a loop.
-      */}
+      {/* Display toggle — Icons (the flat photo stream) vs List. */}
       <div className={mediaBandCellGroupClass} role="group" aria-label="Photo display">
         {DISPLAY_ITEMS.map(({ id, label, icon: Icon }) => {
           const active = (view === 'list' ? 'list' : 'icons') === id;

@@ -1,16 +1,4 @@
-/**
- * Staff-day catalog guards, materialization, resolver and adapter — the family
- * behind `/reports?tab=staff`.
- *
- * Load-bearing beyond shape checks:
- *
- * - the UNCHECKED ROW. `checked_at` is null on a task the staffer never
- *   ticked, and that is the row the table exists to surface. The fact must
- *   resolve to blank (engine blank rule sinks it) while the pill keeps the
- *   WORD — a blank pill would read as a rendering bug, a fake date would sort.
- * - the CHRONOLOGICAL STATE SORT. The state header compares through
- *   `slotDisplayType: 'date'`, so `Checked` rows order by WHEN, not lexically.
- */
+/** Staff-day catalog guards, materialization, resolver and adapter — the family behind `/reports?tab=staff`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

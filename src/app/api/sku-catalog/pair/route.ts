@@ -3,20 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { batchPair } from '@/lib/neon/pairing-queries';
 
-/**
- * POST /api/sku-catalog/pair  (compatibility shim)
- *
- * Pairs a single platform item_number to a sku_catalog entry. Existed before
- * pair-batch landed and is still called by the manuals SkuPairingPanel.
- *
- * Internally delegates to batchPair with one accept entry so backfill,
- * audit, and idempotency semantics match the new endpoint exactly.
- *
- * Body: { skuCatalogId, itemNumber, platform, accountName? }
- *
- * DELETE /api/sku-catalog/pair  (unchanged)
- * Removes a platform pairing row entirely. Body: { platformIdRowId }.
- */
+/** POST /api/sku-catalog/pair (compatibility shim) */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     try {

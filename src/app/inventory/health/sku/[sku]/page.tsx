@@ -15,39 +15,7 @@ import { Panel } from '@/design-system/primitives';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/health/sku/[sku] — Per-SKU operations view.
- *
- * Read-only. Sections:
- *   - sku_catalog metadata (title, category, GTIN, UPC, EAN, active flag)
- *   - Current stock (sku_stock.stock + .boxed_stock)
- *   - Bin distribution (bin_contents rows joined to locations)
- *   - Serial units for this SKU grouped by current_status
- *   - Open order_unit_allocations
- *   - sku_stock_ledger (last 100 rows)
- *   - inventory_events (last 50)
- *
- * EVERY one of those five row sections is on the slot-table ENGINE, mounted
- * through `./SkuDetailTables` (the client islands this server component
- * renders — the loaders below stay server-side). Three reuse a registered
- * family rather than a hand column list: recent serial units mount
- * `inventory-units`, recent inventory events mount `inventory-events`, and
- * open allocations mount `unit-allocations` on this desk's own layout
- * document. Bins and the stock ledger are families of their own (`sku-bins`,
- * `sku-ledger`) because a (sku, bin) pair and a signed stock movement are
- * entities nothing else in the product lists. The second table engine this
- * page used to import is gone from it.
- *
- * Each query is independent. Missing sections (e.g. SKU has no
- * sku_catalog row) degrade gracefully rather than 404-ing the page.
- *
- * Tenant scoping: every read here goes through `tenantQuery(orgId, …)` with an
- * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
- * (`requirePermission` → `user.organizationId`) — never from the route param.
- * SKU strings collide across orgs, so a bare owner-pool read keyed on `sku`
- * alone returns another tenant's rows (RLS does not bite on the owner pool).
- * That was live here for all eight loaders until 2026-08-21.
- */
+/** /inventory/health/sku/[sku] — Per-SKU operations view. */
 
 interface CatalogRow {
   id: number;
@@ -107,12 +75,7 @@ interface LedgerRow {
   delta: number;
   reason: string;
   dimension: string;
-  /**
-   * `NULL` for a machine write. Selected so the ledger's actor can paint as a
-   * PERSON face: the retired cell printed `staff_name ?? 'system'`, which names
-   * a machine as though it were a staffer, and the person cell needs the id to
-   * tell an absent actor from a named one.
-   */
+  /** `NULL` for a machine write. */
   staff_id: number | null;
   staff_name: string | null;
   ref_serial_unit_id: number | null;

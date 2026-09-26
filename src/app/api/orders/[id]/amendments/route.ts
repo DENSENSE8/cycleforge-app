@@ -5,20 +5,7 @@ import { isFulfillmentSubstitution } from '@/lib/feature-flags';
 import type { AmendmentTimelineRow } from '@/lib/timeline';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/orders/[id]/amendments
- *
- * The order's fulfillment substitutions (ordered-vs-fulfilled deviations),
- * newest first. Shaped so the client can drop the rows straight into
- * amendmentsToTimeline() for the shared EventTimeline, or render the pending-
- * approval queue. Read-only; the write paths are POST /substitute + the
- * /order-amendments/[id]/decision route.
- *
- * Returns an empty list (not an error) when the feature is disabled so a
- * consuming card can call it unconditionally and degrade cleanly.
- *
- * Permission: orders.view.
- */
+/** GET /api/orders/[id]/amendments */
 export const GET = withAuth(async (request, ctx) => {
   if (!isFulfillmentSubstitution()) {
     return NextResponse.json({ ok: true, amendments: [] });

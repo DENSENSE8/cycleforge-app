@@ -1,52 +1,6 @@
 'use client';
 
-/**
- * Warranty claim inspector — Desk-family `RightRailHost` card (`detail:warranty`,
- * non-modal **push**), reached by clicking a row on the claims grid.
- *
- * Stack (ONE band → index|leaf → floor):
- *   1. {@link DeskInspectorIndexShell} paints the single top band —
- *      `[‹ Back] Claim …… [warranty clock] [▦] [⤢ ✕ reserved]` — and, beneath
- *      it, Overview · Subject · Repairs · Timeline · Conversation
- *   2. {@link InspectorActionFloor} — Source · Ticket, flush trailing Delete
- *
- * **There is no identity header (2026-08-21.)** The rail used to lead with a
- * `PaneHeaderLabel` — status + clock chips as an eyebrow OVER the claim
- * number — so a leaf read as two stacked header lines above its own band, and
- * the host's absolutely-positioned `⤢ ✕` sat on that header rather than on a
- * band cell. The claim number, its status and the product now open the
- * Overview leaf (identity is a fact, and facts live with the facts); the
- * clock is a read-only metric, so it rides the band's trailing cell.
- *
- * `WarrantyClaimActions` (deny / repair / quote / RMA forms) sits under the
- * Overview leaf rather than on the floor: the floor is icons-first and terminal,
- * and those are multi-field forms. Same placement Orders uses for
- * `OrderUpdateDock` under its Order leaf.
- *
- * ## What this replaced, and why it was worth replacing
- *
- * Until 2026-08-10 this was a page-local right-edge column mounted straight into
- * `WarrantyWorkspace`: `w-[420px] shrink-0 border-l … shadow-xl`, wrapped in an
- * `AnimatePresence` keyed on the claim id, sliding in on a spring `x: 420`.
- * Every one of those is a documented ban:
- *
- * - a **private** `w-[420px]` right-edge element is precisely what
- *   `src/lib/right-rail/store.ts` exists to prevent — it could sit beside a
- *   `RightRailHost` occupant, giving the work surface two right columns;
- * - the per-claim `key` played exit → empty → enter on every step, the defect
- *   the "stable occupant id" rule names for queue-walk inspectors;
- * - a **spring** on a width its siblings lay out against rubber-bands the work
- *   surface (`push.rail` must stay a tween), and an `x` translate slides the
- *   column out of the slot it just reserved;
- * - the shell re-typed the card recipe by hand and reached for `shadow-xl`
- *   instead of `elevationClass`;
- * - and it had no resize, no park, and no `→|`.
- *
- * It survived because nothing could see it: "this table has no inspector" and
- * "this table has a hand-rolled one" looked identical from the outside. The
- * binding now declares `recordPlane: { kind: 'inspector', occupantId:
- * 'detail:warranty' }`, and the union has no arm that can describe a fork.
- */
+/** Warranty claim inspector — Desk-family `RightRailHost` card (`detail:warranty`, non-modal **push**), reached by clicking a row on the… */
 
 import { useEffect, useState } from 'react';
 import { Loader2 } from '@/components/Icons';
@@ -147,10 +101,7 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
           label: 'Overview',
           content: (
             <LeafBody>
-              {/* Identity in the BODY, not a second header line (2026-08-21).
-                  The band carries the current segment and nothing else; the
-                  claim number, its status and the product it is about are
-                  facts, so they read where the other facts are. */}
+              {/* Identity in the BODY, not a second header line (2026-08-21). */}
               <div className="mb-5 space-y-1">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="font-mono text-role-caption text-text-primary">
@@ -352,12 +303,7 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
       ariaLabel={`Warranty claim ${claim?.claimNumber ?? ''} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        {/* ONE band, and it is the TOP row — the host paints `⤢ ✕` absolutely
-            at `top-0 right-0`, so anything above the band would sit under
-            them. The identity header that used to lead this stack (eyebrow
-            chips over the claim number) was a second header line; it moved
-            into the Overview leaf, and the clock — a read-only metric — rides
-            the band's own trailing cell. */}
+        {/* ONE band, and it is the TOP row — the host paints `⤢ ✕` absolutely at `top-0 right-0`, so anything above the band would sit under them. */}
         {claim ? (
           <DeskInspectorIndexShell
             stance="index"

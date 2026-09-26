@@ -35,10 +35,7 @@ function fakes(
 }
 
 test('both tools carry the assistant.chat FLOOR; authority is per mutation kind', () => {
-  // The blanket studio.manage gate is gone: it made the chat path both tighter
-  // (a receiving operator could not ask for a move they could do by hand) and
-  // looser (a Studio admin could make receiving changes without any receiving
-  // permission) than the UI it shadows.
+  // The blanket studio.manage gate is gone:
   const tools = buildWriteTools('asst-1');
   assert.deepEqual(tools.map((t) => t.name).sort(), ['propose_mutation', 'revert_mutation']);
   for (const t of tools) assert.equal(t.permission, 'assistant.chat');

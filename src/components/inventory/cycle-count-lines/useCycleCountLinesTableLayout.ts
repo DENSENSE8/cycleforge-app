@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * The cycle-count-lines slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine (cascade resolve, staff-prefs RMW law, org
- * capture, Fields-picker data; see its docblock). Config, never a fork.
- *
- * Compound morph only: a stored `sheet` layout would open a `subtitle:1` track
- * for the variance tolerance, which the compound item cell paints inline —
- * `paintMorph` coerces, and the org write gate
- * (`slotMorphsFor('cycle-count-lines')`) refuses the foreign morph outright.
- */
+/** The cycle-count-lines slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine (cascade resolve,… */
 
 import {
   CYCLECOUNTLINES_FIELD_CATALOG,

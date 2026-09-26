@@ -2,38 +2,7 @@
 
 /**
  * `/m/orders/sync` — the phone's order-import screen.
- *
- * ## Why a page and not a sheet on the queue
- *
  * Operator 2026-09-15: *"a tiny sync button in the middle top is a terrible
- * display … title top left, a big CTA on the right side, that will then go to
- * another page with an X button top left."* An import is a minute-long job with
- * its own result to read, so it gets its own destination. The queue keeps one
- * job (read rows); this screen keeps one job (bring rows in).
- *
- * The route is on `OWN_TOP_BAR_PREFIXES`, so the shell paints no host header
- * here and this screen owns the ONE top bar — the same rule that stops the
- * kiosk's double-band bug. X exits; there is no second closer.
- *
- * ## Three states, all of them designed
- *
- * - **Idle** — what the import will do, and the two ways to start it.
- * - **Running** — {@link OrderSyncRunView}'s measured ledger; its own X cancels.
- * - **Settled** — the same ledger, frozen, with the result sentence. Nothing
- *   auto-dismisses: the operator acknowledges, and lands back on the queue.
- *
- * No door in the nav. This screen is reachable only from the outbound orders
- * queue's top-bar action (`/m/work`), which is the surface whose rows it
- * changes — a lane the phone can run needs no second entrance.
- *
- * ## Why X, and why not MobileDetailTopBar
- *
- * {@link MobileDetailTopBar} is the shared bar for phone RECORD screens: a back
- * chevron, a title stack, and a Scan seat. This is not a record — it is a FLOW
- * with an exit, which is exactly the case {@link StepProgressHeader} names when
- * it says a back affordance inside a flow uses X because the semantic is "exit
- * the flow". Scan is deliberately absent: an operator mid-import has one job,
- * and the run's own header is the only chrome once it starts.
  */
 
 import { useCallback } from 'react';

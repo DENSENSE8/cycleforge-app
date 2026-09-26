@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * One PACKAGE (carrier tracking number) on the Shipped desk ledger — an
- * {@link IndustrialRecord}:
- *
- *   spine │ photo │ CODE · carrier · TRK … · carrier status ·······│ shipped (scan-out)
- *         │       │ title · SKU · +N more ·························│ QTY [n]
- *         │       │ packer · packed · order ref ···················│ carrier state
- *
- * The photo lane is the box's first packing photo (evidence of THIS package),
- * else the title's initials. An open unmatched pack scan paints the hatched
- * `UNM` spine and its reason on band 3.
- */
+/** One PACKAGE (carrier tracking number) on the Shipped desk ledger — an {@link IndustrialRecord}: */
 
 import {
   IndustrialRecord,

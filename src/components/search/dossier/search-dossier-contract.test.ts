@@ -1,16 +1,4 @@
-/**
- * FIND dossier contract — one chrome tree for every `?sel=` type.
- *
- * Runs the four org-1 record shapes (order / unit / carton / SKU) through
- * `presentFindDossier` and the frame, and asserts what §8 of the plan scores:
- *   1. status is the first pinned band — no station banner above it;
- *   2. chrome keeps the same band order across records (only kinds change);
- *   4. the handoff is present and is the only write path (links, no forms);
- *   5. kinds with count 0 are omitted from the outline and the stream.
- *
- * Callers: node:test only. No HTTP API. No DB schema.
- * User: Session E / Phase 7 — dossier contract tests.
- */
+/** FIND dossier contract — one chrome tree for every `?sel=` type. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,20 +1,4 @@
-/**
- * Inbound source registry — the code-side SoT for the `source_type` discriminator
- * shared by every polymorphic inbound table (inbound_purchase_order_links,
- * _mirror, _equivalence, _merge_log) and the receiving_lines.inbound_source_type
- * cache.
- *
- * Plan: docs/incoming-universal-purchase-orders-plan.md §2.3, §9.8.
- * Contract: .claude/rules/polymorphic-tables.md (named CHECK per discriminator).
- *
- * ⚠ MUST STAY IN SYNC WITH THE DB CHECKS. This list and the named CHECK
- * constraints in 2026-07-01k (links/mirror/equivalence/merge_log) + 2026-07-01l
- * (receiving_lines_inbound_source_type_chk) enumerate the SAME set. Adding a
- * source is a two-step, same-PR change: extend every CHECK via migration AND add
- * the slug here (+ its receiving_line_facts Zod schema when it carries a payload).
- *
- * Pure module — no DB, no Deps.
- */
+/** Inbound source registry — the code-side SoT for the `source_type` discriminator shared by every polymorphic inbound table… */
 
 /** Every inbound purchase source this schema recognizes. Order is display order. */
 export const INBOUND_SOURCE_TYPES = ['zoho', 'ebay', 'amazon', 'manual'] as const;
@@ -28,12 +12,7 @@ export const INBOUND_SOURCE_LABELS: Record<InboundSourceType, string> = {
   manual: 'Manual',
 };
 
-/**
- * The `receiving_line_facts.fact_kind` that carries a source's marketplace
- * payload, when it has one. Zoho facts live in the narrow receiving_line_zoho
- * table (not the open facts registry), so 'zoho' maps to null here; 'manual' has
- * no marketplace payload. Extend when a new source registers a fact schema.
- */
+/** The `receiving_line_facts.fact_kind` that carries a source's marketplace payload, when it has one. */
 export const INBOUND_SOURCE_FACT_KIND: Record<InboundSourceType, string | null> = {
   zoho: null,
   ebay: 'ebay_purchase',
@@ -46,12 +25,7 @@ export function isRegisteredInboundSource(value: string): value is InboundSource
   return (INBOUND_SOURCE_TYPES as readonly string[]).includes(value);
 }
 
-/**
- * Assert a source is registered, or throw. Use in writers before any SQL so an
- * unregistered `source_type` fails fast in the app layer (mirrors the app-side
- * validation mandate in the polymorphic contract) rather than as a raw DB CHECK
- * violation.
- */
+/** Assert a source is registered, or throw. */
 export function assertRegisteredInboundSource(value: string): asserts value is InboundSourceType {
   if (!isRegisteredInboundSource(value)) {
     throw new Error(

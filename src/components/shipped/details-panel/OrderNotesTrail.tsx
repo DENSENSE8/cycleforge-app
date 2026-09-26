@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * The order's note trail — **the one writable home for an operator annotation
- * on an order** (`order_notes`, via `POST /api/orders/[id]/notes`).
- *
- * Until 2026-07-31 the same job had two writable homes on one panel: this
- * append-only trail and the legacy scalar `orders.notes` behind the editor
- * dock's "Notes" composer. `2026-07-28_order_notes.sql`'s SCOPE BOUNDARY says
- * two homes are only legitimate while they do genuinely different jobs, and
- * these did not — "a note about this order" is one job, and the scalar was
- * simply the worse implementation of it (the second person to touch a row
- * overwrote the first, with no record of who said either thing).
- *
- * So the scalar is now **read-only in the product**: it still renders (below),
- * carrying whatever note the SOURCE sent at ingest, is still
- * searched by the queue's ILIKE predicate, and still lights the row's corner
- * indicator — but nothing in the product writes it. Every new annotation lands
- * here, attributed and append-only.
- * → Order note grain.
- *
- * Mounted on the desk order inspector dock (`ShippedPanelEditorDock` with
- * `showNotes`) as `variant="dock"`. Morphing desktop uses `variant="strip"`
- * (one composer row in the action bar). Morphing on a `/m/` URL uses
- * `variant="compact"` inside a BottomSheet. One component so they can never
- * drift into two note UIs. Write path: `order_notes` via
- * `POST /api/orders/[id]/notes`.
- */
+/** The order's note trail — **the one writable home for an operator annotation on an order** (`order_notes`, via `POST… */
 
 import { useCallback, useMemo, useState } from 'react';
 import { Loader2, Plus } from '@/components/Icons';

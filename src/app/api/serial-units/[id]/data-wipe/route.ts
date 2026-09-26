@@ -4,21 +4,7 @@ import pool from '@/lib/db';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { recordDataWipe, WIPE_METHODS, type WipeMethod } from '@/lib/tech/recordDataWipe';
 
-/**
- * POST /api/serial-units/[id]/data-wipe
- *
- * Records a secure data-erasure / factory-reset for one unit — the electronics
- * refurb compliance gate. Domain logic (DATA_WIPED inventory_event + `data_wiped`
- * workflow tap that routes wiped→grade / failed→repair) lives in
- * src/lib/tech/recordDataWipe; this route is the HTTP shell: validation, the
- * formal audit_logs row, and the response the station UI expects. The wipe does
- * NOT change serial_units.current_status (gate, not a transition), so there is no
- * guard/409 path — only 400 / 404 / 200.
- *
- * Body: { wipe_success: boolean, wipe_method?: 'factory_reset'|'secure_erase'|
- *         'crypto_erase', wipe_cert_ref?: string, notes?: string,
- *         client_event_id?: string }
- */
+/** POST /api/serial-units/[id]/data-wipe */
 export const POST = withAuth(async (request, ctx) => {
   const segments = request.nextUrl.pathname.split('/').filter(Boolean);
   // .../api/serial-units/[id]/data-wipe → id is segments[-2]

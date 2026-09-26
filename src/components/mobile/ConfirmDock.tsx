@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * ConfirmDock — the 96px bottom action dock for mobile task screens.
- *
- *   ┌───────────────────────────────────────────┐
- *   │           [ Primary action ]              │  56–64px tall button
- *   │            secondary text-link            │  optional, 32px tall
- *   └───────────────────────────────────────────┘
- *
- * Mounted by the route as a flex sibling that anchors to the viewport bottom
- * (see `app/m/(shell)/pick/[orderId]/page.tsx`). Caller is responsible for
- * choosing the dock variant ('inset' for a separated white strip, 'overlay'
- * when content scrolls beneath).
- *
- * Loading state shows a centered spinner inside the button and disables both
- * actions. Tone presets keep the brand palette consistent across screens.
- */
+/** ConfirmDock — the 96px bottom action dock for mobile task screens. */
 
 import { Button } from '@/design-system/primitives';
 

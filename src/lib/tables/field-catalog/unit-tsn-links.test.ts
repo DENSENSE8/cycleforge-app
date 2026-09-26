@@ -1,11 +1,4 @@
-/**
- * Unit-TSN-links catalog guards + resolver/adapter behaviour — Wave D's port
- * of `ByUnitView.tsx`'s `tech_serial_numbers` table off hand HTML.
- *
- * Fixtures are the WIRE row: `/api/serial-units/<ref>?include=full` returns
- * the SQL row verbatim (snake_case), so a camelCase fixture would test a shape
- * that never reaches the desk.
- */
+/** Unit-TSN-links catalog guards + resolver/adapter behaviour — Wave D's port of `ByUnitView.tsx`'s `tech_serial_numbers` table off hand HTML. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

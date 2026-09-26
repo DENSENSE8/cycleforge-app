@@ -47,27 +47,7 @@ const CLAIM_CONTROL_GROUP = photoAttachControlGroupClass;
 const CLAIM_ICON_BUTTON = photoAttachIconButtonClass;
 const CLAIM_DENSITY_BUTTON = photoAttachDensityButtonClass;
 
-/**
- * Photo grid for claim / Move / Send selection (`mode="select"`) and the Photos
- * Displays gallery (`mode="view"`). Same flow as the receiving workspace's
- * `ReceivingPhotoButton` for capture: the desktop never opens a camera —
- * clicking the camera/"+" publishes a `receiving_photo_request` to the
- * operator's paired phone (`publishReceivingPhotoRequest`), the phone captures,
- * and the uploads stream back over Ably — `useReceivingPhotosRealtimeRefresh`
- * refetches so the new photos appear here live. In select mode, checked photos
- * attach to the Zendesk ticket / Move / Send payload; all PO photos are saved
- * to local storage regardless. View mode is inspect + capture only — no attach
- * chrome (selection is owned by Move / Send / Claim).
- *
- * Flush claim band: gap-0 header/controls/grid (Media Library keeps its own
- * photoGridLeafClass gaps). Grid density defaults to large (natural-height
- * tiles); the header toggle adjusts for the session only.
- *
- * Evidence preference (Plan 5): line-scoped item shots order FIRST (they are
- * the claim's primary evidence per the identity law); arrival package shots
- * stay selectable below for outer-damage claims. Selection behavior is
- * unchanged — nothing preselected on first open.
- */
+/** Photo grid for claim / Move / Send selection (`mode="select"`) and the Photos Displays gallery (`mode="view"`). */
 export function ClaimPhotoPicker({ photos, receivingId, mode = 'select' }: Props) {
   const selectable = mode === 'select';
   const { photos: list, selectedPhotoIds, togglePhoto, toggleSelectAll, refetch } = photos;

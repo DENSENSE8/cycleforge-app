@@ -15,17 +15,7 @@ interface PulseWorkspaceProps {
     unitId: string | null;
 }
 
-/**
- * One unit's timeline, newest-first at the caller. `q` is answered by the
- * ROUTE — `/api/inventory-events?q=` matches across four joined tables (the
- * catalog title, the serial, both bin names, the actor), none of which a
- * client-side pass over the mounted tracks could see.
- *
- * The `serial_unit_id` scope rides along even under a search because it is
- * SEMANTIC: it is the unit the operator picked in the sidebar, not a page they
- * fell off. The 200-row bound is what a search drops — the route opens to its
- * ceiling when `q` is present, so sending `limit` there would be ignored.
- */
+/** One unit's timeline, newest-first at the caller. */
 async function fetchUnitEvents(
     unitId: string,
     q: string,
@@ -66,14 +56,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
         placeholderData: (prev) => prev,
     });
 
-    /*
-     * The IDENTITY read, deliberately UNSEARCHED. The header answers "what is
-     * this unit and where is it" and the heading answers "how long is its
-     * chain" — both are facts about the UNIT, so deriving them from a filtered
-     * timeline would let typing in the find box rewrite the unit's serial,
-     * status and last known location. With no query this is the SAME cache key
-     * as the table's, so the ordinary case is still one request.
-     */
+    /* The IDENTITY read, deliberately UNSEARCHED. */
     const { data: unitData } = useQuery<PulseEventRow[]>({
         queryKey: ['pulse-unit-events', unitId, ''],
         enabled: !!unitId,

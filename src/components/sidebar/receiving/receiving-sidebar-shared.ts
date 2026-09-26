@@ -1,12 +1,4 @@
-/**
- * Shared types, constants, and pure helpers used across the receiving
- * sidebar surface and the right-pane workspace. Extracted from the
- * 3,943-line `ReceivingSidebarPanel.tsx` so subcomponents in both panes
- * can import from a single source.
- *
- * Pure data + functions only — no JSX. Anything with a React render
- * surface lives next to its consumer.
- */
+/** Shared types, constants, and pure helpers used across the receiving sidebar surface and the right-pane workspace. */
 
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { RECEIVING_NAV_ICONS } from '@/lib/nav/station-nav-icons';
@@ -20,33 +12,7 @@ import type { ClaimType } from '@/lib/receiving-claim-type';
 
 export type ReceivingMode = 'incoming' | 'triage' | 'receive' | 'history' | 'pickup' | 'repair';
 
-// Sidebar order: Incoming → Arrival (triage) → Unbox → Local Pickup → Repair.
-// Local Pickup + Repair are front-desk receiving work, each its own mode on its
-// own route (`/pickup`, `/repair`) — NOT one "Walk-In" station with a `?job=`
-// switcher. Sales is not a receiving mode; it lives on the Sales page
-// (`/walk-in`). Each mode flips the `?mode=` URL param; the bare path (no
-// `?mode=`) stays the Unbox workspace (id `receive`) for deep-link + realtime
-// back-compat.
-//
-// `history` stays in the TYPE (the `/receiving/history` route is still live and
-// its search/table code reads this mode) but is NOT a rail pill: Inbound History
-// moved off the receiving page to a `/dashboard` mode — plan lane 04. Delete the
-// type member once that cutover lands.
-//
-// `triage` (label "Arrival") is the dock scan/identify surface that runs BEFORE
-// unboxing: scan a tracking, see found/unfound + expedited/normal verdict, and
-// route the carton. `receive` (label "Unbox") is the existing unboxing
-// workspace — relabeled only, id unchanged to avoid a wide string rename.
-//
-// The former `unfound` mode was relocated to Admin › PO Mailbox
-// (?section=po_mailbox) — the email-PO / unmatched triage queue is no longer a
-// receiving mode. Unmatched cartons are still handled inline in the workspace
-// (the synthesized "Unfound" source-platform pill).
-//
-// `incoming` is fed by the /api/cron/zoho/incoming-po-sync delta poller —
-// PO lines Zoho says are issued but not yet received locally. Rows drop
-// off automatically when the operator scans / marks-received (workflow
-// advances past EXPECTED or quantity_received goes positive).
+// Sidebar order:
 export const RECEIVING_MODE_ITEMS: HorizontalSliderItem[] = [
   { id: 'incoming', label: 'Inbound',      icon: RECEIVING_NAV_ICONS.incoming },
   { id: 'triage',   label: 'Arrival',    icon: RECEIVING_NAV_ICONS.triage },
@@ -139,13 +105,7 @@ export type PoLineSummary = {
   quantity_received: number;
   zoho_purchaseorder_id: string | null;
   zoho_purchaseorder_number: string | null;
-  /**
-   * The marketplace order this line was purchased under (eBay `11-15183-54752`,
-   * Amazon `112-…`). NOT a convenience field: on a carton with no Zoho PO this
-   * IS the carton's order identity, and it is the only value that carries the
-   * dashes. Without it the station bar falls back to the internal numeric order
-   * id and the operator copies a string that matches nothing on the platform.
-   */
+  /** The marketplace order this line was purchased under (eBay `11-15183-54752`, Amazon `112-…`). */
   source_order_id: string | null;
   /** 'zoho' | 'ebay' | … — picks the Order-vs-PO ladder in `getReceivingPoIdentityParts`. */
   inbound_source_type: string | null;
@@ -177,21 +137,13 @@ export const RECEIVING_TYPE_OPTS = RECEIVING_TYPES.map((t) => ({
   label: t.label,
 }));
 
-// Pill options + printed-label map both derive from the platform SoT so a
-// platform never reads two ways across surfaces. Add a platform in
-// src/lib/source-platform.ts, not here. The leading '' (Unknown) entry is
-// front-end only (no stored value yet) so it stays explicit here.
+// Pill options + printed-label map both derive from the platform SoT so a platform never reads two ways across surfaces.
 export const SOURCE_PLATFORM_OPTS: Array<{ value: string; label: string }> = [
   { value: '', label: 'Unknown' },
   ...SOURCE_PLATFORMS.map((p) => ({ value: p.value, label: p.label })),
 ];
 
-/**
- * Detect a source_platform value from a listing URL's hostname.
- * Returns null when the URL is empty/unparseable so callers can leave the
- * user's prior selection in place. Returns 'other' for any valid URL whose
- * host doesn't match a known marketplace.
- */
+/** Detect a source_platform value from a listing URL's hostname. */
 export function detectPlatformFromUrl(url: string | null | undefined): string | null {
   const raw = String(url || '').trim();
   if (!raw) return null;
@@ -260,14 +212,7 @@ export function randomId(): string {
   return safeRandomUUID();
 }
 
-// ── Listing URL helpers ─────────────────────────────────────────────────────
-// `listingUrlForOpen` lived here until 2026-08-10. It was a copy of
-// `normalizeListingHref` (@/lib/receiving/listing-links) that predated that
-// function's non-http-scheme fix, so it "repaired" `ftp://example.com/itm/1`
-// into `https://ftp//example.com/itm/1` — a parseable URL with a nonsense host
-// whose Open listing led nowhere. Deleted rather than aliased: an alias is a
-// second name for one answer, which is how the fork happened. Import
-// `normalizeListingHref` directly.
+// ── Listing URL helpers ───────────────────────────────────────────────────── `listingUrlForOpen` lived here until 2026-08-10.
 
 /** Desktop Unbox surface deep link (`/unbox?recvId=…&lineId=…`). */
 export function receivingShareUrl(receivingId: number, lineId?: number): string {
@@ -290,40 +235,16 @@ export function receivingShareUrl(receivingId: number, lineId?: number): string 
 /** Short human-facing label for a listing URL (host + clipped path); not for navigation. */
 // ── Select-line event payload ───────────────────────────────────────────────
 
-/**
- * Shape of the `receiving-select-line` CustomEvent's detail. The table
- * currently dispatches just the row, while the sidebar also recognizes a
- * richer `{ row, expandFlowSections }` payload — accept both shapes so the
- * contract is forward/back compatible.
- */
+/** Shape of the `receiving-select-line` CustomEvent's detail. */
 export type ReceivingSelectLineDetail =
   | ReceivingLineRow
   | null
   | {
       row: ReceivingLineRow | null;
       expandFlowSections?: boolean;
-      /**
-       * Whether this open should stamp the operator's recents
-       * (`POST /api/receiving-lines/view` → the Recent tab). Default TRUE: every
-       * historical dispatcher (scan resolve, recent rail, sibling PO line,
-       * deep-link restore) IS a deliberate open of one carton, and stays exactly
-       * as it was.
-       *
-       * The Unbox FEED passes false. Browsing a 117-row queue is not the same
-       * act as working a carton — if a click on the map counted, Recent would
-       * just mirror the feed and stop answering "what did I actually touch".
-       * The gesture only became possible when the feed's row body was handed to
-       * the record plane, so this is the one caller that has to answer.
-       */
+      /** Whether this open should stamp the operator's recents (`POST /api/receiving-lines/view` → the Recent tab). */
       recordView?: boolean;
-      /**
-       * Preview stance open — the operator asked *"what is this?"*, not
-       * *"work this"*. The pane paints exactly as a scan does (identity,
-       * middle, Displays) but is **inert**: nothing here may be edited, and
-       * nothing about the open is written. Always pairs with
-       * `recordView: false` — a preview that stamped recents would be the
-       * unbox attribution the stance exists to avoid.
-       */
+      /** Preview stance open — the operator asked *"what is this?"*, not *"work this"*. */
       preview?: boolean;
     };
 
@@ -360,16 +281,7 @@ export const SELECT_CLASS =
   cn('w-full rounded-md border border-border-soft bg-surface-card inset-chip text-role-caption font-semibold text-text-default', focusRing('field', 'accent'));
 
 // ── Type scale (sidebar + workspace share this) ─────────────────────────────
-/**
- * One source of truth for typography inside the receiving panel + workspace.
- *
- *   SECTION  10/black/upper      — dropdown header titles
- *   LABEL     9/black/upper      — field labels above inputs
- *   META      9/semibold         — header summary previews + meta chips
- *   INPUT    11/semibold         — every input + select value
- *   BODY     11/medium           — plain text (notes, descriptions)
- *   TITLE    14/extrabold/snug   — product title (visual anchor of Item lane)
- */
+/** One source of truth for typography inside the receiving panel + workspace. */
 
 const TYPE_FIELD_LABEL_CLASS =
   'block text-role-eyebrow uppercase tracking-[0.14em] text-text-soft';
@@ -385,10 +297,7 @@ export const RECEIVING_SCAN_RULE_LINE_CLASS =
 export const RECEIVING_CHIP_EDIT_BTN_CLASS =
   'flex size-[22px] shrink-0 items-center justify-center rounded-sm text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-default active:scale-95';
 
-// ── Section tone tokens ─────────────────────────────────────────────────────
-// ─── Claim modal ────────────────────────────────────────────────────────────
-// ClaimType lives in `@/lib/receiving-claim-type` (SoT).
-// Pill chrome for ReceivingClaimModal lives here.
+// ── Section tone tokens ───────────────────────────────────────────────────── ─── Claim modal…
 
 export type { ClaimType } from '@/lib/receiving-claim-type';
 
@@ -426,15 +335,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * Legacy `scan:{value}` key for a scan still in flight.
- *
- * The RAIL stub no longer uses this — it keys on the shipment
- * ({@link receivingRailShipmentKey}) so the resolved carton lands on the SAME
- * React key and updates in place. This survives for the right-pane stub and as
- * the second key `applyUnboxCartonOpened` sweeps, so a cache written before the
- * shipment-key change can still be cleaned up.
- */
+/** Legacy `scan:{value}` key for a scan still in flight. */
 export function pendingScanReconcileKey(trackingNumber: string): string {
   return `scan:${normalizeScanKey(trackingNumber)}`;
 }
@@ -449,18 +350,7 @@ function pendingScanLineId(trackingNumber: string): number {
   return -(Math.abs(h) || 1);
 }
 
-/**
- * Instant rail row shown the moment a tracking # is scanned, before lookup-po
- * returns. Title = the tracking #.
- *
- * Keyed on the SHIPMENT (`stn:{tracking}`), which is the whole reason the row
- * now survives the scan: the resolved carton — optimistic, hydrated, and
- * authoritative — carries that same key, so `mergeRailRows` updates this row in
- * place. It used to key `scan:{tracking}` and be REMOVED in favour of a freshly
- * prepended `carton:{id}` row, and the rail's `AnimatePresence` read that key
- * change as an exit + an enter: the operator's tracking number appeared,
- * vanished, and came back.
- */
+/** Instant rail row shown the moment a tracking # is scanned, before lookup-po returns. */
 export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRow {
   const trimmed = trackingNumber.trim();
   const now = new Date().toISOString();
@@ -500,12 +390,7 @@ export function buildPendingScanStubRow(trackingNumber: string): ReceivingLineRo
   };
 }
 
-/**
- * Openable Unbox right-pane stub painted at scan t=0 (Phase-0 miss): unmatched
- * empty PO-items surface with null `receiving_id`. Mutations stay gated until
- * lookup-po stamps a real carton. Same `scan:` reconcile key as the rail
- * pending stub so both clear together on resolve / not_found.
- */
+/** Openable Unbox right-pane stub painted at scan t=0 (Phase-0 miss): */
 export function buildOptimisticUnmatchedPaneStub(trackingNumber: string): ReceivingLineRow {
   const trimmed = trackingNumber.trim();
   const now = new Date().toISOString();
@@ -555,17 +440,7 @@ export function isOptimisticUnmatchedPaneStub(row: ReceivingLineRow): boolean {
   );
 }
 
-/**
- * True while a row is the pre-resolve rail leading stub (tracking# title, not
- * clickable). Excludes {@link isOptimisticUnmatchedPaneStub} so Unbox can open
- * the empty unmatched pane while the rail still shows the pending tracking#.
- *
- * `receiving_id == null` is what carries this: the instant a scan resolves, the
- * row has a carton and stops being pending no matter which key it holds. The key
- * check accepts BOTH prefixes because the rail stub moved to `stn:{tracking}`
- * (so it survives the resolve in place) while the pane stub stayed `scan:` —
- * gating on `scan:` alone silently un-disabled the rail's pending row mid-scan.
- */
+/** True while a row is the pre-resolve rail leading stub (tracking# title, not clickable). */
 export function isPendingTriageScanRow(row: ReceivingLineRow): boolean {
   return (
     row.receiving_id == null
@@ -575,17 +450,7 @@ export function isPendingTriageScanRow(row: ReceivingLineRow): boolean {
   );
 }
 
-/**
- * Synthesize a ReceivingLineRow for an unmatched carton that has no
- * receiving_lines rows yet (operator just scanned the tracking; no items
- * added). UnfoundLineEditPanel only needs receiving_id + receiving_source
- * to do its work — the rest are placeholders so the row typechecks for
- * the shared workspace event payload. Mirrors the unmatched-stub shape in
- * src/app/api/receiving-lines/route.ts.
- *
- * `id` is negated so it can't collide with a real receiving_lines.id when
- * keying motion components downstream.
- */
+/** Synthesize a ReceivingLineRow for an unmatched carton that has no receiving_lines rows yet (operator just scanned the tracking; no items… */
 export function buildUnmatchedStubRow(
   receivingId: number,
   trackingNumber: string,
@@ -607,10 +472,7 @@ export function buildUnmatchedStubRow(
     qa_status: 'PENDING',
     workflow_status: null,
     disposition_code: 'HOLD',
-    // Leave empty so the workspace stepper's "Condition" step does NOT
-    // auto-mark itself done — the DB column defaults to 'BRAND_NEW' but
-    // for the synthetic carton stub the operator hasn't actively chosen
-    // a grade yet.
+    // Leave empty so the workspace stepper's "Condition" step does NOT auto-mark itself done — the DB column defaults to 'BRAND_NEW' but for…
     condition_grade: '',
     disposition_audit: [],
     needs_test: true,
@@ -653,26 +515,7 @@ export function buildUnboxRailUnmatchedRow(
   };
 }
 
-/**
- * Optimistic OPEN stub for a MATCHED carton — a full {@link ReceivingLineRow}
- * seeded from a lookup-po line summary so the right-pane workspace opens the
- * instant the PO resolves, before the `include=serials` hydration fetch lands.
- * The workspace is keyed on receiving_id, so the real row reconciles IN PLACE
- * (no remount), mirroring the unmatched optimistic-open in scan-apply.ts.
- *
- * Carries the REAL line id (positive) so the hydration reconcile targets the same
- * line, and `receiving_source` is null (NOT 'unmatched') so the matched UI — not
- * the unfound UI — renders during the brief pre-hydration window.
- *
- * ORDER IDENTITY IS SEEDED HERE. `source_order_id` / `inbound_source_type` ride
- * the same lookup-po response that opened the pane, so
- * `getReceivingPoIdentityParts` resolves the DASHED marketplace order on the
- * first frame. They were absent until the `include=serials` hydration landed,
- * and in that window the station bar fell back to the internal numeric order id
- * — a dashless string that finds nothing when the operator pastes it into eBay.
- * `sourcePlatform` comes off the scan's `receiving_package` for the same reason:
- * it picks the platform ladder and the chip's brand tint.
- */
+/** Optimistic OPEN stub for a MATCHED carton — a full {@link ReceivingLineRow} seeded from a lookup-po line summary so the right-pane… */
 export function buildMatchedStubRow(
   receivingId: number,
   trackingNumber: string,

@@ -1,34 +1,6 @@
 'use client';
 
-/**
- * Shared visual for a horizontal pane edge resize — wide hit sash + hover-reveal
- * thickened hairline on the panel seam (VS Code / Linear splitter grammar). Pair
- * with {@link useHorizontalEdgeResize}; do not hand-roll a second grip for the
- * same job.
- *
- * Hit vs paint: the sash is a **12px** (`w-3`) grab zone; the painted rule is a
- * **4px** (`w-1`) full-height bar that fades in on hover / stays lit while
- * dragging — centered on the display hairline, never a second line parked to
- * the side of the seam.
- *
- * - `placement: 'inset'` — hit sash lives **inside** the panel; paint sits on
- *   the panel's own edge seam (trailing `border-r` / leading `border-l`).
- *   Prefer for every flush rail (context · right-rail · Displays). Parent may
- *   keep `overflow-hidden`. Stacking (low → high): armed-row faces / body
- *   hairlines (`z-base`·`z-raised`) → this sash (`z-sticky`) → chrome bands
- *   that opt into the top-band twin (`z-header` + `pointer-events-none`, with
- *   interactive children re-enabled): column fullscreen / carton cursor,
- *   Displays leaf ← → eyebrow (`StationDisplayLeafHeader`), desk rail chrome.
- *   Same-token `z-raised` on body content used to tie the sash and steal the
- *   left-edge hit — do not raise body rows to `z-header`. Never shorten the
- *   hairline with `top-*` clearance.
- * - `placement: 'outset'` — grip straddles the panel border (legacy). Prefer
- *   `inset` so hover paint cannot read as a line to the right of the seam.
- *
- * Drag-only: collapse / park lives elsewhere (left context = filter trailing
- * + drag-past-min; right rail / Displays = `→|` + Band 3). Never a sash-top
- * chevron on this grip.
- */
+/** Shared visual for a horizontal pane edge resize — wide hit sash + hover-reveal thickened hairline on the panel seam (VS Code / Linear… */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type {
@@ -69,25 +41,9 @@ interface HorizontalEdgeResizeHandleProps {
    * `outset` — straddles the border into the adjacent surface (legacy).
    */
   placement?: HorizontalEdgeResizePlacement;
-  /**
-   * Arm-to-close highlight (splitter snap-zone grammar). When true, the rule
-   * turns solid warning-amber at full opacity — regardless of hover / drag — to
-   * mark that this pane is pinned at its bound and one shove from collapsing (its
-   * OWN drag-past-min park, or the FAR-rail close on the station cascade). Lets
-   * the seam of the thing about to disappear light before it does. Outranks the
-   * neutral drag paint. Distinct from the Displays accent focus ring so the two
-   * signals never collide.
-   */
+  /** Arm-to-close highlight (splitter snap-zone grammar). */
   armed?: boolean;
-  /**
-   * Render the 4px hairline as an elevated overlay that paints ABOVE sibling
-   * chrome bands (`z-index: header + 1`, `pointer-events-none`), instead of the
-   * default in-hit paint that a `z-header` chrome band would occlude. Use on a
-   * pane whose leading seam is crossed by an opaque sticky header (Station
-   * Displays leaf ← → band): the hairline reads continuously ON TOP of the Back
-   * chevron, while the hit target stays BELOW the chrome so the chevron keeps
-   * receiving clicks. Inset only.
-   */
+  /** Render the 4px hairline as an elevated overlay that paints ABOVE sibling chrome bands (`z-index: */
   elevatedHairline?: boolean;
   /** Tooltip copy. Defaults to the receiving-rail wording. */
   tooltipLabel?: string;
@@ -114,10 +70,7 @@ function hitTargetClass(edge: HorizontalEdge, placement: HorizontalEdgeResizePla
       ? cn(HIT_TARGET_BASE, 'justify-center -right-1.5 translate-x-1/2')
       : cn(HIT_TARGET_BASE, 'justify-center -left-1.5 -translate-x-1/2');
   }
-  // Inset: full-height paint on the panel seam (no top-* cutoff). Chrome with
-  // `relative z-header` owns the `→|` hit target above this sash.
-  // `justify-end` / `justify-start` keep the 4px bar flush to the seam so it
-  // thickens the display hairline in place — never a twin line beside it.
+  // Inset: full-height paint on the panel seam (no top-* cutoff).
   return edge === 'trailing'
     ? cn(HIT_TARGET_BASE, 'right-0 justify-end')
     : cn(HIT_TARGET_BASE, 'left-0 justify-start');
@@ -157,12 +110,7 @@ export function HorizontalEdgeResizeHandle({
         </div>
       </HoverTooltip>
       {elevatedHairline ? (
-        // Sibling of the hit (not a child), so its z escapes the hit's
-        // `z-sticky` stacking context and paints ABOVE a `z-header` chrome band
-        // that crosses the seam (Displays leaf ← → header). `pointer-events-none`
-        // so the Back chevron underneath still takes clicks; `peer-hover` mirrors
-        // the hover reveal off the hit. Inline z = one step over the header band
-        // (no tailwind token in the 41–49 gap; the "+N off a band" idiom).
+        // Sibling of the hit (not a child), so its z escapes the hit's `z-sticky` stacking context and paints ABOVE a `z-header` chrome band that…
         <span
           aria-hidden
           data-testid="edge-resize-hairline"

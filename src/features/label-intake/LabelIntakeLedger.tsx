@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Label intake — the V1 outbound label-ingestion ledger (desk and `/m` alike).
- *
- * Deliberately NOT the slot `DataTable`. This is the tactical record list the
- * native terminal proved out: every ingestion is a square, flush, full-width
- * record separated by one hairline — no card islands, no gutters between rows,
- * no header chrome between the operator and the queue. Each record is three
- * bands behind a 4px state spine and a fixed carrier lane:
- *
- *   context   written state · source/carrier routing · observed time (fixed)
- *   identity  exact order reference (or file name before a match) · #id
- *   facts     tracking · match method / quarantine reason · byte hash
- *
- * Narrow containers REDUCE the record (hash, then method go first); they never
- * rearrange it. At ≥64rem container width the evidence pane is a fixed column
- * beside the queue; below it the SAME pane opens as a bottom sheet over the
- * queue — one tree, two placements, so the phone runs every verb the desk does.
- *
- * The server is the only rule engine: state label, colour and the single
- * permitted action all come from {@link ledgerStatus}; apply carries the row
- * version the operator saw, so a stale screen gets a 409, never a guess.
- */
+/** Label intake — the V1 outbound label-ingestion ledger (desk and `/m` alike). */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -144,10 +123,7 @@ export function LabelIntakeLedger() {
   });
   const pending = upload.isPending || retry.isPending || apply.isPending;
 
-  // Desk placement keeps a record selected; the sheet placement opens only on
-  // an explicit tap, so a phone lands on the queue, not on a covered queue.
-  // When the open record leaves the view (applied out of "Needs action"), the
-  // sheet closes rather than silently swapping to a record nobody tapped.
+  // Desk placement keeps a record selected; the sheet placement opens only on an explicit tap, so a phone lands on the queue, not on a…
   useEffect(() => {
     if (selectedId != null && visible.some((row) => row.id === selectedId)) return;
     setSelectedId(visible[0]?.id ?? null);

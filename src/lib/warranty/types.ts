@@ -1,9 +1,4 @@
-/**
- * Shared warranty-claim types + status vocabulary. Import-free of the DB layer
- * so both server (domain module / routes) and client (table, detail, chips) can
- * use it. Keep in sync with warranty_claim_status_enum in
- * 2026-06-06_warranty_claim_logger.sql.
- */
+/** Shared warranty-claim types + status vocabulary. */
 
 import type { WarrantyClockBasis } from './clock';
 
@@ -124,12 +119,7 @@ export interface WarrantyRepairAttemptRow {
   createdAt: string;
 }
 
-/**
- * Read-only warranty-coverage lookup result — the "on the phone with a customer"
- * check. Resolves an order #, serial, or SKU to its shipped order and computes
- * the warranty clock WITHOUT logging a claim. `found: false` means no shipped
- * order matched the query.
- */
+/** Read-only warranty-coverage lookup result — the "on the phone with a customer" check. */
 export interface WarrantyCoverageResult {
   query: string;
   found: boolean;

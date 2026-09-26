@@ -36,10 +36,7 @@ export async function getStaffDetail(
   filters: AuditLogFilters,
   orgId?: OrgId,
 ): Promise<StaffDetail | null> {
-  // When an orgId is supplied, every query runs through the tenant-scoped
-  // connection (GUC-wrapped) AND carries an explicit org predicate. When it is
-  // omitted, the legacy raw-pool path is preserved byte-identically so the many
-  // un-migrated callers keep behaving as today.
+  // When an orgId is supplied, every query runs through the tenant-scoped connection (GUC-wrapped) AND carries an explicit org predicate.
   const run = orgId
     ? <T extends Record<string, unknown> = Record<string, unknown>>(
         text: string,
@@ -73,11 +70,7 @@ export async function getStaffDetail(
   const buildClauses = (col: string) =>
     dateClauses.length ? ' AND ' + dateClauses.map((c) => c.replace('{COL}', col)).join(' AND ') : '';
 
-  // When tenant-scoped, append the org id as a trailing positional param and
-  // add an explicit predicate on the org-bearing root table of each query.
-  // (Integer surrogate-PK joins — pl.id, rl.id, stn.id, o.shipment_id — are
-  // safe bare; shipping_tracking_numbers has no organization_id column and is
-  // scoped via its already-org-filtered parent rows.)
+  // When tenant-scoped, append the org id as a trailing positional param and add an explicit predicate on the org-bearing root table of each…
   const queryParams = orgId ? [...baseParams, orgId] : baseParams;
   const orgPred = (alias: string) => (orgId ? ` AND ${alias}.organization_id = $${queryParams.length}` : '');
 

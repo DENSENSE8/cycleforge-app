@@ -8,12 +8,7 @@ import { useMobileUnit } from '@/components/mobile/unit/useMobileUnit';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import { QC_SCAN_HREF } from '@/lib/scan/identify-land';
 
-/**
- * `/m/u/[id]/qc` — the unit's QC checklist. Reached from the unit hub's
- * "Quality control" door, or straight from the scan kernel armed for QC;
- * "Next unit" returns to that armed kernel (continuous QC). The runner owns
- * the body; this page adds identity.
- */
+/** `/m/u/[id]/qc` — the unit's QC checklist. */
 function UnitQcInner() {
   const params = useParams<{ id: string }>();
   const rawParam = String(params?.id ?? '');

@@ -5,20 +5,7 @@ import { importSalesOrderByNumber } from '@/lib/receiving/returned-serial-link';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
-/**
- * POST /api/receiving/import-sales-order
- * Body: { order_number, receiving_id, receiving_line_id }
- *
- * Manual counterpart to a returned-serial scan: resolve a sales order by its
- * ORDER NUMBER and import it onto the carton/line as a return — flips
- * is_return, persists the per-line source order + listing link, and promotes an
- * unfound carton off the Unfound queue. Used by the PO-number field so an
- * operator can pair a return to its order before (or without) scanning a serial.
- *
- * Returns `{ success, imported, matched_order }`. `imported: false` means the
- * value didn't resolve to a sales order (the caller falls back to a plain PO#),
- * so a non-matching value is a clean no-op, not an error.
- */
+/** POST /api/receiving/import-sales-order Body: */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json().catch(() => ({}));

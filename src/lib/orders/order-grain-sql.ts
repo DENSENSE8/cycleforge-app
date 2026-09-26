@@ -1,14 +1,4 @@
-/**
- * Order-grain station membership SQL fragments (CF-03 / CF-04).
- *
- * Serial↔order and pack-queue membership must not be inferred solely from
- * `shipment_id` — sibling orders that share a carton would smear / vanish.
- *
- * These fragments expect the outer query alias `o` = `orders`.
- * Prefer `tech_serial_numbers.order_id` and SAL `metadata.order_row_id`;
- * fall back to shipment-grain ONLY when the shipment has a single order
- * (legacy dual-read — sunset once TSN.order_id is backfilled).
- */
+/** Order-grain station membership SQL fragments (CF-03 / CF-04). */
 
 import { PACK_ACTIVITY_TYPES, TECH_TEST_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 
@@ -23,34 +13,7 @@ export const SQL_SHIPMENT_IS_SOLE_ORDER = `(
   )
 )`;
 
-/**
- * ONE correlated `EXISTS` over `station_activity_logs` covering BOTH grains
- * (order-grain metadata attribution + the sole-shipment legacy fallback).
- *
- * **Why one EXISTS and not two under `OR`.** Postgres only pulls an EXISTS
- * sublink up into a semi/anti-join when it is a top-level `AND` conjunct
- * (`pull_up_sublinks`, which runs *before* `eval_const_expressions` — so
- * De Morgan on `NOT (EXISTS … OR EXISTS …)` comes too late to help). Under an
- * `OR` both branches stay correlated SubPlans re-executed per outer row, which
- * is what made `AND NOT sqlOrderHasPackScan('o')` scan SAL twice for every
- * order on the to-ship list. Pushing the disjunction *inside* one subquery
- * keeps the truth value identical and leaves a single sublink the planner can
- * pull up (semi-join positive / anti-join negated), with the inner `OR` free to
- * become a BitmapOr over the per-branch indexes.
- *
- * **Why it is exact.** Both branches select from the same relation under the
- * same `organization_id` + `activity_type` prefix, so
- * `EXISTS(σ_A) ∨ EXISTS(σ_B) ≡ EXISTS(σ_{A∨B})`. The sole-order guard does not
- * reference `sal` and is strictly two-valued (`IS NOT NULL` / `NOT EXISTS`
- * never yield NULL), so hoisting it into the second arm is a no-op:
- * `S ∧ EXISTS(σ_B) ≡ EXISTS(σ_{B ∧ S})`.
- *
- * Arm order is load-bearing for cost, not for truth: the cheap column
- * comparisons are evaluated before the correlated sibling-exclusion sublink, and
- * the `~ '^[0-9]+$'` guard stays immediately left of its `::int` cast inside the
- * same nested `AND` (nested BoolExpr args short-circuit left-to-right, unlike a
- * top-level qual list the planner may reorder).
- */
+/** ONE correlated `EXISTS` over `station_activity_logs` covering BOTH grains (order-grain metadata attribution + the sole-shipment legacy… */
 function sqlOrderHasStationActivity(alias: string, activityTypes: readonly string[]): string {
   const a = alias;
   return `EXISTS (
@@ -76,14 +39,7 @@ function sqlOrderHasStationActivity(alias: string, activityTypes: readonly strin
     )`;
 }
 
-/**
- * Order has a Testing bench scan attributed to it (order-grain).
- * Used by Up Next / has_tech_scan projections.
- *
- * Stays a two-branch `OR` because the first branch reads a different relation
- * (`tech_serial_numbers`); folding it in with `UNION ALL` would only *lose* the
- * pullup (`simplify_EXISTS_query` rejects set operations) without saving a scan.
- */
+/** Order has a Testing bench scan attributed to it (order-grain). */
 export function sqlOrderHasTechScan(alias = 'o'): string {
   const a = alias;
   return `(
@@ -96,13 +52,7 @@ export function sqlOrderHasTechScan(alias = 'o'): string {
   )`;
 }
 
-/**
- * Order has been packed (order-grain). Used by excludePacked / fulfillmentScope.
- *
- * ONE sublink, so `AND sqlOrderHasPackScan('o')` plans as a semi-join and
- * `AND NOT sqlOrderHasPackScan('o')` as an anti-join instead of a per-row
- * SubPlan pair.
- */
+/** Order has been packed (order-grain). */
 export function sqlOrderHasPackScan(alias = 'o'): string {
   const a = alias;
   return `(
@@ -110,14 +60,7 @@ export function sqlOrderHasPackScan(alias = 'o'): string {
   )`;
 }
 
-/**
- * Dock scan-out (SHIP_CONFIRM) on this order's shipment.
- *
- * Shipment-grain on purpose: scan-out is a package leaving the building, keyed
- * on `shipment_id` the same way `/api/shipped/scan-out` writes it. Unlabeled
- * rows (`shipment_id` NULL) do not match, so they stay on To-ship as Needs
- * label. Callers that mean "still in the building" negate this fragment.
- */
+/** Dock scan-out (SHIP_CONFIRM) on this order's shipment. */
 export function sqlOrderHasShipConfirm(alias = 'o'): string {
   const a = alias;
   return `EXISTS (

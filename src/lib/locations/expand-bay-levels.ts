@@ -1,10 +1,4 @@
-/**
- * Expand a bay into one qty-bin per level (position 1) so a bulk print
- * identifies the exact level on every sticker.
- *
- * Floor talk `A1–A4` / `B1–B48` maps to bay 1 levels 1–4 and bay 2 levels 1–48
- * on the picked aisle. Zone letter comes from the room (C room → zone C).
- */
+/** Expand a bay into one qty-bin per level (position 1) so a bulk print identifies the exact level on every sticker. */
 
 import { locationCode, type LocationSegments } from '@/lib/barcode-routing';
 

@@ -23,11 +23,7 @@ export const POST = withAuth(async (request, ctx) => {
   }
 
   try {
-    // Thread the caller's tenant id so the shared module scopes the close via
-    // the parent order (UPDATE picking_sessions … FROM orders WHERE
-    // o.organization_id=$2 → 404 cross-org) and stamps the close NOTE to the
-    // real tenant instead of the usav-fallback org. picking_sessions has no
-    // organization_id column, so parent-order scoping is the isolation boundary.
+    // Thread the caller's tenant id so the shared module scopes the close via the parent order (UPDATE picking_sessions … FROM orders WHERE…
     const result = await completeSession({ sessionId, actorStaffId }, ctx.organizationId);
     if (!result.ok) return NextResponse.json(result, { status: result.status });
     return NextResponse.json(result);

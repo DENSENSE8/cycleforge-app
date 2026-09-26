@@ -1,42 +1,4 @@
-/**
- * materializeTracks — SlotLayout + FieldCatalog → the grid's column tracks.
- *
- * Plan: `docs/todo/slot-based-metadata-table-PLAN.md` §8.1. This is the ONE
- * place a binding becomes a track. Track keys are SLOT INDICES (`status:1`,
- * `subtitle:2`), never field ids, so rebinding a slot to a different fact
- * keeps every width/pref keyed by that slot intact.
- *
- * The family supplies its chrome skeleton (`base`) — the structural tracks the
- * morph always paints (select · fulfillment · thumb · item · dates · state ·
- * _fill on the compound row). Line money is a subtitle, not a chrome track.
- * The materializer inserts the BOUND
- * bands into it:
- *
- * - **status band** — one track per status binding, keyed `status:N`, labeled
- *   from the field, sized by {@link trackGeometryFor} defaults. Inserted after
- *   `statusAnchorKey` (the compound `state` pill by default — the position the
- *   hand-spliced Slice 1 `tested` track occupied).
- * - **subtitle band** — compound morph paints subtitles INSIDE the item cell,
- *   so no tracks; the sheet morph opens one `subtitle:N` track per binding
- *   (inserted after the item/title anchor).
- *
- * Deviations from the plan's sketch, named for the next family's porter:
- * - The plan draws materializeTracks emitting the gutters itself. Emitting
- *   them here would either fork the chrome geometry (a second declaration of
- *   `COMPOUND_TRACKS`) or point lib code at a component module; passing the
- *   family's skeleton in keeps this pure, keeps the chrome SoT where it
- *   lives, and keeps the materializer family-agnostic.
- * - The plan names an `identity` track key. On the compound morph the
- *   identity slot IS the shared `fulfillment` chrome track (order # over
- *   tracking) — renaming that key would fork it away from Receiving / Tasks /
- *   Incoming, thrash the sort map (`COMPOUND_TRACK_SORT_KEYS`) and staff
- *   width prefs for a rename with no behaviour. `identityFieldId` still
- *   drives WHICH fact the identity cell resolves; only the key differs.
- *
- * A binding whose field the catalog does not know is SKIPPED (defense in
- * depth — `resolveEffectiveLayout` already drops stale bindings). An empty
- * binding array opens no tracks.
- */
+/** materializeTracks — SlotLayout + FieldCatalog → the grid's column tracks. */
 
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { catalogById, type FieldCatalog, type FieldDef, type FieldDisplayType } from '@/lib/tables/field-catalog/types';
@@ -93,12 +55,8 @@ export function trackGeometryFor(displayType: FieldDisplayType): {
 } {
   switch (displayType) {
     case 'stage_event':
+      // 8rem (operator ruling 2026-08-31, down from 10).
       // 8rem (operator ruling 2026-08-31, down from 10). The stamp line is the
-      // widest fact a step can hold, but it is the SECOND line and it truncates
-      // gracefully; three status columns at 10rem spent 30rem of a 72rem sheet
-      // on two words and a timestamp each, and the gaps between them read as
-      // gutters rather than as columns of one table. The floor drops with the
-      // default so a drag can still recover the old width per staffer.
       return { width: 'minmax(8rem, 8rem)', type: 'text', align: 'start', minTrackRem: 6.5, labelFitRem: 5, resizable: true };
     case 'tag':
       return { width: 'minmax(5.5rem, 5.5rem)', type: 'tag', align: 'start', labelFitRem: 4.5, resizable: false };

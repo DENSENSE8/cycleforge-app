@@ -1,24 +1,4 @@
-/**
- * Scan-station skins — a second theme axis on top of the app palette.
- *
- * App colour (`data-theme`) owns the warehouse. This catalog owns Color for the scan
- * centre: band headers, routed wells, working plates, serial/cube slots, ink.
- * Depth (bevel width + grain) is a sibling axis in station-depths.ts.
- * Every Unbox-family station reads the same {@link STATION_SCAN_WELL_CLASS}
- * tokens; flipping a skin restyles Arrival, Pack, Testing, Scan-out, Search,
- * and Unbox together. No per-station fill forks.
- *
- * Industrial is the default and is the ABSENCE of `data-station-skin`, the
- * same way light is the absence of `data-theme`.
- *
- * Character skins (Coal, Porcelain, High-vis, …) use absolute fills so the
- * trough keeps its material on Light and Ember alike. House color is the
- * exception: mill tokens plus a live mix of `--ds-color-accent-bg`.
- *
- * design-mcp introspects this file as `ds_tokens({ axis: 'station-skin' })`
- * and `design://tokens/station-skin`. Adding a skin is a row here — never a
- * fill fork on Unbox / Pack / Scan-out.
- */
+/** Scan-station skins — a second theme axis on top of the app palette. */
 
 export const STATION_SKIN_VAR_KEYS = [
   'header',
@@ -459,12 +439,7 @@ function skinVarDeclarations(skin: StationSkin, indent = '  '): string {
   ).join('\n');
 }
 
-/**
- * Displays column + leaf interiors — remap app chrome onto station Color.
- * Canvas is included so empty wells / conversation shells / vendor slots
- * inside the column stop reading as light-theme islands on Coal / Porcelain.
- * Semantic status chips (amber/emerald) stay on palette classes — do not remap.
- */
+/** Displays column + leaf interiors — remap app chrome onto station Color. */
 const STATION_DISPLAYS_SCOPE_CSS = `[data-station-displays] {
   --ds-color-background-surface: var(--ds-station-bar);
   --ds-color-background-canvas: var(--ds-station-well);

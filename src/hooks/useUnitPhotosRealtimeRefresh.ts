@@ -9,13 +9,7 @@ import {
   safeChannelName,
 } from '@/lib/realtime/channels';
 
-/**
- * Refresh SERIAL_UNIT photo state for one unit when a testing-scan upload lands —
- * the unit mirror of `useReceivingPhotosRealtimeRefresh`. Two realtime paths:
- *   • `unit_photo_uploaded` on the phone bridge (mobile capture queue echo)
- *   • `unit-photo.changed` on the station channel (/api/photos/upload)
- * See docs/todo/packer-testing-photo-scan-timeline-plan.md.
- */
+/** Refresh SERIAL_UNIT photo state for one unit when a testing-scan upload lands — the unit mirror of `useReceivingPhotosRealtimeRefresh`. */
 export function useUnitPhotosRealtimeRefresh(
   serialUnitId: number | null | undefined,
   staffId: number,

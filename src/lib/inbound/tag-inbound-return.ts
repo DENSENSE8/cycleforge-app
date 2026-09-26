@@ -1,9 +1,4 @@
-/**
- * Tag an Incoming spine row as a RETURN intake — desk Add / CSV path.
- * Sets line receiving_type + receiving_line_return facts. Carton flags are
- * updated only when the line already has a receiving_id (pre-arrival lines
- * stay line-scoped until a carton soft-joins).
- */
+/** Tag an Incoming spine row as a RETURN intake — desk Add / CSV path. */
 
 import { withTenantTransaction, tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,15 +1,4 @@
-/**
- * `#48120` → a throwable ticket, DB-free.
- *
- * What these defend is the one thing a bench cannot see: which NUMBER ends up
- * in `work_assignments.entity_id`. The operator types the provider number and
- * the row must store the LOCAL registry id, so a test that only asserted
- * "resolved" would pass on the bug this module exists to prevent.
- *
- * The three refusals are here because they are three different instructions to
- * the operator — retype it, it does not exist, try again later — and a surface
- * that collapsed them would give the wrong advice two times in three.
- */
+/** `#48120` → a throwable ticket, DB-free. */
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

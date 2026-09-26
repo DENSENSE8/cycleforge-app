@@ -1,19 +1,4 @@
-/**
- * /api/search/recents — the signed-in staffer's most-recently-searched history
- * (Dashboard Search mode sidebar). Per-staff, cross-device, DB-backed
- * (`search_recents`). `orgId`/`staffId` come from the verified session (`ctx`),
- * never the body.
- *
- *   GET                       → newest-first list (optional `?scope=`, `?limit=`)
- *   POST { query, scope?, … } → MRU-record a query; returns the fresh list
- *   DELETE ?id=<n>            → remove one recent; returns the fresh list
- *   DELETE (no id, ?scope=?)  → clear all (optionally one scope)
- *
- * No audit log: this is a personal, high-frequency MRU preference store (like a
- * recents cache), not a domain mutation — auditing every keystroke-search would
- * be pure noise. It carries no tenant-crossing risk (org/staff from `ctx`,
- * tenant-scoped writes via `withTenantTransaction` inside the domain helper).
- */
+/** /api/search/recents — the signed-in staffer's most-recently-searched history (Dashboard Search mode sidebar). */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

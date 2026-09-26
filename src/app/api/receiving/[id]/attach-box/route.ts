@@ -6,20 +6,7 @@ import { attachBoxToReceiving } from '@/lib/receiving/attach-box';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/receiving/:id/attach-box
- *
- * Attach an ADDITIONAL carrier tracking number (a 2nd/3rd/… carton) to an
- * already-anchored receiving carton — the multi-tracking → PO path
- * (docs/multi-tracking-po-plan.md, Phase 1).
- *
- * The reference# tracking stays the primary anchor (`receiving.shipment_id`).
- * Because the box attaches to the carton (which carries the PO), it inherently
- * links to that Zoho PO — no separate PO write needed. Junction logic lives in
- * the shared `attachBoxToReceiving` core (also used by the PO-level route).
- *
- * Body: { trackingNumber: string }
- */
+/** POST /api/receiving/:id/attach-box */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -1,25 +1,4 @@
-/**
- * The phone top bar's page-action seam — `MobileActionSlot`.
- *
- *   node --import tsx --test src/components/mobile/redesign/mobile-action-slot.test.ts
- *
- * MOUNTED, and it has to be: registration happens in an effect, so
- * `renderToStaticMarkup` (the convention for this folder's pure faces) can
- * never observe it. The claim under test is state across renders — a page deep
- * inside `children` reaching the host-owned bar — not a string in a file.
- *
- * `.test.ts`, not `.test.tsx`: `run-unit-tests.mjs` collects `*.test.ts` only.
- *
- * What this defends, in order of how badly it bites:
- *   1. SCAN keeps the corner (ruling 2026-08-21). A page action paints to its
- *      LEFT, and never as a second scan CTA.
- *   2. A page's verb actually reaches the bar — the whole point; the `actions`
- *      prop this replaced was unreachable for its entire life.
- *   3. The action LEAVES with its page. A stale verb in the corner is worse
- *      than none: "Add order" surviving onto Picks is a wrong tap, not a
- *      cosmetic bug.
- *   4. One action, not a cluster (SURFACE_LAW §5, 390px).
- */
+/** The phone top bar's page-action seam — `MobileActionSlot`. */
 
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
@@ -45,13 +24,7 @@ g.MouseEvent = dom.window.MouseEvent;
 g.KeyboardEvent = dom.window.KeyboardEvent;
 g.IS_REACT_ACT_ENVIRONMENT = true;
 
-// DYNAMIC ON PURPOSE — the one exception the static-import rule names for
-// tests: these modules must not evaluate until the JSDOM globals above are
-// installed. `react-dom/client` reads `window`/`document` at module scope, and
-// `MobileTopBar` pulls in the DS primitives behind it, so a static import
-// hoists above the global assignment and the mount fails with `document is not
-// defined`. Types come from the top-level `import type` namespaces, so the
-// dependency graph is still declared statically.
+// DYNAMIC ON PURPOSE — the one exception the static-import rule names for tests:
 let createRoot: typeof ReactDomClient.createRoot;
 let MobileTopBar: typeof TopBarModule.MobileTopBar;
 let MobileActionSlotProvider: typeof ActionSlotModule.MobileActionSlotProvider;

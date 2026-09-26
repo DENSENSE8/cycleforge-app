@@ -48,12 +48,7 @@ function normalizeCategory(value: string | null | undefined): ShipmentStatusCate
   return (upper in CATEGORY_STYLE ? upper : 'UNKNOWN') as ShipmentStatusCategory;
 }
 
-/**
- * The stall rule is data, not paint: `@/lib/shipping/shipment-status` owns it
- * and every decider (shipped records, next step, URL params) reads it there.
- * This component had a byte-identical copy, and a copy is a second answer
- * waiting to drift.
- */
+/** The stall rule is data, not paint: */
 
 export function ShipmentStatusBadge({
   carrier,

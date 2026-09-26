@@ -1,27 +1,4 @@
-/**
- * The Unbox step RAIL-LEAF registry — the KNOW half of the cockpit.
- *
- * Contract: `.claude/rules/display/scan-cockpit.md` (DO / KNOW split). The work
- * plane (centre + dock) holds the one armed action for the active step; the
- * right-edge Displays column is a **step-driven cockpit** that auto-shows the
- * reference THIS step needs — the manual · spec · position · one de-risking
- * fact. This registry is the reference half, exactly parallel to the dock's
- * `UNBOX_STEP_DOCK_CONTROLS`: one map says which Displays leaf a step references,
- * a sibling either-or map declares the steps whose reference IS the work plane.
- *
- * ## Why `Partial` + an either-or twin (same shape as the dock)
- *
- * Not every step has a distinct RAIL reference. `label`'s reference is the
- * centre `UnboxLabelPreview` — the operator reads the printed face in the work
- * plane, so forcing a rail leaf there would open an unrelated Display. A step
- * with no rail reference declares that in `UNBOX_STEPS_WITHOUT_RAIL_LEAF` **with
- * a reason**; neither map, or both, fails `scan-cockpit.guard.test.ts`. The
- * either-or is over the CAPTURE-phase steps (the cockpit's `activeKey` set),
- * mirroring `procedure-step-dock.guard`.
- *
- * The values must be real `UnboxSideTab` leaves (the cockpit IS the existing
- * `StationDisplaysPushColumn` — no new region, no new grammar).
- */
+/** The Unbox step RAIL-LEAF registry — the KNOW half of the cockpit. */
 
 import type { UnboxSideTab } from '../../unbox-side-tabs';
 
@@ -63,12 +40,7 @@ export const UNBOX_STEPS_WITHOUT_RAIL_LEAF: Readonly<Record<string, string>> = {
     'leaf here would open an unrelated Display beside the very thing being read',
 };
 
-/**
- * The Displays leaf the cockpit should show for the active step, or `null` when
- * the step is settled (`activeKey === null`) or references the work plane
- * (declared reference-less). Pure — the ONE derivation drives both the centre
- * action and this leaf, never a second store.
- */
+/** The Displays leaf the cockpit should show for the active step, or `null` when the step is settled (`activeKey === null`) or references… */
 export function resolveStepRailLeaf(activeKey: string | null): UnboxSideTab | null {
   if (activeKey == null) return null;
   return UNBOX_STEP_RAIL_LEAF[activeKey] ?? null;

@@ -1,27 +1,6 @@
 /**
- * Photo share-link generation — mint short-lived, task-scoped read URLs for a
- * set of selected library photos.
- *
- * This is the *ephemeral* sibling of `share-packs.ts`: where a share pack
- * persists a public token + landing page, this helper hands back direct,
- * time-limited GCS v4 signed URLs (default 24h) with no DB writes. It powers the
- * "copy shareable links" / drag-to-share affordance in the photo library, where
- * the operator wants to paste a few URLs into Slack / email / a Zendesk reply
- * without provisioning a durable share page.
- *
+ * Photo share-link generation — mint short-lived, task-scoped read URLs for a set of selected library photos.
  * Security model — links are task-scoped two ways:
- *   1. Every requested id is verified to belong to the caller's organization
- *      before any URL is minted (cross-tenant ids are dropped, not signed).
- *   2. The minted URL is a v4 signed read URL to a single object with a hard
- *      expiry, so it grants read of exactly that one photo for a bounded window.
- * Photos that don't live in GCS (legacy/local storage) fall back to the
- * session-protected `/api/photos/:id/content` proxy URL, which is *not* publicly
- * shareable — callers can see which links are `signed` vs `proxy` and act
- * accordingly.
- *
- * Follows the repo DI convention: `generatePhotoShareLinks(input, deps)` accepts
- * an injectable `Deps` (defaulting to the real DB + GCS adapter) so unit tests
- * run with zero DB / network.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -144,15 +123,7 @@ function baseFilename(row: PhotoStorageMetaRow): string {
   });
 }
 
-/**
- * Mint share links for `photoIds` belonging to `organizationId`.
- *
- * Returns links in the *requested* order, each tagged `signed` (GCS) or `proxy`
- * (everything else). Cross-org / unknown ids are dropped and reported in
- * `missingIds`. Throws only on bad input (no valid ids) so the route maps it to
- * a 400; individual sign() failures degrade that one link to a proxy URL rather
- * than failing the whole batch.
- */
+/** Mint share links for `photoIds` belonging to `organizationId`. */
 export async function generatePhotoShareLinks(
   input: GeneratePhotoShareLinksInput,
   deps: ShareLinksDeps = defaultDeps,

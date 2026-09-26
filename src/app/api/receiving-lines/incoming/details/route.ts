@@ -1,20 +1,4 @@
-/**
- * GET /api/receiving-lines/incoming/details?po_id=<zoho_purchaseorder_id>
- *   optional: &receiving_id=<carton> — prefer that carton for notes/shipment
- *             when it belongs to the PO (multi-box Unbox focus).
- *
- * One round-trip read for the incoming delivery record (`IncomingDeliveryEvidence`):
- *   - po               — zoho_po_mirror header
- *   - line_items       — zoho_po_mirror.raw.line_items + per-line received qty
- *   - shipment         — receiving.shipment_id + carrier status + last 25 events
- *   - receive_events   — inventory_events for the receiving_id (if any)
- *   - gmail            — email_missing_purchase_orders matches for this PO
- *   - zoho_activity    — raw.activity_log or raw.history entries (if Zoho returns them)
- *   - notes            — receiving.support_notes
- *
- * Read-only. All mutations go through the existing per-tab PATCH endpoints
- * (`/api/receiving/[id]` for notes, etc).
- */
+/** GET /api/receiving-lines/incoming/details?po_id=<zoho_purchaseorder_id> optional: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -38,13 +22,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       return Number.isFinite(n) && n > 0 ? n : null;
     })();
 
-    // ── Shipment-anchored fallback (no resolved PO) ─────────────────────────
-    // A "Delivered · not scanned" box whose tracking# never resolved to a Zoho
-    // PO has no zoho_po_mirror / receiving_line rows, so the PO-keyed read below
-    // returns nothing. When the panel opens such a row it passes `shipment_id`
-    // instead: return the same response shape with `po: null` + empty line_items,
-    // populated only with the shipment header + carrier event trail (and notes
-    // from a linked receiving row, if any) so the Shipment tab still renders.
+    // ── Shipment-anchored fallback (no resolved PO) ───────────────────────── A "Delivered · not scanned" box whose tracking# never resolved…
     if (!poId && shipmentIdParam) {
       const sid = Number(shipmentIdParam);
       if (!Number.isFinite(sid) || sid <= 0) {
@@ -130,12 +108,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
-    // ── Inbound-anchored branch (eBay / marketplace, plan §7.3) ─────────────
-    // A non-Zoho Incoming row (e.g. an eBay buyer purchase) has no zoho_po_mirror
-    // to key on. The panel passes `inbound_source` + `inbound_order_id` (the
-    // polymorphic link identity) instead; return the same response shape with
-    // `po: null` + an `inbound` block (links, marketplace facts, reconcile mirror,
-    // resolved spine line) so the eBay tab + Link button render.
+    // ── Inbound-anchored branch (eBay / marketplace, plan §7.3) ───────────── A non-Zoho Incoming row (e.g.
     const inboundSource = (url.searchParams.get('inbound_source') || '').trim().toLowerCase();
     const inboundOrderId = (url.searchParams.get('inbound_order_id') || '').trim();
     if (!poId && inboundSource && inboundOrderId) {
@@ -561,11 +534,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // Cache the dominant PO-anchored detail branch org-scoped (polled 60s per open
-    // drawer). Keyed by po_id (+ optional focus receiving_id for multi-box);
-    // every receiving write busts receiving-lines (org-scoped). The shipment/
-    // inbound fallback branches above return before this and stay uncached
-    // (rarer; some resolve transient shipment state).
+    // Cache the dominant PO-anchored detail branch org-scoped (polled 60s per open drawer).
     const payload = await getOrSet(
       CACHE_NS.receivingIncomingDetails,
       orgId,
@@ -752,10 +721,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       shipmentEvents = ev.rows as typeof shipmentEvents;
     }
 
-    // ── Line items: prefer fat mirror raw; fall back to carton spine ─────
-    // List/delta sync often stores header-only `raw` (no line_items). Trust
-    // view must still paint sibling receiving_line + receiving_line_zoho rows
-    // (descriptions / SN·condition text live on rz.zoho_notes after receive).
+    // ── Line items:
     type RawLine = {
       line_item_id?: string;
       item_id?: string;
@@ -875,11 +841,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             };
           });
 
-    // ── Receive / line lifecycle history (inventory_events) ─────────────────
-    // Anchor on the PO's receiving_line_ids ("line under PO") AND the carton, so
-    // the trail includes receiving AND per-unit testing verdicts (TEST_*) — not
-    // just carton-level RECEIVED rows. readInventorySpine joins actor_name +
-    // serial_number so the timeline reads in full fidelity.
+    // ── Receive / line lifecycle history (inventory_events) ───────────────── Anchor on the PO's receiving_line_ids ("line under PO") AND the…
     const lineIds = line_items
       .map((l) => l.receiving_line_id)
       .filter((n): n is number => Number.isFinite(n as number));
@@ -887,12 +849,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     let receiveEvents: InventoryEventRecord[] = [];
     if (lineIds.length > 0 || cartonIds.length > 0) {
       try {
-        // Thread orgId (Phase A) → GUC-wraps the spine read, pins
-        // ie.organization_id, and aligns the staff/serial_units LEFT JOINs so a
-        // cross-tenant actor_name / serial_number can't surface. The id sets
-        // themselves are already this-org-only (derived from the org-gated
-        // receiving_line / receiving_carton reads above), but this closes the
-        // bypass-pool path the un-threaded call previously took.
+        // Thread orgId (Phase A) → GUC-wraps the spine read, pins ie.organization_id, and aligns the staff/serial_units LEFT JOINs so a…
         receiveEvents = await readInventorySpine({ lineIds, cartonIds, order: 'desc', limit: 50 }, orgId);
       } catch (err) {
         console.warn('details: readInventorySpine failed', err);
@@ -930,10 +887,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       gmail = gm.rows as typeof gmail;
     }
 
-    // ── Delivery emails ("ORDER DELIVERED" signals for this PO's order#) ────
-    // The simplified Incoming details view: just show the delivery email(s).
-    // Joined on the same normalized order# the delivered-unscanned predicate
-    // uses, so a row that's "Delivered (email)" in the list has its email here.
+    // ── Delivery emails ("ORDER DELIVERED" signals for this PO's order#) ──── The simplified Incoming details view:
     let delivered_emails: Array<{
       gmail_msg_id: string;
       gmail_thread_id: string | null;
@@ -958,11 +912,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       delivered_emails = de.rows as typeof delivered_emails;
     }
 
-    // ── Zoho activity (pulled from the raw jsonb if present) ───────────────
-    // Zoho Inventory's PO detail sometimes exposes `activity_log` (custom)
-    // and almost always exposes `history` or `tax_total`-adjacent timeline
-    // entries. We surface anything that looks event-shaped without parsing
-    // every variant — the panel just renders a generic list.
+    // ── Zoho activity (pulled from the raw jsonb if present) ─────────────── Zoho Inventory's PO detail sometimes exposes `activity_log`…
     const zoho_activity: Array<{
       timestamp: string | null;
       label: string;

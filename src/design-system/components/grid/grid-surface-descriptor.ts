@@ -1,20 +1,4 @@
-/**
- * Grid Surface Descriptor — the typed waist between a surface's Kinetic Ledger
- * column models and the TanStack headless state engine (plan Phase C).
- *
- * Every Workbench spreadsheet keeps its column geometry in a house SoT list
- * (`ORDERS_QUEUE_COLUMNS`, `INCOMING_GRID_COLUMNS`, `RECEIVING_GRID_COLUMNS` —
- * all structurally {@link LedgerGridColumnModel}). {@link buildLedgerColumnDefs}
- * lifts such a list into TanStack `ColumnDef`s (id = house key, house model on
- * `meta.gridColumn`) so `useGridSurface` can own column / sorting / visibility
- * state while `ordersQueueGridTemplateFor`-style geometry keeps reading the
- * house models — TanStack never grows a second width system.
- *
- * A {@link GridSurfaceDescriptor} bundles one surface-mode's columns + defs +
- * content-min so composers mount grids per mode instead of re-deriving the
- * trio inline. Grouping / day-banding stays house (outside TanStack) until the
- * plan's Phase E explicitly adopts it.
- */
+/** Grid Surface Descriptor — the typed waist between a surface's Kinetic Ledger column models and the TanStack headless state engine (plan… */
 
 import { createColumnHelper, type ColumnDef, type RowData } from '@tanstack/react-table';
 import { isGridIdentityColumn } from './grid-column-editability';
@@ -30,26 +14,9 @@ export interface LedgerGridColumnModel {
   label?: string;
   gridLabel?: string;
   labelFitRem?: number;
-  /**
-   * This column's header IS its type glyph — no word beside it, at any track
-   * width. The full `label` still renders `sr-only`, so the column stays
-   * nameable.
-   *
-   * Declare it when the glyph alone is the complete header (`qty` → `#`: a
-   * quantity needs no word). **Do NOT get there by starving `labelFitRem`** —
-   * that works today and silently flips back to the word the moment anyone
-   * widens the track or bumps the density, a bug that reappears months later
-   * with no diff to blame. And do NOT get there with `gridLabel: '#'` either:
-   * the type glyph for `number` IS a hash, so the header rendered `# #`
-   * (shipped 2026-08-02, caught at the bench).
-   */
+  /** This column's header IS its type glyph — no word beside it, at any track width. */
   headerGlyphOnly?: boolean;
-  /**
-   * Always paint the header WORD, even when the track is narrower than the
-   * label-fit floor. Twin of {@link headerGlyphOnly}: declared intent, not a
-   * starved measurement. The photo gutter (`thumb`) uses this so the header
-   * reads "Image" in a 48px square rather than degrading to a type glyph.
-   */
+  /** Always paint the header WORD, even when the track is narrower than the label-fit floor. */
   headerForceLabel?: boolean;
   type?: ColumnType;
   /**
@@ -63,50 +30,13 @@ export interface LedgerGridColumnModel {
    * only for a rare override that disagrees with the type/face map.
    */
   minTrackRem?: number;
-  /**
-   * Justification OVERRIDE. Leave unset — `type` already decides
-   * (`resolveGridColumnAlign`), and deriving is what keeps a column's header
-   * and its cells from drifting apart. Set this only when a column genuinely
-   * disagrees with its type's default, and set it HERE so the exception is
-   * declared once rather than re-typed per surface.
-   */
+  /** Justification OVERRIDE. */
   align?: 'start' | 'end' | 'center';
-  /**
-   * Drag-resize OVERRIDE. Leave unset — `isGridColumnResizable` already decides
-   * from `type`: variable-content tracks get a grip, the fixed-format
-   * identifier / magnitude types (`number` · `id` · `location` · `tracking`, which render a
-   * last-8 chip or a short numeral run) do not, because dragging one only moves
-   * whitespace. Set this where the column is DECLARED when a surface genuinely
-   * disagrees — e.g. an `id` column that holds a full free-text reference.
-   */
+  /** Drag-resize OVERRIDE. */
   resizable?: boolean;
-  /**
-   * Suppress the leading tone glyph on this column's value chips.
-   *
-   * In a typed grid the column header already carries the data-type glyph, so
-   * repeating it in every cell paints the same mark twice down the track — the
-   * Unbox tracking column drew a MapPin in its header AND in all ~40 rows
-   * beneath it. The Pending grid solved this first with a `variant: 'plain'`
-   * prop; declaring it on the column instead makes it a property of "this
-   * column is typed in a grid" rather than a thing each surface remembers.
-   *
-   * Chips keep their icons everywhere else (rails, sidebars, mobile stacks),
-   * where no header labels the value — this never strips them globally.
-   */
+  /** Suppress the leading tone glyph on this column's value chips. */
   omitCellIcon?: boolean;
-  /**
-   * Part of the frozen IDENTITY PANE — pinned left while the fact columns
-   * scroll, immovable under drag-reorder, and never in-cell editable. Must be a
-   * contiguous prefix of the canonical order (the sticky-left offset sums the
-   * widths of the frozen columns before it).
-   *
-   * Declared per surface rather than by a house key list because the pane
-   * answers "what does an operator scan first HERE": Orders freezes
-   * `select · order · title`; Catalog / Receiving / Incoming / Repair / Pickup
-   * freeze `select · title`. Derive the key list with `gridFrozenKeys` — never
-   * re-type it beside the model. A frozen column carries no `hideKey` (it is
-   * structural, so the Fields menu can never take the identity pane away).
-   */
+  /** Part of the frozen IDENTITY PANE — pinned left while the fact columns scroll, immovable under drag-reorder, and never in-cell editable. */
   frozen?: boolean;
   /**
    * Staff-preference key this track answers to (`staff_preferences
@@ -114,16 +44,7 @@ export interface LedgerGridColumnModel {
    * never appear in the Fields menu and can never be toggled off.
    */
   hideKey?: string;
-  /**
-   * `core` (default) ships ON — the lean set every staffer sees on first load;
-   * they may hide it. `optional` ships OFF — an opt-in track a staffer adds from
-   * the Fields menu. This is what makes the descriptor the SoT for the DEFAULT
-   * view instead of "everything, minus whatever each staffer hid": adding an
-   * `optional` column never widens anyone's grid unasked.
-   *
-   * Requires a `hideKey` — an `optional` column with no pref key would be
-   * permanently invisible (asserted by `grid-column-tier.guard.test.ts`).
-   */
+  /** `core` (default) ships ON — the lean set every staffer sees on first load; they may hide it. */
   tier?: 'core' | 'optional';
 }
 
@@ -185,16 +106,7 @@ export function buildLedgerColumnDefs<Row, C extends LedgerGridColumnModel>(
   });
 }
 
-/**
- * Declared surface features for one Workbench spreadsheet.
- *
- * Capabilities are **opt-in and explicit** on every descriptor — never inferred
- * from column keys or left undefined. Catalog cannot paint staff triage row
- * colours because its descriptor sets `rowTriageFlags: false`; Orders can
- * because it sets `true`. Row chrome (`ledgerRowFillClass` in queue-row-chrome)
- * and future shell mounts read this bag; adapters must not invent a feature
- * the descriptor omitted.
- */
+/** Declared surface features for one Workbench spreadsheet. */
 export interface GridSurfaceCapabilities {
   /** Staff triage wash on leaf rows (`order-row-flags` — Orders only today). */
   rowTriageFlags: boolean;
@@ -237,10 +149,7 @@ export function makeGridSurfaceDescriptor<Row, C extends LedgerGridColumnModel>(
     id,
     columns,
     columnDefs: buildLedgerColumnDefs<Row, C>(columns, defOptions),
-    // DERIVED, never passed in. All five surfaces handed this the sum of their
-    // own visible tracks, which is now one shared function — so the parameter
-    // could only ever be right or stale, and a stale one silently mis-sizes the
-    // h-scroll activation width against the template it is supposed to match.
+    // DERIVED, never passed in.
     contentMinWidthRem: gridContentMinWidthRem(columns),
     capabilities,
   };

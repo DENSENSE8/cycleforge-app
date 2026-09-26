@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Line-grain adapter onto {@link StationLocationPlacementPort} — the PRODUCT
- * putaway writer (`receiving_line_putaway.staged_location_id`).
- *
- * The other receiving port is `useTriageLocationPort`, and the two are NOT a
- * hierarchy: that one writes `receiving_triage.staging_location_id`, which is
- * where the unopened CARTON sits on the door shelf. This one answers "where
- * does this ITEM go". Two independent facts on two tables; neither falls back
- * to the other, and widening either to cover both would silently change what
- * every metric reading that column answers.
- *
- * Shared by Unbox (`UnboxLocationsLeaf`) and Arrival (`ArrivalLocationsLeaf`'s
- * product subject). One port, one writer — Arrival is a THIRD mount of the same
- * seam, never a fourth storage.
- */
+/** Line-grain adapter onto {@link StationLocationPlacementPort} — the PRODUCT putaway writer (`receiving_line_putaway.staged_location_id`). */
 
 import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -24,15 +10,7 @@ import { locationsListQueryOptions, selectScannableBins } from '@/hooks/useLocat
 import type { PutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
 import { useUnboxLinePlacement } from './workspace/line-edit/useUnboxLinePlacement';
 
-/**
- * React Query key for the shelf catalog every station Locations leaf browses.
- *
- * This is now the SAME key `useLocations` reads (`qk.locations.list()`), not a
- * second one over the same endpoint. It used to be `['locations','active']`
- * with its own fetcher, which meant cold `/triage` fetched the identical
- * 8165-byte `/api/locations` body twice. The bin filter that made the two look
- * like different data is a `select` now — see `selectScannableBins`.
- */
+/** React Query key for the shelf catalog every station Locations leaf browses. */
 export const STATION_LOCATION_CATALOG_KEY = qk.locations.list();
 
 export function receivingLineSuggestionQueryKey(lineId: number | null | undefined) {

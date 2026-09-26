@@ -1,45 +1,12 @@
-/**
- * Short-lived demotion cache for AI providers.
- *
- * The chain (`resolveOrgAiChain`) is a PREFERENCE. This module is what stops a
- * preference from becoming a liability: when the preferred provider times out
- * or 5xxs, it is demoted for a short window so the next request skips straight
- * to the one that works instead of re-paying the timeout every time.
- *
- * Scoped per (org, provider, capability). One tenant's self-hosted box being
- * unreachable says nothing about another tenant's, and an endpoint can serve
- * chat while its embeddings model is missing.
- *
- * Deliberately in-memory and best-effort, the same posture as
- * `redisAdvanceLock`: correctness comes from the failover loop actually trying
- * the next provider, never from this cache being accurate. A cold process
- * simply re-learns, which costs one timeout.
- *
- * DB-free and clock-injectable so the TTL is unit-testable without sleeping.
- */
+/** Short-lived demotion cache for AI providers. */
 
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { AiCapability } from '@/lib/ai/provider';
 
-/**
- * How long a failed provider stays demoted.
- *
- * 60s is chosen against the measured local-model behaviour: a cold MLX load is
- * ~14s and the model unloads after a 60m TTL, so a window much longer than a
- * minute would keep a recovered box sidelined, while a much shorter one lets a
- * genuinely dead endpoint be retried on nearly every request.
- */
+/** How long a failed provider stays demoted. */
 export const PROVIDER_DEMOTION_TTL_MS = 60_000;
 
-/**
- * Per-provider request budget.
- *
- * **The local budget MUST exceed the ~14s cold JIT load** (measured 2026-08-19
- * on `prometheus`). A uniform short timeout would demote a perfectly healthy
- * self-hosted model on the first request after each 60m unload — turning
- * local-first into cloud-first for anyone whose box idles, which is everyone.
- * Cloud providers have no cold-start of that shape, so they fail fast.
- */
+/** Per-provider request budget. */
 const PROVIDER_TIMEOUT_MS: Record<'local' | 'cloud', number> = {
   local: 45_000,
   cloud: 10_000,

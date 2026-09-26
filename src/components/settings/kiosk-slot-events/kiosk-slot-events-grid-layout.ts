@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * - Importers/callers: kiosk-slot-events-table-definition, useKioskSlotEventsSpreadsheet,
- *   COMPOUND_SKELETON_FILTER_DEBT (dates+select drop).
- * - Affected API: none. Schemas: SlotLayout → KioskSlotEventsGridColumn.
- * - User verbatim: "Continue to the next phase"
- */
+/** Gate preamble (Fact-Forcing): */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {

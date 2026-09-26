@@ -7,12 +7,7 @@ export interface OrderAuditRow {
   id: number;
   created_at: string | null;
   action: string;
-  /**
-   * Prior snapshot for the field-level diff. Optional: only the operations
-   * journey selects it (and only exposes it to `admin.view_logs`, redacting it
-   * to null otherwise). The order-details timeline omits it ⇒ no diff, exactly
-   * as before.
-   */
+  /** Prior snapshot for the field-level diff. */
   before_data?: Record<string, unknown> | null;
   after_data: Record<string, unknown> | null;
   metadata: Record<string, unknown> | null;
@@ -58,12 +53,7 @@ function prettyFieldKey(key: string): string {
   }
 }
 
-/**
- * Map order audit rows → timeline items for the {@link EventTimeline} in the
- * order details panel. Curates titles/tones for the governing events
- * (tracking added, label printed, packed, shipped) and drops the redundant
- * assignment row that only carried a tracking change.
- */
+/** Map order audit rows → timeline items for the {@link EventTimeline} in the order details panel. */
 export function orderAuditToTimeline(rows: OrderAuditRow[]): TimelineItem[] {
   const items: TimelineItem[] = [];
   for (const r of rows) {

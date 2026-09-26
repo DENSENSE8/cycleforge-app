@@ -271,13 +271,7 @@ function viewedCounts(rows: ReceivingLineRow[]): UnboxViewedCounts {
   return { total: rows.length, viewedToday, unfinished };
 }
 
-/**
- * Row predicate for a clickable KPI tile, keyed by metric id + active tab —
- * the same membership test `recentCounts`/`queueCounts`/`viewedCounts` used to
- * produce the number on the tile. `null` means "not filterable": `queue-depth`
- * is a count, `oldest-wait` is a duration — neither is a row membership test,
- * so those two tiles stay informational (no `onOpen`).
- */
+/** Row predicate for a clickable KPI tile, keyed by metric id + active tab — the same membership test… */
 export function unboxKpiRowFilter(
   metricId: string | null | undefined,
   mode: UnboxWorkspaceTab,

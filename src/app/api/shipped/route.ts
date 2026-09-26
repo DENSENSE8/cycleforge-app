@@ -9,13 +9,7 @@ const CACHE_HEADERS = {
   'Cache-Control': 'private, max-age=300, stale-while-revalidate=60',
 };
 
-/**
- * GET /api/shipped - Fetch all shipped records (paginated/filtered) or search
- *
- * Supports optional weekStart/weekEnd (YYYY-MM-DD), packedBy, testedBy, and
- * missingTrackingOnly filters. Filters are pushed down to SQL so pagination
- * remains lightweight for dashboard views.
- */
+/** GET /api/shipped - Fetch all shipped records (paginated/filtered) or search */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const startedAt = Date.now();
   let ok = false;

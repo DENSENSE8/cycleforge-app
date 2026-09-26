@@ -1,19 +1,4 @@
-/**
- * Tech-All field catalog — the bindable cross-store triage facts, as DATA.
- * Wave 1.4's fifth family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `tech-all` row: "a strip
- * over several stores. Still one information table; status slots are the strip,
- * not a private All-only column file.").
- *
- * Every entry names a fact `TechAllTriageRow` already carries — a view model
- * the triage builder assembles from four different stores, which is exactly why
- * the strip must be slots: the row is already a normalization, and a private
- * column file on top of it would be a second one.
- *
- * Tech-All is a SHEET morph. `tech-all.item` is the IDENTITY fact — the row's
- * stable `${type}:${entityId}` handle — and the structural Identity track paints
- * the title over its quiet second line (SKU · customer · tracking).
- */
+/** Tech-All field catalog — the bindable cross-store triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -56,12 +41,7 @@ export const TECH_ALL_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default Tech-All layout — visual parity with the retired hand
- * model (`select · identity · type · stage · urgency`), which is the whole
- * strip: what kind of work it is, where it has got to, and how soon.
- * Guard: `tech-all.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default Tech-All layout — visual parity with the retired hand model (`select · identity · type · stage · urgency`), which is… */
 export const TECH_ALL_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'tech-all.item',

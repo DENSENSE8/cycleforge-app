@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Data + writes for the task desk — `work_assignments` rows handed to a person.
- *
- * ONE query key family (`['tasks','desk',…]`) so every writer on this surface
- * invalidates every reader of it: the grid, the right-rail inspector and the
- * composer's recent list are three views of one list, and a write that
- * refreshed only the grid is how a rail comes to show a task the table no
- * longer has.
- *
- * Replaced `useStaffTasks` (which read `staff_todos`) with the store swap —
- * R-A, 2026-09-22. The clock tick survives the move for the same reason it
- * existed: deadline lateness is a function of `now`, so the whole table is
- * given ONE `nowMs` rather than letting each row call `Date.now()` and disagree
- * about what day it is inside a single paint.
- */
+/** Data + writes for the task desk — `work_assignments` rows handed to a person. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -49,12 +35,7 @@ export interface TaskDeskPatch {
   remindAt?: string | null;
 }
 
-/**
- * WHOSE work the desk reads. `mine` is the default desk; `handed` is what I
- * threw at colleagues (the manager's follow-through list — without it a thrown
- * task vanishes from the thrower's screen the moment it lands); `everyone` is
- * the team board.
- */
+/** WHOSE work the desk reads. */
 export type TaskDeskScope = 'mine' | 'handed' | 'everyone';
 
 const SCOPE_PARAMS: Readonly<Record<TaskDeskScope, Record<string, string>>> = {

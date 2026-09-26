@@ -2,12 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mergeSubstitutionReasons, SUBSTITUTION_REASONS } from './substitution-reasons';
 
-/**
- * Class-D substitution slice (D1): the DB owns code + label so a tenant can
- * rename or add reasons; tone + hint stay built-in display metadata resolved
- * from the registry. mergeSubstitutionReasons is the pure mapper the picker
- * renders through, so the merge rules are unit-testable with zero DB.
- */
+/** Class-D substitution slice (D1): */
 
 test('mergeSubstitutionReasons: DB label wins, registry supplies tone + hint for a built-in code', () => {
   const merged = mergeSubstitutionReasons([{ code: 'DAMAGE_FOUND', label: 'Damaged on arrival' }]);

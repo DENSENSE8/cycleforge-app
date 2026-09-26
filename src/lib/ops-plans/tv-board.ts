@@ -1,21 +1,4 @@
-/**
- * Operations TV-board aggregation — PURE, DB-free (HOME-OPS Phase C).
- *
- * The wall board answers one question: "what must be done on time, and what's
- * slipping?" It reduces the org's open plan tasks + active plans into four
- * lanes — Due today, Overdue, By station, Plan progress — for a large-type
- * Monitor read at 3–5m (plan §7.2).
- *
- * Kept pure so the route stays a thin fetch→aggregate→respond shell and the
- * math is unit-testable with zero DB (mirrors inbox.ts / progress.ts). All
- * "now" comes in as injected instants (civil-day bounds computed by the caller
- * via `warehouseDayUtcBounds` — never `Date.now()` in here) so tests are
- * deterministic under any TZ.
- *
- * `blocked` (the plan's third lane) has no first-class column yet — task status
- * is only open|in_progress|done|canceled. Until collab lands a real block row
- * (Phase D), **Overdue is the honest "stuck" proxy** and is what this surfaces.
- */
+/** Operations TV-board aggregation — PURE, DB-free (HOME-OPS Phase C). */
 
 import type { PlanRow, TaskRow } from './types';
 import { OPS_PLAN_STATIONS, type OpsPlanStation } from './constants';

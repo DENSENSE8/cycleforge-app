@@ -1,16 +1,6 @@
 /**
- * Kiosk cart line → the facts a TOUCH card paints. Pure; no React, no hooks.
- *
- * The cart used to render `CompoundRow` — the desk compound table row that
- * Unbox, Incoming, To-Ship and Tasks share. That was the wrong tier for a
- * counter tablet, and `SURFACE_LAW` §5 says so outright: lists on a
+ * Kiosk cart line → the facts a TOUCH card paints.
  * phone-shaped surface are CARDS, never a DataTable. Operator 2026-09-14: the
- * cart "should display a mobile-like chip display component with a rounded
- * corner radius and kind of pills and buttons".
- *
- * These derivations are the single interpretation of `counter_session_lines`
- * (`type` · `title` · `quantity` · `unit_amount_cents` · `payload` ·
- * `voided_at`) for every cart face.
  */
 
 import {
@@ -42,13 +32,7 @@ function id(label: string, value: string | null | undefined): CartLineId | null 
 
 /**
  * The line's IDENTIFIERS, each with the word that says what it is.
- *
- * A sale has the catalog SKU, a repair has its
- * service SKU and the device serial, a trade-in has the IMEI — the numbers a
- * dispute is settled with, so they get a chip rather than a buried note. The
- * chips used to print the bare values (`04767`, `670156893`), which left the
  * operator guessing which was the SKU (operator 2026-09-23: *"the numbers
- * should have an identification what numbers they are"*).
  */
 export function cartLineIdentifiers(
   line: KioskCartLine,

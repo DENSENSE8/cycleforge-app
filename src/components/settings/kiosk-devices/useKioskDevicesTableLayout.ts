@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The kiosk devices slot-layout hook — this family's CONFIG on the
- * shared {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell paints inline — `paintMorph` coerces, and the org write
- * gate (`slotMorphsFor('kiosk-devices')`) refuses the foreign morph.
- */
+/** The kiosk devices slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   KIOSKDEVICES_FIELD_CATALOG,

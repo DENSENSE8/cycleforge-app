@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Shared behavior for the id-chip family (`@/components/ui/CopyChip`):
- * site-tooltip anchoring (`useChipTooltip`) and copy-to-clipboard on top of it
- * (`useCopyChip`). Hover preview uses the site-wide tooltip from
- * `SiteTooltipProvider` (wired in `src/components/Providers.tsx`); if the
- * provider is absent the hooks degrade gracefully — copy still works, there is
- * just no hover bubble.
- */
+/** Shared behavior for the id-chip family (`@/components/ui/CopyChip`): */
 import { KeyboardEvent, MouseEvent, MutableRefObject, useCallback, useEffect, useId, useRef } from 'react';
 import { useSiteTooltipOptional } from '@/components/providers/SiteTooltipProvider';
 import { formatTrackingTooltipLabel } from '@/lib/carrier-brand';
@@ -31,12 +24,7 @@ interface ChipTooltipInternals extends ChipTooltipAnchor {
   tooltipCtxRef: MutableRefObject<ReturnType<typeof useSiteTooltipOptional>>;
 }
 
-/**
- * Tooltip-anchor wiring for a chip: stable anchor id, wrapper rect lookup, and
- * open/close handlers, with `closeNow` cleanup on unmount. `enabled` gates
- * opening only — close handlers always work so a chip that becomes empty can
- * still dismiss its bubble.
- */
+/** Tooltip-anchor wiring for a chip: */
 export function useChipTooltip({
   enabled,
   tooltipValue,
@@ -214,11 +202,7 @@ export function useCopyChip({
 
   const performCopy = () => {
     if (!canCopy) return false;
-    // `writeClipboardText`, never `navigator.clipboard` directly: that object
-    // is UNDEFINED on an insecure origin, so the bare call threw a TypeError
-    // and took the row down on every LAN/bench mount (2026-09-15). The boolean
-    // is why the history write and the "Copied" flash are below it — a chip
-    // that reports a copy it did not make is a data-entry bug one step removed.
+    // `writeClipboardText`, never `navigator.clipboard` directly:
     if (!writeClipboardText(normalizedValue)) return false;
     recordCopy(normalizedValue, { kind: historyKind, display: historyDisplay });
     onCopy?.(normalizedValue);
@@ -237,15 +221,7 @@ export function useCopyChip({
     flashTooltip();
   };
 
-  /**
-   * Click-to-copy. Feedback goes through {@link notifyCopiedUi}, which ACTIVATES
-   * the bubble when this chip is not the live anchor instead of skipping the
-   * confirmation. The old inline branch only called `notifyCopied` on an
-   * already-active anchor, so any re-render that tore the hover session down
-   * between pointer-enter and mouse-down (query refetch, row reselect,
-   * virtualizer recycle) made the click read as "the tooltip just disappeared":
-   * the copy landed and nothing said so.
-   */
+  /** Click-to-copy. */
   const handleCopy = (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     if (performCopy()) notifyCopiedUi();

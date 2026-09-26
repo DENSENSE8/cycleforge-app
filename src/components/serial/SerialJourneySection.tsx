@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Serial Number Journey — the embeddable drop-in.
- *
- * The whole per-serial lifecycle already exists server-side: every station
- * (receiving → putaway → tested → graded → allocated → picked → packed →
- * shipped → returned/repair/RMA) writes an idempotent `inventory_events` row
- * carrying `serial_unit_id`, and `GET /api/operations/journey?dim=serial` merges
- * that with the SAL / audit / carrier / warranty spines. This component is just
- * a thin, context-embeddable surface over that data — mirroring
- * `OrderTimelineSection` but serial-scoped — so a unit/SKU detail pane, a mobile
- * scan result, or a modal can show a serial's full journey with one line:
- *
- *   <SerialJourneySection serialNumber={unit.serial_number} />
- *
- * It reuses the shared query factory, the `mergeJourney` adapters, and the
- * `TimelineSection`/`EventTimeline` primitive — no new API, adapter, or schema.
- * For the full-page experience (date/station/type filters), it deep-links to
- * Operations ▸ History via {@link buildSerialJourneyHref}.
- */
+/** Serial Number Journey — the embeddable drop-in. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -52,12 +34,7 @@ export interface SerialJourneySectionProps {
    * (`entity.serialUnitIds`) at zero extra request cost.
    */
   serialUnitId?: number | null;
-  /**
-   * Merge the unit's stage photo rows (arrival / unbox / testing / packing)
-   * into the journey (default true). Set false when a dedicated photo timeline
-   * (`SerialUnitTimelineSection`) is mounted beside this journey on the same
-   * pane — one mount owns media.
-   */
+  /** Merge the unit's stage photo rows (arrival / unbox / testing / packing) into the journey (default true). */
   withPhotos?: boolean;
   title?: string;
   density?: 'comfortable' | 'compact';

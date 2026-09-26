@@ -22,12 +22,7 @@ import {
 } from '@/lib/queries/dashboard-cache-patch';
 
 
-/**
- * The signed-in user's permissions as a `Set` for O(1) lookups, or `undefined`
- * while auth is still resolving or the user is signed out. Returning
- * `undefined` (rather than an empty set) lets the nav render unfiltered during
- * the legacy `?staffId=…` rollout flow.
- */
+/** The signed-in user's permissions as a `Set` for O(1) lookups, or `undefined` while auth is still resolving or the user is signed out. */
 export function useAuthPermissions(): Set<string> | undefined {
   const { user, isLoaded } = useAuth();
   return useMemo<Set<string> | undefined>(() => {
@@ -37,17 +32,7 @@ export function useAuthPermissions(): Set<string> | undefined {
 }
 
 
-/**
- * Wires the cross-pane `open-shipped-details` / `close-shipped-details` window
- * event bridge that sibling tables dispatch, and resets on real route changes.
- *
- * The details panel itself is a fixed overlay rendered elsewhere, so the only
- * observable effect here is `onActivate` (used to close the mobile drawer when
- * a details panel opens). The internal open flag is retained to preserve the
- * legacy reset semantics.
- *
- * @param onActivate Called when a details panel opens (e.g. close the drawer).
- */
+/** Wires the cross-pane `open-shipped-details` / `close-shipped-details` window event bridge that sibling tables dispatch, and resets on… */
 export function useStationDetailsPanel(onActivate?: () => void): void {
   const pathname = usePathname();
   const [, setStationDetailsOpen] = useState(false);
@@ -71,13 +56,7 @@ export function useStationDetailsPanel(onActivate?: () => void): void {
   });
 }
 
-/**
- * Returns a submit handler for the shared shipped/order intake form. Routes
- * `add_order` to `/api/orders/add` and everything else to `/api/shipped/submit`,
- * then fires the dashboard/station refresh events on success.
- *
- * @param onSuccess Called after a successful submit (e.g. close the intake form).
- */
+/** Returns a submit handler for the shared shipped/order intake form. */
 export function useShippedFormSubmit(
   onSuccess: () => void,
 ): (data: ShippedFormData) => Promise<void> {

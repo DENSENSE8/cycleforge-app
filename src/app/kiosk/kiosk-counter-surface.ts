@@ -1,31 +1,4 @@
-/**
- * Kiosk counter scale — radius · touch · rhythm for the customer-facing face.
- *
- * @domain-job Resolve the counter face's geometry from one place.
- * @hardware-target Station (mounted counter tablet)
- * @density floor
- * @justification `/kiosk/**` is the only surface a CUSTOMER touches — untrained,
- *   once, standing at a counter — and its region contract already called it
- *   "a form, not a scanner station". Ops chrome is zero-radius industrial
- *   because an operator lives in it all day; a customer form is not that job.
- * Ratified 2026-08-20 in `kinetic-ledger.md` + 2a.
- *
- * ## Why this is not a change to `cornerClass()`
- *
- * `cornerClass` renders `rounded-none` for every industrial ladder role
- * (flush…canvas). `pill` and `surface` sit off that ladder (`surface` is the
- * triage-panel exemption). Remapping a ladder role there would silently re-round
- * every ops surface in the product and break `radius.test.ts`. This module is a **sibling
- * scale over the same role vocabulary** — same colors, same type roles, same
- * motion, different geometry. It is scoped to `/kiosk/**` by convention and by
- * the guard test beside it; importing it into a desk surface is the fork.
- *
- * ## Adoption
- *
- * P1 is this module ONLY (`docs/todo/kiosk-customer-form-face-PLAN.md`). Nothing
- * consumes it yet, so an existing `rounded-none` on a kiosk surface is not a bug
- * — it is un-migrated. P2 migrates the fields, P3 the sections, P4 the CTAs.
- */
+/** Kiosk counter scale — radius · touch · rhythm for the customer-facing face. */
 
 import { type CornerRole, nestedCorner } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -36,14 +9,7 @@ import { cn } from '@/utils/_cn';
  */
 export type CounterCornerRole = CornerRole | 'cta';
 
-/**
- * Role → rendered class on the counter face.
- *
- * `flush` stays flush ON PURPOSE: the seams where shell columns meet (command
- * spine ↔ centre stage ↔ utility rail) are structure, not components. Rounding
- * them would float the columns and re-introduce the banned "floating column
- * islands". Softness belongs to the content, never to the frame.
- */
+/** Role → rendered class on the counter face. */
 const COUNTER_CORNER_CLASS: Record<CounterCornerRole, string> = {
   flush: 'rounded-none',
   chip: 'rounded-lg',
@@ -81,28 +47,12 @@ export function counterCornerPx(role: CounterCornerRole): number {
   return COUNTER_CORNER_PX[role];
 }
 
-/**
- * Concentric inner corner on the counter face — **inner = outer − padding**.
- *
- * Under the flushed ops ladder `nestedCorner` is a no-op (every role is 0). Here
- * it is load-bearing again: a `card` section with `p-3` wants `chip`-radius
- * fields, or the inner corners read too round.
- *
- * Delegates to the house `nestedCorner` so the ROLE math stays in one place;
- * only the rendered class differs.
- */
+/** Concentric inner corner on the counter face — **inner = outer − padding**. */
 export function counterNestedCorner(outer: CornerRole, padStep: number): string {
   return counterCorner(nestedCorner(outer, padStep));
 }
 
-/**
- * Minimum touch heights. Thumb targets at arm's length, not mouse targets.
- *
- * 48px is the floor every interactive element clears (WCAG 2.5.5 target size is
- * 44; a mounted tablet used standing wants more). 56px for the primary action so
- * it is unmissable, and 40px only for a chip the customer is *choosing among*,
- * never for a commit.
- */
+/** Minimum touch heights. */
 export const COUNTER_TOUCH = {
   /** Selectable chip / pill in a group — the one sub-48 case. */
   chip: 'min-h-10',
@@ -112,14 +62,7 @@ export const COUNTER_TOUCH = {
   cta: 'min-h-14',
 } as const;
 
-/**
- * Type sizes for the counter face.
- *
- * `field` is ≥16px for a hard technical reason, not taste: below 16px, iOS
- * Safari zooms the whole page when an input takes focus and the customer has to
- * pinch back out. It is the single most "not-native" thing a web form can do,
- * and the kiosk ships `text-sm` (14px) everywhere today.
- */
+/** Type sizes for the counter face. */
 export const COUNTER_TEXT = {
   /** Input + textarea value text. Never smaller. */
   field: 'text-base',

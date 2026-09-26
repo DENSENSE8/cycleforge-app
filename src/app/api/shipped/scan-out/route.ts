@@ -53,13 +53,7 @@ function scanOutImageUrl(row: Record<string, unknown> | null | undefined): strin
   });
 }
 
-/**
- * POST /api/shipped/scan-out — the dock "scan out the label" event.
- *
- * Thin HTTP shell over {@link scanOutLabel}: parses the scan, the bounded
- * backdate and the named staff, then maps the domain outcome onto the carton
- * JSON the station / desk verb reads and fires identification.completed.
- */
+/** POST /api/shipped/scan-out — the dock "scan out the label" event. */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;
@@ -72,14 +66,7 @@ export const POST = withAuth(
       return NextResponse.json({ ok: false, error: 'tracking number required' }, { status: 400 });
     }
 
-    /**
-     * Backdating, bounded.
-     *
-     * The offline outbox legitimately needs it: a package that left at 08:12
-     * during a wifi dropout must be recorded at 08:12, not whenever the radio
-     * came back. Desk selection may name a day within 90 days. Anything outside
-     * the window is dropped and the server clock is used.
-     */
+    /** Backdating, bounded. */
     const createdAt = (() => {
       const raw = body?.createdAt;
       if (!isScanOutCreatedAtInWindow(raw, Date.now(), scanOutMaxBackdateMs(body?.source))) {
@@ -151,27 +138,8 @@ export const POST = withAuth(
   { permission: 'shipping.mark_shipped' },
 );
 
-/**
- * DELETE /api/shipped/scan-out — undo a dock scan-out.
- *
- * Removes the SHIP_CONFIRM event for a shipment so the package falls back to
- * PACKED_STAGED (still packed, not yet out). Used by the station's "Undo" right
- * after a scan. Safe: audit_logs.station_activity_log_id is ON DELETE SET NULL,
- * so the audit trail of the scan survives with a nulled reference.
- */
-/**
- * GET /api/shipped/scan-out — what this operator already sent out.
- *
- * The phone station keeps a session tape in memory, which is the right shape
- * while scanning and the wrong one the moment the operator reloads, hands the
- * phone over, or comes back after a break: the shift's work is simply gone.
- * This is the durable half — SHIP_CONFIRM events, newest first, joined to the
- * same carton context a live scan returns so a history row and a fresh row are
- * the same shape and can share one component.
- *
- * Scoped to the CALLING STAFF by default (`?scope=mine`), because "what have I
- * scanned out" is the question the station asks. `scope=all` is the dock view.
- */
+/** DELETE /api/shipped/scan-out — undo a dock scan-out. */
+/** GET /api/shipped/scan-out — what this operator already sent out. */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const url = new URL(req.url);
@@ -341,34 +309,10 @@ export const GET = withAuth(
   { permission: 'shipping.mark_shipped' },
 );
 
-/**
- * How far back a scan-out can be taken back from the floor.
- *
- * An undo is a CORRECTION — "that was the wrong box, seconds ago" — not a
- * general-purpose history editor. Unbounded, it let a phone delete a departure
- * recorded on a previous shift by someone else, which is the opposite of what a
- * dock's records are for. Anything older is a supervisor's job on the desk,
- * where there is a record and a reason.
- */
+/** How far back a scan-out can be taken back from the floor. */
 const UNDO_WINDOW_MINUTES = 120;
 
-/**
- * DELETE /api/shipped/scan-out — take back a scan-out this operator just made.
- *
- * Three things this deliberately does NOT do, each of which it used to:
- *
- *  1. **Delete other people's work.** Scoped to the calling staff. A dock runs
- *     several phones; one operator undoing another's confirm — silently, with
- *     no trace — is a lost package nobody can explain.
- *  2. **Reach back indefinitely.** Bounded by {@link UNDO_WINDOW_MINUTES}.
- *  3. **Go unaudited.** The commit path writes an audit row; the reversal wrote
- *     nothing at all, and deleting the activity log nulled the original row's
- *     `station_activity_log_id` — so an undo erased its own evidence. It is now
- *     audited BEFORE the delete, carrying what was removed.
- *
- * Returns `undone: 0` with a reason when nothing matched, so the client can say
- * why rather than silently doing nothing.
- */
+/** DELETE /api/shipped/scan-out — take back a scan-out this operator just made. */
 export const DELETE = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

@@ -90,11 +90,7 @@ export async function getAllProductManuals(options?: {
     ? options.itemNumber.trim().toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^0+/, '')
     : null;
   const relativePath = String(options?.relativePath || '').trim() || null;
-  // product_manuals has NO organization_id column and its only parent link
-  // (sku_catalog_id) is nullable/sparse — most manuals are unpaired, so a hard
-  // JOIN predicate would silently drop the majority of rows. When orgId is
-  // present we GUC-wrap via tenantQuery so RLS can enforce once the table gains
-  // a column / parent-derived policy (NEEDS-COL). Query body is unchanged.
+  // product_manuals has NO organization_id column and its only parent link (sku_catalog_id) is nullable/sparse — most manuals are unpaired,…
   const sql = `SELECT id, sku, item_number, product_title, display_name, google_file_id, source_url, thumbnail_url, relative_path, folder_path, file_name, status, assigned_at, assigned_by, type, is_active, updated_at, created_at
      FROM product_manuals
      WHERE is_active = TRUE
@@ -130,10 +126,7 @@ export async function getProductManualByRelativePath(relativePath: string, orgId
   const safeRelativePath = String(relativePath || '').trim();
   if (!safeRelativePath) return null;
 
-  // product_manuals now HAS organization_id (nullable, GUC-default). When orgId
-  // is present we GUC-wrap (tenantQuery) AND add the explicit predicate — the
-  // load-bearing isolation pre-E1, since RLS is inert under the BYPASSRLS owner.
-  // Legacy callers (orgId omitted) pass NULL → the predicate is a no-op (back-compat).
+  // product_manuals now HAS organization_id (nullable, GUC-default).
   const sql = `SELECT *
      FROM product_manuals
      WHERE is_active = TRUE
@@ -218,10 +211,7 @@ export async function getRecentProductManuals(limit = 10, orgId?: OrgId): Promis
  * Resolve a product manual by order ID (looks up the order's product, then searches manuals)
  */
 export async function resolveManualByOrderId(orderId: string, orgId?: OrgId): Promise<ProductManual | null> {
-  // pm (product_manuals) has NO organization_id (NEEDS-COL); its parent here is
-  // the org-bearing `orders` row reached via the item_number string-key JOIN.
-  // When orgId is present we GUC-wrap AND add the explicit orders.organization_id
-  // predicate so the order lookup is org-gated (string-key JOIN rule (3)).
+  // pm (product_manuals) has NO organization_id (NEEDS-COL); its parent here is the org-bearing `orders` row reached via the item_number…
   if (orgId) {
     const result = await tenantQuery<ProductManual>(
       orgId,
@@ -289,13 +279,7 @@ export async function upsertProductManual(params: UpsertProductManualParams, org
     || (normalizedItemNumber ? `${normalizedItemNumber} Manual` : null);
   const assignedAt = status === 'assigned' ? new Date().toISOString() : null;
 
-  // Core transactional work, parameterized over a tx-bound client. Does NOT
-  // manage BEGIN/COMMIT/ROLLBACK — each caller owns the transaction:
-  //   - orgId present: withTenantTransaction owns it (BEGIN + set_config GUC +
-  //     COMMIT/ROLLBACK). product_manuals has NO organization_id column
-  //     (NEEDS-COL), so there is nothing to stamp on INSERT / predicate on
-  //     UPDATE; the GUC is the isolation hook for RLS once enforced.
-  //   - orgId omitted: legacy self-managed pool transaction below (byte-identical).
+  // Core transactional work, parameterized over a tx-bound client.
   const runUpsert = async (client: import('pg').PoolClient): Promise<ProductManual> => {
     if (!normalizedItemNumber && status === 'assigned') {
       throw new Error('itemNumber is required for assigned manuals');
@@ -428,21 +412,13 @@ export async function upsertProductManual(params: UpsertProductManualParams, org
   }
 }
 
-/**
- * Pair (or unpair) a manual to a SKU catalog row. Pass `skuCatalogId = null`
- * to unpair. Used by the tech testing panel to attach an existing library
- * manual to the catalog entry resolved from a receiving line. Returns the
- * updated row, or null if the manual id doesn't exist / is inactive.
- */
+/** Pair (or unpair) a manual to a SKU catalog row. */
 export async function setManualSkuCatalogId(
   manualId: number,
   skuCatalogId: number | null,
   orgId?: OrgId,
 ): Promise<ProductManual | null> {
-  // NEEDS-COL: product_manuals has no organization_id; GUC-wrap the write when
-  // orgId present (set_config GUC via withTenantTransaction) so RLS gates it
-  // once enforced. The sku_catalog_id FK points at the org-bearing parent, but
-  // there is no own column to predicate here. Body unchanged.
+  // NEEDS-COL: product_manuals has no organization_id; GUC-wrap the write when orgId present (set_config GUC via withTenantTransaction) so…
   const sql = `UPDATE product_manuals
      SET sku_catalog_id = $2::int,
          status = CASE WHEN $2::int IS NOT NULL AND status = 'unassigned' THEN 'assigned' ELSE status END,
@@ -488,13 +464,7 @@ export async function updateProductManual(params: UpdateProductManualParams, org
     ? undefined
     : (String(params.folderPath || '').trim() || null);
 
-  // $15-$21 are boolean flags that distinguish "caller didn't send the field"
-  // (keep existing value) from "caller sent the field as null" (clear it).
-  // Renumbered from a prior $16-$22 layout that left $15 unbound — PostgreSQL
-  // rejected the statement with "could not determine data type of parameter $15"
-  // because nothing in the SQL constrained the gap parameter.
-  // NEEDS-COL: product_manuals has no organization_id; GUC-wrap the write when
-  // orgId present (set_config GUC via withTenantTransaction). Body unchanged.
+  // $15-$21 are boolean flags that distinguish "caller didn't send the field" (keep existing value) from "caller sent the field as null"…
   const updateSql =
     `UPDATE product_manuals
      SET sku = COALESCE($2, sku),

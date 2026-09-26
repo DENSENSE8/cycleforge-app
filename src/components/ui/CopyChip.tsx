@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The id-chip family. Three layers:
- *   - pure label helpers live in `@/lib/copy-chip-format` (re-exported below
- *     for existing importers);
- *   - copy/tooltip behavior lives in `useCopyChip` / `useChipTooltip`
- *     (`@/hooks`) — hover preview uses the site-wide tooltip from
- *     `SiteTooltipProvider`, wired via `src/components/Providers.tsx`; if the
- *     provider is absent, copy still works and there is no hover bubble;
- *   - this file owns the markup, the {@link CHIP_TONES} registry, and the
- *     named variants that carry the design-system rules.
- */
+/** The id-chip family. */
 import React, { MouseEvent } from 'react';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 import { ExternalLink, MapPin, Package, Pencil, Receipt, ScanBarcode, Tags, Ticket } from '../Icons';
@@ -67,30 +57,13 @@ export const HashIcon = () => (
 
 // --- Tone registry ---
 
-/**
- * The single source of truth for what each chip color MEANS. One entry per
- * identifier concept — change a color here and every chip (including the ×N
- * group-count variants) follows.
- *
- *   id        gray / hash       internal order ids, PO#s, source order #s
- *   tracking  blue / map-pin    outbound carrier tracking numbers ONLY
- *   serial    emerald / scan-barcode  device/unit serial numbers
- *   sku       yellow / pencil   SKU-driven values (static scan refs, sku-table serials)
- *   fnsku     purple / package  Amazon FNSKUs scanned at FBA intake ONLY
- *   ticket    orange / hash     support ticket ids
- *   price     emerald / Receipt  Zoho PO unit cost on a receiving line
- */
+/** The single source of truth for what each chip color MEANS. */
 // `dot` = accent-dot bg per tone, so surfaces that show a copied ref as a dot
 // (e.g. the clipboard-history popover) read the same hue as the chip it came
 // from — one tone SoT, no parallel dot map.
 export const CHIP_TONES = {
   id: {
     // The `#` is the id chip's glyph, and it is the CHANNEL SIGNAL as well:
-    // `resolveMarketplaceChipIdentity` tints it from the number's own shape —
-    // eBay 2-5-5 paints it yellow, Amazon 3-7-7 orange — so one small mark
-    // carries both "this is an id" and "this is whose". A brand glyph in this
-    // slot was tried and pulled: it read as an icon competing with the mono
-    // digits, where the tinted hash reads as part of them.
     icon: <HashIcon />,
     iconClass: 'text-text-soft',
     dot: 'bg-border-emphasis',
@@ -137,33 +110,7 @@ export const CHIP_TONES = {
 
 export type ChipTone = keyof typeof CHIP_TONES;
 
-/**
- * Marks the OUTER wrapper of a quiet chip face — the element that owns
- * the chip's own horizontal breathing room (`px-1.5`). Every face in this
- * module carries it: the real {@link CopyChip}, plus the four presentational
- * siblings that must stay pixel-aligned with it ({@link EmptySkuChipFace},
- * {@link SerialChipSkeleton}, {@link PlatformChip}).
- *
- * **Why an attribute and not a prop.** A chip standing in a rail or a fact row
- * needs that padding; a chip inside a LedgerGrid cell must not have it, because
- * the cell already owns the inset (`ORDERS_QUEUE_CELL_INSET` = `px-2`) and the
- * two stack — every chip value sat 6px inside its column's content edge, so no
- * chip lined up with the plain-text cells above or below it. That is a property
- * of the CONTAINER, not of each call site: `outerPad="flush"` at ~12 chip call
- * sites across 14 grid families is a prop everyone has to remember, which is
- * the shape that drifts (`pattern-evolution.md`). One rule in
- * `styles/globals.css` — `[data-cf-grid] [data-chip-face]` — makes the grid
- * cell answer it once, for every family, including the next one.
- *
- * A chip rendered in a portaled popover is outside `[data-cf-grid]` and keeps
- * its padding, which is correct: it is no longer in a ruled column.
- *
- * Module-private: every face lives in this file, and exporting it would invite a
- * surface to stamp the marker on something that is not a chip face — which
- * would silently zero that element's padding inside any grid.
- *
- * Guard: `copy-chip-grid-flush.guard.test.ts`.
- */
+/** Marks the OUTER wrapper of a quiet chip face — the element that owns the chip's own horizontal breathing room (`px-1.5`). */
 const CHIP_FACE_ATTR = { 'data-chip-face': '' } as const;
 
 // --- Base CopyChip ---
@@ -195,15 +142,7 @@ export interface CopyChipProps {
   displayWidth?: 'content' | 'last8' | 'price';
   /** Called after a successful clipboard write. Use for side-effects (e.g. dispatch a custom event). */
   onCopy?: (value: string) => void;
-  /**
-   * Outer wrapper horizontal padding — `flush` aligns with sidebar grids where the chip icon lives in another column.
-   *
-   * **Inside a LedgerGrid you do not need this.** Every chip face carries
-   * `data-chip-face`, and `[data-cf-grid] [data-chip-face]` zeroes the inline
-   * padding in `styles/globals.css` — the grid CELL owns the whole horizontal
-   * inset story there, so a chip value lands at the same x as a plain-text
-   * value in the column above it. See {@link CHIP_FACE_ATTR}.
-   */
+  /** Outer wrapper horizontal padding — `flush` aligns with sidebar grids where the chip icon lives in another column. */
   outerPad?: 'chip' | 'flush';
   /** When true, skip the global hover copy tooltip (e.g. chip has its own action menu). */
   disableTooltip?: boolean;
@@ -216,12 +155,7 @@ export interface CopyChipProps {
   activationLabel?: string;
   activationTitle?: string;
   activationDisabled?: boolean;
-  /**
-   * Below-row editor is open for this chip. Face swaps to steady `editing`
-   * (8 chars — same footprint as last-8 / `--------`) so the identity row
-   * never reflows when an editor opens. No pulse — carton identity stays calm
-   * while the below-row / push editor is open. Copy is disabled while editing.
-   */
+  /** Below-row editor is open for this chip. */
   editing?: boolean;
   /** Hover-bubble trailing icon; defaults to external-link when `onActivate` is set. */
   tooltipAction?: 'copy' | 'external-link';
@@ -265,12 +199,7 @@ export function CopyChip({
 }: CopyChipProps) {
   const resolvedTooltipAction = tooltipAction ?? (onActivate ? 'external-link' : 'copy');
   const faceDisplay = editing ? 'editing' : display;
-  /**
-   * Id chips: eBay 2-5-5 / Amazon 3-7-7 paint from the number itself
-   * (yellow `#` + "eBay …" tooltip, orange `#` + "Amazon …") — not from a
-   * listing link or account_source. Caller `platformLabel` / icon paint still
-   * apply when the value is not one of those shapes.
-   */
+  /** Id chips: eBay 2-5-5 / Amazon 3-7-7 paint from the number itself (yellow `#` + "eBay …" tooltip, orange `#` + "Amazon …") — not from a… */
   const marketplace =
     tone === 'id' ? resolveMarketplaceChipIdentity(value, platformLabel) : null;
   const resolvedPlatformLabel = marketplace
@@ -313,36 +242,12 @@ export function CopyChip({
     ? marketplace.iconStyle
     : (iconStyle ?? marketplace?.iconStyle);
 
-  // The site tooltip anchors to this wrapper's bounding rect. A block `div` with
-  // `w-auto` stretches to the parent row, so the bubble centers on the row —
-  // not the chip. fitDisplayWidth chips must shrink-wrap unless they pass an
-  // explicit width (fixed column, flex-1 grow, etc.).
+  // The site tooltip anchors to this wrapper's bounding rect.
   const wrapperWidth =
     fitDisplayWidth && width === 'w-auto' ? 'w-fit max-w-full' : width;
 
   const normalizedDisplay = normalizeCopyText(faceDisplay);
-  /**
-   * A last-8 face is a FIXED-CHARACTER footprint, and `getLast8` caps the value
-   * at eight characters — so it can never legitimately overflow and must never
-   * lose a character to an ellipsis.
-   *
-   * It did, on every last-8 chip in the app. `w-[8ch]` buys eight `0`-advances
-   * (8 x 7.2px = 58px at the dense 12px face) but the chip also carries
-   * `letter-spacing: 0.12px`, and eight of those add ~1px the width never
-   * accounted for. Measured on a real SKU chip: clientWidth 58, scrollWidth 59.
-   * One pixel over, so `truncate` fired and `0106-P-5` painted as `0106-P…` —
-   * a last-8 display silently showing seven.
-   *
-   * `8.25ch` covers the tracking with room to spare and keeps the footprint
-   * that makes last-8 columns align. Truncation is off for these faces:
-   * ellipsising an identifier hands the reader a WRONG id, and leaving
-   * `truncate` on only re-arms the clipping above if the metrics shift.
-   *
-   * It is a FLOOR (`min-w`), not a cap, since `abbreviateIdentifier` cuts on a
-   * delimiter: `PO-123456789012` abbreviates to a twelve-character segment,
-   * which a hard `w-[8.25ch]` would have overflowed out of its own face. Short
-   * ids still hold the column; a long one grows instead of lying.
-   */
+  /** A last-8 face is a FIXED-CHARACTER footprint, and `getLast8` caps the value at eight characters — so it can never legitimately overflow… */
   const isLastEight = displayWidth === 'last8';
   const isPriceFace = displayWidth === 'price';
   const displayOverflowClass =
@@ -435,12 +340,7 @@ export function CopyChip({
 
 // --- Pre-configured chips ---
 
-/**
- * Internal order ID. Gray / Hash icon — except eBay 2-5-5 (yellow `#`) and
- * Amazon 3-7-7 (orange `#`), which paint from the number itself.
- * `plain` drops the leading hash glyph (Sheets-like queue grid, where the column
- * header already labels "Order") while keeping copy + last-8 mono value.
- */
+/** Internal order ID. */
 export const OrderIdChip = ({
   value,
   display,
@@ -499,15 +399,7 @@ export function OrderIdChipPlaceholder({ plain }: { plain?: boolean } = {}) {
   );
 }
 
-/**
- * Purchase order number (vendor PO# / extracted from emails). Gray / Hash icon.
- *
- * Visually matches {@link OrderIdChip} (also gray + hash) — both represent
- * "an identifier this row is keyed by" and live in the left/primary
- * position of their respective row layouts. {@link TrackingChip} stays
- * blue for carrier tracking, which is a different concept (a physical
- * package, not an identifier).
- */
+/** Purchase order number (vendor PO# / extracted from emails). */
 export const PoChip = ({
   value,
   display,
@@ -540,12 +432,7 @@ export const PoChip = ({
 }) => (
   <CopyChip
     value={value}
-    // Last-8 is the display SoT for EVERY typed id chip (`copy-chip-format.ts`),
-    // and this chip is the one that never baked it: six of its seven call sites
-    // were passing `display={getLast8(value)}` by hand, so the derivation lived
-    // in six places and the seventh — a new one — silently rendered a full PO
-    // beside a last-8 tracking. Defaulting it here is the mapping moving to its
-    // one module; the explicit call sites keep passing an identical value.
+    // Last-8 is the display SoT for EVERY typed id chip (`copy-chip-format.ts`), and this chip is the one that never baked it:
     display={resolveChipDisplay(display ?? getLast8(value))}
     tone="id"
     iconClass={iconClass}
@@ -559,12 +446,7 @@ export const PoChip = ({
   />
 );
 
-/**
- * Carrier shipping tracking number. Last-8 mono; carrier identity is the
- * ring {@link BrandIdentityDot} the host paints, never MapPin.
- * DESIGN SYSTEM RULE: Use ONLY for outbound carrier tracking numbers (UPS, FedEx, USPS…).
- * Do NOT use FNSKU codes — use FnskuChip (purple/Package) for those.
- */
+/** Carrier shipping tracking number. */
 export const TrackingChip = ({
   value,
   disableCopy,
@@ -712,15 +594,7 @@ export const SkuScanRefChip = ({
   />
 );
 
-/**
- * Empty SKU slot on a PO-line meta row — mono `--------` matching a dense
- * {@link SkuScanRefChip} footprint (same pencil tone, same 8ch width). Quiet
- * face (no bottom rule). Presentational only (no copy button) so accordion
- * row clicks stay on the row. Used by blank matched SKUs and the empty unfound stub.
- *
- * Do NOT route through {@link AddValueChipFace}: its non-mono micro label
- * stacks short hyphens unevenly and does not read as an 8-char empty chip.
- */
+/** Empty SKU slot on a PO-line meta row — mono `--------` matching a dense {@link SkuScanRefChip} footprint (same pencil tone, same 8ch width). */
 export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
   const tone = CHIP_TONES.sku;
   return (
@@ -745,16 +619,7 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
   );
 }
 
-/**
- * Zoho PO unit cost on a receiving line. Receipt mark + quiet amount face
- * (`88.77` — the `$` stays in the copy payload only). Copies the full formatted
- * string (`$88.77`). Dense LedgerGrid Price cells pass {@link showIcon} false
- * via column `omitCellIcon` (header glyph still names the type).
- *
- * Pass `amount={null}` / missing / non-positive for an unfound or unpriced line:
- * still paints the Receipt mark + honest `—` so the meta price column never
- * collapses to a blank cell.
- */
+/** Zoho PO unit cost on a receiving line. */
 export const UnitPriceChip = ({
   amount,
   dense,
@@ -825,12 +690,7 @@ export const ConditionGradeChip = ({
   );
 };
 
-/**
- * Picks blue carrier {@link TrackingChip} vs yellow {@link SkuScanRefChip} when the value contains `:`.
- * For SKU-formatted scans (`SKU:ID`), also renders an Ecwid {@link PlatformChip} that opens the
- * product search page using the base SKU (segment before `:`).
- * Label is always last 8 characters of the raw value (same for carrier and SKU scans).
- */
+/** Picks blue carrier {@link TrackingChip} vs yellow {@link SkuScanRefChip} when the value contains `:`. */
 export function TrackingOrSkuScanChip({
   value,
   plain: _plain,
@@ -874,16 +734,7 @@ export function TrackingOrSkuScanChip({
   );
 }
 
-/**
- * Device / unit serial number. Emerald / lucide scan-barcode icon.
- *
- * The label is derived internally from `value` via {@link resolveSerialDisplay},
- * so callers pass only the serial (or a comma-joined CSV) — no `getLast8Serial`
- * / empty-state handling at the call site. `display` is an optional override
- * (honored as-is after empty-state collapse) for rare cases like a batch
- * journey row whose sibling last-8s collide — see
- * `disambiguateSerialDisplays` in `@/lib/copy-chip-format`.
- */
+/** Device / unit serial number. */
 export const SerialChip = ({
   value,
   display,
@@ -913,13 +764,7 @@ export const SerialChip = ({
   displayWidth?: 'content' | 'last8';
   /** Default true — peek spreads PEEK_FACE; keep shrink-wrap for tables. */
   fitDisplayWidth?: boolean;
-  /**
-   * Omit the leading ScanBarcode glyph — the same switch {@link OrderIdChip} has.
-   * SERIAL was the last identity chip with no way to go icon-less, so it was
-   * the one Sheets cell that could not honour its column's `omitCellIcon` and
-   * kept a body glyph while ORDER / TRACKING / PRICE beside it had dropped
-   * theirs.
-   */
+  /** Omit the leading ScanBarcode glyph — the same switch {@link OrderIdChip} has. */
   plain?: boolean;
   /** Pass `flush` under plain text so the barcode shares that text's left edge. */
   outerPad?: 'chip' | 'flush';
@@ -953,19 +798,7 @@ export const SerialChip = ({
   />
 );
 
-/**
- * Loading placeholder for a {@link SerialChip}. Emerald ScanBarcode glyph + a pulsing
- * bar in the mono-value slot, carrying the same emerald tone and default
- * ~120px footprint so the PO-line meta row does not reflow when the real serial
- * streams in from the per-carton serials query. Reads as "serial loading", not
- * "no serial" — the empty state a bare gap would imply.
- *
- * Presentational + `aria-hidden`: the real {@link SerialChip} replaces it on
- * resolve, and one skeleton per line would otherwise spam a status announcement.
- * Mirrors {@link SerialChip}'s wrapper/icon classes and its
- * `fitDisplayWidth` shrink-wrap so the swap is pixel-stable; tone comes from the
- * shared {@link CHIP_TONES} `serial` entry (one hue SoT, no parallel color).
- */
+/** Loading placeholder for a {@link SerialChip}. */
 export const SerialChipSkeleton = ({
   width = 'w-[120px] shrink-0',
   dense,
@@ -1096,17 +929,7 @@ export const SourceOrderChip = ({
   />
 );
 
-/**
- * The "empty slot, click to fill" affordance for an identity column — a colored
- * icon + muted label (no bottom rule). Quiet chips no longer use solid underlines
- * for filled values; empty-add stays icon + label so it still reads as an invite,
- * not a value. Shared by the Incoming "Add TRK#" popover trigger and the
- * dashboard paste-tracking button so the two surfaces can't drift.
- *
- * Presentational only — the caller owns the surrounding <button>/trigger and the
- * action (open a popover, paste from clipboard, …). Pass `colorClass` to recolor
- * for transient feedback (saving/success/error).
- */
+/** The "empty slot, click to fill" affordance for an identity column — a colored icon + muted label (no bottom rule). */
 export function AddValueChipFace({
   label,
   icon,
@@ -1119,12 +942,7 @@ export function AddValueChipFace({
   /** Icon + label text color. Override for status feedback (emerald/red). */
   colorClass?: string;
   dense?: boolean;
-  /**
-   * `mini` (default) — compact 8px label for popover triggers.
-   * `chip` — 10px label sized so the empty face's total width matches a filled
-   * {@link CopyChip} in a {@link ChipColumns} tracking slot (icon lands at the
-   * same x, footprint is identical). Pass a `h-3.5 w-3.5` icon.
-   */
+  /** `mini` (default) — compact 8px label for popover triggers. */
   size?: 'mini' | 'chip';
 }) {
   const labelSize = size === 'chip' ? 'text-role-micro' : dense ? 'text-role-caption' : 'text-role-micro';
@@ -1212,12 +1030,7 @@ export const PlatformChip = ({
   );
 };
 
-/**
- * Plain-cell click-to-copy — full visible string (not last-8). Same ritual as
- * {@link CopyChip} (hover tooltip → click copies → Copied flash) via
- * {@link useCopyChip}. Use for catalog SKU, bin barcode, and other extractable
- * ids that are not typed identity columns.
- */
+/** Plain-cell click-to-copy — full visible string (not last-8). */
 export function CopyableCellValue({
   value,
   display,

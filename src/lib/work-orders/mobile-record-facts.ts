@@ -1,9 +1,4 @@
-/**
- * Phone industrial record facts from a queue `WorkOrderRow` — the same
- * `LIFECYCLE` key, next step and ship-by inputs the desk ledger resolves from
- * its `ShippedOrder`, through the shared workflow SoT
- * (`resolveOutboundWorkflowFacts` → `orderLifecycleState`). Pure.
- */
+/** Phone industrial record facts from a queue `WorkOrderRow` — the same `LIFECYCLE` key, next step and ship-by inputs the desk ledger… */
 
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { LifecycleState } from '@/design-system/tokens/lifecycle';

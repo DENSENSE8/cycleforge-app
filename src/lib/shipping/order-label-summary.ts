@@ -1,31 +1,4 @@
-/**
- * One order's shipping label, as the To-ship evidence column shows it —
- * `GET /api/orders/[id]/label-purchase`.
- *
- * Two sources, one verdict:
- *   - the purchase ledger (`shipping_label_purchases`, see
- *     `label-purchase-ledger.ts`): who bought which label, when, for how much;
- *   - the order's label DOCUMENT (the G3 facts in `caged-orders.ts`): a label a
- *     person attached (linked), or one bought before the ledger existed.
- *
- * Status precedence (first match wins):
- *   bought   — the ledger's current row is `purchased`, or a bought label
- *              document (ShipStation / marketplace API) is on the order;
- *   pending  — a purchase was claimed and never resolved (the process died
- *              mid-charge): check ShipStation before buying again;
- *   linked   — a label document is attached that was not bought here;
- *   voided   — the last purchase was voided and nothing replaced it;
- *   none     — no label at all.
- *
- * Org scoping: one `tenantQuery` under the caller's org, with an explicit
- * `organization_id` predicate on every table (defence in depth alongside the
- * GUC). A cross-tenant order id reads back as missing.
- *
- * The status speaks for the order's OUTBOUND label (the one To-ship needs);
- * `labels` lists every label on the order — outbound, return, replacement;
- * bought here, imported from ShipStation, or paired by hand
- * (`listOrderLabels`, order-label-links.ts).
- */
+/** One order's shipping label, as the To-ship evidence column shows it — `GET /api/orders/[id]/label-purchase`. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';

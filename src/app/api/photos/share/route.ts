@@ -9,13 +9,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/photos/share
- *
- * Mint short-lived, task-scoped read URLs for a set of selected library photos
  * (see `src/lib/photos/share-links.ts` for the security model). Returns the
- * links + the uniform expiry so the client can format them for the clipboard.
- *
- * Body: { photoIds: number[]; ttlSeconds?: number }
- * Guarded by `photos.share` — the same permission as durable share packs.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {

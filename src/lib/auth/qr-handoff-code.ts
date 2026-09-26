@@ -1,16 +1,4 @@
-/**
- * Desk→phone handoff human code. Pure — client + server.
- *
- * GateGuard: SignInQrScanDialog, qr-login claim-by-code, /m/claim.
- * User: type the code from the desk — number pad, no Caps Lock, no keyboard
- * switching.
- *
- * DIGITS ONLY, on purpose. The code used to be 4 Crockford base32 characters:
- * that forces the phone keyboard into alpha mode, makes the operator hop
- * between the letter and number planes, and needs Shift/Caps for a code that is
- * uppercase by definition. Six digits carries the same entropy (10^6 ≈ 32^4)
- * and lets the field raise a number pad — the whole code is one thumb sweep.
- */
+/** Desk→phone handoff human code. */
 
 /** Six digits ≈ 20 bits — the same space the old 4-char base32 code covered. */
 export const HANDOFF_SHORT_CODE_LENGTH = 6;

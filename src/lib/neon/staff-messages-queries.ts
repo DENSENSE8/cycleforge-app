@@ -1,12 +1,4 @@
-/**
- * Staff-to-staff message queries — backs GET/POST/PATCH /api/staff-messages,
- * the persistent side of the header clipboard "send to staff" flow.
- *
- * Every read is scoped to the verified session's staff_id (you only ever see
- * your OWN inbox). Sends are scoped to the sender's organization: the recipient
- * must be a live staffer in the same org, checked server-side — the request
- * body is never trusted for org/identity.
- */
+/** Staff-to-staff message queries — backs GET/POST/PATCH /api/staff-messages, the persistent side of the header clipboard "send to staff" flow. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

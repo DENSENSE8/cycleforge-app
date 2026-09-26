@@ -5,15 +5,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
 import { buildOrderPayload, findOrderByShipment } from '@/lib/tech/order-card';
 
-/**
- * Legacy POST /api/tech/add-serial-to-last — thin wrapper around POST /api/tech/serial.
- * Actor is server-derived from the verified session.
- *
- * The unified serial route only returns `{ success, serialNumbers, tsnId }`. This
- * surface (shipping-mode testing, no active card) needs the full `order` payload
- * back so `handleSerialScan` can rebuild the active-order card, so we re-resolve
- * the order from the last-scanned SAL and merge it into the response.
- */
+/** Legacy POST /api/tech/add-serial-to-last — thin wrapper around POST /api/tech/serial. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 });

@@ -20,20 +20,7 @@ export interface PendingVideo {
   error: string | null;
 }
 
-/**
- * Uploads a camera batch to the repair (one POST `/api/photos/upload` per
- * shot, entity `REPAIR_SERVICE`), one at a time so a phone on warehouse Wi-Fi
- * is not racing itself. A failed shot keeps its blob for Retry; a committed
- * shot is dropped and `onCommitted` fires once per batch so the screen
- * refetches the server's list (ids, stamps) instead of trusting local state.
- *
- * A video (`uploadVideo`) goes create → direct PUT to storage → finalize
- * through `uploadVideoClient`, reporting byte progress; a failed video keeps
- * its File for Retry exactly like a failed shot.
- *
- * Screen-scoped on purpose: the shell's durable capture queues are one engine
- * per station domain, and the repair has no station bridge to resume into.
- */
+/** Uploads a camera batch to the repair (one POST `/api/photos/upload` per shot, entity `REPAIR_SERVICE`), one at a time so a phone on… */
 export function useRepairPhotoUploads(repairId: number, onCommitted: () => void) {
   const [pending, setPending] = useState<PendingShot[]>([]);
   const [lastCommitted, setLastCommitted] = useState(0);

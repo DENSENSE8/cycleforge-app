@@ -37,13 +37,7 @@ const QcChecklistWorkspace = dynamic(
   },
 );
 
-// Reference (`view=catalog`) and Kit Parts (`view=kit`) were removed 2026-09-15
-// (operator: *"these are all the tabs that are not working properly"*). Their
-// values left `PRODUCTS_VIEWS`, so a stale bookmark folds to Manuals and the
-// switch below is exhaustive without them. `ProductsCatalogWorkspace`,
-// `CatalogBulkActionBar`, `KitPartsWorkspace` and `KitPartsSection` are
-// deleted; the catalog TABLE (a PRODUCT_TABLES cohort peer) is untouched and
-// retires on its own gated increment.
+// Reference (`view=catalog`) and Kit Parts (`view=kit`) were removed 2026-09-15 (operator:
 
 export function ProductsWorkspace() {
   const searchParams = useSearchParams();

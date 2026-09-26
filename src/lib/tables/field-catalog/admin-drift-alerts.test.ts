@@ -1,22 +1,4 @@
-/**
- * Admin drift-alert catalog guards, materialization and adapter behaviour — the
- * family that replaced `_inventory-admin/TableSections.tsx`'s four hand-written
- * `AdminTableColumn` objects.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - the UNSELECTED-COLUMN NON-GOAL. `stock_alerts` carries `alert_type`,
- *   `resolved_at`, `threshold`, `bin_id` and `notified_at`; this desk's query
- *   pins the first two to constants and never selects the rest. A future agent
- *   reading "the table already has the data" will be tempted to bind it. The
- *   catalog must not name those columns until a cell paints them.
- * - the ZERO-BOUND-TRACK layout. All four facts ride the shared chrome, so the
- *   product default binds nothing — and every one of them still has to be
- *   bindable, or the Fields menu is a dead control on this desk.
- * - the CLOCK face. The retired cell printed `toLocaleString()`, so it carried
- *   the time of day; an alert feed rounded to the day has lost the fact two
- *   alerts in one run are a different story from two a day apart.
- */
+/** Admin drift-alert catalog guards, materialization and adapter behaviour — the family that replaced… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -13,30 +13,7 @@ import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
 import { TABLE_SURFACE_CLIP_CLASS, TABLE_SURFACE_SHEET_CLASS } from '@/design-system/tokens/table-surface';
 
-/**
- * `LedgerGridSurface<Row, K, C>` — the descriptor-driven grid composer.
- *
- * One mounted shell, many {@link GridSurfaceDescriptor}s: the surface owns the
- * table shell (`surface="framed"` → {@link TABLE_SURFACE_CLIP_CLASS};
- * `surface="sheet"` → {@link TABLE_SURFACE_SHEET_CLASS}), the loading skeleton,
- * the teaching empty box, the TanStack headless sort surface (`useGridSurface`
- * — asc ↔ desc cycle, per-column desc-first) and the `LedgerGrid` mount. The
- * caller owns what is genuinely per-domain: data fetch, house grouping /
- * day-banding, sort durability, its column MODEL, and the row / group
- * renderers.
- *
- * ## What it stopped owning on 2026-08-29
- *
- * Per-staff column visibility, persisted drag-resize widths, controlled column
- * order and the column-display rail all went with the interactive layer
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.2). The surface now paints
- * the descriptor's columns, full stop — there is no per-staff delta between the
- * model and what the grid draws, so the header, the rows and the grid template
- * are structurally incapable of disagreeing about which tracks exist.
- *
- * Chrome (search, filter, tabs, counts) is not here and never was: it belongs
- * to {@link DataTable}, the one component that draws a table for a page.
- */
+/** `LedgerGridSurface<Row, K, C>` — the descriptor-driven grid composer. */
 export interface LedgerGridColumnHeaderApi<K extends string, C extends LedgerGridColumnModel> {
   toggleColumnSort: (key: K) => void;
   /** The mounted columns — sourced from the descriptor that built the template. */
@@ -46,14 +23,7 @@ export interface LedgerGridColumnHeaderApi<K extends string, C extends LedgerGri
 interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColumnModel> {
   /** The family's canonical column model. */
   columns: readonly C[];
-  /**
-   * Build this family's descriptor from its columns.
-   *
-   * Pass the module-level `makeXGridDescriptor` **reference**, not an inline
-   * arrow: the descriptor is memoized on `[makeDescriptor, columns]` and it
-   * carries the TanStack `columnDefs`, so a fresh identity every render would
-   * rebuild the state engine's column list on every render.
-   */
+  /** Build this family's descriptor from its columns. */
   makeDescriptor: (visible: readonly C[]) => GridSurfaceDescriptor<Row, C>;
   /** House-computed date bands → folds (grouping stays outside TanStack). */
   orderGroupsByDate: [string, RowGroup<Row>[]][];
@@ -70,15 +40,7 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
     group: RowGroup<Row>,
     baseStripeIndex: number,
     api: { columns: readonly C[] },
-    /**
-     * Absolute ARIA index of the group's FIRST leaf, same stream as
-     * `renderRow`'s. Dropping it is not cosmetic: a leaf row decides whether it
-     * is inside a table from `rowIndex != null`, so a grouped body that never
-     * receives one renders every row as `role="checkbox"` instead of
-     * `role="row"` — a `role="table"` with no rows at all, and the
-     * `aria-required-children` failure that cost the To-ship desk its
-     * Accessibility score.
-     */
+    /** Absolute ARIA index of the group's FIRST leaf, same stream as `renderRow`'s. */
     rowIndex?: number,
   ) => ReactNode;
   /**
@@ -97,12 +59,7 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
    * next action, don't just say the list is empty.
    */
   emptyMessage: string;
-  /**
-   * Settled-with-no-MATCHES copy, when a filter or search is narrowing the list.
-   * "No data yet" invites the create action, "no matches" invites clearing the
-   * filter, and showing the first when the second is true tells the operator
-   * their data is gone.
-   */
+  /** Settled-with-no-MATCHES copy, when a filter or search is narrowing the list. */
   searchEmptyMessage?: string;
   /** Override the default dashed teaching box for settled-empty. */
   emptyState?: ReactNode;
@@ -112,12 +69,7 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   isSearching?: boolean;
   /** Sticky day bands (Testing History). Auto-suppressed under a column sort. */
   showDayHeaders?: boolean;
-  /**
-   * Band key → SECTION label. Passed straight through: unlike `showDayHeaders`
-   * it is NOT suppressed under a column sort, because a column sort collapses
-   * the queue to one unnamed band and no key can match — the section disappears
-   * on its own, from the data, rather than by a second rule here.
-   */
+  /** Band key → SECTION label. */
   sectionHeaders?: Record<string, string>;
   /** Mirror of the LedgerGrid scroll body (keyboard nav / scroll-to-top). */
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -128,25 +80,14 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   scrollParentRef?: RefObject<HTMLElement | null>;
   /** Scroll a row (by getRowKey) into view — deep-link / keyboard focus. */
   scrollToKey?: string | null;
-  /**
-   * First-paint row height estimate (px) for the virtualizer.
-   *
-   * Resolved by the CALLER from the column model it is mounting — a surface
-   * that paints a taller row box must say so, or the scrollbar and every
-   * scroll-to computation are wrong by the difference on every row.
-   */
+  /** First-paint row height estimate (px) for the virtualizer. */
   rowEstimate?: number;
   /** Optional ref on the outer shell. */
   shellRef?: RefObject<HTMLDivElement | null>;
   className?: string;
   /** Domain content under the column header, inside the scroll body. */
   bodyPrefix?: ReactNode;
-  /**
-   * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
-   * `role="table"`, and a table with no accessible name announces as a bare
-   * "table" with no indication of what it holds. Name the collection, not the
-   * page ("Incoming cartons", not "Incoming").
-   */
+  /** Accessible name for the table — REQUIRED. */
   ariaLabel: string;
   /** Outer card / sheet testid; the scroll body gets `${testId}-scroll`. */
   testId: string;
@@ -199,10 +140,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   bodyPrefix,
 }: LedgerGridSurfaceProps<Row, K, C>) {
   const descriptor = useMemo(() => makeDescriptor(columns), [makeDescriptor, columns]);
-  // Hand back the DESCRIPTOR's own list rather than `columns` — the same array,
-  // but sourced from the thing that computed `contentMinWidthRem` and the
-  // TanStack defs, so the header, the rows and the grid template are
-  // structurally incapable of disagreeing about which tracks exist.
+  // Hand back the DESCRIPTOR's own list rather than `columns` — the same array, but sourced from the thing that computed…
   const visible = descriptor.columns;
 
   // Controlled sort mirror → TanStack state; header clicks route through the
@@ -286,10 +224,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           scrollToKey={scrollToKey}
           contentMinWidthRem={descriptor.contentMinWidthRem}
           gridSkin="airtable"
-          // The virtualizer's scroll math must agree with the row box the
-          // cells actually paint, or the scrollbar lies by ~17% per row on
-          // a compound table. Resolved by the caller from the MOUNTED
-          // column model, never guessed here.
+          // The virtualizer's scroll math must agree with the row box the cells actually paint, or the scrollbar lies by ~17% per row on a compound…
           rowEstimate={rowEstimate}
           showDayHeaders={dayHeadersActive}
           sectionHeaders={sectionHeaders}

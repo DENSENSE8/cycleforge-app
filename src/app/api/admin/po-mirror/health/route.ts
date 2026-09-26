@@ -1,10 +1,4 @@
-/**
- * GET /api/admin/po-mirror/health
- *
- * Lightweight read used by the inventory sidebar to confirm the Zoho
- * mirror (receiving_lines) is staying fresh. Returns counts + freshness
- * markers + last cursor advance — no Zoho API call.
- */
+/** GET /api/admin/po-mirror/health */
 
 import { NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';

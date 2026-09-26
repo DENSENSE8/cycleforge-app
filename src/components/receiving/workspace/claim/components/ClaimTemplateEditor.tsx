@@ -43,13 +43,7 @@ interface Props {
   afterSubject?: ReactNode;
 }
 
-/**
- * Editable Zendesk subject + body, populated from the server preview. Once the
- * operator edits a field we stop overwriting it; "Reset to template" refetches.
- * Body textarea mirrors the label-notes insert rail — staff stamp, serial, and
- * the same context inserts (internal notes, title, price, sync notes, ticket subject).
- * Ticket identity chrome lives in scroll-spy / Displays — not restated here.
- */
+/** Editable Zendesk subject + body, populated from the server preview. */
 export function ClaimTemplateEditor({
   template,
   row,

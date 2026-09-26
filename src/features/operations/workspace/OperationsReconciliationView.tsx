@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Operations → Reconciliation Monitor.
- *
- * Lists CF-03 smear risk (unbound tech serials on multi-order cartons) and open
- * unmatched-tracking exceptions. Compose design-system Monitor blocks only.
- * Work escape for the exceptions list is `/tracking-exceptions` (Open queue).
- * That queue is reached only from this Reconcile monitor — not MasterNav.
- */
+/** Operations → Reconciliation Monitor. */
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';

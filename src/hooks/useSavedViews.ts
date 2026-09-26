@@ -9,40 +9,14 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { surfaceFromStorageKey } from '@/lib/saved-views/surfaces';
 
-/**
- * `useSavedViews` — the ONE storage + URL-apply core behind every generic
- * saved-views surface (dashboard outbound + station/testing history + Incoming).
- * A "view" is a named, encoded subset of the surface's `paramKeys`; views persist
- * in the polymorphic `saved_views` table (via `/api/saved-views`) and apply by
- * writing those params into the URL.
- *
- * Consumers supply only `storageKey` + `paramKeys` and their own UI face
- * (`WorkbenchViewsMenu` on Band 3 is the ops-queue golden; `SavedViewsList` /
- * `TableOptionsMenu` remain sibling faces). Ops and Media Library keep their
- * dedicated hooks/routes.
- *
- * **Saved views are operator-defined facet combinations (inner refinement).
- * They are NOT the lifecycle strip** — see
- * Tabs vs. saved views.
- *
- * Sharing: personal by default (`is_shared=false`); optional org-share. List =
- * own ∪ org-shared; only the owner mutates.
- */
+/** `useSavedViews` — the ONE storage + URL-apply core behind every generic saved-views surface (dashboard outbound + station/testing… */
 
 export interface SavedView {
   id: string;
   name: string;
   /** Encoded subset of the view's params (stable key order). */
   query: string;
-  /**
-   * The COLUMNS this view was saved with, or null for a view saved before
-   * layout capture (and for surfaces that do not opt in).
-   *
-   * The one part of a view that cannot ride the URL — a slot layout is a
-   * document, not a param — which is why `resolveEffectiveLayout`'s
-   * `savedViewLayout` term sat unused for so long. See
-   * `saved-view-layout-store.ts` for how it reaches the table.
-   */
+  /** The COLUMNS this view was saved with, or null for a view saved before layout capture (and for surfaces that do not opt in). */
   layout: SlotLayout | null;
   /** Org-wide visibility. */
   isShared: boolean;
@@ -98,10 +72,7 @@ function toClientView(row: ServerView, staffId: number | null): SavedView {
     id: String(row.id),
     name: row.name,
     query,
-    // A view saved before layout capture simply has none, and the cascade falls
-    // through to staff ?? org ?? product — which is exactly what it did before.
-    // `readStoredSlotLayout` is the same shape-reader the org and staff layers
-    // use, so a hand-edited or stale blob degrades instead of throwing.
+    // A view saved before layout capture simply has none, and the cascade falls through to staff ??
     layout: readStoredSlotLayout(row.filters?.layout),
     isShared: row.is_shared === true,
     isMine: staffId != null && ownerId === staffId,
@@ -199,10 +170,7 @@ export function useSavedViews({
     (name: string, options?: SaveViewOptions) => {
       const trimmed = name.trim();
       if (!trimmed || !surface) return;
-      // The layout rides beside the query rather than in it: params are a URL
-      // vocabulary and a slot layout is a document. Omitted when the caller
-      // supplies none, so a surface that has not opted in stores exactly what
-      // it stored before.
+      // The layout rides beside the query rather than in it:
       const filters: Record<string, unknown> = { query: currentQuery };
       if (options?.layout) filters.layout = options.layout;
       const isShared = options?.isShared === true;

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Desk search — one in-memory query per desk path, shared by every mounted
- * reader. The desk sidebar owns the input; the ledger on the same path reads
- * the same value. Search stays out of the URL on purpose (a URL write per
- * keystroke is a soft navigation that remounts the controlled table field), so
- * this is a module store, not a search param.
- */
+/** Desk search — one in-memory query per desk path, shared by every mounted reader. */
 
 import { useCallback, useSyncExternalStore } from 'react';
 

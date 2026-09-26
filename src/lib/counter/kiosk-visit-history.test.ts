@@ -1,12 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/kiosk-visit-history.test.ts
- *
- * DB-free. Every case below is a pure function the History face depends on for
- * a decision a bug would make silently wrong: which axis a typed search means,
- * whether a page boundary is trustworthy, and — the one worth breaking a build
- * over — which fields a tablet may write onto a SUBMITTED visit.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/kiosk-visit-history.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
@@ -88,10 +80,7 @@ describe('keyset cursor — a page boundary the counter can trust', () => {
     });
   });
 
-  // Page 2 of a near-name result must read the SAME row set page 1 was cut
-  // from. A cursor that dropped the marker would resume with the strict query,
-  // which by definition matched nothing — the rail's "load older" would go
-  // blank under rows that are visibly there.
+  // Page 2 of a near-name result must read the SAME row set page 1 was cut from.
   it('carries the relaxed marker across the page boundary', () => {
     const cursor = encodeKioskVisitCursor('2026-09-22T18:04:05.000Z', 'visit', 19, true);
     assert.equal(parseKioskVisitCursor(cursor)?.relaxed, true);

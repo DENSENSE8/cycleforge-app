@@ -1,11 +1,4 @@
-/**
- * Why stock left a location on the phone take flow — FBA, Orders, or the
- * operator's own words. Written to `sku_stock_ledger.reason` as a stable code
- * with the operator's text in `notes` (`reason_code_id` stays null).
- *
- * NEVER `SOLD`: the replenish trigger fires on `reason='SOLD'`
- * (`src/lib/sku/sku-stock-reasons.ts`). A take for an order is `TAKE_ORDER`.
- */
+/** Why stock left a location on the phone take flow — FBA, Orders, or the operator's own words. */
 export const TAKE_REASONS = [
   { code: 'TAKE_FBA', label: 'FBA' },
   { code: 'TAKE_ORDER', label: 'Orders' },

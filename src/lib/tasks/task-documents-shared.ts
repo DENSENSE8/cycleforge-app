@@ -1,20 +1,4 @@
-/**
- * Task **documents** — markdown instructions attached to a task, as the wire
- * and the evidence column read them. Client-safe: no fs, no pool.
- *
- * A task's description (`work_assignments.notes`) is one markdown body. Some
- * jobs need more: the SOP for a return, the plan file a project is run from,
- * the checklist a lead wrote once and hands out forty times. A task therefore
- * carries any number of documents, each one of two kinds:
- *
- * | source | what is stored | what is read |
- * |---|---|---|
- * | `upload` | the markdown text itself (an uploaded `.md` or one written in-app) | that text |
- * | `repo` | a repo-relative PATH to a plan file (`docs/**.md`, `master-plan.mdx`, a root `*.md`) | the file as it is NOW — a plan edited after linking reads its new words |
- *
- * `repo` never stores a copy: the point of linking a plan file is that the
- * floor reads the current plan, not the one that existed when it was linked.
- */
+/** Task **documents** — markdown instructions attached to a task, as the wire and the evidence column read them. */
 
 export const TASK_DOCUMENT_SOURCES = ['upload', 'repo'] as const;
 export type TaskDocumentSource = (typeof TASK_DOCUMENT_SOURCES)[number];

@@ -1,14 +1,4 @@
-/**
- * Per-namespace cache counters (Phase 0.6).
- *
- * A lightweight in-process sampler: {hits, misses, errors, rebuildMs, rebuilds}
- * per namespace. Under Fluid Compute these are per-instance, so treat them as a
- * sampled signal (good enough to see hit-rate and tune TTLs), not a global total.
- * A future revision can flush these to Redis HINCRBY for fleet-wide totals; the
- * recording API stays the same.
- *
- * Surfaced via getCacheMetricsSnapshot() at /api/admin/cache-stats (and /api/ready).
- */
+/** Per-namespace cache counters (Phase 0.6). */
 export interface NamespaceCounters {
   hits: number;
   misses: number;

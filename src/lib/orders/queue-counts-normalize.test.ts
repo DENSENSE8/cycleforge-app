@@ -1,10 +1,4 @@
-/**
- * The queue-counts cache shape has TWO writers (browser fetch + RSC dehydrate
- * seed) against one TanStack key. These pin the field the seed silently dropped:
- * `packPlacement` reached the client as `undefined`, so To-ship's "At stations"
- * tile and the per-bench chips read zero benches for the query's whole
- * staleTime — settled, wrong, and with no error to notice.
- */
+/** The queue-counts cache shape has TWO writers (browser fetch + RSC dehydrate seed) against one TanStack key. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

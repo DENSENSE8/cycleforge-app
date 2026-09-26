@@ -6,17 +6,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { AUDIT_ENTITY } from '@/lib/audit-logs';
 
-// ── POST /api/fba/shipments/close ─────────────────────────────────────────────
-// Ship Close: transitions all LABEL_ASSIGNED items (and any remaining
-// TESTED/PACKED items) to SHIPPED and marks the shipment as SHIPPED.
-// Requires all items to be at least TESTED (admin can force-close).
-// Writes a SHIP/SHIPPED event to fba_fnsku_logs for each shipped item.
-//
-// Destructive — requires step-up auth (via shipping.void_order, which is on
-// STEP_UP_PERMISSIONS). Closing a shipment can't be undone — all items go
-// SHIPPED and inventory is decremented.
-//
-// Body: { shipment_id, force?: boolean, station? } — actor is from session.
+// ── POST /api/fba/shipments/close ───────────────────────────────────────────── Ship Close:
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

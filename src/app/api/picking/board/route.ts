@@ -4,14 +4,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { loadPickBoard } from '@/lib/picking/pick-board';
 import type { PickBoardScope } from '@/lib/picking/directed-pick';
 
-/**
- * GET /api/picking/board?scope=unassigned|all
- *
- * The phone's pick board: `unassigned` (default) lists orders with open picks
- * that nobody owns and nobody is holding; `all` lists every order with open
- * picks, owner, backups and holder named. Ownership is the directed feed's own
- * (`loadPickCandidates`), so the board and "next pick" agree.
- */
+/** GET /api/picking/board?scope=unassigned|all */
 export const GET = withAuth(async (request: NextRequest, ctx) => {
   const scope: PickBoardScope = request.nextUrl.searchParams.get('scope') === 'all' ? 'all' : 'unassigned';
   try {

@@ -113,10 +113,7 @@ describe('kiosk visit triage', () => {
   });
 
   it('two complete repairs on one visit is a NORMAL visit, not a blocker', () => {
-    // This used to assert /remove 1 extra/ — a cart-level block that existed
-    // only because submit kept the first repair and silently dropped the rest.
-    // SQ6 writes one repair_service row per device, so two devices is a visit,
-    // not an error the operator has to undo.
+    // This used to assert /remove 1 extra/ — a cart-level block that existed only because submit kept the first repair and silently dropped…
     const s = session({
       lines: [repairLine(), { ...repairLine(), id: 'l2' } as KioskCartLine],
     });

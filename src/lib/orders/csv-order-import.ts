@@ -1,27 +1,10 @@
-/**
- * CSV order import — the ORDERS vocabulary: canonical fields, header aliases,
- * and the Ready vs Action-required rule.
- *
- * Used by Settings `CsvOrderImport` and, through
- * `@/lib/orders/order-import-descriptor`, by the shared table-import staging
- * mechanism. Server ingest stays on `POST /api/orders/import-csv`.
- *
- * The reader lives in the import seam (`@/lib/tables/import/parse-csv`) — a CSV
- * is not an orders concept. Re-exported here so existing callers keep their
- * import path.
- */
+/** CSV order import — the ORDERS vocabulary: */
 
 export { parseCsv } from '@/lib/tables/import/parse-csv';
 
 import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 
-/**
- * The CSV lane's canonical vocabulary — deliberately the same field set the
- * Google-Sheet adapter binds (`sources/google-sheet-rows.ts`), because the two
- * lanes read the same operator-authored order lists. A field the writer accepts
- * but this list omits is silently DROPPED on import, which is how item title,
- * ship-by, condition and note were being thrown away until 2026-08-19.
- */
+/** The CSV lane's canonical vocabulary — deliberately the same field set the Google-Sheet adapter binds (`sources/google-sheet-rows.ts`),… */
 export const CSV_ORDER_CANONICAL_FIELDS = [
   { key: 'order_number', label: 'Order number', required: true },
   { key: 'item_title', label: 'Item title', required: false },
@@ -68,13 +51,7 @@ export function autoMapCsvOrderHeaders(headers: string[]): Record<string, string
   const mapping: Record<string, string> = {};
   const aliases: Record<CsvOrderCanonicalKey, string[]> = {
     order_number: ['ordernumber', 'orderid', 'order', 'ordno', 'orderno'],
-    // `itemnumber` / `itemno` moved OFF `sku` when `item_number` gained a field
-    // of its own. They were never SKUs: a marketplace item number (an ASIN, an
-    // eBay listing id) resolves through `sku_platform_ids.platform_item_id`,
-    // while the sku path queries `sku_catalog.sku` — so a header literally
-    // named "Item Number" landing in `sku` sent every row down a lookup that
-    // could only miss. Aliases must not overlap across fields; two entries
-    // claiming one header makes the winner depend on field order.
+    // `itemnumber` / `itemno` moved OFF `sku` when `item_number` gained a field of its own.
     item_title: ['itemtitle', 'producttitle', 'product', 'title', 'description', 'itemname', 'productname'],
     sku: ['sku', 'itemsku', 'productsku'],
     item_number: ['itemnumber', 'itemno', 'itemid', 'listingid', 'asin'],
@@ -108,20 +85,7 @@ function pickMapped(row: Record<string, string>, header: string | undefined): st
   return typeof v === 'string' ? v.trim() : '';
 }
 
-/**
- * Ready vs Action required for a staging row.
- *
- * - Missing order number → Action required (always).
- * - When a SKU column is mapped, blank SKU → Action required (Sheets spirit) —
- *   UNLESS the row carries an item number or an item title, either of which
- *   names the product just as well — the writer resolves the catalog by SKU, by
- *   `sku_platform_ids.platform_item_id`, or by `product_title`. Marketplace
- *   exports routinely fill one identifier and not the others (an Amazon order
- *   list carries the ASIN and leaves the seller SKU blank; its eBay rows carry
- *   neither and name the product only in the title), so without this every row
- *   of such a file would be Action required the moment the operator mapped
- *   their SKU column at all.
- */
+/** Ready vs Action required for a staging row. */
 export function classifyCsvOrderStagingRow(
   row: Record<string, string>,
   mapping: Record<string, string>,
@@ -135,10 +99,7 @@ export function classifyCsvOrderStagingRow(
     Boolean(pickMapped(row, mapping.item_number)) || Boolean(pickMapped(row, mapping.item_title));
   if (mapping.sku && !pickMapped(row, mapping.sku) && !namesProduct) missing.push('sku');
 
-  // Platform acknowledgment (Order Intake & Acknowledgment ship): an Amazon
-  // 3-7-7 / eBay 2-5-5 order number names its own channel and stays Ready with
-  // no platform column at all. An unknown-shaped id with no mapped, non-blank
-  // platform value has no channel anyone can vouch for → Action required.
+  // Platform acknowledgment (Order Intake & Acknowledgment ship):
   if (
     orderNumber
     && inferMarketplaceFromOrderId(orderNumber) === null

@@ -1,9 +1,4 @@
-/**
- * The carton hub's read model (`/m/r/[id]`, the mobile exoskeleton): the
- * `GET /api/receiving/[id]` payload plus the pure faces the hub, its door
- * screens and its dock derive from it. Pure on purpose — the hub and every door
- * share one cached read, and these rules are unit-tested without React.
- */
+/** The carton hub's read model (`/m/r/[id]`, the mobile exoskeleton): */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { workflowStage } from '@/lib/receiving/workflow-stages';

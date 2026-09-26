@@ -1,18 +1,4 @@
-/**
- * Optimistic URL-param paint — mount-gated opens paint before App Router
- * soft-replace catches up.
- *
- * **Paint-pending** (this module): UI value = `resolve(url, pending)` until
- * `useSearchParams` matches the write. Used by Unbox Displays, Outbound
- * `open`/`new`, Search `sel`, Inventory `open`.
- *
- * **Sync-guard** (different job — do not unify): UI is already local entity
- * state; refs suppress URL→entity reconcile (`useDashboardSelectedOrder`,
- * `useReceivingWorkspacePane`).
- *
- * Isolation (construct/parse ownership) stays in `route-params.ts` — this
- * module never owns param schemas or domain builders.
- */
+/** Optimistic URL-param paint — mount-gated opens paint before App Router soft-replace catches up. */
 
 /** Pending wins when a write is in flight (`undefined` = follow the URL). */
 export function resolveOptimisticParam<T>(url: T, pending: T | undefined): T {

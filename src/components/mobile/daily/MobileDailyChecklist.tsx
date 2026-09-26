@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * Daily — the phone face of the shift checklist (`/m/home`).
- *
- * THE MOBILE SoT for the check verb (SURFACE_LAW: every operator verb is
- * completable on `/m` first). The desk at `/` consumes the same data through
- * the slot table; this surface is the one a floor staffer actually runs.
- *
- * **Cards + BottomSheet, never a DataTable** (SURFACE_LAW §5, and the
- * `BottomSheet` contract says so in as many words): a compound row's five
- * tracks do not fit a phone, so {@link MobileDailyRow} carries the three facts
- * a tick needs — the check, the title, the id — and everything else lives
- * one tap deeper in {@link MobileDailyDetailSheet}.
- *
- * ONE JOB: today's list for the signed-in staffer. Marks are keyed
- * (item, staff, day) in `daily_check_marks`, so ticking here is an attestation
- * by whoever is signed in — never a shared org toggle. Ticking is optimistic
- * (`useToggleCheck`): at a bench the operator taps and looks away.
- *
- * SECTIONS mirror the desk's authored order: the recurring shift list first,
- * then a "Today only" band when any one-off is in effect — the exception is
- * marked, and only the exception.
- *
- * Boundary: this file imports only the platform layer (`components/ui`,
- * `Icons`, `components/identity`) plus `src/design-system` and logic
- * (`lib/daily-checks`, `contexts`, `utils`). No desktop feature component.
- */
+/** Daily — the phone face of the shift checklist (`/m/home`). */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -79,10 +54,8 @@ interface MobileAgendaTask {
 type MobileDailyStatus = 'all' | 'open' | 'done';
 
 /**
- * Small mode switch = `TabSwitch` segmented (SURFACE_LAW §6 — not path chips,
- * not desk underline tabs). `all` leads and is the default, because a checked
+ * Small mode switch = `TabSwitch` segmented (SURFACE_LAW §6 — not path chips, not desk underline tabs).
  * item must stay visible after the tick (operator ruling 2026-09-14) — the
- * same law the desk's filter menu follows.
  */
 const STATUS_TABS: readonly { id: MobileDailyStatus; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -145,21 +118,11 @@ export function MobileDailyChecklist() {
     [status, doneSet],
   );
 
-  /**
-   * Assigned work, on the SAME list. `work_orders.claim` is the door: without
-   * it `GET /api/tasks` 403s, so the query never runs and Daily is simply the
-   * checklist. The tick is the same gesture as a check's — see
-   * {@link useToggleTaskDone}.
-   */
+  /** Assigned work, on the SAME list. */
   const { data: myTasks, isLoading: myTasksLoading } = useMyTasks(canSeeTasks);
   const toggleTask = useToggleTaskDone();
 
-  /**
-   * `?task=<id>` owns the open task sheet — a reminder notification deep-links
-   * `/m/home?task=<id>`, and Back/refresh keep the sheet. `replace`, not
-   * `push`: opening a task is a look inside this list, not a new page. Other
-   * params ride along untouched.
-   */
+  /** `?task=<id>` owns the open task sheet — a reminder notification deep-links `/m/home?task=<id>`, and Back/refresh keep the sheet. */
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const rawTaskParam = Number(searchParams.get('task'));
@@ -271,10 +234,7 @@ export function MobileDailyChecklist() {
       }
       onToggle={(next) => toggle.mutate({ itemId: item.id, checked: next })}
       onOpenDetail={() => setOpenItemId(item.id)}
-      // The row's ticket glyph is the door to `/m/t/[ticketId]` — the phone's
-      // thread + reply surface. The HOST owns the router so the row stays a
-      // presentational leaf its render test can mount without a navigation
-      // context, and owns the permission so the row never reads one.
+      // The row's ticket glyph is the door to `/m/t/[ticketId]` — the phone's thread + reply surface.
       onOpenTicket={
         canOpenTickets && item.ticketId != null
           ? () => router.push(`/m/t/${item.ticketId}`)
@@ -283,13 +243,7 @@ export function MobileDailyChecklist() {
     />
   );
 
-  /**
-   * A thrown task, rendered as the SAME row as a check. The two stores stay
-   * apart (a check is a per-day attestation, a task is a handoff with an
-   * assignee and a deadline) but the operator has one list and one gesture:
-   * tick the circle. The caption carries the only two facts that differ —
-   * when it is owed, and which record it is about.
-   */
+  /** A thrown task, rendered as the SAME row as a check. */
   const renderTaskRow = (task: MobileAgendaTask) => (
     <MobileDailyRow
       key={`task-${task.row.id}`}
@@ -346,10 +300,7 @@ export function MobileDailyChecklist() {
       {/* `pb-28` clears the sticky CTA — the last row must stay tappable. */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-28 pt-3">
         <MobileCurrentSession />
-        {/* Kind dropdown, then status — the same component the desk toolbar
-            mounts. Band ARRANGEMENT follows the same dragged order the desk
-            wrote (the grip lives on the desk's band titles; a phone screen
-            reads top-down and keeps the shared order). */}
+        {/* Kind dropdown, then status — the same component the desk toolbar mounts. */}
         <div className="flex flex-wrap items-center gap-2 pb-3">
           <AgendaKindFilterRow prefs={kindPrefs.prefs} onToggle={kindPrefs.toggle} />
           <TabSwitch
@@ -385,23 +336,9 @@ export function MobileDailyChecklist() {
       </div>
 
       {/*
-       * ONE primary CTA (SURFACE_LAW §5) — a circular icon-only FAB in the
-       * bottom-right thumb zone (operator ruling 2026-09-15: "just a plus
-       * button at the very bottom right corner"), so the checklist owns the
-       * middle of the screen instead of a full-width bar.
-       *
-       * `absolute`, not `fixed`: the shell above is `relative`, and on a wide
-       * viewport `/m` renders as a phone COLUMN inside thick gutters — a fixed
-       * FAB would fly out to the browser's corner, away from the surface it
-       * belongs to. `pb-28` on the scroller is the matching clearance.
-       *
-       * `IconButton size="touch"` is the primitive for an icon-only action:
-       * 44px box (iOS HIG floor) + focus ring + press feedback declared once.
-       * `radius="pill"` is what makes it a circle; the accent fill and the
-       * inverse ink are semantic tokens at the call site, the sanctioned way
-       * to wash this primitive. `aria-label` is the ONLY name it has now that
-       * the visible label is gone.
-       */}
+ * ONE primary CTA (SURFACE_LAW §5) — a circular icon-only FAB in the
+ * bottom-right thumb zone (operator ruling 2026-09-15: "just a plus
+ */}
       {(canManage || canSeeTasks) ? (
         <IconButton
           // Task first: the checklist is the org's rarer edit, reachable

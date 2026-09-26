@@ -1,25 +1,4 @@
-/**
- * inbound_purchase_order_links writer — the purchase-identity chokepoint.
- *
- * Plan: docs/incoming-universal-purchase-orders-plan.md §3.2.
- * Contract: .claude/rules/{backend-patterns,polymorphic-tables}.md.
- *
- * upsertPurchaseLink() does, in ONE tenant transaction:
- *   1. app-side validation — source registered, parent receiving_line exists for
- *      the org (existence check lives in the domain helper, not a DB trigger);
- *   2. upsert the link row (idempotent on ux_inbound_po_links_natural);
- *   3. when the link is primary, demote any other primary on that line and
- *      dual-write the receiving_lines transition cache (inbound_source_type,
- *      source_order_id, source_line_item_id, platform_account_id, source_system);
- *   4. co-write a typed marketplace fact (e.g. ebay_purchase) into
- *      receiving_line_facts when supplied — validated against the facts registry
- *      before any SQL runs.
- *
- * Deps-injected (default real impls) so unit tests run DB-free: the injected
- * `withTx` is faked with a client that captures queries. Same spirit as
- * src/lib/receiving/facts/store.ts (which injects `query`) and
- * src/lib/workflow/applyTransition.ts (which injects collaborators).
- */
+/** inbound_purchase_order_links writer — the purchase-identity chokepoint. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -71,12 +50,7 @@ export interface PurchaseLinkRow {
   platform_account_id: number | null;
 }
 
-/**
- * Upsert one purchase-identity link for a receiving line. Idempotent on
- * (org, line, source_type, source_order_id, COALESCE(source_line_item_id,'')).
- * Throws when the source is unregistered, the payload is malformed, or the parent
- * line doesn't exist for this org.
- */
+/** Upsert one purchase-identity link for a receiving line. */
 export async function upsertPurchaseLink(
   orgId: OrgId,
   input: UpsertPurchaseLinkInput,

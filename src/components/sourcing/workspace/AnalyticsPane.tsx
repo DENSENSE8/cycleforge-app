@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Sourcing → Analytics mode (Monitor archetype: observe-only, filters in the
- * URL, no durable selection). Acquisition cost vs the catalog target, demand
- * fill-rate, and time-to-source over part_acquisitions + sku_catalog cost
- * fields, via GET /api/sourcing/analytics?range=.
- *
- * Reuses the Operations chart primitives (MultiSeriesLineChart / GaugeDonut /
- * DistributionTable) — never a second chart implementation.
- */
+/** Sourcing → Analytics mode (Monitor archetype: */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

@@ -1,17 +1,4 @@
-/**
- * /api/staff-messages — staff-to-staff messages (the header clipboard
- * "send to staff" flow).
- *
- * No special permission — like /api/staff-todos, every authenticated staffer
- * can send a coworker a note and read their OWN inbox. recipientId is the only
- * cross-user input and is validated to be a live staffer in the SENDER's org;
- * the reader's identity always comes from the verified session, never the body.
- *
- *   GET    ?unread=1&limit=30   → { items: StaffMessageRow[] }   (your inbox)
- *   POST   { recipientId, body, kind?, context?, idempotencyKey? } → { item }
- *   PATCH  { action: 'mark_read', id }   → { success }
- *   PATCH  { action: 'mark_all_read' }   → { success, count }
- */
+/** /api/staff-messages — staff-to-staff messages (the header clipboard "send to staff" flow). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

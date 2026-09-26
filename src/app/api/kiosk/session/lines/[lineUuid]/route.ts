@@ -1,16 +1,4 @@
-/**
- * PATCH /api/kiosk/session/lines/{lineUuid} — the customer corrects their own line.
- *
- * A mistyped serial, the wrong model, one more of the same item. The customer
- * is standing at this screen and knows these facts better than the operator
- * does — making them dictate it across the counter is the workflow this whole
- * plan exists to remove.
- *
- * **No amount field, and no DELETE verb.** Removing a line the customer already
- * saw priced is a void, and a void is money: it stays on the desk with a reason
- * and a staff id (P7). The domain refuses an amount from a device principal too,
- * so a future route here cannot widen it by forgetting.
- */
+/** PATCH /api/kiosk/session/lines/{lineUuid} — the customer corrects their own line. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

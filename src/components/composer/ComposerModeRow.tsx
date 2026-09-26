@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Mode + procedure row BELOW the OmnichannelComposerDock outline — hard rule.
- *
- *   ┌─────────────────────────────────────────┐
- *   │  textarea…                              │
- *   │ [+]           [Location] [↵] [Print?]   │
- *   └─────────────────────────────────────────┘
- *   [ Unbox ] [ Ticket ]              ( ◠ ring )
- *
- * Unbox + Ticket clustered leftmost; icon always left of label.
- * Unbox glyph blue; Ticket glyph carton orange. Ring far right.
- */
+/** Mode + procedure row BELOW the OmnichannelComposerDock outline — hard rule. */
 
 import { type ComponentType, type ReactNode } from 'react';
 import { PackageOpen, Ticket } from '@/components/Icons';
@@ -38,12 +27,7 @@ const MODE_ICON_TONE: Record<StationComposerMode, string> = {
   ticket: 'text-orange-500',
 };
 
-/**
- * Compact dock inset (`p-1.5`) plus the outline’s 1px border — the mode row
- * is a sibling *under* the outline, so it recreates the dock’s inner start
- * and end. Unbox sits in the same `w-8` column as `+`; the procedure ring
- * sits in the same `w-8` column as Enter (`CornerDownLeft`).
- */
+/** Compact dock inset (`p-1.5`) plus the outline’s 1px border — the mode row is a sibling *under* the outline, so it recreates the dock’s… */
 const COMPOSER_ROW_INSET = 'px-[calc(0.375rem+1px)]';
 
 /**

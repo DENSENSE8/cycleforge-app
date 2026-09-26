@@ -2,19 +2,7 @@
 
 /**
  * Mobile swipe-to-edit / swipe-to-void for a cart line.
- *
- * A TAP must stay a tap. The row used to take pointer capture on every
- * `pointerdown`, and a captured pointer's `click` is dispatched to the
- * capturing element — this wrapper — so the card inside never received it:
- * tapping a line opened nothing, and a repair line (no stepper) had no way to
  * its serial or its Remove (operator 2026-09-24: "I cannot click anything to
- * add a serial number … and I cannot remove the product"). Capture now starts
- * only once the finger has travelled {@link DRAG_START_PX} sideways.
- *
- * Callers: KioskCartLineList.
- * Affected API: none (local gesture).
- * Data schemas: none.
- * User: "full create read update delete that I would easily be able to edit with side swipes that are mobile friendly"
  */
 
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react';

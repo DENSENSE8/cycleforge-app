@@ -45,8 +45,4 @@ export function makeCatalogGridDescriptor(
   );
 }
 
-// No pre-built canonical descriptor: the column set is now resolved per staffer
-// by `useGridColumnVisibility`, so the catalog grid mount always builds from the
-// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
-// honest when a track is hidden). A module-level constant built from the full
-// column list would have been wrong for every staffer with a delta.
+// No pre-built canonical descriptor:

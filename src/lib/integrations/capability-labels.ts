@@ -1,20 +1,4 @@
-/**
- * Capability label helpers — the DISPLAY vocabulary for capability-first
- * product copy ("Integrations as SoT" program).
- *
- * Product surfaces speak capabilities (inventory, helpdesk, storefront
- * catalog, label engine, email inbox) — never vendor brands. Operator copy is
- * built from either:
- *   - a generic capability noun/title from here ("Save to inventory",
- *     "Inventory not connected"), or
- *   - the connected provider's display label via
- *     src/lib/integrations/capability-connections.ts (server-only) — e.g.
- *     "Zoho Inventory" when that connector is the org's inventory backend.
- *
- * This module is PURE + CLIENT-SAFE (no db). Label SoT chain:
- *   provider label   → PROVIDER_CATALOG (settings display SoT)
- *   capability words → the maps below (extend here, never inline in a view)
- */
+/** Capability label helpers — the DISPLAY vocabulary for capability-first product copy ("Integrations as SoT" program). */
 import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
 import type { Capability } from '@/lib/integrations/connectors/types';
 

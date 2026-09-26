@@ -86,10 +86,7 @@ describe('countGridRows', () => {
 
 describe('hasGridRows — emptiness is about ROWS, not bands', () => {
   it('a band holding no groups is EMPTY', () => {
-    // The regression this exists for: a flat list emits one unnamed band
-    // (`[['', groups]]`). Testing the band COUNT made that read as non-empty
-    // with zero rows, so LedgerGrid drew its column headers over a void instead
-    // of the caller's teaching box. `/pickup` shipped that way.
+    // The regression this exists for:
     assert.equal(hasGridRows<Row>({ orderGroupsByDate: [['', []]] }), false);
   });
 

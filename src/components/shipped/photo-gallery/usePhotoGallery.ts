@@ -55,24 +55,13 @@ function closeMachineReducer(state: ViewerCloseState, action: CloseMachineAction
   return { ...state, panelOpen: action.open };
 }
 
-/**
- * Entity a viewer upload attaches to. Upload always targets the gallery's OWN
- * entity — never an arbitrary one — so a dropped/picked file joins the photos
- * already on screen. Receiving galleries derive this from `receivingId`; other
- * surfaces pass it explicitly.
- */
+/** Entity a viewer upload attaches to. */
 export interface PhotoUploadTarget {
   entityType: PhotoEntityType;
   entityId: number;
   photoType?: string;
   poRef?: string;
-  /**
-   * What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`).
-   * `null`/omitted is legal and means *unclassified evidence* — which is what
-   * every pre-aspect photo carries. It is passed through, never inferred: an
-   * aspect is a claim about the content of a frame, and only the surface that
-   * asked for the shot is in a position to make it.
-   */
+  /** What this shot SHOWS, within the stage (`@/lib/photos/photo-aspects`). */
   aspect?: string | null;
 }
 
@@ -110,12 +99,7 @@ export interface PhotoGalleryProps {
   allowReassign?: boolean;
   /** Called after photos move between POs (parents invalidate cache). */
   onPhotoReassigned?: (photoId: number) => void;
-  /**
-   * Enables the viewer's "Upload photos" action (⋮ menu item + drag-and-drop
-   * onto the lightbox). Uploaded files attach to THIS entity — the gallery's own
-   * entity. Omit and the affordance is hidden. Receiving galleries (those given
-   * a `receivingId`) derive this automatically, so no call-site change is needed.
-   */
+  /** Enables the viewer's "Upload photos" action (⋮ menu item + drag-and-drop onto the lightbox). */
   uploadTarget?: PhotoUploadTarget;
   /** Called after each successful upload (parents invalidate cache). */
   onPhotoUploaded?: (photoId: number) => void;
@@ -143,12 +127,7 @@ export interface PhotoGalleryProps {
   onSendToTicket?: () => void;
 }
 
-/**
- * Controller for the photo gallery: composes {@link usePhotoItems} (parse +
- * preload) and {@link useImageZoom} (zoom/pan) and owns the fullscreen viewer,
- * download/copy actions, and the two-step delete (NAS file + DB row). Returns one
- * bag consumed by the launcher + viewer-modal views.
- */
+/** Controller for the photo gallery: */
 export function usePhotoGallery(props: PhotoGalleryProps) {
   const {
     photos,
@@ -518,11 +497,7 @@ export function usePhotoGallery(props: PhotoGalleryProps) {
     void performDelete();
   };
 
-  // Upload always attaches to the gallery's own entity. Prefer an explicit
-  // target; otherwise derive it from a receiving-scoped gallery so receiving
-  // surfaces get upload for free without a new call-site prop — never an
-  // arbitrary/unowned entity. Carton-scoped uploads stamp the package stage
-  // (a carton link may never carry `receiving_item` — stage SoT).
+  // Upload always attaches to the gallery's own entity.
   const effectiveUploadTarget: PhotoUploadTarget | null =
     uploadTarget ??
     (typeof receivingId === 'number' && Number.isFinite(receivingId) && receivingId > 0

@@ -24,12 +24,7 @@ function parseList(raw: string | null): string[] {
         .filter(Boolean);
 }
 
-/**
- * Legacy view state — kept so the rest of the inventory app (ByBinView,
- * BySkuView, etc.) keeps working until the detail-panel refactor in Phase 2.
- * `state.sku/bin/unit` continue to drive the right-pane viewport; the new
- * tabbed sidebar writes into them when a result is clicked.
- */
+/** Legacy view state — kept so the rest of the inventory app (ByBinView, BySkuView, etc.) keeps working until the detail-panel refactor in… */
 function readViewState(searchParams: URLSearchParams): InventoryViewState {
     const sku = searchParams.get('sku');
     const bin = searchParams.get('bin');
@@ -96,10 +91,7 @@ export function useInventoryUrlState() {
         const rawMode = searchParams.get('mode');
         const section = searchParams.get('section');
         const pathTab = inventoryTabFromPathname(pathname);
-        // `triage`/`pulse` are now their own routes (/inventory/triage,
-        // /inventory/pulse) — consistent with /inventory/graph — but they reuse
-        // the default (activity) search scope in the sidebar, so keep `tab`
-        // neutral on those mode-routes. The legacy `?mode=` form still resolves.
+        // `triage`/`pulse` are now their own routes (/inventory/triage, /inventory/pulse) — consistent with /inventory/graph — but they reuse the…
         const pathMode: InventoryMode | null =
             pathTab === 'triage' ? 'triage' : pathTab === 'pulse' ? 'pulse' : null;
         const mode =
@@ -124,10 +116,7 @@ export function useInventoryUrlState() {
             const sp = new URLSearchParams(searchParams.toString());
             mutate(sp);
             const qs = sp.toString();
-            // Open-only writes stay on the current inventory path. Triage/Pulse
-            // are mode routes (`/inventory/triage|pulse`) whose sidebar `tab` is
-            // forced to `activity` — retargeting via tabBasePath would bounce
-            // them to `/inventory/activity` and drop the mode.
+            // Open-only writes stay on the current inventory path.
             const onModeRoute =
                 pathname?.startsWith(`${INVENTORY_PATH}/triage`) ||
                 pathname?.startsWith(`${INVENTORY_PATH}/pulse`);
@@ -224,24 +213,11 @@ export function useInventoryUrlState() {
             const sp = new URLSearchParams(searchParams.toString());
 
             if (next.mode !== undefined) {
-                // Mode now lives in the PATH (/inventory/triage, /inventory/pulse)
-                // or the base route (ledger) — never a `?mode=` param — so the
-                // route exists and the master-nav rail resolves it. Clearing the
-                // param here also scrubs any legacy `?mode=` left in the URL.
+                // Mode now lives in the PATH (/inventory/triage, /inventory/pulse) or the base route (ledger) — never a `?mode=` param — so the route…
                 sp.delete('mode');
 
                 if (next.mode !== sidebar.mode) {
-                    // CONSTRUCT the destination — rule 1 of the isolation contract
-                    // (`@/lib/routing/route-params`). This replaces a four-key
-                    // clear list (`field`/`filter`/`q`/`open`) that also let the
-                    // viewport selectors through, so `?sku=`/`?bin=`/`?unit=` and
-                    // the state/condition multi-selects rode a mode switch.
-                    //
-                    // That made the two paths to the same job DISAGREE: the nav
-                    // rail's `applyChildTarget` already constructed and carried only
-                    // `staff`, while this in-app switch carried the selection. Two
-                    // shapes for one job is the fork the contract bans, so this
-                    // side moves to match the nav — a mode switch opens clean.
+                    // CONSTRUCT the destination — rule 1 of the isolation contract (`@/lib/routing/route-params`).
                     paintOpen(null);
                     const delta = new URLSearchParams();
                     const staff = sp.get('staff') ?? sp.get('staffId');

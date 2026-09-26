@@ -1,16 +1,4 @@
-/**
- * Client helpers for camera-based product identify in the receiving flow.
- *
- * Same shape as src/lib/nas-photos.ts: the app is Vercel-hosted and can't reach the
- * LAN, so the BROWSER posts the captured frame DIRECT to the vision box (the RTX
- * 5070 Ti) over the LAN/Cloudflare. The full-res image never round-trips through
- * Vercel. The box returns ranked SKU candidates; we then ask the Vercel API to
- * enrich them against sku_catalog for display + pairing.
- *
- *   browser frame ──▶ {visionBaseUrl}/identify ──▶ [{ sku, score }]
- *                                                        │
- *                  /api/receiving/visual-identify ◀──────┘  (enrich + pair)
- */
+/** Client helpers for camera-based product identify in the receiving flow. */
 
 // Runtime base URL of the vision box, seeded from GET /api/vision-config (mirrors
 // setNasBaseUrl). No trailing slash.
@@ -40,11 +28,6 @@ export interface EnrichedCandidate extends VisionCandidate {
 }
 
 // ─── Label OCR identify (the reliable "photograph the bottom label" path) ──────
-//
-// Bose product labels print the model; OCR reads it far more reliably than visual
-// embedding can tell near-identical models apart. The browser posts a deliberate
-// shot of the label to the box's /identify-label, gets a canonical model string,
-// then resolves it to a catalog product server-side (auth-guarded DB read).
 
 /** Raw OCR result from the vision box. `model` null = no confident label read. */
 interface LabelIdentifyResult {
@@ -134,12 +117,7 @@ async function resolveLabelModels(
   return Array.isArray(data?.candidates) ? data!.candidates : [];
 }
 
-/**
- * One-shot: label frame → vision box OCR → resolved catalog candidate(s). Tries the
- * strict (trusted) model first, then the loose read, so an ambiguous label still
- * surfaces a suggestion the operator can confirm. `resolved:false` candidates mean
- * "not in the catalog yet" — the UI can offer to create it.
- */
+/** One-shot: label frame → vision box OCR → resolved catalog candidate(s). */
 export async function identifyLabelAndResolve(
   blob: Blob,
   signal?: AbortSignal,

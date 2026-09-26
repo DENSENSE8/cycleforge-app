@@ -1,42 +1,6 @@
 'use client';
 
-/**
- * Support · Assist — the drafting display, and it lives on the RIGHT EDGE.
- *
- * The branch's ranking rule decides the placement in one line: *suggesting is
- * an extra; sending is the work* (`workbench-service.md`). The assistant
- * proposes; the composer in the middle commits. An AI panel that could send
- * would belong in the middle, and is out of scope by ruling, not by omission.
- *
- * ## It never sends, and it cannot
- *
- * The only way out of this display is `bridge.setDraft`, which seeds the editor
- * and the visibility toggle and has no access to `submit`. Typed operator text
- * is never clobbered: `setDraft` routes through `seedComposerDraft`'s confirm
- * rule, so an agent mid-sentence is asked before their words are replaced.
- *
- * ## The dock is untouched by anything that happens here
- *
- * Selecting Assist must not re-label the bottom button — the dock is
- * ticket-terminal, and a control on the right edge rewriting a control at the
- * bottom is the cross-region action-at-a-distance the station law bans. Nothing
- * in this file reaches the terminal.
- *
- * ## Trust surface (Phase 4)
- *
- * A draft about to be sent to a customer has to show where it came from, and
- * the two halves are shown apart because they are not equally trustworthy:
- *
- * - **From the image** — the caption, damage flag and OCR'd identifiers a
- *   deterministic local pass read. Observations.
- * - **From our data** — the rows those identifiers actually resolved to,
- *   each a real link. Facts.
- *
- * Plus the lane that ran (`local-only` means no image left the tenant's
- * hardware), the model, the confidence, and a closing line that nothing was
- * sent. A photo whose identifiers matched nothing says so out loud rather than
- * letting a confident paragraph imply the unit was recognised.
- */
+/** Support · Assist — the drafting display, and it lives on the RIGHT EDGE. */
 
 import { useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';

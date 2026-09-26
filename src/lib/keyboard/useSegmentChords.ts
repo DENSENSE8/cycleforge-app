@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Bind Alt+1…N onto the mounted child segment tab ids (Claim New·Link golden).
- * Single owner — leaves call this; no page-local `window` listeners.
- *
- * Fires while the segment host is mounted (Displays leaf-header or modal strip).
- * Stands down in inputs / comboboxes. Bare digits never bind (wedge).
- */
+/** Bind Alt+1…N onto the mounted child segment tab ids (Claim New·Link golden). */
 
 import { useEffect } from 'react';
 import {

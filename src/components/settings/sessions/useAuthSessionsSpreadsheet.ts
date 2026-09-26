@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * **Auth-sessions spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * Sort and search are local state: they narrow what is already on screen, and
- * writing them to the URL would round-trip the server for a client-side
- * reorder of a list this desk already holds in memory.
- */
+/** **Auth-sessions spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

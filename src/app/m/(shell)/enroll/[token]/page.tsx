@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Mobile enrollment — invite QR.
- *
- * Callers / importers: admin enroll QR → `/m/enroll/[token]`.
- * Affected API: GET/POST `/api/auth/enroll/[token]`; passkey register begin/finish
- *   with `enrollmentToken` (passkey first; PIN optional on complete).
- * Schemas: enrollment token; staff_passkeys; optional staff PIN hash.
- * User instruction: Enroll passkey first, PIN optional.
- */
+/** Mobile enrollment — invite QR. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';

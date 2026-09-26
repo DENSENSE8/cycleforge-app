@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * "Source this" — push any product/part into the unified sourcing queue on
- * demand (the human-directed inverse of the nightly scan). Drop it onto any
- * surface that knows a SKU and/or a free-text target: a part row, a SKU/product
- * row, a repair, a warranty claim, an order line.
- *
- * POSTs to /api/sourcing/alerts (demand_source='manual'). Idempotent for
- * SKU-backed rows server-side, so a repeat click won't duplicate the queue row.
- */
+/** "Source this" — push any product/part into the unified sourcing queue on demand (the human-directed inverse of the nightly scan). */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';

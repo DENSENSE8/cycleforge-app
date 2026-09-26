@@ -1,35 +1,4 @@
-/**
- * `HeldUnitRow → CompoundRowView` — the Holds desk adapter.
- *
- * Pure, strings and enums, no JSX: "the moment a family can pass a node, the
- * fork walks back in wearing a view model." Every fact not named here is a
- * bound SLOT resolved through `admin-holds-resolve.ts`.
- *
- * ## What the compound row says about one quarantined unit
- *
- * - TITLE — the SERIAL. The retired `unit` cell stacked `#{id} · {serial}`
- *   under one header; the serial is what is printed on the thing sitting in the
- *   bin, so it is the line an operator matches against.
- * - IDS — the unit ID, the row's handle and the key of the record plane
- *   (`/inventory?unit=<id>`). No tracking line: a held unit has no
- *   carrier, and inventing one would paint a chip over a fact this feed does
- *   not have. The `#` the retired cell prefixed was cell decoration — the ID
- *   face already reads as a handle.
- * - STATE — where a RELEASE puts the unit back, not `ON_HOLD`. Every row on
- *   this feed is on hold (it is the `WHERE` clause), so that word would be a
- *   column of one constant; the restore target is the fact that varies and the
- *   one an operator needs before releasing. The hover says so in words, so the
- *   pill `STOCKED` cannot be read as "this unit is in stock".
- * - DATES — the hold stamp, on BOTH lines: the civil day on the Hash line and
- *   the clock face on the Calendar line. The retired cell printed
- *   `toLocaleString()`, i.e. date AND time, and on a quarantine queue the time
- *   is the fact — a unit held twenty minutes ago is a different story from one
- *   held last Tuesday. The precise instant (seconds included, which is all
- *   `toLocaleString()`'s default ever added) stays on both hovers.
- *
- * There is no money, no photo and no deadline on a held unit; all three stay
- * null and the shared cells paint the honest empty face.
- */
+/** `HeldUnitRow → CompoundRowView` — the Holds desk adapter. */
 
 import { format } from 'date-fns';
 import type {
@@ -39,12 +8,7 @@ import type {
 import { holdRestoreStatus, type HeldUnitRow } from '@/lib/inventory/held-unit-row';
 import { compoundIdentityFace } from '@/components/tables/compound/compound-row-model';
 
-/**
- * A held unit IS work waiting on a human — that is what quarantine means, and
- * the desk's one verb (Release) is the human. Constant across the feed on
- * purpose: the alert is the hold, not the restore target the pill spells.
- * Deliberately not a colour; which hue `alert` wears is the cell's decision.
- */
+/** A held unit IS work waiting on a human — that is what quarantine means, and the desk's one verb (Release) is the human. */
 const HELD_TONE: CompoundStateTone = 'alert';
 
 function str(value: string | number | null | undefined): string | null {
@@ -58,13 +22,7 @@ function parseInstant(iso: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/**
- * The Calendar (secondary) line of the DATES cell — time of day.
- *
- * Exported because it IS half of what the retired `toLocaleString()` cell
- * printed and the test pins it: a face that quietly dropped the clock would
- * read as a formatting choice rather than as the regression it is.
- */
+/** The Calendar (secondary) line of the DATES cell — time of day. */
 export function holdClockFace(iso: string | null | undefined): string | null {
   const d = parseInstant(iso);
   return d ? format(d, 'h:mm a') : null;
@@ -98,10 +56,8 @@ export function adminHoldsCompoundView(row: HeldUnitRow): CompoundRowView {
     // Fallback line only — the layout binds `hold_reason` as the subtitle and a
     // bound subtitle replaces this. Says why the unit is here either way.
     note: str(row.hold_reason),
-    // The Id track carries THIS family's handle, not an order: `identityFace`
-    // paints it plainly and copyably, without the marketplace brand dot and
+    // The Id track carries THIS family's handle, not an order:
     // the open-on-platform menu `orderId` brings (operator 2026-09-14 — the
-    // column is Id product-wide).
     identityFace: compoundIdentityFace(str(row.id), 'Hold id'),
     orderId: null,
     tracking: null,

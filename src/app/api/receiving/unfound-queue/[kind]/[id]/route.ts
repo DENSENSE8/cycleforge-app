@@ -1,18 +1,4 @@
-/**
- * PATCH /api/receiving/unfound-queue/[kind]/[id]
- *
- * Lazy upsert into unfound_overlay (the polymorphic queue-metadata table).
- * The overlay row only exists once an operator first touches any of these
- * fields — until then the v_unfound_queue view returns NULLs from its
- * LEFT JOIN.
- *
- * Body (all optional, only set keys are written):
- *   zendesk_ticket_id   string | null
- *   usa_team_note       string | null
- *   vietnam_team_note   string | null
- *   follow_up_at        ISO timestamp | null
- *   checked             boolean
- */
+/** PATCH /api/receiving/unfound-queue/[kind]/[id] */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -127,10 +113,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       client.query(sql, insertVals),
     );
   } catch (err) {
-    // Surface Postgres errors with their code so the client can show
-    // something better than a generic "update failed". 23502 = NOT NULL,
-    // 23503 = FK violation (most likely cause: ctx.staffId not in staff),
-    // 23514 = CHECK violation, 42P01 = table missing (migration not run).
+    // Surface Postgres errors with their code so the client can show something better than a generic "update failed".
     const pgErr = err as { code?: string; message?: string; detail?: string };
     console.error(
       `[unfound-queue.PATCH] upsert failed kind=${kind} source_id=${sourceId} keys=[${setKeys.join(',')}]`,
@@ -159,16 +142,6 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
 }, { permission: 'receiving.view' });
 
 // ─── DELETE — hard-remove the source row from the queue ──────────────────────
-//
-// Per kind:
-//   • email_po           → DELETE FROM email_missing_purchase_orders
-//   • station_exception  → DELETE FROM orders_exceptions
-//   • unmatched_receiving → 422 (destructive — receiving rows may have lines/
-//                           serial_units; operator should use Check or open
-//                           the workspace to delete carefully)
-//
-// Always cleans up the matching unfound_overlay row so a re-ingested email
-// doesn't inherit stale notes/Zendesk references.
 
 export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   const parsed = paramsFromUrl(request.nextUrl);
@@ -199,11 +172,6 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
   }
 
   // Early-exit signals returned from inside the transaction callback.
-  // withTenantTransaction handles BEGIN/COMMIT/ROLLBACK + SET LOCAL
-  // app.current_org. A thrown error rolls the tx back; these sentinels are
-  // returned (so the tx COMMITs) but only on no-op paths — the 400 path runs
-  // before any DELETE, and the 404 path means zero rows were affected — so the
-  // commit is harmless and the response status is mapped below.
   type TxOutcome = { ok: true } | { status: 400 | 404; error: string };
 
   let outcome: TxOutcome;

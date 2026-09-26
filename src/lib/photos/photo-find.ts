@@ -1,18 +1,4 @@
-/**
- * Client-side find for the painted photo library rows.
- *
- * Typing in the library find-bar must NOT navigate or refetch: it narrows the
- * photos already on screen, exactly the way the slot `DataTable` desks narrow
- * theirs ({@link ../orders/filter-painted-orders.ts | filterShippedOrdersByQuery},
- * `receivingLineMatchesQuery`). Writing the box to the URL is the named
- * anti-pattern — a soft-nav remount per keystroke — pinned by
- * `src/lib/tables/data-table-search-url.guard.test.ts`.
- *
- * The haystack is the row's PAINTED identity plus the identifiers the finder
- * kind menu advertises, so a hit is always something the operator can read off
- * the list row (file name, `SKU · serial` meta line, ref label) or something
- * they explicitly scoped the field to.
- */
+/** Client-side find for the painted photo library rows. */
 import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import {
   photoFileName,
@@ -33,14 +19,7 @@ export interface PhotoFindOptions {
   field?: PhotoSearchField;
 }
 
-/**
- * The identifier facts one field-scope may match.
- *
- * `order` and `po` resolve to the same fact on purpose: a library row carries
- * ONE reference (`poRef`), and the scope it was captured under decides whether
- * that reference reads as a PO (unboxing) or an order (packing) — see
- * `PhotoLibraryGrid`'s tile-label contract.
- */
+/** The identifier facts one field-scope may match. */
 function scopedFacts(photo: LibraryPhoto, field: Exclude<PhotoSearchField, 'all'>): Fact[] {
   switch (field) {
     case 'po':

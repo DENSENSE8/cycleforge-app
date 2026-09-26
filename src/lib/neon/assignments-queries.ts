@@ -2,18 +2,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
-// ─── Tenancy note ────────────────────────────────────────────────────────────
-// `work_assignments` is tenant-owned (organization_id NOT NULL) with RLS FORCE +
-// a tenant_isolation policy (live catalog, docs/tenancy/org-id-coverage.generated.md).
-// Every statement runs via `tenantQuery` under the per-request `app.current_org`
-// GUC — RLS is the primary enforcement — AND carries an explicit
-// `organization_id = $org` predicate (defense-in-depth, so a cross-org id is a
-// no-op even if a future caller runs on the BYPASSRLS owner pool). Every export
-// requires the request's orgId.
-//
-// Active-row uniqueness is org-led via `ux_work_assignments_active_entity`
-// (organization_id, entity_type, entity_id, work_type) — see
-// WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT.
+// ─── Tenancy note ──────────────────────────────────────────────────────────── `work_assignments` is tenant-owned (organization_id NOT…
 
 export type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'RECEIVE' | 'STOCK_REPLENISH';
 export type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';

@@ -1,11 +1,4 @@
-/**
- * Zendesk ticket-watch poller — pull live ticket state for in-app watches
- * (`support_ticket_assignments`) and notify assignees when subject/status change.
- *
- * Same house pattern as carrier `sync-due`: poll the provider API on a cron
- * instead of inbound Zendesk webhooks (explicitly deferred in
- * `warranty/zendesk-link.ts`).
- */
+/** Zendesk ticket-watch poller — pull live ticket state for in-app watches (`support_ticket_assignments`) and notify assignees when… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';

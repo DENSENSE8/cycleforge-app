@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Shared "deep folder navigation" chrome for the NAS photo browser, styled to
- * match the manuals/library file browser (src/components/manuals/LibraryBrowser):
- * a clickable breadcrumb trail + card-style folder rows with a folder glyph and
- * a hover chevron. Used by BOTH the receiving "Select from NAS" picker dialog
- * and the /photos preview page so the two stay visually identical.
- *
- * The NAS browser loads one directory at a time (the file server is an nginx
- * autoindex), so unlike the manuals tree these helpers work off a single
- * `dir` relPath string ("" = root, "JAN 2026", "JAN 2026/sub", …) and a
- * navigate callback, rather than a prebuilt tree.
- */
+/** Shared "deep folder navigation" chrome for the NAS photo browser, styled to match the manuals/library file browser… */
 
 function FolderIcon({ className = 'h-4 w-4' }: { className?: string }) {
   return (

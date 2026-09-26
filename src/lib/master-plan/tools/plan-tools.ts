@@ -1,16 +1,4 @@
-/**
- * Plan-agent server tools (ALP-3.5) — AI SDK `tool()` definitions for the
- * /forge plan agent (`POST /api/forge/chat`).
- *
- * `mutate_master_plan` edits the shared Y.Text through a short-lived server
- * doc session (server-doc.ts); Ably fans the update out to every web client
- * and the local sync daemon (which persists it into master-plan.mdx). The
- * global dock assistant's tool registry is untouched — these tools exist only
- * inside the forge chat route (locked decision: AI SDK is the forge beachhead).
- *
- * Deps-injected so unit tests run with a local in-memory doc and a captured
- * audit sink — no Ably, no DB (house pattern).
- */
+/** Plan-agent server tools (ALP-3.5) — AI SDK `tool()` definitions for the /forge plan agent (`POST /api/forge/chat`). */
 
 import { tool } from 'ai';
 import { z } from 'zod';

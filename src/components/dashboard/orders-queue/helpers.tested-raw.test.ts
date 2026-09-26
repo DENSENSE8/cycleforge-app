@@ -1,13 +1,4 @@
-/**
- * Plan §9 field contract — tester / tested-at RAW resolution.
- *
- * Rehomed from `orders-queue-column-defs.test.ts` when the flat column-defs
- * module died with the Wave-1 hand-model kill
- * (`docs/kill-list/07-slot-table-hand-models.md`): the helpers under test are
- * KEPT `helpers.ts` functions — the same precedence the `orders.picked` slot
- * resolver mirrors (`field-catalog/orders-resolve.ts`) — and losing these
- * pins with the dead TanStack defs would have unguarded surviving code.
- */
+/** Plan §9 field contract — tester / tested-at RAW resolution. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

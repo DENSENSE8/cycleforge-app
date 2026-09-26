@@ -25,12 +25,7 @@ function qcRow(line: CartonHubLine): DetailDoor {
   };
 }
 
-/**
- * `/m/r/[id]/qc` — where the scan kernel armed for QC lands an `R-` carton
- * label (`qc-carton`), and the hub's Quality control door: pick a line, then
- * one of its units on `/m/qc/line/[id]`, which opens that unit's checklist.
- * Back returns to the armed kernel when that is where the scan came from.
- */
+/** `/m/r/[id]/qc` — where the scan kernel armed for QC lands an `R-` carton label (`qc-carton`), and the hub's Quality control door: */
 function CartonQcInner() {
   const { id, data, loading, error, reload } = useCartonHub();
   const [backHref, setBackHref] = useState(`/m/r/${id}`);

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * @domain-job Staff identity header above a PIN numpad (back, avatar, name, role).
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse CartonContextCard — this is sign-in identity, not
- *   a station carton entity. Shared by StaffPinPad and SetPinPad; those jobs
- *   stay separate (sign-in vs first-time set).
- */
+/** @domain-job Staff identity header above a PIN numpad (back, avatar, name, role). */
 
 // Deep path, not the barrel — see the note in `src/app/signin/page.tsx`.
 import { Button } from '@/design-system/primitives/Button';

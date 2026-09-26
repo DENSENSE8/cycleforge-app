@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Under-title click-to-type, plus the Figma width-field gesture when `edit.scrub`
- * is present: drag the painted number on X to change it; a click that never
- * armed opens the editor. Money opens the square price keypad (house Popover),
- * not a focus ring and not a caret in the caption. `$` stays InputGroupText.
- * Do not mount KeyboardKey or PinPadKey.
- */
+/** Under-title click-to-type, plus the Figma width-field gesture when `edit.scrub` is present: */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {

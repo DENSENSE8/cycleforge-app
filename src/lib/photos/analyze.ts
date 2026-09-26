@@ -235,12 +235,7 @@ const defaultDeps: AnalyzePhotoDeps = {
   persist: persistToDb,
 };
 
-/**
- * Enrich one photo into `photo_analysis`, routing to the provider THIS ORG chose.
- * Thin wrapper over the pure `analyzePhoto` in analyze-core.ts with the real DB /
- * provider Deps bound. Any provider returning null degrades to deterministic
- * catalog metadata — analysis never throws on a missing model or unreachable box.
- */
+/** Enrich one photo into `photo_analysis`, routing to the provider THIS ORG chose. */
 export function analyzePhoto(
   input: { photoId: number; organizationId: string },
   deps: AnalyzePhotoDeps = defaultDeps,

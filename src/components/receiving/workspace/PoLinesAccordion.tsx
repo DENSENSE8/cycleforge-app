@@ -31,19 +31,9 @@ export type {
 interface Props {
   receivingId: number;
   activeLineId: number;
-  /**
-   * Optional slot rendered under every editable PO line — condition pills,
-   * inline serial adder, etc. Receives that line's serials/units (+ the line
-   * itself) so children can consume the accordion's authoritative data rather
-   * than re-fetching or relying on the controller-active row alone.
-   */
+  /** Optional slot rendered under every editable PO line — condition pills, inline serial adder, etc. */
   activeRowSlot?: ActiveRowSlot;
-  /**
-   * Condition grade of the unit currently selected in the active row's body
-   * (multi-qty lines). When set, the active row's header condition badge shows
-   * this instead of the line-level grade, so the header tracks the selected
-   * unit. Null/undefined → fall back to `line.condition_grade`.
-   */
+  /** Condition grade of the unit currently selected in the active row's body (multi-qty lines). */
   activeConditionOverride?: string | null;
   /**
    * Edit/delete for serial copy-chips in the active row header. Condition is
@@ -62,19 +52,9 @@ interface Props {
    * always kept visible. Off in the unbox workspace, where every line matters.
    */
   hideNoTestLines?: boolean;
-  /**
-   * The already-known active line (the row the workspace opened on). Used as the
-   * query `placeholderData` so the clicked line paints INSTANTLY on a cold open
-   * while the full sibling list fetches — kills the "takes a second to render the
-   * PO line" gap. Ignored once real (or cached) data is present.
-   */
+  /** The already-known active line (the row the workspace opened on). */
   placeholderActiveRow?: ReceivingLineRow;
-  /**
-   * Render bare (no own card chrome, no add "+" pencil) — used when composed
-   * inside the unified {@link POUnboxingSection} wrapper, which supplies the
-   * single shared card + edit pencil. Defaults to the standalone card so the
-   * testing display and any other caller are unaffected.
-   */
+  /** Render bare (no own card chrome, no add "+" pencil) — used when composed inside the unified {@link POUnboxingSection} wrapper, which… */
   embedded?: boolean;
   /**
    * Embedded-only: node rendered at the right of the "PO items · N" header row
@@ -84,12 +64,7 @@ interface Props {
   headerRight?: React.ReactNode;
   /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
-  /**
-   * Carton-open snapshot of `receiving.accordionExpand`. Currently inert — the
-   * per-line collapse chevron was removed (capture lives in the bottom dock),
-   * so bodies are always expanded. Kept on the API for caller compatibility and
-   * in case expand-all-on-open returns.
-   */
+  /** Carton-open snapshot of `receiving.accordionExpand`. */
   accordionBootstrap?: 'default' | 'all';
   /**
    * Opt-in: enables Unlink in the title ⋮ for unmatched cartons with a serial
@@ -109,36 +84,11 @@ interface Props {
    * (Arrival door flow). Defaults true (Unbox / Testing).
    */
   unitsChrome?: boolean;
-  /**
-   * SHARE the host's line-collapse controller instead of the accordion's own.
-   *
-   * Optional because this component owns one by default — every PO-line list in
-   * the app discloses the same way without its host re-deriving the rule. Pass
-   * one only when a control ABOVE the list has to reach the lines: the Unbox and
-   * Testing Items bands both carry "Collapse all", and a band that collapsed
-   * itself while the lines underneath stayed open would hand the column back and
-   * then take it again the moment the band re-opened.
-   */
+  /** SHARE the host's line-collapse controller instead of the accordion's own. */
   lineCollapse?: LineCollapseController;
 }
 
-/**
- * Multi-item PO accordion. Renders the carton's sibling lines with
- * condition/serial editors interleaved under each SKU. The current active
- * line is highlighted for focus / scan-default; clicking a sibling still
- * dispatches `receiving-select-line` to re-seed the workspace controller.
- *
- * Publishes the record-cursor **`sibling`** scope so ambient ↑/↓ steps PO
- * lines while the carton middle is open (←/→ stay on procedure steps). Carton
- * hopping stays on the recents rail / History triage
- * `record` scope — not ambient arrows here.
- *
- * A thin shell over two collaborators (per the god-component cleanup):
- * - {@link usePoLinesData} — sibling query + cache-coordination bus.
- * - {@link PoLineRow} — the presentational row leaf.
- *
- * Single-line cartons should not mount this component (the parent guards).
- */
+/** Multi-item PO accordion. */
 export function PoLinesAccordion({
   receivingId,
   activeLineId,
@@ -224,10 +174,7 @@ export function PoLinesAccordion({
     scope: 'sibling',
   });
 
-  // Always render — even for single-line POs the row layout (title, qty,
-  // sku, price, condition, serial chip) is the canonical context display the
-  // workspace expects above the body. Never blank while we still have a
-  // known active row (cold siblings key / in-flight fetch).
+  // Always render — even for single-line POs the row layout (title, qty, sku, price, condition, serial chip) is the canonical context…
   if (paintRows.length === 0) {
     return null;
   }
@@ -264,11 +211,6 @@ export function PoLinesAccordion({
               activeSerialActions={unitsChrome ? activeSerialActions : undefined}
               activeRowSlot={unitsChrome ? activeRowSlot : undefined}
               // The shell owns the mutation; the row stays presentational.
-              // `markReceivingSerialAbsent` is the single choke point — it fires
-              // the optimistic `receiving-line-updated` patch AND the durable
-              // POST, so a waiver set from a collapsed row and one set from the
-              // active editor are the same write and the stepper cannot disagree
-              // with either. Arrival (`unitsChrome={false}`) never stamps serials.
               onSerialAbsentChange={
                 unitsChrome
                   ? (lineId, next) =>

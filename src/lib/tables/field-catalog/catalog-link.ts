@@ -1,25 +1,4 @@
-/**
- * Catalog-link field catalog — the bindable listing-match facts, as DATA. Wave
- * 1.3's fifth family (`docs/todo/seller-table-program-PLAN.md` §03;
- * `docs/kill-list/07-slot-table-hand-models.md` — the `catalog-link` row:
- * "a review queue with a private compound model. Matching chores are facts;
- * the strip is slots.").
- *
- * Every entry names a fact `CatalogLinkChoreRow` already carries off
- * `/api/review/catalog-link`. Resolution is `./catalog-link-resolve.ts`, kept
- * separate so this module stays a LEAF.
- *
- * Catalog-link is a COMPOUND morph. `catalog-link.item` is the identity fact —
- * the marketplace item number, which the shared `fulfillment` chrome track
- * already paints.
- *
- * **`status` is deliberately absent.** The queue is the OPEN chores; the state
- * pill says "Unlinked" for every row because that is what being in this queue
- * means. A bound status column would paint one identical value on 100% of rows,
- * which is ink that teaches operators to stop reading chips — the same refusal
- * `incoming.zoho` earned. Add it the day a lane surfaces linked or ignored
- * rows, where the value actually varies.
- */
+/** Catalog-link field catalog — the bindable listing-match facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';

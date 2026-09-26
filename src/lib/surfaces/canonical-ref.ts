@@ -1,22 +1,4 @@
-/**
- * Canonical-ref grammar — the stable string form every AI payload, ops_event,
- * agent_mutation_affects.target_ref, and endpoint uses to point at a row
- * (docs/todo/universal-feed-polymorphic-plan.md §-1 Q11).
- *
- * Two forms:
- *   Axis form   — `<table>:<axis>:<value>:entity:<id>`
- *                 a row scoped by a vocabulary axis, e.g.
- *                 `feed_memberships:feed_key:receiving_triage:entity:123`
- *   Entity form — `<table>:entity:<id>`
- *                 a direct row ref, e.g. `serial_units:entity:9041`
- *
- * Segments are lower_snake identifiers (`SEGMENT_RE`); `:` is the reserved
- * separator. `id` is a positive integer for BIGINT/serial-keyed tables; TEXT-
- * keyed rows (workflow_nodes, ai_chat_sessions) use the raw id string, so
- * `entityId` is surfaced as a string with `entityIdNumber` as the parsed
- * convenience. This module is pure (no imports) so it stays DB-free testable
- * and safe to reuse from client code.
- */
+/** Canonical-ref grammar — the stable string form every AI payload, ops_event, agent_mutation_affects.target_ref, and endpoint uses to… */
 
 const SEGMENT_RE = /^[a-z][a-z0-9_]*$/;
 const ID_RE = /^[A-Za-z0-9._-]+$/;

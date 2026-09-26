@@ -1,11 +1,4 @@
-/**
- * preview-model tests — the telling layer over the dispatch table.
- *
- * What is pinned here is the CONTRACT THE SHEET RENDERS: unknown bytes return
- * null (never a guess), the sentence names work not destinations, and the
- * armed-session answer differs from the bar's unarmed one. The dispatch rows
- * themselves are pinned in dispatch-table.test.ts and are not re-tested here.
- */
+/** preview-model tests — the telling layer over the dispatch table. */
 
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';

@@ -1,25 +1,4 @@
-/**
- * Command alias resolution — a tenant's custom scan strings, mapped to the
- * built-in command they mean.
- *
- * Two halves, deliberately separate:
- *
- *   {@link resolveCommandAlias} is PURE over whatever has been hydrated. It is
- *   what the scan path calls, and it must stay synchronous — a bench scan that
- *   waited on the network to learn whether `CMD-GO-BENCH-3` is a command is a
- *   scan the operator out-runs.
- *
- *   {@link setCommandAliases} is the hydration, called once per session from
- *   the app root. An alias list is tens of rows; it rides along with the
- *   session like the permission set does, and for the same reason.
- *
- * An alias NEVER invents behaviour. It resolves to a code that already exists
- * in `nav-command-codes` / `action-command-codes` / `station-command-codes`,
- * and those registries are PR-reviewed because a scan that moves an operator or
- * writes a verdict must not be creatable from an admin form. Everything
- * downstream — permission gate, destination, verdict — is decided by the TARGET,
- * so an alias can rename a jump and can never widen one.
- */
+/** Command alias resolution — a tenant's custom scan strings, mapped to the built-in command they mean. */
 
 import { squashCommandCode } from './nav-command-codes';
 
@@ -39,13 +18,7 @@ export function setCommandAliases(aliases: readonly CommandAlias[]): void {
   hydrated = true;
 }
 
-/**
- * The built-in code this raw scan means, or null when it is not an alias.
- *
- * Returns the TARGET, not the alias — every caller downstream then behaves
- * exactly as if the built-in sticker had been scanned, which is what keeps an
- * alias from becoming a second code path with its own bugs.
- */
+/** The built-in code this raw scan means, or null when it is not an alias. */
 export function resolveCommandAlias(raw: string | null | undefined): string | null {
   return bySquashed.get(squashCommandCode(raw))?.targetCode ?? null;
 }

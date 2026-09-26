@@ -1,48 +1,4 @@
-/**
- * ShipStation historical-label adapter → the label-ingestion ledger.
- *
- * Backfills the labels ShipStation bought over a window (default: the last 7
- * days) into `label_ingestions`, then attaches each resolved label's tracking
- * and PDF to its order through the same paths live labels use.
- *
- *   feed     v1 `GET /shipments` (createDateStart = window start). Voided
- *            labels are skipped; the primary label per order number is
- *            chosen by {@link planShipStationTracking} — the rule the order
- *            sync already applies. Return labels (`isReturnLabel`) never
- *            become the order's tracking: they land on the order's label list
- *            (`shipping_label_purchases`, purpose `return`, creation type
- *            `imported_shipstation`) under the same order-number rule.
- *   PDF      v2 `GET /v2/labels/se-<shipmentId>` → `label_download.pdf`, fetched
- *            with the v2 client (API key only ever sent to ShipStation hosts).
- *            Every v1 shipment has a v2 label under that id — including labels
- *            made in the ShipStation app (verified live 2026-09-24, 62/62).
- *   ledger   `recordShipStationLabelIngestion` stages the PDF in the ledger's
- *            object store (GCS, never the repository) and records the row,
- *            idempotent on the shipment id AND the PDF sha256.
- *   order    ShipStation's order number → the org's order rows: a legacy
- *            `shipstation` row wins, else every row carrying the number
- *            ({@link decideShipStationLabel}). No match, an order
- *            spread over several account sources, a second live label for the
- *            same order, or no order number at all → the row stays QUARANTINED
- *            with that reason. Nothing is guessed.
- *   attach   (apply only) MATCHED → tracking via the ShipStation tracking
- *            attach, PDF via the outbound document store, then the row is
- *            finalized APPLIED and recorded on the order's label list
- *            (outbound / imported_shipstation). Any failure leaves it MATCHED
- *            for the next run; an APPLIED label missing from the list is
- *            recorded on the next run.
- *
- * Re-running is a no-op for APPLIED rows, finishes MATCHED rows a crashed run
- * left behind, and promotes a QUARANTINED row whose order has since landed.
- * A QUARANTINED row an operator paired (Link label → state LINKED) is
- * resolved and left alone; a return label the order-label list already knows
- * (even one an operator unlinked) is never imported again.
- * Labels bought in-app (`shipping_label_purchases` with a stored document) are
- * skipped: the purchase flow already stored them.
- *
- * All IO is injected ({@link ShipStationHistoryDeps}); production wiring lives
- * in ./shipstation-history-deps.ts.
- */
+/** ShipStation historical-label adapter → the label-ingestion ledger. */
 import type { ShipStationV1Shipment } from '@/lib/shipping/shipstation/orders-v1';
 import type { ShipStationLabelRecord } from '@/lib/shipping/shipstation/client';
 import type { ShipStationOrderRow } from '@/lib/integrations/connectors/shipstation-tracking';

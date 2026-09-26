@@ -1,35 +1,4 @@
-/**
- * Save-for-unbox — the real triage-complete transition
- * (docs/receiving-triage-redesign-plan.md §3.5).
- *
- * Today `TriagePanel`'s "Save for unbox" button was a client-only
- * `toast.success(...)` — zero server write, zero column touched. This is the
- * server half: stamp `receiving.triage_complete` (+ _at/_by) so the carton has
- * a real, audited "identified, staged, handed to unbox" state.
- *
- * Does NOT require a PO link (B5) or intake photos (D8). DOES require a shelf
- * (`staging_location_id`) and a lane (`priority_lane`) — A1, now enforceable
- * since the operator has a way to set both: the Arrival **Locations display**
- * (`ArrivalLocationsLeaf` → `StationLocationsDisplay`), whose `selectShelf`
- * auto-routes the lane (`resolveTriageLane`), so one placement satisfies both
- * fields. The panel-local staging control was deleted 2026-08-20 — this gate
- * survived that removal deliberately and must not be relaxed to accommodate a
- * UI change.
- *
- * Does NOT advance `workflow_status` — that remains the unbox street's job via
- * the one guarded `transitionReceivingLine()` chokepoint (never duplicated here).
- *
- * Idempotent via `receiving_triage.triage_client_event_id` (org-led partial
- * UNIQUE, ux_receiving_triage_client_event_id), mirroring the
- * `inventory_events.client_event_id` pattern in
- * — a retried click/network-flake resolves the SAME row instead of erroring or
- * double-writing.
- *
- * Wave-3 writer inversion: reads AND writes go to the receiving_triage street
- * table (readiness gate on rt.staging_location_id / rt.priority_lane, replay on
- * rt.triage_client_event_id, completion stamped via upsertReceivingTriage).
- * The spine triage columns are no longer touched and are dropped in Wave 4.
- */
+/** Save-for-unbox — the real triage-complete transition (docs/receiving-triage-redesign-plan.md §3.5). */
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
@@ -102,10 +71,7 @@ export async function completeTriage(
       }
     }
 
-    // Lock the street row and capture the PRIOR triage_complete so the signal
-    // below fires only on the first genuine transition (re-stamp semantics of a
-    // repeat click are unchanged — only the emit is gated). The readiness gate
-    // (shelf + lane, A1) reads the street columns per the Wave-2 probe.
+    // Lock the street row and capture the PRIOR triage_complete so the signal below fires only on the first genuine transition (re-stamp…
     const rtRes = await client.query(
       `SELECT rt.staging_location_id, rt.priority_lane, rt.triage_complete
          FROM receiving_triage rt
@@ -145,10 +111,7 @@ export async function completeTriage(
       };
     }
 
-    // Stamp the completion on the street table. Overwrite semantics mirror the
-    // old spine UPDATE: completed_at/by re-stamp on a clientEventId-less
-    // re-click; the replay key is only written when the caller sent one
-    // (omitted = never clobbered).
+    // Stamp the completion on the street table.
     await upsertReceivingTriage(
       client as unknown as Pick<PoolClient, 'query'>,
       orgId,
@@ -170,10 +133,7 @@ export async function completeTriage(
       [receivingId, orgId],
     );
 
-    // Triage-outcome signal (plan §2.3 emitter #2). Rides this transaction via
-    // `client` under recordEntitySignal's SAVEPOINT guard. Emitted only on the
-    // FIRST completion (prior triage_complete false) — clientEventId replays
-    // return earlier, and clientEventId-less re-clicks re-stamp but never re-emit.
+    // Triage-outcome signal (plan §2.3 emitter #2).
     const wasComplete = Boolean(rt.triage_complete);
     if (!wasComplete) {
       await (deps.emitSignal ?? emitEntitySignalSafe)({

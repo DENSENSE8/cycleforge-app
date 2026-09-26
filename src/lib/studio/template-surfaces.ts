@@ -1,18 +1,4 @@
-/**
- * Template → surface seeding (operator-surfaces refactor Phase 5). When a
- * workflow template is imported (createDraftFromTemplate), the surfaces its
- * process steps imply should be seeded too — "templates seed both workflow
- * graphs and associated UI surfaces". The join is the surface registry's
- * `workflowNodeType`: a template node of type 'receiving' implies the receiving
- * surfaces (unbox/triage/incoming/pickup/history), a 'fulfillment' node implies
- * pack/outbound, etc.
- *
- * This module is the PURE core (DB-free, unit-tested): given the template's
- * nodes + the createDraftFromTemplate id-remap, it produces the station seeds to
- * bind. The DB insert is a thin composable step (`seedTemplateSurfaces`) the
- * import route can call alongside the guarded createDraftFromTemplate — it never
- * modifies that byte-identical function.
- */
+/** Template → surface seeding (operator-surfaces refactor Phase 5). */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -30,14 +16,7 @@ export interface TemplateSurfaceSeed {
   label: string;
 }
 
-/**
- * For each template node whose `type` a surface binds to (via
- * `SURFACE_REGISTRY.workflowNodeType`), produce a seed binding that surface to
- * the node's RE-MINTED id (from the createDraftFromTemplate id map). Nodes not in
- * the id map are skipped (a malformed template can't smuggle an unmapped id).
- * Deduped by (pageKey, modeKey) so two nodes of the same type don't double-seed
- * the same surface — the first node wins the binding.
- */
+/** For each template node whose `type` a surface binds to (via `SURFACE_REGISTRY.workflowNodeType`), produce a seed binding that surface to… */
 export function buildTemplateSurfaceSeeds(
   nodes: readonly TemplateGraphNode[],
   idMap: ReadonlyMap<string, string>,
@@ -74,15 +53,7 @@ export function buildTemplateSurfaceSeeds(
   return seeds;
 }
 
-/**
- * Persist the surface seeds as node-bound `station_definitions` DRAFT rows
- * (is_active = FALSE, config = the `'legacy'` hatch so nothing renders through
- * the composition yet). The rows bind each surface to the imported node so the
- * owner can compose them from the Studio; publishing is a separate explicit
- * step. Idempotent per (org, page_key, mode_key, node): re-importing won't spam
- * drafts. Takes the already-org-verified tx client (the route owns the
- * withTenantTransaction boundary), mirroring createDraftFromTemplate.
- */
+/** Persist the surface seeds as node-bound `station_definitions` DRAFT rows (is_active = FALSE, config = the `'legacy'` hatch so nothing… */
 export async function seedTemplateSurfaces(
   client: TxClient,
   orgId: OrgId,

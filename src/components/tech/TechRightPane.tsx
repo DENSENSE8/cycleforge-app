@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * The tech dashboard's right pane, swapped by sidebar mode:
- *   - receiving ........ the inbound receiving feed
- *   - testing .......... Testing workbench (Pending · Returns | History) with
- *                        the focused line panel crossfading over it
- *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
- *     scanned/active order — or an Up Next preview — crossfades and back.
- * Pure presentational; state comes from the dashboard's hooks.
- *
- * Shipping motion matches Unbox / Pack: browse underlay stays mounted; overlay
- * uses `motionRole.swap.scan` (exit instant). Order→order while open hard-cuts
- * (`mode="sync"`) so the host never flashes empty between entities.
- */
+/** The tech dashboard's right pane, swapped by sidebar mode: */
 
 import React from 'react';
 import {

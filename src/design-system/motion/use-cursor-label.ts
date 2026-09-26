@@ -8,18 +8,7 @@ import {
   publishCursorLabel,
 } from './cursor-label';
 
-/**
- * Trigger-side half of the cursor label channel.
- *
- * `enter(label, delayMs)` returns `true` when the label was handed to the
- * cursor — the caller then skips its anchored bubble. It returns `false` (and
- * publishes nothing) when the layer is not live or the label cannot ride, so
- * the caller falls back to the bubble. `leave()` clears only this trigger's
- * label, so a nested trigger's leave never wipes its parent's text.
- *
- * Clears on unmount and whenever `disabled` flips on, mirroring the bubble's
- * teardown so a hover peek that takes the face never leaves a stale chip.
- */
+/** Trigger-side half of the cursor label channel. */
 export function useCursorLabel({ disabled }: { disabled: boolean }) {
   const owner = useId();
   const timerRef = useRef<number | null>(null);

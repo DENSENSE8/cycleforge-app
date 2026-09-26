@@ -1,12 +1,4 @@
-/**
- * Zoho credential scope (Wave 5).
- *
- * The one wrapper Zoho service code should use instead of bare `withZohoOrg`:
- * it enforces the operation allowlist + audits credential usage
- * (withCredentialScope), then binds the tenant org so the Zoho client resolves
- * THAT org's credentials (withZohoOrg). Use it at service-function granularity
- * (per sync / per import), passing the coarse operation the work performs.
- */
+/** Zoho credential scope (Wave 5). */
 
 import { withCredentialScope } from '@/lib/integrations/credential-scope';
 import type { CredentialOperation } from '@/lib/integrations/credential-allowlist';

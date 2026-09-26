@@ -3,16 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { parseFilters } from '@/lib/audit-log/filters';
 import { getStaffDetail } from '@/lib/audit-log/staff-aggregator';
 
-/**
- * GET /api/audit-log/staff
- *   ?staffId=<int>   → cross-section feed for one staff member
- *
- * If no staffId is provided the caller should render the daily report
- * instead — this endpoint returns 400 in that case so the client
- * surfaces a clear "pick a staff" message.
- *
- * Gate: admin.view_logs.
- */
+/** GET /api/audit-log/staff ?staffId=<int> → cross-section feed for one staff member */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;

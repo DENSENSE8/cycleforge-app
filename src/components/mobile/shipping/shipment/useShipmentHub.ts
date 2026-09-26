@@ -12,12 +12,7 @@ export function shipmentHubHref(shipmentId: number): string {
   return `/m/shipping/shipments/${shipmentId}`;
 }
 
-/**
- * The package record shared by the hub and every door screen through
- * `useShipmentRecord` (one key, `shipmentRecordKey`), so hub ↔ door is a cache
- * hit. `back` is the job the package was opened from (`?back=`, e.g. `/m/scan`);
- * `link()` carries it onto `/info` and door hrefs so the X still returns there.
- */
+/** The package record shared by the hub and every door screen through `useShipmentRecord` (one key, `shipmentRecordKey`), so hub ↔ door is… */
 export function useShipmentHub() {
   const params = useParams<{ shipmentId: string }>();
   const searchParams = useSearchParams();

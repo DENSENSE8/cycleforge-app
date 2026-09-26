@@ -5,31 +5,7 @@ import { resolveClassifyCompact } from './carton-context-bar-layout';
 
 export type CartonContextActionId = 'listing' | 'claim' | 'photos';
 
-/**
- * Responsive layout for {@link CartonContextCard}'s one-row chrome — classify
- * pills collapse to dot-only / shortLabel faces when they collide with
- * identity or actions. Listing, price, and photos stay on the top-right;
- * only Claim parks in `⋯` on a narrow bar.
- *
- * ## Two rules that keep this from oscillating
- *
- * **1. Observe the CONTAINER, never the classify cluster.** The bar's width is
- * the independent variable; the classify cluster's width is the *output* of the
- * decision this hook makes. Observing the output closes the loop — measure →
- * flip `classifyCompact` → labels become shortLabels → cluster width changes →
- * observer fires → measure. `CLASSIFY_EXPAND_HYSTERESIS_PX` damps the
- * steady state but cannot stop a perturbation (a portal mounting, a scrollbar
- * appearing, a font settling) from starting it flapping. While it flaps the
- * pills change width under a stationary pointer, which fires `mouseleave` on
- * whichever one the operator is hovering and makes its menu flash open/closed.
- * The cluster's width is still READ inside `apply()`; it is just not a trigger.
- *
- * **2. `frozen` locks the decision while a cell owns the pointer.** An operator
- * mid-interaction must never have the row reflow under them, whatever the cause.
- * The caller passes `frozen` while any classify menu is open. This is belt to
- * rule 1's braces: rule 1 removes the known loop, rule 2 makes any *future*
- * perturbation harmless for the duration that it would actually be felt.
- */
+/** Responsive layout for {@link CartonContextCard}'s one-row chrome — classify pills collapse to dot-only / shortLabel faces when they… */
 export function useCartonContextBarLayout(
   barRef: RefObject<HTMLElement | null>,
   frozen = false,

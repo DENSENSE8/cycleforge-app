@@ -32,13 +32,7 @@ export const GET = withAuth(
   { permission: 'repair.view' },
 );
 
-/**
- * POST /api/repair/bench-sessions — { repairId, action: 'start' | 'stop' }
- *
- * Start / stop the caller's own timer. Both stamps are the database's NOW();
- * the body carries no time. Start is idempotent (returns the open session);
- * Stop with nothing running is 409.
- */
+/** POST /api/repair/bench-sessions — { repairId, action: */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const raw = await req.json().catch(() => ({}));

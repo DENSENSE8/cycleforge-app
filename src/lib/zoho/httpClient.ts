@@ -239,10 +239,7 @@ async function performZohoRequest<T>(
   const retryableHttpStatuses = new Set([429, 500, 502, 503, 504]);
   const timeoutMs = zohoRequestTimeoutMs(method, path);
 
-  // Resolve the tenant's credentials once per attempt loop. getIntegrationCredentials
-  // caches in-process for 5 min, so this is a cheap map hit on the hot path; it gives
-  // us both the access token (minted from creds.refreshToken) and the tenant's Zoho
-  // org id + data center used to build the URL.
+  // Resolve the tenant's credentials once per attempt loop.
   const creds = await loadZohoCredentials(orgId);
 
   for (let attempt = 0; attempt <= RATE_LIMIT_CONFIG.maxRetries; attempt++) {

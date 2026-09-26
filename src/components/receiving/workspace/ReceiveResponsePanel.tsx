@@ -13,34 +13,7 @@ import {
   type ReceiveResponseClassifyInput,
 } from './classify-receive-response';
 
-/* ──────────────────────────────────────────────────────────────────────────
- * ReceiveResponsePanel
- *
- * Surfaces the last POST /api/receiving/mark-received-po response below the
- * print preview so operators can see WHY a Zoho receive succeeded, was
- * skipped, or failed. The previous toast-only UX hid critical details
- * (especially "Zoho attempted: 0" — the no-PO-link case — which silently
- * fell through to a generic "Line received" success toast).
- *
- * Verdict mapping (mirrors the server's error_kind taxonomy):
- *   ✓ success      — zoho.attempted ≥ 1, zoho.ok = true, zoho.error null
- *   ⚠ skipped      — zoho.attempted === 0  (no linked PO/line item ids;
- *                                            local DB updated, Zoho untouched)
- *   ✗ rate_limit   — Zoho daily API quota exhausted
- *   ✗ circuit_open — internal circuit breaker tripped from recent failures
- *   ✗ api          — Zoho rejected the request (4xx/5xx with a Zoho code)
- *   ✗ other        — unexpected error / network failure
- *   ✓ verified     — dashboard already DONE but Zoho GET confirms fully received
- *                    (skip_reason zoho_already_fully_received; receive_id null)
- *
- * CHROME is a parameter (2026-08-21). `card` is the standalone face above —
- * its own tone card, headline, chevron and dismiss. `bare` is the DETAIL BODY
- * only: no shell, no headline, no controls, because the host already paints
- * all four. It exists so the welded receive panel can mount this exact verdict
- * body inside its disclosure instead of forking a second copy of the per-PO
- * result list and the raw-response expander — the alternative was a page-local
- * twin of a 240-line panel to delete one border.
- * ────────────────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────────────── ReceiveResponsePanel */
 
 export type ReceiveResponsePanelProps = {
   response: ReceiveResponseClassifyInput;
@@ -181,11 +154,7 @@ export function ReceiveResponsePanel({
     </>
   );
 
-  // ── bare: detail body only ────────────────────────────────────────────────
-  // The host (welded receive panel) already paints the shell, the verdict line,
-  // the dismiss and the photo-policy CTA — so none of those render here. What
-  // is left is what the row could not hold: the reason, the per-PO outcomes,
-  // and the raw payload.
+  // ── bare: detail body only ──────────────────────────────────────────────── The host (welded receive panel) already paints the shell, the…
   if (chrome === 'bare') {
     return (
       <div className="space-y-1.5">
@@ -234,10 +203,7 @@ export function ReceiveResponsePanel({
               </p>
             ) : null}
             {canOverride ? (
-              // Quiet + secondary on purpose: shooting the missing photos is
-              // the primary path out of this state. The override costs the
-              // operator a named reason that lands on the carton's exception
-              // list, so it must never read as the easy button.
+              // Quiet + secondary on purpose:
               <div className="mt-1.5">
                 <Button variant="secondary" size="sm" onClick={() => setOverrideOpen(true)}>
                   Receive without photos…

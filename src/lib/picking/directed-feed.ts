@@ -1,42 +1,4 @@
-/**
- * Directed picking feed — `POST /api/picking/next`.
- *
- * Hands a picker the next line, one at a time, so the phone never shows a
- * list while picking. A line is every open unit of one order sharing a SKU
- * and a bin (`groupDirectedPickLines`).
- *
- * ## Which order
- *
- * Order-at-a-time, because a pick needs the order's tote (`pick.confirm`
- * refuses without one) and one tote carries one order. Candidates and their
- * owners come from `loadPickCandidates` (shared with the Unassigned board);
- * this picker is fed, in tiers (`pickFeedTier`):
- *
- *   1. an order they already have an open session on (finish it);
- *   2. an order passed to them (Pass / Take — the TEST assignee);
- *   3. an order whose SKU they own, or back up for an owner who is out;
- *   4. an unassigned order;
- *
- * and within a tier the most urgent first (ship-by within 24h, earliest
- * ship-by, oldest order). Orders owned by someone else, held by another
- * picker's fresh open session, or skipped this run (`skipOrderIds`) are not
- * fed. The choice and the session insert run under one advisory lock so two
- * phones asking at once cannot both claim the same order; a race that still
- * slips through is refused per unit by `confirmPick`'s row lock (409).
- *
- * ## Closing
- *
- * Every call first closes this picker's sessions whose orders have nothing
- * left to pick (`completeSession` → the order's totes go STAGED for pack),
- * so a last pick, a last short, or an app killed mid-run all close the same
- * way on the next ask.
- *
- * ## Progress
- *
- * `done` = units this picker picked or shorted since `runStartedAt` (the
- * phone's run start); `total` = done + every unit still open in orders this
- * picker could be fed. Units, not lines: the bar moves on every scan.
- */
+/** Directed picking feed — `POST /api/picking/next`. */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

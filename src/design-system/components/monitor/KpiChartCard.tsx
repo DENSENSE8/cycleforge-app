@@ -40,15 +40,7 @@ type KpiChartCardProps = {
   filterable?: boolean;
   onOpen?: () => void;
   className?: string;
-  /**
-   * `default` — Monitor rollup card (hero + optional pie/line/bars).
-   * `compact` — Usage-strip cell (micro label · modest value · tiny spark).
-   *
-   * Compact rest face = **metric label + aggregate value**. On bar hover/focus
-   * the top line swaps to the bucket stamp (`Jul 11, 2026 · 10:00 AM`) and the
-   * hero to that bar’s value; leave/blur restores the rest face. Spark bars are
-   * display-only (card click still toggles the filter).
-   */
+  /** `default` — Monitor rollup card (hero + optional pie/line/bars). */
   density?: 'default' | 'compact';
 };
 

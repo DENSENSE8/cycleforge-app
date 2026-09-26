@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Admin → Access lives at /settings/access&staffId=N — focused detail view for one staff.
- *
- * Cards (single column, max-w-3xl): Identity, Roles, Stations, Landing page,
- * .access (page permissions), Credentials, Mobile display, Audit.
- *
- * Server state lives in useStaffAccessDetail (the detail envelope + every
- * mutation) and useStaffStations. Permission math is in page-access-matrix
- * (pure + unit-tested). This component only composes those and owns the two
- * bits of ephemeral UI state: the reset-PIN QR modal and the set-PIN dialog.
- */
+/** Admin → Access lives at /settings/access&staffId=N — focused detail view for one staff. */
 
 import { useMemo, useState } from 'react';
 import QRCode from 'react-qr-code';

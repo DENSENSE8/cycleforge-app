@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Inventory › **Stock** — every (location, SKU) pair holding stock,
- * warehouse-wide, as an industrial record ledger; the open pair is placed by
- * the ledger's `DeskRecordPlane` (in place of the list, or split beside it in
- * fullscreen).
- *
- *   spine │ photo │ RDY · BIN <location> · ROOM ···························│ SEP 22
- *         │       │ title ··················································│ QTY [n]
- *         │       │ SKU … · (TMP → SKU exception ↗) · BIN COUNT / UNITS ····│ → Count
- *
- * The rows arrive from the RSC loader (`app/inventory/stock/page.tsx`), which
- * answers `?q=` in SQL and `?room=` over the matched set; this island only
- * writes the URL. `?open=` is the open pair (its record key). Live: a
- * `STOCK_DELTA_*` activity anywhere (the phone, the gun, this desk) re-reads
- * the loader, debounced so a burst costs one refresh.
- */
+/** Inventory › **Stock** — every (location, SKU) pair holding stock, warehouse-wide, as an industrial record ledger; the open pair is… */
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

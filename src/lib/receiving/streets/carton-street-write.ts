@@ -1,49 +1,4 @@
-/**
- * Carton street writers — the single write path for the two carton-grain 1:1
- * street tables (receiving_triage / receiving_unbox).
- *
- * Wave-3 writer inversion (receiving spine refactor): the moved carton columns
- * (received_at/by → rt.door_received_at/by, staging/lane/pairing/triage_* → rt.*,
- * unbox_opened_* / unboxed_* / unbox_only_intake → ru.*) are written HERE,
- * directly, instead of on the receiving_carton spine. The old dual-write
- * triggers only fire on spine writes, so once callers route through this module
- * they are inert (dropped by the post-fleet migration).
- *
- * Semantics (mirroring the pre-inversion writer SQL):
- *   - COALESCE-once fields (first stamp wins, never re-stamped):
- *     doorReceivedAt/doorReceivedBy, openedAt/openedBy, unboxedAt/unboxedBy —
- *     `SET col = COALESCE(<table>.col, EXCLUDED.col)`.
- *   - Overwrite fields (picker-editable; a present key overwrites, incl. null):
- *     stagingLocationId, priorityLane, pairingState, triageComplete,
- *     triageCompletedAt, triageCompletedBy, triageClientEventId,
- *     contentsConfirmedAt, contentsConfirmedBy.
- *
- *     The split is "can this un-happen?", not "is it a timestamp". A door scan
- *     and an unboxing are events in the world and never un-happen, so they are
- *     COALESCE-once. A triage completion and a contents confirmation are
- *     ASSERTIONS the operator can retract by reopening the carton, so they must
- *     be clearable — a stamp that cannot be cleared makes the "open again to
- *     edit" affordance a lie.
- *   - `undefined` (key omitted) = leave the column untouched — the SET list is
- *     built from provided keys only, so an upsert never clobbers a sibling
- *     street's fields.
- *   - `'now'` = SQL NOW() (transaction time), not a JS wall-clock read.
- *   - deriveIntakePath: computes receiving_unbox.intake_path server-side in the
- *     same statement: keep the existing value when it is already resolved
- *     ('unbox_only' | 'triage_first'); otherwise 'unbox_only' when the carton
- *     has no receiving_triage.door_received_at, else 'triage_first'.
- *   - Every upsert bumps updated_at = now(); organization_id is passed
- *     explicitly (never left to the GUC default).
- *
- * One statement per upsert (INSERT … ON CONFLICT (receiving_id) DO UPDATE), so
- * callers outside a transaction (raw-pool scan writers) stay atomic. The PK is
- * receiving_id alone (1:1 with the carton; receiving.id is globally unique, so
- * the conflicting row is always this carton in this org) — RLS on the tenant
- * pool backstops the org scoping.
- *
- * Deps-light by design: the client (pool, PoolClient, or a tx-bound fake) is the
- * first argument, so unit tests run DB-free.
- */
+/** Carton street writers — the single write path for the two carton-grain 1:1 street tables (receiving_triage / receiving_unbox). */
 
 import type { PoolClient } from 'pg';
 
@@ -53,16 +8,7 @@ export interface CartonTriagePatch {
   stagingLocationId?: number | null;
   priorityLane?: string | null;
   pairingState?: string | null;
-  /**
-   * Never downgrade a real PO match.
-   *
-   * `pairingState` normally OVERWRITES (the pairing hub can change or clear an
-   * operator's answer). A background writer that only knows "this scan found
-   * nothing to pair to" must not use that door: on a carton already `MATCHED`
-   * to a PO, an unmatched *return* serial logged onto one of its lines would
-   * silently un-match the whole carton. With this flag the SET keeps `MATCHED`
-   * and applies the new value to every other state.
-   */
+  /** Never downgrade a real PO match. */
   preserveMatchedPairing?: boolean;
   triageComplete?: boolean;
   triageCompletedAt?: string | Date | 'now' | null;
@@ -164,12 +110,7 @@ export async function upsertReceivingTriage(
   await client.query(buildUpsertSql('receiving_triage', specs), params);
 }
 
-/**
- * Upsert the carton's UNBOX street row. Bench stamps (opened/unboxed) are
- * COALESCE-once. `deriveIntakePath: true` resolves intake_path in the same
- * statement: an already-resolved path is kept; an unresolved ('unknown' /
- * fresh) row derives from whether the triage street has a door stamp.
- */
+/** Upsert the carton's UNBOX street row. */
 export async function upsertReceivingUnbox(
   client: StreetClient,
   orgId: string,
@@ -198,13 +139,7 @@ export async function upsertReceivingUnbox(
   if (patch.unboxedBy !== undefined) {
     specs.push({ col: 'unboxed_by', insertExpr: push(patch.unboxedBy), updateExpr: once('unboxed_by') });
   }
-  // OVERWRITE, not COALESCE-once — the same shape as `triage_completed_at`,
-  // and for the same reason. `contents_confirmed_at` is the gate for a
-  // procedure step the operator can REOPEN to edit, and a reopen writes NULL.
-  // A COALESCE-once column can never be cleared, so it could report "contents
-  // confirmed" for a carton the operator had explicitly re-opened — the
-  // receipt's "open again to edit" bar would be a lie. The set-once milestones
-  // above (opened / unboxed) genuinely never un-happen; this one does.
+  // OVERWRITE, not COALESCE-once — the same shape as `triage_completed_at`, and for the same reason.
   if (patch.contentsConfirmedAt !== undefined) {
     specs.push({
       col: 'contents_confirmed_at',

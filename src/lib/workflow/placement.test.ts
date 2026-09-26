@@ -1,9 +1,4 @@
-/**
- * placement — the action-layer resolver that maps a decision node's symbolic
- * placement to a concrete bin. Proves barcode-first-then-name precedence, the
- * degrade misses (no directive / bin not found), and that resolution never
- * throws — all DB-free via injected lookups.
- */
+/** placement — the action-layer resolver that maps a decision node's symbolic placement to a concrete bin. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

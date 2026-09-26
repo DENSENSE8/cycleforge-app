@@ -1,10 +1,4 @@
-/**
- * Promote lines that already have local receive qty but are stuck at UNBOXED
- * (Zoho sync pending / failed) to DONE so coarse paint reads RECEIVED.
- *
- * Inventory Refresh calls this so cartons that received before local-DONE
- * stood can self-heal without re-clicking Receive. Zoho pull stays separate.
- */
+/** Promote lines that already have local receive qty but are stuck at UNBOXED (Zoho sync pending / failed) to DONE so coarse paint reads… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';

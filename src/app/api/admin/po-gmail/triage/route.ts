@@ -1,17 +1,4 @@
-/**
- * GET /api/admin/po-gmail/triage
- *
- * Single-shot fetch for the sidebar pile view. Returns every email
- * worklist row grouped by pile, with per-pile counts.
- *
- * Each pile is capped at MAX_PER_PILE to keep payload + render cost
- * bounded — Done historically dominates after a few months. The
- * sidebar lazy-paginates beyond the cap.
- *
- * The legacy PATCH endpoint at /api/admin/po-gmail/missing-orders is
- * superseded by /api/admin/po-gmail/triage/[id]. The dedicated PO Mailbox
- * UI has been retired; mailbox data and processing APIs remain intact.
- */
+/** GET /api/admin/po-gmail/triage */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';

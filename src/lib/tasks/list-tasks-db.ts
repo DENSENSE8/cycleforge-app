@@ -1,13 +1,6 @@
 import 'server-only';
 
-/**
- * Real tenant bindings for the task desk store.
- *
- * `list-tasks.ts` holds the SQL and the mapping and imports nothing that
- * touches the pool, so its tests run DB-free and a client surface can import
- * its types. This file is the one place those two halves are joined — the same
- * split `create-task-core.ts` / `create-task-deps.ts` already uses.
- */
+/** Real tenant bindings for the task desk store. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

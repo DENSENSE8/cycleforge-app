@@ -30,14 +30,7 @@ export interface GridStickyXScrollbarProps {
 
 const THUMB_MIN_PX = 28;
 
-/**
- * Always-on horizontal scrollbar gutter for Workbench spreadsheets.
- *
- * Native / macOS overlay bars only paint while scrolling — triage needs a
- * persistent drag affordance. This keeps an invisible sync scroller (paired
- * with {@link useSyncedHorizontalScrollbar}) and paints a track + thumb that
- * stay visible whenever content overflows. No sunken padding strip behind it.
- */
+/** Always-on horizontal scrollbar gutter for Workbench spreadsheets. */
 export function GridStickyXScrollbar({
   gutterRef,
   spacerWidth,

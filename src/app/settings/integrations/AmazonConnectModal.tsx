@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Amazon SP-API connect sheet. Two paths:
- *   1. OAuth (multi-tenant) — redirects to Seller Central consent via
- *      /api/amazon/oauth/start (the standard path once the app is published).
- *   2. Paste a self-authorized refresh token — bootstrap for a single seller
- *      while the public app is in review (POST /api/amazon/connect verifies it
- *      against SP-API before saving).
- */
+/** Amazon SP-API connect sheet. */
 import { useState } from 'react';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives/Button';

@@ -34,16 +34,7 @@ export function isContactComplete(data: RepairFormData): boolean {
   return CONTACT_FIELDS.every((field) => isContactFieldValid(field, data));
 }
 
-/**
- * The CONTACT half only — the customer's own details.
- *
- * `CONTACT_FIELDS` includes the legacy `extras` entry, whose validator is the
- * form's singular serial + price. That is a DEVICE fact, and on the kiosk it
- * lives per cart line rather than on the form, so asking it here would gate
- * the submit on two fields nothing writes any more — Submit repair disabled
- * forever with every device correctly filled in. With a device list the
- * device facts are asked by `deviceFactsSatisfied`, once, where they belong.
- */
+/** The CONTACT half only — the customer's own details. */
 function isContactCompleteFor(
   data: RepairFormData,
   devices?: readonly RepairDeviceGateRow[],
@@ -54,14 +45,7 @@ function isContactCompleteFor(
   );
 }
 
-/**
- * The DEVICE facts a gate needs, per unit on the counter.
- *
- * Structural on purpose — this module must not import the kiosk cart to ask
- * "is every device serialised". `src/lib/kiosk/repair-devices.ts` produces
- * rows that satisfy it; the staff form passes nothing and keeps its singular
- * fields. One rule, two callers, no fork.
- */
+/** The DEVICE facts a gate needs, per unit on the counter. */
 export interface RepairDeviceGateRow {
   title: string;
   serialNumber: string;
@@ -70,31 +54,14 @@ export interface RepairDeviceGateRow {
   repairReasons: readonly string[];
 }
 
-/**
- * Is there an issue on the paperwork for every unit?
- *
- * Same rule `missingRepairIntakeFields` applies per `repair_service` row —
- * "Repair Reason or Notes" — asked of EVERY unit, because each unit carries
- * its own reasons (All devices stamps one set on every line; Per device writes
- * one line). Notes are a visit fact mirrored onto every line, so notes answer
- * for every unit at once. Without a device list (staff form) the form's own
- * reasons are the answer. Linked repairs never reach here:
- * `repairDevicesFromLines` drops them, and they were answered at their intake.
- */
+/** Is there an issue on the paperwork for every unit? */
 function issueSatisfied(data: RepairFormData, devices?: readonly RepairDeviceGateRow[]): boolean {
   if (!devices) return hasRepairIssue(data);
   if (data.repairNotes.trim()) return true;
   return devices.length > 0 && devices.every((d) => d.repairReasons.length > 0);
 }
 
-/**
- * Is every device serialised and quoted?
- *
- * With a device list (kiosk, one row per unit) EVERY row must answer, because
- * every row becomes its own `repair_service` write. Without one (staff form,
- * one device per intake) the form's own singular fields are the answer. An
- * EMPTY list is not "nothing to check" — it is a visit with no device on it.
- */
+/** Is every device serialised and quoted? */
 function deviceFactsSatisfied(
   data: RepairFormData,
   devices?: readonly RepairDeviceGateRow[],
@@ -185,64 +152,7 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
   }
 }
 
-/**
- * The kiosk pane's FOUR touch steps as satisfied/unsatisfied gates:
- * Reason · Device · Contact · Authorization.
- *
- * Feeds `StepProgressHeader` (PG6: progression is a COUNT of satisfied
- * required units, never the index of the step in view — a pointer parked on
- * the last step with nothing filled reads 0/4, not 4/4). Each gate is
- * evaluated independently so back-editing an earlier step un-fills its
- * segment.
- *
- * ## Why Device split out of Contact (2026-09-15)
- *
- * Serial and price rode along in the contact step as "extras", so one screen
- * asked both *who are you* and *what is the device worth*. Operator: *"there
- * should be contact information just as phone number name email address and
- * address with serial number and price under a different stepper."* They are
- * different subjects with different owners at the counter — the staffer reads
- * the serial off the chassis and quotes the price; the customer gives their
- * own details — so they are different units.
- *
- * DEVICE is serial + price. CONTACT is the phone (the match key); name, email
- * and address are warnings on the visit, never gates — same rule the cart's
- * triage applies, so the two flows cannot disagree about what blocks.
- *
- * ## Why the TICKET decision rides AUTHORIZATION (2026-09-15)
- *
- * The create-or-link question was briefly a fifth unit. Operator: *"because
- * the stepper is full at that review and sign step, would it be best to
- * include a slider … below the signature so it would be mounted under one
- * step?"* It is the same unit: authorizing the drop-off is signing the
- * paperwork AND saying which conversation it belongs to, both on the sheet's
- * own screen. One tap does not earn a progress segment of its own.
- *
- * `ticketSettled` (`isKioskTicketChoiceSettled`) is passed in rather than read
- * off `RepairFormData` because the decision is a VISIT fact on the session
- * root, not a line fact — `ticketWork` is transaction-level, one per submit
- * however many devices were dropped off. Widening the line form with it is the
- * same mistake the address avoided.
- *
- * SETTLED, not "answered": the slider opens on Create and an untouched control
- * files a new ticket, so an untouched visit is not blocked. What blocks is the
- * half-finished state — slid to Link with no ticket picked.
- *
- * ## Why DEVICE takes a list (2026-09-16)
- *
- * A customer can hand over several units, and each one becomes its own
- * `repair_service` row with its own serial and its own quote. The gate
- * therefore asks every device, not one pair of fields: the old single check
- * passed a four-device visit on the strength of device one's serial, and the
- * other three were written blank. `devices` omitted = the staff form's single
- * device, unchanged.
- *
- * ## Why REASON takes the list too (2026-09-25)
- *
- * Reasons became a LINE fact (operator: "all devices, or per device with a
- * switcher"), so the reason unit asks every device the same way: each needs
- * at least one reason unless the visit's notes answer for all of them.
- */
+/** The kiosk pane's FOUR touch steps as satisfied/unsatisfied gates: */
 export function repairStepGates(
   data: RepairFormData,
   hasSignature: boolean,

@@ -7,12 +7,7 @@ const base = z.string().trim().min(1);
 
 // ─── POST /api/inventory/parts/links ────────────────────────────────────────
 
-/**
- * Assign a whole-unit parent to a logical part. The child is identified by its
- * canonical logical key (base + color + condition; from parsePartSku), NOT by a
- * volatile per-instance SKU row. `parentItemId` is an `items.id` (the Zoho items
- * scheme) — validated in the route to belong to this org.
- */
+/** Assign a whole-unit parent to a logical part. */
 export const PartLinkCreateBody = z
   .object({
     childLogicalKey: logicalKey,

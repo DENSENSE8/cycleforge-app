@@ -18,27 +18,10 @@ import { RailRowMenu } from './RailRowMenu';
 import type { RailRowAction } from './rail-row-actions';
 import { useRailHoverPreview } from './useRailHoverPreview';
 
-/**
- * No-op `onUpdate` — its mere presence forces framer to run the row's reveal on
- * the MAIN-THREAD (JS) animator instead of the compositor (WAAPI). The WAAPI path
- * has a one-frame commit gap on completion that flashed the `hidden` opacity:0
- * back through as each row's fade-in finished; the JS animator writes the value
- * every frame and commits cleanly, so the "appear from nothing" fade has no blink.
- */
+/** No-op `onUpdate` — its mere presence forces framer to run the row's reveal on the MAIN-THREAD (JS) animator instead of the compositor… */
 const keepOnMainThread = () => {};
 
-/**
- * Hides the row's trailing age while the ⋮ is showing. Three triggers, matching
- * the three ways the ⋮ itself appears: row hover, keyboard focus inside the row,
- * and the menu being open (`data-rail-row-menu-armed`, set below — CSS cannot
- * see an open portalled menu). Plus `coarse:`, where the ⋮ is permanently
- * resident and so the age never has the column at all.
- *
- * Applied to a node INSIDE the row button, not the row itself: a
- * `group-hover/railrow:` variant on the element that also carries
- * `group/railrow` would compile to a selector matching its own descendants —
- * i.e. never itself.
- */
+/** Hides the row's trailing age while the ⋮ is showing. */
 const AGE_YIELDS_TO_ROW_MENU = cn(
   '[&_[data-compact-activity-age]]:transition-opacity [&_[data-compact-activity-age]]:duration-100',
   'group-hover/railrow:[&_[data-compact-activity-age]]:opacity-0',
@@ -54,15 +37,7 @@ export function RailRow<TRow>({
 }: {
   row: TRow;
   index: number;
-  /**
-   * The row's durable React key, mirrored onto the DOM.
-   *
-   * Diagnostic only — nothing reads it at runtime. It exists because the rail's
-   * one non-obvious invariant is that this key must NOT change while a scan
-   * resolves (a changed key is an unmount + remount, which the operator sees as
-   * their tracking number vanishing and coming back), and that is otherwise
-   * invisible to anything outside React's reconciler.
-   */
+  /** The row's durable React key, mirrored onto the DOM. */
   reconcileKey?: string | number;
   /** Reveal-on-arm nav-key letter — present only while this rail's region is armed. */
   navKey?: string | null;
@@ -104,10 +79,7 @@ export function RailRow<TRow>({
   const rowRef = useRef<HTMLLIElement | null>(null);
   const hasRowMenu = (rowActions?.length ?? 0) > 0 && !editActive && !isDisabled;
   const [menuOpen, setMenuOpen] = useState(false);
-  // Shared hover-preview engine. Disabled in edit mode — that surface is for
-  // picking rows, and the popover's "Open →" CTA contradicts click-to-check —
-  // and while the ⋮ menu is up, where two stacked overlays for one row is one
-  // too many (the menu is the deliberate act; the peek is incidental).
+  // Shared hover-preview engine.
   const { isOpen: previewOpen, scheduleOpen, scheduleClose, dismiss } = useRailHoverPreview({
     enabled: Boolean(renderPopover) && !editActive && !isDisabled && !menuOpen,
   });
@@ -138,15 +110,7 @@ export function RailRow<TRow>({
 
   const activityAt = getActivityAt?.(row);
 
-  // Stagger rails: the row carries only `variants` for its whole mount and rides
-  // the parent <ul>'s `show` timeline by inheritance — the container orchestrates
-  // the first-load cascade, then simply holds `show`, and the row rests there. We
-  // never swap this row to an explicit initial/animate contract mid-mount: doing
-  // so re-touched `initial="hidden"` on the settled row and flickered it back
-  // toward `hidden` for a frame. The variant's own `exit` left-slides on dismiss
-  // (matches CRUD presence), and a scan-in row entering the same AnimatePresence
-  // slides in from `hidden`. Non-stagger rails have no variants and use CRUD
-  // presence for scan-in / dismiss.
+  // Stagger rails:
   const motionProps = staggerItemVariants
     ? { variants: staggerItemVariants, onUpdate: keepOnMainThread }
     : {
@@ -161,18 +125,9 @@ export function RailRow<TRow>({
       ref={rowRef}
       role="option"
       aria-selected={editActive ? isChecked : isSelected}
-      // Presence only (scan-in / dismiss) — NEVER Framer `layout`. Layout
-      // projection FLIPs every row when the context column width changes
-      // (sash / Displays dual-rail), so the recent rail rubber-bands while
-      // Displays snaps. Sibling reflow on dismiss is instant CSS — same as
-      // the right panel.
+      // Presence only (scan-in / dismiss) — NEVER Framer `layout`.
       {...motionProps}
-      // Full-bleed host: selection wash / ring paints edge-to-edge. Content
-      // column pad nests inside (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW) so
-      // titles still share the dense scan-dock column with the scan bar.
-      // `group/railrow` is NAMED so the ⋮ trigger — a sibling of the row button,
-      // not a child — can key its reveal off row hover without colliding with
-      // the unnamed `group` the button itself owns for its own content.
+      // Full-bleed host:
       className="group/railrow relative"
       // Set while the ⋮ menu is OPEN, so the age stays hidden after the pointer
       // has left the row to travel into the menu. Hover and focus cover the
@@ -215,31 +170,19 @@ export function RailRow<TRow>({
         className={cn(
           'ds-raw-button group relative w-full text-left transition-colors',
           isDisabled ? 'cursor-wait opacity-80' : '',
-          // HARD CONSTRAINT (2026-08-24): every row renders identically —
-          // selected or not, first or not. This used to special-case the
-          // first row's own top pad to clear the scan band; that made row 1
-          // a different component shape than row 2, which is worse than the
-          // gap it was chasing. Clearance under the band is
-          // `SidebarRailShell`'s job (its list top pad), never this row's.
+          // HARD CONSTRAINT (2026-08-24):
           'py-1',
           (editActive ? isChecked : isSelected)
             ? QUEUE_ROW.selectedClass
             : isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover',
         )}
       >
-        {/* SIDEBAR_RAIL_INSET_LEFT is zero (2026-08-24) — the leading row's own
-            `pl-2` is the ONE gutter, matching GlobalHeader's nav icon inset.
-            Do not give this span a pad of its own; that is the stacked-gutter
-            bug this seam existed to warn against. CompactActivityRow owns the
-            status-mark · title/meta · short-age face (SoT). */}
+        {/* SIDEBAR_RAIL_INSET_LEFT is zero (2026-08-24) — the leading row's own `pl-2` is the ONE gutter, matching GlobalHeader's nav icon inset. */}
         <span
           className={cn(
             SIDEBAR_RAIL_INSET_LEFT,
             'block w-full',
-            // The ⋮ shares the trailing track with the age, and it carries no
-            // plate of its own — so the age yields the column whenever the ⋮ is
-            // up. Opacity, never `display`/`width`: the age must keep occupying
-            // its cell or every title in the rail would re-flow on hover.
+            // The ⋮ shares the trailing track with the age, and it carries no plate of its own — so the age yields the column whenever the ⋮ is up.
             hasRowMenu && AGE_YIELDS_TO_ROW_MENU,
           )}
         >
@@ -272,10 +215,7 @@ export function RailRow<TRow>({
               )
             }
             activityAt={getActivityAt ? activityAt : undefined}
-            // Keep the trailing cell even on a feed with no age stamp: the ⋮
-            // takes THIS column, and without it reserved the trigger would
-            // float over the end of the title instead of swapping cleanly with
-            // the mark that sits there at rest.
+            // Keep the trailing cell even on a feed with no age stamp:
             showAgeColumn={Boolean(getActivityAt) || hasRowMenu}
           >
             <div data-rail-row-title className="min-w-0">
@@ -284,10 +224,7 @@ export function RailRow<TRow>({
           </CompactActivityRow>
         </span>
       </button>
-      {/* Row overflow menu — a SIBLING of the row button (never nested: a button
-          inside a button is invalid, and the row's own click must stay "open the
-          record"). Absolute over the trailing age track, so revealing it moves
-          nothing. */}
+      {/* Row overflow menu — a SIBLING of the row button (never nested: */}
       {hasRowMenu && rowActions ? (
         <RailRowMenu
           actions={rowActions}

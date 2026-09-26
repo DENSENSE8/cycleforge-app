@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Desktop companion QR for phone scan → authorize this computer.
- * Never mount on `/m/signin` — a phone cannot scan a QR on itself
- * (WhatsApp Web / Discord / QRAuth mobile pattern).
- *
- * Callers: `/signin` AuthCard qrPanel only when NOT mobileSignInFace.
- */
+/** Desktop companion QR for phone scan → authorize this computer. */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';

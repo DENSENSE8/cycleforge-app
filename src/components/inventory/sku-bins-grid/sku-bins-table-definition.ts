@@ -1,13 +1,4 @@
-/**
- * `sku-bins.sku` — the per-SKU bin-distribution table definition, capabilities
- * and surface descriptor.
- *
- * Re-declares nothing: the column model, the sort law and the default
- * direction are the ENGINE's (`slot-table-columns.ts`) read through this
- * family's record, and the canonical columns are the product-default
- * MATERIALIZATION — never a hand array, and no longer a per-family copy of
- * the materializer either.
- */
+/** `sku-bins.sku` — the per-SKU bin-distribution table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -31,12 +22,7 @@ export const SKU_BINS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTableCo
   SKU_BINS_PRODUCT_LAYOUT,
 );
 
-/**
- * A READ pane on a detail page. Moving stock between bins happens at the floor
- * stations that scan it (`bin_contents` is written by counts and moves, never
- * by an admin form), so there is no verb here and `multiSelect` stays off: the
- * gutter checkbox would be a control with no verb behind it.
- */
+/** A READ pane on a detail page. */
 export const SKU_BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -45,12 +31,7 @@ export const SKU_BINS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeSkuBinsGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<SkuBinTableRow, SlotTableColumn> {
@@ -89,17 +70,7 @@ export const SKU_BINS_TABLE_BINDING: TableSurfaceBinding<SkuBinTableRow, SlotTab
   definition: SKU_BINS_TABLE_DEFINITION,
   columns: SKU_BINS_COMPOUND_COLUMNS,
   makeDescriptor: makeSkuBinsGridDescriptor,
-  /**
-   * HONEST ABSENCE, ruled rather than defaulted. The retired cell linked
-   * nowhere — it printed the bin's handle as plain mono text — and a bin's own
-   * record lives on the warehouse map (`/warehouse`), which is a floor tool
-   * keyed by location, not a desk record plane for a (sku, bin) PAIR. There is
-   * no route that opens "this SKU in this bin", and stacking a plane over the
-   * page this pane is part of to restate three numbers already on the row would
-   * be a record plane with no record in it.
-   *
-   * It becomes `navigate` the day a bin detail route exists.
-   */
+  /** HONEST ABSENCE, ruled rather than defaulted. */
   recordPlane: {
     kind: 'none',
     reason:

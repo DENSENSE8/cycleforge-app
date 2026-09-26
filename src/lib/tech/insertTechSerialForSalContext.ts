@@ -196,10 +196,7 @@ export async function insertTechSerialForSalContext(
     }
   }
 
-  // Canonical TSN writer (relational-reuse plan, Phase 2). Mirrors the tracking
-  // sibling: receiving_line_id is unset, so ON CONFLICT DO NOTHING is a no-op
-  // here (duplicates are pre-checked above). serial_unit_id is stamped by the
-  // inventory-v2 linker downstream.
+  // Canonical TSN writer (relational-reuse plan, Phase 2).
   const insertResult = await attachTechSerial(
     {
       serialNumber: serial,

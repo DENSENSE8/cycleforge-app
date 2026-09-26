@@ -1,9 +1,4 @@
 // Single source of truth for QC failure-severity tones.
-//
-// Bordered chip. Consolidates the IDENTICAL `SEV_TONE` maps previously inlined
-// in admin/QualityDashboardTab and labels/unit-detail/UnitQualityPanel. Hues
-// follow the color story (DESIGN_SYSTEM.md): critical=danger, major=warning,
-// minor=neutral. src/lib is in Tailwind's content globs.
 
 export type QualitySeverity = 'critical' | 'major' | 'minor';
 

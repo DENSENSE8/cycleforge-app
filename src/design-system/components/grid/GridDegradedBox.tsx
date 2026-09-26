@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * The house DEGRADED state for a grid surface — the fourth settled state
- * (loading → absence → no-match → **degraded**) that `display/workbench.md`
- * mandates and that 28 receiving/ops surfaces were silently dropping (a failed
- * fetch rendered the plain empty box, indistinguishable from a genuinely empty
- * tenant, with no way to recover).
- *
- * Sibling of `GridEmptyBox` (the absence/no-match teaching box) — same dashed
- * shape, rose-toned, plus an explicit Retry. Render it INSTEAD of the empty box
- * when a source failed AND there is nothing to show (`isError && rows === 0`);
- * when rows exist (cache/seed), keep showing them — a background refetch error
- * must not blank the surface.
- *
- * Reusable: any grid consumer can drop this in. It carries no grid state, so it
- * lives beside the surface rather than threading an error prop through the
- * shared `LedgerGridSurface` / `NonlinearTableHost` waist.
- */
+/** The house DEGRADED state for a grid surface — the fourth settled state (loading → absence → no-match → **degraded**) that… */
 
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';

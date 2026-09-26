@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Local Pickup mode table — Draft vs Completed local-pickup orders. Reuses the
- * existing `/api/local-pickup-orders?status=` spine and the `pickupToTransaction`
- * adapter (the SoT for a pickup row's display), rendered through the shared
- * boxed `WalkInFeedPane`. One query per status; the tab IS the status.
- */
+/** Local Pickup mode table — Draft vs Completed local-pickup orders. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

@@ -1,10 +1,4 @@
-/**
- * Pre-loop enrichment for the Sparkles assistant — parity with Hermes
- * `/api/ai/chat` preprocessing (local_ops fast path + intent/search blocks).
- *
- * Extracted so assistant and (optionally) ai/chat share one orchestration
- * without duplicating detectIntents / enrichAssistantMessage calls.
- */
+/** Pre-loop enrichment for the Sparkles assistant — parity with Hermes `/api/ai/chat` preprocessing (local_ops fast path + intent/search… */
 
 import { enrichAssistantMessage } from '@/lib/ai/enrich-message';
 import { detectIntents, extractParams } from '@/lib/ai/intent-router';

@@ -1,41 +1,4 @@
-/**
- * Photo-policy gate OVERRIDE — the soft-block half of the receiving
- * photo-evidence gate (WS-PHOTO §4,
- * docs/todo/photo-evidence-policy-claims-insurance-plan.md).
- *
- * The gate itself (`./photo-policy-gate.ts` → `./photo-policy.ts`) is untouched
- * and still returns the same verdict; this module owns only what a receive
- * route does with a `!ok` verdict:
- *
- * - **No override supplied** → the route still returns the byte-identical
- *   `409 { error: 'PHOTO_POLICY', blockers }`. That is the default and it must
- *   stay the default: an operator who simply hasn't shot the photos yet is
- *   blocked exactly as before.
- * - **Override supplied** → the receive proceeds, the response carries a
- *   `warnings` entry with the same blockers, ONE `receiving_exceptions` row is
- *   written per received line, and a dedicated audit row is recorded. An
- *   override with no trail is worse than no gate at all.
- *
- * The override is a **safety classification, not a note**: the only accepted
- * values are the `PHOTO_WAIVED_*` slice of the receiving-exception system
- * registry (`PHOTO_POLICY_OVERRIDE_CODES`), validated server-side. There is
- * deliberately no free-text field on this path — the human-readable `reason`
- * persisted alongside the code is assembled HERE from the gate's own blockers,
- * never from the request body, so a client can neither invent a justification
- * nor smuggle one past the vocabulary.
- *
- * `code` is a required parameter with no default everywhere it appears
- * ("a safety classification is a REQUIRED
- * parameter"): a defaulted override code would silently waive the gate for
- * every call site that forgot to pass one.
- *
- * Deps-injected (default = the real `recordReceivingException`) so unit tests
- * run DB-free. The `Deps`/input shapes are deliberately module-LOCAL: only the
- * five symbols the receive routes actually call are exported, and structural
- * typing means a test can still inject `{ recordException: fake }` without
- * importing a type. Widen an export when a second real consumer appears — not
- * before (the knip gate treats a speculative export as new dead code).
- */
+/** Photo-policy gate OVERRIDE — the soft-block half of the receiving photo-evidence gate (WS-PHOTO §4,… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordReceivingException } from './exceptions';
@@ -49,12 +12,7 @@ import {
   PHOTO_POLICY_OVERRIDE_BODY_KEY,
 } from './photo-policy-override-wire';
 
-/**
- * The wire tokens now live in the dependency-free `./photo-policy-override-wire`
- * so the BENCH UI can read the same strings without importing this module —
- * which reaches `./exceptions` → `@/lib/tenancy/db` (`server-only`). Re-exported
- * here so the receive routes keep their import path unchanged.
- */
+/** The wire tokens now live in the dependency-free `./photo-policy-override-wire` so the BENCH UI can read the same strings without… */
 export { PHOTO_POLICY_OVERRIDE_BODY_KEY };
 
 /** 400 discriminator for an override value outside the system vocabulary. */
@@ -68,12 +26,7 @@ type PhotoPolicyOverrideParse =
   /** Present but not in the vocabulary — reject the request outright. */
   | { state: 'invalid' };
 
-/**
- * Classify the raw body value. Absent/blank is NOT an error (the vast majority
- * of receives never touch the gate); anything present but unrecognized IS —
- * a client claiming a waiver we can't name must never be allowed to proceed,
- * even when the gate would have passed it anyway.
- */
+/** Classify the raw body value. */
 export function parsePhotoPolicyOverride(raw: unknown): PhotoPolicyOverrideParse {
   if (raw === undefined || raw === null) return { state: 'absent' };
   if (typeof raw !== 'string') return { state: 'invalid' };

@@ -1,23 +1,4 @@
-/**
- * Capability → connection resolution (SERVER-ONLY — reads the vault).
- *
- * The org-aware half of the capability-first labeling program: product
- * surfaces ask "is capability X connected?" / "what should I call the
- * connected provider?" instead of assuming a vendor. Feature gates and
- * soft-disable checks go through here — never through a hardcoded
- * provider-specific check in product code.
- *
- *   const on = await isCapabilityConnected(orgId, 'inventory');
- *   const label = await connectedProviderLabel(orgId, 'inventory'); // "Zoho Inventory"
- *
- * Client-safe label vocabulary lives in ./capability-labels.ts.
- *
- * DOGFOOD TRANSITIONAL: the USAV org may still resolve credentials from env
- * (see credentials.ts envFallback) without a vault row. Until token-SoT
- * Phase 5 removes that bridge, capability checks fall back to a credential
- * probe for the dogfood org only, so capability gating cannot soft-disable
- * surfaces that actually work there.
- */
+/** Capability → connection resolution (SERVER-ONLY — reads the vault). */
 import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
 import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 import { listConnections } from '@/lib/integrations/connectors/connections';

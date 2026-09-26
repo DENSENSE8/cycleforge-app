@@ -14,13 +14,7 @@ import {
   isBandOpen,
 } from './band-collapse';
 
-/**
- * The station centre's band chrome.
- *
- * Deliberately a `.test.ts` and not a `.test.tsx`: `run-unit-tests.mjs` globs
- * `*.test.ts` only, so the JSX sibling next door has never run under
- * `npm run verify`. A pin nobody executes is not a pin.
- */
+/** The station centre's band chrome. */
 describe('hairline band strip', () => {
   const render = (collapsed: boolean) =>
     renderToStaticMarkup(
@@ -89,14 +83,7 @@ describe('Expand all — one control, on the first closed header', () => {
   });
 });
 
-/**
- * ONE layout: a full-width accordion row per band, always in declared order.
- *
- * These walk the sequence the operator reported. Closed bands used to become
- * chips in a wrap rail at the top, so closing a band re-laid-out the centre
- * and opening it re-laid it out back. A band that stays a row, and only
- * unmounts its body, cannot do that.
- */
+/** ONE layout: a full-width accordion row per band, always in declared order. */
 describe('StationBandStack', () => {
   const BANDS = [
     { id: 'items', label: 'Items', body: React.createElement('p', null, 'ITEMS_BODY') },

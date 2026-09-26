@@ -1,11 +1,4 @@
-/**
- * `hrefForPreviewHit` — where a search hit opens.
- *
- * This module used to also carry `commitIdentifierFind`, the resolve-then-navigate
- * helper behind the palette's "See all results for …" row. That row is gone —
- * the palette now renders every hit it fetched instead of asking twice — and
- * the helper went with it rather than staying as tested code nothing calls.
- */
+/** `hrefForPreviewHit` — where a search hit opens. */
 
 import { orderRecordHref, searchHitHref } from '@/lib/search/search-hit';
 import { desktopSearchHref } from '@/lib/search/internal-id';

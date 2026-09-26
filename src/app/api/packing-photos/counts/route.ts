@@ -9,19 +9,7 @@ export const dynamic = 'force-dynamic';
 /** Cap per request — the header preview shows a handful of rows, not a feed. */
 const MAX_TRACKING = 25;
 
-/**
- * Batch pack-photo counts for search rows.
- *
- *   GET ?tracking=a,b,c → { counts: { <normalizedTracking>: number } }
- *
- * Read-only sibling of `/api/packing-photos`, same `packing.view` gate. Search
- * rows hold a tracking number and nothing else, and they must paint a truthful
- * count (including 0) rather than guessing from the presence of a shipment —
- * hence a batch read instead of one request per row.
- *
- * Absent keys mean zero; the client does not distinguish "no packer log" from
- * "log with no photos", because the CTA says the same thing either way.
- */
+/** Batch pack-photo counts for search rows. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = new URL(req.url).searchParams.get('tracking') ?? '';

@@ -1,14 +1,4 @@
-/**
- * Validation Module
- *
- * Autonomous quality gate: runs typecheck, lint, tests, and optionally
- * a full build against the current working tree. Returns a structured
- * result the scoring module uses to rate the implementation.
- *
- * Execution order is deliberate — cheapest/fastest checks run first,
- * and the pipeline bails early on type errors (most changes that fail
- * typecheck also fail everything else).
- */
+/** Validation Module */
 
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -106,14 +96,7 @@ async function checkBuild(repoPath: string): Promise<Pick<ValidationResult, 'bui
 
 // ─── Main Entry Point ────────────────────────────────────────
 
-/**
- * Run the full validation suite against the current repo state.
- *
- * Execution is sequential and bails early on type errors:
- *   typecheck → lint → tests → build (optional)
- *
- * Returns a structured result with pass/fail for each stage.
- */
+/** Run the full validation suite against the current repo state. */
 export async function validateChanges(repoPath: string): Promise<ValidationResult> {
   // Phase 1: TypeScript (fastest, catches most issues)
   const tsc = await checkTypeScript(repoPath);

@@ -1,17 +1,4 @@
-/**
- * Unit-TSN-links column model — MATERIALIZED from a {@link SlotLayout} onto
- * the SHARED compound skeleton, never a hand array.
- *
- * It replaced six hand-written `<th>`/`<td>` pairs inside `ByUnitView.tsx` —
- * raw HTML, so not even a second table engine's column type: no header sort,
- * no Fields picker, no org binding and no empty state.
- *
- * The skeleton mounts WHOLE — no `.filter`. `select` has no bulk verb on a v1
- * audit ledger and `thumb` has no photo fact, but cutting chrome geometry off
- * a mount requires a `COMPOUND_SKELETON_FILTER_DEBT` row and that list is
- * documented shrink-only. Chrome HEADERS are family data and are relabelled to
- * this desk's vocabulary instead; the geometry is the engine's.
- */
+/** Unit-TSN-links column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -83,14 +70,7 @@ export function unitTsnLinksCompoundColumnsFor(
 export const UNIT_TSN_LINKS_COMPOUND_COLUMNS: readonly UnitTsnLinksGridColumn[] =
   unitTsnLinksCompoundColumnsFor(UNIT_TSN_LINKS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * Every painted DATA track answers, including the three the chrome paints:
- * a labeled header with a dead click fails `SLOT_TABLE_PAINT_LAW.headerSort`.
- * Structural chrome is named by `isSlotTableChromeTrack`, never by a hand list
- * that could drift from the law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function unitTsnLinksSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

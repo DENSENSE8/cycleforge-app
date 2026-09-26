@@ -23,16 +23,7 @@ import { kioskCommandOptions } from '@/lib/kiosk/services';
 
 
 
-/**
- * "Which workspace am I in" card + deliberate org switcher. Always-on switching
- * lives on the MasterNav spine top (`OrgWorkspaceControl`); this Settings card
- * remains the fuller management surface (current badge, slug/plan, inline list).
- *
- * The switch list renders every membership from the auth envelope. Pre-identity-
- * migration that's always a single entry (the current org), so only the
- * read-only header shows. Once an account belongs to >1 org, the others become
- * switchable rows. Switch path = {@link useSwitchOrg} (shared with the spine).
- */
+/** "Which workspace am I in" card + deliberate org switcher. */
 function ActiveWorkspaceCard() {
   const { user } = useAuth();
   const { switching, switchErr, switchTo } = useSwitchOrg();
@@ -197,12 +188,7 @@ interface PendingInvitation {
   expiresAt: string;
 }
 
-/**
- * Invite teammates by email + manage pending invitations. Admin-only
- * (admin.manage_staff). Accepting an invite creates the person's global account
- * + membership + staff profile (see docs/identity-layer-plan.md). The created
- * link is shown inline so it works even when transactional email is stubbed.
- */
+/** Invite teammates by email + manage pending invitations. */
 function InvitationsSection() {
   const { has } = useAuth();
   const [list, setList] = useState<PendingInvitation[]>([]);
@@ -442,13 +428,7 @@ export function OrganizationSection() {
 
       <InvitationsSection />
 
-      {/*
-        Grouped with InvitationsSection above the profile block on purpose: both
-        own their own fetch + Save button, while every card below shares the one
-        "Save changes" at the foot of the page. GS1 lives on a different route
-        (/api/admin/organization/settings) because that is where its validation
-        and the server-side `answeredAt` stamp already are.
-      */}
+      {/* Grouped with InvitationsSection above the profile block on purpose: */}
       <Gs1ComplianceCard />
 
       {/*
@@ -804,14 +784,7 @@ export function OrganizationSection() {
   );
 }
 
-/**
- * Ship-from address — the warehouse origin every ShipStation rate and label is
- * quoted from (`resolveShipFrom`). Saved with the rest of this page through
- * `PATCH /api/admin/organization/profile`, which refuses a half-filled address:
- * leave it all empty to fall back to the SHIPSTATION_SHIP_FROM_* env vars.
- * `#ship-from` is where the To-ship Labels walk sends an operator whose rates
- * fail with SHIP_FROM_NOT_CONFIGURED.
- */
+/** Ship-from address — the warehouse origin every ShipStation rate and label is quoted from (`resolveShipFrom`). */
 function ShipFromCard({
   value,
   complete,

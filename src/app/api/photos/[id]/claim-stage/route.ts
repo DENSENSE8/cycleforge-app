@@ -15,23 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * PATCH /api/photos/[id]/claim-stage — claim an existing carton photo as door
- * evidence for Arrival Link.
- *
- * One audited write: `photo_type` → receiving package type for
- * `arrival_package`, and `photo_aspect` → a legal door aspect. Same RECEIVING
- * entity — not an entity reassign, not within-stage aspect rename alone.
- *
- * ## Permission
- *
- * `receiving.upload_photo`, matching the `aspect` / `reassign` siblings.
- *
- * ## Body
- *
- * `{ stage: 'arrival_package', aspect: 'shipping_label' | 'box_exterior' }`
- * — both required. Aspect clear is not in scope (use `/aspect` for that).
- */
+/** PATCH /api/photos/[id]/claim-stage — claim an existing carton photo as door evidence for Arrival Link. */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * The REPAIR RECORD — the one record the Repair Service desk (`RepairTable`:
- * Scan Stations `/repair`, Sales `/dashboard?mode=repairs`) opens on
- * `DeskRecordPlane`: in place of the list by default, beside it when the
- * staffer chooses fullscreen (`docs/handoff/HANDOFF-desk-surface-law-2026-09-25.md`).
- * The plane paints the header band (ticket #, n of N, ‹ ›, ✕) and owns Esc;
- * the desk owns J / K. The record carries NO verbs: they live only in the
- * action strip under the list's search row (`RepairRecordStrip`).
- *
- * One scrollable record, built to triage a repair at a glance:
- *   - STATUS STRIP (full width) — the current status and since when / by whom,
- *     price and payment state, the Zendesk link, loud alerts (cancelled,
- *     payment due, label not printed, no Zendesk ticket), then the pipeline:
- *     checked in → delivered → received → label → in repair → repaired →
- *     ready for pickup → closed, each with its own who / when from the row's
- *     stamps and `status_history`. Unstamped steps read `—`, never invented.
- *   - CENTER — the item under repair (identity, SKU, serial, source order,
- *     price, the reported issue) and its status history.
- *   - RIGHT — ticket #, customer, links (order, tracking, serial, SKU,
- *     Zendesk) as read-only facts, and the repair notes (the one field the
- *     record edits in place, through {@link useRepairDetailsPanel}).
- */
+/** The REPAIR RECORD — the one record the Repair Service desk (`RepairTable`: */
 
 import type { ReactNode } from 'react';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';

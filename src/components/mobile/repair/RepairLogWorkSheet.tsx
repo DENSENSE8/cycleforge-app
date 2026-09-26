@@ -66,12 +66,7 @@ const EMPTY: Draft = {
   notes: '',
 };
 
-/**
- * Map the bench draft onto `repair_actions` — no second event store, no
- * client-clock date or typed duration (`created_at` is the server's; time is
- * the bench session's). `old_*` is the part that was there / worked on,
- * `new_*` the part that went in.
- */
+/** Map the bench draft onto `repair_actions` — no second event store, no client-clock date or typed duration (`created_at` is the server's;… */
 function toActionBody(type: RepairActionType, d: Draft, sessionId: number | null) {
   const baseTitle = type === 'replaced' || type === 'awaiting_part' ? d.partB?.title ?? d.partA?.title : d.partA?.title;
   const repaired = type === 'repaired';
@@ -117,13 +112,7 @@ function missingFor(type: RepairActionType, d: Draft): string | null {
   return null;
 }
 
-/**
- * Log work — the bench verb of the mobile repair workbench. Full-screen because
- * it is keyboard- and camera-heavy. Every part is identified, not typed: pick
- * the catalog SKU (search or scan), mint a temporary `TMP-` part when it is not
- * in the system yet, and scan the serial of exactly the part that came out or
- * went in.
- */
+/** Log work — the bench verb of the mobile repair workbench. */
 export function RepairLogWorkSheet({
   repairId,
   sessionId,

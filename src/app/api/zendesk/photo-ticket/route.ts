@@ -21,21 +21,7 @@ import { recordStaffForPostedComment } from '@/lib/integrations/helpdesk/comment
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/zendesk/photo-ticket  (multipart/form-data)
- *
- * One chokepoint for "turn a selection of library photos into a Zendesk ticket":
- *   - mode=create → new ticket (subject/description/priority/tags/requester),
- *   - mode=update → reply / internal note on an existing ticket.
- *
- * Form fields:
- *   meta   — JSON string (validated by MetaSchema below)
- *   files  — zero or more ad-hoc files drag-dropped into the modal
- *
- * Selected library photos (meta.photoIds) and dropped files are uploaded to
- * Zendesk's Uploads API and ride along as REAL attachments on the comment.
- * Gated by integrations.zendesk (same as the rest of the Zendesk surface).
- */
+/** POST /api/zendesk/photo-ticket (multipart/form-data) */
 
 const Requester = z
   .object({ name: z.string().trim().optional(), email: z.string().trim().email().optional() })

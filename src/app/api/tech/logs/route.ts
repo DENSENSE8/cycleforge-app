@@ -4,36 +4,9 @@ import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/
 import { withAuth } from '@/lib/auth/withAuth';
 import { escapeLike } from '@/lib/sql-like';
 
-/**
- * Simplified tech-logs query.
- * SAL is SoT: one query, no UNION ALL, no regex matching.
- *
- * GET /api/tech/logs?weekStart=2026-03-24&weekEnd=2026-03-28
- *   — defaults to the signed-in staff's logs.
- *   — omit week bounds for a rolling newest-first feed (for station rails).
- *   — admin.view_logs holders can pass ?techId=N to view another tech.
- *   — tech.view holders can pass ?techId=all for org-wide TECH scan history
- *     (Shipping workspace History tab).
- *   — `?q=` is the bench find box, ANSWERED HERE. See {@link SEARCH_ROW_CEILING}.
- */
+/** Simplified tech-logs query. */
 
-/**
- * A searching fetch ignores the caller's page bound and reads the whole week.
- *
- * The defect this prevents: the bench feed asks for `limit=1000` and the find
- * box used to filter those mounted rows in React. A tech who scanned more than
- * a thousand times in a week could type a tracking number that IS in the week
- * and read "no results", because the matching row was never in the window. A
- * page bound the operator cannot see must not decide whether their query has
- * an answer — so `q` drops it, exactly as the orders desk does
- * (`src/lib/dashboard-table-data.ts:141-151`).
- *
- * The WEEK is not dropped with it. Unlike the orders desk's `inWarehouse`
- * facet, the week is a scope the operator CHOSE and can read off the period
- * pill, and `TechTable` re-bands the answer by `weekRange` on the client — so
- * rows fetched from outside the requested week would be discarded on arrival
- * and cost a wider scan for nothing.
- */
+/** A searching fetch ignores the caller's page bound and reads the whole week. */
 const SEARCH_ROW_CEILING = 5000;
 
 export const GET = withAuth(async (req: NextRequest, ctx) => {
@@ -108,23 +81,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ? `AND ${dateConditions.join(' AND ')}`
       : '';
 
-    /**
-     * The find box, as SQL — and it lives INSIDE the page CTE, above the
-     * LIMIT, which is the whole point. Bolted onto the outer SELECT it would
-     * filter the same truncated window React was filtering and fix nothing.
-     *
-     * The columns are the facts a bench row actually paints
-     * (`bench-row-view.ts` + `tech-resolve.ts`): title, order number, tracking,
-     * serial, SKU, item number, note. NOT the tester's name — `testedStep`
-     * resolves `who: null` on this bench and draws an avatar from the staff id,
-     * so a name is not on screen to be searched for; matching one would return
-     * rows whose every visible cell disagrees with the query.
-     *
-     * Each correlated EXISTS re-states `organization_id = sal.organization_id`:
-     * the outer CTE is already tenant-scoped, but a subquery that joins a
-     * second table on a shared id (tracking, fnsku) would otherwise be free to
-     * read another tenant's row to decide this tenant's match.
-     */
+    /** The find box, as SQL — and it lives INSIDE the page CTE, above the LIMIT, which is the whole point. */
     let searchClause = '';
     if (searchTerm) {
       params.push(`%${escapeLike(searchTerm)}%`);

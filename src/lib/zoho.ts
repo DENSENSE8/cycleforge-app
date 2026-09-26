@@ -113,12 +113,7 @@ export async function getPurchaseReceiveById(
   return zohoGet(`/api/v1/purchasereceives/${safeId}`);
 }
 
-/**
- * Total quantity already on purchase receives for this PO, keyed by PO `line_item_id`.
- * List results often omit `line_items`; we GET each receive when needed — but
- * cap detail GETs so a PO with many prior receives cannot burn N×10s before
- * the purchase-receive POST even starts (Unbox timeout root cause).
- */
+/** Total quantity already on purchase receives for this PO, keyed by PO `line_item_id`. */
 const MAX_PURCHASE_RECEIVE_DETAIL_GETS = 8;
 
 export async function sumWarehouseReceivedByPoLineItem(
@@ -187,13 +182,7 @@ interface ZohoBillSummary {
   purchaseorders?: Array<{ purchaseorder_id?: string }>;
 }
 
-/**
- * GET /bills filtered by `purchaseorder_id`. Zoho Inventory does not document
- * `purchaseorder_id` as a top-level filter on /bills, but accepts it in
- * practice; we always paginate-and-filter as a safety net (the docs do
- * guarantee the field is present on each bill row). Returns an empty array if
- * the PO has no bills.
- */
+/** GET /bills filtered by `purchaseorder_id`. */
 export async function listBillsForPurchaseOrder(
   purchaseOrderId: string,
 ): Promise<Array<{ bill_id: string; bill_number: string; status: string }>> {
@@ -349,16 +338,7 @@ export async function searchPurchaseOrdersByTracking(
   return results;
 }
 
-/**
- * Resolve a scanned PO# (or reference number) to its EXACT Zoho purchase
- * order. Unlike {@link searchPurchaseOrdersByTracking} — which is deliberately
- * tolerant so a tracking suffix can fuzzily match — this requires an exact
- * (case/punctuation-insensitive) match on `purchaseorder_number` or
- * `reference_number`. A scanned PO must never resolve to a different,
- * fuzzily-similar PO (e.g. "12-14721-26664" silently adopting "12-14721-26000").
- *
- * Returns the matching PO, or `null` when no exact match exists.
- */
+/** Resolve a scanned PO# (or reference number) to its EXACT Zoho purchase order. */
 export async function findPurchaseOrderByNumber(
   value: string
 ): Promise<ZohoPurchaseOrder | null> {
@@ -438,14 +418,7 @@ interface ZohoContactSummary {
   status?: string;
 }
 
-/**
- * Search Zoho contacts for a vendor by name. Used by the PO-mailbox
- * "Create draft in Zoho" flow to resolve an extracted vendor string to
- * a real contact_id (required by POST /purchaseorders).
- *
- * Returns up to `limit` matches; the caller decides whether a 1-match
- * is good enough to auto-use vs. a multi-match needs operator picking.
- */
+/** Search Zoho contacts for a vendor by name. */
 export async function searchVendorsByName(
   name: string,
   limit = 5,
@@ -504,21 +477,7 @@ export interface CreatedPurchaseOrder {
   total?: number;
 }
 
-/**
- * POST /api/v1/purchaseorders — creates a PO in Zoho's default `draft` status.
- *
- * Drafts are private to the org, not sent to the vendor, not counted in
- * inventory commitments. The operator opens the draft in Zoho's UI,
- * adjusts line items / vendor / dates as needed, and clicks "Convert to
- * Open" to publish to the vendor.
- *
- * Used by the PO-mailbox "Create draft in Zoho" button — system prepares
- * the draft from extracted email fields, human reviews + publishes.
- *
- * Zoho requires at least one line item; the caller must supply a sensible
- * stub (e.g. "Items per email body" with rate 0, qty 1) when the email
- * extraction didn't surface real line items.
- */
+/** POST /api/v1/purchaseorders — creates a PO in Zoho's default `draft` status. */
 export async function createPurchaseOrder(
   input: CreatePurchaseOrderInput,
 ): Promise<CreatedPurchaseOrder> {
@@ -594,16 +553,7 @@ export function assertPurchaseOrderReceivable(
   }
 }
 
-/**
- * Does Zoho already consider this PO received?
- *
- * `purchaseorder.status` is NOT the answer: a billed PO sits at
- * `status: 'issued'` while `received_status` tracks receipt separately. PO
- * 06-14980-30824 read `status: 'issued'`, `billed_status: 'billed'`,
- * `received_status: 'in_transit'`, `quantity_yet_to_receive: 0`, `receives: []`
- * — nothing to post per line, and still not received. Callers use this to tell
- * "genuine no-op" from "must fall back to whole-PO markasreceived".
- */
+/** Does Zoho already consider this PO received? */
 export function isPurchaseOrderFlaggedReceived(
   header: Record<string, unknown> | null | undefined,
 ): boolean {
@@ -640,10 +590,7 @@ export function mergeSerialNoteIntoLineDescription(existing: string, serialNote:
   const s = serialNote.trim();
   if (!s) return e;
   if (!e) return s;
-  // The serial core of the new note: strip an optional "SN:/SNs:" prefix AND any
-  // " · <condition>" suffix, then split a multi-serial list. We dedup on the
-  // serial(s) so the same unit is never listed twice — even when the new note
-  // adds a condition the old one lacked.
+  // The serial core of the new note:
   const serialCore = s.split('·')[0].replace(/^(SN|SNs)\s*:\s*/i, '').trim();
   const tokens = serialCore.split(/\s*,\s*/).map((t) => t.trim()).filter(Boolean);
   const eUpper = e.toUpperCase();
@@ -872,27 +819,7 @@ export async function markPurchaseOrderAsUnreceived(
   }
 }
 
-/**
- * Tell Zoho to mark the entire PO as received in one shot — the API twin of the
- * "Mark as Received" button in Zoho's own PO screen.
- *
- * Two callers:
- *  1. Fallback when the standard purchasereceives POST is rejected with code
- *     36504 ("Select an item.") on the billed-PO path — Zoho requires
- *     bill_item_id from the bill, unreachable without the
- *     ZohoInventory.bills.READ OAuth scope.
- *  2. `mark-received-po` when our pending-quantity math yields nothing to post
- *     but Zoho still reports the PO un-received. A billed PO can report
- *     `quantity_yet_to_receive: 0` with `received_status: 'in_transit'` and no
- *     `receives[]` at all (PO 06-14980-30824, 2026-08-21) — there is no line to
- *     post, yet the PO is genuinely not received. Without this the receive
- *     no-ops forever and the PO sits in transit.
- *
- * Caveat: receives the FULL pending quantity on EVERY open line of the PO.
- * Callers that submit only a partial-line subset would over-receive missing
- * lines; the existing mark-received-po caller always submits the full pending
- * quantity per line so this is safe in practice.
- */
+/** Tell Zoho to mark the entire PO as received in one shot — the API twin of the "Mark as Received" button in Zoho's own PO screen. */
 export async function markPurchaseOrderAsReceived(
   poId: string,
 ): Promise<ZohoPagedResponse<ZohoPurchaseReceive> & { purchasereceive?: ZohoPurchaseReceive }> {
@@ -974,22 +901,7 @@ function buildPurchaseReceiveBilledBody(
   return body;
 }
 
-/**
- * Creates a purchase receive. The endpoint has two payload shapes:
- *
- *   1. Unbilled PO   → root `line_items` with `line_item_id`+`item_id`+`quantity`
- *   2. Billed PO     → `purchaseorder_bills[].bill_id` with nested `line_items`
- *
- * Zoho rejects the wrong shape with either `"The purchase order(s) have bill(s)
- * without receive(s)…"` (older API) or `"Select an item."` (newer API). We try
- * the billed shape FIRST whenever PO bills are known (explicit `billId`,
- * `bills` hint, or `getPurchaseOrderById` lookup); otherwise we POST the
- * unbilled shape and, on either sentinel error, retry with the billed shape.
- *
- * `billNumberHint` matches `bill_number` on GET PO `bills[]` when multiple
- * bills exist (NOT the PO#; use the Bill document number Zoho prints on the
- * vendor bill).
- */
+/** Creates a purchase receive. */
 export async function createPurchaseReceive(params: {
   purchaseOrderId: string;
   warehouseId?: string;

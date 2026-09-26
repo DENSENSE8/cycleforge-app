@@ -36,24 +36,7 @@ import { useReceivingPackageSync } from './useReceivingPackageSync';
 import { useZohoSync } from './useZohoSync';
 import { useReceivingCartonRealtimeBridge } from './useReceivingCartonRealtime';
 
-/**
- * Mode-AGNOSTIC controller for a single receiving line's carton-level concerns —
- * the slice every workspace mode (unbox · triage · testing) shares, so the
- * cross-mode duplication lives in ONE hook instead of being re-derived per panel.
- *
- * Owns: carton identity (PO# / platform / type / listing / tracking / zendesk),
- * the manual priority tier, per-carton scratch persistence (flush → hydrate →
- * persist, order-sensitive), the generic line PATCH wrapper, and the
- * copy / share / share-to-phone / Zoho-resync actions.
- *
- * Does NOT own unbox/testing-specific state (condition, serial scanning, receive,
- * label print, verdicts) — those live in the per-mode controllers that compose
- * this one. See useUnboxLineController / useTestingLineController.
- *
- * `opts.dispatchLine` overrides how line updates broadcast to the rail. Testing
- * passes a variant that strips `last_activity_at` so a click never clobbers the
- * rail's tester-scoped verdict time; receiving uses the default.
- */
+/** Mode-AGNOSTIC controller for a single receiving line's carton-level concerns — the slice every workspace mode (unbox · triage · testing)… */
 export function useReceivingLineCore(
   row: ReceivingLineRow,
   staffId: string,
@@ -62,13 +45,7 @@ export function useReceivingLineCore(
   const dispatchLine = opts.dispatchLine ?? dispatchLineUpdated;
   const queryClient = useQueryClient();
 
-  /**
-   * Keep the Unboxed dock in sync without inventing membership.
-   * Title/qty go through allowlisted carton patches (Unbox ignores the shared
-   * line-update bus). Identity keep-alive merges onto an existing carton only —
-   * never strips a rich PATCH response down to `{id,receiving_id}` and prepends
-   * a `Line #N` stub onto an empty rail (Incoming leak into Unbox).
-   */
+  /** Keep the Unboxed dock in sync without inventing membership. */
   const upsertUnboxRailRow = useCallback(
     (line: Partial<ReceivingLineRow> & { id: number }) => {
       const receivingId = line.receiving_id ?? row.receiving_id ?? null;
@@ -333,13 +310,7 @@ export function useReceivingLineCore(
     }, orgId);
   }, [zendesk, listingLink, extraTrackings, row.receiving_id, orgId]);
 
-  // NOTE: the Zendesk ticket link is owned end-to-end by the claim modal
-  // (create / link-existing) and the ReceivingTicketChip's Unlink action, which
-  // go through the authoritative ticket_links endpoints
-  // (/api/receiving/zendesk-claim[/link]). There is deliberately NO free-text
-  // "save zendesk_ticket column" path here: writing only the display column
-  // would desync it from the ticket_links row (a cleared column would leave the
-  // real link intact). `setZendesk` only mirrors those flows in memory.
+  // NOTE: the Zendesk ticket link is owned end-to-end by the claim modal (create / link-existing) and the ReceivingTicketChip's Unlink…
 
   // Set/clear the carton's manual priority tier (receiving.priority_tier) from
   // the urgency pill. null = Auto. Optimistic; reverts on failure.
@@ -374,10 +345,7 @@ export function useReceivingLineCore(
       toast.error('Could not update priority');
     }
   }, [row.receiving_id, row.id, row.notes, priorityTier]);
-  // Cross-viewer classify sync: another operator's platform/type/priority edit
-  // on this carton re-dispatches `receiving-package-updated` from the Ably
-  // station channel (see useReceivingCartonRealtimeBridge); the platform/type
-  // hooks mirror their own fields — the priority tier mirrors here.
+  // Cross-viewer classify sync:
   useReceivingCartonRealtimeBridge(row.receiving_id ?? null);
   useEventBridge({
     'receiving-package-updated': (e) => {
@@ -503,12 +471,7 @@ export function useReceivingLineCore(
     else toast.error('Could not copy link');
   }, [row.receiving_id, row.zoho_purchaseorder_number, row.id]);
 
-  // Push a "Shared from computer" sheet to the operator's paired phone via
-  // `staffstation:{staffId}` — implicit pairing, the (orgId, staffId) channel
-  // name is the gate. A bare publish ALWAYS resolves even with zero subscribers,
-  // so we wait for the phone to ACK the exact request before reporting success;
-  // otherwise a mismatched org/staff (e.g. phone signed into a different account)
-  // would silently swallow the share while the desktop toasted "Shared".
+  // Push a "Shared from computer" sheet to the operator's paired phone via `staffstation:{staffId}` — implicit pairing, the (orgId, staffId)…
   const handleSharePhone = useCallback(async () => {
     if (!row.receiving_id) {
       toast.error('No receiving package linked yet');
@@ -539,10 +502,7 @@ export function useReceivingLineCore(
       const requestId = randomId();
       const ch = client.channels.get(stationChannelName);
 
-      // This inline subscribe-before-publish/race-a-timeout dance used to live
-      // here and nowhere else, which is why the photo-request and pack paths
-      // shipped without it. It now composes the shared handshake (P1 · D2) —
-      // one timeout, one ack vocabulary, one behaviour across every bench.
+      // This inline subscribe-before-publish/race-a-timeout dance used to live here and nowhere else, which is why the photo-request and pack…
       const acked = await sendToDevice({
         channel: ch as DeviceAckChannel,
         requestId,

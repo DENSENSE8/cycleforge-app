@@ -3,20 +3,7 @@
 import { createContext, useContext, useMemo, type ComponentPropsWithoutRef } from 'react';
 import type { ModeName } from '@/design-system/modes/registry';
 
-/**
- * ModeRegion — the ONE way a region declares its task mode.
- *
- * Renders a `<div data-mode="<mode>">`; the generated mode stylesheet
- * (`design-system/modes/registry.ts`) does the rest, so every neutral surface /
- * text / border utility inside the region adopts the mode. All div props pass
- * through: replace a region's existing root div with this, or wrap a page with
- * `className="contents"` when the wrapper must not take part in layout (custom
- * properties still inherit through a `display: contents` box).
- *
- * Nesting is by REGION, one level deep: a page region plus at most one nested
- * region (the right rail). A third level is a design error — the operator
- * would be three task contexts deep — and is reported in development.
- */
+/** ModeRegion — the ONE way a region declares its task mode. */
 
 /** Page region + one nested region. */
 const MAX_MODE_DEPTH = 2;

@@ -68,12 +68,7 @@ export interface CrudConfig<TRow = any> {
    */
   create?: (body: any, req: NextRequest) => Promise<TRow>;
 
-  /**
-   * Update an existing row. Receives the validated body (after Zod parse).
-   * The body always contains `id`. The optional third arg carries the tenant
-   * org id from the auth context (`ctx.organizationId`), threaded additively so
-   * org-scoped mutations can run on the tenant pool + GUC.
-   */
+  /** Update an existing row. */
   update?: (
     body: any,
     req: NextRequest,

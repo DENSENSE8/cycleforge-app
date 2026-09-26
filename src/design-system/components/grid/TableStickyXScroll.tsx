@@ -12,14 +12,7 @@ import { GridStickyXScrollbar } from '@/design-system/components/grid/GridSticky
 import { useSyncedHorizontalScrollbar } from '@/design-system/components/grid/useSyncedHorizontalScrollbar';
 import { cn } from '@/utils/_cn';
 
-/**
- * RSC-safe sticky bottom X scrollbar wrapper for non-virtualized tables
- * (dense {@link StationListTable} bodies).
- *
- * The scroll port keeps `no-scrollbar` (trackpad still pans on both axes); the
- * gutter is the always-reachable triage drag affordance — same contract as
- * LedgerGrid.
- */
+/** RSC-safe sticky bottom X scrollbar wrapper for non-virtualized tables (dense {@link StationListTable} bodies). */
 export function TableStickyXScroll({
   children,
   className,

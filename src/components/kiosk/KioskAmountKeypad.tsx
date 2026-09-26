@@ -1,36 +1,9 @@
 'use client';
 
 /**
- * KioskAmountKeypad — Square's Keypad on the counter tablet: one big amount,
- * Square's twelve keys (`1`–`9`, `C`, `0`, `+`), digits filling from the right
- * (`1`,`2`,`5`,`0` → $12.50).
- *
- * `+` commits the typed amount (Square: "tap the (+) icon to add a separate
- * custom amount to the sale"). It exists only when the caller passes `onAdd`;
- * a price editor has nothing to add, so its twelfth cell stays empty.
- *
- * Two looks:
- *   - default: soft, gapped keys — the price editor inside a line card.
- *   - `slab`: Square's Keypad. One bounded block (the wrapper caps its width,
- *     so the keys stay key-sized on a wide tablet instead of stretching to
- *     half the screen), square corners, NO gap between keys — every pixel of
- *     the pad is a key, so a thumb landing on a seam still presses something
- *     (operator 2026-09-24: "blocky zero corner radius for the buttons edge to
- *     edge … no accidental touches of the spacing between"). Seams are
- *     hairline borders drawn inside each key, so they are part of its hit
- *     region. Every key, `+` included, wears the same flat face as Square's.
- *
- * A physical keyboard types into it too (a desk tablet on a stand has one):
- * digits, Backspace, Delete / `c` for `C`, Enter or `+` for `+`.
- *
- * {@link KioskPhoneKeypad} is the same slab for a phone number — `1`–`9`,
- * `C`, `0`, `⌫` — so the Contact step never raises the OS keyboard for the one
+ * KioskAmountKeypad — Square's Keypad on the counter tablet:
+ * (operator 2026-09-24: "blocky zero corner radius for the buttons edge to
  * field every visit fills (operator 2026-09-24: "typing a phone number in
- * should be a keypad not a keyboard display").
- *
- * Callers: `KioskKeypadFace` (slab), `KioskCartLineEditor` (price adjustment),
- * `KioskFloatingPhoneKeypad` (phone — mounted by `KioskCustomerIntake`).
- * Affected API: none.
  */
 
 import { useRef, type KeyboardEvent } from 'react';

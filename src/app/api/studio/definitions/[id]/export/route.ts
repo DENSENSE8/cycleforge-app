@@ -6,16 +6,7 @@ import { workflowDefinitions, workflowNodes, workflowEdges } from '@/lib/drizzle
 import { buildTemplatePackage } from '@/lib/studio/template-package';
 import type { TemplateGraph } from '@/lib/studio/templates';
 
-/**
- * GET /api/studio/definitions/[id]/export
- *
- * Serialize one of the org's own workflow definitions into a
- * CycleForgeTemplatePackage v1 (Template Platform Phase 3) — the portable form a
- * tenant shares / re-imports. Read-only over the caller's own graph, org-scoped
- * (the definition must belong to ctx.organizationId), so studio.view. The
- * package's engineCompat.requiredNodeTypes is DERIVED from the graph by
- * buildTemplatePackage, so it can never drift from what the graph uses.
- */
+/** GET /api/studio/definitions/[id]/export */
 export const dynamic = 'force-dynamic';
 
 function slugify(name: string): string {

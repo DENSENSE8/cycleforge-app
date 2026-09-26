@@ -1,12 +1,4 @@
-/**
- * Workflow engine — node-type registry.
- *
- * An in-memory map of node type → NodeDefinition. Built-in nodes register
- * themselves on import (see ./nodes/*, wired up by registerBuiltins in index.ts);
- * plugin nodes can register at startup the same way. The canvas reads the
- * registry (via /api/workflow/nodes) to build its palette, so a new node type
- * appears automatically without touching the UI.
- */
+/** Workflow engine — node-type registry. */
 
 import type { NodeDefinition, NodeMeta } from './contract';
 

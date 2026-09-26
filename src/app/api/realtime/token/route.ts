@@ -58,10 +58,8 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
     );
   }
 
-  // Org + identity come from the verified SESSION, never the request. This is
+  // Org + identity come from the verified SESSION, never the request.
   // the entire security boundary: Ably enforces these capabilities server-side,
-  // so a client can only ever subscribe/publish within its own org, and only to
-  // its own per-staff channels.
   const orgId = ctx.organizationId;
   const staffId = ctx.staffId;
   const prefix = orgChannelPrefix(orgId); // throws on a non-uuid org → 500 (fail closed)
@@ -112,20 +110,13 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
     capability[aiSessionChannel] = ['subscribe', 'publish'];
   }
 
-  // Counter bridges for the tablets THIS staffer currently holds a live lease
-  // on (docs/todo/kiosk-desk-session-channel-PLAN.md P3). Resolved from the
-  // lease server-side — never `kiosk:*`, which would let anyone with
-  // dashboard.view watch every counter in the org, customer identity and
-  // signature traffic included. An expired lease drops out on the next mint.
+  // Counter bridges for the tablets THIS staffer currently holds a live lease on (docs/todo/kiosk-desk-session-channel-PLAN.md P3).
   if (ctx.permissions.has('walk_in.view')) {
     const claimed = await listClaimedDeviceIds(orgId as OrgId, staffId);
     Object.assign(capability, deskKioskCapability(orgId, claimed));
   }
 
   // Agentic-loop master plan (Yjs over Ably) + ops-plans change feed.
-  // Least-privilege: plan viewers subscribe; only plan managers may publish
-  // CRDT sync messages (the Yjs protocol needs client publish — unlike the
-  // broadcast feeds above, peers answer each other's sync requests).
   if (ctx.permissions.has('operations.plans.view')) {
     capability[getOpsPlansChannelName(orgId)] = ['subscribe'];
     capability[getMasterPlanChannel(orgId)] = ctx.permissions.has('operations.plans.manage')

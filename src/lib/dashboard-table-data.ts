@@ -56,10 +56,7 @@ export async function fetchPendingOrdersData({
   const records = dedupeByOrderId(
     ((data.orders || []).map(toOrderRecord) as ShippedOrder[]).filter(isNonFbaRecord)
   );
-  // When searching, return all matches regardless of shipment_id so an order
-  // with no label is still discoverable from the pending view search bar.
-  // Without a search query the view is scoped to label-assigned orders only
-  // (those with a shipment_id); no-label orders belong in the unshipped view.
+  // When searching, return all matches regardless of shipment_id so an order with no label is still discoverable from the pending view…
   if (searchQuery.trim() && !strictSearchScope) return records;
   return records.filter((record) => record.shipment_id != null);
 }
@@ -117,12 +114,7 @@ export async function fetchDashboardOrderRowById(orderId: number): Promise<Shipp
   }
 }
 
-/**
- * In-warehouse To-ship queue = labeled + tracked, still in the building.
- * Includes awaiting-test, tested, packed-staged, and blocked. Excludes
- * awaiting-label (Labels) and dock-scanned / carrier-left (Scan-out history).
- * Uses `inWarehouse=true` on `/api/orders`.
- */
+/** In-warehouse To-ship queue = labeled + tracked, still in the building. */
 export async function fetchUnshippedOrdersData({
   searchQuery = '',
   packedBy,
@@ -378,16 +370,7 @@ export async function fetchDashboardPackedRecords({
   weekStart?: string;
   weekEnd?: string;
   shippedFilter?: string;
-  /**
-   * The desk's find text, answered in SQL by `/api/packerlogs?q=`.
-   *
-   * It rides the fetch, not a post-fetch pass, because this feed is WINDOWED:
-   * the week query asks for the newest `limit` scans and nothing else. Filtering
-   * that page in memory let the desk answer "no shipped orders found" for a row
-   * it had simply never been sent — an absence it could not see. The route drops
-   * its page bound whenever `q` is present (keeping the week bounds), so the
-   * answer is every match in the window, not every match on page one.
-   */
+  /** The desk's find text, answered in SQL by `/api/packerlogs?q=`. */
   searchTerm?: string;
   limit?: number;
   offset?: number;
@@ -424,12 +407,7 @@ export interface ShippedHydrationEntry {
   packer_photos_url: Array<{ id: number; url: string; uploadedAt: string }>;
 }
 
-/**
- * Fetch the deferred (work_assignments deadline/tester + photos) fields for a
- * page of shipped rows so the spine-first table can fill them in after paint.
- * Returns a sal-id → fields map; a failure resolves to {} (degrade-not-fail: the
- * rows just keep their spine values).
- */
+/** Fetch the deferred (work_assignments deadline/tester + photos) fields for a page of shipped rows so the spine-first table can fill them… */
 export async function fetchShippedHydration(salIds: number[]): Promise<Record<number, ShippedHydrationEntry>> {
   if (salIds.length === 0) return {};
   try {

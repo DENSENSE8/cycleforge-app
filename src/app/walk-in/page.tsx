@@ -7,17 +7,7 @@ import { useWalkInTaskRedirect } from '@/hooks/useWalkInTaskRedirect';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
 import { retiredWalkInHistoryTarget } from '@/lib/dashboard/dashboard-domains';
 
-/**
- * `/walk-in` — retired front door for Sales history.
- *
- * History lives on `/dashboard?mode=sales` (Local Pickup: `?mode=pickup`).
- * Intake deep-links (`?new=` / `?openRepair=`) still redirect to the Walk-In
- * station via {@link useWalkInTaskRedirect} before the history redirect runs.
- *
- * Client replace (not a permanent Next `redirects()` 308) so bookmarks keep
- * `tab` / mode without trapping bad params — same class as `?mode=search` →
- * `/search` on the dashboard page.
- */
+/** `/walk-in` — retired front door for Sales history. */
 function WalkInRedirectContent() {
   // Boundary-parse on arrival. WALK_IN_ROUTE_PARAMS declares the legacy
   // deep-link keys (`openRepair`, `new`, `search`, `tab`) precisely so this hook

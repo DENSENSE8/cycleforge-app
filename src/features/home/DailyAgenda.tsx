@@ -1,40 +1,8 @@
 'use client';
 
 /**
- * Daily (`/`) — the whole agenda as ONE industrial record ledger. The open
- * record is placed by `DeskRecordPlane`: in place of the list by default, or
- * list-left / record-right when the staffer turns on fullscreen
- * (HANDOFF-industrial-record-ledger, HANDOFF-desk-surface-law-2026-09-25).
- *
+ * Daily (`/`) — the whole agenda as ONE industrial record ledger.
  * ## Three stores, one display, tabs (operator 2026-09-25)
- *
- * | Store | Grain | Tab |
- * |---|---|---|
- * | `daily_check_items` + `daily_check_marks` | per-day attestation, roster denominator | Daily checklist |
- * | `work_assignments` FOLLOW_UP on an order / carton | a handoff with assigner, deadline, priority | Tasks |
- * | `work_assignments` FOLLOW_UP on a `support_tickets` row | a helpdesk thread someone was handed | Tickets |
- * | — tasks that LINK a Zendesk ticket | floor work with a customer waiting | Tickets in tasks |
- *
- * The STORES stay separate — `daily-agenda-row.ts` is where their shapes meet
- * and `agenda-lens.ts` is where the tabs are declared. Only the display merges.
- *
- * ## The record is where the work gets DONE
- *
- * A task opens {@link TaskEvidence}: the description, photos and videos of how
- * to do it, every linked order / tracking number / ticket, and its due date +
- * reminder. A checklist item opens {@link ChecklistEvidence}. The box on band
- * 1 of every record is the TICK — "I finished this" — on both halves.
- *
- * ## Whose work (`?scope=`)
- *
- * `mine` (default) is the staffer's day: their checklist and what was handed
- * to them. `handed` is what they threw at colleagues — the follow-through list
- * a lead needs at 400 orders a day. `everyone` is the team board. The
- * checklist is a per-staffer attestation, so it reads only under `mine`.
- *
- * URL: `?tab=` lens · `?filter=` open|done · `?scope=` · `?q=` · `?task=<id>`
- * or `?check=<id>` opens a record · `?date=` browses a past checklist ·
- * `?compose=1` is the inline create form.
  */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
@@ -104,12 +72,7 @@ export function DailyAgenda() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has } = useAuth();
-  /**
-   * The checklist LIST is org-managed — adding to it (or moving its due time)
-   * changes what every future report measures — so it gates on
-   * `admin.manage_staff`. Throwing a TASK is `work_orders.claim`, which every
-   * floor role holds.
-   */
+  /** The checklist LIST is org-managed — adding to it (or moving its due time) changes what every future report measures — so it gates on… */
   const canManage = has('admin.manage_staff');
 
   const todayKey = getCurrentPSTDateKey();
@@ -294,12 +257,7 @@ export function DailyAgenda() {
     [isToday, openRecord, tasks.nowMs, toggleRow],
   );
 
-  /**
-   * The page frame, with the LENS tabs in the desk chrome — top left, on the
-   * same row as Add — exactly where Shipping's desk tabs sit. One tab
-   * vocabulary across desks; the ledger's own toolbar keeps only find, whose
-   * work and open/done.
-   */
+  /** The page frame, with the LENS tabs in the desk chrome — top left, on the same row as Add — exactly where Shipping's desk tabs sit. */
   const lensTabs = AGENDA_LENSES.filter((l) => scope === 'mine' || l !== 'checklist').map((l) => ({
     id: l,
     label: AGENDA_LENS_LABEL[l],

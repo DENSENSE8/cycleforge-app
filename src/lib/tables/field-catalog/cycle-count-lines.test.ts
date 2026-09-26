@@ -1,28 +1,4 @@
-/**
- * Cycle-count-LINES catalog guards, materialization, verbs and adapter
- * behaviour — the family that replaced `lineColumns`, the seven hand-written
- * `AdminTableColumn` objects on `/inventory/cycle-counts/[id]`.
- *
- * Four assertions here are load-bearing beyond the usual shape checks, because
- * each pins a decision a future agent will be tempted to undo:
- *
- * - **`notes` stays unpainted.** `loadLines` selects it and nothing ever drew
- *   it. A reader who notices "the row already has the note" will want to bind
- *   it; the catalog must not name that column until a plane paints it.
- * - **The verbs live in the VERB MODULE, not at the mount.** All three were
- *   cells (`<form>`s inside the grid, one of them a raw green `<button>`).
- *   `VERBS_BIND_TO_FIELDS` forbids a page minting them, so the catalog is
- *   asserted from the module and the closed-campaign precondition is asserted
- *   as ABSENCE, not as a disabled control.
- * - **`variance_tol` reaches the adapter through the ROW.** The retired Δ cell
- *   coloured itself from `campaign.variance_tol` — a fact outside the row, read
- *   through a closure the `row → CompoundRowView` contract does not have. The
- *   test pins that the tolerance travels on the line and that the adapter says
- *   out-of-tolerance in the PILL's word rather than in a colour.
- * - **≤ FOUR status bindings.** The skeleton mounts whole, so a fifth binding
- *   exceeds `MAX_DEFAULT_VISIBLE_TRACKS` and throws in `parseTableDefinition`
- *   at module load. The check states the ceiling where it can be read.
- */
+/** Cycle-count-LINES catalog guards, materialization, verbs and adapter behaviour — the family that replaced `lineColumns`, the seven… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

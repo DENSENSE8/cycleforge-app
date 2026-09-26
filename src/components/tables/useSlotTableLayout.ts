@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * The slot-layout resolver + Fields-picker glue — the ONE client seam between
- * the slot kernel and a mounted table, for EVERY opted-in family. Orders
- * proved the shape; pickup is the second consumer (kill-list 07 §4 — same
- * engine, different config), which is why the family specifics arrive as a
- * {@link SlotTableLayoutConfig} instead of living in a per-family copy of the
- * read-modify-write law.
- *
- * Resolves the effective layout through the locked cascade
- * (`savedView ?? staff ?? org ?? product`) and hands
- * back both halves the mount needs: the layout (→ the family's
- * `materializeTracks` wrapper) and the Fields-picker DATA (`DataTable`'s
- * `fields` prop — options, toggle, reorder, org capture). All rules live in
- * pure lib code; this hook only fetches, caches, and dispatches.
- *
- * Write semantics (the part worth reading twice):
- * - A staffer's bind/unbind writes their PERSONAL override
- *   (`staff_preferences.prefs.tableLayouts[tableId]`, whole-map read-modify-
- *   write — the JSONB merge is shallow at the key).
- * - An admin's "Save as organization default" PUTs the currently-painted
- *   layout to `/api/tables/layouts` AND clears the admin's own personal
- *   override — otherwise their personal copy would shadow the org default
- *   they just saved, and every later org edit would look like a no-op to them.
- * - "Reset to default" deletes the personal override; the org layout (or the
- *   product default) shows on the next paint.
- */
+/** The slot-layout resolver + Fields-picker glue — the ONE client seam between the slot kernel and a mounted table, for EVERY opted-in family. */
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -56,13 +31,7 @@ export interface SlotTableLayoutConfig {
   tableId: string;
   catalog: FieldCatalog;
   productLayout: SlotLayout;
-  /**
-   * The ONE morph this mount can paint. A stored document with any other
-   * morph — hand-written prefs, an older build — must not open tracks nothing
-   * renders (or drop tracks a sheet needs); coerce, don't crash. The org
-   * write gate refuses foreign morphs outright (`slotMorphsFor`); staff prefs
-   * have no server-side morph gate, so this client coercion is the guard.
-   */
+  /** The ONE morph this mount can paint. */
   paintMorph: SlotLayout['morph'];
   /** Fallback identity-row copy when the identity field is missing. */
   identityFallbackLabel: string;
@@ -147,14 +116,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [staffLayoutsRaw, tableId],
   );
 
-  /**
-   * The applied saved view's columns, if any — the head of the cascade.
-   *
-   * This term has existed in `resolveEffectiveLayout` since it was written and
-   * was **passed by no caller**, so columns were the one part of a view that
-   * did not survive it. The store is the channel; see
-   * `saved-view-layout-store.ts` for why it is a store and not a prop.
-   */
+  /** The applied saved view's columns, if any — the head of the cascade. */
   const savedViewLayout = useSyncExternalStore(
     subscribeSavedViewLayout,
     useCallback(() => getSavedViewLayout(tableId), [tableId]),
@@ -172,15 +134,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     return resolved.morph === paintMorph ? resolved : { ...resolved, morph: paintMorph };
   }, [orgLayout, staffLayout, savedViewLayout, productLayout, catalog, paintMorph]);
 
-  /**
-   * Write the whole personal map (shallow JSONB merge law): carry every
-   * READABLE sibling tableId, replace/delete only ours. Siblings re-read
-   * through `readStoredSlotLayout` rather than passed raw — the PUT schema is
-   * strict, so one legacy/hostile sibling blob must not 400 every layout save
-   * (an unreadable sibling was already invisible to its own table).
-   * Optimistically paints via the shared prefs cache — the same pattern the
-   * other prefs writers use.
-   */
+  /** Write the whole personal map (shallow JSONB merge law): */
   const writeStaffLayout = useCallback(
     (layout: SlotLayout | null) => {
       const nextMap: Record<string, SlotLayout> = {};
@@ -199,23 +153,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [staffLayoutsRaw, tableId, queryClient, update],
   );
 
-  /**
-   * Persist a layout edit ORGANIZATION-WIDE (operator ruling 2026-08-31).
-   *
-   * Binding, unbinding and reordering used to write a PERSONAL override, with a
-   * separate "Save as org default" button to promote it. The operator's ruling
-   * is that a table's shape is a property of the table, not of whoever last
-   * touched it: "any add-in to the data table should function as an
-   * organization-wide edit". So the edit goes straight to the org document, and
-   * every staffer sees it.
-   *
-   * Two consequences worth stating. A personal override, if one already exists,
-   * is cleared on the same edit — otherwise the staffer who just changed the org
-   * default would be the one person who could not see it, shadowed by their own
-   * older copy. And a staffer without `canManage` cannot write the org layout,
-   * so the edit is refused with a reason rather than silently landing somewhere
-   * private and diverging from what their colleagues see.
-   */
+  /** Persist a layout edit ORGANIZATION-WIDE (operator ruling 2026-08-31). */
   const writeOrgLayout = useCallback(
     (layout: SlotLayout) => {
       if (!canManage) {
@@ -353,14 +291,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [effectiveLayout],
   );
 
-  /**
-   * The picker only opens once its cascade BASE is settled: a toggle snapshots
-   * the whole effective document into a durable personal override, so binding
-   * while the org GET is still in flight would fork from the product default
-   * and silently shed the org's own bindings. A staffer who already has a
-   * personal layout is exempt — their own document masks the org layer, so
-   * the org fetch cannot change what a toggle is based on.
-   */
+  /** The picker only opens once its cascade BASE is settled: */
   const fieldsReady = staffLayout != null || orgQuery.isSuccess;
 
   const fields = useMemo<SlotTableFieldsMenu | undefined>(
@@ -373,10 +304,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
             onReorderByDrop,
             identityLabel,
             ...(bandLabels ? { bandLabels } : null),
-            // No "Save as org default" button any more: every edit above IS an
-            // org edit (ruling 2026-08-31), so a button to promote one would be
-            // a no-op wearing a confirm step. Reset survives only to clear a
-            // PERSONAL override left over from before that ruling.
+            // No "Save as org default" button any more:
             ...(staffLayout ? { onResetToDefault } : null),
           }
         : undefined,

@@ -1,39 +1,6 @@
 'use client';
 
-/**
- * Unbox Listings display — every openable listing URL for the carton, and full
- * CRUD over the ones an operator owns.
- *
- * TWO TIERS, ONE FACE:
- *   - DURABLE rows (`receiving_listing_links`, via {@link useCartonListingLinks})
- *     are the buyer-authored links: create · rename · re-point · delete, in the
- *     buyer's triage order. They carry an `id`.
- *   - COMPUTED tiers (`catalog` / `derived`) are resolved at read time by
- *     `collectCartonListingLinks` and are NOT editable — materializing a
- *     fallback would freeze a guess into a fact. They carry no `id`.
- *
- * ANATOMY (top to bottom) — three stacked rows on ONE four-column rail
- * (`open · copy · edit · delete`), so every cell in a column does the same
- * kind of job:
- *   1. **Open · Open all** — full-bleed chrome. Open acts on the SELECTED
- *      link; Open all takes every href on the carton.
- *   2. **The header row** — ＋ · picker | Copy all | count | Delete all. Each
- *      trailing cell heads the row column beneath it: the same verb at carton
- *      scale. ＋ leads the wide cell where a row's open glyph sits, so the
- *      picker's text lands on the link-name rail. Delete all ARMS on the first
- *      click and commits on the second.
- *   3. **The link rows** — one per link, in the buyer's triage order. The row
- *      itself is the open button (glyph + name), then copy · edit · delete.
- *      Edit opens the inline name + URL fields beneath; a computed row has no
- *      id, so its pencil opens a prefilled create instead and it carries no
- *      delete.
- *
- * A host with no carton id (order-side Pack / Testing) gets the read-only face
- * plus the legacy single `listing_url` field — CRUD needs a carton to hang off.
- *
- * Flush Displays body (no WorkspaceCard glass island) — parent push column owns
- * the inset; chrome rows stay edge-to-edge.
- */
+/** Unbox Listings display — every openable listing URL for the carton, and full CRUD over the ones an operator owns. */
 
 import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Check, Copy, ExternalLink, Plus, Pencil, Trash2 } from '@/components/Icons';
@@ -57,13 +24,7 @@ import { useCartonListingLinks, type CartonListingLinkRow } from './useCartonLis
 const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 
 const LISTING_LEAD_GLYPH = STATION_DISPLAYS_HEADER_ACTION_GLYPH;
-/**
- * Open · copy · edit · delete. The OPEN cell is the row: glyph + name in one
- * full-width button, because opening the listing is what an operator wants from
- * a row of listing links, and a 2rem target for the primary verb made them aim.
- * The three trailing squares are that row's own verbs, in the order they
- * escalate — take it, change it, remove it.
- */
+/** Open · copy · edit · delete. */
 const LISTING_LINE_GRID =
   'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem_2rem_2rem] items-stretch divide-x divide-border-hairline';
 /** The combo rides the same four columns: picker · — · count · add. */
@@ -72,12 +33,7 @@ const LISTING_TRAIL_SQUARE = cn(
   BUTTON_VARIANTS.secondary,
   'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
 );
-/**
- * Destructive trailing cell — the same face the serial rail's Remove serial
- * uses (`UnitSlotList`): muted until hover, then rose. One destructive idiom
- * for "remove this row of a list the operator is building", so a delete looks
- * the same wherever they meet it.
- */
+/** Destructive trailing cell — the same face the serial rail's Remove serial uses (`UnitSlotList`): */
 const LISTING_DELETE_SQUARE = cn(
   'flex h-full w-full items-center justify-center bg-surface-card p-0',
   'text-text-muted hover:bg-rose-50 hover:text-rose-600',
@@ -90,26 +46,10 @@ const LISTING_LINK_IDENTITY_FACE = LISTING_LINK_INSET_X;
 const LISTING_EDITOR_ACTIONS =
   'grid w-full grid-cols-[minmax(0,1fr)_auto]';
 
-/**
- * The editor opened FROM a link row lands on that row's identity rail:
- * 2rem lead cell + the identity's own `px-3` = 44px on each side. Without it
- * the compose fields (`px-0` by contract) start at the column edge, a third
- * left rail under the two the row and combo already share.
- *
- * The CREATE editor does NOT take it: it is a compose dock, not a row, so it
- * runs edge to edge and its Save fills the width.
- */
+/** The editor opened FROM a link row lands on that row's identity rail: */
 const LISTING_ROW_EDITOR_RAIL = 'px-11 pb-2';
 
-/**
- * The ONE delete face in this leaf — row delete and Delete all both mount it.
- *
- * It arms on the first click and commits on the second: `receiving_listing_links`
- * has no soft-delete column and no undo behind it, so a single click on a
- * destructive verb is a slip the operator cannot take back. Moving the pointer
- * away or tabbing off disarms, which is why the confirm can live in the cell
- * instead of a modal over a scan bench.
- */
+/** The ONE delete face in this leaf — row delete and Delete all both mount it. */
 function ArmedDeleteCell({
   label,
   armedLabel,
@@ -315,13 +255,7 @@ export function ListingLinksTab({
     }
   }, [links]);
 
-  /**
-   * What "delete all" can actually remove: the durable rows, plus the legacy
-   * scalar link when the carton still carries one. Catalog / derived links are
-   * resolved at read time and own no record, so they are not counted — gating
-   * the verb on `store.rows` alone left it DISABLED (and silently inert) on
-   * every carton whose links had not been migrated yet.
-   */
+  /** What "delete all" can actually remove: */
   const scalarDeletable = Boolean(
     listingLink.trim() && links.some((l) => !l.id && l.source === 'manual'),
   );
@@ -338,10 +272,7 @@ export function ListingLinksTab({
 
   return (
     <div className={cn(FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col')}>
-      {/* 1 — the band verbs: the SELECTED link, then the whole carton.
-          Station chrome: full-bleed, one hairline seam. Open reads the
-          combo below it; Open all never needs a selection. Copy all is not
-          here — it heads the rows' Copy column on the combo seam. */}
+      {/* 1 — the band verbs: */}
       <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
         <HoverTooltip
           label={selected ? `Open ${selected.name}` : 'Pick a listing link below'}
@@ -378,10 +309,7 @@ export function ListingLinksTab({
         </HoverTooltip>
       </div>
 
-      {/* 2 — the header row, on the rows' own four columns:
-          ＋ · picker | Copy all | count | Delete all. ＋ leads the wide
-          cell exactly where a row's open glyph sits, so the picker's text
-          lands on the same rail as every link name. */}
+      {/* 2 — the header row, on the rows' own four columns: */}
       <div className={LISTING_COMBO_GRID}>
         {/* pl only: the picker's chevron is right-aligned, so the shared
             `px-3` showed as a gap between it and the Copy-all seam. A row's
@@ -496,10 +424,7 @@ export function ListingLinksTab({
 
         {store.supported && draft ? (
           <ListingLinkEditor
-            // The CREATE editor is full-bleed: it is a compose dock, not a
-            // row, so its fields run edge to edge and its Save fills the
-            // width. Only the editor opened FROM a row takes that row's
-            // rail ({@link LISTING_ROW_EDITOR_RAIL}).
+            // The CREATE editor is full-bleed:
             className="pb-2"
             name={draft.label}
             href={draft.href}
@@ -534,18 +459,7 @@ export function ListingLinksTab({
   );
 }
 
-/**
- * One link row: **open-square · identity · edit-icon**.
- *
- * The row reads as one line — the left square opens THAT exact link (no
- * select-then-open detour), the middle names it and takes the selection the
- * band verbs follow, and the right glyph reveals the inline editor. Editing is
- * in place under the same row: name + URL commit on blur, delete lives with
- * them, so a link is never edited in a surface that hides the list.
- *
- * A computed row (`catalog` / `derived`) has no id — the trailing pencil
- * still shows and promotes that href into a create draft.
- */
+/** One link row: */
 function ListingLinkRow({
   link,
   row,
@@ -664,11 +578,7 @@ function ListingLinkRow({
           <span />
         )}
 
-        {/* Every row owns the delete column. A DURABLE row deletes its own
-            record; the legacy scalar link deletes by clearing the carton's
-            `listing_url`, which is the only fact behind it; a catalog / derived
-            row has no record to remove, so its cell is disabled and says why
-            rather than lying about a verb it cannot perform. */}
+        {/* Every row owns the delete column. */}
         {row ? (
           <ArmedDeleteCell
             label={`Delete ${link.name}`}

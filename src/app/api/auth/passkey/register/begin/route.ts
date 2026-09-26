@@ -1,17 +1,4 @@
-/**
- * POST /api/auth/passkey/register/begin
- *
- * Two callers:
- *   1. Signed-in user adding a passkey to their account — body: {}
- *   2. Enrollment flow — body: { enrollmentToken: string }
- *
- * Returns the WebAuthn options the browser passes to startRegistration().
- * Sets a short-lived httpOnly cookie holding ONLY the challenge; the finish
- * route reads it back. The target staff_id is NOT carried in the cookie —
- * an httpOnly cookie still can't be trusted as an authorization claim (a
- * non-browser client can forge it), so /finish re-derives the staff_id
- * authoritatively from the session or the enrollment token instead.
- */
+/** POST /api/auth/passkey/register/begin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/current-user';

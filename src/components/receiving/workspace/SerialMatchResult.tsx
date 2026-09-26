@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Serial-match result band for the RETURN receiving flow.
- *
- * When a line's receiving type is RETURN, committing a serial (Enter / barcode
- * scan) runs an exact lookup against `serial_units`. This renders the outcome
- * directly under the SERIAL input on the design-system {@link InlineNotice}
- * surface, with the matched unit's facts shown as the same rounded ring-inset
- * pills the condition picker uses:
- *
- *   idle       → nothing (no serial checked yet)
- *   searching  → null here — the scan row's trailing check cell owns the spinner
- *   found      → success notice + the unit's status / SKU / grade / bin pills.
- *                A unit whose prior status is SHIPPED is a genuine return — we
- *                badge it "Returned item", pin testing/packing thumbs
- *                ({@link ReturnOutboundEvidenceStrip}), and offer Full history
- *                → Displays Timeline.
- *   not-found  → warning notice (title + serial chip only; dismissible).
- *
- * Presentational only: state + data are owned by the caller (see
- * {@link useSerialLookup} for the fetch side). Outbound photo fetch lives in
- * the evidence strip (shared unit-timeline cache).
- */
+/** Serial-match result band for the RETURN receiving flow. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Check, History } from '@/components/Icons';
@@ -272,12 +251,7 @@ interface SerialLookupResponse {
   matched_order?: SerialMatchedOrder | null;
 }
 
-/**
- * Latest-wins serial lookup. `check(serial)` fires `GET
- * /api/serial-units/lookup`, aborting any in-flight request first so a fast
- * scan stream only ever resolves to the most recent serial. Exposes the
- * presentational state for {@link SerialMatchResult}.
- */
+/** Latest-wins serial lookup. */
 export function useSerialLookup() {
   const [state, setState] = useState<SerialMatchState>('idle');
   const [unit, setUnit] = useState<SerialMatchUnit | null>(null);

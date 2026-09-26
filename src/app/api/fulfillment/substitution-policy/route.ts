@@ -6,20 +6,7 @@ import { isFulfillmentSubstitution } from '@/lib/feature-flags';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { SubstitutionPolicy } from '@/lib/tech/substitution-eligibility';
 
-/**
- * GET /api/fulfillment/substitution-policy — the org's fulfillment-substitution
- * policy, read by the tech/packing station surfaces so they can gate the
- * SubstituteUnitCard mount without prop-drilling org settings (mirrors
- * GET /api/packing/policy). Gated on tech.view — every tech-station operator
- * already holds it; packers reading this hold it via broader roles or get
- * `canSubstitute` from their own surface's policy read.
- *
- * `canSubstitute` folds the three server-side gates the client would otherwise
- * have to probe separately: the FULFILLMENT_SUBSTITUTION env flag, the org's
- * substitutionAllowedNodes containing 'test' (this endpoint serves the tech
- * bench), and the caller holding tech.substitute_unit OR packing.substitute_unit
- * (the same OR the POST /api/orders/[id]/substitute route enforces).
- */
+/** GET /api/fulfillment/substitution-policy — the org's fulfillment-substitution policy, read by the tech/packing station surfaces so they… */
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
   const enabled = isFulfillmentSubstitution();
   const org = await getOrganization(ctx.organizationId as OrgId);

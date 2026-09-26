@@ -1,11 +1,4 @@
-/**
- * Pure helpers for ticket-link paste / #id resolution (shared by TicketLinkPopover,
- * PackZendeskSection, and listTicketLinkCandidates).
- *
- * Carrier tracking (12-digit FedEx, UPS 1Z…, …) must NEVER resolve as a Zendesk
- * ticket id — seeding Claim Link / TicketLinkPopover with carton tracking would
- * otherwise call getTicket(fedexDigits) and miss searchTickets entirely.
- */
+/** Pure helpers for ticket-link paste / #id resolution (shared by TicketLinkPopover, PackZendeskSection, and listTicketLinkCandidates). */
 
 import { detectCarrier } from '@/lib/tracking-format';
 
@@ -22,14 +15,7 @@ type TicketLinkQueryKind =
   | { kind: 'id'; ticketId: number }
   | { kind: 'search'; query: string };
 
-/**
- * Choose recent / getTicket / searchTickets for a link-candidates query.
- *
- * | Query | Path |
- * | `#12345` | id (explicit) |
- * | Bare digits, Unknown carrier, ≤12 chars | id (typed ticket #) |
- * | Carrier-detected tracking or any other text | search |
- */
+/** Choose recent / getTicket / searchTickets for a link-candidates query. */
 export function resolveTicketLinkQueryKind(raw: string): TicketLinkQueryKind {
   const query = raw.trim();
   if (!query) return { kind: 'recent' };
@@ -70,19 +56,7 @@ export function parseTicketIdQuery(raw: string): number | null {
   return resolved.kind === 'id' ? resolved.ticketId : null;
 }
 
-/**
- * Resolve which ticket id to link for a paste/#id Enter path.
- * Prefer the exact match among candidates; else the bare id.
- *
- * **Never substitutes a different ticket.** This used to fall back to "the sole
- * unlinked candidate" when the parsed id matched nothing, which silently linked
- * ticket Y after the operator typed id X. Harmless-looking while every query was
- * hand-typed; actively dangerous once the box is SEEDED with a carrier tracking
- * number (`TicketLinkPopover initialQuery`) — a 12-digit FedEx number must not
- * parse as an id (see {@link resolveTicketLinkQueryKind}). The bare-id fallback
- * below stays: pasting an id the search cannot surface (e.g. one anchored
- * elsewhere, hidden by anchor mode) is legitimate.
- */
+/** Resolve which ticket id to link for a paste/#id Enter path. */
 export function resolveTicketIdForLink(
   query: string,
   tickets: TicketLinkCandidate[],

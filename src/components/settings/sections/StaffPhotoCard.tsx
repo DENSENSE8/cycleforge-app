@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Settings → Appearance ▸ "Your photo". The one place a staffer sets their own
- * profile photo; an admin does the same for someone else through the identical
- * route (`/api/staff/[id]/avatar`), which authorizes self OR
- * `admin.manage_staff`.
- *
- * Uploads go through the photos platform waist, not a second uploader: this
- * component posts the file to that route, which calls `uploadPhoto()` → GCS →
- * `photo_entity_links(entity_type='STAFF')` and points `staff.avatar_photo_id`
- * at the result.
- *
- * The optimistic patch is a CACHE patch, not a full replace: it flips this
- * staffer's mark everywhere on screen (spine footer, any open timeline) before
- * `/api/staff` refetches, without discarding every other staffer's warm colour.
- */
+/** Settings → Appearance ▸ "Your photo". */
 
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

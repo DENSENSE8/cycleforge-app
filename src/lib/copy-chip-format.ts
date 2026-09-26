@@ -1,23 +1,4 @@
-/**
- * Pure string helpers for the id-chip family (`@/components/ui/CopyChip`).
- *
- * Split out of the `'use client'` component module (same pattern as
- * `inventory/unit-id-format.ts`) so server code and tests can use them
- * without pulling in React/client-only imports. `CopyChip.tsx` re-exports
- * these, so existing importers keep working.
- *
- * Display SoT: {@link abbreviateIdentifier} — the last delimiter-bounded
- * segment, or the trailing {@link CHIP_DISPLAY_LEN} characters when the id
- * carries no delimiter, with leading punctuation stripped and NO padding ever.
- * The face is CAPPED at {@link CHIP_DISPLAY_LEN} no matter what (operator
- * 2026-09-14: "must always display the last 8 of the digits no matter what
- * for the copy chip component for the order number, no matter what
- * platform"): a long final segment (e.g. `po:10084000397923`) is cut to its
- * trailing 8, never shown whole. Empty faces on LedgerGrid / queue sheets
- * use the quiet em dash {@link QUIET_CHIP_EMPTY} (2B) — never loud
- * `--------`. Non-grid layouts that still need an 8-char width-matching
- * placeholder may pass {@link EMPTY_CHIP_DISPLAY} explicitly.
- */
+/** Pure string helpers for the id-chip family (`@/components/ui/CopyChip`). */
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 
 /** Trailing preview length for all typed id chips (serial, tracking, order, …). */
@@ -53,29 +34,7 @@ const MIN_SEGMENT_LEN = 4;
 /** Leading punctuation left behind by a blind window cut (`-0292212`). */
 const LEADING_NON_ALNUM = /^[^0-9a-z]+/i;
 
-/**
- * The abbreviation SoT for every typed id chip.
- *
- * Cut on a DELIMITER, never at a blind offset. `raw.slice(-8)` turns
- * `113-1397006-0292212` into `-0292212`: a leading dash reads as a negative
- * number or a system error to someone scanning a column at speed, and a
- * separator carries different visual weight than a digit, so the column edge
- * goes jagged. Prefer the last delimiter-bounded segment; fall back to the
- * last {@link CHIP_DISPLAY_LEN} characters ONLY when the id has no delimiter
- * (or when the trailing segment is too short to identify anything); then strip
- * any leading non-alphanumerics off the result.
- *
- * NEVER pads. `5034` stays `5034`, not `00005034` — staff read these aloud and
- * key them into an RF scanner, and a padded id is a WRONG id. Uniformity comes
- * from right-alignment plus `font-mono tabular-nums` (the right edge is the
- * scanning line), never from falsifying the value.
- *
- * A leading `#` on an order chip is the HashIcon GLYPH — an identifier-class
- * marker painted beside this string, not part of it. This never sees it.
- *
- * Returns `''` for an empty / sentinel input; chip-facing callers map that to
- * their own empty face.
- */
+/** The abbreviation SoT for every typed id chip. */
 export function abbreviateIdentifier(value: string | null | undefined): string {
   const raw = normalizeCopyText(value);
   if (!raw) return '';
@@ -140,12 +99,7 @@ export function resolveChipDisplay(display: string | null | undefined): string {
   return isEmptyChipDisplay(display) ? QUIET_CHIP_EMPTY : String(display);
 }
 
-/**
- * The single source of truth for a serial chip's label. Derives the last-8
- * preview from the raw serial (or CSV of serials), and collapses every "no
- * serial" spelling callers used to pass — `''`/`null`, the literal sentinel
- * `'SERIAL'`, or `'---'` — to {@link QUIET_CHIP_EMPTY}.
- */
+/** The single source of truth for a serial chip's label. */
 export function resolveSerialDisplay(value: string | null | undefined): string {
   const raw = (value || '').trim();
   if (isEmptyDisplayValue(raw) || raw === '---' || raw.toUpperCase() === 'SERIAL') {
@@ -154,16 +108,7 @@ export function resolveSerialDisplay(value: string | null | undefined): string {
   return getLast8Serial(raw);
 }
 
-/**
- * Shortest unique trailing previews for a set of serials.
- *
- * The floor is the house abbreviation ({@link abbreviateIdentifier}), so a
- * batch of one and a batch of many cut the same serial the same way. Sibling
- * units on one carton often collapse to the same preview; only then does this
- * grow a raw trailing window until every label is distinct, because the
- * growth axis has to be LENGTH and a delimiter cut is not monotonic in length.
- * Empty / sentinel inputs collapse via {@link resolveSerialDisplay}.
- */
+/** Shortest unique trailing previews for a set of serials. */
 export function disambiguateSerialDisplays(serials: readonly string[]): string[] {
   const cleaned = serials.map((s) => String(s || '').trim());
   if (cleaned.length === 0) return [];

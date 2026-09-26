@@ -1,21 +1,4 @@
-/**
- * Zoho Inventory client core — credential resolution, URL building, and access
- * token minting, all scoped to a tenant `orgId`.
- *
- * Source of truth for credentials is `organization_integrations` (provider
- * 'zoho'), read through `getIntegrationCredentials`. For the USAV org that
- * lookup falls back to ZOHO_* env only when no vault row exists — never when
- * the vault is `error`/`revoked` (see credentials.ts).
- *
- * The durable secret (refresh token + client id/secret + Zoho org id + data
- * center) lives ONLY in the vault. The short-lived access token (~1h) is a
- * cache in two layers: this process, then the DB row shared by the whole fleet
- * (`access-token-store.ts`). Both are caches, not systems of record.
- *
- * DO NOT go back to a process-only cache. Zoho mints at most 10 access tokens
- * per refresh token per 10 minutes; one `Map` per lambda blew through that on
- * 2026-09-14 and the failure latched the connection off for 25 hours.
- */
+/** Zoho Inventory client core — credential resolution, URL building, and access token minting, all scoped to a tenant `orgId`. */
 
 import {
   clearIntegrationError,
@@ -60,16 +43,7 @@ function isComplete(creds: ZohoCredentials | null | undefined): creds is ZohoCre
   return Boolean(creds && creds.refreshToken && creds.clientId && creds.clientSecret && creds.orgId);
 }
 
-/**
- * Load the tenant's Zoho credentials via `getIntegrationCredentials` (vault
- * SoT; USAV env bridge only when no vault row exists — never when vault is
- * `error`/`revoked`). Throws ZohoNotConnectedError when unusable so callers
- * surface a connect prompt instead of a generic 500.
- *
- * `includeInactive` is for the self-heal sweep ONLY: it reads a row that was
- * latched to `status='error'` so the sweep can prove the refresh token still
- * works and lift the latch. No operator path may set it.
- */
+/** Load the tenant's Zoho credentials via `getIntegrationCredentials` (vault SoT; USAV env bridge only when no vault row exists — never… */
 export async function loadZohoCredentials(
   orgId: OrgId,
   opts: { includeInactive?: boolean } = {},
@@ -81,17 +55,7 @@ export async function loadZohoCredentials(
   throw new ZohoNotConnectedError(orgId);
 }
 
-/**
- * A valid short-lived access token for the tenant.
- *
- * Layers: in-process cache → fleet-shared DB token → one advisory-locked mint
- * from the refresh token. Pass `creds` to avoid a second vault read when the
- * caller already loaded them.
- *
- * A successful mint is also proof the credential is alive, so it clears any
- * `last_error` / lifts a `status='error'` latched by an earlier transient
- * failure — that self-heal is why an operator no longer has to reconnect.
- */
+/** A valid short-lived access token for the tenant. */
 export async function getAccessToken(orgId: OrgId, creds?: ZohoCredentials): Promise<string> {
   const cached = accessTokenCache.get(orgId);
   if (cached && cached.expiresAt > Date.now() + ACCESS_TOKEN_SKEW_MS) return cached.token;

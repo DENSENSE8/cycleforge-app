@@ -1,11 +1,4 @@
-/**
- * localStorage adapters for the Quick Access feature.
- * Key: `cf.quickAccess` — settings + pinned pages.
- *
- * Pins are also durable in `staff_preferences.prefs.quickAccess` (cross-device).
- * localStorage stays the immediate client cache; {@link setPinsPersister} /
- * {@link hydratePinned} bridge to the server via `<QuickAccessSync/>`.
- */
+/** localStorage adapters for the Quick Access feature. */
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import {

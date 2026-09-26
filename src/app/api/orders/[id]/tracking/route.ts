@@ -10,21 +10,7 @@ import { publishOrderChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * Tracking sub-resource for a single order:
- *   POST   — add tracking (primary upsert and/or additional links)  (orders.create)
- *   PATCH  — edit/repoint/delete tracking in one batch              (orders.create)
- *   DELETE — unlink one shipment: /tracking?shipment_id=123         (orders.create)
- *
- * Order tracking is not an `orders` column — it lives in
- * `shipping_tracking_numbers` reached via `orders.shipment_id` /
- * `order_shipment_links`. All reconciliation lives in
- * `applyOrderTrackingOps` (shared with the legacy /api/orders/assign route).
- *
- * Permission is `orders.create` (mirrors assign); tracking edits are not
- * destructive in the `orders.void` sense, so no step-up re-check here. Auth is
- * enforced by the static permission gate via requireRoutePerm.
- */
+/** Tracking sub-resource for a single order: */
 
 function parseId(raw: string): number | null {
   const id = Number(raw);
@@ -69,10 +55,7 @@ async function runTrackingOps(
 
   const updated = await getOrderById(id, ctx.organizationId);
 
-  // The order↔tracking linkage just changed, which flips the `order_match`
-  // resolution for any already-packed PACK scan on this order. Recompute its
-  // shipped-table read model (best-effort, deferred). No-op unless those scans
-  // exist; the read path degrades gracefully meanwhile.
+  // The order↔tracking linkage just changed, which flips the `order_match` resolution for any already-packed PACK scan on this order.
   after(() =>
     recomputeEnrichmentForOrders(pool, [id]).catch((e) =>
       console.warn('[orders/[id]/tracking] enrichment recompute failed', e),

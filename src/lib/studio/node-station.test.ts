@@ -1,11 +1,4 @@
-/**
- * DB-free unit tests for the node-bound station write helpers (Operations
- * Studio Phase D / ST5). Mirrors studio/definitions.test.ts: a fake tx client
- * captures every SQL call, so we assert on both the verdict and what got
- * threaded to the client + injected validator.
- *
- *   node --import tsx --test src/lib/studio/node-station.test.ts
- */
+/** DB-free unit tests for the node-bound station write helpers (Operations Studio Phase D / ST5). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

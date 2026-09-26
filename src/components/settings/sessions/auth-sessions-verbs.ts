@@ -1,14 +1,4 @@
-/**
- * Auth-sessions family verb catalog — declare once, resolve per row.
- *
- * Revoke is a credential verb (`face: 'trailing'`), not a catalog field and not
- * a remounted compound `actions` track. The desk carried it as a fifth column
- * of `<Button>` JSX behind a bare `window.confirm`; both are gone — the verb
- * reaches the row menu and the trailing face, and the confirm is a real
- * stage-overlay plane (`AuthSessionRevokePlane`).
- *
- * Callers: SessionsSection → useAuthSessionsSpreadsheet.rowActions.
- */
+/** Auth-sessions family verb catalog — declare once, resolve per row. */
 
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import type { AuthSessionTableRow } from '@/lib/auth/auth-session-row';

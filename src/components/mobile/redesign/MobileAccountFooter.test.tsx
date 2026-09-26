@@ -1,13 +1,6 @@
 /**
  * MobileAccountFooter contracts — the nav's bottom bar.
- *
- *   npx tsx --test src/components/mobile/redesign/MobileAccountFooter.test.tsx
- *
  * Operator law (2026-09-14, three passes): staff colour + initials bubble with
- * the name, held by a CONTENT INSET (px-3 on the inner wrapper) — while the
- * BUTTON itself stays edge-to-edge (px-0: full-bleed tap + hover fill). No
- * hairline: separation is a drop shadow. Tapping anywhere on the row opens
- * /m/settings. The bubble is never a photo.
  */
 import React from 'react';
 import assert from 'node:assert/strict';

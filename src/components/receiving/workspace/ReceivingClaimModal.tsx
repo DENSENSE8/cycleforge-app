@@ -4,13 +4,7 @@ import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import type { ClaimModalProps } from './claim/hooks/useReceivingClaimController';
 import { ReceivingClaimPanel } from './ReceivingClaimPanel';
 
-/**
- * Make-a-claim right slide-over — Testing / dashboard / triage hosts.
- * Unbox mounts the same wizard body in Displays (`display=claim`).
- *
- * Posts to /api/receiving/zendesk-claim (create) or /link (existing ticket).
- * Wizard state lives in {@link useReceivingClaimController}.
- */
+/** Make-a-claim right slide-over — Testing / dashboard / triage hosts. */
 export function ReceivingClaimModal(props: ClaimModalProps) {
   return (
     <RightPaneOverlay

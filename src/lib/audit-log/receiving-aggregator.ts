@@ -1,24 +1,4 @@
-/**
- * Read-only aggregator that stitches a complete receiving timeline together
- * from every source the system already records into:
- *
- *   • receiving_carton        — carton-level (QA, disposition); door/unbox milestones
- *                                read from the 1:1 street tables receiving_triage /
- *                                receiving_unbox (Wave-2 reader cutover)
- *   • receiving_line          — per-SKU operational rows; testing cluster reads from
- *                                receiving_line_testing, zoho cluster from receiving_line_zoho
- *   • receiving_line_testing.disposition_audit — JSONB history of disposition changes
- *   • inventory_events        — lifecycle (RECEIVED, TEST_*, PUTAWAY, …) tagged with receiving_id / receiving_line_id
- *   • audit_logs              — field-level before/after diffs (when instrumented)
- *   • photos                  — entity_type='RECEIVING'
- *   • serial_units            — serials scanned against a line
- *   • staff                   — actor names
- *   • replenishment_requests  — zoho_po_number + vendor (joined by zoho_po_id)
- *
- * One PO can span multiple cartons (and one carton can hold lines from
- * multiple POs) so we anchor on `receiving_line_zoho.zoho_purchaseorder_id`
- * (1:1 with the line) and pull cartons through the line→receiving FK.
- */
+/** Read-only aggregator that stitches a complete receiving timeline together from every source the system already records into: */
 
 import 'server-only';
 import pool from '@/lib/db';
@@ -272,10 +252,7 @@ export async function listReceivingAuditPOs(
   const params: unknown[] = [];
   let searchClause = '';
 
-  // When orgId is present, allocate $1 for it and weave organization_id
-  // predicates into every read against a tenant table; string-key joins
-  // (rr.zoho_po_id = rz.zoho_purchaseorder_id) also get an org-equality
-  // guard. When omitted, the SQL/params stay byte-identical to before.
+  // When orgId is present, allocate $1 for it and weave organization_id predicates into every read against a tenant table; string-key joins…
   let orgIdx = '';
   let orgMatchingFilter = '';
   let orgPoAggFilter = '';
@@ -402,10 +379,7 @@ export async function getReceivingAuditPO(
 ): Promise<AuditPODetail | null> {
   if (!poId) return null;
 
-  // Wave-2 reader cutover: the testing cluster reads from receiving_line_testing
-  // (rlt) and the zoho cluster from receiving_line_zoho (rz); both are 1:1 side
-  // tables joined on the line PK, so no row multiplication. Output column names
-  // stay byte-identical to the old `SELECT *` so LineRow/AuditLine never change.
+  // Wave-2 reader cutover:
   const lineSelect = `
     SELECT rl.id, rl.receiving_id, rl.item_name, rl.sku,
            rl.quantity, rl.quantity_received, rl.quantity_expected,
@@ -445,11 +419,7 @@ export async function getReceivingAuditPO(
 
   const [cartonsResRaw, eventsResRaw, auditLogsResRaw, photosResRaw, serialsResRaw, vendorResRaw] =
     await Promise.all([
-      // Wave-2 reader cutover: carton door/unbox milestones read from the
-      // 1:1 street tables (receiving_triage rt / receiving_unbox ru), aliased
-      // back to the spine names so ReceivingRow/AuditCarton never change.
-      // Carton-level QA/disposition/zoho_* reads stay on the spine (out of
-      // scope this wave).
+      // Wave-2 reader cutover:
       cartonIds.length > 0
         ? orgId
           ? tenantQuery(

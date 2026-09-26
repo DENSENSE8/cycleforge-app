@@ -10,17 +10,7 @@ import {
   type CreateTaskResult,
 } from './create-task-core';
 
-/**
- * Server entry point for throwing a task at a colleague.
- *
- * One call: creates the `FOLLOW_UP` work_assignment and, when the thrower
- * marked it urgent, promotes the underlying record through the cross-entity
- * urgency SoT. The promotion is allowed to fail without failing the throw —
- * see `create-task-core.ts`.
- *
- * `deps` is injectable so a test can exercise the real routing over fake
- * storage; production callers pass the orgId and nothing else.
- */
+/** Server entry point for throwing a task at a colleague. */
 export async function createTask(
   organizationId: OrgId,
   input: CreateTaskInput,

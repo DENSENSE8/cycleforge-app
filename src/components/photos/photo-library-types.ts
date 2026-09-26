@@ -1,9 +1,4 @@
-/**
- * `LibraryPhoto` — a photo row rendered in the photo library. Extracted into a
- * leaf module so `PhotoLibraryGrid` and the `usePhotoLibrary` hook can reference
- * it without importing `PhotoLibraryPage` (which imports them back, forming a
- * cycle). `PhotoLibraryPage` re-exports it for backwards compatibility.
- */
+/** `LibraryPhoto` — a photo row rendered in the photo library. */
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 import type { PhotoEvidenceStage } from '@/lib/photos/stages';
 
@@ -17,12 +12,7 @@ export interface LibraryPhotoLabel {
   icon?: string | null;
 }
 
-/**
- * PO-adjacent evidence identity resolved by the library query (display join
- * only — no SKU dual-links are written). Carried on `LibraryPhoto` and threaded
- * into the fullscreen viewer's context-panel meta so the panel can render
- * SKU · serial · stage without a second fetch.
- */
+/** PO-adjacent evidence identity resolved by the library query (display join only — no SKU dual-links are written). */
 export interface PhotoIdentityMeta {
   /** Resolved SKU — receiving line first (item evidence), then serialized unit. */
   sku?: string | null;
@@ -54,17 +44,7 @@ export interface LibraryPhoto extends PhotoIdentityMeta {
   /** Resolved name of the uploader (joined from `staff`), for the viewer panel. */
   takenByStaffName?: string | null;
   createdAt: string;
-  /**
-   * Device-reported capture instant (`photos.client_captured_at`) — when the
-   * shutter fired, as opposed to `createdAt`, which is when the server INSERTed
-   * the row. They diverge by minutes-to-hours whenever a mobile upload queued
-   * offline and drained later, and a carrier concealed-damage dispute turns on
-   * the former.
-   *
-   * NOT server-attested (it is the operator's device clock) and null for every
-   * desktop/legacy row that had no usable timestamp — render it as a distinct,
-   * clearly-labelled fact, never as a substitute for `createdAt`.
-   */
+  /** Device-reported capture instant (`photos.client_captured_at`) — when the shutter fired, as opposed to `createdAt`, which is when the… */
   clientCapturedAt?: string | null;
   displayUrl: string;
   thumbUrl: string;

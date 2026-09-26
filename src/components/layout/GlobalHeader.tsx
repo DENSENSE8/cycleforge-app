@@ -21,36 +21,8 @@ import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
- * Global desktop header — one persistent bar mounted once in
- * {@link ResponsiveLayout}, above the page's `<main>`.
- *
- * Zone contract (left → right):
- *   - **Nav** — toggle + Search while the spine is closed. Open, the same
- *     pair lives on the spine top band ({@link SpineNavChrome}) at the same
- *     screen corner. Then {@link HeaderDailyTasks} — between Search and Pins
- *     (operator 2026-09-16) — and {@link HeaderPinsSwitcher}, whose Pin glyph
- *     leads its own chip banner. Pins stay on this beam in both spine states
- *     so "Pin this page" and ⌘/Ctrl+1–9 do not vanish when the spine opens.
- *     Recents / actions / kiosk unmounted here — kiosk opens from
- *     {@link StaffAccountFooter} account details (sidebar bottom).
- *   - **Scan** — {@link GlobalScanDock}
- *   - **Floor page chip** — {@link HeaderPageSwitcher} (Scan Stations triage
- *     with the spine closed; desks stay on DeskPageChrome)
- *   - **Context** — page `panelContent`
- *   - **Actions** — a visible `+` opens the label intake (`LabelIntakeDesk`)
- *     from every desktop page: order number → paired order or reference-only
- *     number → return / replacement label, one surface. The activity inbox
- *     stays far right.
- *
- *     A standing beam seat is earned by FREQUENCY. `HeaderGoalChip` and
- *     `GlobalHeaderAssistantButton` stay unmounted for the same reason; both
- *     have named owners in
- *     `docs/todo/operator-reconnect-4-increments-PLAN.md`.
- *
- * No `surfaceRoute` for `/`. No session switcher.
- * Callers: ResponsiveLayout. API: none. Schemas: none.
- * User: "drop the kiosk button in the account details at the bottom of the
- * sidebar not in the top left of the global header."
+ * Global desktop header — one persistent bar mounted once in {@link ResponsiveLayout}, above the page's `<main>`.
+ * (operator 2026-09-16) — and {@link HeaderPinsSwitcher}, whose Pin glyph
  */
 export function GlobalHeader({
   navOpen,

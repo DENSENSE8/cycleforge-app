@@ -7,22 +7,7 @@ import { OnboardingTemplateChooseBody } from '@/lib/schemas/studio';
 import { installTemplateIntoOrg } from '@/lib/studio/install-template';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/onboarding/template
- *
- * Template-first onboarding (Template Platform Phase 1): the first-run chooser
- * installs the owner's selected ops SOP template into their org. A brand-new org
- * has NO active workflow until this confirm — signup no longer auto-seeds one.
- *
- * Runs the SAME unified installer as the Studio import route
- * (installTemplateIntoOrg), but with activate: 'if_system' so a curated system
- * template boots live; a non-system pick would land as a draft (Phase 3+ package
- * imports always draft). Clone + surface-seed + activate are one tenant tx.
- *
- * studio.manage — installing writes a definition + station drafts, the same
- * authoring gate as template import. orgId + staffId come from ctx, never the
- * body.
- */
+/** POST /api/onboarding/template */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

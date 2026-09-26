@@ -1,12 +1,4 @@
-/**
- * PATCH  /api/counter/session/{id}/lines/{lineUuid} — edit a staged line.
- * DELETE /api/counter/session/{id}/lines/{lineUuid} — VOID it (soft).
- *
- * DELETE is the verb an operator expects; the effect is a soft void, because a
- * line the customer already read off the display is evidence. It is gated on
- * `walk_in.take_payment` rather than `walk_in.intake`: removing a charged line
- * moves money, and P7 adds the PIN step-up on top of this same door.
- */
+/** PATCH /api/counter/session/{id}/lines/{lineUuid} — edit a staged line. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
@@ -26,15 +18,7 @@ const PatchSchema = z.object({
   expectedVersion: z.number().int().min(0),
   title: z.string().trim().min(1).max(200).optional(),
   quantity: z.number().int().positive().max(999).optional(),
-  // `unitAmountCents` is NOT here. A price change is money, so it has its own
-  // verb (`…/price`) with its own step-up gate and its own audit row. Leaving
-  // it on the general PATCH would mean the gate depended on which optional
-  // field a caller happened to include — a permission you can bypass by
-  // choosing a different endpoint is not a permission.
-  // A payload PATCH replaces the whole payload, so the caller states which
-  // shape it is sending. Without the type there is nothing to validate against,
-  // and "validate against whatever it looks like" is how a repair line loses
-  // its serial number.
+  // `unitAmountCents` is NOT here.
   payloadType: z.enum(KIOSK_LINE_TYPES).optional(),
   payload: z.unknown().optional(),
 });

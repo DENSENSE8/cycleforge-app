@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The per-serial band header for Operations ▸ History "By unit" view — a compact
- * provenance card answering "what is this unit and where did it come from" at a
- * glance: serial · SKU · condition grade · current status · originating PO ·
- * sibling count · event count. Rendered through {@link EventTimeline}'s
- * `renderGroupHeader` slot, so the collapse chevron + latest-event peek chrome
- * stay owned by the timeline; this card is pure presentation.
- *
- * All values flow from SoT resolvers (condition grade → `ConditionGradeChip`;
- * status → `serial-status-display`; ids → the `CopyChip` family) — no inline
- * label/tone maps.
- */
+/** The per-serial band header for Operations ▸ History "By unit" view — a compact provenance card answering "what is this unit and where… */
 
 import { SerialChip, ConditionGradeChip, OrderIdChip } from '@/components/ui/CopyChip';
 import { serialStatusDot, serialStatusLabel } from '@/lib/inventory/serial-status-display';

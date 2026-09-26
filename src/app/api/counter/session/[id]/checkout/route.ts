@@ -1,20 +1,4 @@
-/**
- * POST /api/counter/session/{id}/checkout — ask the Square Terminal for a card.
- *
- * Runs AFTER submit: the kiosk stages an order and never charges (plan D4), so
- * the Square order a Terminal checkout collects for does not exist until the
- * visit is submitted. Asking the stand first would mean charging for something
- * no record describes.
- *
- * Desk-only and step-up gated — summoning a card prompt moves money, and a
- * device principal must never be able to do it.
- *
- * The stand is resolved by `resolveTerminalDeviceId` (SQ3): the lane's own
- * paired Terminal first, the deployment env only as a last resort for
- * single-counter shops. This route no longer reads the env at all.
- *
- * Plan: `docs/todo/counter-square-enterprise-PLAN.md` (SQ2).
- */
+/** POST /api/counter/session/{id}/checkout — ask the Square Terminal for a card. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

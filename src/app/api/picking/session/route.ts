@@ -4,14 +4,7 @@ import { startSession } from '@/lib/picking/sessions';
 import { emitIdentificationCompleted } from '@/lib/automations/emit-identification-completed';
 import { identificationFromPick } from '@/lib/identification';
 
-/**
- * POST /api/picking/session
- *
- * Opens a picking session for (order, picker). If an open session already
- * exists for this pair the existing id is returned with `reopen: true`.
- *
- * Body: { order_id: number, device_id?: string }
- */
+/** POST /api/picking/session */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
@@ -27,10 +20,7 @@ export const POST = withAuth(async (request, ctx) => {
   const deviceIdRaw = typeof body?.device_id === 'string' ? body.device_id.trim() : '';
 
   try {
-    // Thread the caller's tenant id so the shared module enforces the
-    // org-ownership 404 gate (orders WHERE id=$1 AND organization_id=$2) and
-    // runs its writes inside a GUC-wrapped transaction — closes the cross-tenant
-    // session-open leak (a picker in org A opening a session on org B's order).
+    // Thread the caller's tenant id so the shared module enforces the org-ownership 404 gate (orders WHERE id=$1 AND organization_id=$2) and…
     const result = await startSession({
       orderId,
       pickerStaffId: actorStaffId,

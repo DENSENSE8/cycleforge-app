@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * Units display — full per-unit explosion for the Unbox right-edge Displays push.
- *
- * Replaces the read-only carton rollup as the Units tab body: the **active**
- * line expands into serials with an inline line-scoped item camera on the
- * active unit row, and sibling lines stay as selectable summaries so the
- * operator can jump lines without leaving the panel.
- *
- * Photos remain LINE-scoped (`unbox_item` + `receivingLineId`) — shared across
- * units on that line until a future per-unit photo entity exists. The camera
- * sits after the condition tag on every unit row (not a standalone ITEM PHOTOS
- * section). A line-level serial entry field sits above the unit rows to add
- * the next serial.
- *
- * Flush plane: zero host gutters, hairline rows, square controls — the Displays
- * column IS the card.
- */
+/** Units display — full per-unit explosion for the Unbox right-edge Displays push. */
 
 import { useMemo, type RefObject } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -251,20 +235,14 @@ function ActiveLineExplosion({
           onFileReturnClaim={c.handleFileReturnClaim}
           onOpenReturnHistory={c.handleOpenReturnHistory}
           onSubmitSerial={(sn, grade) => c.enqueueSerial(sn, grade)}
-          // Confirm is owned by ActiveLineConditionSerial.confirmDelete (org-gated
-          // by receiving.confirmSerialRemoval) — same as the LinePoItemsSection /
-          // UnmatchedAccordionSurface callers. A second requestConfirm here stacked
-          // a duplicate "Remove" dialog: the click-Remove-twice bug.
+          // Confirm is owned by ActiveLineConditionSerial.confirmDelete (org-gated by receiving.confirmSerialRemoval) — same as the…
           onDeleteSerialUnit={(id) => void c.deleteSerialUnit(id, line.id)}
           onReplaceSerialUnit={(original, next) => void c.replaceSerialUnit(original, next)}
           onSetUnitGrade={(id, grade) => void c.setUnitGrade(id, grade)}
           onActiveConditionChange={c.setUnitLabelCondition}
           onConditionChange={(next) => {
             c.setCond(next);
-            // Both the set and the reopen go through the choke point: it owns
-            // the `condition_graded_at` stamp (a generic line PATCH writes
-            // `condition_grade` alone and leaves the Condition step stuck), and
-            // it reverts + reports if the write does not land.
+            // Both the set and the reopen go through the choke point:
             patchReceivingLineCondition(line.id, next, {
               condition_grade: line.condition_grade ?? null,
               condition_graded_at: line.condition_graded_at ?? null,

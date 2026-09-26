@@ -1,16 +1,4 @@
-/**
- * Zoho adapter for the InventoryProvider capability facade (Wave B1).
- *
- * WRAPS the existing Zoho modules — it never reimplements them. The heavy
- * modules ('@/lib/zoho' barrel, ZohoInventoryClient, fulfillment-sync) are
- * LAZY-imported inside methods so resolving a provider stays cheap and Zoho
- * code stays out of module graphs that only need resolution.
- *
- * Tenant binding: every call is wrapped in `withZohoOrg(this.orgId, …)`,
- * mirroring exactly what the pre-facade call sites did. Call sites that add a
- * credential-scope audit (`withZohoCredential`) keep that wrapper OUTSIDE the
- * facade call — the nested same-org binding is a no-op.
- */
+/** Zoho adapter for the InventoryProvider capability facade (Wave B1). */
 import type { OrgId } from '@/lib/tenancy/constants';
 // Static import is deliberate: clientStatus() must stay synchronous (it is read
 // on the mark-received response path before any Zoho work has loaded), and the
@@ -48,13 +36,7 @@ export class ZohoInventoryProviderAdapter implements InventoryProvider {
     return withZohoOrg(this.orgId, () => fn(zohoClient));
   }
 
-  /**
-   * Paginated reads: `paginateZohoList` captures the ambient org SYNCHRONOUSLY
-   * at generator creation (default-parameter read of `currentZohoOrgId()`), so
-   * creating the generator inside the binding is sufficient — iteration may
-   * then cross async contexts safely (each page request carries the explicit
-   * orgId; see the queue-boundary note in zoho/tenant-context.ts).
-   */
+  /** Paginated reads: */
   private async *paginate<T>(
     make: (client: ZohoInventoryClient) => AsyncGenerator<T[], void, unknown>,
   ): AsyncGenerator<T[], void, unknown> {

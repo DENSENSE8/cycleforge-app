@@ -42,12 +42,7 @@ function manualHref(m: Pick<ManualDetail, 'id' | 'source_url' | 'google_file_id'
   return null;
 }
 
-/**
- * Add a cache-bust query param + reattach the PDF viewer hash so an edit-only
- * change (where source_url stays the same but the row's `updated_at` advances)
- * still defeats the browser's iframe cache. Splits on `#` because hash params
- * don't reach the network, so we have to inject the buster before it.
- */
+/** Add a cache-bust query param + reattach the PDF viewer hash so an edit-only change (where source_url stays the same but the row's… */
 function appendCacheBust(href: string, version: string | number): string {
   const [base, hash] = href.split('#');
   const sep = base.includes('?') ? '&' : '?';
@@ -100,11 +95,7 @@ export function ManualLibrary() {
     return () => window.removeEventListener('manuals-updated', onUpdated);
   }, []);
 
-  // Lazy backfill: if this manual has a source PDF but no thumbnail yet,
-  // generate one client-side and POST it to the backfill endpoint. Fires
-  // once per manual view, never blocks rendering. Older rows (uploaded
-  // before the thumbnail feature shipped) heal as operators browse the
-  // library — no eager backfill job needed.
+  // Lazy backfill:
   useEffect(() => {
     if (!manual || manual.thumbnail_url || !manual.source_url) return;
     let cancelled = false;

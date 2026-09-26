@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * Dedicated phone settings SoT (`/m/settings`). Grouped rows from the settings
- * registry; the two shift-change verbs close the list — Switch staff, then Log
- * out last.
- *
- * Callers: `src/app/m/(shell)/settings/page.tsx`. Affected API: none.
- * User: "there must be a dedicated mobile settings display for this that will
- * have log out at the bottom of the settings list" · "switch staff button …
- * above the logout button" · "it should be 'switch staff' the same name as it
- * on the web application on desktop".
- *
- * Switch staff calls `openSwitcher()` — the app-wide `SwitchStaffSheet` that
- * `WarehouseShell` already mounts (it wraps `/m/*` too), the same trigger the
- * desktop spine footer (`sidebar/master-nav/StaffAccountFooter`) fires. That
- * footer said "Change staff" while the sheet's own title and the Quick Access
- * action said "Switch staff"; the operator settled it on the sheet's word.
- *
- * This list is the ONLY home for both verbs on the phone — the nav drawer's
- * identity bar (`MobileAccountFooter`) is a door to here, nothing more
- * (2026-09-23: *"it must display at the bottom of settings, not a logout
- * button and a switch staff button at the bottom of the sidebar on mobile"*).
- */
+/** Dedicated phone settings SoT (`/m/settings`). */
 
 import Link from 'next/link';
 import { ChevronRight } from '@/components/Icons';

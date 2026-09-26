@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * LinkedTicketsPanel — the closed-loop linkage display: given any one of
- * {order#, tracking#, serial#}, render the composed loop (order ↔ tracking[] ↔
- * serial[]) plus the Zendesk support tickets linked anywhere on it.
- *
- * Reused verbatim on the packing station and receiving surfaces. It is a dumb
- * display: it fetches `/api/order-linkage` and renders through the CopyChip SoT
- * (OrderIdChip / TrackingChip / SerialChip / TicketChip) — no linkage logic
- * lives here (that is `src/lib/order-linkage.ts`).
- */
+/** LinkedTicketsPanel — the closed-loop linkage display: */
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { OrderLinkage } from '@/lib/order-linkage';
@@ -268,13 +259,7 @@ export function LinkedTicketsPanel({
 
       {!isLoading && !isError && hasLoop && (
         <div className="space-y-2">
-          {/* The loop: order ↔ tracking[] ↔ serial[].
-              Each KIND is named. Rendered as one undifferentiated chip run
-              (until 2026-08-02) it read as "4790 · 33987359 · 220573AZ" with
-              nothing saying which was the order, which the tracking and which
-              the serial — three last-8 digit strings an operator had to guess
-              at. The chips were already the typed CopyChip family; what was
-              missing was the label track. */}
+          {/* The loop: order ↔ tracking[] ↔ serial[]. */}
           <LoopRow label="Order">
             {data?.order?.orderId ? (
               <OrderIdChip value={data.order.orderId} display={data.order.orderId} dense />

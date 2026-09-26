@@ -4,13 +4,7 @@ import { Printer } from '@/components/Icons';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { TestingTerminalInput } from './types';
 
-/**
- * Testing terminal — carton-terminal only (Pass · Print).
- *
- * Ticket replies are local controls inside the Ticket Displays body (inline
- * composer), never a dock kind — same Unbox grammar. File claim opens from
- * carton identity / Ticket empty state.
- */
+/** Testing terminal — carton-terminal only (Pass · Print). */
 export function resolveTestingTerminal(
   kind: string,
   input: TestingTerminalInput,

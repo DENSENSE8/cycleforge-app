@@ -1,31 +1,4 @@
-/**
- * Auto-allocation — reserve specific serialized units for order lines.
- *
- * ## Why this exists
- *
- * `order_unit_allocations` (order line ↔ serial unit, "one live allocation per
- * unit") has been in the schema for months and was effectively UNUSED: 4581
- * orders, 116 stocked-and-binned units, one live allocation. Nothing allocated
- * because the only writers were operator-initiated, one-order-at-a-time doors
- * (`/api/orders/[id]/allocate`, the bulk-allocate page). With no allocations
- * the pick surface had nothing line-grained to read and fell back to the
- * SHIPPING feed — which is label-scoped, so an order that has no label yet is
- * invisible to the picker. This is the missing step: orders arrive → units get
- * reserved → a location-directed pick list exists.
- *
- * The matching rules live in `./plan-allocations` (pure, tested). This module
- * is the DB shell: what counts as demand, what counts as supply, and one
- * INSERT.
- *
- * ## What this deliberately does NOT do
- *
- * It does not flip `serial_units.current_status` to ALLOCATED. The reservation
- * IS the allocation row, and the supply query below excludes any unit holding
- * a live one, so a STOCKED unit can never be handed out twice. A status flip
- * is an inventory EVENT (`transition()` plus an `inventory_events` row per
- * unit) and belongs to the operator action that physically moves the unit —
- * the pick confirm — not to a sweep that runs on every sync.
- */
+/** Auto-allocation — reserve specific serialized units for order lines. */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -65,28 +38,7 @@ function narrowGrade(raw: string | null): ConditionGrade | null {
 }
 
 
-/**
- * Demand: unallocated order lines that still have to leave the building.
- *
- * - The `sku_catalog` join is load-bearing — the two sides speak different
- *   SKUs. `orders.sku` holds whatever the marketplace sent ('01279-B'),
- *   `serial_units.sku` holds the internal catalog SKU ('00001-BK'). Matching
- *   the raw strings almost never hits; `orders.sku_catalog_id` is the resolved
- *   link, with the raw string as fallback for rows already stored canonically.
- * - Two independent "already gone" gates, because either one alone is wrong on
- *   this data. `status <> 'shipped'` (the candidate definition
- *   `/inventory/bulk-allocate` uses) drops the 4402 orders this org shipped
- *   last year, but 5 unallocated rows are in carrier hands while their status
- *   still reads `unassigned` — stale local status — so the carrier fragment
- *   catches those. Conversely `shipment_id IS NULL` would be far too strict:
- *   40 unallocated lines have a tracking row but have NOT been accepted by a
- *   carrier, and they are exactly the pre-carrier pick work this whole feature
- *   exists to surface. Absent shipment → LEFT JOIN nulls → COALESCE false.
- * - The `state <> 'RELEASED'` exclusion is what makes a re-run insert 0: only a
- *   RELEASED allocation reopens a line. RETURNED deliberately does NOT — the
- *   unit came back after shipping, the order was filled, and re-allocating
- *   fresh stock to it would send the customer a second unit.
- */
+/** Demand: unallocated order lines that still have to leave the building. */
 async function selectDemand(
   client: PoolClient,
   orgId: OrgId,
@@ -124,19 +76,7 @@ async function selectDemand(
   }));
 }
 
-/**
- * Supply: stocked, binned, uncommitted units.
- *
- * A location is REQUIRED — this feeds a location-directed pick list, and a
- * unit nobody can be sent to is not supply. `FOR UPDATE OF su SKIP LOCKED` so
- * two concurrent allocators take disjoint subsets instead of racing; the
- * partial UNIQUE index is still the final guarantee.
- *
- * "Committed" mirrors that index predicate exactly (RELEASED and RETURNED are
- * free) rather than the stricter demand-side rule: a returned unit that was
- * put back on the shelf must be sellable again, and the index would let it be
- * allocated whether or not this query agreed.
- */
+/** Supply: stocked, binned, uncommitted units. */
 async function selectSupply(client: PoolClient, orgId: OrgId): Promise<AllocationSupplyUnit[]> {
   const res = await client.query<SupplyRow>(
     `SELECT su.id,
@@ -175,17 +115,7 @@ export interface AutoAllocateResult {
   shortfalls: AllocationShortfall[];
 }
 
-/**
- * Plan and persist allocations for `orderIds` — or for EVERY unallocated order
- * in the org when `orderIds` is null.
- *
- * Idempotent: the demand query skips lines that already hold a live
- * allocation, so a second call inserts 0. `ON CONFLICT DO NOTHING` on the
- * live-allocation index covers the narrower race where a concurrent allocator
- * claimed a unit between this transaction's read and its write — dropping that
- * row is the correct outcome (the unit is spoken for) and keeps the returned
- * `inserted` count honest rather than aborting work that was fine.
- */
+/** Plan and persist allocations for `orderIds` — or for EVERY unallocated order in the org when `orderIds` is null. */
 export async function autoAllocateForOrders(
   orderIds: readonly number[] | null,
   opts: { orgId: OrgId; staffId?: number | null },
@@ -220,15 +150,7 @@ export async function autoAllocateForOrders(
   });
 }
 
-/**
- * Allocate for an ingest that just landed, without ever failing it.
- *
- * Order import must not break because allocation did: a sync that wrote 400
- * orders and then threw on a bin lookup would be retried from the top, and the
- * operator would read "import failed" about orders that are already in. So
- * this logs and swallows. Shared by every ingest consumer so the guard cannot
- * drift between them.
- */
+/** Allocate for an ingest that just landed, without ever failing it. */
 export async function autoAllocateAfterIngest(
   orderIds: readonly number[],
   opts: { orgId: OrgId; staffId?: number | null; source: string },
@@ -236,10 +158,7 @@ export async function autoAllocateAfterIngest(
   if (orderIds.length === 0) return;
   try {
     const result = await autoAllocateForOrders(orderIds, opts);
-    // Log ONLY the shortfall case. A clean sweep is the expected outcome of
-    // every import and does not belong in a log anyone tails; the operator's
-    // channel for it is the pick list's own shortfall line. A shortfall,
-    // though, means demand landed that the shelf cannot fill — worth an eye.
+    // Log ONLY the shortfall case.
     if (result.shortfalls.length > 0) {
       console.warn(
         `[autoAllocateAfterIngest] ${opts.source}: reserved ${result.inserted} unit(s), ${result.shortfalls.length} line(s) short`,

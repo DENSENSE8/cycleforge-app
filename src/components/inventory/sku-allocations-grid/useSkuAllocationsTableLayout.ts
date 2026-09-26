@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * The per-SKU allocations slot-layout hook — the `unit-allocations` CATALOG on
- * this desk's own layout document.
- *
- * Identical in every respect to `useUnitAllocationsTableLayout` except the
- * `tableId` and the product defaults it starts from, both of which are the
- * point: the two feeds resolve different fact sets (this one filters
- * `state <> 'RELEASED'`, so the release facts are structurally NULL, and it is
- * the only one that selects `allocated_by`), so one prefs bucket would either
- * paint a column of dashes here or drop a fact the retired table painted. See
- * `field-catalog/sku-allocations-layout.ts` for the full ruling.
- *
- * Compound morph only: a stored `sheet` layout would open a `subtitle:N` track
- * for the release reason, which the compound item cell paints inline —
- * `paintMorph` coerces, and the org write gate (`slotMorphsFor`) refuses the
- * foreign morph.
- */
+/** The per-SKU allocations slot-layout hook — the `unit-allocations` CATALOG on this desk's own layout document. */
 
 import {
   SKU_ALLOCATIONS_PRODUCT_LAYOUT,

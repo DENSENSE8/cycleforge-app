@@ -56,14 +56,7 @@ export interface UseTechLogsOptions {
   limit?: number;
   /** When false, skip the fetch (consumer reads from a shared feed instead). */
   enabled?: boolean;
-  /**
-   * The bench find box, already debounced by `SearchField` (320ms) — no second
-   * debounce here, the text just becomes part of the fetch key.
-   *
-   * It rides the KEY, not the URL: `DataTable`'s standing law is that the
-   * search value is session-local, because a `router.replace` per keystroke
-   * soft-navigates and remounts the table under the operator's cursor.
-   */
+  /** The bench find box, already debounced by `SearchField` (320ms) — no second debounce here, the text just becomes part of the fetch key. */
   search?: string;
 }
 
@@ -84,13 +77,7 @@ function prependTechRecordToMatchingWeekCaches(
   const queries = queryClient.getQueriesData<TechRecord[]>({
     queryKey: ['tech-logs', techId],
   });
-  /**
-   * `q: ''` — the FEED caches, the only ones a fresh scan may be spliced into.
-   * A searched cache is the server's answer to a query TEXT; this record has
-   * never been matched against it, so prepending would paint a row the find
-   * box says should not be there. Counting them in `singleWeekCache` would
-   * also silently turn off the single-cache shortcut below.
-   */
+  /** `q: ''` — the FEED caches, the only ones a fresh scan may be spliced into. */
   const feedQueries = queries.filter(
     ([key]) => !String((key[2] as { q?: string } | undefined)?.q ?? '').trim(),
   );
@@ -177,12 +164,7 @@ export function useTechLogs(techId: TechLogsScope, options: UseTechLogsOptions =
       && (techId === 'all' || (typeof techId === 'number' && techId > 0)),
   });
 
-  // ── Ably: live row-level updates from any session (mobile or web) ─────────
-  // INSERT with row  → surgical prepend (avoids a full round-trip).
-  // INSERT without row → invalidate so the table refetches.
-  // UPDATE            → invalidate (covers re-scans, condition/SKU patches).
-  // DELETE            → invalidate (TSN id ≠ SAL row id so we can't remove
-  //                     surgically; a fresh fetch is the safest approach).
+  // ── Ably: live row-level updates from any session (mobile or web) ───────── INSERT with row → surgical prepend (avoids a full round-trip).
   useAblyChannel(
     stationChannel,
     'tech-log.changed',

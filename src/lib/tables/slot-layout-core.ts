@@ -1,17 +1,4 @@
-/**
- * SlotLayout core — types, budgets, and the tolerant READ path, zod-free.
- *
- * Split from `slot-layout.ts` the same way `staff-preferences-constants` split
- * from its schema: client code (the To-ship mount, the Fields picker hook)
- * reads persisted layouts on every paint, and importing the zod schema for
- * that would pull zod into a dashboard bundle whose First Load JS is
- * budget-ratcheted. The zod module keeps the strict WRITE gate
- * (`parseSlotLayout`) for API boundaries; every read — client or server —
- * goes through {@link readStoredSlotLayout} here, so there is exactly one
- * answer to "what does a stored blob deserialize to".
- *
- * Contract: `docs/todo/slot-based-metadata-table-PLAN.md` §4.2.
- */
+/** SlotLayout core — types, budgets, and the tolerant READ path, zod-free. */
 
 /** One slot binding: which catalog fact occupies the slot. */
 export interface SlotBinding {
@@ -55,14 +42,7 @@ function readBindings(raw: unknown, cap: number): SlotBinding[] | null {
   return bindings;
 }
 
-/**
- * Tolerant read of a persisted blob — the ONE read path. Returns a fresh
- * normalized document (known keys only), or `null` for anything that is not
- * structurally a SlotLayout (absent, legacy shape, hostile) — a bad org
- * override must degrade to the next cascade layer, never crash a queue.
- * Catalog staleness is NOT checked here; `resolveEffectiveLayout` drops stale
- * bindings so the layout still paints.
- */
+/** Tolerant read of a persisted blob — the ONE read path. */
 export function readStoredSlotLayout(raw: unknown): SlotLayout | null {
   if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const doc = raw as Record<string, unknown>;

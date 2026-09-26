@@ -7,34 +7,7 @@ import {
 } from '@/lib/neon/serial-units-queries';
 import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 
-/**
- * GET /api/serial-units/lookup?serial=<value>
- *
- * Exact serial existence check used by the RETURN receiving flow. Normalizes
- * the serial (trim + uppercase) and does a single indexed lookup on the unique
- * `serial_units.normalized_serial` column — cheap, no ILIKE scan.
- *
- * Returns the matched unit's public-facing fields plus `is_return`, which is
- * true when the unit's current status is SHIPPED (an item we shipped that's
- * now coming back = a genuine return).
- *
- * Response: {
- *   success: true,
- *   serial:  <normalized>,
- *   found:   boolean,
- *   is_return: boolean,
- *   unit: {
- *     id, serial_number, sku, current_status, condition_grade,
- *     current_location, updated_at, is_return
- *   } | null,
- *   // id is serial_units.id when a v2 row exists; null for TSN-only matches.
- *   matched_order: {
- *     order_id, item_number, account_source, product_title, sku, condition,
- *     tracking_number, allocation_state
- *   } | null   // the shipped sales order this serial belongs to, when known
- *              // (item_number → listing link via getExternalUrlByItemNumber)
- * }
- */
+/** GET /api/serial-units/lookup?serial=<value> */
 export const GET = withAuth(async (request, ctx) => {
   const raw = request.nextUrl.searchParams.get('serial') ?? '';
   const trimmed = raw.trim();
@@ -49,14 +22,6 @@ export const GET = withAuth(async (request, ctx) => {
     const row = await findByNormalizedSerial(trimmed, ctx.organizationId);
 
     // Resolve the originating sales order two ways:
-    //   1. inventory-v2: serial_units → order_unit_allocations → orders, when
-    //      the unit exists and is SHIPPED.
-    //   2. legacy/tech ships: tech_serial_numbers.shipment_id → orders, which
-    //      is where most of our shipped serials actually live (they were never
-    //      written to serial_units). Used as the fallback so a real shipped
-    //      serial still matches even with no v2 row. Post-PACK_COMPLETED tech
-    //      attaches on that shipment are leftover context, not a ship.
-    // Both are org-scoped so a serial never surfaces another tenant's order.
     let matched: (MatchedOrderForSerial & { serial_number?: string }) | null =
       row && row.current_status === 'SHIPPED'
         ? await findShippedOrderForSerialUnit(row.id, {

@@ -1,41 +1,9 @@
-/**
- * The material state of one outbound record — the fields a command's decision
- * actually depends on — and the fingerprint computed from them.
- *
- * Why this file exists at all: master plan §2.3 requires an optimistic
- * concurrency token, and V1.1 established that `OutboundWorkItem.rowVersion`
- * cannot be one (a `GREATEST(...)` timestamp proxy collides at its own
- * resolution and cannot see a column outside its list). A fingerprint is a
- * digest of the material fields themselves, so an unchanged digest means an
- * unchanged decision, whatever the clock did.
- *
- * Why the SQL lives here rather than in the projection: the queue publishes
- * the fingerprint and the executor re-derives it under lock. Two SQL texts
- * would drift, and a drifted fingerprint is worse than none — it would reject
- * valid commands, or accept stale ones. There is exactly one expression for
- * the material state, used by both, and a live test asserts the two callers
- * agree on real rows.
- *
- * Scope of the digest: the LOGICAL ORDER SET, not the selected row. One
- * marketplace order can be several `orders` rows, and `applyLabelIngestion`
- * resolves, locks and requires every active allocation of that whole set to
- * be PACKED — so the decision's material state spans the siblings, and the
- * digest must too. Covered: warehouse stage, label state, the latest
- * ingestion's id and row version, the shipment, the set's membership, and
- * every active allocation in the set with its unit's status.
- */
+/** The material state of one outbound record — the fields a command's decision actually depends on — and the fingerprint computed from them. */
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { OUTBOUND_LABEL_STATES, OUTBOUND_WAREHOUSE_STAGES } from './work-contract';
 
-/**
- * Lateral joins producing every material field. `stage` reads `unit_progress`,
- * so the order is load-bearing. `material_units` deliberately filters to
- * ACTIVE allocations — the same `state NOT IN ('RELEASED','RETURNED')` set
- * `applyLabelIngestion` locks — while `unit_progress` keeps its existing
- * unfiltered shape because the displayed stage is derived from it and is not
- * being changed here.
- */
+/** Lateral joins producing every material field. */
 export const OUTBOUND_MATERIAL_JOINS_SQL = `
   LEFT JOIN LATERAL (
     SELECT li.id, li.state, li.row_version
@@ -126,12 +94,7 @@ export const outboundMaterialSchema = z.object({
 }).strict();
 export type OutboundMaterial = z.infer<typeof outboundMaterialSchema>;
 
-/**
- * The digest. The field order is written out rather than derived from object
- * key order, because key order is not a contract; and the version prefix means
- * a future change to the material set produces a different digest space
- * instead of silently colliding with the old one.
- */
+/** The digest. The field order is written out rather than derived from object key order, because key order is not a contract; and the… */
 // v2: the material set widened from the selected row to the logical order set
 // (2026-09-20). The prefix is what stops a v1 digest from being mistaken for a
 // v2 one, which would silently re-introduce the sibling blind spot.
@@ -160,12 +123,7 @@ export function fingerprintFromRow(raw: unknown): { material: OutboundMaterial; 
   return { material: parsed.data, fingerprint: outboundFingerprint(parsed.data) };
 }
 
-/**
- * The executor's read: the same expression, for one record, inside the
- * caller's transaction. The caller must already hold the row lock — this
- * query reads the record and its allocations without taking one, so an
- * unlocked call would fingerprint state another transaction can still change.
- */
+/** The executor's read: */
 export const OUTBOUND_MATERIAL_ONE_SQL = `
   SELECT ${OUTBOUND_MATERIAL_JSON_SQL} AS material
     FROM orders o

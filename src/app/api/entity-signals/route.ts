@@ -5,19 +5,7 @@ import { readEntitySignals } from '@/lib/surfaces/entity-signals-read';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/entity-signals — the org's entity_signals spine for the history
- * surfaces (universal-feed plan Phase 5). Newest-first, org-scoped (never
- * cross-tenant). Query params: ?limit ?sinceDays ?signalKind ?entityType ?entityId ?q
- * (full-text over notes_tsv). `entityId` (with `entityType`) narrows to one
- * record's signals — the History→Signals related strip.
- *
- * Failure class: **SUB-RESOURCE.** A Monitor sub-resource must never 500 the
- * page, so a throw keeps 200 — but it carries `degraded: true` + `error` so the
- * strip can render the degraded state instead of the "no signals yet" teaching
- * empty. Silently reusing `[]` for both is the failure that took sign-in down
- * on 2026-08-01 (see /api/auth/staff-picker).
- */
+/** GET /api/entity-signals — the org's entity_signals spine for the history surfaces (universal-feed plan Phase 5). */
 export const GET = withAuth(
   async (req: NextRequest, ctx) => {
     const sp = new URL(req.url).searchParams;

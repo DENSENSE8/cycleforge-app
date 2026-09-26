@@ -5,8 +5,6 @@ import { useCallback, useEffect, useState } from 'react';
 /**
  * The row a triage list is "on" — the one the operator last opened — so the
  * 2px ink selection outline (BRIEF §4/§5) is waiting on it when they come back
- * from the record. Per list, per tab (`sessionStorage`), read after mount so
- * the server render and the first client render agree.
  */
 export function useTriageSelection(list: string): [string | null, (id: string) => void] {
   const key = `cf-m-triage-selected:${list}`;

@@ -11,14 +11,7 @@ import {
   type ArrivalClassifyStep,
 } from '@/lib/receiving/arrival-mobile-flow';
 
-/**
- * `/m/r/[id]/classify` — the carton hub's Classify door: the one arrival
- * classify flow (Platform → Type → Priority, `MobileArrivalClassifyFlow`)
- * hosted under the carton, so escape and the last step return to the carton
- * instead of the scan tape. `?step=` / `?type=` as on the `/m/scan` host; the
- * job the carton was opened from (`?back=`) rides along so the carton's X
- * still returns there.
- */
+/** `/m/r/[id]/classify` — the carton hub's Classify door: */
 function CartonClassifyInner() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();

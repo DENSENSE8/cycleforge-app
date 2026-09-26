@@ -36,12 +36,7 @@ export interface LibraryFilters {
   photoType?: string | null;
   /** Photo label key — keep only photos assigned this label (photo_labels.key). */
   labelKey?: string | null;
-  /**
-   * Unboxing evidence-stage sub-filter. Predicates mirror
-   * `receivingPhotoIntentSql` (src/lib/receiving/photo-intent.ts): package /
-   * legacy / untyped carton shots = arrival, `receiving_unbox_carton` = carton,
-   * RECEIVING_LINE-linked = item (entity wins — the identity law).
-   */
+  /** Unboxing evidence-stage sub-filter. */
   stage?: ReceivingPhotoStage | null;
   // ── Business-ID filters (each resolves through photo_entity_links; verified
   //    join paths in 2026-* migrations). All tenant-scoped via p.organization_id.
@@ -58,13 +53,7 @@ export interface LibraryFilters {
   /** Returns RMA number (rma_authorizations.rma_number via return_dispositions). */
   rma?: string | null;
   // ── Unified PO-photo finder ──────────────────────────────────────────────
-  /**
-   * A single identifier the operator typed (order#, tracking#, serial#, or PO#).
-   * Unlike the granular `serial`/`tracking` filters above (which keep ONLY the
-   * photos directly linked to that one entity), the finder resolves the value to
-   * its receiving carton(s) and surfaces *every* photo on those cartons — i.e.
-   * "show me this PO's photos" regardless of which identifier you have in hand.
-   */
+  /** A single identifier the operator typed (order#, tracking#, serial#, or PO#). */
   poFinder?: string | null;
   /** Which identifier `poFinder` is. Defaults to 'po'. */
   poFinderKind?: PoFinderKind | null;
@@ -89,12 +78,7 @@ export function isPoFinderKind(value: unknown): value is PoFinderKind {
   return typeof value === 'string' && (PO_FINDER_KINDS as readonly string[]).includes(value);
 }
 
-/**
- * Parse the shared library filter params (everything except org + pagination)
- * from a URLSearchParams. Used by BOTH `/api/photos/library` (list) and
- * `/api/photos/library/ids` (select-all-matching) so the two never diverge on
- * which rows a filter set selects.
- */
+/** Parse the shared library filter params (everything except org + pagination) from a URLSearchParams. */
 export function libraryFiltersFromSearchParams(
   params: URLSearchParams,
 ): Omit<LibraryFilters, 'organizationId' | 'cursor' | 'limit'> {
@@ -151,13 +135,7 @@ function receivingSourceExists(params: unknown[], source: string): string {
       )`;
 }
 
-/**
- * Tracking-number match across BOTH photo→tracking paths:
- *  - packing:  PACKER_LOG → packer_logs.shipment_id → shipping_tracking_numbers
- *  - unboxing: RECEIVING (direct or via RECEIVING_LINE) → receiving_carton.shipment_id → STN
- * `tracking_number_normalized` is the canonical STN column (UNIQUE). Substring
- * ILIKE so a partial/last-N paste still resolves. One param, referenced 3×.
- */
+/** Tracking-number match across BOTH photo→tracking paths: */
 function trackingExists(params: unknown[], tracking: string): string {
   params.push(`%${tracking}%`);
   const t = `$${params.length}`;
@@ -183,14 +161,7 @@ function trackingExists(params: unknown[], tracking: string): string {
       )`;
 }
 
-/**
- * Photos carrying the given SKU through a direct link path — a catalog `SKU`
- * link, a serialized unit whose sku / catalog row matches, or a receiving line
- * whose sku / catalog row matches (item evidence primary-links the LINE; the
- * SKU string lives on it). `v` is an already-pushed ILIKE param placeholder.
- * SoT rule respected: the typed value matches each scheme's own column —
- * `items` and `sku_catalog` numbering schemes are never string-joined.
- */
+/** Photos carrying the given SKU through a direct link path — a catalog `SKU` link, a serialized unit whose sku / catalog row matches, or a… */
 function skuLinkedExistsSql(v: string): string {
   return `EXISTS (
         SELECT 1 FROM photo_entity_links l
@@ -214,24 +185,7 @@ function skuLinkedExistsSql(v: string): string {
       )`;
 }
 
-/**
- * Unified PO-photo finder. Resolves a typed identifier of `kind` to the set of
- * `receiving_carton` cartons it belongs to, then matches photos linked to ANY of those
- * cartons (directly as RECEIVING, or via RECEIVING_LINE). The end goal: typing
- * an order#, tracking#, or serial# surfaces the whole PO's unboxing photos.
- *
- * Each carton-resolver subquery is standalone, so it is tenant-scoped on its own
- * (`organization_id = $1`, the leading organizationId param) — never relying on
- * the outer photo_entity_links scope. ILIKE substring so a partial paste/last-N
- * still resolves. One value param, referenced across the kind's resolver.
- *
- * Verified join paths (see deep-scan + migrations):
- *  - tracking → receiving_carton.shipment_id → STN (+ shipment_links extra boxes)
- *  - serial   → serial_units.origin_receiving_line_id → receiving_line.receiving_id
- *  - order    → receiving_line.source_order_id / receiving_line_zoho.zoho_purchaseorder_number
- *               (returns bind the sales-order# as the carton PO#; see returned-serial-link.ts)
- *  - po       → receiving_carton.zoho_purchaseorder_number (+ denormalized photos.po_ref)
- */
+/** Unified PO-photo finder. */
 /** The carton-id resolver subquery for ONE identifier kind. References $1 (org)
  *  and `v` (the value param). 'any' is composed from these, not handled here. */
 function cartonResolverSql(kind: Exclude<PoFinderKind, 'any'>, v: string): string {
@@ -296,14 +250,7 @@ function cartonExistsSql(resolver: string): string {
       )`;
 }
 
-/**
- * Photos linked to a Zendesk ticket — either dual-linked as ZENDESK_TICKET
- * claim evidence, or carton/line unboxing photos for a ticket that was linked
- * via `ticket_links` / `receiving_*.zendesk_ticket` without a photo backfill.
- *
- * `id` / `hashForm` / `plainForm` are already-bound param placeholders
- * (e.g. `$2`, `$3`, `$4`) for the numeric id, "#9599", and "9599".
- */
+/** Photos linked to a Zendesk ticket — either dual-linked as ZENDESK_TICKET claim evidence, or carton/line unboxing photos for a ticket… */
 function ticketLinkedPhotoExists(id: string, hashForm: string, plainForm: string): string {
   return `(
       EXISTS (
@@ -444,12 +391,7 @@ function claimsScopePhotoExists(): string {
     )`;
 }
 
-/**
- * Resolve the Zendesk ticket id for a photo — dual-link first, then carton/line
- * `zendesk_ticket`, then `ticket_links`. Used for SELECT ticket_id + claims
- * folder grouping so linked-but-not-dual-linked unboxing photos still bucket
- * under `#9599`.
- */
+/** Resolve the Zendesk ticket id for a photo — dual-link first, then carton/line `zendesk_ticket`, then `ticket_links`. */
 function photoResolvedTicketIdExpr(): string {
   return `COALESCE(
       (SELECT lz.entity_id FROM photo_entity_links lz
@@ -566,41 +508,12 @@ function poFinderExists(params: unknown[], kind: PoFinderKind, rawValue: string)
   return cartonExistsSql(cartonResolverSql(kind, v));
 }
 
-/**
- * Shared WHERE builder for the media library filter set. Both the paged row
- * query (listPhotoLibrary) and the id-only count query (listPhotoLibraryIds)
- * apply IDENTICAL predicates so they can never drift. Cursor/limit/ORDER BY and
- * column selection are the caller's concern — not here.
- */
+/** Shared WHERE builder for the media library filter set. */
 function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params: unknown[] } {
   const params: unknown[] = [filters.organizationId];
   const clauses: string[] = ['p.organization_id = $1'];
 
-  // dateFrom/dateTo are PST `YYYY-MM-DD` calendar days. Resolve them to INSTANT
-  // bounds in JS and compare the raw column, as a half-open range:
-  //
-  //     created_at >= <PST midnight of dateFrom>
-  //     created_at <  <PST midnight of the day AFTER dateTo>
-  //
-  // **Why not cast the column.** This used to read
-  // `(p.created_at AT TIME ZONE 'America/Los_Angeles')::date >= $n::date`, which
-  // is correct but *not sargable*: a predicate on a FUNCTION of the column cannot
-  // use `idx_photos_org_created (organization_id, created_at DESC)`, so every
-  // date-filtered read was a Seq Scan over the org's whole photo table plus a
-  // top-N sort. Measured on the dogfood tenant (EXPLAIN ANALYZE, 2026-07-28):
-  // Seq Scan 2,841 rows / 1.81 ms → Index Scan 48 rows / 0.09 ms, identical
-  // result sets. Seq-scan cost grows with the table; the index scan does not,
-  // and the flat photo stream pages continuously, so it leans on this far harder
-  // than the old folder drill did.
-  //
-  // The bounds also make the index supply `ORDER BY created_at DESC` directly,
-  // which removes the sort node entirely.
-  //
-  // **Why half-open** rather than `<= endIso` (23:59:59.999): a timestamptz has
-  // microsecond resolution, so an inclusive millisecond bound drops any capture
-  // landing in the final sub-millisecond of a day. `< next-day-midnight` has no
-  // such hole and needs no leap/DST special-casing — `warehouseDayUtcBounds`
-  // resolves each civil day through the zone database, so PST/PDT is handled.
+  // dateFrom/dateTo are PST `YYYY-MM-DD` calendar days.
   const dateFromBounds = filters.dateFrom ? warehouseDayUtcBounds(filters.dateFrom) : null;
   if (dateFromBounds) {
     params.push(dateFromBounds.startIso);
@@ -653,11 +566,7 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     // Linking a ticket without photo backfill must still surface the carton's photos.
     clauses.push(claimsScopePhotoExists());
   } else if (filters.entityType) {
-    // Scope filter (no specific entity): keep ONLY photos linked to this entity
-    // type — e.g. packing = PACKER_LOG. Receiving photos link as RECEIVING or
-    // RECEIVING_LINE, so unboxing matches both.
-    // Repair scope is TWO entity kinds: REPAIR_SERVICE (counter/tech evidence
-    // on the repair ticket) and SERIAL_UNIT (bench captures of the device).
+    // Scope filter (no specific entity):
     const types =
       filters.entityType === 'RECEIVING'
         ? ['RECEIVING', 'RECEIVING_LINE']
@@ -703,10 +612,7 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
       )`);
   }
   if (filters.sku) {
-    // SoT rule: never join the two SKU schemes on the string. The typed SKU is
-    // matched against each scheme's OWN column (sku_catalog.sku, or the raw
-    // line/unit sku string) and photos resolve by id — catalog `SKU` links,
-    // serialized units, and receiving lines (item evidence lives on the line).
+    // SoT rule: never join the two SKU schemes on the string.
     params.push(filters.sku);
     clauses.push(skuLinkedExistsSql(`$${params.length}`));
   }
@@ -751,10 +657,7 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
     const kind = isPoFinderKind(filters.poFinderKind) ? filters.poFinderKind : 'po';
     clauses.push(poFinderExists(params, kind, filters.poFinder));
   }
-  // Unboxing evidence-stage sub-filter — predicates mirror
-  // `receivingPhotoIntentSql` (src/lib/receiving/photo-intent.ts) in the
-  // library's EXISTS-on-links shape. Package excludes the mis-stamped
-  // `receiving_item`-on-carton rows; item is entity-only (identity law).
+  // Unboxing evidence-stage sub-filter — predicates mirror `receivingPhotoIntentSql` (src/lib/receiving/photo-intent.ts) in the library's…
   if (filters.stage) {
     const receivingLinkExists = (entityType: 'RECEIVING' | 'RECEIVING_LINE') => `
       EXISTS (
@@ -813,13 +716,7 @@ function buildLibraryWhere(filters: LibraryFilters): { clauses: string[]; params
   return { clauses, params };
 }
 
-/**
- * Evidence stage of a library row, derived in TS from its linked entity types ×
- * photo_type through the stage SoT (`stageFromPhotoType`) — never a SQL-side
- * label map. Entity precedence follows the identity law: a RECEIVING_LINE link
- * makes it item evidence even when a carton link rides along; unit / packer
- * links resolve the testing / packing stages. First resolvable stage wins.
- */
+/** Evidence stage of a library row, derived in TS from its linked entity types × photo_type through the stage SoT (`stageFromPhotoType`) —… */
 const STAGE_ENTITY_PRECEDENCE = ['RECEIVING_LINE', 'RECEIVING', 'SERIAL_UNIT', 'PACKER_LOG'] as const;
 
 function deriveLibraryStage(
@@ -967,13 +864,7 @@ export async function listPhotoLibrary(filters: LibraryFilters) {
   return { items, nextCursor, hasMore };
 }
 
-/**
- * "Select all matching filters" — the total row count plus up to `cap` photo ids
- * for the SAME filter set as listPhotoLibrary (shared WHERE builder → no drift).
- * The count is a full scan over the filtered set; the id list is capped so we
- * never ship 10k ids to the client. `capped` tells the UI the selection is
- * partial (total > cap).
- */
+/** "Select all matching filters" — the total row count plus up to `cap` photo ids for the SAME filter set as listPhotoLibrary (shared WHERE… */
 export async function listPhotoLibraryIds(
   filters: LibraryFilters,
   opts: { cap?: number } = {},

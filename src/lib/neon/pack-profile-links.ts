@@ -3,15 +3,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
 
-/**
- * Upsert the SKU→pack profile link for KPI weighting.
- *
- * - When packTier is null and estimatedMinutes is null, the link is deleted.
- * - Otherwise we upsert a pack_profiles row and point the SKU link to it.
- *
- * Polymorphic owner_type: today only 'SKU_CATALOG', but the schema is designed
- * to expand (MODEL, CATEGORY, LISTING, etc.) without changing callers.
- */
+/** Upsert the SKU→pack profile link for KPI weighting. */
 export async function upsertSkuPackProfileLink(
   params: {
     skuCatalogId: number;

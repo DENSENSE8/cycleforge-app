@@ -713,12 +713,7 @@ async function runApply(
   };
 }
 
-/**
- * Atomically apply one exactly matched, pre-staged shipping-label ingestion.
- * The transaction wrapper is invoked exactly once; every query also carries
- * an explicit organization predicate/stamp so RLS is a backstop, not the only
- * tenant boundary.
- */
+/** Atomically apply one exactly matched, pre-staged shipping-label ingestion. */
 export async function applyLabelIngestion(
   input: ApplyLabelIngestionInput,
   dependencies: Partial<ApplyLabelIngestionDependencies> = {},

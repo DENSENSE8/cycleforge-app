@@ -1,10 +1,4 @@
-/**
- * Rail-feed block — a read-oriented worklist rail for the queue slot. Unlike
- * Checklist (check/act to-do), this renders a selectable list: title → ref
- * chips → meta, newest-first, clicking a row dispatches a `station:select`
- * CustomEvent `{ id }` the host surface uses to open the record. Consumes rows
- * from any bound source; never fetches or knows the integration.
- */
+/** Rail-feed block — a read-oriented worklist rail for the queue slot. */
 
 import { registerBlock } from './registry';
 

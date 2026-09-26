@@ -1,14 +1,6 @@
 import 'server-only';
 
-/**
- * Real bindings for {@link resolveTicketTarget} — the org's `support_tickets`
- * registry, the live helpdesk, and the registry write every link path uses.
- *
- * Shared by `POST /api/tasks/ticket-target` (the composer's Ticket type) and
- * `POST /api/tasks/[id]/links` (a ticket linked to an existing task), so the
- * two ways an operator turns `#48120` into a record resolve it identically.
- * `orgId` / `staffId` come from the caller's auth context, never a body.
- */
+/** Real bindings for {@link resolveTicketTarget} — the org's `support_tickets` registry, the live helpdesk, and the registry write every… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * The order's paperwork, inline — shipping labels, packing slips and every
- * paired paperwork row (manual, packing list, PL + M…), viewed and managed in
- * place. No slide-over, no motion. Triage face (sentence case, soft panels,
- * h-9 controls) and container-responsive: on a phone sheet the file list sits
- * above the document; on a desk pane wider than ~48rem they sit side by side.
- *
- *   kinds     — Label · Slip · Manuals & docs · All, with counts; Download all
- *               is one ZIP of every document and paired row.
- *   list      — every file of the kind, grouped by where it is paired (this
- *               order · item # X · SKU Y, most specific first), with download ·
- *               replace · delete, and for paired rows rename · re-pair (order /
- *               item # / SKU / type) · unpair. Drop files on the list, or
- *               Upload; Label / Slip can also be fetched from the platform;
- *               paired rows can come from the library.
- *   preview   — the selected file with print · download · open; All stacks
- *               every file so the whole packet reads top to bottom.
- *
- * Pairing is the resolution pack print uses (lib/manuals/paperwork-pairing):
- * pinned to this order only, to the item number (every recurring order of it)
- * or to the SKU. The item-number view ({@link ItemPaperworkDialog}) is this
- * same component narrowed to what is paired to the order's item number.
- */
+/** The order's paperwork, inline — shipping labels, packing slips and every paired paperwork row (manual, packing list, PL + M…), viewed… */
 
 import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import {
@@ -908,12 +886,7 @@ function PreviewEmpty({ title, hint, bare = false }: { title: string; hint: Reac
   );
 }
 
-/**
- * The item-number view: everything paired to this order's item number — what
- * every order of it resolves and packs — with the same CRUD. Anchored on the
- * order it was opened from (the routes are order-scoped; an item-number row
- * resolves for every order of that item number).
- */
+/** The item-number view: */
 export function ItemPaperworkDialog({
   open,
   onOpenChange,

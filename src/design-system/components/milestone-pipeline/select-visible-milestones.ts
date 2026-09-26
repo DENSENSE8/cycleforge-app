@@ -1,17 +1,4 @@
-/**
- * Which stages a record pipeline should paint.
- *
- * The mapper may declare the full station path (Tested · Packed · Scanned Out),
- * but the run only shows stamps that exist plus the true next queue — never a
- * skipped stage pretending to be live, and never dim future stages past that.
- *
- * Examples:
- *   none stamped            → [Ready to test]
- *   tested only             → [Tested, Ready to pack]
- *   packed + scanned, no test → [Packed, Scanned Out]  (Tested omitted)
- *   packed only, no test    → [Packed, Ready to ship]
- *   all stamped             → all three
- */
+/** Which stages a record pipeline should paint. */
 
 export function hasMilestoneStamp(at: string | null | undefined): boolean {
   const raw = at == null ? '' : String(at).trim();

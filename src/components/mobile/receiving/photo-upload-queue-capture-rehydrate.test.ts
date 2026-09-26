@@ -1,25 +1,4 @@
-/**
- * §2 capture provenance across a TAB KILL — the rehydration path.
- *
- * This is the case the whole feature exists for. A receiving photo shot on a
- * dead-zone dock sits in `localStorage` until the phone reconnects, so the
- * upload that finally reaches the server can be minutes-to-hours after the
- * shutter. If `capturedAtMs` did not survive the localStorage round trip, the
- * evidence photo whose capture time matters MOST would be the one that lost it
- * — and the loss would be silent (the column just goes null).
- *
- * `PhotoUploadQueue` is a browser module-singleton, so this drives the REAL
- * module with the four browser globals it touches faked (`window`,
- * `localStorage`, `URL.createObjectURL`, `fetch`). Nothing here is a replica of
- * the persistence format: the test seeds the exact `PersistedEntry` shape the
- * module writes, then asserts what `uploadPhotoClient` puts on the wire.
- *
- * Both halves ride in ONE seeded payload because `rehydrate()` runs once per
- * process (the module guards with a `rehydrated` flag):
- *   • entry A — a post-2026-07-29 entry carrying `scope.capturedAtMs`
- *   • entry B — a legacy v1 entry with no `stage` and no `capturedAtMs`, which
- *     must still upload cleanly and simply store NULL.
- */
+/** §2 capture provenance across a TAB KILL — the rehydration path. */
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

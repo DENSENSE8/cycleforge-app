@@ -1,34 +1,9 @@
-/**
- * Pending-order SKU match for receiving-door scans.
- *
- * When a package is scanned in at the door, we want to know whether any of its
- * line SKUs are needed by a *currently-pending* order — i.e. an order that is
- * not yet packed and not yet carrier-shipped. Those cartons should be unboxed
- * first, so the door scan can raise an "unbox first" alert.
- *
- * "Pending" reuses the exact predicate the orders dashboard uses for its
- * unshipped/unpacked view (see src/app/api/orders/route.ts):
- *   - NOT carrier-shipped  → SHIPPED_BY_CARRIER_SQL (needs the `stn` alias)
- *   - NOT packed           → no station_activity_logs row for the shipment
- * SKUs are canonicalized the same way the dashboard canonicalizes them:
- * COALESCE(sku_catalog.sku, orders.sku). A scanned line is matched either by
- * that canonical SKU string, or — as a cross-platform fallback — by resolving
- * the scanned Zoho item id through sku_platform_ids to a sku_catalog row.
- *
- * One indexed round-trip per scan (Neon-cost conscious).
- */
+/** Pending-order SKU match for receiving-door scans. */
 
 import pool from '@/lib/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 
-/**
- * Return the subset of pending-order SKUs that intersect the scanned carton.
- * Empty array when nothing on the carton is needed by a pending order.
- *
- * @param organizationId tenant scope (ctx.organizationId)
- * @param skus           canonical/raw SKUs from the scanned receiving lines
- * @param zohoItemIds    Zoho item ids from the scanned receiving lines (fallback bridge)
- */
+/** Return the subset of pending-order SKUs that intersect the scanned carton. */
 export async function findPendingOrderSkuMatches(
   organizationId: string,
   skus: ReadonlyArray<string | null | undefined>,

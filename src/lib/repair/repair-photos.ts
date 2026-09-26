@@ -47,14 +47,7 @@ export function repairMediaTimeline(
   return items.sort((a, b) => stamp(a) - stamp(b));
 }
 
-/**
- * Upload one repair evidence photo through the unified `/api/photos/upload`
- * waist (entity `REPAIR_SERVICE`, gated `repair.intake`). REPAIR_SERVICE is
- * unconstrained in the photo write matrix, so `photoType` is optional
- * (e.g. `bench_before` / `bench_after` for per-action shots). Images only —
- * the pipeline accepts JPEG/PNG/WebP (`src/lib/photos/service.ts`); a repair
- * video takes `uploadVideoClient` (`src/lib/photos/video-upload-client.ts`).
- */
+/** Upload one repair evidence photo through the unified `/api/photos/upload` waist (entity `REPAIR_SERVICE`, gated `repair.intake`). */
 export function uploadRepairPhoto(
   repairId: number,
   file: Blob,

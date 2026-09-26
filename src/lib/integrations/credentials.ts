@@ -1,21 +1,4 @@
-/**
- * Per-tenant integration credentials.
- *
- *   const creds = await getIntegrationCredentials<EbayCreds>(orgId, 'ebay');
- *
- * Resolution order:
- *   1. organization_integrations row for (orgId, provider)
- *   2. Provider-specific env fallback — only for explicitly transitional
- *      providers when orgId === DOGFOOD_ORG_ID. Zoho and Google Sheets are
- *      vault-only. Any other tenant that lacks a row gets `null`.
- *
- * Decrypted credentials are cached in-process for 5 minutes. Cache is
- * invalidated explicitly via invalidateCredentialCache() — the admin UI
- * that updates a credential must call it.
- *
- * Shapes for the most common providers are exported below; new providers
- * just add a type and a fallback resolver.
- */
+/** Per-tenant integration credentials. */
 
 import pool from '@/lib/db';
 import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
@@ -86,12 +69,7 @@ export interface EbayUserCredentials {
   accountRole: 'seller' | 'buyer';
 }
 
-/**
- * Amazon Selling Partner API credentials. LWA-only (no AWS IAM/SigV4 since
- * 2023-10-02). One row per seller account (scope='seller-{sellerId}'); the
- * app-level lwaClientId/lwaClientSecret are shared across tenants but copied
- * into each row so the payload is self-contained at runtime.
- */
+/** Amazon Selling Partner API credentials. */
 export interface AmazonCredentials {
   lwaClientId: string;
   lwaClientSecret: string;
@@ -107,15 +85,7 @@ export interface ZohoCredentials {
   refreshToken: string;
   orgId: string;
   domain?: string;
-  /**
-   * Per-tenant webhook identity (Wave 3). Minted when the org connects Zoho:
-   *   - webhookToken  — opaque, unguessable id used in the per-tenant webhook
-   *     URL (/api/zoho/webhooks/{webhookToken}); also mirrored to the indexed
-   *     organization_integrations.webhook_token column for O(1) token→org lookup.
-   *   - webhookSecret — this org's OWN HMAC signing secret; the delivery is
-   *     verified against it, so a forged body cannot cross tenants.
-   * Both optional for back-compat with USAV's pre-Wave-3 env-secret connection.
-   */
+  /** Per-tenant webhook identity (Wave 3). */
   webhookToken?: string;
   webhookSecret?: string;
 }
@@ -124,20 +94,7 @@ export interface ZohoCredentials {
  *  for the dogfood org lives in fetchEcwidTransferRows, not here). */
 export interface EcwidCredentials { storeId: string; apiToken: string }
 
-/**
- * Shopify storefront — the `orders` sales channel (catalog / stock push-out is
- * a later phase). Connected per-tenant via Nango (authKind 'nango'), mirroring
- * Square: Nango custodies the OAuth token + its refresh, so the vault row only
- * needs the shop identity + the Nango connection handle. The optional
- * accessToken supports the vault paste-key fallback only (Nango path leaves it
- * undefined).
- *   - shopDomain         — the `*.myshopify.com` host; the canonical store id.
- *   - nangoConnectionId  — Nango connection handle used to mint Admin API tokens.
- *   - accessToken        — direct Admin API token (vault paste-key fallback only).
- *   - scope              — granted OAuth scopes (display / capability gating).
- *   - apiVersion         — pinned Admin API version (e.g. '2024-10'); the client
- *     falls back to its own default when absent.
- */
+/** Shopify storefront — the `orders` sales channel (catalog / stock push-out is a later phase). */
 export interface ShopifyCredentials {
   shopDomain: string;
   nangoConnectionId?: string;
@@ -152,19 +109,7 @@ export interface UspsCredentials { consumerKey: string; consumerSecret: string }
 export interface ZendeskCredentials { subdomain: string; email: string; apiToken: string }
 export interface GoogleSheetsCredentials { clientEmail: string; privateKey: string; defaultSpreadsheetId?: string }
 
-/**
- * Google Drive photo-backup credentials. Connected per-tenant via "Sign in with
- * Google" (OAuth, scope drive.file). The clientId/clientSecret are the SHARED
- * app credentials (one Google Cloud OAuth client for the whole platform) copied
- * into the row so the refresh path is self-contained at runtime — mirrors the
- * Amazon LWA model. The refreshToken + rootFolderId are the per-tenant secrets.
- *
- *   - rootFolderId   — the Drive folder this app created in the user's Drive;
- *     all backups land under it (and its yyyy/MM subfolders).
- *   - accountEmail   — the connected Google account (display only).
- *   - accessToken/expiresAt — last minted short-lived token (cache hint; the
- *     authoritative cache is in-process, see photos/drive/client.ts).
- */
+/** Google Drive photo-backup credentials. */
 export interface GoogleDriveCredentials {
   clientId: string;
   clientSecret: string;
@@ -178,13 +123,7 @@ export interface GoogleDriveCredentials {
 }
 export interface AblyCredentials { apiKey: string }
 
-/**
- * Gmail (PO mailbox) credentials — the email_inbox capability. The shared app
- * client id/secret are copied into the row so the refresh path is
- * self-contained at runtime (mirrors GoogleDriveCredentials / Amazon LWA).
- * Legacy home is the google_oauth_tokens table; the po-gmail client dual-reads
- * (vault first) until the cutover completes.
- */
+/** Gmail (PO mailbox) credentials — the email_inbox capability. */
 export interface GmailCredentials {
   clientId: string;
   clientSecret: string;
@@ -203,43 +142,18 @@ export interface OllamaCredentials {
   embedModel?: string;
   /** Optional bearer for secured self-hosted endpoints. */
   apiKey?: string;
-  /**
-   * Cloudflare Access service token, when the tenant fronts their self-hosted
-   * endpoint with CF Access (the usual way a tailnet/LAN model becomes
-   * reachable from a deployed server — see `tunnelUrl`).
-   *
-   * Per-org and vault-stored on purpose: this is one TENANT's edge credential,
-   * so reading it from a platform env var on a tenant path would serve one
-   * org's token against another org's endpoint.
-   */
+  /** Cloudflare Access service token, when the tenant fronts their self-hosted endpoint with CF Access (the usual way a tailnet/LAN model… */
   cfAccessClientId?: string;
   cfAccessClientSecret?: string;
 }
 
-/**
- * Per-org AI search providers (BYOK). All speak the OpenAI wire format:
- * ai_gateway → https://ai-gateway.vercel.sh/v1 (any model string),
- * openai → https://api.openai.com/v1,
- * anthropic → https://api.anthropic.com/v1 (OpenAI-compat layer; CHAT ONLY —
- * Anthropic has no embeddings API, so embeds fall back to the next source).
- */
+/** Per-org AI search providers (BYOK). */
 export interface AiGatewayCredentials { apiKey: string; chatModel?: string; embedModel?: string }
 export interface OpenAiCredentials { apiKey: string; chatModel?: string; embedModel?: string }
 export interface AnthropicCredentials { apiKey: string; chatModel?: string }
 export interface StripeCredentials { secretKey: string; publishableKey: string; webhookSecret: string }
 
-/**
- * Nextiva (business phone) credentials. Auth model is confirmed in the Phase 0
- * spike (docs/nextiva-voice-support-mode-plan.md §9) — vault API key vs OAuth
- * refresh token — so both shapes are optional here until that lands.
- *   - accountId / locationId — Nextiva account ref, used to resolve org on the
- *     (tokenless) legacy webhook path.
- *   - webhookToken  — our per-tenant, unguessable id in the webhook URL
- *     (/api/integrations/nextiva/webhook/{webhookToken}); also mirrored to the
- *     indexed organization_integrations.webhook_token column for O(1) token→org.
- *   - webhookSigningSecret — this org's OWN HMAC secret; deliveries are verified
- *     against it so a forged body cannot cross tenants. (Mirrors the Zoho model.)
- */
+/** Nextiva (business phone) credentials. */
 export interface NextivaCredentials {
   apiKey?: string;
   refreshToken?: string;
@@ -253,19 +167,7 @@ export interface NextivaCredentials {
   webhookSigningSecret?: string;
 }
 
-/**
- * ShipStation credentials.
- *   - apiKey        — the v2 (api.shipstation.com) API key: rate-shop, buy/void
- *                     labels, tracking, webhooks. REQUIRED for the label engine.
- *   - v1ApiKey / v1ApiSecret — the legacy v1 (ssapi.shipstation.com) Basic-auth
- *                     pair. OPTIONAL, but the ONLY way to pull orders (SKUs +
- *                     stored weight) since v2 has no order-list endpoint.
- *   - webhookToken / webhookSecret — per-tenant identity for the tokenized
- *                     webhook URL (mirrors the Zoho/Nextiva model): the token is
- *                     the unguessable path segment (also mirrored to
- *                     organization_integrations.webhook_token) and the secret is
- *                     this org's shared secret checked before the RSA signature.
- */
+/** ShipStation credentials. */
 export interface ShipStationCredentials {
   apiKey: string;
   v1ApiKey?: string;
@@ -292,10 +194,7 @@ export function invalidateCredentialCache(orgId?: OrgId, provider?: IntegrationP
   }
 }
 
-// ─── Env-var fallback (USAV org only, transitional) ────────────────────────
-// Keep these tight — only USAV's existing single-tenant config is mirrored
-// here so we can flip per-tenant lookups on without rewriting every
-// integration module at once. Any new code MUST NOT add to this.
+// ─── Env-var fallback (USAV org only, transitional) ──────────────────────── Keep these tight — only USAV's existing single-tenant config…
 
 function envFallback(provider: IntegrationProvider): unknown | null {
   switch (provider) {
@@ -365,10 +264,7 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       const baseUrl = process.env.OLLAMA_BASE_URL || process.env.OLLAMA_TUNNEL_URL,
             model = process.env.OLLAMA_MODEL;
       if (!baseUrl || !model) return null;
-      // Single-tenant env bootstrap only (same posture as the other cases
-      // here). The CF Access pair rides along so a dogfood setup that reached
-      // its tunnelled model through hermes-client keeps working after that
-      // module is retired; a real multi-org setup stores these in the vault.
+      // Single-tenant env bootstrap only (same posture as the other cases here).
       const cred: OllamaCredentials = {
         baseUrl,
         tunnelUrl: process.env.OLLAMA_TUNNEL_URL,
@@ -448,10 +344,7 @@ export async function getIntegrationCredentials<T = unknown>(
   options: { scope?: string | null; includeInactive?: boolean } = {},
 ): Promise<T | null> {
   const scope = options.scope ?? null;
-  // `includeInactive` is for RECOVERY paths only (the self-heal sweep in
-  // connectors/self-heal.ts revalidating a row that got flipped to `error`).
-  // Normal callers must keep the status gate: a genuinely revoked credential
-  // has to surface as "Needs attention", not retry forever.
+  // `includeInactive` is for RECOVERY paths only (the self-heal sweep in connectors/self-heal.ts revalidating a row that got flipped to…
   const includeInactive = options.includeInactive === true;
   const key = `${cacheKey(orgId, provider, scope)}${includeInactive ? ':any' : ''}`;
   const cached = credCache.get(key);
@@ -531,14 +424,7 @@ export async function upsertIntegrationCredentials(input: UpsertIntegrationInput
   invalidateCredentialCache(input.orgId, input.provider);
 }
 
-/**
- * Record a TRANSIENT provider failure (throttle, timeout, 5xx) without taking
- * the connection offline. `status` stays `active` — only `last_error` moves, so
- * Integrations can show "degraded" while every sync keeps retrying. Flipping
- * `status` here is what caused the 2026-09-14 Zoho blackout: a 10-minute Zoho
- * mint throttle turned into 25 hours of "not connected" because nothing but a
- * human OAuth run clears `error`.
- */
+/** Record a TRANSIENT provider failure (throttle, timeout, 5xx) without taking the connection offline. */
 export async function noteIntegrationWarning(
   orgId: OrgId,
   provider: IntegrationProvider,

@@ -3,14 +3,7 @@ import { isFbaOrder } from './order-platform';
 /** Canonical dot types shown before the product title in log tables. */
 type SourceDotType = 'fba' | 'sku' | 'orders';
 
-/**
- * Determine which colored dot to display based on record metadata.
- *
- * Priority:
- *   1. FBA  → purple  (order_id contains "FBA" OR account_source === "fba")
- *   2. SKU  → blue    (tracking_type === 'SKU'  OR scan_ref contains ':')
- *   3. Orders → green (default)
- */
+/** Determine which colored dot to display based on record metadata. */
 export function getSourceDotType(params: {
   orderId?: string | null;
   accountSource?: string | null;
@@ -35,13 +28,7 @@ export function isSkuSourceRecord(params: Parameters<typeof getSourceDotType>[0]
   return getSourceDotType(params) === 'sku';
 }
 
-/**
- * Resolve a station row's source in ONE pass — the dot type and whether it's a
- * SKU-scan row (which hides the internal order-id chip). Station rows previously
- * computed these separately, calling {@link getSourceDotType} twice (once
- * directly, once inside {@link isSkuSourceRecord}); this does it once. Callers
- * still OR in any record-specific extras (e.g. tech's `has_sku_serial_source`).
- */
+/** Resolve a station row's source in ONE pass — the dot type and whether it's a SKU-scan row (which hides the internal order-id chip). */
 export function resolveStationSource(
   params: Parameters<typeof getSourceDotType>[0],
 ): { dotType: SourceDotType; isSku: boolean } {

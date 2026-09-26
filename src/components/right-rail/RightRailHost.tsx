@@ -1,57 +1,6 @@
 'use client';
 
-/**
- * RightRailHost — THE right details-panel wrapper / ONE owner of the right-edge
- * slot. It renders exactly the top occupant of `lib/right-rail/store.ts`.
- *
- * ## Two contracts, one host
- *
- * **PUSH (desktop record inspectors).** A non-modal occupant is an **in-flow column**: a flex
- * sibling of `ContextPanelLayout`'s host inside `<main>` that claims its width
- * instantly (no layout tween), so the work surface reflows BESIDE it instead of
- * under it. This is the house ruling — "every resident edge PUSHES; nothing floats
- * over the work surface" (`source-of-truth.md` → Right-rail modality) — and it is
- * the Unbox Displays / context-rail recipe mirrored, not a new one:
- * `StationDisplaysPushColumn` and `ContextPanelLayout` both snap `style.width`
- * on open ↔ park; desk inspectors do the same. Live sash drag still paints every
- * frame.
- *
- * The card is the sizing element ON PURPOSE. The leading resize grip is
- * `placement="inset"` — hit sash inside the panel, 1px paint on the panel's
- * own `border-l` seam (the display hairline). Nothing hangs into the work
- * surface; Unbox Displays is the golden twin. Left context rail still uses
- * `outset` (different edge).
- *
- * **OVERLAY (explicit contracts only).** Modal / intake occupants, ambient
- * assistant, station-edge opt-outs, chromeless routes, and mobile keep the
- * fixed overlay shell (presence + backdrop fade). Width pressure alone NEVER
- * turns a desktop resident inspector into a floating rounded card.
- *
- * ## Stable occupant id, no exit→empty→enter
- *
- * The push column mounts once while an occupant is present. Record→record swaps
- * keep a stable id (`detail:order`, …) so the column never remounts and content
- * updates in place — the same instant cut Unbox Displays uses when a leaf swaps.
- *
- * ## Singleton close
- *
- * The host paints one `X` at the top-RIGHT (ruled 2026-08-19, replacing the
- * top-left `→|`). Click / Esc / scrim all fire the ONE closer,
- * `closeRightPanel()` (`lib/right-rail/close.ts`) — which caches `draftData`,
- * parks the occupant, toasts "Draft saved." with Resume, AND runs the
- * occupant's own `onClose` teardown (clear a selection, drop a URL param).
- * Child views must not mount a second close anywhere — not a header twin and
- * not a footer `→|` beside a submit CTA. Mod+Shift+R resumes while the toast
- * is armed.
- *
- * WHY THE CORNER MOVED. The top-LEFT corner is where every panel's own chrome
- * starts — the index Back, the column-display `▦`, the contextual icon strip —
- * so the singleton close was permanently occupying the one cell each occupant
- * wanted first, and each of them had to reserve a spacer for a control they do
- * not own. The trailing corner is empty on every occupant, and it is where a
- * dismiss is reached for without looking. `DeskRailChromeRow` therefore
- * reserves its slot at the TRAILING end; the leading edge is the occupant's.
- */
+/** RightRailHost — THE right details-panel wrapper / ONE owner of the right-edge slot. */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
@@ -113,12 +62,7 @@ import { cn } from '@/utils/_cn';
 import { ModeRegion } from '@/design-system/providers/ModeRegion';
 import type { ModeName } from '@/design-system/modes/registry';
 
-/**
- * The occupant's body is the rail's task-mode region: the assistant dock is
- * `assistant`, every detail occupant (`RIGHT_RAIL_PRIORITY.detail`) is
- * `triage`. The host is a sibling of the route content, so this is always a
- * page-level region, never a third nesting level.
- */
+/** The occupant's body is the rail's task-mode region: */
 function RightRailOccupantBody({ node, mode }: { node: ReactNode; mode: ModeName }) {
   const restored = usePanelDraft();
   return (
@@ -132,13 +76,7 @@ function RightRailOccupantBody({ node, mode }: { node: ReactNode; mode: ModeName
   );
 }
 
-/**
- * The singleton dismiss. `refused` mirrors the occupant's own `canClose` veto
- * so the control READS refused instead of going inert under the pointer — the
- * occupants that veto (both sync dialogs) already disable their own buttons
- * mid-run, and a host X that stayed live while doing nothing is the same lie
- * from the other side.
- */
+/** The singleton dismiss. */
 function RightRailHostTrailingCluster({
   refused = false,
   maximized,
@@ -152,23 +90,9 @@ function RightRailHostTrailingCluster({
   const canMaximize = onToggleMaximize != null;
   return (
     <div
-      // `right-0`, not `right-2` (2026-08-19): dismiss is the control an
-      // operator throws the pointer at without looking, and a flush corner is
-      // an infinite-width target — 8px of inset turns it back into a 28px one.
-      // The chrome row reserves exactly this cell (`pr-0` + a `w-7` spacer), so
-      // nothing scrolls under it.
+      // `right-0`, not `right-2` (2026-08-19):
       className={cn(
-        // ALWAYS two cells wide. The occupant reserves a fixed `w-14`
-        // (RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS) and cannot know whether this
-        // panel is a resizable push occupant, so a `w-7` cluster here would
-        // leave 28px of dead gap on every overlay/non-resizable occupant.
-        // When maximize is unavailable its cell renders as an empty spacer.
-        //
-        // `z-header + 1` (same offset as the Displays sash hairline) sits
-        // ABOVE the occupant's `z-header` chrome band. That band is a later
-        // sibling and used to win the stack at equal z, so its
-        // `pointer-events-auto` trailing cell (the reserved spacer) ate
-        // expand/close clicks. Host window controls must remain the top hit.
+        // ALWAYS two cells wide.
         'absolute right-0 top-0 flex w-14 items-stretch p-0 pointer-events-auto',
         STATION_CHROME_ROW_FACE,
       )}
@@ -249,12 +173,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   // is up, Escape dismisses THAT, not the whole inspector underneath it.
   const overlayOpen = useAnyOverlayOpen();
 
-  // Collapse state (localStorage) — read BEFORE the push/overlay decision, which
-  // depends on it: a parked-no-strip occupant is treated as overlay so it stays
-  // mounted-but-hidden (the latch below) rather than losing its slot. Band 3
-  // inspector toggle / Cmd+\ write via collapse-control on the same storage key;
-  // sync in-memory state on the same tab (useLocalStorage alone does not see
-  // cross-component writes).
+  // Collapse state (localStorage) — read BEFORE the push/overlay decision, which depends on it:
   const [collapsed, setCollapsed] = useLocalStorage(
     DETAIL_STACK_COLLAPSE.storageKey,
     false,
@@ -271,33 +190,12 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
 
   // Drag-to-resize + collapse, non-modal occupants only.
   const isResizable = !!renderable && !isModal && !isAssistantDock;
-  // Occupants that opt out of host park (Incoming Unbox-parity) ignore
-  // DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even if
-  // localStorage still holds a prior collapse from another rail. Hairline
-  // never mounts a sash chevron; close stays header `→|`.
+  // Occupants that opt out of host park (Incoming Unbox-parity) ignore DETAIL_STACK_COLLAPSE / Band 3 parking — treat them as expanded even…
   const allowEdgeCollapse = renderable?.edgeCollapse !== false;
   const isCollapsed = isResizable && collapsed && allowEdgeCollapse;
   const showCollapsedStrip = renderable?.collapsedStrip !== false;
 
-  // Whether THIS occupant pushes — the demand published to `resolveRightRailFrame`
-  // (below) AND the local render decision. Computed synchronously from the
-  // occupant, NOT read back from `frame.mode`.
-  //
-  // WHY IT IS LOCAL, NOT `frame.mode`. The demand effect publishes `wantsPush`
-  // AFTER commit, so `frame.mode` lags it by one render. A push occupant therefore
-  // mounted in the OVERLAY branch on its first render (`frame.mode` still
-  // 'overlay') and only swapped to PUSH after the store round-trip — and
-  // `AnimatePresence` keeps the losing overlay `motion.aside` alive through its
-  // exit. In a throttled-rAF context that exit never completes, so the SAME
-  // occupant renders TWICE (e.g. two live "Delete carton" controls on one Unbox
-  // History carton). Deriving the mode from the occupant's own intent removes the
-  // overlay→push handoff entirely: a push occupant only ever mounts in the push
-  // branch. The frame store still owns `capPx` (the resize ceiling); only the mode
-  // decision moved local.
-  //
-  // A chrome-owned reopen affordance (parked-no-strip) leaves no host strip, so it
-  // releases push demand the same way a closed occupant does → overlay branch,
-  // where it stays mounted-but-hidden (the latch).
+  // Whether THIS occupant pushes — the demand published to `resolveRightRailFrame` (below) AND the local render decision.
   const wantsPush =
     inline &&
     !!renderable &&
@@ -318,12 +216,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   );
   usePanelStoreKeyboard();
 
-  /**
-   * Maximize — in-flow sash widen that **covers the middle**. Drag-resize still
-   * respects the center floor (`capPx`). Fullscreen uses `coverPx` (frame minus
-   * the left rail) so intake / import forms can be read. Transient: closing and
-   * reopening restores the persisted width. Still a push column, not a overlay.
-   */
+  /** Maximize — in-flow sash widen that **covers the middle**. */
   const [maximized, setMaximized] = useState(false);
   const preMaxWidthRef = useRef<number | null>(null);
   const maximizeWidthPx = isPush && isResizable ? frame.coverPx : null;
@@ -333,10 +226,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     defaultWidth: DETAIL_STACK_RESIZE.defaultWidthPx,
     minWidth: DETAIL_STACK_RESIZE.minWidthPx,
     maxWidthPad: maximized ? 0 : DETAIL_STACK_RESIZE.maxWidthPadPx,
-    // In push mode the ceiling is derived from the frame (what the work surface
-    // must keep), not from the viewport pad — the pad stays as the floor.
-    // Fullscreen maximize uses coverPx (center yields) so the form can fill
-    // the row; drag-resize while unrestored stays on capPx.
+    // In push mode the ceiling is derived from the frame (what the work surface must keep), not from the viewport pad — the pad stays as the…
     maxWidth: isPush ? (maximized ? frame.coverPx : frame.capPx) : undefined,
     enabled: isResizable,
     label: 'Resize details panel',
@@ -433,10 +323,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             </HoverTooltip>
           </div>
         ) : null}
-        {/* Instant width snap — Unbox Displays / ContextPanelLayout twin.
-            No `motionRole.push.rail` width tween, no opacity presence, no
-            occupant crossfade: selecting a row must land the inspector on the
-            same frame the selection commits. */}
+        {/* Instant width snap — Unbox Displays / ContextPanelLayout twin. */}
         {showPush && !isCollapsed ? (
           <aside
             role="region"
@@ -518,10 +405,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
           <motion.aside
             key={renderable.id}
             data-right-rail-mode="overlay"
-            // Modal occupants keep the blocking dialog semantics. Non-modal ones
-            // are a named region: the page underneath stays scrollable, clickable
-            // and readable, so announcing a modal dialog would be a lie (and the
-            // host installs no focus trap — deliberately).
+            // Modal occupants keep the blocking dialog semantics.
             role={isModal ? 'dialog' : 'region'}
             aria-modal={isModal ? true : undefined}
             aria-label={renderable.ariaLabel ?? (isModal ? undefined : 'Details')}

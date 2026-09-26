@@ -1,15 +1,4 @@
-/**
- * Color-theme application — the runtime half of theming. Pure +
- * framework-agnostic so the boot script, the React sync, and any toggle share
- * one source of truth. The themed values live in the theme registry
- * (src/design-system/themes/registry.ts — generated into <head> by
- * app/layout.tsx); this module only flips the `data-theme` /
- * `data-color-scheme` attributes and mirrors the choice to localStorage for
- * no-flash reloads.
- *
- * Light is the default and is represented by the ABSENCE of both attributes,
- * so existing light users are entirely unaffected.
- */
+/** Color-theme application — the runtime half of theming. */
 
 import {
   DARK_SCHEME_THEME_NAMES,
@@ -70,13 +59,7 @@ export function applyAccentTheme(theme: string | null | undefined): void {
 
 export { isThemeName, THEME_NAMES, type ThemeName };
 
-/**
- * Inline boot script (runs in <head> before first paint) — applies the cached
- * theme so a returning themed staffer never sees a light flash before the
- * React sync hydrates from the server. Kept tiny and dependency-free; the
- * valid-name and dark-scheme lists are inlined from the registry at build
- * time, so a new registered theme needs zero changes here.
- */
+/** Inline boot script (runs in <head> before first paint) — applies the cached theme so a returning themed staffer never sees a light flash… */
 export const THEME_BOOT_SCRIPT =
   `try{var t=localStorage.getItem('${THEME_STORAGE_KEY}');` +
   `if(t&&t!=='light'&&${JSON.stringify(THEME_NAMES)}.indexOf(t)>-1){` +

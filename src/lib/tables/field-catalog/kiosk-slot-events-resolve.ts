@@ -1,10 +1,4 @@
-/**
- * Gate preamble (Fact-Forcing):
- * - Importers: useKioskSlotEventsSpreadsheet → resolve option; unit tests.
- * - Affected API: none (pure display resolve).
- * - Schemas: KioskSlotEventTableRow + CompoundSlotValue.
- * - User: "Continue to the next phase" (kiosk-slot-events PRODUCT_TABLES peer).
- */
+/** Gate preamble (Fact-Forcing): */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { formatDwellFace } from '@/lib/kiosk/kiosk-device-derived';

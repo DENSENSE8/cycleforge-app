@@ -1,20 +1,5 @@
 /**
  * Crash-safe UUID generator for code that may run in the browser.
- *
- * `crypto.randomUUID()` is exposed **only in a secure context** (HTTPS or
- * `localhost`). Over a plain-HTTP LAN IP (e.g. testing from a phone at
- * `http://192.168.x.x:3000`) it is `undefined`, so calling it throws
- * `TypeError: crypto.randomUUID is not a function` and takes down whatever
- * component invoked it.
- *
- * This helper is the single source of truth for client-reachable id minting:
- *   1. use `crypto.randomUUID()` when available (secure context / Node),
- *   2. else build a real v4 UUID from `crypto.getRandomValues` — which, unlike
- *      `randomUUID`/`subtle`, IS available in insecure contexts,
- *   3. else fall back to a timestamp+random string (last resort).
- *
- * Strength note: the step-3 fallback is NOT cryptographically strong. This is
- * fine for client event ids, idempotency keys, and local row ids — never use it
  * for secrets, tokens, or anything security-sensitive.
  */
 export function safeRandomUUID(): string {

@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * FOUNDATION of the `/incoming` receiving-order composer. Every kind of order
- * (purchase, return) renders inside this one sheet and contributes only its
- * sections, its status line and its submit — it never re-draws the frame.
- *
- * The frame: the lane's ledger is replaced by a scrolling stage; on it sits a
- * single fixed-width sheet centred horizontally — no record list beside it, no
- * evidence column. Head = title · kind switch · close. Foot = status · Cancel ·
- * submit. The sheet is a `<form>`, so Enter in a field submits.
- */
+/** FOUNDATION of the `/incoming` receiving-order composer. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Package, RotateCcw, X } from '@/components/Icons';

@@ -1,11 +1,4 @@
-/**
- * Query factory for station-builder definitions + block data sources.
- *
- * Definitions change rarely (publish events), so a long staleTime with
- * explicit invalidation after save/publish. Source feeds reuse whatever
- * cadence their block needs — but never an interval (sidebar surfaces poll
- * via their own existing summaries; block feeds refetch on mount/invalidate).
- */
+/** Query factory for station-builder definitions + block data sources. */
 
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
 import type { StationDefinitionRow } from '@/lib/stations/contract';

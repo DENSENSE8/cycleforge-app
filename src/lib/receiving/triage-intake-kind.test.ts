@@ -33,10 +33,7 @@ test('isReturnIntake: nothing set anywhere → false (defaults to PO)', () => {
 });
 
 test('isReturnIntake: regression — an explicit non-RETURN line override beats a RETURN carton default', () => {
-  // Before the fix this was an OR check ("line is RETURN OR carton is RETURN"),
-  // so a line explicitly tagged TRADE_IN on a RETURN-default carton
-  // misclassified as a return. The line override must win outright once set,
-  // per effectiveIntakeKind's documented precedence.
+  // Before the fix this was an OR check ("line is RETURN OR carton is RETURN"), so a line explicitly tagged TRADE_IN on a RETURN-default…
   assert.equal(isReturnIntake(row({ intake_type: 'TRADE_IN', carton_intake_type: 'RETURN' })), false);
   assert.equal(isReturnIntake(row({ intake_type: 'PICKUP', carton_intake_type: 'RETURN' })), false);
 });
@@ -48,12 +45,7 @@ test('isIntakeClassified: fresh unfound carton (all disposition fields null) →
 });
 
 test('isIntakeClassified: regression — a 0-line unfound stub defaults line receiving_type to PO but is NOT classified', () => {
-  // The bug: an unfound carton with no lines renders a stub whose line
-  // receiving_type is the 'PO' default ("Unfound – PO"), while the CARTON
-  // intake_type is still null. Counting the line default made Classify read
-  // done and suppressed the header auto-expand on a genuinely unclassified
-  // carton. The carton disposition (intake_type / carton_intake_type) is the
-  // only deliberate signal.
+  // The bug: an unfound carton with no lines renders a stub whose line receiving_type is the 'PO' default ("Unfound – PO"), while the CARTON…
   assert.equal(isIntakeClassified(row({ receiving_type: 'PO' })), false);
   assert.equal(isIntakeClassified(row({ receiving_type: 'RETURN' })), false);
 });

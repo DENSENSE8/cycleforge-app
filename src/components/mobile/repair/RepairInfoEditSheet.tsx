@@ -15,12 +15,7 @@ import {
 } from '@/lib/repair/repair-info-edit';
 import { RepairCustomerPickerSheet } from './RepairCustomerPickerSheet';
 
-/**
- * Edit verb of the hub "Information" panel. The sheet owns only the draft
- * (facts, contact, and a staged customer-link change); the page owns the write
- * sequence, the optimistic row, the rollback and the server re-read — same
- * split as `RepairStatusSheet`. A save that unlinks the customer asks first.
- */
+/** Edit verb of the hub "Information" panel. */
 export function RepairInfoEditSheet({
   open,
   repairId,

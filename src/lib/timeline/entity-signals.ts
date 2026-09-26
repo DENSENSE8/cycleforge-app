@@ -35,13 +35,7 @@ function pretty(s: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
 }
 
-/**
- * Map `entity_signals` rows → {@link TimelineItem}s for the shared
- * `EventTimeline`. Title = the signal-kind label; subtitle carries the
- * reason_code + free-text notes; a muted badge names the anchored entity
- * ("Serial unit #123"). severity ≥ 2 escalates any non-danger tone to danger so
- * a hard failure reads red. The adapter picks the tone; the view stays dumb.
- */
+/** Map `entity_signals` rows → {@link TimelineItem}s for the shared `EventTimeline`. */
 export function entitySignalsToTimeline(rows: EntitySignalTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
     const kindDef = (SIGNAL_KINDS as Record<string, { label: string } | undefined>)[r.signal_kind];

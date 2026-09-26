@@ -2,89 +2,7 @@
 
 /**
  * `DataTable` — the ONE way a table reaches a screen.
- *
- * ```text
- * ┌─────────────────────────────────────────────────────────┐
- * │ [ 🔍 search ]  [ ▽ filter ]  [ Paste ]  [ ↕ sort ]  [ views ] │  find · narrow · verbs · order
- * ├──┬──────────────────────────────────────────────────────┤
- * │☑ │ Order      Item              Status      Amount      │  header + select-all
- * ├──┼──────────────────────────────────────────────────────┤
- * │☑ │ 09-69683   Bose Wave …       TESTED      $0.00       │  two-row compound
- * │  │ 76755777   Pack Tuan · Jul 7  64d late               │
- * ├──┴──────────────────────────────────────────────────────┤
- * │ Must ship 99+ · Urgent · Out of stock          82 of 922│  tabs + counts
- * └─────────────────────────────────────────────────────────┘
- * ```
- *
- * It replaces the display layer torn down on 2026-08-29
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md`): `src/components/sheet/`, the
- * `workbench-shell` bands, thirty-odd per-desk `*WorkspaceHeader` forks, the
- * column rail, the formatting toolbar, zoom, fullscreen and the in-cell editors.
- * Those were thirty surfaces that agreed on a data waist and then each drew
- * their own chrome on top of it.
- *
- * ## The rules that keep it one component
- *
- * 1. **One header, drawn once.** No page supplies chrome. A surface supplies its
- *    rows, its columns, its tabs, its filter OPTIONS and its sort OPTIONS —
- *    data, never JSX. The column header is drawn here from `binding.columns`;
- *    there is no `renderColumnHeader` prop to fork it with.
- * 2. **No `ReactNode` chrome slots.** The shell this replaces offered `leading`,
- *    `right`, `trailing`, `views`, `extraControls`, `searchSlot` and a controls
- *    portal, which is how thirty desks each drew something different. A props
- *    object of *data* is the difference between one display and thirty.
- *    `renderRow` / `renderGroup` remain render props because a CELL is domain
- *    code (see `table-surface-binding.ts`) — a row is content, not chrome.
- * 3. **Search is session-local. Filters / tabs / sort may stay in the URL.**
- *    The find field is controlled by the caller as `{ value, onChange }` data.
- *    Parking it in `?search=` / `?q=` is a soft navigation per keystroke and
- *    remounts the table. Orders filter painted rows via
- *    `filterShippedOrdersByQuery`; other families filter in
- *    `useCompoundSpreadsheet`. Facets, stage, and `?sort=` remain URL state.
- *    A SERVER-paged surface still obeys this: `search.answeredBy: 'server'`
- *    sends the text to a fetch key, never to `router.replace` — see
- *    {@link DataTableSearch}.
- * 4. **Selection is the only interaction.** A checkbox gutter, a select-all and
- *    a count. Copy acts on the selection (below); row-open comes back when it
- *    is asked for.
- * 5. **Borders do not change.** Bottom-only rules through header and body, no
- *    vertical column cage — the grid below is untouched.
- *
- * ## The search field holds text and nothing else
- *
- * No funnel, no chips, no paste button, no inline content. The desk this was
- * rebuilt from had a funnel INSIDE the field and another one beside it — two
- * controls, one job. There is exactly one filter control and it lives outside
- * the field.
- *
  * ## Selection tabs are FILTERS (operator ruling 2026-08-30)
- *
- * The operator overruled the old "a dropdown never replaces the strip" law in
- * writing: a bottom tab whose only job was narrowing the SAME row set
- * (To-ship's triage facets, Pickup's statuses, My Day's lanes, Tracking
- * Exceptions' states, Daily's Completed) is a filter wearing tab chrome, and
- * it now lives in the ONE filter control — and so do dataset-swapping mode
- * options where the operator ordered the strip gone entirely (To-ship's
- * `caged`, the FBA desk's Ready/Plan/Shipped): the URL contract is unchanged,
- * only the control moved. {@link DataTableProps.tabs} remains ONLY for the
- * strips not yet folded (Review's Packed/Shipped/History, Catalog's platform
- * sources, the station History bodies). Do not add a row-narrowing tab here
- * again.
- *
- * ## "All" is not a tab
- *
- * `all` is the absence of a filter, not a filter: the unfiltered list is what
- * the table shows when no tab is selected, so a tab for it is a control that
- * means "stop". Pass `activeTab: undefined` for the unfiltered view — do not
- * add an `all` entry to {@link DataTableProps.tabs}.
- *
- * ## Copy acts on a selection
- *
- * Copying every row is something you do TO a selection, so the copy control
- * appears beside the selected count and only once rows are picked — select all
- * in the header gutter, then copy. It is not a permanent toolbar button acting
- * on rows nobody chose. Two clicks from an open table, which keeps it inside
- * the interaction budget (`AGENTS.md`).
  */
 
 import {
@@ -174,17 +92,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 /**
  * The QUICK DATE control — a peer of the filter, not a second toolbar.
- *
- * Period is the one refinement an operator changes without wanting to think
- * about anything else, so it sits beside the funnel as its own chip rather than
  * two clicks inside it (operator ruling 2026-08-31).
- *
- * The contract is a RANGE, not a list of presets. Presets alone could not
- * answer "the 14th to the 19th", and the house already owns the control that
- * does both — {@link DateRangePickerField} is a preset row over an inline
- * range calendar. The no-JSX-slots rule is intact: the caller passes a value
- * and a setter, and the table picks the component, so there is still one date
- * picker in the product rather than one per desk.
  */
 export interface DataTableDateMenu {
   /** The live range, or `undefined` for "any date". */
@@ -199,21 +107,7 @@ export interface DataTableFilterOption {
   /** How many rows carry it. Omit for honest absence — never print a fake 0. */
   count?: number;
   active: boolean;
-  /**
-   * Which QUESTION this option answers, as a heading.
-   *
-   * The 2026-08-30 ruling folded the row-narrowing tab strips into this one
-   * control, which was right — a tab that narrows rows is a filter. What it did
-   * not settle is that some surfaces then handed the control more than one
-   * axis: To-ship asks "why does this need attention" (exclusive facets that
-   * reset each other) and "where is it in the pipeline" (stages that compose);
-   * Amazon Prep adds "which body am I looking at" (three options that swap the
-   * dataset). Rendered as one flat column those read as eight interchangeable
-   * rows, so the operator has to remember which ones behave alike.
-   *
-   * Group them and the behaviour is legible before the click. Omit it and the
-   * menu draws exactly as it did — a single ungrouped list.
-   */
+  /** Which QUESTION this option answers, as a heading. */
   group?: string;
   /**
    * Platform / carrier paint — data, never a ReactNode. DataTable mounts
@@ -240,17 +134,7 @@ export const DATA_TABLE_FILTER_IDLE: DataTableFilterChrome = {
   onClearAll: () => {},
 };
 
-/**
- * One job verb on the LEFT toolbar cluster — data, never a ReactNode slot.
- *
- * Filter HIDES rows; these RUN an in-sheet job on the queue in view (Review
- * catalog-link paste). They sit after the funnel. Page-level verbs (exceptions
- * Resolve, create, sync) stay {@link DeskHeaderAction} in the header.
- * Exceptions Paste item # is the row Morphing menu — never this cluster.
- *
- * `paste` morphs the button into {@link SearchField}: paste and Enter commit
- * (`onSearch`); Escape restores the button. A click-only verb uses `onClick`.
- */
+/** One job verb on the LEFT toolbar cluster — data, never a ReactNode slot. */
 export type DataTableToolbarAction = {
   id: string;
   label: string;
@@ -265,13 +149,7 @@ export type DataTableToolbarAction = {
   };
 };
 
-/**
- * One option in the toolbar sort control. Data — the caller owns the meaning.
- *
- * Filter HIDES rows; sort REORDERS the rows that remain. They are different
- * jobs, so they are different controls, but they share this chrome: one
- * popover, grouped options, a hot trigger that names the active answer.
- */
+/** One option in the toolbar sort control. */
 export interface DataTableSortOption {
   id: string;
   label: string;
@@ -289,28 +167,7 @@ export interface DataTableBrandIdentity {
   value?: string;
 }
 
-/**
- * The search box, as data. A surface whose search lives on a parent (a table
- * embedded in a workspace that owns the URL) takes this as a prop and forwards
- * it — the field is still drawn once, here.
- *
- * ## Who ANSWERS the query ({@link answeredBy})
- *
- * The default is `'client'`: the caller hands over every row it will ever show
- * and a substring pass over the MOUNTED facts is the whole truth.
- *
- * That pass is a LIE the moment rows are server-paged. `useCompoundSpreadsheet`
- * filters `rows` in React memory, so a table holding page 1 of 40 answers
- * "no results" for a record it has never loaded — the UI asserting an absence
- * it cannot know. A surface whose rows arrive windowed (a `LIMIT`, a cursor, a
- * "load more") therefore declares `answeredBy: 'server'`, feeds `value` into
- * its fetch key, and the engine stops filtering behind its back: one pass, run
- * by whoever can actually see every row.
- *
- * This does NOT move the text into the URL. Rule 3 above stands — `value` is
- * still session state owned by the caller; a server-answered surface spends it
- * on a query key, never on `router.replace`.
- */
+/** The search box, as data. */
 export interface DataTableSearch {
   value: string;
   onChange: (value: string) => void;
@@ -321,12 +178,7 @@ export interface DataTableSearch {
    * over a set the server has narrowed. Omitted / `'client'` ⇒ unchanged.
    */
   answeredBy?: 'client' | 'server';
-  /**
-   * `'server'` only: a request for the CURRENT `value` is in flight. It lights
-   * the field's spinner AND holds the body in its loading face, because the
-   * rows on screen answer the PREVIOUS query — painting "no matches" over them
-   * is the same false absence one layer down.
-   */
+  /** `'server'` only: */
   pending?: boolean;
 }
 
@@ -357,48 +209,10 @@ function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
   );
 }
 
-/**
- * Export the CURRENT view to a CSV file.
- *
- * The rows it writes are the ones on screen — after the search, the filter and
- * the date range — because that is what an operator means by "export this".
- * Selection-scoped export already exists as a bulk action in the rail; this is
- * the whole narrowed set, which the rail cannot express without asking someone
- * to select 800 rows first.
- *
- * On a desk the control is a labeled {@link DeskHeaderAction} in the header
- * cluster (`role="overall"`), left of the primary CTA — unless the surface
- * sets {@link DataTableProps.copyExportPlacement} to `'menu'`, in which case
- * the header button is omitted (To-ship tucks Export into the Sync dropdown).
- * The toolbar glyph is only the fullscreen / off-desk face — the header is
- * unrendered in fullscreen (`DeskPageChrome`), so the glyph is how export
- * stays reachable.
- *
- * Reuses the surface's existing `copyExport` shape rather than a second column
- * contract: the clipboard and the file should not disagree about which fields
- * an order has.
- *
- * `getRows` / `getShape` are refs behind a stable callback so the header
- * registrar does not re-register on every row-array identity change (that
- * loops the slot provider).
- */
-/*
- * `DataTableExportButton` was DELETED with the configurable export (2026-09-02).
- *
- * It was the whole export: one click, every column, every rendered row. The
- * trigger it drew survives as the `renderHeaderTrigger` this file hands to
- * {@link DataTableExportMenu} — the control did not change, what it opens did.
- */
+/** Export the CURRENT view to a CSV file. */
+/* `DataTableExportButton` was DELETED with the configurable export (2026-09-02). */
 
-/**
- * The Fields picker, as DATA — the slot-layout half of the toolbar.
- *
- * A surface whose columns are materialized from a `SlotLayout`
- * (`src/lib/tables/`) passes its catalog options + a toggle; the menu itself
- * is drawn once, here, like the filter control beside it. No `ReactNode`
- * slots: what the picker lists and what a click does are both data, so thirty
- * desks cannot each draw a different picker.
- */
+/** The Fields picker, as DATA — the slot-layout half of the toolbar. */
 export interface DataTableFieldsMenuData {
   options: readonly SlotFieldOption[];
   /** Bind (unbound row) or unbind (bound row) — one gesture. */
@@ -484,13 +298,7 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    */
   actions?: readonly DataTableToolbarAction[];
 
-  /**
-   * The one sort control (data, not a node). Omit and the table derives a
-   * menu from sortable mounted columns so every desk gets the same chrome;
-   * pass it when the surface adds named modes that are not column keys
-   * (To-ship's Newest / Platform pin / USPS) — still include every DATA
-   * column fact in `options` (see `queueColumnSortOptions`).
-   */
+  /** The one sort control (data, not a node). */
   sortMenu?: {
     options: readonly DataTableSortOption[];
     /** Currently selected option id. `null` = surface default (unlit). */
@@ -510,24 +318,12 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     activeFace?: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
   };
 
-  /**
-   * Named saved views for this surface — data, never a ReactNode slot.
-   * DataTable mounts {@link WorkbenchViewsMenu} immediately right of Sort.
-   * Pass the existing `useSavedViews` storage key so stored rows import;
-   * do not invent a second store.
-   */
+  /** Named saved views for this surface — data, never a ReactNode slot. */
   views?: {
     storageKey: string;
     paramKeys: readonly string[];
     emptyHint?: string;
-    /**
-     * The mount's EFFECTIVE layout, so a saved view captures COLUMNS too.
-     *
-     * Params already round-trip through the URL; a slot layout cannot ride
-     * there, so it is captured into the view record and republished to
-     * `useSlotTableLayout` through `saved-view-layout-store`. Omit it and views
-     * behave exactly as they did — params only.
-     */
+    /** The mount's EFFECTIVE layout, so a saved view captures COLUMNS too. */
     layout?: SlotLayout | null;
   };
 
@@ -552,16 +348,6 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    */
   onLoadMore?: () => void;
   // Selection VERBS are not a table prop.
-  //
-  // This engine used to take `selectionActions` / `selectionActionLayout` /
-  // `selectionActionCount` and paint them twice: a column-aligned foot
-  // (`DataTableColumnActionRow`) under the grid, and a legacy Copy pill in the
-  // status bar. Both were a second place to run a verb the ROW already owns —
-  // CYC-82 put Assign on the first checkbox (`MorphingSelectGutter`), where
-  // staff already are. One engine, so the strip comes off EVERY data table, not
-  // off To-ship behind an opt-out flag: an opt-out is a fork with a prop for a
-  // name. The status bar keeps the COUNT (`selected`), which is a fact, not a
-  // verb; the rail still owns the long form at 3+.
   /** Quick date refinement — drawn beside the filter. See {@link DataTableDateMenu}. */
   dateMenu?: DataTableDateMenu;
   /**
@@ -582,38 +368,15 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * inert spacer rather than a checkbox that does nothing.
    */
   selectionScope?: string;
-  /**
-   * Copy/export shape. On a desk the view-export control is a labeled
-   * **Export** header action (`role="overall"`), left of the primary CTA —
-   * unless {@link copyExportPlacement} is `'menu'`. The toolbar glyph remains
-   * in fullscreen (header unrendered) and off a desk stage. Omit and neither
-   * control is offered. Selection copy still uses this shape in the status bar.
-   */
+  /** Copy/export shape. */
   copyExport?: DataTableExport<Row>;
-  /**
-   * Where the view-export control paints. `'header'` (default) is the labeled
-   * desk-header button. `'menu'` hides that button so a desk (To-ship) can tuck
-   * Export into its Sync dropdown via {@link downloadDataTableCsv} +
-   * {@link DeskExportMenuRegistrar}. Fullscreen still gets the toolbar glyph.
-   */
+  /** Where the view-export control paints. */
   copyExportPlacement?: 'header' | 'menu';
   /** Select-gutter face. Defaults to the flat `'always'` checklist square. */
   selectGutterChrome?: GridSelectGutterChrome;
 
   // ── Sort (caller owns durability — it belongs in the URL) ──────────────────
-  /**
-   * Which header keys offer click-to-sort. Defaults to the descriptor's own
-   * `enableSorting` — reading it back is what keeps a header from offering a
-   * sort the engine will not perform.
-   *
-   * A surface overrides it only when its header keys and its sort vocabulary
-   * are different alphabets: the compound Orders row is keyed by TRACK while
-   * the sort is written in FACTS, and `queueSortForColumnKey` bridges them.
-   *
-   * Law (`SLOT_TABLE_PAINT_LAW.headerSort`): every painted DATA header must
-   * return true here. Chrome (`select` / `actions` / `_fill` / `thumb`) stays
-   * false. A labeled Status/Amount header that is not sortable is a fail.
-   */
+  /** Which header keys offer click-to-sort. */
   isSortable?: (key: string) => boolean;
   sort: K | null;
   dir: GridSortDir | null;
@@ -630,12 +393,7 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     group: RowGroup<Row>,
     baseStripeIndex: number,
     api: { columns: readonly C[] },
-    /**
-     * Absolute ARIA index of the group's first leaf — the same stream
-     * `renderRow` gets. Grouped bodies must forward it: a leaf row reads
-     * `rowIndex != null` to know it is inside a table, so dropping it makes
-     * every grouped row claim `role="checkbox"` instead of `role="row"`.
-     */
+    /** Absolute ARIA index of the group's first leaf — the same stream `renderRow` gets. */
     rowIndex?: number,
   ) => ReactNode;
 
@@ -661,23 +419,11 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * (Incoming PO intake). Not chrome — never search/filter/sort.
    */
   bodyPrefix?: ReactNode;
-  /**
-   * The record action strip (`RecordActionStrip`) — painted in the in-flow
-   * action row under the search toolbar, inside the list anchor
-   * (`DESK_RECORD_ANCHOR_ATTR`), so an in-place record opens below both.
-   * Row-anchored planes portal into the same row.
-   */
+  /** The record action strip (`RecordActionStrip`) — painted in the in-flow action row under the search toolbar, inside the list anchor… */
   actionStrip?: ReactNode;
 }
 
-/**
- * Serialize rows as CSV — what a FILE download expects.
- *
- * Separate from {@link toTsv} on purpose: the clipboard wants tabs (a paste
- * into a spreadsheet splits on them without an import dialog), a saved file
- * wants commas and RFC-4180 quoting. One function trying to be both would have
- * to pick a delimiter that is wrong in one of the two places.
- */
+/** Serialize rows as CSV — what a FILE download expects. */
 /** Download the current view as a CSV file. Used by the header button and by desks that tuck Export into a dropdown. */
 export function downloadDataTableCsv<Row>(
   shape: DataTableExport<Row>,
@@ -698,12 +444,7 @@ export function downloadDataTableCsv<Row>(
 
 
 /** The single filter control. Lit and counted — never a bare dot (WCAG 1.4.1). */
-/**
- * EXPORTED for the one sanctioned off-table use: a desk body that is not yet
- * binding-backed (FBA's Shipped list) still owes its operators the same mode
- * filter the sibling bodies carry — one control, drawn from one
- * implementation, never a desk-local funnel fork.
- */
+/** EXPORTED for the one sanctioned off-table use: */
 export function DataTableFilterMenu({
   options,
   onToggle,
@@ -713,11 +454,7 @@ export function DataTableFilterMenu({
   const activeOptions = options.filter((o) => o.active);
   const activeCount = activeOptions.length;
   const hot = activeCount > 0;
-  // One active filter names itself on the trigger. A bare `1` is the count of
-  // an answer, not the answer — it told the operator that they had filtered
-  // without telling them what to, so recalling their own narrowing cost
-  // reopening the menu. Two or more fall back to the count: there is no room
-  // for a list, and by then the operator is holding a compound state anyway.
+  // One active filter names itself on the trigger.
   const triggerLabel = activeCount === 1 ? activeOptions[0].label : null;
 
   // Grouped in the caller's order, headings only when a caller asked for them.
@@ -771,11 +508,7 @@ export function DataTableFilterMenu({
           sideOffset={2}
           data-testid="data-table-filter-menu"
           className={cn(
-            // The SHARED popover face, not a second one. This used to add
-            // `rounded-lg` + its own border/shadow/ring on top of the
-            // primitive's flush chrome, so the filter menu and the fields menu
-            // — two controls a thumb-width apart — disagreed about whether a
-            // menu in this product has corners.
+            // The SHARED popover face, not a second one.
             DROPDOWN_SHELL_CORNER,
             'w-60 overflow-hidden p-0.5',
             focusRing('field', 'accent'),
@@ -936,20 +669,7 @@ function DataTableToolbarActions({ actions }: { actions: readonly DataTableToolb
   );
 }
 
-/**
- * The one SORT control — a peer of the filter, not a second toolbar.
- *
- * Groups (View · Columns · Platform · Carriers) are CATEGORY HEADINGS in one
- * list, the same banded-popover grammar as the filter next door. A pick here
- * reorders every row; a pick in the funnel hides some. Every click-sortable
- * DATA header is also a Columns row — header click and this menu share facts.
- *
- * The list is a combobox listbox ({@link ToolbarListboxOption}): dense rows,
- * trailing check on the selected value, full-width hover, arrow-key roving.
- * Eight or more options get a sticky filter. Platform / carrier rows paint
- * the same {@link MenuBrandIdentity} dots as the Order column (left) and
- * keep the check on the right. View rows have no identity.
- */
+/** The one SORT control — a peer of the filter, not a second toolbar. */
 export function DataTableSortMenu({
   options,
   active,
@@ -1248,17 +968,7 @@ export function DataTablePageSizeMenu({
   );
 }
 
-/**
- * The **+** Fields picker — bind/unbind catalog facts into the surface's slot
- * bands, via the house shadcn Popover (`@/design-system/primitives/radix-popover`).
- *
- * One click binds or unbinds (open + → click → done, inside the interaction
- * budget); binding ORDER is click order — the layout stores an ordered array,
- * so an org that wants `qty · condition · note` under the title binds them in
- * that order. The org capture is deliberately TWO clicks (button → confirm):
- * it changes what every staffer in the org sees, which earns the one extra
- * confirmation the budget allows for the primary action.
- */
+/** The **+** Fields picker — bind/unbind catalog facts into the surface's slot bands, via the house shadcn Popover… */
 function DataTableFieldsMenu({
   options,
   onToggle,
@@ -1277,18 +987,8 @@ function DataTableFieldsMenu({
     if (!next) setConfirmingOrgSave(false);
   };
 
-  // ↑/↓ on a bound row rewrites its band's BINDING order — display order IS
-  // binding order, so this is the reorder affordance the append-only bind
-  // gesture lacked (unbind/rebind is not a reorder). Rendered as siblings of
-  // the toggle, never inside it: nested buttons are invalid DOM.
-  /*
-   * Bind / unbind only. The up-down arrow pair was removed 2026-08-31: ORDER is
-   * now edited by dragging the column header itself, where the operator can see
-   * what they are moving and what it lands between. Two arrows on a menu row
-   * asked them to reorder a list by reading it, then verify by looking
-   * somewhere else — and they cost two controls per row in a popover that is
-   * already the densest thing on the desk.
-   */
+  // ↑/↓ on a bound row rewrites its band's BINDING order — display order IS binding order, so this is the reorder affordance the append-only…
+  /* Bind / unbind only. */
   const renderOption = (option: SlotFieldOption) => {
     const toggle = (
       <HoverTooltip label={option.disabledReason} asChild><button
@@ -1357,15 +1057,7 @@ function DataTableFieldsMenu({
               {identityLabel} — identity, always shown
             </p>
           ) : null}
-          {/*
-            ONE wrapper, and the subtitle band leads (operator ruling
-            2026-08-31). The bands used to be two sibling fragments with status
-            first, which read as two lists that happened to share a popover —
-            and it put the STATUS columns above the line that describes what
-            sits under the title, inverting the row an operator is actually
-            looking at. Order now mirrors the row: what is under the title
-            first, the status columns after it.
-          */}
+          {/* ONE wrapper, and the subtitle band leads (operator ruling 2026-08-31). */}
           <div className="flex flex-col">
             {subtitleOptions.length > 0 ? (
               <>
@@ -1441,37 +1133,7 @@ function DataTableFieldsMenu({
   );
 }
 
-/**
- * Rows this grid may hand keyboard focus to.
- *
- * There is no single marker, so this is a union of the THREE row shapes the
- * engine actually mounts — each clause read off the running app, not guessed:
- *
- * - `[data-grid-row]` — the neutral leaf marker `LedgerGridLeafRow` stamps (its
- *   own docblock explains why it is not an orders-named attribute). The
- *   compound families paint through it and claim no `role="row"` at all
- *   (`/inventory/stock`: 11 matches, and the page's only `role="row"` is the
- *   column header).
- * - `[role="row"][tabindex]` — the orders queue row: `role="row" tabindex="0"
- *   data-order-row-id`, no `data-grid-row` (`/shipping/orders`).
- * - `[role="button"][tabindex="0"]` — a family whose whole row IS the control
- *   (`TrackingExceptionsGridRow`: `role="button" tabindex={0}`, 12 matches on
- *   `/tracking-exceptions`).
- *
- * ## Why the last clause cannot swallow a cell control
- *
- * Every interactive thing INSIDE a row is `tabIndex={-1}` by law, and stated as
- * such in three places — `compound-row-actions.ts`, `CompoundCells.tsx`, the
- * chevron and the ⋮ menu — precisely so the ROW is the only tab stop rather
- * than a 500-row grid being 1500 of them. So a `tabindex="0"` inside the grid
- * body is a row by construction.
- *
- * ## Why `[tabindex]` guards the second clause
- *
- * The column header, `GridSectionHeader`'s caption, `SlotTableGroupParentRow`'s
- * box header and `CompoundRowDetailBand` all claim `role="row"` and none is
- * focusable. Arrowing into a caption is a stop that answers nothing.
- */
+/** Rows this grid may hand keyboard focus to. */
 const DATA_TABLE_ROW_SELECTOR =
   '[data-grid-row],[role="row"][tabindex],[role="button"][tabindex="0"]';
 
@@ -1479,68 +1141,7 @@ const DATA_TABLE_ROW_SELECTOR =
 const DATA_TABLE_TEXT_ENTRY_SELECTOR =
   'input,textarea,select,[contenteditable="true"],[role="textbox"],[role="spinbutton"],[role="listbox"],[role="menu"]';
 
-/**
- * Keyboard travel between the find field and the rows it narrowed.
- *
- * ## The defect this closes
- *
- * Typing in the find field and then reaching the first result took the mouse:
- * the only keyboard route out of the input was Tab, which walks the REST of
- * the toolbar (filter, sort, views, date, page size, fields, zoom, fullscreen)
- * before it arrives at a row. Eight stops between "I typed it" and "I can act
- * on it", on a control whose entire job is to get an operator to one record.
- *
- * ## Why it lives on the HOST and not on the row
- *
- * Rows are family code painted through `renderRow`, and the body is
- * VIRTUALIZED — only a window of rows is ever in the DOM. A per-row React
- * handler would have to be added to every family (a cell-map
- * fork), and a rover holding a row INDEX would point
- * at an unmounted node the moment the list scrolled. One delegated `keydown`
- * on the grid host reads the rows that exist right now, which is also the only
- * set focus can legally move to.
- *
- * ## The map
- *
- * - `ArrowDown` in the find field → the first row (the {@link focusFirstRow}
- *   half, handed to `SearchField.onNavigateResults`).
- * - `ArrowDown` / `ArrowUp` on a row → the next / previous row.
- * - `ArrowUp` on the FIRST row → back to the find field, so the walk is
- *   reversible by the key that entered it.
- * - `Escape` on a row → the find field, caret intact.
- *
- * Everything else is untouched: Enter / Space still activate through
- * `compoundRowActivationProps`, a click still selects, and an arrow pressed
- * inside a cell editor or an open menu is left to that control.
- *
- * ## It does NOT become a second arrow-key owner
- *
- * `useRecordCursorKeyboard` is the codebase's ambient record keyboard (j/k/↑/↓
- * step and OPEN, Escape closes) and four surfaces mount it — To-ship, Shipped,
- * Receiving lines, PO lines. It binds on `window` in the CAPTURE phase and
- * `stopPropagation()`s, so on those surfaces this handler is never reached and
- * the richer behaviour (step · reveal fold · open) keeps the keys. Where no
- * publisher owns the scope it bails at its own `if (!top) return`, and the
- * event reaches the body — which is every other DataTable, where ↑/↓ did
- * nothing at all. So this is the floor under that hook, not a rival to it.
- *
- * Verified on the running app: `/shipping/orders` (cursor published) steps and
- * opens records exactly as before; `/inventory/stock` (no publisher) walks
- * rows through this rover.
- *
- * The ambient hook also refuses while focus is in a typing target
- * (`isTypingTarget`), which is why the ArrowDown HANDOFF out of the find field
- * needed a home here: that keystroke was nobody's.
- *
- * ## Focusability
- *
- * A row is only `tabIndex: 0` when its surface declared an activation gesture,
- * so on a read-only table the rows are not focusable at all. The rover gives
- * the row it is moving to `tabIndex = -1` — programmatically focusable, still
- * absent from the Tab order, and invisible to React, which never writes an
- * attribute it was not given as a prop. The alternative (every row a tab stop)
- * is the 500-stop grid `compound-row-actions.ts` rejected.
- */
+/** Keyboard travel between the find field and the rows it narrowed. */
 function useDataTableRowRoving({
   gridHostRef,
   searchInputRef,
@@ -1563,13 +1164,7 @@ function useDataTableRowRoving({
     searchInputRef.current?.focus();
   }, [searchInputRef]);
 
-  /**
-   * ArrowDown out of the find field. A no-op on an EMPTY table (and while a
-   * server-answered query is still in flight, when the body is painting its
-   * loading face): there is no row to land on, so focus stays in the input
-   * with the caret where the operator left it, rather than vanishing to
-   * `document.body` and stranding the next keystroke.
-   */
+  /** ArrowDown out of the find field. */
   const focusFirstRow = useCallback(() => {
     const first = gridHostRef.current?.querySelector<HTMLElement>(DATA_TABLE_ROW_SELECTOR);
     if (first) focusRow(first);
@@ -1604,10 +1199,7 @@ function useDataTableRowRoving({
         focusRow(next);
         return;
       }
-      // Off the TOP of the list: the find field is where the walk began.
-      // Off the BOTTOM, focus holds on the last row — the virtualizer may still
-      // be mounting what comes next, and throwing focus at nothing is worse
-      // than standing still.
+      // Off the TOP of the list:
       if (event.key === 'ArrowUp') {
         event.preventDefault();
         focusSearch();
@@ -1688,18 +1280,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   useEffect(() => {
     if (pageIndex > paged.pageCount - 1) setPageIndex(Math.max(0, paged.pageCount - 1));
   }, [pageIndex, paged.pageCount]);
-  /**
-   * The page's row ids, in render order — what Select-all may tick and what
-   * the foot's "N selected" counts against.
-   *
-   * A numeric-looking key stays a NUMBER, because every selection hook that
-   * predates junction families keys on one (`useTableSelectMode`,
-   * `useReceivingRowSelection`). A key that is not a number (Stock's
-   * `(location, sku, source)` triple) rides through as its string: coercing it
-   * produced `NaN`, the filter dropped it, and the scope published an empty
-   * page while rows were on screen — a select-all that ticked nothing and a
-   * header checkbox that read "all" at one tick.
-   */
+  /** The page's row ids, in render order — what Select-all may tick and what the foot's "N selected" counts against. */
   const visibleIds = useMemo(() => {
     return flattenRenderOrder(paged.order)
       .map((row): SlotTableRowId | null => {
@@ -1843,17 +1424,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
 
   const filterChrome = filter ?? DATA_TABLE_FILTER_IDLE;
   const isNarrowed = Boolean(search.value) || Boolean(filterChrome.options.some((o) => o.active));
-  /**
-   * The server is still answering the CURRENT query text.
-   *
-   * Held as one flag rather than read twice, because it has to reach two
-   * places at once: the field's spinner, and the body's `loading` face. Only
-   * the second is a correctness fix — while a server-answered fetch is in
-   * flight the painted rows belong to the PREVIOUS query, so letting the empty
-   * branch run paints "no matches" for a record the server has not been asked
-   * about yet. A client-answered table can never be in this state: its filter
-   * is synchronous, so the flag is inert unless `answeredBy: 'server'`.
-   */
+  /** The server is still answering the CURRENT query text. */
   const searchPending = search.answeredBy === 'server' && search.pending === true;
 
   const stage = useDeskStageOptional();
@@ -1881,15 +1452,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   selectedRowsRef.current = selectedRows;
   const getSelectedExportRows = useCallback(() => selectedRowsRef.current, []);
 
-  /**
-   * The field registry, lifted from the legacy positional shape.
-   *
-   * Every desk passes `copyExport` — labels and values by position, no ids — so
-   * bridging here is what lets the configurable panel work on all of them at
-   * once instead of waiting on twenty per-desk migrations. A surface that wants
-   * export-only facts graduates to a real registry later; the panel cannot tell
-   * the difference.
-   */
+  /** The field registry, lifted from the legacy positional shape. */
   const exportSpec = useMemo(
     () =>
       copyExport
@@ -2013,22 +1576,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
             setPageSize(size);
           }}
         />
-        {/*
-          The order, left to right (operator ruling 2026-09-01, verbs 2026-09-04):
-          search · filter · actions · sort · views · date · page size — gap — columns · zoom · fullscreen.
-          Job verbs that belong to the PAGE (exceptions Paste / Resolve) register
-          DeskHeaderAction. DataTable `actions` is for in-sheet jobs that are not
-          the desk primary (Review catalog-link paste). Export is a page-level
-          overall action: labeled header button on a desk, toolbar glyph only in
-          fullscreen or off-stage.
-
-          Reading, NARROWING, ORDERING and named views live together on the left,
-          next to the field they change. The right cluster changes how the
-          sheet is DRAWN rather than what it holds or in what order, so the
-          `ml-auto` gap is the seam between "what am I looking at" and "how am
-          I looking at it" — the operator reaches to one side or the other,
-          never scans the row.
-        */}
+        {/* The order, left to right (operator ruling 2026-09-01, verbs 2026-09-04): */}
         <span className="ml-auto inline-flex shrink-0 items-center gap-1">
           {showExportGlyph ? exportControl : null}
           {fields && binding.definition.capabilities.fieldsMenu ? (
@@ -2089,15 +1637,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         activeTab={activeTab}
         onTabChange={onTabChange}
         shown={paged.shown}
-        // `totalCount` was DECLARED and then dropped on the floor: the bar was
-        // handed `paged.total`, which counts the rows React is holding. On a
-        // client-held table those are the same number, which is why ~25 mounts
-        // passing `totalCount={rows.length}` never noticed. On a SERVER-paged
-        // one they are not: Tracking Exceptions hands over its
-        // `COUNT(*) OVER ()`, and the bar printed "200 rows" for a queue of
-        // twelve hundred — the same false claim about a set the client cannot
-        // see that the search filter made one layer up. The caller's number
-        // wins where it has one, because only the caller can know it.
+        // `totalCount` was DECLARED and then dropped on the floor:
         total={totalCount ?? paged.total}
         selected={selectedCount}
         pager={{

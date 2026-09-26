@@ -1,24 +1,4 @@
-/**
- * Unbox PREVIEW resolution — read-only lookup for the scan bar's Preview stance.
- *
- * The bench answer to *"what would this scan open?"* **without opening it.**
- * Every write the real path performs — `recordReceivingScan`, `stampUnboxOpened`
- * / `recordUnboxScanOpened`, the carton INSERT, the `receiving_scans` memoize in
- * `findScanByTracking` — is deliberately absent, so a preview:
- *
- *   • never stamps `receiving_unbox.opened_at` (no unbox attribution),
- *   • never writes `receiving_scans` (so it cannot surface in the Unbox recent
- *     rail, which is a `view=unbox_opened` / scan-derived feed),
- *   • never creates an unmatched carton for a value that resolves to nothing.
- *
- * That is why this does NOT call `lookup-po`'s resolver: the writes there are
- * threaded through the read (`findScanByTracking` memoizes its own hit), so
- * there is no read-only door in it to reuse. Composing the two pure resolvers
- * (`resolveShipmentForScan`, `resolveSupportTicketToReceiving`) plus one summary
- * SELECT is the read half, and only the read half.
- *
- * Deps are injected so the resolution ladder unit-tests with zero DB.
- */
+/** Unbox PREVIEW resolution — read-only lookup for the scan bar's Preview stance. */
 
 import { extractCanonicalTracking } from '@/lib/tracking-format';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';

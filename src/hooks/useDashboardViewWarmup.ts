@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Prefetch-warm the dashboard's data into the React Query cache.
- *
- * Warms the active view immediately (same factories as the BootGate + tables →
- * guaranteed cache hit) and, after a short idle delay, the merged Unshipped
- * backlog so switching back to it feels instant. Extracted from the dashboard
- * page; behaviour is unchanged.
- */
+/** Prefetch-warm the dashboard's data into the React Query cache. */
 
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

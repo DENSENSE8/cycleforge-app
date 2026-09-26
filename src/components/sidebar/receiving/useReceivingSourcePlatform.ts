@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Source-platform read/write for the receiving sidebar's unboxing PO context.
- *
- * Extracted from ReceivingSidebarPanel. `poContext` state stays in the panel
- * (the scan flow + arm/disarm events own it); this hook takes it + its setter
- * and provides the optimistic PATCH plus the cross-surface mirror via the
- * `receiving-package-updated` event. Behaviour is unchanged.
- */
+/** Source-platform read/write for the receiving sidebar's unboxing PO context. */
 
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import { emitAppEvent, useEventBridge } from '@/hooks';

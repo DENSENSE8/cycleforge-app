@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Persist packing-checklist ticks (packing-checklist-plan Phase 2).
- *
- * Fire-per-toggle POST to /api/orders/[id]/packing-checks. The station UX is
- * local-first/optimistic: the host component applies the tick immediately and
- * calls this; on failure it quietly reverts (console.warn, never a blocking
- * error) — persistence must never slow the pack flow.
- */
+/** Persist packing-checklist ticks (packing-checklist-plan Phase 2). */
 
 import { useCallback } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';

@@ -10,13 +10,7 @@ import {
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
 
-/**
- * GET /api/photos/nas-backup — NAS mirror status for the photo library UI.
- * POST /api/photos/nas-backup — enqueue + run one backup batch (GCS → office NAS).
- *
- * Uses the same NAS agent tunnel as Zendesk claim archive and shipping labels —
- * not the Caddy browse URL (that path is read-only from the browser).
- */
+/** GET /api/photos/nas-backup — NAS mirror status for the photo library UI. */
 export const GET = withAuth(async (_req, ctx) => {
   try {
     const remaining = await countPendingNasMirror(ctx.organizationId);

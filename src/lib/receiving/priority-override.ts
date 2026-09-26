@@ -1,15 +1,4 @@
-/**
- * Source of truth for the *manual* priority-tier override (receiving.priority_tier).
- *
- * Distinct from the platform-derived rank computed server-side in
- * RECEIVING_PRIORITY_RANK_SQL. This module owns the small set of
- * tiers an operator can explicitly pick from the urgency pill, plus the tones
- * the pill renders. `null` priority_tier = Auto (no override → the platform-
- * derived rank applies). A set value (0..3) wins over the platform rank in
- * RECEIVING_PRIORITY_RANK_SQL (`COALESCE(priority_tier, <platform CASE>)`).
- *
- * Pure + dependency-free so any client surface can import it.
- */
+/** Source of truth for the *manual* priority-tier override (receiving.priority_tier). */
 
 export interface PriorityOverrideTier {
   /** Stored receiving.priority_tier value. Lower = higher up the sort. */
@@ -30,14 +19,7 @@ export interface PriorityOverrideTier {
   dotClass: string;
 }
 
-/**
- * Manually-selectable tiers, most urgent first (storage / filter / facet order).
- * Tones mirror platform-derived urgency words (red → amber → blue → emerald).
- *
- * **Picker lists** (Classify · Add Inbound) put Auto/platform first, then escalate
- * via {@link priorityOverrideTiersForPicker} so Priority is last — default heat
- * comes from platform/org unbox policy (e.g. Amazon → High), not a manual pin.
- */
+/** Manually-selectable tiers, most urgent first (storage / filter / facet order). */
 export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
   {
     value: 0,

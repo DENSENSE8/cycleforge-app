@@ -1,30 +1,4 @@
-/**
- * VisitReceipt → a self-contained HTML page.
- *
- * Sibling to `/api/repair-service/print/[id]`, and deliberately unlike it in
- * the one way that route is broken: that page loads `cdn.tailwindcss.com`, so
- * a shop whose internet is down at the counter (the exact moment a customer
- * is standing there wanting paper) prints a blank, unstyled page. EVERY rule
- * here is inline in a single `<style>` tag — no stylesheet link, no CDN
- * script, no remote font, no remote image. `assertNoExternalReferences` in
- * visit-receipt.test.ts is the whole point of this file and holds the line on
- * it.
- *
- * Sized for two paper stocks at once: an 80mm thermal roll (the register's
- * printer) and a letter page (a mailed or emailed copy) — one `max-width` for
- * screen/letter, widened to fill the roll under `@media print` with a
- * `(max-width: 80mm)` container query-ish check via `@page` + a print class.
- *
- * The barcode is generated SERVER-SIDE with `bwip-js/node`'s `toSVG` (the
- * package's pure-JS Node entry point — no native canvas, no client script) and
- * inlined as raw `<svg>` markup, the same "render once on the server, ship
- * inert markup" shape `dataMatrixSvg.ts` uses for labels.
- *
- * Every interpolated value is customer- or staff-supplied text (a name, a
- * repair title, a line title) and is escaped with `escapeHtml` before it
- * touches the template — an unescaped receipt is HTML injection on a document
- * a stranger can walk up to a kiosk and fill in.
- */
+/** VisitReceipt → a self-contained HTML page. */
 
 import bwipjs from 'bwip-js/node';
 import type { VisitReceipt, VisitReceiptLineItem, VisitReceiptRepairItem } from './visit-receipt';
@@ -58,15 +32,7 @@ const STATUS_LABEL: Record<VisitReceipt['payment']['status'], string> = {
 
 // ── Barcode ──────────────────────────────────────────────────────────────────
 
-/**
- * The printed barcode, as an inline `<svg>` string. `code128` — alphanumeric,
- * no special hardware/firmware support required (unlike DataMatrix on receipt
- * printers, see labelCommands.ts's ESC/POS note) — encoding
- * `receipt.barcodeValue` (an RS number or `CT-{id}`, see visit-receipt.ts).
- *
- * `toSVG` is synchronous and pure-JS (bwip-js/node's Node entry point) — no
- * canvas, no async I/O, so it can run inline in the route's render path.
- */
+/** The printed barcode, as an inline `<svg>` string. */
 function barcodeSvg(value: string): string {
   try {
     return bwipjs.toSVG({
@@ -101,12 +67,7 @@ function lineItemRowHtml(item: VisitReceiptLineItem): string {
         </tr>`;
 }
 
-/**
- * One repair device: its title, then THIS device's own issue (its reasons as
- * written at submit) right under it, then its identity — RS code, helpdesk
- * ticket when there is one, serial. Rendered identically on the customer and
- * staff copies; `copy` only adds the staff banner.
- */
+/** One repair device: */
 function repairRowHtml(item: VisitReceiptRepairItem): string {
   const identity = [
     escapeHtml(item.rsCode),

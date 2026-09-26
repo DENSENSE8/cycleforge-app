@@ -1,10 +1,5 @@
 import "./globals.css";
-/**
- * The shell branch (public chrome vs the warehouse client) lives in a CLIENT
- * component on purpose: `next/dynamic` called from a Server Component does not
- * create a lazy client boundary under Turbopack, so the warehouse chunk shipped
- * to `/signin` even though the public branch rendered. See `AppShellSwitch`.
- */
+/** The shell branch (public chrome vs the warehouse client) lives in a CLIENT component on purpose: */
 import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { STATION_SKIN_BOOT_SCRIPT } from "@/lib/theme/station-skin";
@@ -55,22 +50,12 @@ export default async function RootLayout({
     // by each route as they adopt it — see docs/cycle-forge-branding-spec.md §3).
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
-    // Signed-out public entry surfaces (`/signin`, `/signup`, share links) get
-    // a MINIMAL provider tree — see `public-chrome-paths.ts`. The full stack
-    // below exists to run a warehouse; none of it is reachable from a sign-in
-    // card, and mounting it made the one public route in the app pay for the
-    // whole operator client before it could paint a password field.
+    // Signed-out public entry surfaces (`/signin`, `/signup`, share links) get a MINIMAL provider tree — see `public-chrome-paths.ts`.
     const publicChrome = !initialUser && isPublicChromePath(pathname);
-    // `/m/*` is the handheld tree. The edge proxy only ever serves those paths
-    // to phones, so this is a routing fact the server already knows — deciding
-    // it here (rather than from client-side device detection) is what lets the
-    // two frames be separate chunks; see `WarehouseShell`.
+    // `/m/*` is the handheld tree.
     const mobileTree = pathname === '/m' || pathname.startsWith('/m/');
 
-    // Paint seed for routes whose first-paint content lives in the SHELL rather
-    // than the page (Unbox recents rail; the Testing station's Ready-to-Pack
-    // grid + KPI band, whose keys the left rail mounts first). `null` on every
-    // other route.
+    // Paint seed for routes whose first-paint content lives in the SHELL rather than the page (Unbox recents rail; the Testing station's…
     const shellSeed = await shellSeedPromise;
 
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
@@ -81,10 +66,7 @@ export default async function RootLayout({
       }
     }
 
-    // suppressHydrationWarning on <html>: THEME_BOOT_SCRIPT (in <head> below)
-    // stamps data-theme / data-color-scheme on <html> before hydration to avoid a
-    // theme flash, so the SSR markup (no attrs) intentionally differs from the
-    // booted DOM. The flag is scoped to this one element's attributes.
+    // suppressHydrationWarning on <html>:
     return (
         <html
             lang="en"
@@ -103,14 +85,7 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-title" content={PRODUCT_NAME} />
                 <meta name="theme-color" content="#ffffff" />
                 <meta name="mobile-web-app-capable" content="yes" />
-                {/* Viewport — cover the notch. NO `maximum-scale`: pinning it
-                    to 1 disables pinch-zoom entirely, which fails WCAG 1.4.4
-                    (Resize Text) and axe `meta-viewport` on EVERY route — 10
-                    points of the Accessibility score app-wide. It was there to
-                    stop iOS auto-zooming on input focus, but that is already
-                    handled properly by the `pointer: coarse` 16px font floor in
-                    globals.css (iOS only zooms a field under 16px), so the lock
-                    was redundant belt-and-braces that cost real users zoom. */}
+                {/* Viewport — cover the notch. */}
                 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
                 {/* URL-only design trial flags; never persisted. */}
                 <script dangerouslySetInnerHTML={{ __html: TRIAL_BOOT_SCRIPT }} />
@@ -137,19 +112,11 @@ export default async function RootLayout({
                       "(function(){try{if(!('serviceWorker' in navigator))return;navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister();});});if(window.caches){caches.keys().then(function(ks){ks.forEach(function(k){caches.delete(k);});});}}catch(e){}})();",
                   }}
                 />
-                {/* Paints the loading splash before hydration on a fresh sign-in
-                    (one-shot flag), bridging the white gap until <BootGate> mounts
-                    its own splash. Without this the dashboard's first paint is a
-                    blank shell and the splash flickers off and back on. */}
+                {/* Paints the loading splash before hydration on a fresh sign-in (one-shot flag), bridging the white gap until <BootGate> mounts its own… */}
                 <script dangerouslySetInnerHTML={{ __html: BOOT_SPLASH_SCRIPT }} />
             </head>
             <body className={`${cfSans.className} antialiased m-0 overflow-hidden ${appChromeClass}`}>
-                {/*
-                  Pin the app to the visual viewport. Body must NOT carry safe-area
-                  padding or min-height:100vh — both caused first-load gaps (URL bar
-                  vs dvh) and clipped the mobile header when nested shells also used
-                  100dvh / h-full. Safe areas live on mobile chrome instead.
-                */}
+                {/* Pin the app to the visual viewport. */}
                 <AppShellSwitch
                   publicChrome={publicChrome}
                   initialUser={initialUser}

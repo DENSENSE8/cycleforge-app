@@ -84,11 +84,7 @@ export async function GET(
   }
 }
 
-// â”€â”€ PATCH /api/fba/shipments/[id]/items/[itemId] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Update mutable item fields.
-// Body (all optional): { fnsku, expected_qty, status, product_title, asin, sku,
-//                        notes, staff_id }
-// Guards against backward status transitions.
+// â”€â”€ PATCH /api/fba/shipments/[id]/items/[itemId]…
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Params }
@@ -253,11 +249,7 @@ export async function PATCH(
   }
 }
 
-// â”€â”€ DELETE /api/fba/shipments/[id]/items/[itemId] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Remove a shipment item from a plan.
-// Any unshipped item can be removed. Shipped items are blocked.
-// Tracking allocations referencing this item are cleaned up automatically
-// (FK cascade), and a VOID log is recorded for audit.
+// â”€â”€ DELETE /api/fba/shipments/[id]/items/[itemId]…
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Params }

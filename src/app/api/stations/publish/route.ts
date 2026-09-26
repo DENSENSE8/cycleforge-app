@@ -1,17 +1,4 @@
-/**
- * POST /api/stations/publish — flip a draft station definition live.
- *
- * Body: { id } — the draft row to activate.
- *
- * Atomic by construction: one statement deactivates the (org, page, mode)'s
- * current active version and activates the target. In-flight staff pick the
- * new version up on next mount (the renderer's query refetch) — versions are
- * immutable once published, mirroring workflow_definitions semantics.
- *
- * Blocking validation runs against the registries before the flip, so a
- * config referencing a block/source/action that was removed from code since
- * the draft was saved can never go live.
- */
+/** POST /api/stations/publish — flip a draft station definition live. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

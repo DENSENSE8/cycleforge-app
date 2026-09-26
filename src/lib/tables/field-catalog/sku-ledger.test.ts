@@ -1,23 +1,4 @@
-/**
- * Stock-ledger catalog guards, materialization and adapter behaviour — the
- * family that replaced `/inventory/health/sku/[sku]`'s six hand-written
- * `AdminTableColumn` objects for `sku_stock_ledger`.
- *
- * Three assertions here are load-bearing beyond the usual shape checks:
- *
- * - the REFS SPLIT. The retired cell joined `ord# · rl# · su#` into one string
- *   under one header, so none of the three could be sorted, searched or bound.
- *   The test pins that they are three independent facts and that no resolver
- *   re-introduces the prefixes (which would break the id track's digit-aware
- *   collation).
- * - the UNPAINTED refs. The refs and codes this desk's `SELECT` never reads
- *   are painted by nothing; the catalog must not name them until a cell paints
- *   them. `notes` IS painted — the item cell's note line — since phone takes
- *   write the operator's own words there.
- * - the CLOCK face. The retired `toLocaleString()` cell printed the stamp to
- *   the second, and an authoritative ledger whose entry order is unreadable has
- *   lost the thing that makes `SUM(delta)` auditable.
- */
+/** Stock-ledger catalog guards, materialization and adapter behaviour — the family that replaced `/inventory/health/sku/[sku]`'s six… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

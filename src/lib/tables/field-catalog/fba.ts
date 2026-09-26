@@ -1,27 +1,4 @@
-/**
- * FBA field catalog — the bindable Amazon-Prep board facts, as DATA. The THIRD
- * family on the slot engine (kill-list 07 — the `fba` row of the Wave-3 table,
- * executed early on the operator's order to remove the board's forked table):
- * same kernel as orders and pickup, different vocabulary.
- *
- * Every entry names a fact the `/api/fba/board` feed already returns on
- * `FbaBoardItem`; nothing here mints a column. `paths` documents the row
- * properties the resolver reads — resolution itself is `./fba-resolve.ts`,
- * kept separate so this module stays a LEAF (the org layout API route imports
- * it server-side).
- *
- * FBA is a SHEET morph. `fba.asin` is the IDENTITY fact; subtitle bindings
- * are line-detail facts after Title; status bindings close the row. The
- * board display that materialised these tracks was torn out 2026-08-30
- * (hanging the Amazon Prep desk) and is being rebuilt.
- *
- * NOT REGISTERED in `SLOT_LAYOUT_TABLES` while that is true (operator ruling
- * 2026-08-31, seller-table-program wave 1.2): opt-in is per-MOUNT, not
- * per-catalog. A registered id whose table renders nothing let
- * `/api/tables/layouts` accept and store an organization column layout into a
- * void — a manager saving columns nobody would ever see, with no error
- * anywhere. This file is kept intact so the rebuild is one registry line.
- */
+/** FBA field catalog — the bindable Amazon-Prep board facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -93,14 +70,7 @@ export const FBA_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default FBA board layout — near-parity with the retired hand
- * model's scan order (`select · asin · title · fnsku · qty · condition ·
- * status · due · plan · details`; the hand model had status before condition,
- * an adjacent swap the bands impose). `fba.notes` stays in the catalog for an
- * org to bind. `amountFieldId` is null — the board carries no money track.
- * Guard: `fba.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default FBA board layout — near-parity with the retired hand model's scan order (`select · asin · title · fnsku · qty ·… */
 export const FBA_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'sheet',
   identityFieldId: 'fba.asin',

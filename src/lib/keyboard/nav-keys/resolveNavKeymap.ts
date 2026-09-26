@@ -1,22 +1,4 @@
-/**
- * Nav-keys keymap resolver — pure, region-agnostic waist.
- *
- * Assigns ONE lowercase letter to each live target for the leader-armed,
- * per-region selection keyboard. Spec:
- * `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`.
- *
- * Deterministic + collision-free within a live set: a target's declared
- * `preferredKey` wins when free (that's the muscle memory — 'p' = Photos);
- * otherwise the resolver walks a deterministic fallback ladder — the target's
- * own id letters first (still mnemonic), then a plain a–z sweep — taking the
- * first letter no earlier target has claimed. Same input → same output, always
- * (no Math.random, no clock).
- *
- * A per-region UNIQUENESS GUARD (P4) asserts declared preferred keys never
- * collide across a region's FULL possible target set, so the fallback is the
- * rare exception rather than the norm. The resolver stays collision-free even
- * when two live targets declare the same letter (first in order keeps it).
- */
+/** Nav-keys keymap resolver — pure, region-agnostic waist. */
 
 const FALLBACK_ALPHABET = 'abcdefghijklmnopqrstuvwxyz';
 
@@ -51,12 +33,7 @@ function candidatesFor(target: NavKeyTarget): string[] {
   return out;
 }
 
-/**
- * Resolve one letter per target, honoring declared preferences, deterministic
- * and collision-free within the set. A target with no assignable letter (a set
- * larger than the alphabet) is omitted — the caller simply renders no hint for
- * it, which is the honest answer for an over-full region.
- */
+/** Resolve one letter per target, honoring declared preferences, deterministic and collision-free within the set. */
 export function resolveNavKeymap(
   targets: readonly NavKeyTarget[],
 ): Map<string, string> {
@@ -88,12 +65,7 @@ export function resolveNavKeymap(
   return byId;
 }
 
-/**
- * Match a bare keydown to a resolved target id. Returns null for modifier
- * combos, non-letters, or unmapped letters — an unmapped key is deliberately
- * NOT consumed by the caller (in the leader-armed mode it exits nav mode; on a
- * focused list it simply no-ops and bubbles).
- */
+/** Match a bare keydown to a resolved target id. */
 export function matchNavKey(
   key: string,
   keymap: ReadonlyMap<string, string>,

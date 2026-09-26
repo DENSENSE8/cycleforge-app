@@ -19,12 +19,7 @@ export function isPhotoLibraryFolderLevel(raw: string | null | undefined): raw i
   return typeof raw === 'string' && (PHOTO_LIBRARY_FOLDER_LEVELS as readonly string[]).includes(raw);
 }
 
-/**
- * Derive aggregation level (and whether the UI is at a photo leaf) from URL filters.
- * Root (no dates) → year tiles. Day → entity folders.
- * poRef / ticketId / receivingId / poFinder / custom → leaf (search + carton
- * deep-links open photos instead of staying on empty year/entity tiles).
- */
+/** Derive aggregation level (and whether the UI is at a photo leaf) from URL filters. */
 export function resolvePhotoLibraryFolderLevel(filters: {
   dateFrom?: string;
   dateTo?: string;

@@ -1,66 +1,4 @@
-/**
- * loadCounterVisit — the reader for a submitted counter visit.
- *
- * Every other statement against `counter_transactions` in this tree is a
- * write: `submitCounterTransaction` inserts the header,
- * `reconcileCounterPayment` patches its status from the money, `session-store`
- * patches it from the cart. Nothing reads one back whole. That gap means the
- * operator-facing receipt for a finished visit — "what did we sell, what did
- * we take in for repair, did it get paid, who touched it" — cannot be built at
- * all today. This module is that reader, and only that: it never writes.
- *
- * ## The join, in one transaction
- *
- * A counter visit is never one row. The header
- * (`counter_transactions`) joins:
- *
- *   - N `repair_service` rows (devices) — a visit can drop off more than one,
- *     see `submitCounterTransaction`'s per-device loop.
- *   - the `counter_session_lines` that staged it, IF it went through the
- *     shared desk↔tablet cart (`session-store.ts`). A visit submitted via the
- *     direct kiosk-intake path (`/api/kiosk/intake`) has no session and
- *     therefore no lines — that is a normal outcome, not a gap in the read.
- *   - the settled `square_transactions` row, once the payment webhook has
- *     landed one.
- *   - the `counter_sessions` row's `payment_state` — the TERMINAL's answer,
- *     landed by `resolveTerminalCheckout`. Deliberately NOT the same field as
- *     `counter_transactions.status` — the money's answer, landed by
- *     `reconcileCounterPayment`. They arrive on two different Square webhooks
- *     and can legitimately disagree (a Terminal `approved` before the
- *     settlement webhook lands `paid`), so this reader models BOTH rather than
- *     picking one to report.
- *   - the `audit_logs` rows for the four counter-session actions that move
- *     money or finality (price override, void, submit, terminal checkout) —
- *     joined through the SAME session, since that is the `entity_id` every
- *     counter-session audit row is stamped with (see the routes under
- *     `src/app/api/counter/session/**`).
- *
- * All of it is fetched inside ONE `withTenantTransaction` — one connection
- * checkout, a handful of statements. Each statement returns every row of its
- * kind for this visit in one query (`findDevices` returns all N devices,
- * `findLines` returns all lines), so a two-device visit costs the same as a
- * one-device visit. There is no per-repair, per-line, or per-audit-row round
- * trip anywhere in this module.
- *
- * ## Voided lines are evidence, not noise
- *
- * `findLines` does NOT filter on `voided_at`. This is the operator-facing
- * ledger, not the customer-facing projection — a line the customer saw and
- * then had corrected off their total is exactly the kind of fact a receipt
- * exists to preserve. Each voided line carries its reason and the staff
- * member's name, not just their id, because "who voided this" is the question
- * a receipt gets asked.
- *
- * ## Money stays integer cents
- *
- * `repair_service.price` is a TEXT column (see the note on
- * `CounterServiceLine.price` in `counter-transaction-types.ts`). Rather than
- * parse it a second way here, `findDevices` calls the SAME `serviceLineCents`
- * the submit path uses, so a device's quote on this receipt can never disagree
- * with the number that produced the header's total. The raw text is carried
- * alongside the parsed cents so a receipt can still show exactly what was
- * recorded even when it fails to parse.
- */
+/** loadCounterVisit — the reader for a submitted counter visit. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -164,14 +102,7 @@ export interface CounterVisitSquareTransaction {
 export interface CounterVisitPayment {
   /** The MONEY's answer — the settled square_transactions row, once the payment webhook has landed one. */
   squareTransaction: CounterVisitSquareTransaction | null;
-  /**
-   * The TERMINAL's answer (counter_sessions.payment_state). Null when this
-   * visit was never routed through a shared counter_session (the direct
-   * kiosk-intake path has no session at all, and so no Terminal state to
-   * report). `'approved'` here and `status !== 'paid'` on the visit itself is
-   * not a bug — the two facts arrive on different webhooks and are modeled
-   * separately on purpose. See reconcile-payment.ts.
-   */
+  /** The TERMINAL's answer (counter_sessions.payment_state). */
   sessionPaymentState: CounterPaymentState | null;
 }
 
@@ -261,12 +192,7 @@ export interface ReadVisitDeps {
     orgId: OrgId,
     counterTransactionId: number,
   ): Promise<CounterVisitSquareTransaction | null>;
-  /**
-   * The money-moving/finality audit rows for this visit, in one query: rows
-   * filed on its session(s) by the desk, and rows filed on the visit itself by
-   * the kiosk submit (a price adjustment, a comp, a void — the tablet has no
-   * server session to file them on).
-   */
+  /** The money-moving/finality audit rows for this visit, in one query: */
   findAuditTrail(
     tx: ReadVisitTx,
     orgId: OrgId,
@@ -462,11 +388,7 @@ const defaultDeps: ReadVisitDeps = {
   },
 
   async findTransactionLines(tx, orgId, counterTransactionId) {
-    // Mirror of findLines over counter_transaction_lines. No void columns —
-    // these lines are written once, atomically with the header, and a direct
-    // kiosk submit has no staff session to void from; a refund is a new visit.
-    // (A line voided BEFORE submit never reaches this table; its audit row is
-    // on the visit — see findAuditTrail.)
+    // Mirror of findLines over counter_transaction_lines.
     const res = await asClient(tx).query<Record<string, unknown>>(
       `SELECT l.line_uuid, l.line_type, l.title, l.sku, l.variation_id, l.quantity,
               l.unit_amount_cents, l.sort_index, l.original_unit_amount_cents,
@@ -574,16 +496,7 @@ const defaultDeps: ReadVisitDeps = {
 
 // ── The reader ───────────────────────────────────────────────────────────────
 
-/**
- * Load a submitted counter visit whole — header, devices, lines, money and
- * the audit trail — in one round trip.
- *
- * Returns null when `counterTransactionId` does not exist IN THIS ORG. Every
- * sub-query is org-scoped independently (never just the header), so a visit
- * that somehow resolved for the wrong org cannot leak a device, a line, a
- * receipt or an audit row that belongs to someone else — `orgId` always comes
- * from the caller's `ctx.organizationId`, never from the request body.
- */
+/** Load a submitted counter visit whole — header, devices, lines, money and the audit trail — in one round trip. */
 export async function loadCounterVisit(
   orgId: OrgId,
   counterTransactionId: number,
@@ -599,11 +512,7 @@ export async function loadCounterVisit(
     const devices = await deps.findDevices(tx, orgId, header.id);
     const session = await deps.findSession(tx, orgId, header.id);
     const squareTransaction = await deps.findSquareTransaction(tx, orgId, header.id);
-    // A visit with no session (the direct kiosk-intake path) reads its
-    // itemized lines from counter_transaction_lines — written in the SAME
-    // transaction as the header by submitCounterTransaction. Before that
-    // table existed this branch returned [] and every kiosk walk-in receipt
-    // printed "No items on this visit." under the money.
+    // A visit with no session (the direct kiosk-intake path) reads its itemized lines from counter_transaction_lines — written in the SAME…
     const lines = session
       ? await deps.findLines(tx, orgId, session.sessionId)
       : await deps.findTransactionLines(tx, orgId, header.id);

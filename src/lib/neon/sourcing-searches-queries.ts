@@ -2,17 +2,7 @@ import pool from '../db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Standing (saved) sourcing searches — the scour watcher's work-list.
- * See migration 2026-06-13e_sourcing_saved_searches.sql + Sourcing Hub §4.3.
- *
- * Tenancy: sourcing_searches has no organization_id column yet (child-scoped in
- * docs/tenancy/org-id-coverage.generated.md); it is scoped via its sku_catalog
- * parent (sku_id → sku_catalog.organization_id) where a SKU is present, and
- * otherwise relies on the per-request app.current_org GUC. Functions reachable
- * from out-of-fileset callers (the scour-watch job, the [id] routes) take an
- * OPTIONAL orgId and keep byte-identical raw-pool behavior when it is omitted.
- */
+/** Standing (saved) sourcing searches — the scour watcher's work-list. */
 
 export interface SourcingSearchRow {
   id: number;

@@ -1,17 +1,4 @@
-/**
- * Server-only in-process cache for the DB-defined `roles` table and
- * `staff_roles` assignments. Hot-path readers (current-user.ts, withAuth)
- * go through here instead of hitting the DB on every request.
- *
- * Cache invalidation is event-driven: the admin endpoints that mutate roles
- * or assignments call `invalidateRoleCache()` / `invalidateStaffRolesCache(id)`
- * after the write. A 60-second wall-clock TTL also expires entries naturally
- * so a missed invalidation can't strand the cluster on stale data.
- *
- * Why a Map and not react-cache or unstable_cache: this module is imported
- * by Node-only route handlers and by getCurrentUser(); we don't want
- * Next's request-scoped caching here — we want process-wide.
- */
+/** Server-only in-process cache for the DB-defined `roles` table and `staff_roles` assignments. */
 
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -106,19 +93,8 @@ const STAFF_ROLES_TTL_MS = 60_000;
 const staffRolesCache = new Map<number, StaffAssignmentSnapshot>();
 
 /**
- * Load role ids assigned to a staff. Order: roles.position ASC (primary
- * role first). Stale entries are refreshed on next read; an explicit
- * invalidate is used after writes for instant correctness.
- *
- * `roles`/`staff_roles` are GLOBAL system tables (no organization_id), so the
- * assignment rows themselves are never org-filtered. When `orgId` is supplied,
- * the lookup is gated through the `staff` PARENT's org — the staff must belong
- * to that org or the call resolves to an empty set (a staffId from another org
- * reads as if it has no assignments, never leaking another tenant's roles).
- * That org-gated path runs through `tenantQuery` and bypasses the per-staff
- * cache (whose key is the bare staffId and is shared with the no-org sign-in
+ * Load role ids assigned to a staff.
  * path), so a security-filtered miss can never poison the unfiltered hot path.
- * When `orgId` is omitted the behavior is byte-identical to before.
  */
 async function loadStaffRoleIds(staffId: number, orgId?: OrgId): Promise<number[]> {
   if (orgId) {
@@ -169,13 +145,7 @@ export function invalidateStaffRolesCache(staffId?: number): void {
 
 // ─── Effective permission helpers (server-side, DB-backed) ──────────────
 
-/**
- * Computes the effective permission set for a staff: UNION of all assigned
- * role permissions ∪ `permissions_added` \ `permissions_removed`. If any
- * assigned role has key 'admin', short-circuits to "all known permissions".
- *
- * Mirrors Discord's Administrator bypass.
- */
+/** Computes the effective permission set for a staff: */
 export async function effectivePermissionsForStaff(
   staffId: number,
   overrides: { added?: ReadonlyArray<string>; removed?: ReadonlyArray<string> } = {},

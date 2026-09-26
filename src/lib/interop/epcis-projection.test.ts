@@ -1,13 +1,4 @@
-/**
- * DB-free unit test for the EPCIS projection.
- *
- * `projectEpcisPage` takes its read surface as an injected dep, so this runs
- * against a captured fake with zero Postgres — the house `Deps`-injection
- * pattern.
- *
- * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *        --test src/lib/interop/epcis-projection.test.ts`
- */
+/** DB-free unit test for the EPCIS projection. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

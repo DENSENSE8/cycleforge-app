@@ -1,12 +1,4 @@
-/**
- * The agenda's THREE bands, and the one store two of them share.
- *
- * Task and Ticket are the same `work_assignments` `FOLLOW_UP` row banded by
- * the record it points at. The bug this file defends against is a surface
- * testing `type === 'task'` — true of every work row until the ticket band
- * existed — and silently dropping the tick, the record plane and the deadline
- * from every helpdesk row on the page.
- */
+/** The agenda's THREE bands, and the one store two of them share. */
 
 import assert from 'node:assert/strict';
 import { test } from 'node:test';

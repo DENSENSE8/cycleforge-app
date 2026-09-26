@@ -1,12 +1,4 @@
-/**
- * Per-staff UI preference queries — a generic JSONB key/value bag, one row per
- * (org, staff). Backs GET/PUT /api/staff-preferences.
- *
- * Every query is scoped by BOTH the verified session's staff_id and the org
- * (explicit filter + GUC via tenantQuery), so a staffer only ever touches their
- * own prefs and never crosses tenants. First consumer: the configurable
- * focus-scan hotkey shared by every StationScanBar.
- */
+/** Per-staff UI preference queries — a generic JSONB key/value bag, one row per (org, staff). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -25,13 +17,7 @@ export interface BoardLanePref {
   range?: { from?: string | null; to?: string | null } | null;
 }
 
-/**
- * Generic swimlane-board layout prefs (cross-device), reused per surface.
- * `columns` is the 1/2/3-up bubble layout; `order` is the staffer's
- * drag-reordered lane order (lane ids; unknown/missing ids fall back to the
- * board's canonical order); `lanes` holds per-lane sort/expand/height/range.
- * Callers send the full object since the JSONB merge is shallow at this key.
- */
+/** Generic swimlane-board layout prefs (cross-device), reused per surface. */
 export interface BoardPrefs {
   columns?: 1 | 2 | 3;
   order?: string[];
@@ -53,12 +39,7 @@ export type BoardPrefsKey =
 export interface StaffPreferences {
   /** Insert / ScrollLock / F1–F12 that focuses the active scan bar. Absent = default (Insert). */
   focusScanHotkey?: string | null;
-  /**
-   * Color theme name from the theme registry (light | dark | mono | slate —
-   * see src/design-system/themes/registry.ts). Absent = light (the default).
-   * Drives `data-theme` / `data-color-scheme` on <html>; unknown values fall
-   * back to light at apply time, so stale prefs are harmless.
-   */
+  /** Color theme name from the theme registry (light | dark | mono | slate — see src/design-system/themes/registry.ts). */
   theme?: string | null;
   /**
    * Scan-station Color from the station-skin registry (industrial | bench |
@@ -70,12 +51,7 @@ export interface StaffPreferences {
    * Absent = flat. Drives `data-station-depth` on <html>.
    */
   stationDepth?: string | null;
-  /**
-   * Clock display format for every rendered timestamp: `'12h'` (h:mm AM/PM,
-   * the default) or `'24h'` (HH:mm). Absent/`null` = `12h`. Display-only — the
-   * store (src/lib/time-format/store.ts) mirrors it to localStorage for
-   * flash-free reads; storage/API timestamp formats are unaffected.
-   */
+  /** Clock display format for every rendered timestamp: */
   timeFormat?: string | null;
   /**
    * Operator accent chrome: when true (default / absent), `staff.color_hex`
@@ -117,29 +93,7 @@ export interface StaffPreferences {
   receivingHistoryBoard?: BoardPrefs | null;
   receivingIncomingBoard?: BoardPrefs | null;
   testingHistoryBoard?: BoardPrefs | null;
-  /**
-   * Per-staff column config for the shared list tables, keyed by TableId
-   * (see src/lib/tables/table-columns.ts).
-   *
-   * `hidden` + `shown` are a DELTA against each grid descriptor's default tier,
-   * never an absolute column list: `hidden` lists `core` columns this staffer
-   * turned OFF, `shown` lists `optional` columns they turned ON. Absent = the
-   * descriptor default (lean set). Storing a delta is what lets a descriptor
-   * add an `optional` column without it appearing in anyone's grid unasked, and
-   * lets the default widen later without re-showing tracks a staffer curated
-   * away. Keys are chip keys (platform/orderid/tracking/serial) or meta keys
-   * (qty/condition/rest) — i.e. `LedgerGridColumnModel.hideKey`.
-   *
-   * `widths` maps a column key → its drag-resized width in px (absent → the
-   * column's default track width); `widthBounds` maps a column key → optional
-   * staff min/max resize clamps (px); `order` is a legacy unused field (column
-   * order is pinned to each table's layout SoT — writers may still round-trip
-   * a stale value so sibling prefs are preserved).
-   *
-   * The JSONB merge is shallow at this key, so writers send the whole map AND
-   * preserve the sibling fields (a widths write keeps `hidden` + `order`, and so
-   * on). See TableColumnConfigProvider, useGridColumnVisibility, useGridColumnWidths.
-   */
+  /** Per-staff column config for the shared list tables, keyed by TableId (see src/lib/tables/table-columns.ts). */
   tableColumns?: Record<
     string,
     {
@@ -165,13 +119,7 @@ export interface StaffPreferences {
       rowZoom?: 'S' | 'M' | 'L';
     }
   > | null;
-  /**
-   * Per-staff SLOT LAYOUT override keyed by TableId — the personal layer of
-   * the slot-table cascade (see `src/lib/tables/resolve-effective-layout.ts`).
-   * Values are structural `SlotLayout` documents; readers hydrate through
-   * `readStoredSlotLayout` (never trust the stored blob raw). Same shallow
-   * whole-map merge semantics as `tableColumns`.
-   */
+  /** Per-staff SLOT LAYOUT override keyed by TableId — the personal layer of the slot-table cascade (see… */
   tableLayouts?: Record<string, unknown> | null;
   /**
    * GlobalHeader pin stations — ordered bookmarks with display label + exact
@@ -193,12 +141,7 @@ export interface StaffPreferences {
    */
   /** @deprecated Dead since 2026-08-29 — see the schema note. Stored rows keep it. */
   kpiCollapsed?: Record<string, boolean> | null;
-  /**
-   * Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog:
-   * `unbox-extra-tabs`), capped at {@link UNBOX_PINNED_EXTRA_TABS_MAX}.
-   * Absent / `null` = inherit the org/role default (see `unbox-default-pins.ts`);
-   * `[]` = the staffer explicitly cleared their strip (never re-inherits).
-   */
+  /** Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog: */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
   /**
    * Per-staff MasterNav order — ordered nav item ids. Absent/`null` = full
@@ -249,13 +192,7 @@ export async function updateStaffPreferences(
   return rows[0]?.prefs ?? {};
 }
 
-/**
- * Settings-Registry raw merge — write arbitrary top-level namespaced keys (e.g.
- * 'receiving.defaultScanMode') into the prefs bag. Same shallow `||` upsert as
- * updateStaffPreferences but typed for the framework's flat key space (the
- * static StaffPreferences shape is `.strict()` and intentionally doesn't list
- * these framework keys). Returns the full merged bag. See docs/settings-registry.md.
- */
+/** Settings-Registry raw merge — write arbitrary top-level namespaced keys (e.g. */
 export async function mergeStaffPreferencesRaw(
   staffId: number,
   orgId: OrgId,

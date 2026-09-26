@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Right pane for /sourcing. Reads ?mode= and renders one of: Queue (prioritized
- * demand), Scout (model → compatible parts + market search), Watchlist (saved
- * candidates), Searches (standing watches), Suppliers (rollup + CRUD editor),
- * Models / Compatibility (sourcing master data). The sidebar
- * (SourcingSidebarPanel) owns the search/filter inputs; this pane is the
- * display.
- *
- * Suppliers is the ONE home for supplier data (admin dissolution): the rollup
- * lists, and `?supplier=<id|new>` swaps in the ex-admin editor — the same
- * component /admin?section=suppliers used to render, reading the same param.
- *
- * Thin composition layer — each pane lives under `./workspace/`.
- */
+/** Right pane for /sourcing. */
 
 import { useSearchParams } from 'next/navigation';
 import { resolveSourcingMode } from './sourcing-shared';

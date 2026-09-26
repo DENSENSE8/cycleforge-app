@@ -11,17 +11,7 @@ import {
 import { transition } from '@/lib/inventory/state-machine';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 
-/**
- * Stash all (or some) units of a receiving line into a physical bin.
- *
- *   POST /api/receiving/lines/:id/putaway
- *   { bin_barcode | bin_id, qty?, serial_unit_id?, staff_id?,
- *     client_event_id?, scan_token?, notes? }
- *
- * Writes:
- *   - inventory_events PUTAWAY (per unit; idempotent on client_event_id:N)
- *   - serial_units.current_location + current_status='STOCKED' (when serial)
- */
+/** Stash all (or some) units of a receiving line into a physical bin. */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -75,11 +65,7 @@ export async function POST(
       );
     }
 
-    // GUC-wrapped: receiving_lines + serial_units are FORCEd, so the whole
-    // putaway (bin/line lookups, the guarded status write, the location move, and
-    // the per-unit events) runs on the app_tenant pool under app.current_org so
-    // RLS isolates it AND the status flip + event commit atomically (the old code
-    // wrote status on the raw pool, then events separately — non-atomic).
+    // GUC-wrapped: receiving_lines + serial_units are FORCEd, so the whole putaway (bin/line lookups, the guarded status write, the location…
     const orgId = ctx.organizationId;
     type BinRow = { id: number; name: string; barcode: string | null };
     type PutawayResult =
@@ -136,10 +122,7 @@ export async function POST(
       const events: Array<{ id: number }> = [];
 
       if (serialUnitId) {
-        // Putaway = "ensure STOCKED + move to bin". Lock + read the unit's status:
-        // the status flip to STOCKED only fires when it is NOT already there, so a
-        // re-putaway / bin-move of an already-STOCKED unit stays idempotent
-        // (transition() rejects STOCKED→STOCKED as an identity transition).
+        // Putaway = "ensure STOCKED + move to bin".
         const uq = await client.query<{ current_status: string }>(
           `SELECT current_status::text AS current_status FROM serial_units
             WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,

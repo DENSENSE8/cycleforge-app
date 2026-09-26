@@ -1,9 +1,4 @@
 // Single source of truth for system sync-run status tones.
-//
-// Flat chip (the only surface — admin SystemSyncActivityTab). Mirrors the
-// lib/<domain>-status.ts pattern. Classes preserved verbatim; hues follow the
-// color story (DESIGN_SYSTEM.md): success, failed=danger, running=info.
-// src/lib is in Tailwind's content globs.
 
 export type SyncRunStatus = 'success' | 'failed' | 'running';
 

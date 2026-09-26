@@ -56,13 +56,7 @@ export const REPAIR_STATUS_OPTIONS = [
   'Picked Up',
 ] as const;
 
-/**
- * `all` is the HISTORY book: every repair in any status, newest first — the
- * same row set the kiosk History face reads (`list-kiosk-visits.ts`, whose
- * standalone-repair spine carries no status predicate). The Sales → Repair
- * Service desk opens on it, so a repair checked in a minute ago (status
- * `Pending Repair`) is on the desk exactly as it is on the tablet.
- */
+/** `all` is the HISTORY book: */
 export type RepairTab = 'incoming' | 'active' | 'done' | 'all';
 
 /** Statuses shown on the Done tab — also used by station “next repair” exclusions. */
@@ -286,12 +280,7 @@ export type CancelRepairResult =
   | { ok: true; repair: RSRecord; alreadyCancelled: boolean }
   | { ok: false; status: 404 | 409; error: string };
 
-/**
- * Soft-cancel a repair (status → 'Cancelled'). Hidden from all list tabs but
- * the row survives. Refuses repairs already in a terminal/done state (those
- * are finished, not cancellable). Idempotent: cancelling a cancelled repair
- * is a no-op success.
- */
+/** Soft-cancel a repair (status → 'Cancelled'). */
 export async function cancelRepair(id: number, reason?: string | null, orgId?: OrgId): Promise<CancelRepairResult> {
   const existing = await getRepairById(id, orgId);
   if (!existing) return { ok: false, status: 404, error: 'Repair not found' };
@@ -319,14 +308,7 @@ export type UnopenRepairResult =
   | { ok: true; repair: RSRecord; alreadyOpen: boolean }
   | { ok: false; status: 404 | 409; error: string };
 
-/**
- * Reverse of {@link cancelRepair}: reopen a Cancelled repair, restoring the
- * EXACT status it held before cancellation. The prior status is recovered from
- * status_history (the cancel recorded it as `previous_status` on the most
- * recent `Cancelled` entry) — so reopen is a true inverse, not a reset to a
- * fixed status. Refuses when the repair isn't Cancelled, or when no prior
- * status can be recovered from history.
- */
+/** Reverse of {@link cancelRepair}: */
 export async function unopenRepair(id: number, reason?: string | null, orgId?: OrgId): Promise<UnopenRepairResult> {
   const existing = await getRepairById(id, orgId);
   if (!existing) return { ok: false, status: 404, error: 'Repair not found' };
@@ -482,13 +464,7 @@ export async function appendRepairStatusHistory(
   }
 }
 
-/**
- * Linkage fields a repair_service ticket can be paired to / unpaired from.
- * These are the cross-references that connect a ticket to an order, an inbound
- * shipment, a serialized unit, and a catalog SKU. Link = set, unlink = clear —
- * fully reversible, no row mutation beyond these reference columns. Mirrors the
- * curated subset of {@link updateRepairField}'s allowlist.
- */
+/** Linkage fields a repair_service ticket can be paired to / unpaired from. */
 export const REPAIR_LINK_FIELDS = [
   'source_order_id',
   'source_tracking_number',
@@ -513,13 +489,7 @@ function pickLinkValues(r: RSRecord): RepairLinkValues {
   };
 }
 
-/**
- * Manual pairing: set one or more linkage fields on a ticket. Empty-string
- * values are normalized to NULL (an unlink of that field). Only whitelisted
- * link fields are written — anything else is ignored. Org-scoped; a
- * cross-tenant id yields 404 (no disclosure). Returns the prior linkage values
- * so the caller can audit + reverse.
- */
+/** Manual pairing: */
 export async function linkRepairService(
   id: number,
   values: RepairLinkValues,
@@ -773,13 +743,7 @@ export type MarkLabelPrintedResult =
   | { ok: true; repair: RSRecord; alreadyPrinted: boolean }
   | { ok: false; status: 404; error: string };
 
-/**
- * Stamp `label_printed_at` on a repair the first time its 2x1 REP-{id} label
- * is printed (POST /api/repair-service/[id]/label-printed). Stamps ONLY when
- * NULL — a reprint must not move the first-print instant, which is the fact
- * the "Needs label" queue is ordered around. Org-scoped; 404 on cross-tenant
- * or unknown id.
- */
+/** Stamp `label_printed_at` on a repair the first time its 2x1 REP-{id} label is printed (POST /api/repair-service/[id]/label-printed). */
 export async function markRepairLabelPrinted(id: number, orgId?: OrgId): Promise<MarkLabelPrintedResult> {
   try {
     const update = orgId
@@ -828,16 +792,7 @@ function buildEcwidRepairNotes(params: {
   return `${prefix}\n\n${existing}`;
 }
 
-/**
- * Attach the provider contact to a `customers` row and stamp it on the ticket.
- *
- * Only ever fills a NULL `customer_id`: a repair whose customer an operator has
- * already corrected by hand must not be re-pointed by the next sync pass.
- *
- * Advisory — a failed link must never fail the SYNC. The repair row is the
- * thing the shop needs; a missing customer link is recoverable on the next run,
- * a thrown sync is not.
- */
+/** Attach the provider contact to a `customers` row and stamp it on the ticket. */
 async function attachRepairCustomer(
   repairId: number,
   contact: EcwidRepairContact | undefined,

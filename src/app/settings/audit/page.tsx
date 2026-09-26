@@ -1,42 +1,4 @@
-/**
- * /settings/audit — admin-facing audit log viewer.
- *
- * Reads from `audit_logs` (the rich diff table written by withAuth's
- * audit-floor and by handlers via recordAudit). Filter by source/action and
- * walk keyset pages of fifty.
- *
- * There is NO row expansion. `metadata` / `before_data` / `after_data` are
- * written by `recordAudit`, selected below, and painted by nothing: this
- * docblock promised "expand a row to see the before/after JSON" for a plane
- * that was never built, and the sentence is gone rather than left standing as
- * a feature claim (corrected 2026-09-12, Wave D). The day a diff plane ships
- * it arrives with its own catalog facts.
- *
- * The table is the registered `audit-log` slot family, mounted through the
- * client island `./AuditLogTable`: the guard, the query and the pagination
- * stay here on the server, and only the rows cross the boundary.
- *
- * `?q=` is the FETCH KEY for that island's find box, which is why it is read
- * here. The island writes it (optimistically, through `useOptimisticUrlParam`)
- * and declares the search server-answered, so the engine runs no second pass.
- * Until this page spent the round-trip, the box filtered the FIFTY rows the
- * keyset page happened to hold: `audit_logs` carries 25k rows for this tenant,
- * `scan_out` first appears at rank 274 and `sku_catalog` at rank 17018, so the
- * desk answered "no audit entries match" for hundreds of writes that exist.
- * The predicate below runs over the same eight facts the row adapter paints.
- *
- * Tenant scoping: `orgId` comes from the auth ctx (`requirePermission` →
- * `user.organizationId`), never from a param, and the read goes through
- * `tenantQuery` — which sets `app.current_org` for the statement, so
- * `audit_logs`' `tenant_isolation` RLS policy bites — with an explicit
- * `a.organization_id = $1` predicate beside it, because RLS does not bite on
- * the owner pool. The actor-side `s.organization_id = $1` stays: it is this
- * feed's membership rule (an audited write is shown to the tenant whose staff
- * made it), not its tenant scope, and widening the feed to actorless system
- * rows is a different brief.
- *
- * Gated by admin.view_logs.
- */
+/** /settings/audit — admin-facing audit log viewer. */
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -51,13 +13,7 @@ import { AuditLogTable } from './AuditLogTable';
 
 const PAGE_SIZE = 50;
 
-/*
-  The five hand-written second-engine column objects that used to live here
-  are gone. Columns are DATA now: `field-catalog/audit-log.ts` names the eight
-  facts those five cells carried, `audit-log-resolve.ts` reads them, and the
-  shared engine paints them — so this desk gained header sort, search and a
-  Fields picker the second table engine was never going to grow for one page.
-*/
+/* The five hand-written second-engine column objects that used to live here are gone. */
 
 interface PageProps {
   searchParams: Promise<{ source?: string; action?: string; cursor?: string; q?: string }>;
@@ -88,11 +44,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
     // so no ESCAPE clause is needed (see `@/lib/sql-like`).
     args.push(`%${escapeLike(query)}%`);
     const like = `$${args.length}`;
-    // The eight facts `audit-log-resolve.ts` paints, and nothing else: matching
-    // a column the desk does not show would hand back rows whose match is
-    // invisible. `created_at` is absent on purpose — the cell paints "Sep 22" /
-    // "14:03:07", so ILIKE over its ISO text would answer for a string no row
-    // on screen contains. The four NOT NULL columns skip COALESCE.
+    // The eight facts `audit-log-resolve.ts` paints, and nothing else:
     whereParts.push(`(
            a.action                     ILIKE ${like}
         OR a.source                     ILIKE ${like}
@@ -103,11 +55,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
         OR COALESCE(a.ip_address, '')   ILIKE ${like}
       )`);
   }
-  // LAST, after the find predicate: the cursor walks the MATCHED set, so a
-  // page of fifty is fifty matches rather than fifty rows that were then
-  // thinned. The island deletes `?cursor=` whenever the query text changes —
-  // otherwise the operator would search from the middle of a list that no
-  // longer exists.
+  // LAST, after the find predicate:
   if (cursor) { args.push(cursor); whereParts.push(`a.id < $${args.length}`); }
 
   args.push(PAGE_SIZE + 1); // +1 so we know if there's a next page
@@ -144,17 +92,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{isSearching ? ' matching filter' : ''}.
         </p>
 
-        {/*
-          PAGE CHROME, and deliberately still an HTML GET form: `?source=` and
-          `?action=` narrow the SERVER query and the keyset cursor, which the
-          table's own filter menu cannot do — it filters the fifty rows in hand.
-          Folding these two into the Fields/filter menu means teaching that menu
-          to write server params, and that is its own brief. FOLLOW-UP.
-
-          `?q=` rides a HIDDEN input because a GET form submits its own fields
-          and nothing else: without it, pressing Apply would silently empty the
-          table's find box, which is a param this form does not own.
-        */}
+        {/* PAGE CHROME, and deliberately still an HTML GET form: */}
         <form className="flex flex-wrap items-center gap-2 rounded-none border border-border-soft bg-surface-card p-3 text-role-caption shadow-sm">
           <label className="flex items-center gap-2">
             <span className="font-medium text-text-soft">Source</span>

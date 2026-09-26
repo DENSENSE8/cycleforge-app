@@ -1,21 +1,4 @@
-/**
- * Live-lens node heat — Operations Studio "Live" lens
- * (PR #2 of docs/operations-studio/Full Code Base Upgrade).
- *
- * Pure: turns one node's live occupancy (the `StudioLiveNode` the
- * GET /api/studio/live feed already returns) into a heat level so a bottleneck
- * is obvious at a glance — slate (idle) → blue (active) → amber (approaching
- * SLA) → rose (over SLA / in error). It does NOT fetch or poll: the Live lens
- * is already event-driven over Ably with a debounced refetch (Studio law #4);
- * this only decides how to PAINT what's there.
- *
- * Heat precedence (first match wins):
- *   1. any item in error            ⇒ hot   (needs triage regardless of count)
- *   2. nothing sitting at the node  ⇒ idle
- *   3. oldest item ≥ its SLA        ⇒ hot
- *   4. oldest item ≥ 75% of SLA     ⇒ warm
- *   5. otherwise                    ⇒ active
- */
+/** Live-lens node heat — Operations Studio "Live" lens (PR #2 of docs/operations-studio/Full Code Base Upgrade). */
 
 export type HeatLevel = 'idle' | 'active' | 'warm' | 'hot';
 

@@ -1,10 +1,4 @@
-/**
- * Drives the shipped Button variant map (Phase 2a).
- *
- * Imports the isolated fill map — not a reimplementation — so a missing
- * `success` / `execute` intent fails here the same way a chrome CTA would
- * fail at the call site.
- */
+/** Drives the shipped Button variant map (Phase 2a). */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -52,13 +46,7 @@ describe('Button semantic intents (2a)', () => {
   });
 
   it('glass is white ink on a bar that owns the scrim, never a fill of its own', () => {
-    // The mobile camera panel's chrome sits ON the viewfinder. Without this
-    // intent the only faces available were invisible over a moving image
-    // (`ghost` resolves text-text-muted) or an opaque hole in it
-    // (`secondary`), so two call sites hand-rolled a scrim themselves.
-    //
-    // The scrim then has to live in ONE place — the bar. A control with its
-    // own `bg-scrim` paints a darker block inside an already-dark bar.
+    // The mobile camera panel's chrome sits ON the viewfinder.
     assert.ok('glass' in BUTTON_VARIANTS, 'glass (chrome on live media) must be a Button variant');
     assert.match(BUTTON_VARIANTS.glass, /text-white/);
     assert.match(BUTTON_VARIANTS.glass, /hover:bg-glass\//, 'press feedback is a faint white wash');

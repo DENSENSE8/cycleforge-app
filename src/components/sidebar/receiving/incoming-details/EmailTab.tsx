@@ -2,10 +2,7 @@ import { OrderIdChip } from '@/components/ui/CopyChip';
 import { type DetailsResponse, fmtDateTime } from './incoming-details-shared';
 import { Empty } from './incoming-details-primitives';
 
-// Simplified delivery view: just the email(s). An "ORDER DELIVERED" email
-// (eBay) is the delivery signal for the email-driven Delivered · not scanned
-// surface; this tab shows the raw email so the operator can eyeball it. Falls
-// back to any PO-mailbox worklist emails when there's no delivery signal yet.
+// Simplified delivery view:
 export function EmailTab({ data }: { data: DetailsResponse }) {
   const delivered = data.delivered_emails ?? [];
   const worklist = data.gmail ?? [];

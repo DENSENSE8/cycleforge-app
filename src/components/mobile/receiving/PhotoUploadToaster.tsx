@@ -6,29 +6,7 @@ import { useUploadQueue } from '@/components/mobile/receiving/PhotoUploadQueue';
 // One copy of the error ladder, shared with the card that owns this job now.
 import { humanizeUploadError } from '@/components/station/capture-upload/capture-upload-model';
 
-/**
- * **Demoted to a failure ECHO (P0, 2026-08-01).** The completion/failure SoT is
- * now `CaptureUploadStatus` — the bottom-anchored card mounted by
- * `CaptureUploadDock` in `m/(shell)`, which shows queued / uploading / failed /
- * committed for all three capture domains and carries the **Retry** this file
- * never could. Station law wanted that all along: pass/fail is a card the
- * operator can read at ~3 ft, not a four-second corner toast
- * (6).
- *
- * What is left here, and why it is not a twin:
- *
- *   • **success toast — REMOVED.** The card now shows "N photos saved" and
- *     holds it. Toasting the same fact beside it is two shapes for one job,
- *     which is the drift the SoT rules exist to stop.
- *   • **failure toast — KEPT.** It is the one thing the card cannot do: reach
- *     an operator who has already walked away from the shell (or is deep in a
- *     fullscreen `(immersive)` camera, where the dock deliberately does not
- *     mount). The card remains the durable, retryable record; this is a nudge
- *     toward it.
- *
- * If a later phase gives the immersive group its own status surface, delete
- * this file rather than growing it back.
- */
+/** **Demoted to a failure ECHO (P0, 2026-08-01).** The completion/failure SoT is now `CaptureUploadStatus` — the bottom-anchored card… */
 export function PhotoUploadToaster() {
   const entries = useUploadQueue();
 

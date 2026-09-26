@@ -1,13 +1,4 @@
-/**
- * POST /api/auth/step-up
- *
- * Body: { scope: string, method: 'pin' | 'passkey', pin?: string,
- *         response?: AuthenticationResponseJSON }
- *
- * Grants a step-up trust window for the current session and named scope.
- * Required before destructive actions (bin.remove, shipping.void_order,
- * admin.manage_staff, etc).
- */
+/** POST /api/auth/step-up */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/current-user';

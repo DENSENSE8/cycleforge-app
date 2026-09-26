@@ -1,10 +1,4 @@
-/**
- * GET /api/receiving/recent-staged-location?excludeLineId=
- *
- * Intended putaway (`receiving_line_putaway.staged_location_id`) from the
- * **newest staged carton that is not the open one**. Powers Unbox notes
- * composer Last entry / Move.
- */
+/** GET /api/receiving/recent-staged-location?excludeLineId= */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

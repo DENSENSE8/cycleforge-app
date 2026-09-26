@@ -67,13 +67,7 @@ interface ReceivingGridRowProps {
   isLinked?: boolean;
   /** Row-body activate — opens the record where the planes are split. */
   onSelect: () => void;
-  /**
-   * Gutter checkbox — bulk membership only. Its PRESENCE is what says this
-   * surface splits the two planes: the gutter becomes a real control and the
-   * row stops claiming `role="checkbox"`. Omitted (Unbox workbench, Testing
-   * history, Pickup) → the legacy single-gesture row, where the click ticks the
-   * box and the gutter is a painted span.
-   */
+  /** Gutter checkbox — bulk membership only. */
   onToggle?: () => void;
   /** Compare host: report carton hover for linked crosshair. */
   onCrosshairHover?: (receivingId: number | null) => void;
@@ -104,14 +98,7 @@ interface ReceivingGridRowProps {
   /** Inline note edit. Absent ⇒ the note line is read-only on this surface. */
 }
 
-/**
- * Unbox / History / Testing leaf row — CSS-grid columns matching
- * {@link RECEIVING_GRID_COLUMNS}. Desktop cells live under `./cells/`;
- * mobile falls back to {@link ReceivingLineOrderRow}.
- *
- * Agent waist: edit a column → open that `cells/*Cell.tsx` only
- * (skill `receiving-grid-cell`). Do not load PoLine / Orders / Incoming.
- */
+/** Unbox / History / Testing leaf row — CSS-grid columns matching {@link RECEIVING_GRID_COLUMNS}. */
 export const ReceivingGridRow = memo(function ReceivingGridRow({
   row,
   index,
@@ -308,20 +295,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         // Named hover group — the compound layout's chevron reveals on row
         // hover. Inert for the flat model (nothing there consumes it).
         'group/row',
-        // NO fixed row height. The row box is owned by the compound cell
-        // (`COMPOUND_ROW_PX`), exactly as it is on To-Ship, so both tables
-        // measure the same.
-        //
-        // This carried `PRIMARY_CHROME_ROW_FACE` (`h-7 shrink-0` = 28px) to
-        // share a rhythm with the column header. That is a HEADER band constant,
-        // and pinning a BODY row to it is what collapsed Receiving to a single
-        // visible line while To-Ship — which never had the class — rendered
-        // both: a 48px compound cell inside a 28px `shrink-0` row overflows, and
-        // the shell's `[contain:layout_style]` clips it silently. A body row's
-        // height is a property of what it contains.
-        // Either plane fills the row; the gutter checkbox disambiguates which.
-        // Linked peer wash is quieter than selection (compare crosshair).
-        // Custom paint fill applies when not selected (selection wash wins).
+        // NO fixed row height.
         ledgerRowFillClass({
           selected,
           linked: isLinked,

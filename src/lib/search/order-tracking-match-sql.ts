@@ -1,16 +1,4 @@
-/**
- * Order ↔ tracking match SQL — shared by header find (`searchOrders`) and
- * identifier paste (`findOrderByTrackingKey`).
- *
- * An order owns a shipment when:
- *   1. `orders.shipment_id` points at the STN (primary cache; packer scan
- *      often writes this), OR
- *   2. `shipment_links` (owner_type='ORDER') points at the STN — the linkage
- *      SoT for ingest / tech / split boxes.
- *
- * Packer_logs are NOT required. A tracking that never went through pack must
- * still resolve.
- */
+/** Order ↔ tracking match SQL — shared by header find (`searchOrders`) and identifier paste (`findOrderByTrackingKey`). */
 
 /** True when this order row owns the given STN id (primary cache or shipment_links). */
 export function sqlOrderOwnsShipment(orderAlias: string, shipmentIdExpr: string): string {

@@ -1,9 +1,4 @@
-/**
- * Per-page assistant skill fragments (plan §-2.2) — prompt text a page
- * registers through useAssistantContext so the assistant speaks that page's
- * language. Kept in one reviewed module (not scattered string literals);
- * server-side length cap is 4000 chars per fragment.
- */
+/** Per-page assistant skill fragments (plan §-2.2) — prompt text a page registers through useAssistantContext so the assistant speaks that… */
 
 export const OPERATIONS_SKILL = [
   'This page is the Operations Monitor (read-only): live activity, analytics (KPI strip, throughput, station distribution, "You vs typical" benchmarks), and history over the org-scoped event spine.',

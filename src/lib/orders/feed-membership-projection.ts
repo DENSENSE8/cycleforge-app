@@ -1,35 +1,4 @@
-/**
- * orders_unshipped → feed_memberships projection (Phase 5 of
- * docs/unshipped-dashboard-performance-plan.md; universal-feed plan Phase 4
- * "backfill shared memberships").
- *
- * Mirrors the live Unshipped fulfillment queue into `feed_memberships`
- * (feed_key='orders_unshipped', entity_type='ORDER', one row per open order) so
- * the shared read substrate — getFeedState today, a paginated dashboard read
- * later — sees a real feed with per-lane counts at sub-100ms, instead of the
- * unbounded `/api/orders?fulfillmentScope=true` CTE.
- *
- * DECISION 8 — the fulfillment LANE is computed in NODE, never in SQL. The fetch
- * pulls only the RAW signals (shipment_id / has_tech_scan / out_of_stock); this
- * module runs each through the TS SoT `deriveFulfillmentState`
- * (src/lib/order-lifecycle.ts) and stores the resulting lane
- * (pending | tested | blocked) directly in `feed_memberships.state`. That reuses
- * the existing idx_feed_memberships_org_feed_state_time index for per-lane counts
- * + keyset pagination with no SQL re-implementation of the lane rule and no new
- * column. `occurred_at` = the order's deadline (the queue sort key).
- *
- * Scope mirrors `/api/orders?fulfillmentScope=true` (and /api/orders/queue-counts):
- * labeled (shipment_id), not carrier-shipped, not Amazon-fulfilled, not yet
- * packed, not dock-scanned (SHIP_CONFIRM belongs on Shipped). Reconcile WITHOUT
- * deletes: upsert the current in-queue set, then flip existing rows to 'done'
- * once their order leaves the queue.
- * Hard-deleted orders are cleaned by the existing parent-delete trigger
- * (trg_delete_feed_memberships_on_order_delete, migration 2026-07-03j).
- *
- * Tenancy: org-preserving set-based upsert on the OWNER pool (RLS-bypassed), same
- * posture as the receiving-triage projector — every row stamped with its source
- * `orders.organization_id`. Deps-injected so it unit-tests DB-free.
- */
+/** orders_unshipped → feed_memberships projection (Phase 5 of docs/unshipped-dashboard-performance-plan.md; universal-feed plan Phase 4… */
 
 import { sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
@@ -77,14 +46,7 @@ export interface OrderUnshippedMembershipWrite {
   isOutOfStock?: boolean;
 }
 
-/**
- * Incremental `orders_unshipped` upsert for one order — same row the bulk
- * projector writes, without scanning the whole queue. Manual add-order uses
- * this so Pending metrics (`feed_memberships` lane `pending`) move on commit
- * instead of waiting for the cron projector.
- *
- * No `shipment_id` → skip (awaiting-label, not the fulfillment pending lane).
- */
+/** Incremental `orders_unshipped` upsert for one order — same row the bulk projector writes, without scanning the whole queue. */
 export function planOrderUnshippedMembership(args: OrderUnshippedMembershipWrite): {
   skip: true;
   state: null;

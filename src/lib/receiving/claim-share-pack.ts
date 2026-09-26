@@ -1,12 +1,4 @@
-/**
- * The claim's photo share pack — how it is built and where its link goes.
- *
- * Its own module, deliberately: {@link fileReceivingClaim} imports the database
- * at load, so anything living beside it can only be tested against a live
- * connection. These two are the rules the operator actually cares about, so
- * they sit where a unit test can reach them and take their collaborators as
- * arguments rather than importing the real ones.
- */
+/** The claim's photo share pack — how it is built and where its link goes. */
 
 /** Just enough of `createSharePack` / `listAllReceivingPhotoIds` to call them. */
 type CreatePack = (
@@ -25,21 +17,7 @@ type CreatePack = (
 
 type ListPhotoIds = (orgId: string, receivingId: number) => Promise<number[]>;
 
-/**
- * Build the claim's photo share pack.
- *
- * Called BEFORE the ticket exists so its link can ride in the opening comment —
- * Zendesk cannot edit a comment after the fact, so a pack built afterwards can
- * only arrive as a second one. The pack is therefore named by the CARTON and
- * carries no `zendeskTicketId`; the caller backfills that once the ticket has
- * an id.
- *
- * The operator's **Test create** runs this same function: a dry run that
- * skipped the pack would prove nothing about the one thing it exists to prove.
- *
- * Returns `null` when there is nothing to share, no origin, no staff, or the
- * pack fails. A claim is never blocked on its photo link.
- */
+/** Build the claim's photo share pack. */
 export async function buildClaimSharePack({
   orgId,
   staffId,
@@ -81,14 +59,7 @@ export async function buildClaimSharePack({
   }
 }
 
-/**
- * The claim's OPENING comment — description with the share pack folded in.
- *
- * ONE message, one place to look. The pack used to be posted as a second
- * internal comment after the ticket was created, so anyone opening the claim
- * got two messages and two links for one event — and the pack was the one they
- * actually needed.
- */
+/** The claim's OPENING comment — description with the share pack folded in. */
 export function claimOpeningBody(description: string, shareUrl: string | null): string {
   if (!shareUrl) return description;
   return `${description}\n\nPhoto share pack: ${shareUrl}`;

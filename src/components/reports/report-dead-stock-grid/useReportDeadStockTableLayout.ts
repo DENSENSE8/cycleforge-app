@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * The dead-stock slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open `subtitle:N` tracks
- * the compound item cell has nothing to paint into — `paintMorph` coerces, and
- * the org write gate (`slotMorphsFor('report-dead-stock')`) refuses the
- * foreign morph.
- *
- * The Fields menu keys off `tableId`, so `/reports` gets the RIGHT picker per
- * tab for free: each of the three reports mounts its own family, so the popover
- * that opens over Dead stock lists dormancy facts and the one over Bin
- * utilization lists bin facts, with no per-tab branch anywhere.
- */
+/** The dead-stock slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   REPORT_DEAD_STOCK_FIELD_CATALOG,

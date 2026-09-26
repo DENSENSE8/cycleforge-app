@@ -1,18 +1,4 @@
-/**
- * On-device frame gating for live label scanning. Pure, framework-free, and cheap
- * enough to run on every camera tick (intended for a small ~160x120 downscale, not
- * the full frame).
- *
- * The live scan loop (useLiveLabelScan) uses this as the first tier of a two-tier
- * funnel: the browser decides "is this frame worth sending?" so the LAN vision box
- * (5070 Ti) only ever runs OCR on steady, sharp, well-lit shots. This typically cuts
- * frames-sent by 10-20x vs naive streaming and raises the OCR hit rate.
- *
- * Metrics:
- *  - sharpness: variance of the Laplacian over grayscale. Low = blurry / motion blur.
- *  - motion:    mean absolute grayscale diff vs the previous frame. High = camera moving.
- *  - luma:      mean grayscale brightness (0..255). Low = too dark to read.
- */
+/** On-device frame gating for live label scanning. */
 
 /** Minimal shape of a canvas ImageData — also satisfied by plain test fixtures. */
 export interface ImageDataLike {

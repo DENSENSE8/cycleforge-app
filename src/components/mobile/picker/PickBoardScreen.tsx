@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Pick board — `/m/pick/unassigned`. Every order with open picks, one row
- * each: what to pick (photo + product title), where (the bin face), for whom
- * (order + channel, ship-by, open units). Two scopes:
- *
- *   Unassigned  — no owner: nobody was passed it and nobody owns its SKU.
- *   All         — every open pick, with its owner (and why) and who holds it.
- *
- * Take assigns the order to the viewer (the canonical TEST assignee the
- * directed feed reads) and opens `/m/pick`; Pass to… assigns another picker.
- */
+/** Pick board — `/m/pick/unassigned`. */
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';

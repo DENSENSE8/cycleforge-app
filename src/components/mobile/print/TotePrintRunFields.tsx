@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Tote print-run chrome — `/m/print` + Inventory › Locations › Totes.
- *
- * Stack: title left · New/Reprint right · full-width N slider (new only) ·
- * typeable tote number (reprint only) · copies + print in the host.
- *
- * Callers: MobilePrintWorkspace, TotePlateWorkspace.
- * User: reprint tote number typeable (not disabled); no N slider on reprint;
- * copies left of print; N slider full width on new totes.
- */
+/** Tote print-run chrome — `/m/print` + Inventory › Locations › Totes. */
 
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { Button, TextField } from '@/design-system/primitives';

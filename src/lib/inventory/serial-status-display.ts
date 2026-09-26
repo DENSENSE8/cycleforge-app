@@ -1,19 +1,4 @@
-/**
- * Serial-unit lifecycle status → display (label + dot class).
- *
- * The single source of truth for how a `serial_units.current_status` renders in
- * UI: a short human label and a Tailwind `bg-*` dot class. Mirrors the house
- * pattern set by `workflowStageDot` (`src/lib/receiving/workflow-stages.ts`) —
- * a status→class function, so no component inlines per-status colors. Distinct
- * from `workflow-stages.ts`, which models the *receiving inbound* workflow
- * (EXPECTED…DONE); this models the *unit lifecycle* the state machine emits
- * (RECEIVED…SHIPPED…RETURNED).
- *
- * Tones reuse the already-generated semantic shades (no new hues): gray = inert,
- * blue = in-process, amber = attention/hold, emerald = stocked, rose =
- * terminal-bad, violet = post-sale (returned/RMA/repair). PACKED / SHIPPED read
- * LIFECYCLE (packed = fulfillment, shipped = success).
- */
+/** Serial-unit lifecycle status → display (label + dot class). */
 
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 

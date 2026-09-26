@@ -1,30 +1,4 @@
-/**
- * `decision` — an operator-editable routing fork (Track 1, Stage 1: in-house).
- *
- * Where inspection.node hardcodes verdict→port, this node reads a RULE TABLE
- * from its own `config` and picks the output port from item facts (grade /
- * channel / disposition). The table lives in config — already per-definition,
- * versioned, and draft/published — so no new DB table is needed; the operator
- * edits it in the Studio Inspector's decision editor.
- *
- * Thin-adapter law (workflow-node §"the one law"): this node does NO domain
- * work, NO DB, NO side effects. It ONLY routes — evaluate the table, emit one
- * port. When the matched rule carries a `then` PLACEMENT directive (a symbolic
- * bin / lane / target-table), the node surfaces it on `NodeResult.data` so it
- * flows into the run context for the ACTION layer to consume — but the node
- * itself never resolves a bin or moves a unit. Resolving the symbol to a real
- * `bin_id` and handing it to `applyTransition({ binId })` is `placement.ts`'s
- * job; strangling the 22 hardcoded sites onto it is the per-site follow-up.
- *
- * A route-only rule (no `then`) emits NO `data` key, so a route-only decision
- * table behaves byte-identically to the pre-placement node.
- * See docs/operations-studio/ — Track 1 decision/placement layer roadmap.
- *
- * Outputs come from `config.outputs` (per-instance ports the canvas draws), so a
- * decision can fan to as many lanes as the operator declares. The registry
- * declares a sensible default pair so a freshly dropped node is still wireable
- * before it's configured.
- */
+/** `decision` — an operator-editable routing fork (Track 1, Stage 1: */
 
 import type { NodeContext, NodeOutputPort, NodeResult } from '../contract';
 import {
@@ -41,12 +15,7 @@ const DEFAULT_OUTPUTS: NodeOutputPort[] = [
   { id: 'b', label: 'B' },
 ];
 
-/**
- * Owner-tunable shape. The rule table (`outputs` / `rules` / `defaultPort`) is
- * an array-of-objects the generic scalar NodeConfigForm can't express, so the
- * Studio Inspector renders a CUSTOM editor for it — this marker just tells the
- * palette the node IS configurable (and documents the keys).
- */
+/** Owner-tunable shape. */
 export const DECISION_CONFIG_SCHEMA: Record<string, unknown> = {
   type: 'object',
   'x-editor': 'decision-rules',
@@ -117,11 +86,7 @@ registerNode({
         ? ctx.config.defaultPort
         : null;
 
-    // In-house resolve always runs: it yields the matched rule's PLACEMENT
-    // directive (the port half may be overridden by ZEN below). Placement is not
-    // part of ZEN's expression compilation yet (Stage 2 follow-up); since the ZEN
-    // port is parity-tested byte-identical to the in-house port, the matched rule
-    // — and therefore its placement — is the same either way.
+    // In-house resolve always runs:
     const facts = gatherFacts(ctx);
     const outcome = resolveDecision(rules, defaultPort, facts);
 

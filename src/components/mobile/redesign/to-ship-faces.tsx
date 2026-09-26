@@ -2,16 +2,7 @@
 
 /**
  * The typographic faces a to-ship row and its sheet both paint.
- *
- * Extracted from {@link MobileToShipRow} when the ship-by corner landed
  * (operator 2026-09-15) — the row was carrying six exported faces plus a drag
- * surface, and `MobileToShipSheet` was importing a face out of a ROW module
- * to get them.
- *
- * The meta rule lives here: **qty · price · condition share one font**
- * (`text-role-caption font-semibold` via `ITEM_RECORD_MOBILE_META`) and differ
- * only in INK — green for money, grade tone for condition. Size is hierarchy;
- * colour is category. Do not give one of the three a preset of its own.
  */
 
 import { CalendarClock } from '@/components/Icons';
@@ -63,26 +54,15 @@ export function toShipExpectedQty(row: WorkOrderRow): number | null {
 }
 
 /**
- * Plain qty — deliberately NOT `ItemRecordQtyBadge`. A to-ship line states an
- * expected quantity and counts nothing, so the badge's counted/expected
- * machinery has no state to show, and its `qtyProgress` preset is mono with
- * `leading-none` — which put the first of three facts in a different typeface
- * from the two beside it.
- *
+ * Plain qty — deliberately NOT `ItemRecordQtyBadge`.
  * Bare number, no `×` glyph (operator 2026-09-15): the column it sits in is
- * already the quantity, and a multiplication sign reads as arithmetic.
  */
 export function ToShipQtyFace({ row }: { row: WorkOrderRow }) {
   const expected = toShipExpectedQty(row);
   return <span data-testid="to-ship-qty">{expected != null ? expected : EMPTY_META_DASH}</span>;
 }
 
-/**
- * Item number — the identity a picker matches against the listing and the
- * paperwork. Leads the meta row: it is the one value on the card that is
- * neither a quantity nor a state, and an identity that floats between facts
- * shifts position every time one of them is absent.
- */
+/** Item number — the identity a picker matches against the listing and the paperwork. */
 export function ToShipItemNumberFace({ row }: { row: WorkOrderRow }) {
   const value = String(row.itemNumber || row.sku || '').trim();
   if (!value) return null;
@@ -140,14 +120,7 @@ export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
   );
 }
 
-/**
- * Ship-by, top-right corner of the card.
- *
- * Read-only on purpose: the row swipes to commit a ship, so a tappable date
- * field here would be a second commit target inside a drag surface. Editing a
- * ship-by belongs on the order. (`DateRangePickerField variant="compact"` is
- * the in-CELL editor for slot tables — a different job, a different surface.)
- */
+/** Ship-by, top-right corner of the card. */
 export function ToShipByFace({ row }: { row: WorkOrderRow }) {
   const key = row.deadlineAt ? toPSTDateKey(row.deadlineAt) : null;
   if (!key) return null;

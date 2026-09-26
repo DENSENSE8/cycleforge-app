@@ -1,15 +1,8 @@
 'use client';
 
 /**
- * The PIN step-up for a line's money verbs — a price adjustment, a custom
- * amount, a comp. It is {@link KioskPaymentStepUpSheet} on the
- * `adjust_price` roster, posting `/api/kiosk/price-approval` and handing the
- * caller the signed approval the line then carries to submit. Removing a
+ * The PIN step-up for a line's money verbs — a price adjustment, a custom amount, a comp.
  * line never comes here: it is a plain delete (operator 2026-09-24: "no need
- * for PIN to remove — dogfood must move fast").
- *
- * Callers: `KioskCartLineEditor`.
- * Affected API: POST `/api/kiosk/price-approval`.
  */
 
 import { useCallback } from 'react';

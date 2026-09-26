@@ -1,29 +1,4 @@
-/**
- * §2 client capture provenance — the DEVICE→WIRE→ROUTE→COLUMN round trip.
- *
- * `photos.created_at` is the server-INSERT instant, which for a queued mobile
- * upload can land hours after the shutter. `photos.client_captured_at` is the
- * device's own reading. The value therefore crosses four modules, and a break
- * at ANY seam is silent (the column just goes null and nobody notices until a
- * carrier dispute):
- *
- *   capture-time.ts   read on the device, before downscale destroys EXIF
- *        ↓            (`clientCapturedAtMs`, epoch ms)
- *   upload-client.ts  multipart field `CLIENT_CAPTURED_AT_FIELD`
- *        ↓
- *   capture-provenance.ts   `parseClientCapturedAt` at the route edge → Date|null
- *        ↓
- *   create-photo.ts   bound as the 5th INSERT param on `photos`
- *
- * These suites walk the whole chain with fakes at the two I/O boundaries
- * (`fetch`, the pg client) — no DB, no browser. The route handler itself is not
- * importable DB-free (`withAuth` + the pool), so its edge parser and its
- * degrade-to-null contract are covered directly here.
- *
- * The second half is the legacy contract: a stage-less, timestamp-less payload
- * must upload byte-identically and store NULL. A fabricated timestamp would be
- * worse than none — see `capture-provenance.ts`.
- */
+/** §2 client capture provenance — the DEVICE→WIRE→ROUTE→COLUMN round trip. */
 
 import { describe, it, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -227,13 +202,6 @@ describe('§2 legacy · a stage-less, timestamp-less payload uploads cleanly wit
 
   it('CHARACTERIZATION (finding): the Date.parse fallback still fabricates from loose junk', () => {
     // NOT an endorsement — this pins current behavior so the finding is visible.
-    // `parseClientCapturedAt` tries `Date.parse` for anything that is not a
-    // 1–15 digit integer, and V8's legacy parser accepts loose date-ish strings
-    // and resolves them in the SERVER's local zone. So a garbage field can land
-    // ABOVE the year-2000 floor and be stored as a plausible-looking instant —
-    // the exact "fabricated value wearing a precise mask" the floor exists to
-    // stop. Unreachable from the shipped clients (`uploadPhotoClient` only ever
-    // writes epoch ms), so this is a hardening note, not a live defect.
     for (const raw of ['-1', '12/12', 'Mar 2019']) {
       const parsed = parseClientCapturedAt(raw);
       assert.ok(parsed instanceof Date, `expected current (undesirable) behavior for ${raw}`);

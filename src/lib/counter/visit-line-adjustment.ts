@@ -1,13 +1,4 @@
-/**
- * How a visit's counter money verbs read on paper and in History — one
- * wording for the receipt and the History face, so the two never disagree.
- *
- *   adjust → `Adjusted from $5.59 · Price match`
- *   comp   → `Comp · Goodwill`
- *   custom → `Custom amount`
- *
- * Callers: `KioskHistoryDetail`, `visit-receipt`. Pure.
- */
+/** How a visit's counter money verbs read on paper and in History — one wording for the receipt and the History face, so the two never… */
 
 import { AUDIT_ACTION } from '@/lib/audit-logs';
 import type { CounterVisitAuditEntry, CounterVisitLineAdjustment } from './read-visit';

@@ -7,12 +7,7 @@ import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';
 import type { TestingController } from './testing-panel-types';
 
-/**
- * Testing adapter for the station entity-context header SoT
- * (`CartonContextCard` via `@/components/station/entity-context`).
- * One-row family face (same as Unbox / Triage). Pair host with
- * `placement="flow"` + `reserveIdentityClearance={false}`.
- */
+/** Testing adapter for the station entity-context header SoT (`CartonContextCard` via `@/components/station/entity-context`). */
 export function TestingCartonHeader({
   c,
   row,

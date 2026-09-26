@@ -48,11 +48,7 @@ export function NotesTab({
     }
   }, [receivingId, value, initialValue, queryClient]);
 
-  // Save on click-off: any pointer-down outside the textarea commits the draft
-  // (no-ops when unchanged). Covers clicking elsewhere in the panel, another
-  // tab, or the close button/backdrop — more reliable than focus-blur, which
-  // can be skipped when the panel unmounts. Ref keeps the listener stable while
-  // always calling the latest `save`.
+  // Save on click-off:
   const saveRef = useRef(save);
   useEffect(() => {
     saveRef.current = save;

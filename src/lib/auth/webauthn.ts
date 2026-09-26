@@ -1,12 +1,4 @@
-/**
- * WebAuthn / passkey server helpers — thin wrapper over @simplewebauthn/server.
- *
- * Challenges are stashed in a short-lived httpOnly cookie (5 min TTL), so we
- * don't need an extra DB table or Redis for the begin → finish handshake.
- *
- * RP configuration comes from env. In dev (localhost), the library auto-
- * accepts the loopback origin. In prod it must match exactly.
- */
+/** WebAuthn / passkey server helpers — thin wrapper over @simplewebauthn/server. */
 
 import { NextRequest } from 'next/server';
 import {
@@ -35,14 +27,7 @@ export {
 
 export const PASSKEY_CHALLENGE_COOKIE = 'cf_wac';
 
-/**
- * Returns { rpID, rpName, origin, expectedOrigins } for staff (and account)
- * WebAuthn. rpID is the parent staff app host so tenant subdomains share one
- * Face ID. expectedOrigins covers apex + the request's `{slug}.app…` origin.
- *
- * Callers: passkey register/authenticate routes, step-up, QR authorize,
- * account WebAuthn (`webauthn-account.ts`).
- */
+/** Returns { rpID, rpName, origin, expectedOrigins } for staff (and account) WebAuthn. */
 export function getRpFromRequest(req: NextRequest): {
   rpID: string;
   rpName: string;

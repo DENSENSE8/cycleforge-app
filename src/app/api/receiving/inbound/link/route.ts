@@ -1,27 +1,4 @@
-/**
- * POST /api/receiving/inbound/link
- *
- * Universal Incoming — Phase 4. The single manual link+merge chokepoint behind
- * the "Link" button (plan §7.2): attach a second purchase identity (typically a
- * Zoho PO) to one Incoming spine row, writing the secondary link + cross-source
- * equivalence and — under the default augment_winner strategy — collapsing an
- * unambiguous duplicate zoho-only spine row. All the transactional work lives in
- * the Deps-injected domain helper `linkInboundManually`; this route validates,
- * delegates, maps status, audits.
- *
- * Skeleton: withAuth(permission) → validate → linkInboundManually() → map
- * 200/400/404 → recordAudit(RECEIVING_INBOUND_LINKED) → after() cache refresh.
- *
- * Body:
- *   {
- *     receiving_line_id: number,
- *     target: { system: 'zoho'|'ebay'|…,
- *               purchase_order_id | source_order_id: string,
- *               purchase_order_number?: string,
- *               source_line_item_id?: string },
- *     merge_strategy?: 'augment_winner' | 'augment_only'   // default augment_winner
- *   }
- */
+/** POST /api/receiving/inbound/link */
 
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';

@@ -20,16 +20,7 @@ interface SidebarRailScrollportProps {
   scrollStyle?: CSSProperties;
 }
 
-/**
- * Recent-rail vertical scrollport — the SoT for station / sidebar recent feeds.
- *
- * Owns `overflow-y-auto` + `scrollbar-hide` + the flat bottom "more below" fade
- * ({@link SCROLL_MORE_BELOW_CLASS} + {@link useMoreBelow}). Hosts pin scan bands
- * / filters outside this port; {@link SidebarRailShell} is content-sized and
- * must never own vertical scroll.
- *
- * Fade hides when scrolled to the end (or when content fits).
- */
+/** Recent-rail vertical scrollport — the SoT for station / sidebar recent feeds. */
 export function SidebarRailScrollport({
   children,
   className,

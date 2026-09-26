@@ -1,31 +1,4 @@
-/**
- * ShipStation shipments → order tracking.
- *
- * The v1 order pull carries no tracking, so an order whose label was bought
- * INSIDE ShipStation used to land with none (the sheet pipeline's
- * `resolve_tracking` step had covered it). This module closes that gap from the
- * v1 `/shipments` feed:
- *
- *   1. {@link planShipStationTracking} (pure) reduces the feed to ONE primary
- *      tracking per order number.
- *   2. {@link attachShipStationTracking} resolves each plan to the org's rows:
- *      the rows recorded against its ShipStation order (`shipstation_order_refs`),
- *      else the aggregator rule (`matchAggregatorOrderRows`: one platform's rows
- *      or a legacy row; rows across platforms are never guessed) — and
- *      registers the tracking as their primary through the injected
- *      {@link ShipStationTrackingDeps} (production: `applyOrderTrackingOps`).
- *
- * Primary rule (deterministic): among an order's shipments that are NOT voided,
- * NOT return labels, and DO carry a tracking number, the one with the latest
- * `createDate` wins; equal/unparseable dates fall back to the higher
- * `shipmentId` (ShipStation ids are issued monotonically). A re-label after a
- * void therefore replaces the voided tracking, and a return label never
- * overwrites the outbound one.
- *
- * Voids are NOT back-propagated: a label voided in ShipStation after it was
- * attached here stays on the order until an operator (or the in-app void route)
- * removes it.
- */
+/** ShipStation shipments → order tracking. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { ShipStationV1Shipment } from '@/lib/shipping/shipstation/orders-v1';
 import { shipStationCarrierToStored } from '@/lib/shipping/carrier-resolution';

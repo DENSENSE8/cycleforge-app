@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Badge (new-york), restyled to house tokens.
- *
- * shadcn STRUCTURE (`cva` variant map + `asChild` via Slot), house COLOUR.
- * The upstream default/secondary/destructive trio is joined by `success` and
- * `warning` because warehouse chrome states gates and lanes, not marketing
- * tags. Glyph + text together — never colour alone (mono-display law).
- */
+/** shadcn/ui Badge (new-york), restyled to house tokens. */
 
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';

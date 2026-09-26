@@ -8,12 +8,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/label-manifests/[id]/seal — seal an OPEN manifest and return its
- * `manifest_uid` for the master label. Idempotent: re-sealing a SEALED manifest
- * returns it unchanged; a DISSOLVED manifest 409s. Records ONE master MANIFEST
- * row in the print ledger (idempotent per manifest). Auth: `label.manifest.manage`.
- */
+/** POST /api/label-manifests/[id]/seal — seal an OPEN manifest and return its `manifest_uid` for the master label. */
 export const POST = withAuth(
   async (request, ctx) => {
     const orgId = ctx.organizationId as OrgId;

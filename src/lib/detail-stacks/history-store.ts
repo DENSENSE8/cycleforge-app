@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Recent-detail-stacks history — a tiny module-level store (subscribe/emit +
- * localStorage), the same shape as src/lib/assistant/context-store.ts. Records
- * the detail-stack slide-overs the operator has opened so the context rail can
- * list them for one-click re-open. Shared across the rail, the panel section,
- * and the URL tracker via useSyncExternalStore, so a record from the tracker
- * repaints the rail immediately.
- */
+/** Recent-detail-stacks history — a tiny module-level store (subscribe/emit + localStorage), the same shape as… */
 
 import type { DetailStackKind } from './registry';
 

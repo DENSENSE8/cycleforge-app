@@ -46,28 +46,7 @@ const DefaultLoading = (
   </div>
 );
 
-/**
- * The house **bottom-anchored capture stack**: the current task expanded at the
- * bottom, every completed row collapsed to a single line and pushed up into a
- * scrollable ledger. Owns the scroll container + the layout/spring animation per
- * row; callers supply `renderRow` (usually a domain row wrapped in
- * {@link CaptureStackRow}). Pair with `useCaptureStackWindow` for windowing +
- * auto-scroll + fresh pulse — bottom-anchoring lives across BOTH files, so they
- * move and change together.
- *
- * Promoted verbatim from `components/mobile/feed/MobileFeed` (capture-stack
- * Phase 1) so stations migrate onto one primitive instead of forking a
- * `StationTimelineShell`. Contract pinned by `capture-stack.guard.test.ts`.
- *
- * Motion routes through the reduced-motion bridge (capture-stack Phase 2):
- * shapes come from `framerPresence.captureStackRow*` and the spring from
- * `framerTransition.captureStackRowMount`, both via `useMotionPresence` /
- * `useMotionTransition`, so reduced motion is free here and for every future
- * station consumer. Pinned by `station-motion-bridge.guard.test.ts`.
- *
- * `layout` keeps its own `useReducedMotion` branch because the bridge has no
- * layout equivalent — same shape as `CardShell`.
- */
+/** The house **bottom-anchored capture stack**: */
 export function CaptureStack<T>({
   rows,
   isLoading = false,
@@ -96,10 +75,7 @@ export function CaptureStack<T>({
   const lastIndex = rows.length - 1;
 
   return (
-    // Bottom-anchored feeds (expandLast) use flex-col + an mt-auto spacer so a
-    // SHORT list pins to the bottom (newest just above the nav) instead of
-    // stranding at the top with a big gap — scrollTo(bottom) only works once the
-    // list overflows, so the spacer covers the short-list case.
+    // Bottom-anchored feeds (expandLast) use flex-col + an mt-auto spacer so a SHORT list pins to the bottom (newest just above the nav)…
     <div
       ref={scrollRef}
       className={`min-h-0 w-full max-w-full flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none ${expandLast ? 'flex flex-col' : ''} ${className}`}

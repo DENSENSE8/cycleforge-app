@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * SKU Exceptions — the open placeholder SKU (triage evidence stack, BRIEF §4),
- * placed by the ledger's `DeskRecordPlane`: what it is (the placeholder SKU,
- * its state and next step) → evidence (photos, product, facts, where it sits
- * and how many) → the decision bar (Add photo · Count · Pair · Share link,
- * keys 1–4, the next step's verb ink-filled).
- *
- * Nothing open, {@link skuExceptionsSummary} reads the queue as a whole (held ·
- * no photo · unlocated · units on hold).
- */
+/** SKU Exceptions — the open placeholder SKU (triage evidence stack, BRIEF §4), placed by the ledger's `DeskRecordPlane`: */
 
 import { useCallback, useId, useMemo, useRef } from 'react';
 import Link from 'next/link';

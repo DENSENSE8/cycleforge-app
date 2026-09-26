@@ -1,10 +1,4 @@
-/**
- * Morphing Out-of-stock picker helpers — pure decision + identity builders.
- *
- * Importers: MorphingRowActionMenu. Affected: POST /api/orders/assign payload.
- * Schema: OrderShortageIdentity → oos_* columns. No DB write here.
- * User: "Implement the plan as specified... Out of stock identity + Pending-tab toast"
- */
+/** Morphing Out-of-stock picker helpers — pure decision + identity builders. */
 
 import {
   catalogChildShortageIdentity,

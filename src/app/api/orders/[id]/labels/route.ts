@@ -10,22 +10,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 
-/**
- * /api/orders/[id]/labels — pair ShipStation labels with this order.
- *
- * GET  ?q=   Link-label candidates: empty → this order's own ShipStation
- *            shipments + every quarantined ShipStation label; a tracking # or
- *            ShipStation order # → persisted refs first, a live v1 lookup when
- *            nothing local matches (an explicit search, never a render).
- * POST       { shipstationShipmentId, purpose, clientEventId } — link one
- *            label under a purpose (outbound / return / replacement), same
- *            order number and name. A quarantined label (e.g. the second live
- *            label on one order) resolves as LINKED. Audited (LABEL_LINKED on
- *            the order timeline) + the order's notes trail.
- *
- * The order's label LIST is `GET /api/orders/[id]/label-purchase` (`labels`).
- * Domain logic: lib/shipping/order-label-links.
- */
+/** /api/orders/[id]/labels — pair ShipStation labels with this order. */
 
 function orderIdFrom(raw: string): number | null {
   const id = Number(raw);

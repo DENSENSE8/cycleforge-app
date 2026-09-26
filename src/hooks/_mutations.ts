@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * Shared server-mutation primitives for the God-component cleanup.
- *
- * The large legacy components (StaffAccessDetail, StationFbaInput, LineEditPanel,
- * …) each hand-roll the same plumbing per mutation:
- *
- *     setBusy('basic');
- *     const r = await fetch(url, { method: 'PATCH', ... });
- *     if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error); return; }
- *     await refresh();          // full refetch
- *     notifyList();             // window.dispatchEvent(...) to poke siblings
- *     setBusy(null);
- *
- * That is `useMutation` + cache invalidation reimplemented by hand, badly: a
- * string `busy` sentinel instead of per-mutation `isPending`, a blanket
- * refetch instead of targeted invalidation, and a window event instead of the
- * shared query cache.
- *
- * Two write primitives:
- *   - `useOptimisticMutation` — **edits**. Paints the cache first, persists,
- *     rolls back and `toast.error`s on failure. That is the house edit path.
- *   - `useResourceMutation` — creates / fire-and-forget with no cached row to
- *     patch. Invalidates on success. Do not use it for an inline edit.
- *
- * `jsonOrThrow` / `HttpError` parse the server `{ error }` envelope for both.
- */
+/** Shared server-mutation primitives for the God-component cleanup. */
 
 import { useCallback } from 'react';
 import {
@@ -73,22 +48,7 @@ export interface ResourceMutationOptions<TData, TVars>
   invalidates?: ReadonlyArray<readonly unknown[]>;
 }
 
-/**
- * A `useMutation` that auto-invalidates the given query keys on success.
- *
- * @example
- * const patchBasic = useResourceMutation(
- *   (patch: Record<string, unknown>) =>
- *     fetch(`/api/admin/staff/${staffId}`, {
- *       method: 'PATCH', credentials: 'include',
- *       headers: { 'content-type': 'application/json' },
- *       body: JSON.stringify(patch),
- *     }).then((r) => jsonOrThrow(r, 'Save failed.')),
- *   { invalidates: [qk.staffAccess.detail(staffId), qk.staffAccess.list] },
- * );
- * // …
- * <button disabled={patchBasic.isPending} onClick={() => patchBasic.mutate({ status })} />
- */
+/** A `useMutation` that auto-invalidates the given query keys on success. */
 export function useResourceMutation<TData = unknown, TVars = void>(
   mutationFn: (vars: TVars) => Promise<TData>,
   options: ResourceMutationOptions<TData, TVars> = {},
@@ -110,23 +70,7 @@ export function useResourceMutation<TData = unknown, TVars = void>(
   });
 }
 
-/**
- * Gate an async action behind the Kinetic Ledger AlertDialog confirm host.
- *
- * Replaces legacy `window.confirm()` blocks. Mounts via `ConfirmDialogHost`
- * in Providers. Returns a stable callback that resolves to `false` (and skips
- * the action) when the user cancels, `true` otherwise.
- *
- * Compose it directly with a mutation's `mutateAsync`:
- *
- * @example
- * const revokeSession = useResourceMutation(
- *   (sid: string) => fetch(`/api/admin/sessions/${sid}`, { method: 'DELETE' }).then((r) => jsonOrThrow(r)),
- *   { invalidates: [qk.staffAccess.detail(staffId)] },
- * );
- * const confirmRevoke = useConfirmedAction(revokeSession.mutateAsync, 'Revoke this session?');
- * // <button onClick={() => confirmRevoke(sid)} />
- */
+/** Gate an async action behind the Kinetic Ledger AlertDialog confirm host. */
 export function useConfirmedAction<Args extends unknown[]>(
   action: (...args: Args) => unknown | Promise<unknown>,
   message: string,

@@ -172,14 +172,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'fba.view', feature: 'fba' });
 
-// ── POST /api/fba/shipments ───────────────────────────────────────────────────
-// Creates a shipment header + optional initial items in a single transaction.
-// When `shipment_ref` is omitted, a plan code is generated from `due_date` only:
-// `FBA-MM/DD/YY` (no time). Response includes `plan_ref` (same as `shipment.shipment_ref`);
-// `shipment.id` is the internal row id (not the plan code).
-// Body: { shipment_ref?, destination_fc?, due_date?, notes?,
-//         created_by_staff_id?, assigned_tech_id?, assigned_packer_id?,
-//         items: [{ fnsku, expected_qty, product_title?, asin?, sku? }] }
+// ── POST /api/fba/shipments ─────────────────────────────────────────────────── Creates a shipment header + optional initial items in a…
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

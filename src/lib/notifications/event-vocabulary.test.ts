@@ -56,10 +56,7 @@ test('notifiable entity types match the DB CHECK byte-for-byte', () => {
 });
 
 test('inbox entity types match the DB CHECK byte-for-byte', () => {
-  // The inbox's list is a strict superset of the subscribable one, so it needs
-  // its own pin — `support_ticket` is in `staff_inbox_items_entity_type_chk`
-  // and deliberately NOT in `staff_subscriptions_entity_type_chk`, and a test
-  // that only checked one of them would have called that drift.
+  // The inbox's list is a strict superset of the subscribable one, so it needs its own pin — `support_ticket` is in…
   const sql = readFileSync(INBOX_MIGRATION, 'utf8');
   const match = sql.match(
     /ADD CONSTRAINT staff_inbox_items_entity_type_chk CHECK \(\s*entity_type = ANY \(ARRAY\[([^\]]+)\]\)\s*\)/,

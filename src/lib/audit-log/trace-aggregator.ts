@@ -1,21 +1,4 @@
-/**
- * Read-only aggregator for the First-Trace audit view (P1-TRACE-03).
- *
- * Given a single serial (or minted unit_uid), resolves the unit — org-scoped —
- * and returns its complete cross-station lifecycle as `inventory_events` spine
- * rows (RECEIVED → TEST_* → PUTAWAY → ALLOCATED → PICKED → PACKED → LABELED →
- * SHIPPED → RETURNED …), in chronological order, each carrying actor + ts.
- *
- * The "trace" is serial-anchored on purpose: it follows ONE physical unit from
- * origin through every station, which is exactly the acceptance — receiving →
- * shipping → returns with who/when at each step. It reuses the shared
- * `readInventorySpine` reader (the same spine the receiving/tech/packing
- * aggregators read) so there is no second event source, and the originating
- * sales order (for the shipping/returns legs) is resolved through the existing
- * `findShippedOrderForSerialUnit` / `findShippedOrderByTsnSerial` helpers.
- *
- * Pure read; no schema change; never mutates the serial.
- */
+/** Read-only aggregator for the First-Trace audit view (P1-TRACE-03). */
 
 import 'server-only';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -56,29 +39,7 @@ export interface TraceOrder {
   via: 'allocation' | 'tsn';
 }
 
-/**
- * One trace event — a structural subset of the spine record, shaped so the
- * client can feed it straight through `inventoryEventsToTimeline` (which already
- * renders the full lifecycle vocabulary through the shared `EventTimeline`).
- *
- * "Structural subset" is a contract, not a comment: every field
- * `InventoryTimelineRow` reads has to survive this projection, or the adapter
- * silently renders less than the spine knows. Four did not until 2026-08-02 —
- * the same projection defect the entity journey had — and each one costs a
- * visible fact:
- *
- *   - `notes`          → a NOTE renders as the literal word "Note" instead of
- *                        the sentence someone wrote (the whole content of the
- *                        event).
- *   - `actor_staff_id` → no avatar. The timeline resolves a face by staff id and
- *                        never guesses one from a display name, so dropping the
- *                        id is dropping the face.
- *   - `bin_barcode` /
- *     `bin_name`       → PUTAWAY / MOVED lose the bin chip and its deep link,
- *                        which on a putaway is the only fact that matters.
- *
- * Add a field here whenever the adapter learns to read one.
- */
+/** One trace event — a structural subset of the spine record, shaped so the client can feed it straight through `inventoryEventsToTimeline`… */
 export interface TraceEvent {
   id: number;
   occurred_at: string;
@@ -103,25 +64,7 @@ export interface TraceResult {
   events: TraceEvent[];
 }
 
-/**
- * Compile-time proof of the contract in {@link TraceEvent}'s docblock.
- *
- * `Missing` is `never` while the projection carries every field the timeline
- * adapter reads, and a union of the gaps the moment it does not — at which
- * point `Complete` becomes a tuple and the `= true` below stops compiling,
- * naming the dropped keys in the error.
- *
- * Plain assignability would NOT catch this and did not: every field the adapter
- * added is optional (`notes?`, `actor_staff_id?`, `bin_barcode?`, `bin_name?`)
- * so that existing callers keep compiling — the same property that let this
- * projection drop all four in silence. So the assertion is on the KEYS.
- *
- * It lives here rather than beside the adapter's tests because `**\/*.test.ts`
- * is excluded from tsconfig and tsx strips types without checking them, so a
- * type-level assertion in a test file is never evaluated by anything.
- * `import type` erases, so naming the client shape costs this server-only
- * module nothing at runtime — no bundle-altitude edge.
- */
+/** Compile-time proof of the contract in {@link TraceEvent}'s docblock. */
 type MissingFromTrace = Exclude<keyof InventoryTimelineRow, keyof TraceEvent>;
 const traceCarriesEveryAdapterField: [MissingFromTrace] extends [never]
   ? true
@@ -147,13 +90,7 @@ function toTraceEvent(r: InventoryEventRecord): TraceEvent {
   };
 }
 
-/**
- * Resolve a serial / unit_uid to its full lifecycle trace, org-scoped.
- *
- * Resolution order matches the unit-detail route: numeric serial_units.id →
- * normalized serial → minted unit_uid. Returns `found:false` (not an error) when
- * nothing resolves, so the client can render a clean empty state.
- */
+/** Resolve a serial / unit_uid to its full lifecycle trace, org-scoped. */
 export async function getSerialTrace(
   rawInput: string,
   orgId: OrgId,
@@ -233,10 +170,7 @@ export async function getSerialTrace(
 
   const unitId = Number(row.id);
 
-  // Full unit lifecycle from the shared spine — every station's event for THIS
-  // unit, oldest-first (origin → ship → return), org-scoped. Plus the product
-  // title, the receiver name, and the shipped sales order (for the ship/return
-  // legs). Independent reads → one round-trip group.
+  // Full unit lifecycle from the shared spine — every station's event for THIS unit, oldest-first (origin → ship → return), org-scoped.
   const [spine, titleRow, receiverRow, shippedOrder] = await Promise.all([
     readInventorySpine({ serialUnitIds: [unitId], order: 'asc' }, orgId),
     row.sku

@@ -1,17 +1,4 @@
-/**
- * The command book — every scannable `CMD-*` string in one ordered catalog.
- *
- * Pure assembly over the three command registries. It exists so the printable
- * book, the on-screen catalog and any future sticker sheet all read the SAME
- * list: a book that could drift from the parser is a book that teaches an
- * operator a code the app will refuse.
- *
- * Grouping is by what a scan DOES, because that is the only distinction that
- * changes how an operator may use the page: a `move` code is always safe to
- * scan, an `act` code changes a unit's lifecycle, and a `session` code changes
- * how the current bench reads the next scan. Sorting inside a group is the
- * registry's own `sortOrder` — the sticker-sheet order.
- */
+/** The command book — every scannable `CMD-*` string in one ordered catalog. */
 
 import { NAV_COMMAND_CODES } from './nav-command-codes';
 import { ACTION_COMMAND_CODES } from './action-command-codes';
@@ -124,18 +111,7 @@ export function listCommandBookEntries(): CommandBookEntry[] {
   return buildCommandBook().flatMap((s) => s.entries);
 }
 
-/**
- * Every built-in command as a seedable `reason_codes` row.
- *
- * One derived list, so the Admin catalog cannot drift from the parser. Both
- * seeders read it: `seedOrgCatalog` (every NEW org, correct by construction)
- * and the backfill migration (every org that already existed). Hand-listing the
- * codes in either place would create the exact drift this returns.
- *
- * `sortOrder` is offset per family so one `flow_context` sorts coherently —
- * the three registries each number from 10, so without the offset a move code
- * and an action code would interleave arbitrarily in the Admin list.
- */
+/** Every built-in command as a seedable `reason_codes` row. */
 export function listSeedableCommandCodes(): Array<{
   code: string;
   label: string;

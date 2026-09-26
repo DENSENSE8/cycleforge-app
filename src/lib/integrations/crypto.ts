@@ -1,39 +1,4 @@
-/**
- * AES-256-GCM payload encryption for organization_integrations.
- *
- * The key is read once at module load from INTEGRATION_KMS_KEY — a
- * base64-encoded 32-byte (256-bit) buffer. In production this should come
- * from a real KMS (AWS KMS, Google Cloud KMS, HashiCorp Vault) via your
- * deploy secret manager; we keep the storage shape KMS-compatible (one
- * symmetric key per environment) so swapping it later is a config change,
- * not a code change.
- *
- * Ciphertext format (base64):  <iv (12 bytes)><auth tag (16 bytes)><cipher>
- * Same envelope on both encrypt and decrypt — easy to grep through audit
- * logs and trivially identifiable in a hex dump.
- *
- * ROTATION — why decrypt takes a key LIST and encrypt does not
- * ------------------------------------------------------------
- * Encryption always uses INTEGRATION_KMS_KEY. Decryption tries that key first
- * and then every key in INTEGRATION_KMS_KEY_PREVIOUS (comma-separated), so a
- * row written under an older key still opens.
- *
- * This is not hypothetical tidiness. On 2026-08-21 local dev and Vercel
- * production were pointed at the SAME Neon database while holding DIFFERENT
- * INTEGRATION_KMS_KEY values. `organization_integrations` carries one row per
- * (org, provider), so whichever environment refreshed an OAuth token
- * re-encrypted that row with its own key and locked the other one out. The
- * Zoho row flipped on a ~10-minute cron; every `purchaseorders.*` call in the
- * other environment came back `denied — no active credential` while the
- * Integrations page still read "Connected", because an undecryptable payload
- * and an absent one both surface as `null`.
- *
- * With a previous-key list the fix is a config change with no downtime and no
- * operator reconnects: put the incoming key in INTEGRATION_KMS_KEY and the
- * outgoing one in INTEGRATION_KMS_KEY_PREVIOUS. Rows re-encrypt under the new
- * key as they are rewritten; `scripts/reencrypt-integration-payloads.ts`
- * finishes the stragglers so the previous key can be dropped.
- */
+/** AES-256-GCM payload encryption for organization_integrations. */
 
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 
@@ -65,12 +30,7 @@ function getKey(): Buffer {
   return cachedKey;
 }
 
-/**
- * Retired keys still accepted for DECRYPTION only, newest first.
- * `INTEGRATION_KMS_KEY_PREVIOUS` is comma-separated so more than one rotation
- * can be in flight. A malformed entry is skipped with a warning rather than
- * throwing — one bad character must not take every integration offline.
- */
+/** Retired keys still accepted for DECRYPTION only, newest first. */
 function getPreviousKeys(): Buffer[] {
   if (cachedPreviousKeys) return cachedPreviousKeys;
   const raw = process.env.INTEGRATION_KMS_KEY_PREVIOUS;
@@ -117,13 +77,7 @@ export function isIntegrationKmsConfigured(): boolean {
   }
 }
 
-/**
- * Enforce encryption-at-rest in production. Call this on any code path that
- * would otherwise fall back to storing a secret as plaintext when no key is
- * configured (e.g. writeEbayToken). In production (Vercel `production`, or
- * NODE_ENV=production) a missing/invalid INTEGRATION_KMS_KEY throws; in
- * dev/preview it only warns so local work keeps going without the key.
- */
+/** Enforce encryption-at-rest in production. */
 export function assertIntegrationKmsConfigured(context = 'integration credentials'): void {
   if (isIntegrationKmsConfigured()) return;
   const isProduction =

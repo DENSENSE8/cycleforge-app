@@ -1,17 +1,4 @@
-/**
- * Station composition → diagnostics summaries (Operations Studio, PR #5).
- *
- * Bridges the stations REGISTRY (code) to the pure workflow diagnostics linter:
- * given the active station_definitions rows bound to a graph's nodes, it
- * resolves each block instance's required roles + referenced actions against
- * the registry and emits a per-node `NodeStationSummary`. `runDiagnostics` then
- * turns gaps (unmapped required role, dangling action) into publish-blocking
- * `error` diagnostics — without diagnostics.ts ever importing the registry, so
- * that module stays pure and client-safe.
- *
- * The DB fetch is the caller's job (Drizzle in the graph feed, pg in the
- * publish txn); this resolver is pure and unit-testable.
- */
+/** Station composition → diagnostics summaries (Operations Studio, PR #5). */
 
 import { listActionMeta, listBlockMeta, type BlockInstanceConfig } from '@/lib/stations';
 import type { NodeStationSummary } from '@/lib/workflow/diagnostics';

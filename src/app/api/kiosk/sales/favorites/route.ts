@@ -1,10 +1,4 @@
-/**
- * GET/PUT /api/kiosk/sales/favorites
- *
- * Device-authed retail favorites for the kiosk Buy/Sell rail — the twin of
- * `/api/kiosk/repair/favorites`, same wire shape, `sales` workspace. The rail
- * decides the workspace; the client only ever asks `${apiBasePath}/favorites`.
- */
+/** GET/PUT /api/kiosk/sales/favorites */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

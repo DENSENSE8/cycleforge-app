@@ -1,12 +1,4 @@
-/**
- * Tracking-exception slot resolvers — row + fieldId → the resolved fact a slot
- * cell paints. Pure functions; no React, no hooks.
- *
- * The carrier resolves through `trackingExceptionCarrier`, the same SoT the
- * cell reads (join first, then domain metadata, else Unknown), so a bound
- * column and the cell beside it can never disagree about which carrier a scan
- * belongs to.
- */
+/** Tracking-exception slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import {

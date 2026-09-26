@@ -5,21 +5,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { uploadPhoto } from '@/lib/photos/service';
 import { photoContentUrl } from '@/lib/photos/display-url';
 
-/**
- * POST /api/inventory-photos
- *
- * Generic photo attachment for inventory events — used by the Numpad sheet
- * when a reason code requires photographic evidence (DAMAGED, SCRAP, …)
- * or when a large variance fires a manual-photo prompt.
- *
- * Body: { photoBase64, ledgerId?, alertId?, sku?, binId?, staffId, photoType? }
- *
- * The photo lands in Vercel Blob at:
- *   bin_adjustments/{ledgerId or 'orphan'}/{ts}.jpg
- *
- * One row inserted into the unified `photos` table with
- * entity_type='BIN_ADJUSTMENT' and entity_id = ledgerId (when supplied).
- */
+/** POST /api/inventory-photos */
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {

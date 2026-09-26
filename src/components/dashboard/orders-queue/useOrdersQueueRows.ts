@@ -19,35 +19,9 @@ import { compareQueueColumnRows, compareUrgentPin } from './queue-row-compare';
 export interface OrdersQueueRows {
   /** Feed rows this mount was given — the table paints all of them. */
   visibleRecords: ShippedOrder[];
-  /**
-   * Date bands → folded order groups, in canonical render order — a
-   * `GroupedRenderOrder<ShippedOrder>` in all but its declared (mutable) type,
-   * which it keeps because it flows straight into `LedgerGrid`'s mutable prop.
-   * (Mutable → readonly is assignable; the reverse is not, so the readonly alias
-   * belongs on the consumer, not here.)
-   *
-   * Group keys are **band-local** by design (`order_id`, or `id:<n>`), so a
-   * multi-line order whose lines straddle two date bands lands one group per
-   * band under the same key. Do not band-qualify them here: fold identity is
-   * minted exactly once, by `foldKey(bandKey, group.key)` in `group-rows.ts`,
-   * and a second encoding would mean a `revealFoldKey` produced by one is never
-   * `.has()`-equal to a set built by the other — the reveal silently no-ops and
-   * the record opens behind a still-closed fold.
-   */
+  /** Date bands → folded order groups, in canonical render order — a `GroupedRenderOrder<ShippedOrder>` in all but its declared (mutable)… */
   orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][];
-  /**
-   * The FOLD-BLIND flat leaf order — every group treated as expanded.
-   *
-   * It is **not** "what is on screen", and it must not be narrowed to that. Its
-   * three consumers all need the full set: `useGridSurface` (the TanStack row
-   * model), `useTableSelectMode` (shift-range select — narrowing would make a
-   * range across a collapsed order skip its lines), and the queue selection's
-   * seen-in-this-queue guard. "Which record can the operator see, and what does
-   * ↓ open" is a different question, answered by `resolveRecordCursor`
-   * (`src/lib/record-cursor/cursor-model.ts`), which is fold-blind for its own
-   * reason: a step into a collapsed fold REVEALS it rather than skipping it, so
-   * every record is reachable.
-   */
+  /** The FOLD-BLIND flat leaf order — every group treated as expanded. */
   displayedRecords: ShippedOrder[];
   /** Leaf count of {@link displayedRecords} — same number the pager totals. */
   totalCount: number;

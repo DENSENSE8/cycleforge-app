@@ -23,37 +23,7 @@ import { TABLE_FROZEN_HEADER_CLASS } from '@/design-system/tokens/table-surface'
 import type { RowGroup } from '@/lib/group-rows';
 import { cn } from '@/utils/_cn';
 
-/**
- * `LedgerGrid<T>` — Workbench spreadsheet / ledger shell (DS SoT).
- *
- * One sticky column header, one always-virtualized body
- * ({@link VirtualGroupedSections}), and a per-surface `scrollX` contract.
- * Outbound Pending (via `useOrdersSpreadsheet`) is the golden path:
- * `showDayHeaders={false}`, Date as a per-row column, `gridSkin="airtable"`.
- * Station / receiving feeds may pass `showDayHeaders` and/or `daySections`.
- *
- * Domain cell registries stay outside DS — pass `columnHeader` / `renderRow` /
- * `renderGroup`. Sheet list bodies render **flat leaves** (grouping orders rows
- * upstream only); parent→child rollups live on {@link LedgerDrillHost} /
- * {@link LedgerDrillParentMap}. Maximize2 / open-row is domain `onOpenRecord`,
- * not this shell.
- *
- * Design invariants:
- *  • **One sticky layer, measured** — header docks at `top-0`. Row verbs
- *    sit in an in-flow `empty:hidden` guest (`data-slot-table-action-row`)
- *    under the column labels so the headers stay visible; armed, the guest
- *    grows and pushes the rows. ResizeObserver publishes `--cf-grid-header-h`
- *    (header) and `--cf-grid-chrome-h` (header + prefix) for day-band offset.
- *  • **Per-surface `scrollX`** — frozen identity pane vs clipped board.
- *  • **Sticky bottom X gutter** — when `scrollX`, a synced visible scrollbar
- *    sits at the bottom of the visible sheet (self-scroll flex) or sticks to
- *    the page port (split-x). Body keeps `no-scrollbar`; edge shadows stay.
- *  • **Ancestor page scroll** — when `scrollParentRef` is set (Pending under
- *    `DashboardScrollShell`), Y scroll lives on the parent so KPI strips can
- *    scroll away; this surface keeps X-only scroll (`overflow-y: clip`) so the
- *    sticky header docks under pinned chrome without a nested Y port.
- *  • **One render path** — always virtualized via VirtualGroupedSections.
- */
+/** `LedgerGrid<T>` — Workbench spreadsheet / ledger shell (DS SoT). */
 interface LedgerGridProps<T> {
   /** Date-ordered → folded groups (Pending / receiving PO fold). */
   orderGroupsByDate?: [string, RowGroup<T>[]][];
@@ -119,13 +89,7 @@ interface LedgerGridProps<T> {
    */
   bodyRef?: RefObject<HTMLDivElement | null>;
   className?: string;
-  /**
-   * Visual skin for the surface. `'airtable'` stamps `data-grid-skin="airtable"`,
-   * which the scoped stylesheet in `globals.css` targets for a light connected
-   * spreadsheet (hairline grid, opaque white header). Full-bleed Pending has no
-   * outer card radius — gutters come from the workbench column.
-   * Omitted → the plain hairline look (the vertical shelf-board never opts in).
-   */
+  /** Visual skin for the surface. */
   gridSkin?: 'airtable';
   /**
    * Accessible name for the table. A `role="table"` with no name announces as a
@@ -176,28 +140,15 @@ export function LedgerGrid<T>({
   const prefixRef = useRef<HTMLDivElement>(null);
   const xScrollRef = useRef<HTMLDivElement>(null);
 
-  // Empty means NO ROWS — not "no bands". Testing the band count made a surface
-  // that always emits one band (`[['', groups]]`, the natural shape for a flat
-  // list) render its column headers over a void whenever it had nothing to show,
-  // instead of the teaching box the caller passed in `emptyState`.
+  // Empty means NO ROWS — not "no bands".
   const noRows = !hasGridRows({ orderGroupsByDate, daySections });
   const empty = noRows && !bodyPrefix;
   const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders, sectionHeaders });
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
-  // Ancestor page scroll + h-scroll (Pending): the header band must dock to the
-  // PAGE port, but `overflow-x: auto` on this surface would make it a scroll
-  // container — and a scroll container captures `position: sticky` on BOTH
-  // axes, so the header could never stick to the page. Split mode moves the
-  // horizontal scroll onto an inner body box; the header band stays outside it
-  // (sticky against the page port, clipped) and its row is translated by the
-  // synced `--cf-grid-sx` offset (see globals.css `[data-grid-split-x]`).
+  // Ancestor page scroll + h-scroll (Pending):
   const splitX = useAncestorScroll && scrollX;
-  // Self-scroll + scrollX: dual-axis port is nested so the X gutter can pin.
-  // Column header sits OUTSIDE that port (flex sibling above) — sticky-inside-
-  // dual-axis still lets absolute body chips paint through the band when the
-  // sheet narrows (inspector push). H-scroll mirrors via `--cf-grid-sx` the
-  // same way split-x does (see globals.css `[data-grid-split-x]`).
+  // Self-scroll + scrollX:
   const selfScrollX = scrollX && !useAncestorScroll;
   // Header row is translated by body scrollLeft (not native co-scroll).
   const headerSyncedX = splitX || selfScrollX;
@@ -206,21 +157,7 @@ export function LedgerGrid<T>({
 
   // Real h-scroll source for the sticky gutter (and edge-shadow metrics).
   const hScrollSourceRef = splitX ? xScrollRef : scrollPortRef;
-  /*
-   * The custom bottom X gutter is RETIRED (operator ruling 2026-08-31).
-   *
-   * It existed because the scroll ports carried `no-scrollbar`, so a sheet with
-   * columns past the fold had no visible horizontal affordance and this painted
-   * a synthetic one. The ports now show a real scrollbar
-   * (`cf-grid-scrollbar`), which makes this a SECOND horizontal control for the
-   * same axis — and a full-width empty rounded track sitting under the last row
-   * does not read as a scrollbar at all: the operator read it as a stray search
-   * field, which is a fair description of what it looks like.
-   *
-   * Kept as a constant rather than deleting the component so the mount can be
-   * restored in one line if a surface turns out to need a synthetic bar (macOS
-   * overlay scrollbars fade out when idle).
-   */
+  /* The custom bottom X gutter is RETIRED (operator ruling 2026-08-31). */
   const stickyXEnabled = STICKY_X_GUTTER_ENABLED && scrollX && !empty;
   const { gutterRef, spacerWidth, overflowX } = useSyncedHorizontalScrollbar(
     hScrollSourceRef,
@@ -229,12 +166,7 @@ export function LedgerGrid<T>({
     contentMinWidthPx,
   );
 
-  // Self-scrolling mode windows against our OWN scroll port, which is still null
-  // on the first render — so the virtualizer would initialize with no scroll
-  // element and hand back zero items. Attaching a ref does not re-render, so
-  // nothing ever re-reads it and the grid stays permanently blank. One post-mount
-  // render lets `getScrollElement()` see the node. Ancestor-scroll consumers are
-  // unaffected: their ref belongs to a parent already mounted.
+  // Self-scrolling mode windows against our OWN scroll port, which is still null on the first render — so the virtualizer would initialize…
   const [, forceScrollElementRead] = useState(0);
   useLayoutEffect(() => {
     if (scrollParentRef) return;
@@ -258,10 +190,7 @@ export function LedgerGrid<T>({
     };
   });
 
-  // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
-  // the scroll surface. The Morphing guest lives in the prefix, so picking a
-  // row grows `--cf-grid-chrome-h` (header + prefix) and pushes the rows —
-  // the column labels keep their own height.
+  // Publish the column header's REAL rendered height as `--cf-grid-header-h` on the scroll surface.
   useLayoutEffect(() => {
     const header = headerRef.current;
     const surface = surfaceRef.current;
@@ -339,21 +268,7 @@ export function LedgerGrid<T>({
       : {}),
   };
 
-  /**
-   * Shift + wheel → horizontal scroll.
-   *
-   * Chrome only maps the shift modifier onto the X axis for some scrollers, and
-   * a dual-axis port that owns BOTH overflows is not reliably one of them —
-   * measured on `/shipping/orders`: a horizontal wheel moved the port 130px
-   * while shift + vertical wheel moved it 0. That left the operator with the
-   * sticky gutter drag as the only way sideways, which is a mouse-only path on
-   * a desk whose columns run past the fold.
-   *
-   * Only claims the event when the gesture is unambiguous: shift held, real
-   * vertical delta, and no horizontal delta of its own (a trackpad that already
-   * sends X is left alone). Everything else — plain wheel, pinch-zoom, a
-   * trackpad's native swipe — falls through untouched.
-   */
+  /** Shift + wheel → horizontal scroll. */
   const onWheelShiftX = (event: ReactWheelEvent<HTMLElement>) => {
     if (!event.shiftKey || event.deltaX !== 0 || event.deltaY === 0) return;
     const el = event.currentTarget;
@@ -403,16 +318,10 @@ export function LedgerGrid<T>({
     <div
       ref={headerRef}
       // The caller's `columnHeader` carries `role="row"` + `role="columnheader"`.
-      // Both have a REQUIRED context role (`row` needs rowgroup/table/grid;
-      // `columnheader` needs a row in a table/grid). Without this rowgroup the
-      // header roles are orphaned and the markup is spec-invalid.
       role="rowgroup"
       data-grid-col-header=""
       className={cn(
-        // `relative` keeps the band a positioning context for anything a
-        // family anchors to the VISIBLE header rather than the translated
-        // wide header row (frozen-edge chrome under split / self-scroll-x).
-        // Opaque card fill — never translucent/blur under absolute rows.
+        // `relative` keeps the band a positioning context for anything a family anchors to the VISIBLE header rather than the translated wide…
         'relative z-header isolate shrink-0',
         TABLE_FROZEN_HEADER_CLASS,
         // Split-x / page Y: stick under chrome. Self-scroll-x: flex-pinned
@@ -425,10 +334,7 @@ export function LedgerGrid<T>({
     </div>
   );
 
-  // Morphing portals into `data-slot-table-action-row` here — in-flow under
-  // the column header, `empty:hidden` when idle. An overflow-x port captures
-  // `position: sticky` on both axes, so a prefix in that box would scroll
-  // away with the rows — keep this band pinned with the header.
+  // Morphing portals into `data-slot-table-action-row` here — in-flow under the column header, `empty:hidden` when idle.
   const pinnedPrefix = (
     <div
       ref={prefixRef}
@@ -461,12 +367,7 @@ export function LedgerGrid<T>({
   return (
     <div
       ref={surfaceRef}
-      // `table`, NOT `grid`. ARIA `grid` is a composite widget and asserting it
-      // obligates the full APG keyboard contract (roving tabindex, arrow-key cell
-      // navigation, Home/End, Ctrl+Home/End) which this shell does not implement.
-      // `table` is the honest claim for tabular content whose cells may still hold
-      // widgets. Omitted while empty so the empty-state message isn't announced as
-      // a table with no rows.
+      // `table`, NOT `grid`.
       role={empty ? undefined : 'table'}
       aria-label={empty ? undefined : ariaLabel}
       // Only a WINDOW of rows is ever in the DOM, so the total must be declared
@@ -498,10 +399,7 @@ export function LedgerGrid<T>({
               'h-full min-h-0 flex-1 overflow-hidden'
             : cn(
                 'h-full min-h-0 flex-1 overflow-y-auto overscroll-y-none cf-grid-scrollbar',
-                // Floor under the last row: the list used to stop exactly at the
-                // card's bottom edge, so the final order sat welded to the frame
-                // with no signal that it WAS the final one. The pad scrolls, so
-                // reaching air is how the queue says it has ended.
+                // Floor under the last row:
                 'pb-6',
                 'overflow-x-hidden',
               ),

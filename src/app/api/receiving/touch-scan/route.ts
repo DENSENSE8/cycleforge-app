@@ -9,12 +9,7 @@ import { classifyScanKind } from '@/lib/receiving/unbox-scan-kind';
 import { recordUnboxLookupScan } from '@/lib/receiving/unbox-lookup-scan';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
-/**
- * POST /api/receiving/touch-scan
- * Re-attribute a tracking scan to the signed-in operator without running lookup-po.
- * Used when the client short-circuits to an already-local carton (triage/unbox
- * re-scan) so receiving_scans.scanned_by stays accurate.
- */
+/** POST /api/receiving/touch-scan Re-attribute a tracking scan to the signed-in operator without running lookup-po. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
@@ -27,13 +22,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    // Org-scope the ownership lookup: a cross-tenant receivingId now resolves to
-    // no row → 404 (hides existence), which also gates the recordReceivingScan
-    // write below so a caller can't re-attribute a scan onto another org's carton.
-    // Carton identity + the unbox completion milestone in one round trip —
-    // `ru.unboxed_at` is what separates a WORK scan from a LOOKUP of finished
-    // work (see unbox-scan-kind.ts). LEFT JOIN: a carton with no street row yet
-    // has never been unboxed, so it reads as work.
+    // Org-scope the ownership lookup:
     const meta = await tenantQuery<{
       source: string | null;
       carrier: string | null;
@@ -110,11 +99,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         scanId,
         trackingNumber,
       );
-      // First open only: the carton just left triage membership, so other
-      // terminals' Arrival rails must purge it. lookup-po publishes this on its
-      // own branches; touch-scan (the client short-circuit rung) was the gap —
-      // an idle second Arrival tab showed the carton as phantom dock inventory
-      // indefinitely. Re-scans stay publish-free (no org-wide refetch storm).
+      // First open only:
       if (firstOpen) {
         after(async () => {
           try {

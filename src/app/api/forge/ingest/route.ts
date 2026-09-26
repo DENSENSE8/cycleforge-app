@@ -7,25 +7,10 @@ import { publishForgeRunChanged } from '@/lib/realtime/publish';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Machine ingress has no session, so there is no ctx.organizationId to derive
-// from — the target tenant is CONFIGURED, not derived. FORGE_ORG_ID (a UUID)
-// selects it; it defaults to org #1 (the dogfood tenant). Written as a literal
-// rather than importing the legacy org-id constant, per the tenancy rule
-// (scripts/dogfood-fallback-guard.mjs) that bans that import in the
-// session-derived routes it is meant to guard.
+// Machine ingress has no session, so there is no ctx.organizationId to derive from — the target tenant is CONFIGURED, not derived.
 const FORGE_ORG_ID = process.env.FORGE_ORG_ID ?? '00000000-0000-0000-0000-000000000001';
 
-/**
- * POST /api/forge/ingest — machine ingress for the Cycle Forge loop (forge.sh,
- * running in WSL). Authenticated by a shared secret header
- * (`x-forge-token` === `FORGE_INGEST_TOKEN`), NOT a session cookie — it's a
- * webhook-style receiver, so it declares `allowAnonymous` and gates itself.
- * Dev-loop runs always land under USAV org #1 (dogfood tenant).
- *
- * Body (one idempotent call per stage; upserts on runUid, then on runId+stage):
- *   { runUid, feature?, branch?, manifestPath?, gitDiffStat?,
- *     stage?, stageStatus?, detail?, runStatus? }
- */
+/** POST /api/forge/ingest — machine ingress for the Cycle Forge loop (forge.sh, running in WSL). */
 export const POST = withAuth(async (req: NextRequest) => {
   const expected = process.env.FORGE_INGEST_TOKEN;
   if (!expected || req.headers.get('x-forge-token') !== expected) {

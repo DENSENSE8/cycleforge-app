@@ -1,17 +1,4 @@
-/**
- * DB-free regression tests for the receiving-lines SQL builders
- * (roi-execution/03 #8 decomposition).
- *
- * The safety net: `legacy-route-sql.fixture.ts` is a mechanical, byte-for-byte
- * extraction of the OLD inline GET logic from the route handler (regenerated
- * 2026-07-11 with the Wave-2 street-cutover replacements — see its header).
- * Every combo below asserts the new builders in `./build-sql` produce IDENTICAL
- * { sql, params } — SQL text equality is exact-string, so even a whitespace
- * drift fails. These are permanent: if build-sql is ever deliberately changed,
- * the fixture must be updated in the same PR.
- *
- * Run: `npx tsx --test src/lib/receiving/lines/build-sql.test.ts`
- */
+/** DB-free regression tests for the receiving-lines SQL builders (roi-execution/03 #8 decomposition). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -237,12 +224,7 @@ test('testing history scopes membership and verdict rollup to the requested week
   assert.deepEqual(built.count.params, [ORG, 12, '2026-06-01', '2026-06-07']);
 });
 
-// Layer 1 (rail read-after-write): the `unboxRailColumnRead` flag swaps the
-// view=unbox_opened MEMBERSHIP predicate (the WHERE arm) — not the timestamp
-// join, which keeps reading ops_events for display. Off (default) = legacy
-// column ∪ ops_events OR-arm; on = committed-column-only, so a refetch right
-// after a mutation can't transiently miss the carton. Pin both branches against
-// the exact predicate constants (the timestamp join still mentions the event).
+// Layer 1 (rail read-after-write):
 test('unbox_opened membership: flag OFF uses the column ∪ ops_events OR-arm', () => {
   const built = buildReceivingLinesListSql({
     query: parseReceivingLinesQuery(new URLSearchParams('view=unbox_opened')),
@@ -570,10 +552,7 @@ test('tracking_in filters on the INDEXED normalized column, with no last-8 OR ar
     built.list.sql.includes('stn.tracking_number_normalized = ANY($2::text[])'),
     'must be an indexed equality against the unique btree',
   );
-  // A `right(...) = last8` arm here would defeat the index — measured at ~357k
-  // cost for a single key on the sibling lookup. Scan-side prefix tolerance is
-  // the scan matcher's job, and it already has it, so the assertion is that the
-  // paste adds NO last-8 arms of its own rather than that none exist.
+  // A `right(...) = last8` arm here would defeat the index — measured at ~357k cost for a single key on the sibling lookup.
   const last8s = (sql: string) =>
     sql.split('right(stn.tracking_number_normalized, 8)').length - 1;
   assert.equal(

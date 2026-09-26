@@ -50,14 +50,7 @@ const FBA_TONE: Record<
   purple: { activeBg: 'bg-purple-100', activeText: 'text-black', ring: 'ring-purple-300' },
 };
 
-/**
- * Pinned-hue → slider tone. The slider's palette is narrower than the platform
- * registry's, so near hues are approximated to the closest one it can say
- * (Walmart's amber → orange, Goodwill's sky → blue). The NON-brand hues —
- * Square's slate, Other, unknown — land on the neutral pill instead, because
- * approximating those would mean handing a channel a brand colour it does not
- * have, which is worse than showing it plain.
- */
+/** Pinned-hue → slider tone. */
 const TONE_BY_PLATFORM_HUE: Record<PlatformHue, HorizontalSliderTone> = {
   yellow: 'yellow',
   orange: 'orange',
@@ -76,13 +69,7 @@ export function platformSliderTone(platformValue: string): HorizontalSliderTone 
   return TONE_BY_PLATFORM_HUE[sourcePlatformHue(platformValue)];
 }
 
-/* ── Preset filter items ──
- * NOT a tone source of truth. The workflow presets below (All / Must Go / …)
- * own their own tones because they name a workflow, not a brand. Every CHANNEL
- * preset derives from `source-platform.ts`, which is the one place a platform's
- * colour is defined — this file used to spell "amazon: orange" out again, and a
- * second spelling of a brand colour is a second colour waiting to happen.
- */
+/* ── Preset filter items ── NOT a tone source of truth. */
 export const SLIDER_PRESETS = {
   all:        { id: 'all',      label: 'All',       tone: 'blue'    } as HorizontalSliderItem,
   mustGo:     { id: 'must_go',  label: 'Must Go',   tone: 'red'     } as HorizontalSliderItem,
@@ -114,20 +101,7 @@ export type HorizontalButtonSliderProps = {
   items: HorizontalSliderItem[];
   value: string;
   onChange: (id: string) => void;
-  /**
-   * Active-state visual language:
-   *   - `fba`      — ring pills with per-item tone (FBA filter rows).
-   *   - `slate`    — dark pill when active (work-order status).
-   *   - `nav`      — filled blue active state matching the global sidebar nav
-   *                  (sub-view switchers inside sidebar panels). Adds a subtle
-   *                  scale-up on the active pill so the eye locks onto it.
-   *   - `floating` — borderless white pills with drop shadows that look like
-   *                  Google Maps filter chips floating over content.
-   *   - `segmented` — icon-only tabs that split the width evenly (flex-1). The
-   *                  active tab is a filled blue square with a sliding indicator;
-   *                  inactive tabs are borderless grayed icons. The selection's
-   *                  name is meant to live in the sidebar header, not on the tab.
-   */
+  /** Active-state visual language: */
   variant?: 'fba' | 'slate' | 'nav' | 'floating' | 'segmented';
   size?: 'md' | 'lg';
   /**
@@ -143,13 +117,7 @@ export type HorizontalButtonSliderProps = {
    * `aria-label` / `title`). Compact square-ish hit targets for tight headers.
    */
   navIconOnly?: boolean;
-  /**
-   * Opt-in (default off): fade/scale each `segmented` tab in on mount. React only
-   * mounts a newly-appended item, so a tab added at runtime (e.g. a Units tab that
-   * appears once serials are scanned) animates in on its own while the existing
-   * tabs stay put. Reduced-motion collapses it to a plain fade. Ignored by other
-   * variants; zero change for existing callers.
-   */
+  /** Opt-in (default off): */
   animateItemMount?: boolean;
   /**
    * Square, edge-to-edge segmented track for full-bleed sidebar bands.
@@ -200,26 +168,11 @@ export function HorizontalButtonSlider({
       ? 'min-h-10 px-3.5 py-2 text-role-micro tracking-wide'
       : 'h-7 px-3 text-role-eyebrow tracking-wide';
 
-  // The `nav` variant uses scale-up + shadow on the active pill. Setting
-  // overflow-x-auto forces overflow-y to compute as auto too (CSS spec), so
-  // drop shadows get clipped unless the scroller has extra bottom padding.
-  // Dense nav: pt-1 + h-7 pills + pb-2 sits inside PRIMARY_CHROME_ROW_FACE
-  // sidebar pill bands; non-dense keeps more bottom pad for scale-up bleed.
+  // The `nav` variant uses scale-up + shadow on the active pill.
   const scrollerPadY =
     variant === 'nav' ? (dense ? 'pt-1 pb-2' : 'pt-2 pb-3') : 'pb-0.5';
 
-  // `floating` and `segmented` skip the scroller — floating so its wrapped
-  // pills can grow the sidebar naturally, segmented so flex-1 children
-  // stretch. Overlay nav USED to skip it unconditionally too (to avoid
-  // overflow-x-auto clipping the active pill's scale-up/shadow bleed), but
-  // every real consumer of `overlay` also passes `dense` — and dense pills
-  // never scale-animate (see `isActive && !isDisabled && !dense` below), so
-  // that bleed never actually happens for `overlay`+`dense`. Skipping the
-  // scroller instead just made the row `flex-wrap` once pills ran out of room
-  // (e.g. a 4th Triage/Prioritize/Unfound/Done tab wrapping to its own line).
-  // Dense overlay nav now scrolls horizontally like every other pill row; a
-  // hypothetical future non-dense overlay still gets the old overflow-visible
-  // treatment so its shadow bleed stays unclipped.
+  // `floating` and `segmented` skip the scroller — floating so its wrapped pills can grow the sidebar naturally, segmented so flex-1…
   const isSegmented = variant === 'segmented';
   const isOverlayNav = overlay && variant === 'nav';
   const useScroller = variant !== 'floating' && !isSegmented && !(isOverlayNav && !dense);

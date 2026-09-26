@@ -16,12 +16,7 @@ export function useSharedFilterQS(): string {
   }, [sp]);
 }
 
-/**
- * Generic section-list fetch: pulls `/api/audit-log/<section>` with the shared
- * filter QS + the live search query (debounce-free; the caller's `query` is
- * already the section search box). Identical across packing/tech/sku — the only
- * differences are the endpoint, error copy, and row mapping (caller-supplied).
- */
+/** Generic section-list fetch: */
 export function useAuditSectionList<T>(
   endpoint: string,
   query: string,

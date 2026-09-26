@@ -2,22 +2,7 @@
 
 /**
  * Order-intake **overlay** — the centered session host for `OrderIntakeForm`.
- *
  * Operator override (2026-08-30, in chat): the intake session displays as a
- * centered takeover, not a right-rail leaf. Built from the shadcn `ui/dialog`
- * (Radix) — the To-ship Add and `?triage=` deep links open THIS, while the
- * ingest rail keeps its other methods (hand entry, CSV, sync, backfill).
- *
- * Session semantics:
- *   - `?triage=new|<id>` stays the deep-linkable state, so a half-triaged
- *     order reopens exactly here — the "save session" is the URL + the caged
- *     order itself, not client memory.
- *   - Outside clicks do NOT dismiss (`onInteractOutside` prevented): a stray
- *     click must not eat a half-typed identity draft. Esc and the ✕ close;
- *     once an order is created its facts are already persisted and caged.
- *   - Release closes the session (`onReleased` → host clears the URL param).
- *
- * No open/close animation — show it or do not (AGENTS.md motion law).
  */
 
 import {

@@ -34,12 +34,7 @@ export function describePhotoWorkflow(meta: PhotoMeta): PhotoWorkflowDescriptor 
   return { kind: 'unknown', label: 'Photo', tone: 'bg-glass/10 text-stage-soft ring-glass/20' };
 }
 
-/**
- * Format an unboxing PO ref for display. A synthetic `PO_<cartonId>` ref means
- * the carton was scanned at the dock but never matched a real purchase order —
- * render it as "PO Unfound — <id>" rather than the opaque `PO_13204`. A real PO
- * ref renders as "PO <ref>".
- */
+/** Format an unboxing PO ref for display. */
 export function unboxingPoLabel(poRef: string): string {
   return photoLibraryPoLeafLabel(poRef, 'unboxing');
 }
@@ -124,12 +119,7 @@ export interface ProvenanceNavLink {
   label: string;
 }
 
-/**
- * Deep link from Unbox carton chrome into that carton's media-library folder.
- * Always pins `sourceScope=unboxing` so the library chrome reads as receiving
- * context; prefers `poRef` (folder leaf) and always includes `receivingId` so
- * unmatched / synthetic-PO cartons still resolve to this carton only.
- */
+/** Deep link from Unbox carton chrome into that carton's media-library folder. */
 export function buildUnboxingCartonLibraryHref(input: {
   receivingId: number;
   poRef?: string | null;

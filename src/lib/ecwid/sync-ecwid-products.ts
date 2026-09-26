@@ -1,12 +1,4 @@
-/**
- * Pure helpers for the Ecwid product-mirror sync
- * (POST /api/sku-catalog/sync-ecwid-products).
- *
- * Extracted DB-free so the parse / completeness / reconcile-missing logic is
- * unit-testable (reversibility plan 5.4 — deactivate pass must never run on a
- * truncated fetch). The route owns fetch + upsert; these functions own the
- * decisions.
- */
+/** Pure helpers for the Ecwid product-mirror sync (POST /api/sku-catalog/sync-ecwid-products). */
 
 export interface EcwidMirrorProduct {
   ecwidProductId: string;
@@ -36,12 +28,7 @@ export function parseEcwidProductItems(items: unknown): EcwidMirrorProduct[] {
   return out;
 }
 
-/**
- * A paginated fetch is COMPLETE only when it terminated on a short page
- * (fewer items than the page limit). Exhausting the page cap with a full
- * final page means the catalog may be truncated — the deactivate pass must
- * not run on such a fetch (never mass-deactivate on a partial view).
- */
+/** A paginated fetch is COMPLETE only when it terminated on a short page (fewer items than the page limit). */
 export function isEcwidFetchComplete(lastPageItemCount: number, pageLimit: number): boolean {
   return lastPageItemCount < pageLimit;
 }

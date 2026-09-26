@@ -12,21 +12,7 @@ import {
 } from '@/lib/perf/stream-apply';
 import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 
-/**
- * Fetches an NDJSON endpoint and invokes `onEvent` / `onBatch` for parsed
- * events. Each line of the response body is one JSON-encoded event. The
- * server keeps the connection open until the job finishes.
- *
- * Default path still calls `onEvent` per line (call-site compatible) but
- * yields to input between {@link STREAM_APPLY_BATCH_SIZE} events so a 400-row
- * exceptions stream cannot lock the main thread. Prefer `onBatch` for React
- * — one setState per window, not per line.
- *
- * Defaults to the orders-sync `SyncStreamEvent` contract but is generic so
- * other feeds (e.g. carrier-sync) can reuse it with their own event union;
- * transport-level failures are surfaced as a `{ type: 'error', error }` line,
- * which every such union includes.
- */
+/** Fetches an NDJSON endpoint and invokes `onEvent` / `onBatch` for parsed events. */
 export interface StreamNdjsonOptions<T> {
   onEvent?: (event: T) => void;
   /** Prefer this for React — one paint per budgeted window. */

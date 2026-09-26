@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Print-run integer field — same Figma delta-X gesture as slot-table price.
- *
- * SoT (do not fork):
- * - Host: CompoundSubtitleTextEditor (idle spinbutton + click-to-type)
- * - Math: scrub-number startScrubFrame / applyScrubFrame / nudgeScrubValue
- * - Config: CompoundSubtitleScrub (price uses money + fineStep 0.01; this is ints)
- * - Cursor: useCursorScrub + cursorResizeTarget('x')
- *
- * Do not mount PriceKeypad. Do not mount ScrubSlider (track, not delta-X).
- *
- * Callers: LabelPrintRunPanel. Fields: Bay from, Bay through, Odd levels,
- * Even levels, From, Through, Bay NN lv.
- */
+/** Print-run integer field — same Figma delta-X gesture as slot-table price. */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cursorResizeTarget, useCursorScrub } from '@/design-system/motion';

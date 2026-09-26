@@ -1,41 +1,6 @@
-/**
- * Rail selection occupancy — which right-rail body a grid selection resolves to.
- *
- * Slot-table desks keep selection **on the table** (sticky row plane / status-bar
- * verbs). Checkbox cardinality must not claim `RightRailHost`: the 2-row compare
- * pane and the 1-row inspect-from-checks both parked a column over the sheet.
- * This resolver still owns the rule so the registrar, the compare shell, the
- * specs, and the guard all read one answer instead of four copies of
- * `ids.length === 2` — it simply never returns a body.
- *
- * WHY A MODULE AND NOT AN INLINE TERNARY
- * The grid carried two independent selection channels — `?openOrderId=` (row-body
- * click → inspector) and the `selection:{scope}` bus (checkbox → capsule) — which
- * could disagree: order 4821 open while six *different* rows were checked. One
- * rail cannot serve both, so the check-set became the only selection and this
- * resolver became the single place that reads it. Plan:
- * `docs/todo/order-rail-selection-plane-PLAN.md`.
- *
- * Pure and dependency-free by design (same contract as
- * `receiving/inspector/carton-inspector-model.ts`): no React, no fetch, no
- * imports, so it runs under `node --test` with zero setup.
- */
+/** Rail selection occupancy — which right-rail body a grid selection resolves to. */
 
-/**
- * Occupant ids for the single `RightRailHost` slot.
- *
- * **Stable per MODE, never per record.** The host keys its
- * `AnimatePresence mode="wait"` on the occupant id, so a per-record id
- * (`detail:order:4821`) turns every row→row step into a full exit-then-enter with
- * an empty slot between — ~0.8s of blank rail on the core loop of arrowing down a
- * queue. With one id per mode the occupant stays mounted and its node swaps in
- * place via the store's `updateRightRailPanelNode` path, which exists for exactly
- * this. → the queue-processing
- * inspector exception, and D5 in the plan.
- *
- * Mode→mode IS a real crossfade (different id, entirely different body). That is
- * correct: it happens once per gesture, not once per record.
- */
+/** Occupant ids for the single `RightRailHost` slot. */
 export const RAIL_OCCUPANT_ID = {
   /** One record — the existing full inspector (`ShippedDetailsPanel`). */
   inspect: 'detail:order',
@@ -73,20 +38,7 @@ type RailOccupancy =
       orderIds: readonly number[];
     };
 
-/**
- * Clean a raw selection into the ids the rail may act on: coerce, drop anything
- * that is not a real row id, and de-duplicate — **preserving first-seen order**.
- *
- * Order stability is load-bearing for compare: the bus re-broadcasts the whole
- * selection on every change (`emitSelection(scope, rows)`), so a resolver that
- * sorted, or that de-duplicated by keeping the last occurrence, would let the two
- * compare columns swap sides under the operator mid-read.
- *
- * The `Number.isFinite` filter is the same hygiene every bulk handler already
- * applies at its own call site (`.map(Number).filter(Number.isFinite)` in the
- * flag / ship-by / delete paths); doing it once here is why the rail's action
- * region does not have to repeat it four more times.
- */
+/** Clean a raw selection into the ids the rail may act on: */
 export function normalizeRailSelection(
   ids: readonly (number | string | null | undefined)[],
 ): number[] {
@@ -105,22 +57,7 @@ export function normalizeRailSelection(
   return out;
 }
 
-/**
- * The rule: selection size → rail body.
- *
- * | selected | kind |
- * |---|---|
- * | any | `none` — the rail does not mount |
- *
- * Callers still pass the raw selection and normalization still runs so a
- * caller cannot skip hygiene. Safe to call on every render — pure,
- * allocation-light, no I/O.
- *
- * Occupant ids (`inspect` / `compare` / retired `attention`) stay in the type
- * map so old docs and dead registrars do not invent a fourth id; this resolver
- * simply never returns those kinds. Record open is the table's `recordPlane`
- * (Center Lock stage overlay on Orders), not a checkbox cardinality.
- */
+/** The rule: selection size → rail body. */
 export function resolveRailOccupancy(
   ids: readonly (number | string | null | undefined)[],
 ): RailOccupancy {
@@ -128,14 +65,7 @@ export function resolveRailOccupancy(
   return { kind: 'none' };
 }
 
-/**
- * Whether a given mode's registrar should hold a claim on the slot.
- *
- * `RightRailHost` already renders only the top occupant, so two live claims would
- * not both paint — but a suppressed-yet-registered panel keeps fetching and keeps
- * its subscriptions warm. Gate each registrar's `enabled` on this so the losing
- * modes go quiet.
- */
+/** Whether a given mode's registrar should hold a claim on the slot. */
 export function isRailOccupantActive(
   occupancy: RailOccupancy,
   kind: RailOccupancyKind,

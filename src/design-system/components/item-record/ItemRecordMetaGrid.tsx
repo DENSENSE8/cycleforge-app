@@ -4,24 +4,7 @@ import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
 
-/**
- * Boxed meta sub-grid for an item row.
- * Order: qty | SKU | condition | serial | price (price last — variable width).
- *
- * Always five tracks. Empty SKU uses the mono `----` face (same slot as a
- * filled chip); empty price uses {@link UnitPriceChip} with no amount, so an
- * unpriced item keeps the price column rather than painting a blank cell.
- *
- * Tracks: `auto auto auto 1fr auto` so qty/SKU/condition/price hug content and
- * the serials cell absorbs remaining width. Separation is whitespace and
- * nothing else — `gap-x-3` between columns and no rule above the ledger
- * (removed 2026-08-30 with the rest of the PO line's hairlines). Nested CSS
- * grid, not floating flex columns.
- *
- * Ported from `receiving/workspace/PoLineMetaGrid`; the receiving-only
- * `unitsChrome` door-flow flag did not come with it — it was a host gate for
- * editors, and this grid mounts none.
- */
+/** Boxed meta sub-grid for an item row. */
 export function ItemRecordMetaGrid({
   qty,
   sku,

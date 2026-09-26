@@ -1,10 +1,4 @@
-/**
- * Collect every openable listing URL for a receiving carton — manual paste,
- * catalog marketplace platform rows, and SKU-derived storefront fallbacks.
- * Dedupes by normalized href and orders manual → platform-matched catalog →
- * other catalog → derived. Zoho PO cartons pass `suppressEcwidStorefront` so
- * Ecwid/usavshop auto-links are not invented from inventory SKUs.
- */
+/** Collect every openable listing URL for a receiving carton — manual paste, catalog marketplace platform rows, and SKU-derived storefront… */
 
 import { normalizeListingHref } from '@/lib/receiving/listing-href';
 import { sourcePlatformLabel } from '@/lib/source-platform';
@@ -15,12 +9,7 @@ import {
 } from '@/utils/external-item-url';
 
 export interface CartonListingLink {
-  /**
-   * `receiving_listing_links.id` when this link is a DURABLE row — the handle
-   * an edit / delete / reorder needs. `null` on a computed tier (`catalog` /
-   * `derived`) and on the legacy scalar+notes fallback, which have no row to
-   * address: those are read-only by construction.
-   */
+  /** `receiving_listing_links.id` when this link is a DURABLE row — the handle an edit / delete / reorder needs. */
   id?: number | null;
   href: string;
   /**
@@ -28,15 +17,7 @@ export interface CartonListingLink {
    * `Storefront`. Always present, never operator-authored.
    */
   label: string;
-  /**
-   * The human name for THIS link, when someone gave it one — today the title
-   * a buyer wrote before the URL in the Zoho PO sync notes
-   * (`Bose QC35 black: https://…`). Absent for links nobody named.
-   *
-   * Distinct from `label` on purpose: a surface picking between several links
-   * needs the name that tells them apart, and `label` is identical across every
-   * link from one source (three sync-note links are all `Synced`).
-   */
+  /** The human name for THIS link, when someone gave it one — today the title a buyer wrote before the URL in the Zoho PO sync notes (`Bose… */
   title?: string | null;
   source: 'manual' | 'sync_notes' | 'catalog' | 'derived';
 }
@@ -61,12 +42,7 @@ export interface CatalogPlatformLinkInput {
   listingUrl?: string | null;
 }
 
-/**
- * Re-exported from the leaf `listing-href` module, which is where the function
- * lives so `zoho-po-prefill` (imported above) can share it without a cycle.
- * This stays the public import path — a second `new URL(...)` + protocol check
- * anywhere in the listing path is the fork.
- */
+/** Re-exported from the leaf `listing-href` module, which is where the function lives so `zoho-po-prefill` (imported above) can share it… */
 export { normalizeListingHref };
 
 const normalizeHref = normalizeListingHref;
@@ -109,12 +85,7 @@ export function collectCartonListingLinks(args: {
   sku: string | null | undefined;
   sourcePlatform: string | null | undefined;
   isUnmatched: boolean;
-  /**
-   * Zoho PO cartons: hide Ecwid/usavshop auto-links. Zoho SKUs are inventory
-   * identity, not storefront listings — derived + catalog ecwid/zoho rows must
-   * not invent a usavshop search URL. Manual paste + sync notes + other
-   * marketplace catalog rows still pass through.
-   */
+  /** Zoho PO cartons: */
   suppressEcwidStorefront?: boolean;
   platforms?: CatalogPlatformLinkInput[];
   /**
@@ -143,12 +114,7 @@ export function collectCartonListingLinks(args: {
     candidates.push({ id: id ?? null, href, label, source, title: title?.trim() || null });
   };
 
-  /**
-   * Durable rows supersede BOTH legacy tiers they replace — the pasted scalar
-   * and the sync-note parse. A carton with no rows yet (nothing backfilled,
-   * nobody has edited) falls through to the legacy read unchanged, which is
-   * what makes this flip safe to land before the backfill.
-   */
+  /** Durable rows supersede BOTH legacy tiers they replace — the pasted scalar and the sync-note parse. */
   const stored = args.storedLinks ?? [];
   if (stored.length > 0) {
     for (const l of stored) {
@@ -211,16 +177,7 @@ interface ReceivingRowListingInput {
   zoho_purchaseorder_id?: string | null;
 }
 
-/**
- * Every openable listing link for a receiving line row — the adapter three
- * surfaces share (Testing verify, photo compare, inventory linkage) so none of
- * them re-derives an open target from a bare column.
- *
- * `platforms` is optional because the catalog tier comes from `useSkuIdentity`,
- * a hook: a surface that has not resolved SKU identity gets the manual,
- * sync-note and derived tiers, and honestly no catalog rows — rather than a
- * silently different answer from the same inputs.
- */
+/** Every openable listing link for a receiving line row — the adapter three surfaces share (Testing verify, photo compare, inventory… */
 export function listingLinksForReceivingRow(
   row: ReceivingRowListingInput,
   opts?: {
@@ -285,26 +242,7 @@ export function listingUrlIdentityKey(href: string | null | undefined): string {
   }
 }
 
-/**
- * The marketplace item id a listing URL **structurally** carries — `''` when
- * the URL does not positively attribute one.
- *
- * The strict sibling of {@link listingUrlIdentityKey}, and the two answer
- * different questions on purpose:
- *
- * - `listingUrlIdentityKey` answers *"give me something stable to print on a
- *   chip"*. Its last-path-segment fallback is right there — a cosmetic face
- *   that is merely unhelpful when the URL is odd.
- * - `listingUrlItemId` answers *"give me an id I may WRITE"*. That same
- *   fallback is a **silent wrong id** here: `/sch/i.html` yields `ihtml`,
- *   `/usr/someseller` yields `someseller`, and a usavshop search yields
- *   `search`. Resolving with one of those creates a real order carrying a
- *   fabricated item number, which is exactly what the propose→approve plan
- *   forbids. So this one refuses instead of guessing.
- *
- * Do not "unify" them by loosening this or tightening that — the split IS the
- * safety property.
- */
+/** The marketplace item id a listing URL **structurally** carries — `''` when the URL does not positively attribute one. */
 export function listingUrlItemId(href: string | null | undefined): string {
   const normalized = normalizeListingHref(href);
   if (!normalized) return '';
@@ -339,15 +277,7 @@ export function listingUrlItemId(href: string | null | undefined): string {
   return '';
 }
 
-/**
- * Canonical `SOURCE_PLATFORMS` value for the marketplace a listing URL points
- * at — `''` when the host is not one we recognise.
- *
- * A pasted URL names its own marketplace, which beats inferring one from the
- * order's account source: the same seller account can hold listings the sheet
- * labels differently, and an id pattern (`getPlatformLabelByItemNumber`) is a
- * guess where the hostname is a fact.
- */
+/** Canonical `SOURCE_PLATFORMS` value for the marketplace a listing URL points at — `''` when the host is not one we recognise. */
 export function listingUrlPlatform(href: string | null | undefined): string {
   const normalized = normalizeListingHref(href);
   if (!normalized) return '';

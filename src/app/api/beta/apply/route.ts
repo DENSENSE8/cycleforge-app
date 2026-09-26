@@ -1,26 +1,4 @@
-/**
- * POST /api/beta/apply
- *
- * PUBLIC $50-refundable beta application intake for the marketing site
- * (CycleForge) — docs/todo/beta-intake-funnel-plan.md §6, P-1a. Mirrors
- * /api/beta/waitlist's posture exactly: no auth wrapper and no audit call
- * (pre-tenant rows, no org — both need a session ctx), CORS-restricted to
- * MARKETING_ORIGIN, IP-throttled via checkRateLimitAsync, honeypot-guarded.
- * Already covered by the /^\/api\/beta\// PUBLIC_PATHS entry in src/proxy.ts.
- *
- * Body: { email, companyName?, tier: 'application' | 'waitlist', answers,
- *         website? (honeypot) } — validated by BetaApplySchema
- *         (src/lib/beta/apply-schema.ts, the ontology question set).
- *
- * Dedupe: upserts on lower(email) — a re-apply is an idempotent 200 that
- * refreshes answers, never a duplicate row or an error. A waitlist re-submit
- * never demotes an existing application row (tier or answers).
- *
- * Response: { ok: true, applicationId, status, paymentLinkUrl } — the Stripe
- * Payment Link is the env-configured BETA_APPLY_PAYMENT_LINK echoed with
- * client_reference_id=<application id>; no live Stripe call (owner-gated,
- * manual v1 reconcile per plan §7). null for waitlist tier / unconfigured.
- */
+/** POST /api/beta/apply */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -77,10 +55,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'INVALID_INPUT', detail: 'invalid JSON' }, { status: 400, headers: cors });
   }
 
-  // Honeypot BEFORE schema validation — a bot gets an indistinguishable fake
-  // 200 (no row, no email) instead of a schema error it could learn from.
-  // Shape matches a real success exactly (fake id, null payment link) so the
-  // responses can't be told apart.
+  // Honeypot BEFORE schema validation — a bot gets an indistinguishable fake 200 (no row, no email) instead of a schema error it could learn…
   if (isHoneypotTripped(body)) {
     return NextResponse.json(
       {
@@ -104,10 +79,7 @@ export async function POST(req: NextRequest) {
 
   let row: { id: string; status: string; tier: string };
   try {
-    // Upsert on lower(email): re-apply is idempotent. A repeat submit
-    // refreshes answers; a waitlist submit never demotes an existing
-    // application row (tier or answers), and status is never touched here —
-    // the pipeline status is owned by the manual review flow.
+    // Upsert on lower(email):
     const res = await pool.query<{ id: string; status: string; tier: string }>(
       `INSERT INTO beta_applications (email, company_name, tier, answers)
        VALUES ($1, $2, $3, $4::jsonb)

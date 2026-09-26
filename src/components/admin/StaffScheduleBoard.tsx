@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Day-columns work calendar — sits above the admin staff editor.
- *
- *   THIS WEEK · 9 AM – 5 PM · PT
- *   ┌────────┬────────┬────────┬────────┬────────┐
- *   │ MON 11 │ TUE 12 │ WED 13 │ THU 14 │ FRI 15 │
- *   │  ● M   │  ● M   │  ● M   │  ● M   │  ● M   │
- *   │  ● S   │  ● S   │  ● S   │  ● S   │  ● S   │
- *   │  ● T   │  ● T   │  ● T   │  ● T   │  ● T   │
- *   └────────┴────────┴────────┴────────┴────────┘
- *
- * Data source is the new shifts/templates model — fetches /api/shifts
- * with lazy server-side materialization. Each shift row paints one
- * avatar pill in its day column, using the staff's identity color_hex.
- *
- * "Off" / "Blocked" treatments are gone — if a staff has no shift on a
- * given day, they don't appear in that column. Cleaner read.
- */
+/** Day-columns work calendar — sits above the admin staff editor. */
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';

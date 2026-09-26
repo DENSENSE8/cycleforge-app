@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Pack papers / manuals print status — StationWorkbench `feedback` slot
- * (Unbox action-feedback plane), never an advisory strip between identity
- * and the checklist.
- *
- * Reprint must not steal wedge focus: preventDefault on mousedown keeps the
- * scan input focused; emitPackerFocusScan hands focus back after the act.
- *
- * Status flaps use scan-cadence swap (exit instant) — never full station-card
- * physics that delay the next scan.
- */
+/** Pack papers / manuals print status — StationWorkbench `feedback` slot (Unbox action-feedback plane), never an advisory strip between… */
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';

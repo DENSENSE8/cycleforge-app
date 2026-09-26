@@ -1,17 +1,6 @@
 /**
  * The packer-day adapter, held to the same formatting its peers get.
- *
  * Written after the defect it pins (operator 2026-09-16): the family shipped
- * looking hand-rolled — every packer bubble the same default colour, the order
- * number with no channel dot — while being fully on the engine. The cause was a
- * projection two columns short (`staff.id`, `account_source`), and the adapter
- * passed `null` for both without anything complaining.
- *
- * So these tests assert the two things that were wrong and the one rule that
- * would have caught them:
- *   1. the Id chip's two lines are two DIFFERENT facts (order number, tracking);
- *   2. the person face carries a staff id, which is what colours the avatar;
- *   3. adapter PARITY — no shared face is dark without a declared reason.
  */
 
 import test from 'node:test';

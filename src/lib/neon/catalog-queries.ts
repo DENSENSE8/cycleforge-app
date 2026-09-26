@@ -1,16 +1,4 @@
-/**
- * Query layer for the org-scoped platform / type catalog
- * (migration 2026-06-13g_platform_account_type_catalog.sql).
- *
- * These power the CRUD editor that lets each org add / rename / hide / reorder
- * its own platforms + receiving flow types instead of the old hardcoded
- * SOURCE_PLATFORMS / RECEIVING_TYPE_OPTS constants. Every query is org-scoped —
- * the caller passes `ctx.organizationId` from withAuth, never the request.
- *
- * Soft delete = `is_active = false` (the row is kept so a slug can be revived
- * and audit history stays intact); the list endpoints return active rows only
- * by default.
- */
+/** Query layer for the org-scoped platform / type catalog (migration 2026-06-13g_platform_account_type_catalog.sql). */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -123,10 +111,7 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
         [organizationId, slug, label, kind, isReturn, sort],
       );
     }
-    // Class-D substitution reason vocabulary (flow_context='substitution'),
-    // derived from the built-in registry SoT (substitution-reasons.ts) so the
-    // codes/labels never drift. `category` is NULL — the inventory ledger axis
-    // doesn't apply. Mirrors migration 2026-06-28_reason_codes_flow_context.sql.
+    // Class-D substitution reason vocabulary (flow_context='substitution'), derived from the built-in registry SoT (substitution-reasons.ts)…
     let subSort = 0;
     for (const r of SUBSTITUTION_REASONS) {
       subSort += 10;
@@ -181,10 +166,7 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
         [organizationId, r.code, r.label, ssSort],
       );
     }
-    // Serial-absent waiver reasons (flow_context='serial_absent_reason') — why a
-    // received unit was committed with no serial. Built-in registry SoT is
-    // serial-absent-reasons.ts; tenant-relabelable. Mirrors migration
-    // 2026-06-29e_reason_codes_serial_absent.sql.
+    // Serial-absent waiver reasons (flow_context='serial_absent_reason') — why a received unit was committed with no serial.
     let saSort = 0;
     for (const r of SERIAL_ABSENT_REASONS) {
       saSort += 10;
@@ -195,18 +177,7 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
         [organizationId, r.code, r.label, saSort],
       );
     }
-    // Station command barcodes (flow_context='station_command') — every physical
-    // CMD-* sticker: jumps between surfaces, verdict/compound actions, and the
-    // session modes this block originally covered. Seeded for Admin view +
-    // 2×1 print; behaviour stays code-owned in the registries.
-    //
-    // The list is DERIVED (`listSeedableCommandCodes` unions all three
-    // registries) rather than iterating one of them. This block read only
-    // STATION_COMMAND_CODES until 2026-08-20, which was correct while that was
-    // the whole vocabulary — but it meant every code added to the nav or action
-    // registry was invisible in Admin for every org, with nothing to notice.
-    // Backfill for orgs that already existed:
-    // migration 2026-08-20d_reason_codes_command_vocabulary.sql.
+    // Station command barcodes (flow_context='station_command') — every physical CMD-* sticker:
     for (const r of listSeedableCommandCodes()) {
       await client.query(
         `INSERT INTO reason_codes (organization_id, code, label, category, direction, flow_context, sort_order)
@@ -243,13 +214,7 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
   });
 }
 
-/**
- * Mirror eBay seller/buyer rows in `ebay_accounts` into `platform_accounts` so the
- * catalog + Incoming account chip stay in sync after OAuth connect (the one-shot
- * migration 2026-06-14f backfill does not re-run on its own). Skips ZOHO token
- * rows (platform='ZOHO'). `integration_scope` matches the vault scope
- * (`seller:{slug}` / `buyer:{slug}`).
- */
+/** Mirror eBay seller/buyer rows in `ebay_accounts` into `platform_accounts` so the catalog + Incoming account chip stay in sync after… */
 export async function syncEbayAccountsToPlatformAccounts(
   organizationId: OrgId,
   client?: { query: (text: string, params?: unknown[]) => Promise<unknown> },
@@ -420,12 +385,7 @@ export interface PriorityTierRow {
   updated_at: string;
 }
 
-/**
- * GET the org's priority-ladder overrides. Usually EMPTY — a row exists only
- * for a rung someone renamed or repainted, and the client merges these over
- * `PRIORITY_OVERRIDE_TIERS` by tier. Ordered by tier so the caller never has to
- * re-sort into ladder order.
- */
+/** GET the org's priority-ladder overrides. */
 export async function listPriorityTiers(organizationId: OrgId): Promise<PriorityTierRow[]> {
   const res = await tenantQuery<PriorityTierRow>(
     organizationId,
@@ -447,17 +407,7 @@ export async function getPriorityTier(
   return res.rows[0] ?? null;
 }
 
-/**
- * UPSERT one rung. An upsert rather than an update because the absence of a row
- * is the default state, so the first edit of a rung must create it — and the
- * client addresses a TIER, which it always knows, not a row id it would have to
- * discover. `defaults` carry the built-in label/short so a first-time write of
- * only `colorHex` still lands a complete row.
- *
- * `colorHex: null` clears the accent back to the built-in tone; `undefined`
- * leaves existing paint alone, hence the explicit sentinel rather than COALESCE
- * (same treatment as {@link updateType}'s bindings).
- */
+/** UPSERT one rung. */
 export async function upsertPriorityTier(
   organizationId: OrgId,
   tier: number,
@@ -687,14 +637,7 @@ export async function updatePlatformAccount(
   return res.rows[0] ?? null;
 }
 
-/**
- * The org's platform → receiving-type dependency matrix, joined to slugs.
- *
- * Inactive platforms/types are filtered out here rather than in the resolver:
- * a rule pointing at a retired catalog row is not a constraint anyone meant to
- * keep, and leaving it in would narrow a picker to an option that no longer
- * exists. Pairs with the pure helpers in `@/lib/receiving/platform-type-rules`.
- */
+/** The org's platform → receiving-type dependency matrix, joined to slugs. */
 export async function listPlatformTypeRules(
   organizationId: OrgId,
 ): Promise<PlatformTypeRule[]> {
@@ -727,13 +670,7 @@ export async function listPlatformTypeRules(
   }));
 }
 
-/**
- * Add one platform → type rule.
- *
- * Both ids are re-checked against THIS org's catalogs inside the statement, so
- * a body carrying another tenant's id inserts nothing rather than linking
- * across orgs. `ON CONFLICT DO NOTHING` makes a double-submit idempotent.
- */
+/** Add one platform → type rule. */
 export async function createPlatformTypeRule(
   organizationId: OrgId,
   data: { platformId: number; typeId: number; isDefault?: boolean },
@@ -766,15 +703,7 @@ export async function createPlatformTypeRule(
   });
 }
 
-/**
- * Make one rule the platform's default.
- *
- * Clearing the old default and setting the new one happen in ONE transaction
- * because `uq_platform_type_rules_org_platform_default` makes two defaults
- * unrepresentable — two sequential requests from the client would collide on
- * that index the moment anyone changes their mind. Passing `isDefault: false`
- * just clears this row's flag, leaving the platform with no pre-selection.
- */
+/** Make one rule the platform's default. */
 export async function setPlatformTypeRuleDefault(
   organizationId: OrgId,
   id: number,

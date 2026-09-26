@@ -14,16 +14,7 @@ const CRON_RUNS_RETENTION_DAYS = 30;
 // (pending rows are never touched — only processed_at IS NOT NULL ages out).
 const SEARCH_OUTBOX_RETENTION_DAYS = 7;
 
-/**
- * GET /api/cron/cleanup  (Vercel cron, daily)
- *
- * Housekeeping: prune the api_idempotency_responses cache and the cron_runs
- * history (keep ~30 days). Replaces the orphaned /api/qstash/cleanup/idempotency.
- *
- * Tenancy: intentionally GLOBAL / cross-org. cron_runs and
- * api_idempotency_responses are system tables with no tenant scope, so this runs
- * once on the privileged owner pool — never a per-org sweep (Phase D category B).
- */
+/** GET /api/cron/cleanup (Vercel cron, daily) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {
@@ -49,10 +40,7 @@ export async function GET(request: NextRequest) {
         } catch (err: any) {
           if (err?.code !== '42P01') throw err; // undefined_table → migration not applied yet
         }
-        // AI margin billing: push unreported usage to the Stripe meter
-        // (no-op until STRIPE_AI_METER_EVENT_NAME is configured). Non-fatal —
-        // a Stripe hiccup must not fail housekeeping; rows stay unreported
-        // and the next run retries.
+        // AI margin billing:
         let aiMeter: { rowsProcessed: number; orgsReported: number; centsReported: number } | null = null;
         try {
           const { reportAiUsageToStripe } = await import('@/lib/billing/ai-meter-reporter');

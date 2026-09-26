@@ -8,43 +8,8 @@ import {
 } from '@/lib/receiving/photo-intent';
 
 /**
- * Photos for one unit's timeline, in five stage-tagged buckets mirroring the
- * evidence spine (`PHOTO_EVIDENCE_STAGES`, `src/lib/photos/stages.ts`):
- *
- *   • `arrival`      — the unit's ORIGIN parent carton (`RECEIVING` via
- *     `serial_unit_provenance` → receiving line) with an explicit PACKAGE
- *     photo_type: `receiving_package`, the legacy `receiving` alias, or the
- *     untyped '' legacy carton rows. Stage: `arrival_package`.
- *   • `unbox_carton` — the same parent carton with
- *     photo_type=`receiving_unbox_carton` (Unbox header captures).
- *   • `unbox_item`   — photos primary-linked to the ORIGIN `RECEIVING_LINE`.
- *     Entity-only by the identity law (`receivingStageFromPhotoType`): a line
- *     link IS item evidence regardless of a stale legacy photo_type, matching
- *     `receivingPhotoIntentSql('item')`.
- *   • `testing`      — SERIAL_UNIT photos with photo_type='testing_photo'
- *     (testing-station Pass+Print / unit-label scan captures).
- *   • `packing`      — SERIAL_UNIT photos with photo_type='packer_photo'
- *     (+ legacy 'shipout'/'prepack') UNION photos dual-linked to a PACKER_LOG
- *     that also links this SERIAL_UNIT (order-pack photos).
- *
- * Mis-stamped legacy rows — `receiving_item` typed on a RECEIVING carton link
- * (the pre-SoT desktop bug) — match NO bucket on purpose: they are
- * unclassifiable as stage evidence (mirrors `receivingStageFromPhotoType`
- * returning null), so they never masquerade as arrival insurance.
- *
- * Each row also carries the unit's `serial` / `sku` (one cheap join against
- * the unit's own row) so cross-entity consumers (order timeline groups,
- * station journey chrome) can label media without a second lookup.
- *
- * Tenant boundary: the explicit `organization_id = $1` predicate on every arm,
- * AND the `app.current_org` GUC via `tenantQuery`. Both are load-bearing here,
- * for different reasons. The predicate is what isolates the `photos` /
- * `photo_entity_links` / `serial_units` reads today, because the pool underneath
- * still runs as the BYPASSRLS owner role. The GUC is what makes the
- * `serial_unit_provenance` arm honest: `v_serial_unit_origins` is declared
+ * Photos for one unit's timeline, in five stage-tagged buckets mirroring the evidence spine (`PHOTO_EVIDENCE_STAGES`,…
  * `WITH (security_invoker = true)`, so a raw-pool read of that family inherits
- * the pool role's privileges rather than the tenant's, and the predicate is the
- * only thing standing between it and every tenant's provenance. Newest-first.
  */
 
 export type UnitTimelinePhotoSource =
@@ -76,13 +41,7 @@ interface DbRow {
   sku: string | null;
 }
 
-/**
- * Entity-wins precedence among the three receiving buckets: a photo carrying
- * BOTH a line link and a carton link (legacy dual-link rows that predate the
- * `remapReceivingPhotoTypeOnMove` waist) is item evidence — it must appear in
- * exactly one bucket, and the RECEIVING_LINE link wins. Testing / packing rows
- * are disjoint by photo_type and are never deduped against receiving buckets.
- */
+/** Entity-wins precedence among the three receiving buckets: */
 const RECEIVING_BUCKET_RANK: Partial<Record<UnitTimelinePhotoSource, number>> = {
   unbox_item: 3,
   unbox_carton: 2,

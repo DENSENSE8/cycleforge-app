@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * **Inventory-units spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag for serialized-unit browse. Spread it onto the
- * host; there is no second table component.
- *
- * ```tsx
- * const sheet = useUnitsSpreadsheet({ rows, loading, search, sort, dir, onSortChange, onOpen });
- * return <DataTable {...sheet} />;
- * ```
- *
- * Units is a SHEET morph, so the leaf is still the allowlisted
- * {@link UnitsGridRow} until a generic sheet row exists. This hook is the
- * feed: columns, sort-by-fact, grouping, the row renderer. Two mounts already
- * prove the seam — `/inventory/units` (URL sort + inspector) and the Inventory
- * shell's by-filter pane (local sort + `?unit=`). A third feed is a `rows`
- * prop, not a table.
- */
+/** **Inventory-units spreadsheet** — the family glue that resolves a {@link DataTable} feed bag for serialized-unit browse. */
 
 import { useEffect, useMemo, useState, type RefObject } from 'react';
 import type { DataTableProps } from '@/components/tables/DataTable';

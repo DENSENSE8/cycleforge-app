@@ -21,18 +21,7 @@ import {
 import { registerRackLocations } from './rack-printer-api';
 import { printRackLabelRun } from '@/lib/print/printLabelRun';
 
-/**
- * Controller for the rack label printer. Owns the four-step location builder
- * (zone → aisle → bay → level), the per-warehouse config, and the
- * register-then-print flow. Bulk ranges open LabelPrintRunSheet; confirm calls printRun.
- * The zone/aisle/bay/level selection lives in the shared `useRackPrinterStore` so it
- * survives across the sidebar ↔ main-pane variants; everything else is local.
- *
- * Returns one bag consumed by the layout components (mobile picker, desktop
- * builder, sidebar) so the views stay presentational.
- *
- * Callers: RackLabelPrinter. User: implement print-run plan — wire printRackLabelRun.
- */
+/** Controller for the rack label printer. */
 export function useRackLabelPrinter() {
   const { rooms, roomNames, loading } = useLocations();
 

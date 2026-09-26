@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Shared "Staged / Shelf / Lane" popover chip row (A3) — reused by every
- * triage rail's `renderPopoverContext` so the three chips render identically
- * everywhere a `TriageStagingContext` is available. Renders nothing when the
- * carton has no staging context at all (never an empty rule line).
- */
+/** Shared "Staged / Shelf / Lane" popover chip row (A3) — reused by every triage rail's `renderPopoverContext` so the three chips render… */
 
 import { TriageStagingStatusChips } from '@/components/receiving/triage/TriageStagingStatusChips';
 import type { TriageStagingContext } from './useTriageStagingMap';

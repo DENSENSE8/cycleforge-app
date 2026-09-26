@@ -1,18 +1,4 @@
-/**
- * The shipment (package) record — one carrier tracking number
- * (`shipping_tracking_numbers.id`) read as a whole: the order lines inside the
- * box, who packed it and when, when it left the dock, what the carrier saw, and
- * every action any station, person or carrier took on it.
- *
- * Keyed by the PACKAGE, not the order line: a pack scan can match no order
- * (an open `orders_exceptions` row), and a multi-box order ships each box at
- * its own time. Served by `GET /api/shipments/[id]/record`; painted by the
- * Shipped desk ledger (`DeskRecordPlane`) and the phone hub
- * (`/m/shipping/shipments/[shipmentId]`).
- *
- * Every instant is an ISO-8601 string WITH an offset (`…Z`), never a bare wall
- * clock — the client formats it in the operator's zone.
- */
+/** The shipment (package) record — one carrier tracking number (`shipping_tracking_numbers.id`) read as a whole: */
 
 export interface ShipmentRecordSerial {
   serial: string;

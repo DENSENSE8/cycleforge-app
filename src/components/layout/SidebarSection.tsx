@@ -15,16 +15,7 @@ export interface SidebarSectionProps {
   as?: ElementType;
 }
 
-/**
- * The single source of the sidebar left gutter. Wrap EVERY sidebar section in
- * this instead of hand-writing `px-2`/`px-3` — the left edge is owned in one
- * place ({@link SIDEBAR_GUTTER}), so pills, search bars, eyebrows, and rows all
- * align on the same column across every sidebar with zero duplicated padding.
- *
- * Change the gutter once in `header-shell.ts` and every `<SidebarSection>`
- * follows. Decorative leads (icons, status dots) inset *within* their own
- * container — they never add to this gutter.
- */
+/** The single source of the sidebar left gutter. */
 export function SidebarSection({
   children,
   band = false,

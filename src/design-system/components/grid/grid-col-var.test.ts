@@ -2,19 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { gridColVar, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 
-/**
- * `gridColVar` must emit a VALID CSS custom-property name for every column key
- * the product can produce — including org custom columns, which key as
- * `custom:<defKey>`.
- *
- * A custom-property name may not contain a colon. `var(--cf-col-custom:x, 5rem)`
- * is a parse error, and because it sits inside `grid-template-columns`, the
- * error invalidates the WHOLE declaration — every track on the row is dropped,
- * not just the offending one. Measured in a browser on Unbox History
- * (2026-08-09): the row's inline template came back empty and computed
- * collapsed to one full-width track, so cells landed in implicit tracks at zero
- * height.
- */
+/** `gridColVar` must emit a VALID CSS custom-property name for every column key the product can produce — including org custom columns,… */
 describe('gridColVar — CSS-safe custom property names', () => {
   it('leaves ordinary system keys untouched', () => {
     assert.equal(gridColVar('title'), '--cf-col-title');

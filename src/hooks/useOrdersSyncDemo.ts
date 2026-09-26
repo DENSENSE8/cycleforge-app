@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The demo driver behind "Demo sync (sample data)".
- *
- * Replays {@link DEMO_RUN_SCRIPT} into the SAME ledger the live stream folds
- * into, so the run surface is byte-for-byte the production one — the operator's
- * requirement was that pressing the real button "would display exactly the
- * same". There is no demo-only view, and no demo branch inside the view.
- *
- * Writes nothing: no fetch, no query invalidation, no toast. Its only tell is
- * `demo: true`, which the surface paints in its eyebrow.
- */
+/** The demo driver behind "Demo sync (sample data)". */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {

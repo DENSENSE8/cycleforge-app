@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Product card for the Item-track Out-of-stock triangle hover.
- *
- * Importers: CompoundCells (HoverTooltip label when itemStatus.card is set).
- * Schema: orders.oos_* / itemStatus.card facts. No API.
- * User: "Implement the plan as specified... Out of stock identity + Pending-tab toast"
- */
+/** Product card for the Item-track Out-of-stock triangle hover. */
 
 import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';

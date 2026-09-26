@@ -1,45 +1,4 @@
-/**
- * GET /api/receiving/pending-unboxing
- *
- * Returns all receiving rows that have arrived but not yet been fully unboxed,
- * joined with their matched receiving_lines (Zoho PO item data).
- *
- * A row is "pending unboxing" when:
- *   receiving_unbox.unboxed_at IS NULL (street table; NULL when no row yet)
- *   OR any of its lines have workflow_status IN ('ARRIVED','MATCHED')
- *
- * Response shape:
- * {
- *   pending: Array<{
- *     receiving_id:               number
- *     tracking_number:            string | null
- *     carrier:                    string | null
- *     received_at:                string | null
- *     qa_status:                  string
- *     unboxed_at:                 string | null
- *     zoho_purchase_receive_id:   string | null
- *     line_count:                 number
- *     lines: Array<{
- *       id:                  number
- *       item_name:           string | null
- *       sku:                 string | null
- *       zoho_purchaseorder_id: string | null
- *       quantity_expected:   number | null
- *       quantity_received:   number
- *       workflow_status:     string
- *       qa_status:           string
- *       condition_grade:     string
- *       needs_test:          boolean
- *       assigned_tech_name:  string | null
- *     }>
- *   }>
- *   total: number
- * }
- *
- * Query params:
- *   limit?    (default 100)
- *   status?   ARRIVED | MATCHED | UNBOXED | ALL  (default: ARRIVED,MATCHED)
- */
+/** GET /api/receiving/pending-unboxing */
 
 import { NextRequest, NextResponse, after } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';

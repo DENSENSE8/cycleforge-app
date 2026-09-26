@@ -2,12 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-/**
- * Lazily resolve a Zendesk ticket's subject (title) by id, for labeling claim
- * folders in the photo library. Titles live in Zendesk, not our DB, so this is a
- * cached, best-effort fetch — it returns `null` (and the caller falls back to
- * "Ticket #id") when Zendesk is unconfigured/unreachable rather than throwing.
- */
+/** Lazily resolve a Zendesk ticket's subject (title) by id, for labeling claim folders in the photo library. */
 export function useZendeskTicketSubject(ticketId: number | null | undefined) {
   return useQuery({
     queryKey: ['zendesk-ticket-subject', ticketId] as const,

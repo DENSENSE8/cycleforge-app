@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * StationProcedurePanel — the station's ordered procedure + per-step data box.
- *
- * The primary content of the station-scoped view (L2): what the operator
- * actually does here, in order, and which persistent relations each act reads
- * and writes. A pure projection of the declared procedure over the station
- * registries (`buildStationProcedureMap`), so it renders with zero traffic and
- * owns no fetch of its own.
- *
- * Vocabulary is BPMN 2.0's — each row is an ACTIVITY, the chips beneath it are
- * DATA STORES it reads (input association) or writes (output association). The
- * layout is Value Stream Mapping's: a process box with its data box directly
- * underneath, which is why the relations sit inside the step rather than in a
- * separate table elsewhere on the page.
- *
- * Mounted by BOTH L2 panes — the read-only preview and the manager's station
- * editor. A manager is the person who most needs to read the procedure, and the
- * shell routes them to the editor, so a panel that lived only in the preview
- * would be invisible to its main audience.
- */
+/** StationProcedurePanel — the station's ordered procedure + per-step data box. */
 
 import { useMemo } from 'react';
 import { icons } from 'lucide-react';

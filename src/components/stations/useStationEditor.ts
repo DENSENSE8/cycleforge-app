@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * useStationEditor — the headless core of the station builder's edit loop,
- * extracted from StationSlot so the SAME drag/config/save/publish state machine
- * drives two chromes:
- *   • StationSlot           — page-bound stations (/api/stations), in-page edit.
- *   • StudioNodeStationEditor — node-bound stations (Operations Studio L2,
- *     /api/studio/nodes/[id]/station), bound to a workflow_node_id.
- *
- * It owns ONLY the composition state + block mutations (add / configure / move /
- * remove / reorder) for one slot, plus the save/publish orchestration. It is
- * deliberately PERSISTENCE-AGNOSTIC: the chrome injects `onSaveDraft(config)`
- * and `onPublish(draftId)` so this hook never knows which API it writes to. The
- * dnd-kit sensors + onDragEnd live here too so neither chrome re-implements them.
- */
+/** useStationEditor — the headless core of the station builder's edit loop, extracted from StationSlot so the SAME drag/config/save/publish… */
 
 import { useCallback, useMemo, useState } from 'react';
 import {

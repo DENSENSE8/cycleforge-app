@@ -1,18 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/refresh
- *
- * Operator-triggered re-poll of carrier tracking, surfaced on the Incoming
- * receiving view. Re-syncs only the shipments backing the Incoming table —
- * UPS/USPS/FedEx tracking#s attached to still-incoming PO lines, the set the
- * operator actually sees — rather than every active shipment in the system.
- * After the sweep, anything the carrier already delivered flips to DELIVERED so
- * the "Delivered · not scanned" tile/list reflects reality.
- *
- * Scope keeps us off the carrier rate limits: terminal (delivered/returned),
- * UNKNOWN-carrier, and dead (≥5 consecutive errors) numbers are excluded, and
- * the batch is capped at BATCH_CAP. A short cross-operator cooldown collapses
- * simultaneous clicks to a single poll, on top of the per-client rate limit.
- */
+/** POST /api/receiving-lines/incoming/refresh */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -68,28 +54,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   try {
-    // Scope to EXACTLY the shipments backing the Incoming table — the
-    // tracking#s an operator actually sees in the list — not every active
-    // shipment in the system. A shipment is in-scope when it's attached to a
-    // still-incoming PO line (EXPECTED, nothing received yet, PO not
-    // Zoho-received/closed), reached via the identical soft receiving join the
-    // row endpoint uses (direct FK, else PO#-based fallback), so the synced set
-    // matches the displayed set. Prioritize out-for-delivery + never-polled so a
-    // freshly-delivered box flips first.
-    // Thread the org so the shipment-selection filters receiving_lines/receiving
-    // by ctx.organizationId (matching the already-migrated streaming twin) — a
-    // tenant's "Tracking" refresh re-polls ONLY its own still-incoming
-    // shipments, not every tenant's.
+    // Scope to EXACTLY the shipments backing the Incoming table — the tracking#s an operator actually sees in the list — not every active…
     const rows = await selectIncomingShipmentIds(BATCH_CAP, ctx.organizationId);
 
     const capped = rows.length > BATCH_CAP;
     const batch = rows.slice(0, BATCH_CAP);
     const result = await syncShipmentsByIds(batch, { concurrency: 5 });
 
-    // Universal Incoming (plan §9.4): "Refresh from sources" also re-pulls eBay
-    // buyer purchases when the org is on the flag (Trading GetOrders Buyer —
-    // live). An eBay failure is isolated (collected in the sync's errors) and
-    // never fails the carrier refresh the operator actually clicked for.
+    // Universal Incoming (plan §9.4):
     let ebayIngested = 0;
     let ebayCreated = 0;
     try {

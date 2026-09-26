@@ -1,13 +1,4 @@
-/**
- * The ONE CSV reader for table import.
- *
- * Dependency-free: quoted fields, escaped `""`, `\n` / `\r\n`, and a leading
- * BOM. Lives in the import seam rather than beside any one family so a second
- * surface taking a file never has a reason to hand-roll a second parser.
- *
- * Delimiter: comma by default; Amazon Seller Central returns reports are often
- * tab-separated — auto-detect from the first line (unquoted tab vs comma count).
- */
+/** The ONE CSV reader for table import. */
 
 function detectDelimiter(source: string): ',' | '\t' {
   let commas = 0;

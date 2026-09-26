@@ -7,20 +7,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { nasOrgHeader } from '@/lib/nas-agent-client';
 import { searchHitHref } from '@/lib/search/search-hit';
 
-/**
- * Server-side reader for a receiving photo's raw bytes, so the claim route can
- * upload the actual file to Zendesk (as an attachment) instead of pasting a link.
- *
- * Handles the URL shapes the picker stores:
- *   • NAS app route ("/api/nas/<path>") → read through the office media agent
- *     when configured, so Vercel can upload the original bytes to Zendesk.
- *   • NAS dev route ("/api/nas-dev/<path>") → read straight off the mounted
- *     filesystem (the LAN box running the app has the share mounted). No HTTP /
- *     auth round-trip needed.
- *   • Absolute http(s) (Vercel Blob, nginx tunnel) → fetch the bytes.
- *
- * Returns null on anything unreadable so one bad photo never fails the claim.
- */
+/** Server-side reader for a receiving photo's raw bytes, so the claim route can upload the actual file to Zendesk (as an attachment)… */
 
 // Local SMB mount (dev / NAS_DEV_ROOT hosts only): never traced into functions.
 const NAS_DEV_ROOT = resolve(
@@ -47,13 +34,7 @@ export interface PhotoBytes {
   contentType: string;
 }
 
-/**
- * Resolve a photo into a URL the NAS archive worker can read:
- *   - GCS primary storage => short-lived signed URL
- *   - NAS/legacy-backed storage => stored legacy URL/path
- *
- * Returns null only when no direct archive source can be derived.
- */
+/** Resolve a photo into a URL the NAS archive worker can read: */
 export async function resolveClaimArchivePhotoUrl(
   photoId: number,
   organizationId: string,
@@ -207,16 +188,7 @@ const CLAIM_ARCHIVE_DIR = resolve(
   /* turbopackIgnore: true */ process.env.ZENDESK_CLAIM_ARCHIVE_DIR || join(NAS_DEV_ROOT, '2 Zendesk 2026'),
 );
 
-/**
- * On claim creation, copy ALL of the PO's photos into a local folder named after
- * the Zendesk ticket (e.g. ".../2 Zendesk 2026/12345/") and drop a ticket-info
- * file. This is the full local record — Zendesk gets only the selected subset,
- * but the folder keeps everything in case the seller asks for more later.
- *
- * Best-effort: returns null / partial counts on failure so it never breaks an
- * already-filed claim. Reads each photo via readPhotoBytes (filesystem for NAS,
- * fetch for Blob), so it works for every photo source.
- */
+/** On claim creation, copy ALL of the PO's photos into a local folder named after the Zendesk ticket (e.g. */
 export async function archiveClaimToFolder(opts: {
   ticketId: number | string;
   photos: Array<{ url: string }>;
@@ -261,19 +233,7 @@ export async function archiveClaimToFolder(opts: {
   return { folder, copied, total: opts.photos.length };
 }
 
-/**
- * Archive a claim's photos via the office "archive agent" instead of a local
- * filesystem write. This is the production path: the app runs on Vercel, which
- * can't reach the LAN NAS, so it POSTs the ticket # + photo list to the agent
- * (through the Cloudflare tunnel). The agent — running on the office machine
- * that has the share mounted — does the real mkdir + copy into
- * ".../2 Zendesk 2026/<ticket#>/".
- *
- * Returns null when the agent isn't configured (so callers can fall back to the
- * local write for dev/LAN-hosted runs). THROWS on agent/transport failure so
- * the caller can surface a warning — a filed claim whose photos didn't archive
- * must not look like a clean success.
- */
+/** Archive a claim's photos via the office "archive agent" instead of a local filesystem write. */
 export async function archiveClaimViaAgent(opts: {
   ticketId: number | string;
   photos: Array<{ url: string }>;
@@ -314,14 +274,7 @@ export async function archiveClaimViaAgent(opts: {
   };
 }
 
-/**
- * Canonical "view the receiving record" link, built from the request origin
- * so it points at whatever host the operator is actually on (LAN URL on the
- * LAN, the public URL otherwise). Uses the same read view a global-search hit
- * for this carton opens (`searchHitHref('RECEIVING', id)` → `/carton/:id`) —
- * whoever opens the ticket later (support, a seller, another operator) lands
- * on a read-only record, not the `/unbox` work editor.
- */
+/** Canonical "view the receiving record" link, built from the request origin so it points at whatever host the operator is actually on (LAN… */
 export function poReceivingLink(req: NextRequest, receivingId: number): string {
   return `${req.nextUrl.origin}${searchHitHref('RECEIVING', receivingId)}`;
 }

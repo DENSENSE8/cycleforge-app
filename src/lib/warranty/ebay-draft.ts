@@ -1,10 +1,4 @@
-/**
- * eBay "repaired unit" listing draft (Phase 6) — DRAFT ONLY.
- *
- * Assembles a refurbished-listing payload from a repaired warranty claim for a
- * human to review/publish. We never auto-publish (confirmed decision); this is a
- * pure builder so it is unit-testable and free of eBay-API coupling.
- */
+/** eBay "repaired unit" listing draft (Phase 6) — DRAFT ONLY. */
 
 import type { WarrantyClaimDetail } from './types';
 

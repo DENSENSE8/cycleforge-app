@@ -1,41 +1,4 @@
-/**
- * Warehouse-wide stock-by-location read — the feed behind Inventory › Stock.
- *
- * ## Both pairings, because the warehouse has two
- *
- * - **`bin_contents`** — LOOSE stock counted into a bin (the scan gun, the
- *   counts, `/api/locations/[barcode]` put/take). Carries a count stamp.
- * - **`serial_units.current_location`** — SERIALIZED units standing at a
- *   location. The qty is a COUNT of units.
- *
- * They stay SEPARATE rows keyed by `source` (see `location-stock-row.ts`).
- * `current_location` is FREE TEXT, so it is resolved against `locations` by the
- * three handles an operator could have written (barcode, name, nickname); an
- * unresolved one keeps its written handle as its face and a `NULL` id — hiding
- * it would hide real stock. Bin pairs at `qty = 0` and `SHIPPED` units are
- * excluded: a Stock list is a list of what is on a shelf.
- *
- * ## The find box is answered HERE
- *
- * `query` is applied in SQL, above the {@link LOCATION_STOCK_ROW_CAP} window,
- * over the facts a record paints: title, SKU, location (all four handles),
- * room, qty — plus a punctuation-blind leg, because the desk paints a
- * structured bin code segmented (`C0409200` → `C-04-09-2-00`) and that dashed
- * form is what an operator reads back into the box. `COUNT(*) OVER ()` rides
- * the same scan AFTER that predicate, so "shown of total" counts the matched set.
- *
- * ## Photos
- *
- * A real SKU's photo is Zoho first, catalog second (`productImageUrl`). A
- * floor-minted placeholder (`sku_stock.is_provisional`, `TMP-…`) has neither;
- * its photo is the first `SKU_STOCK` photo the phone linked to its `sku_stock`
- * row — the same cover the SKU Exceptions desk paints.
- *
- * Tenancy: `orgId` is REQUIRED. `sku`, `barcode` and `room` are tenant-scoped
- * string keys that collide across orgs, and RLS does not bite on the owner
- * pool, so the read goes through `tenantQuery` with an explicit predicate on
- * every table.
- */
+/** Warehouse-wide stock-by-location read — the feed behind Inventory › Stock. */
 
 import { tenantQuery } from '../tenancy/db';
 import type { OrgId } from '../tenancy/constants';

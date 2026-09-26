@@ -1,15 +1,4 @@
-/**
- * Settings Registry — shared types.
- *
- * A "setting" is one declarative entry that drives storage, validation, UI, plan
- * gating, and audit. See docs/settings-registry.md. The registry array lives in
- * ./registry.ts; the effective-value resolver in ./resolve.ts; typed server
- * accessors in ./accessors.ts.
- *
- * EntitlementFeature is derived from the plan catalog (pure module — safe to
- * import on the client) so a setting's `entitlement` can only name a real plan
- * feature.
- */
+/** Settings Registry — shared types. */
 
 import type { ZodTypeAny } from 'zod';
 import type { Entitlements } from '@/lib/billing/plans';

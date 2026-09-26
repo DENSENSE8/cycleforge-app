@@ -1,21 +1,4 @@
-/**
- * Cross-system patch: turn a "Zoho PO exists, vendor emailed the tracking#"
- * email into a populated `receiving.shipment_id` so the Incoming view's
- * carrier-status column lights up without waiting for Zoho's
- * `reference_number` to get updated by purchasing.
- *
- * Industry pattern: lazily-derived cross-system link. The Gmail email is a
- * hint, never a source of truth — we only act on it when (a) the email
- * matches a known Zoho PO AND (b) that PO's `receiving` row has no
- * shipment_id yet. Anything else is a no-op; the next /api/cron/shipping
- * cron pulls carrier status separately.
- *
- * Idempotent: re-running on the same email + PO is safe — the upsert
- * inside `registerShipmentPermissive` keys on the normalized tracking#,
- * and we only stamp `shipment_id` when it's NULL. Phantom shipments are
- * filtered by `registerShipmentPermissive`'s length + character checks
- * (carrier=UNKNOWN with no valid format → returns null).
- */
+/** Cross-system patch: */
 
 import pool from '@/lib/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';

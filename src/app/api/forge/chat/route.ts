@@ -33,13 +33,7 @@ Rules:
 - After a mutation, confirm to the user what changed (previous → new status).
 - Keep answers short and operational; this is a warehouse ops dashboard.`;
 
-/**
- * POST /api/forge/chat — Vercel AI SDK plan-agent (ALP-3.4).
- * Streaming chat over the org's configured AI provider (BYOK chain → platform
- * Gateway env). Plan viewers get the read tool; plan managers also get
- * mutate_master_plan. The global dock assistant (/api/assistant/chat) is a
- * separate SSE stack and stays untouched (locked decision).
- */
+/** POST /api/forge/chat — Vercel AI SDK plan-agent (ALP-3.4). */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

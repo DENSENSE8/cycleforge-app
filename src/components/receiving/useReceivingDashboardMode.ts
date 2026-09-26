@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Parses the receiving right-pane mode. The graduated surface routes (`/unbox`,
- * `/triage`, `/repair`, …) carry no `?mode=` — being on the route IS the mode —
- * so the mode is derived path-first, then from `?mode=` for the legacy
- * `/receiving` page. History + Incoming + Repair are table-only (they hide the
- * workspace overlay even if one is open in state, so a quick peek doesn't lose
- * unfinished edits).
- *
- * `/incoming?lane=docked` is the Docked feed (former Receiving Board) and
- * resolves as history for pane/overlay purposes.
- */
+/** Parses the receiving right-pane mode. */
 
 import { useSearchParams, usePathname } from 'next/navigation';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';

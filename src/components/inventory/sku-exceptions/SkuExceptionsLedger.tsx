@@ -1,28 +1,8 @@
 'use client';
 
 /**
- * Inventory › **SKU Exceptions** — the floor-minted placeholder SKUs
- * (`TMP-<barcode>`, or `TMP-XXXXX-XXXXX` when made without one) as an
- * industrial record ledger with a triage evidence column
+ * Inventory › **SKU Exceptions** — the floor-minted placeholder SKUs (`TMP-<barcode>`, or `TMP-XXXXX-XXXXX` when made without one) as an…
  * (HANDOFF-industrial-record-ledger; BRIEF §3 exception triage).
- *
- *   spine │ photo │ HLD · BIN <locations> · BARCODE ·························│ SEP 24
- *         │       │ title ··················································│ QTY [n]
- *         │       │ SKU TMP-… · PHOTOS n · ■ creator · description ········│ → next
- *   ────────────────────────────────────────────────────────────── │ evidence
- *
- * - `?q=` is the find box, answered client-side over every fact the record
- *   paints — the feed is one row per open placeholder, so the whole set is on
- *   the client.
- * - `?sku=TMP-…` opens that record in the evidence column. That URL is the
- *   share link (phones are rewritten to `/m/on-hold`). A `?sku=` that no longer
- *   resolves says why — already paired, with a link to the real product.
- * - Live: {@link useSkuExceptionsRealtime} refetches the list and the open
- *   record whenever the phone (or another desk) mints, edits, counts or pairs.
- * - **New temp SKU** (the desk's primary header verb) opens
- *   {@link SkuExceptionCreateForm} in the evidence column, as the open "record";
- *   J / K, Esc, ✕ or opening a row leave it. A fresh form per open (one
- *   idempotency key each); done, it opens the new record.
  */
 
 import { memo, useCallback, useMemo, useState } from 'react';

@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * @domain-job Name WHAT IS WRONG with a unit before its TESTING_FAILED verdict
- *   is recorded at the Testing bench.
- * @hardware-target Station
- * @density floor
- * @justification The direct sibling of `ReceivingQaFailSheet` — same ceremony
- *   (nothing pre-selected, confirm disabled until picked, no free-text sibling,
- *   one `BottomSheet` that is a floor sheet on the phone and a dialog on the
- *   desk) and the same shared picker underneath. It is a SIBLING and not a reuse
- *   because the vocabularies are genuinely different jobs: Unbox's QA fail picks
- *   a `reason_codes` exception that decides the carton's `qa_status`; a bench
- *   fail picks a `failure_modes` row that lands in `unit_failure_tags`, carries
- *   severity / repairability / a grade cap, is reversible, and feeds
- *   `recomputeUnitQuality`. Merging them would force one vocabulary to answer
- *   two questions.
- *
- * Until 2026-08-19 a bench fail asked for nothing at all: the verdict wrote
- * free-text `notes` and an `entity_signals` row with no code, so the column
- * built to tell a dead unit from a scratched one could not — the exact defect
- * `ReceivingQaFailSheet` was written to fix on the Unbox side.
- */
+/** @domain-job Name WHAT IS WRONG with a unit before its TESTING_FAILED verdict is recorded at the Testing bench. */
 
 import { useState } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';

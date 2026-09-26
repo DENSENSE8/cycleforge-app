@@ -11,12 +11,7 @@ import { formatDateTimePST } from '@/utils/date';
 const words = (raw: string | null | undefined) => (raw ? raw.replace(/_/g, ' ').toLowerCase() : null);
 const stamp = (at: string | null | undefined) => (at ? formatDateTimePST(at) : null);
 
-/**
- * `/m/shipping/shipments/[shipmentId]/info` — every fact about the package,
- * read-only (the same facts as the Shipped desk record's aside). The one write
- * — resolving an unmatched pack scan — is the hub's dock verb, so this screen
- * carries no pencil.
- */
+/** `/m/shipping/shipments/[shipmentId]/info` — every fact about the package, read-only (the same facts as the Shipped desk record's aside). */
 function ShipmentInfoInner() {
   const hub = useShipmentHub();
   return (

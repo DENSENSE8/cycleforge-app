@@ -1,35 +1,6 @@
 'use client';
 
-/**
- * Admin › Cycle count lines — the CLIENT ISLAND for
- * `/inventory/cycle-counts/[id]`.
- *
- * The page stays an RSC: it guards on `admin.view`, runs `loadCampaign` /
- * `loadLines` / `loadStatusCounts`, owns the `?status=` filter pills and the
- * Close-campaign form, and declares all four server actions. None of that
- * moves. This file is only the boundary the slot engine needs (hooks, layout
- * cascade, header sort), and it takes its rows as props — the SQL stays on the
- * server.
- *
- * Same shape as `../../returns/RecentReturnsTable.tsx` and
- * `../../bulk-allocate/AllocationCandidatesTable.tsx`.
- *
- * ## How the three server actions cross the boundary
- *
- * `submitCountAction` / `approveAction` / `rejectAction` are declared in the
- * page with `'use server'` in their bodies, so Next compiles each to a server
- * action REFERENCE, and passing that reference through a prop is exactly what
- * the retired `<form action={…}>` in a table cell did — a client `<form>` was
- * already invoking them over the same channel. What crosses is the id of the
- * action, never its code: `getCurrentUser()`, the `Number.isFinite` payload
- * guards, the `?error=invalid_qty` redirect and
- * `revalidatePath('/inventory/cycle-counts/<id>')` all still run ON THE
- * SERVER, inside each action, unchanged and un-bypassable from here.
- *
- * The payloads stay `FormData` with the same keys (`campaignId`, `lineId`,
- * `countedQty`), because keeping the signatures identical is what makes "every
- * gate and revalidate is untouched" a fact rather than a claim.
- */
+/** Admin › Cycle count lines — the CLIENT ISLAND for `/inventory/cycle-counts/[id]`. */
 
 import { useCallback, useState, useTransition } from 'react';
 import { DataTable } from '@/components/tables/DataTable';

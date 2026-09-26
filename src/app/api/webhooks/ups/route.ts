@@ -8,10 +8,7 @@ import { checkRateLimitAsync } from '@/lib/api-guard';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { safeStrEqual } from '@/lib/security/safe-compare';
 
-// UPS authenticates callbacks via the credential we registered on the
-// subscription, echoed back in a header. Header name has varied; check the
-// known variants and allow an override. We also accept an HMAC-SHA256 (base64)
-// digest of the raw body for parity with the FedEx receiver.
+// UPS authenticates callbacks via the credential we registered on the subscription, echoed back in a header.
 const CREDENTIAL_HEADERS = [
   process.env.UPS_WEBHOOK_CREDENTIAL_HEADER,
   'credential',
@@ -128,10 +125,7 @@ export async function POST(req: NextRequest) {
     const result = parseUPSTrackingPayload(packagePayload);
     if (!result?.trackingNumberNormalized) continue;
 
-    // Session-less callback: derive the owning org from the tracking number
-    // (registration row → linked order fallback). FAIL-CLOSED — an unresolved
-    // number skips just this event (never write under a guessed org) while the
-    // response stays 2xx so UPS doesn't hammer retries for the whole batch.
+    // Session-less callback:
     const orgId = await resolveWebhookOrgByTracking(result.trackingNumberNormalized);
     if (!orgId) {
       console.warn('[webhook-org] unresolved tracking — skipping event', {
@@ -149,11 +143,7 @@ export async function POST(req: NextRequest) {
       sourceSystem: 'ups_webhook',
     }, orgId);
 
-    // Pin every downstream write to the SHIPMENT ROW's real owner, not the
-    // hardcoded transitional org. When two tenants share a tracking number this
-    // is what stops org A's webhook from clobbering org B's row under the wrong
-    // GUC. Falls back to the lookup orgId for as-yet-unstamped (NULL-org) rows,
-    // so single-tenant USAV behavior is unchanged.
+    // Pin every downstream write to the SHIPMENT ROW's real owner, not the hardcoded transitional org.
     const shipmentOrgId = (shipment.organization_id as OrgId | null) ?? orgId;
 
     await upsertTrackingEvents(

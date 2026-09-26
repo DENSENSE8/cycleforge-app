@@ -7,21 +7,7 @@ import { CACHE_TAGS } from '@/lib/cache/tags';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/fba/shipments/today/items
- *
- * Adds FNSKUs to today's plan. If no plan exists for today it is
- * auto-created with `shipment_ref` = plan code {@link buildFbaPlanRefFromIsoDate}.
- *
- * - FNSKUs already on today's plan: **set** `expected_qty` to the request value (replace, not add);
- *   any **other** PLANNED lines for the same FNSKU on non-today shipments are deleted first.
- * - FNSKU only on other pending (PLANNED) plans: rows are **moved** to today with `expected_qty`
- *   set from the request (other duplicate lines removed; not summed with previous qty).
- *
- * Body: { items: [{ fnsku, expected_qty?, product_title?, asin?, sku? }] }
- *
- * Response: { added, merged, moved, skipped: [] } — same row shape for merged/moved.
- */
+/** POST /api/fba/shipments/today/items */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

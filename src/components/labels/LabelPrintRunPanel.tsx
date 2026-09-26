@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Inline print-run panel — freeze breadcrumb, preview faces on the page.
- * StickyActionBar owns Print; this surface only expands + selects faces.
- *
- * Modes:
- * - ragged — selected bays 1–16 × per-bay level N (Racks + Labels)
- * - odd/even — bay range × levels-per-bay by parity (odd=10, even=6, …)
- * - axis — vary one segment from–through (level / position / single-level bays)
- * - parts — A1–A4 · B1–B48 preset
- *
- * Callers: BinLabelPrinter, RackLabelPrinter. User: inline Labels print-run plan.
- */
+/** Inline print-run panel — freeze breadcrumb, preview faces on the page. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { LocationLabelFacePreview } from '@/components/labels/LocationLabelFacePreview';

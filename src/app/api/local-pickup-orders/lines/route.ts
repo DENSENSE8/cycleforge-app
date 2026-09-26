@@ -2,29 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * Local Pickup display feed — the flattened product rows for the `/pickup`
- * receiving mode, grouped by their LCPU order (the Unbox-family "row = product,
- * group = PO" shape).
- *
- * Local Pickup data lives in `local_pickup_orders` + `local_pickup_order_items`
- * (the only LCPU dataset that carries products — the `zoho_po_mirror` LCPU POs
- * are header-only), linked to Zoho by `zoho_po_id`. The sibling
- * `GET /api/local-pickup-orders` returns order HEADERS with item *counts*; this
- * feed returns the individual product lines the workbench table + sidebar rail
- * render.
- *
- * `?status=` narrows to one order status (default: every status except VOIDED,
- * so the current DRAFT pickup orders appear). `?limit=` caps rows (default 500).
- *
- * `?q=` is the workbench's find text, ANSWERED HERE. The `/pickup` field used
- * to filter the loaded page in the browser, so a product whose PO sat past row
- * 500 could not be found at all, and one whose only match was a reference
- * number the mounted tracks do not paint was dropped by the client pass even
- * when this feed had returned it. The columns below are exactly the facts a
- * pickup row paints (title, SKU, PO#, reference, customer), so a hit is always
- * a row the operator can see is a hit.
- */
+/** Local Pickup display feed — the flattened product rows for the `/pickup` receiving mode, grouped by their LCPU order (the Unbox-family… */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
@@ -49,10 +27,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
            OR o.customer_name ILIKE $${qIdx})`,
       );
     }
-    // A SEARCH IS NOT A PAGE. `?limit=` is the display window the workbench
-    // scrolls; honouring it under `q` would answer "no match" for a row sitting
-    // one past the bound — the same lie one layer down that the client-side
-    // filter told. A searching read opens to this endpoint's hard ceiling.
+    // A SEARCH IS NOT A PAGE.
     params.push(q ? 1000 : limit);
     const limitIdx = params.length;
 

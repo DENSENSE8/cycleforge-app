@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Testing Displays bodies — SKU Pairing · Checklist · Manuals.
- *
- * Flush planes on the right-edge push column (no WorkspaceCard glass island) —
- * same recipe as Classify / Package Pairing bare chrome. Parent
- * {@link buildTestingDisplayTabs} owns {@link DISPLAYS_BODY_INSET}.
- */
+/** Testing Displays bodies — SKU Pairing · Checklist · Manuals. */
 
 import { Loader2 } from '@/components/Icons';
 import { ProductHubPanel } from '@/components/products/pairing/ProductHubPanel';

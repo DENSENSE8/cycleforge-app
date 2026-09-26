@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Client for the order's labels beyond the purchase: Link label (search +
- * pair under a purpose), Unlink, a label's support-ticket links, and the
- * Price panel. Every write invalidates the Label block's summary
- * (`orderLabelSummaryKey`) and the Price panel, which read the same ledger.
- */
+/** Client for the order's labels beyond the purchase: */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { LabelPurpose } from '@/lib/shipping/label-purpose';

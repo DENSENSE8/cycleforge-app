@@ -33,18 +33,7 @@ export interface CapturedShot {
   id: string;
   blob: Blob;
   previewUrl: string;
-  /**
-   * Shutter instant (epoch ms) — stamped at the FRAME GRAB, before `toBlob` and
-   * `compressPhotoForUpload`, which together can run for a noticeable fraction
-   * of a second on a warehouse phone.
-   *
-   * Required, not defaulted: this camera is the only place a `CapturedShot` is
-   * born, and a canvas capture has no `File.lastModified` to fall back on, so a
-   * shot that reaches the queue without it has silently lost the only capture
-   * time that will ever exist. Making it required turns "a new capture path
-   * forgot to stamp" into a compile error instead of a null column an operator
-   * discovers during a carrier dispute.
-   */
+  /** Shutter instant (epoch ms) — stamped at the FRAME GRAB, before `toBlob` and `compressPhotoForUpload`, which together can run for a… */
   capturedAtMs: number;
 }
 
@@ -96,23 +85,7 @@ export interface MobilePackerSpamCameraProps {
 
 // ─── Component ──────────────────────────────────────────────────────────────
 
-/**
- * MobilePackerSpamCamera — fullscreen rapid-capture camera.
- *
- * Behaviour:
- *  • Reuses `useCamera()` (which owns getUserMedia + stop lifecycle).
- *  • Full-bleed viewfinder; controls float over a scrim so framing is WYSIWYG.
- *  • Capture is cropped to the on-screen viewfinder aspect ratio, so the stored
- *    blob and the gallery preview match exactly what was framed (no
- *    object-cover-vs-object-contain size mismatch between capture and review).
- *  • Each shot is canvased, `toBlob`d as JPEG, then routed through
- *    `compressPhotoForUpload` so the stored blob matches the server's input.
- *  • Photos accumulate locally — NO network calls. The last shot surfaces as a
- *    circular gallery button (bottom-left); tapping opens a swipeable review
- *    overlay with per-photo delete.
- *  • On Done, ownership of the blobs transfers to the parent (object URLs are
- *    NOT revoked here). On unmount without Done, all object URLs are revoked.
- */
+/** MobilePackerSpamCamera — fullscreen rapid-capture camera. */
 export function MobilePackerSpamCamera({
   onDone,
   onCancel,
@@ -202,10 +175,7 @@ export function MobilePackerSpamCamera({
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
 
-    // Crop the source frame to the on-screen viewfinder aspect ratio so the
-    // saved photo equals exactly what the operator framed (the live view is
-    // object-cover, so without this crop the gallery would reveal the
-    // letterboxed edges the viewfinder hid).
+    // Crop the source frame to the on-screen viewfinder aspect ratio so the saved photo equals exactly what the operator framed (the live view…
     const vw = video.videoWidth;
     const vh = video.videoHeight;
     const box = viewfinderRef.current?.getBoundingClientRect();
@@ -337,10 +307,7 @@ export function MobilePackerSpamCamera({
     onDone(shots);
   }, [onDone, shots]);
 
-  // ── Close / back ───────────────────────────────────────────────────────────
-  // Closing with the X must NOT discard work: any captured shots are committed
-  // (handed off + uploaded) exactly as if the operator had tapped the checkmark.
-  // Only a genuinely empty camera is a plain cancel.
+  // ── Close / back ─────────────────────────────────────────────────────────── Closing with the X must NOT discard work:
   const handleCancel = useCallback(() => {
     if (shots.length > 0) {
       handedOffRef.current = true;

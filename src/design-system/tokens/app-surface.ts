@@ -1,13 +1,4 @@
-/**
- * App surface SoT — chrome / canvas / page-wash backgrounds.
- *
- * Appearance → Page background stamps `data-app-wash` on `<html>`; wash hosts
- * read `--ds-wash-from` / `--ds-wash-to` via {@link appWashClass}. Chrome and
- * canvas pin to theme surface tokens so Theme + wash stay one system.
- *
- * Nested cards/inputs keep `bg-surface-card` / `bg-surface-canvas` utilities.
- * Only page/shell **roots** should import these classes.
- */
+/** App surface SoT — chrome / canvas / page-wash backgrounds. */
 
 export const WASH_NAMES = ['mint', 'cool', 'slate', 'dawn', 'flat'] as const;
 export type WashName = (typeof WASH_NAMES)[number];
@@ -80,35 +71,10 @@ export const appChromeMutedClass = 'bg-surface-card/95';
 /** Flat full-bleed work hosts — theme `background-canvas`. */
 export const appCanvasClass = 'bg-surface-canvas';
 
-/**
- * PHONE page ground — theme `background-surface` (card white), not canvas.
- *
- * A phone screen is ONE plane. There is no rail beside it, no card floating on
- * a stage, and nothing casting a shadow that needs a ground to read against —
- * the reasons canvas sits a real step below card white on the desk
- * (`themes/light.ts`, the GROUND-PLANE RULE in `styles/globals.css`) do not
- * apply on 390px. What canvas buys there is a grey field behind white rows,
- * which reads as a gap rather than a plane.
- *
- * The kiosk settled this first (operator, `kiosk-chrome.ts`: *"There should be
- * no reason why you're wrapping the cart form and then having another
- * background for it. There should just be a white background."*) and the phone
- * follows it, through the SAME token — so `/m` and the kiosk are the same
- * white by construction, not by two surfaces agreeing on a hex.
- *
- * Flipping the phone's ground is this one line. Flipping the DESK's means
- * `background-canvas` in every `themes/*.ts`, and that is a different decision
- * with the elevation system attached to it.
- */
+/** PHONE page ground — theme `background-surface` (card white), not canvas. */
 export const appMobilePageGroundClass = 'bg-surface-card';
 
-/**
- * Depth-plane edge stroke — readable against chrome / page wash (mint / dark).
- * Owned by the desktop content shell (`appContentShellClass`) so every page
- * gets the same radius hairline. Do **not** use near-invisible
- * `border-hairline` here; that token is for internal row dividers, not the
- * content-corner / chrome join.
- */
+/** Depth-plane edge stroke — readable against chrome / page wash (mint / dark). */
 export const appWorkCanvasEdgeClass = 'border border-border-soft';
 
 /**
@@ -119,27 +85,11 @@ export const appWorkCanvasEdgeClass = 'border border-border-soft';
 export const appChromeBandHairlineClass =
   'shadow-[inset_0_-1px_0_0_var(--ds-color-border-default)]';
 
-/**
- * Depth 1 — layout shell for station work roots (Unbox / Triage / Pack).
- * No fill — use when the root sits on the receiving
- * `CONTEXT_PANEL_HOST` shared ground so a full-bleed card cannot shear
- * outset rail chrome. Pair with an inner content fill, or use
- * {@link appWorkCanvasClass} when the station owns the full host alone
- * (e.g. Pack).
- */
+/** Depth 1 — layout shell for station work roots (Unbox / Triage / Pack). */
 export const appWorkCanvasLayoutClass =
   'relative flex min-h-0 w-full flex-1 flex-col overflow-hidden';
 
-/**
- * Depth 1 — elevated station work fill (layout + card surface).
- * The rounded cutout + depth-edge hairline live on the outer desktop content
- * shell (`appContentShellClass`) so they render on every page, not only
- * stations that opt into this host. No drop shadow — a box-shadow at the soft
- * join casts a gray strip into the sidebar cutout.
- *
- * Do **not** use this full-bleed card as the workspace sibling under a
- * receiving context rail — use {@link appWorkCanvasLayoutClass} instead.
- */
+/** Depth 1 — elevated station work fill (layout + card surface). */
 export const appWorkCanvasClass = `${appWorkCanvasLayoutClass} bg-surface-card`;
 
 /**

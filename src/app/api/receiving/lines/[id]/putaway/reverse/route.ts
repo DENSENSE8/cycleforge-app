@@ -7,18 +7,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 /** States a unit can be STOCKED from — un-putaway restores it to whichever it came from. */
 const PRE_STOCK_STATES = new Set<SerialState>(['RECEIVED', 'TESTED', 'GRADED']);
 
-/**
- * POST /api/receiving/lines/[id]/putaway/reverse — undo a putaway.
- *
- * Reverse of the putaway: walks a wrongly-stocked serial unit STOCKED → TESTED
- * (the pre-stock state) via the state machine and clears its bin location, so
- * an operator who binned the wrong unit / wrong bin can pull it back out. Goes
- * through `transition()` (the STOCKED→TESTED back-edge), which guards the move
- * and emits an inventory_event — so a unit that has since been ALLOCATED/PICKED
- * (no longer STOCKED) is refused with 409 rather than yanked from an order.
- *
- *   POST { serial_unit_id, staff_id?, client_event_id?, notes? }
- */
+/** POST /api/receiving/lines/[id]/putaway/reverse — undo a putaway. */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -47,21 +36,13 @@ export async function POST(
     const clientEventId = String(body?.client_event_id || '').trim() || null;
     const notes = String(body?.notes || '').trim() || null;
 
-    // Run the whole reverse inside one tenant transaction so the org GUC is set
-    // (RLS backstop) and every statement is org-scoped. The transition() guard
-    // failure is returned as a tagged value and mapped to its original status
-    // below — withTenantTransaction owns COMMIT/ROLLBACK, so we don't ROLLBACK
-    // here; returning normally COMMITs (the guard failure made no writes).
+    // Run the whole reverse inside one tenant transaction so the org GUC is set (RLS backstop) and every statement is org-scoped.
     type TransitionFail = { ok: false; status: number; error: string; from?: SerialState };
     const isFail = (v: unknown): v is TransitionFail =>
       typeof v === 'object' && v != null && (v as { ok?: boolean }).ok === false;
 
     const txResult = await withTenantTransaction(orgId, async (client) => {
-      // Restore to whichever pre-stock state the unit ACTUALLY came from — a unit
-      // can reach STOCKED straight from RECEIVED (mark-received auto-putaway) or
-      // via TESTED/GRADED (testing). Read the last non-STOCKED state from history
-      // so we never fabricate a TESTED/QC-passed state a never-tested unit didn't
-      // earn. Default to RECEIVED (the most conservative pre-stock state).
+      // Restore to whichever pre-stock state the unit ACTUALLY came from — a unit can reach STOCKED straight from RECEIVED (mark-received…
       const priorRes = await client.query<{ next_status: string | null }>(
         `SELECT next_status FROM inventory_events
           WHERE serial_unit_id = $1 AND organization_id = $2 AND next_status IS NOT NULL AND next_status <> 'STOCKED'

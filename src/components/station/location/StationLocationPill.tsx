@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * @domain-job Station location pill — current bin/desk face, scan-to-place
- *   on the far-right slice, and a destination menu on the face.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse `StationTerminalDock` — that host maps a
- *   `TerminalActionVm` for the panel's ONE terminal verb (Receive · Ship) and
- *   owns the dock band; this cluster is a second, quiet pill that arms a
- *   location wedge and must sit beside that terminal without claiming it.
- */
+/** @domain-job Station location pill — current bin/desk face, scan-to-place on the far-right slice, and a destination menu on the face. */
 
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { MapPin, QrCode } from '@/components/Icons';
@@ -49,15 +40,7 @@ interface StationLocationPillProps {
   testId?: string;
 }
 
-/**
- * Composer-footer twin of Print: `SlicedActionDock` `embeddedChrome="pill"`
- * on the quiet `surface` tone (white fill, ink text). Print keeps accent.
- *
- * Split: face opens the destination menu; the far-right slice is the QR scan
- * arm. The HID cell is `endSegmentExtra` — a focus target, not a second
- * button beside the track. Wedge keystrokes go through
- * {@link useRegisterScanSink}; Enter on the focused cell submits via form.
- */
+/** Composer-footer twin of Print: */
 export function StationLocationPill({
   face,
   menu,

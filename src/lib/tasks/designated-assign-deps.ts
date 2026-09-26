@@ -14,25 +14,7 @@ import {
 import type { DesignatedAssignDeps, DesignatedTicket } from './designated-assign';
 import type { DesignatedStaff } from './designated-tag';
 
-/**
- * Real bindings for the designated-tag ingest.
- *
- * ## Where the tags come from, and why it is the provider
- *
- * `support_tickets` mirrors provider, number, subject and status — not tags.
- * A designation is applied by an AGENT inside Zendesk, so the helpdesk is the
- * only place that knows about it; there is no local column to poll and adding
- * one would mean a mirror that is wrong between syncs. So the scan window is a
- * page of the provider's own ticket list.
- *
- * It is ordered by `updated_at DESC` on purpose: tagging a ticket bumps its
- * update timestamp, so a designation applied to a two-year-old ticket floats to
- * the top of the very next sweep. Ordering by `created_at` would make old
- * tickets undesignatable forever, which is precisely the case an agent reaches
- * for a tag to handle.
- *
- * One page per org per sweep — one API call, not one per ticket.
- */
+/** Real bindings for the designated-tag ingest. */
 export function designatedAssignDeps(
   organizationId: OrgId,
   opts: { limit?: number } = {},
@@ -68,15 +50,7 @@ export function designatedAssignDeps(
       }));
     },
 
-    /**
-     * PROVIDER number → LOCAL `support_tickets.id`, through the one translator.
-     *
-     * `fetchProviderTicket` answers from the ticket we ALREADY pulled in the
-     * scan rather than re-fetching it: the resolver's contract is "ask the
-     * helpdesk before minting a mirror", and this ticket came from the helpdesk
-     * seconds ago. The `getTicket` fallback covers the one case the page cannot
-     * answer — a ticket whose id the page listed but whose body it did not.
-     */
+    /** PROVIDER number → LOCAL `support_tickets.id`, through the one translator. */
     async resolveSupportTicketId(ticket: DesignatedTicket): Promise<number | null> {
       const deps: TicketTargetDeps = {
         async findRegistered(providerTicketId) {
@@ -137,12 +111,7 @@ export function designatedAssignDeps(
       return result.ok ? result.supportTicketId : null;
     },
 
-    /**
-     * The dedupe predicate. CANCELED is excluded so an operator who cancelled a
-     * mis-designated task gets it re-created once the tag is corrected — and
-     * DONE is NOT excluded, because a finished ticket must not sprout a fresh
-     * task on every sweep for the rest of its life.
-     */
+    /** The dedupe predicate. */
     async hasOpenTask(supportTicketId: number): Promise<boolean> {
       const res = await tenantQuery<{ one: number }>(
         organizationId,
@@ -159,12 +128,7 @@ export function designatedAssignDeps(
       return res.rows.length > 0;
     },
 
-    /**
-     * `actorStaffId: null` — the system threw this one. A cron has no thrower,
-     * and naming a real person as the assigner would put a lie in the audit and
-     * in the assignee's inbox ("Michael assigned you this" when Michael did
-     * not).
-     */
+    /** `actorStaffId: */
     async createTask({ supportTicketId, assigneeStaffId, note }): Promise<boolean> {
       const result = await createTask(organizationId, {
         entityType: 'support_ticket',

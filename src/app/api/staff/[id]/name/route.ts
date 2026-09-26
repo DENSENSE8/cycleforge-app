@@ -1,21 +1,4 @@
-/**
- * PATCH /api/staff/[id]/name — set a staffer's display name (`staff.name`).
- *
- * Gate — self OR `admin.manage_staff`. Same rationale as
- * `/api/staff/[id]/color` and `/api/staff/[id]/avatar`: a route-level
- * `permission:` would lock every staffer out of their own profile, which is the
- * one thing self-service is for. `/api/admin/staff/update` keeps the admin-only
- * form (it also writes `active` / home paths); this route is the narrow
- * self-service slice and writes NOTHING but the name.
- *
- * Audited even for a self-change. The name is the primary way a timeline,
- * journey or schedule pill attributes work to a person, so a rename re-labels
- * history — `extra.self` plus `actor_staff_id ≠ entity_id` is what tells a
- * self-rename apart from an admin acting on someone's behalf.
- *
- * Failure class: PRIMARY resource — an unexpected throw returns a real error
- * status via `errorResponse`, never an ok-looking body.
- */
+/** PATCH /api/staff/[id]/name — set a staffer's display name (`staff.name`). */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';

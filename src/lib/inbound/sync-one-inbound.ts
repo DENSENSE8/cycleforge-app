@@ -1,14 +1,4 @@
-/**
- * Per-order inbound marketplace resync — re-pull one eBay (or future Amazon)
- * buyer purchase onto the Incoming spine and re-poll its carrier shipment.
- *
- * Universal Incoming §7.3 / §9.4: the Incoming details panel "Resync" affordance
- * for non-Zoho rows. Re-fetches via Trading GetOrders (Buyer) when possible and
- * always re-polls carrier tracking; surfaces actionable errors (flag off, source
- * disabled, no buyer account).
- *
- * Deps-injected so unit tests run DB-free.
- */
+/** Per-order inbound marketplace resync — re-pull one eBay (or future Amazon) buyer purchase onto the Incoming spine and re-poll its… */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

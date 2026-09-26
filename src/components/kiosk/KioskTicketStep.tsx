@@ -1,71 +1,8 @@
 'use client';
 
 /**
- * KioskTicketStep — the create-or-link question, mounted UNDER the signature
- * on the repair flow's Review & sign step: does this signed drop-off open a
- * NEW helpdesk ticket, or attach to one the customer already has?
- *
+ * KioskTicketStep — the create-or-link question, mounted UNDER the signature on the repair flow's Review & sign step:
  * Operator 2026-09-15: *"after the customer has submitted their signature it
- * should display with a link existing ticket or create new ticket … the
- * components are already there in the unbox component, I just need the same
- * component logic under the umbrella formatting of the kiosk design system."*
- *
- * ## Why it is not its own step
- *
- * It was one for an hour, and the operator collapsed it the same day:
- * *"because the stepper is full at that review and sign step, would it be best
- * to include a slider like link existing ticket or create a new ticket below
- * the signature so it would be mounted under one step?"* The ticket is ABOUT
- * the paperwork on that screen — paging away from the sheet to ask a question
- * about it, and spending a whole progress segment on one tap, was the wrong
- * altitude. So the MODE control is a two-up slider (`KioskChip row` faces side
- * by side in one track), not a stacked pair of full-width pills: it rides
- * under a signature pad on a step that already carries a document, and a
- * two-row pill stack there reads as a second form.
- *
- * The host still reveals it only once there is ink, which is the original
- * ruling kept intact — before a signature there is nothing to file.
- *
- * ## What is PORTED and what is REUSED
- *
- * The unbox (receiving claim) flow already answers this question, and the split
- * it made is the one honoured here:
- *
- * - **Logic — reused, not copied.** The candidate search is the shared
- *   `useTicketSearch` (debounce, abort, error mapping, stale-result drop) via
- *   {@link useKioskTicketSearch}, the same way `useClaimTicketSearch` adapts it
- *   for a carton. The decision itself is `src/lib/kiosk/repair-ticket-choice.ts`.
- * - **Presentation — ported to the kiosk tier.** `ClaimModeSelect` is a
- *   `SearchableSelectField` and `TicketPicker` is the desk sheet-band grammar
- *   (`DenseComposeSearchInput` + hairline `TicketPickRow`s at desk-micro type).
- *   Both are right for a mouse and wrong for a thumb, so this wears the kiosk
- *   kit instead: {@link KioskChip} `row` faces for the two modes (the same pill
- *   the repair reasons use) and flat touch cards for the candidates, the
- *   `KioskCartLineCard` anatomy — hairline + `MOBILE_SCAN_ROW_CORNER`, title
- *   line, facts as meta chips. `SURFACE_LAW` §5: a list on a phone-shaped
- *   surface is cards, never a table.
- *
- * ## Arming Link is not yet a decision
- *
- * Tapping *Link existing ticket* writes `{ mode: 'attach', ticketId: 0 }` —
- * deliberately incomplete, so `isKioskTicketChoiceComplete` stays false and the
- * footer key refuses until a ticket is actually picked. That is why the rules
- * module tolerates a zero id rather than making the UI hold a second "mode"
- * state beside the choice; two states is how a button and a stepper start
- * disagreeing.
- *
- * ## The pick outlives the result set
- *
- * `useTicketSearch` drops its own `selectedTicket` when it falls out of a
- * refreshed result page. The DECISION must not: a counter that keeps typing
- * would otherwise silently un-pick the customer's ticket. So the choice is the
- * single selection SoT here, the hook's own selection is unused, and a picked
- * ticket that is no longer in view is still stated in the confirmation row.
- *
- * Callers: `KioskRepairPane` (Review & sign, below the pad).
- * Affected API: GET `/api/kiosk/repair/ticket-candidates`; the decision reaches
- * POST `/api/kiosk/intake` as `ticketWork` from `KioskCartLedger`.
- * Schemas: none.
  */
 
 import { Check, Link2, Loader2, Plus, Search, Ticket } from '@/components/Icons';
@@ -83,12 +20,7 @@ import { MOBILE_SCAN_ROW_CORNER, cornerClass } from '@/design-system/tokens/radi
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
-/**
- * Helpdesk status → kiosk chip tone. The desk tier for this fact is
- * `statusBadge` (`@/components/support/zendesk/badges`), a square 18px badge
- * built for a grid row; the touch tier is a chip, so the MAPPING is what ports,
- * not the component. Unknown statuses stay neutral rather than guessing.
- */
+/** Helpdesk status → kiosk chip tone. */
 const STATUS_TONE: Record<string, KioskChipTone> = {
   new: 'info',
   open: 'warning',
@@ -125,13 +57,7 @@ function CandidateCard({
   return (
     <button
       type="button"
-      /*
-       * ds-raw-button: a candidate CARD is not an ops CTA. `Button` carries its
-       * own size ladder, variant fill and radius, all of which would have to be
-       * fought with overrides to get a full-width touch card — the same reason
-       * KioskChip and KioskCartLineCard sit outside it. Focus and selection are
-       * explicit below.
-       */
+      /* ds-raw-button: */
       className={cn(
         'ds-raw-button flex w-full flex-col gap-2 border border-border-hairline bg-surface-card px-4 py-3 text-left transition-colors',
         MOBILE_SCAN_ROW_CORNER,
@@ -192,35 +118,9 @@ export function KioskTicketStep({
       </p>
 
       {/*
-        ONE SLIDER, two sides. Operator 2026-09-15: *"the create new and the
-        link existing should be simplified into just one slider where you would
-        be able to slide back and forth since this would be on a mobile
-        display, and automatically select create new ticket."*
-
-        So it is a single pill TRACK (`bg-surface-sunken`, `p-1`) holding two
-        halves, and the selected half's accent wash IS the thumb — tap either
-        side and the fill slides across. Two stacked full-width pills (the
-        shape this had for an hour) read as two independent choices stacked on
-        a form; one track reads as one control with a position, which is what a
-        thumb-driven surface wants.
-
-        The halves are still `KioskChip row` faces, so the press travel, the
-        focus ring, the `aria-pressed` state and the tone wash are the chip
-        family's — there is no hand-rolled segmented control here, and no
-        second pill vocabulary in the kiosk.
-
-        CREATE IS THE DEFAULT POSITION, including when nothing has been
-        touched (`choice === null`). That is not a lie about state: `null`
-        posts as `{ mode: 'create' }` (`kioskTicketWork`) and counts as settled
-        (`isKioskTicketChoiceSettled`), so the position, the gate and the
-        payload are one fact. Sliding to Link with no ticket picked is the one
-        state that still refuses the commit.
-
-        LABELS ARE SHORT because half of a 480px measure, minus a glyph and a
-        check, leaves ~180px: "Link existing ticket" truncated to "Link
-        existing tic…" at runtime. The noun is already said by the sentence
-        above the track; the full phrase stays as the accessible name.
-      */}
+ * ONE SLIDER, two sides.
+ * ONE SLIDER, two sides. Operator 2026-09-15: *"the create new and the
+ */}
       <div
         className={cn(
           'flex items-stretch gap-1 bg-surface-sunken p-1',
@@ -237,11 +137,7 @@ export function KioskTicketStep({
             icon={<Plus className="h-5 w-5 shrink-0" />}
             onClick={() => onChoose({ mode: 'create' })}
             testId="kiosk-ticket-mode-create"
-            // No `className` fill here: the idle tone is `KIOSK_PILL_IDLE`,
-            // whose `bg-surface-sunken` is the TRACK's own colour, so the
-            // unselected half already disappears into the trough. Overriding
-            // it to transparent would be painting over the primitive to reach
-            // the same pixel.
+            // No `className` fill here:
             trailing={
               creating ? (
                 <Check className="h-4 w-4 shrink-0 text-text-default" aria-hidden />

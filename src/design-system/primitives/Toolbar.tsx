@@ -4,14 +4,6 @@ import { forwardRef, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 
 // ─── Toolbar ─────────────────────────────────────────────────────────────────
-//
-// The canonical horizontal action strip — a header band that holds a title, a
-// search/filter cluster, and trailing actions. The generic primitive behind the
-// ~handful of bespoke `*Toolbar` components (ShippedFilterToolbar,
-// SkuGraphToolbar, LineEditToolbar …) which each re-rolled the same flex row.
-//
-// Token-first: surface + border come from the semantic tokens so it themes for
-// free. Use the `start` / `center` / `end` slots, or pass children directly.
 
 export type ToolbarTone = 'surface' | 'transparent';
 

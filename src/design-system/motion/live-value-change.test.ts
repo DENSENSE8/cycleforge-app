@@ -1,12 +1,4 @@
-/**
- *   npx tsx --test src/design-system/motion/live-value-change.test.ts
- *
- * The predicate half of the live-change pulse. It is tested apart from the hook
- * because every false positive here is a lie told to an operator — a chip that
- * flashes "something just changed" when nothing did. On a scan floor that is
- * worse than no animation: the whole point of the pulse is that it is rare
- * enough to trust.
- */
+/** npx tsx --test src/design-system/motion/live-value-change.test.ts */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

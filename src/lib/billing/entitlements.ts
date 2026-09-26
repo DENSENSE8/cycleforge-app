@@ -1,15 +1,4 @@
-/**
- * Resolve the current entitlements for a tenant.
- *
- * `getEntitlements(orgId)` returns a fully-resolved object combining the
- * tenant's plan with the catalog. Caches 60s in-process keyed by orgId;
- * webhook handlers that change a plan must invalidate via
- * `invalidateOrgCache(orgId)` from @/lib/tenancy.
- *
- * Routes/pages that are plan-gated should call `requireFeature(orgId, 'fba')`
- * which throws a typed error the API/page layer converts to 403 +
- * upgrade-prompt.
- */
+/** Resolve the current entitlements for a tenant. */
 
 import { getOrganization } from '../tenancy/organizations';
 import type { OrgId } from '../tenancy/constants';

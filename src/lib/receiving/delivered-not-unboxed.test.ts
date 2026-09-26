@@ -1,15 +1,4 @@
-/**
- * Unit tests for the delivered-not-unboxed clocks (Phase 1 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md).
- *
- * DB-free: asserts the pure SQL fragment + the two window constants. The three
- * things pinned here are the ones that were actually wrong or fragile:
- *   1. the feed window must stay WIDER than the claim window,
- *   2. the claim clock must be eBay-only,
- *   3. the delivered instant must bucket by the WAREHOUSE civil day, not UTC.
- *
- * Run: `npx tsx --test src/lib/receiving/delivered-not-unboxed.test.ts`
- */
+/** Unit tests for the delivered-not-unboxed clocks (Phase 1 of docs/todo/ebay-delivered-not-unboxed-PLAN.md). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

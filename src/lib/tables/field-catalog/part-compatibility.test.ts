@@ -1,18 +1,4 @@
-/**
- * Part-compatibility catalog guards + resolver behaviour — Wave D's port of
- * `/admin?section=compatibility` off `AdminTable`.
- *
- * The load-bearing guard here is the `is_oem` / `fit` SPLIT. The retired cell
- * rendered `{is_oem ? 'OEM ' : ''}{fit}` into one pill, which made two facts
- * one string: unsortable apart, unsearchable apart, unbindable apart. Several
- * assertions below exist purely so a future "tidy-up" cannot merge them again
- * without turning the build red.
- *
- * Fixtures are the WIRE row: `/api/part-compatibility` returns the joined SQL
- * row verbatim (`pc.*, bm.model_number, bm.model_name, sc.sku,
- * sc.product_title`), so a camelCase fixture here would test a shape that
- * never reaches the desk.
- */
+/** Part-compatibility catalog guards + resolver behaviour — Wave D's port of `/admin?section=compatibility` off `AdminTable`. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,21 +1,4 @@
-/**
- * Shared dual-fire cache-invalidation primitive (Phase 1 / B7).
- *
- * Promotes the pattern `src/lib/orders/invalidation.ts` (`invalidateAllOrdersApiCaches`)
- * hand-rolls into a reusable SoT so every domain's post-write invalidation stays
- * consistent through the v1→v2 (legacy `GLOBAL_ORG` → org-scoped) strangler.
- *
- * WHY DUAL-FIRE: during the migration a domain's read models are split — some are
- * still the org-less legacy snapshots (`api:receiving-*`, `api:orders`, …), some are
- * org-scoped v2 `getOrSet` reads. A write must bust BOTH:
- *   - legacy tags  → `invalidateCacheTags(tags)`          (GLOBAL_ORG sentinel)
- *   - v2 tags      → `invalidateCacheTags(orgId, tags)`   (org-scoped)
- * When a domain finishes migrating every read to v2 (Phase B8), drop its legacy
- * list and this collapses to a single org-scoped call.
- *
- * The `deps` seam keeps domain view-invalidators unit-testable with zero Redis
- * (mirrors the `Deps`-injection rule in).
- */
+/** Shared dual-fire cache-invalidation primitive (Phase 1 / B7). */
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 
 /** Injectable seam so callers unit-test the exact (scope, tags) tuples DB/Redis-free. */
@@ -29,12 +12,7 @@ export const defaultViewInvalidationDeps: ViewInvalidationDeps = {
   invalidateOrg: (orgId, tags) => invalidateCacheTags(orgId, tags),
 };
 
-/**
- * Fire a domain's legacy (GLOBAL_ORG) tags and its org-scoped v2 tags in one call.
- * `extraTags` are appended to BOTH lists (a caller-supplied cross-cut, e.g. a route
- * that also touched `need-to-order`). No-ops the org branch when `organizationId`
- * is falsy so session-less callers (crons) still bust the legacy snapshot.
- */
+/** Fire a domain's legacy (GLOBAL_ORG) tags and its org-scoped v2 tags in one call. */
 export async function invalidateDomainViews(
   organizationId: string | null | undefined,
   legacyTags: readonly string[],

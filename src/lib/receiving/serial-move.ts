@@ -4,28 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-/**
- * serial-move.ts
- * ────────────────────────────────────────────────────────────────────
- * Re-home a serial's receiving-line membership IN PLACE. The condition+serial
- * row's LINK (combine two rows into one) / UNLINK (split a serial to its own
- * line) affordances need to move a *scanned* serial from one receiving_line to
- * another WITHOUT losing the unit's testing verdict.
- *
- * The display resolves a serial's *current* line from the LATEST
- * `inventory_events` row with a non-null `receiving_line_id` (see
- * `fetchSerialsForLines` / `resolveCurrentReceivingLineIds`), falling back to the
- * frozen provenance origin. So the move is simply: write ONE audit-only `MOVED`
- * event pointing at the target line, carrying the unit's *current* status forward
- * (`recordInventoryEvent` never mutates `serial_units.current_status`, so the
- * verdict is preserved). It deliberately does NOT detach+reattach (which deletes
- * and recreates the `serial_unit`, losing its verdict) and never touches quantity
- * or the stock ledger. Idempotent via `client_event_id`.
- *
- * Deps-injected (default real impls) so unit tests run DB-free, per
- * backend-patterns.md. Line create / empty-line delete around a move are the
- * caller's concern (add-unmatched-line / receiving-lines DELETE).
- */
+/** serial-move.ts ──────────────────────────────────────────────────────────────────── Re-home a serial's receiving-line membership IN PLACE. */
 
 export interface MoveSerialInput {
   serial_unit_id: number;
@@ -140,11 +119,7 @@ export async function moveSerialToLine(
         prev_status: serial.current_status,
         next_status: serial.current_status,
         stock_ledger_id: null,
-        // Idempotency key. A caller-supplied id makes a network retry a safe
-        // no-op; the fallback is a FRESH uuid (never a content-derived
-        // `move-A-to-B`, which would collide with an earlier event on a genuine
-        // repeat move back to a previously-visited line — silently dropping the
-        // MOVED row so the serial reverts).
+        // Idempotency key.
         client_event_id: input.client_event_id
           ? `${input.client_event_id}:move`
           : `move-${safeRandomUUID()}`,

@@ -1,61 +1,10 @@
 'use client';
 
 /**
- * SearchResultRow — THE one rich search-result row renderer. Every search
- * surface that paints a LIST of hits (⌘K, the header preview, rails, and the
- * phone `/m/search` plane) renders through this so there is exactly one row
- * (SoT: never fork a per-surface renderer). The DESK `/search` browse plane is
- * not a list at all — it is a DataTable mount on the `search-hits` family
- * (`READ_PLANE_IS_A_MOUNT`); the phone mounts this row instead.
- *
- * Densities:
- *   • compact  — phone `/m/search`, sidebar quick-jumps, rails. TWO LINES.
- *   • dropdown — header combobox / ⌘K preview. Name list with the three facts
- *     that are free to render and expensive to go and find: entity, state,
- *     channel. No aligned grid — the 24rem find field is too narrow for one.
- *   • comfortable — the aligned grid (Id · Status · Match · Tracking · Age)
- *     for any host with the width to spend on columns.
- *
+ * SearchResultRow — THE one rich search-result row renderer.
  * ## Row anatomy law (operator 2026-09-12)
- *
- * 1. The VERIFIABLE IDENTIFIER owns the LEADING column, `font-mono
- *    tabular-nums`, right-aligned in its track, because a warehouse reader
- *    scans top-to-bottom down the left edge and the handle is what they are
- *    checking against a label. A text-heavy status word never takes that slot.
- * 2. STATUS is a minimal dot + a concise badge in ONE cluster beside the id
- *    ({@link StatusMark}) — never a coloured dot on one edge of the row and
- *    its word on the other, which splits one fact across the full width and
- *    costs two fixations to read a single state.
- * 3. The entity NOUN is not repeated under every title. On a scoped list it is
- *    the same word on every row, so it costs a line a real fact should own; on
- *    the mixed `/search` plane it is a sortable COLUMN instead.
- * 4. A relative stamp ("4d") is not enough for SLA work — the exact instant
- *    rides with it, on the hover at minimum.
- * 5. No 3-dot (⋮) menu: activation is the whole interaction, and search rows
- *    carry zero row menus by design.
- * 6. Chrome is gated on `density`, NEVER on a `md:`/`lg:` breakpoint — a
- *    desktop sidebar rail is narrow too, and a viewport query corrupts it.
- *
  * ## Narrow-row law (operator 2026-09-13) — the TITLE is the subject
- *
- * 7. **At `compact`, line one is IDENTITY · STATE · TITLE and nothing else.**
- *    Match meta, tracking, packout proof and age ride line two. Five faces on
- *    one line left the title 160px on a 390px phone, which printed every
- *    product in the list as the same truncated word.
- * 8. **A narrow title may take two lines** ({@link SearchTitle}), and its full
- *    value rides a native `title`, never a pointer-only tooltip. A list row is
- *    allowed to grow; that is what distinguishes it from a grid track, and it
- *    is why the phone gets a list and the desk gets the mount.
- *
  * ## Interaction law (operator 2026-09-13) — think mobile first
- *
- * 9. **PRESS is the primary state, hover is decoration.** Every row carries
- *    {@link TAPPABLE_ROW_CLASS}: `:active` tone, no tap delay, no competing
- *    browser tap-highlight box, an inset focus ring, and a 44px floor. A row
- *    whose only state is `hover:` has NO state on a phone, because Tailwind v4
- *    compiles `hover:` to `@media (hover: hover)`. Never hand-roll an
- *    `active:bg-*` here — the recipe lives in
- *    `@/design-system/tokens/interaction`.
  */
 
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
@@ -134,27 +83,14 @@ export interface SearchResultRowProps {
 }
 
 // ── Per-density geometry ──────────────────────────────────────────────────────
-//
 // COMPACT is TWO LINES (operator 2026-09-13). See the `CompactRowShell` doc
-// below for why; the pad grows because the row now has a second line and a
-// 44px floor to clear.
 const ROW_BY_DENSITY: Record<SearchRowDensity, string> = {
   compact: 'gap-2 px-3 py-2',
   comfortable: SEARCH_RESULT_ROW_PAD,
   dropdown: 'gap-2 px-3 py-2.5',
 };
 
-/**
- * Every row's shared base: the `group` the journey affordance hooks, left
- * alignment, and the INTERACTION contract — press, hover, focus and pointer
- * hygiene from {@link TAPPABLE_ROW_CLASS}.
- *
- * The press state is the point. This row used to carry `hover:bg-surface-hover`
- * and nothing else, and Tailwind v4 compiles `hover:` to
- * `@media (hover: hover)` — so on the surface the operator actually taps, the
- * row had no state at all: no press tone, no tap-delay suppression, and the
- * browser's own grey highlight box as the only feedback.
- */
+/** Every row's shared base: */
 const ROW_BASE = cn(
   'group flex text-left',
   TAP_MIN_H_CLASS,
@@ -162,17 +98,7 @@ const ROW_BASE = cn(
 );
 const ROW_ACTIVE = 'bg-blue-50 ring-1 ring-inset ring-blue-400';
 
-/**
- * The props every search row's `Link` carries — href, commit handling, and the
- * listbox a11y contract.
- *
- * This was written out five times: once per renderer, including the same
- * `preventDefault` comment four times over. The rows genuinely differ in what
- * they PAINT — a unit leads with a serial badge, an order with an order chip —
- * but none of them differs in how it commits or how it announces itself to a
- * screen reader, and five copies of that is five chances for one row to quietly
- * stop being an `option`.
- */
+/** The props every search row's `Link` carries — href, commit handling, and the listbox a11y contract. */
 interface SearchRowLinkProps {
   href: string;
   onClick: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
@@ -202,24 +128,7 @@ function searchRowLinkProps(
   };
 }
 
-/**
- * The ⌘K palette row.
- *
- * Was title-only, which made every hit look the same: an operator scanning ten
- * results could not tell an eBay order from an Amazon one, a shipped row from a
- * returned one, or a unit from a carton, without opening something. It now
- * carries the three facts that are free to render and expensive to go and find
- * — entity type, order state, and channel — and nothing else, so the row still
- * reads in one glance.
- *
- * The state used to be a bare dot pinned to the trailing edge, the full width
- * away from the identity it describes and carrying no word at all. It is a
- * {@link StatusMark} beside the title now: one fact, one place.
- *
- * Channel colour comes from {@link usePlatformMeta}, the same catalog-aware
- * resolver the rails and grids use, so an org that recolours Amazon in its
- * platform catalog recolours it here too. Search does not get its own palette.
- */
+/** The ⌘K palette row. */
 function TitleOnlyDropdownRow({
   hit,
   active,
@@ -303,14 +212,7 @@ function TitleOnlyDropdownRow({
   );
 }
 
-/**
- * The aligned row — **Id · Status · Match · Tracking · Age**.
- *
- * The entity glyph that used to lead is gone: it was the same picture on every
- * row of a scoped list, and on a mixed list the entity is a fact that belongs
- * in a column that sorts (which is what the `/search` mount gives it). What
- * leads is the handle.
- */
+/** The aligned row — **Id · Status · Match · Tracking · Age**. */
 function AlignedRow({
   hit,
   active,
@@ -392,38 +294,7 @@ function AlignedRow({
   );
 }
 
-/**
- * The COMPACT row skeleton — two lines (operator 2026-09-13).
- *
- * ## Why the title stopped fitting
- *
- * Compact was one line with five things on it: identity, state, title,
- * tracking, age. Four of those are fixed-width, so the title got whatever was
- * left — measured on a 390px phone, 160px. Product names are not 160px:
- * `Bose Wave Music System IV - Espresso Black` arrived as
- * `Bose Wave Music Syste…`, with its full value only on a pointer-only
- * tooltip. Every row in the list read as the same word.
- *
- * ## The law
- *
- * **Line one is the SUBJECT: identity · state · title, and nothing else.**
- * **Line two is the EVIDENCE: match meta, tracking, packout, age.**
- *
- * Moving two fixed-width faces off line one hands the title the rest of the
- * measure (~268px at 390, +68%), and {@link SearchTitle} then clamps to two
- * lines rather than truncating — so the subject is readable at the width the
- * operator actually holds.
- *
- * The 2026-09-12 anatomy law is intact and is the reason this is a skeleton
- * rather than a card: the identifier still owns the LEADING position on the
- * line the eye scans, `StatusMark` still sits WITH it as one cluster, and the
- * exact stamp still travels with the relative one. What moved is only which
- * line the secondary facts ride.
- *
- * One skeleton, because the three compact grammars (order / unit / generic)
- * differ in what they PAINT and not in how they are ARRANGED — which is the
- * same reason `searchRowLinkProps` exists.
- */
+/** The COMPACT row skeleton — two lines (operator 2026-09-13). */
 function CompactRowShell({
   linkProps,
   active,

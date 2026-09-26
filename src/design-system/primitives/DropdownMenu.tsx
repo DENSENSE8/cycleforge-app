@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Kinetic Ledger DropdownMenu — Radix DropdownMenu (shadcn-shaped) restyled to
- * house tokens. Prefer this over absolute + document-mousedown menus.
- *
- * Shell is {@link DROPDOWN_SHELL_CORNER} (`p-1`). Rows are
- * {@link DROPDOWN_ITEM_CORNER} — concentric, so a highlight does not leave a
- * sliver at the panel's corners. A composer-family panel
- * (`COMPOSER_SHELL_CORNER`) overrides the row with `COMPOSER_MENU_ITEM_CORNER`.
- */
+/** Kinetic Ledger DropdownMenu — Radix DropdownMenu (shadcn-shaped) restyled to house tokens. */
 
 import * as React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';

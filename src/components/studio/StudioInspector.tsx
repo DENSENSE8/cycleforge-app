@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * StudioInspector — the right pane. Context-sensitive (ST1, read-only):
- * with no focus it summarizes the loaded definition; with a focused node it
- * shows the node's identity, station binding, numbered lifecycle states
- * (workflow-stages SoT), output ports with their wired targets, and the
- * owner-facing config knobs. Station-mode editing (L2) lands at ST5.
- */
+/** StudioInspector — the right pane. */
 
 import { STATIONS } from '@/components/admin/workflow/operations-catalog';
 import { Button } from '@/design-system/primitives';
@@ -174,19 +168,13 @@ export function StudioInspector({
         node.type === 'decision' ? (
           <section>
             <PaneHeading text="Decision rules" />
-            {/* Custom rule-table editor (Track 1, Stage 1): the generic scalar
-                NodeConfigForm can't express an array of when/then rows, so a
-                decision node gets this editor. It writes back through the SAME
-                onUpdateConfig seam, so the draft dirties + persists identically. */}
+            {/* Custom rule-table editor (Track 1, Stage 1): */}
             <DecisionRulesEditor nodeId={node.id} config={node.config} onChange={onUpdateConfig} />
           </section>
         ) : (
           <section>
             <PaneHeading text="Configuration" />
-            {/* Generic, schema-driven config sheet (C.1): renders one input per
-                field in the node type's configSchema. The station field sources its
-                options from the STATIONS registry (not a static enum) and shows the
-                bound station's blurb as a field hint, preserving the prior behavior. */}
+            {/* Generic, schema-driven config sheet (C.1): */}
             <NodeConfigForm
               nodeId={node.id}
               schema={configSchema}

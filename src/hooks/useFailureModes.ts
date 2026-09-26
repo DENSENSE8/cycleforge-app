@@ -2,22 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-/**
- * Client read for the **failure-mode taxonomy** — Testing's "why" vocabulary,
- * the sibling of `useReasonVocabulary`'s `reason_codes` reads.
- *
- * Two vocabularies exist on purpose and must not be merged: `reason_codes`
- * (flow-context scoped, per-decision, lands in an exception row) answers "why
- * did this GATE fire"; `failure_modes` answers "what is WRONG with this unit",
- * carries severity / repairability / a grade cap, and lands in
- * `unit_failure_tags` where it is reversible and feeds `recomputeUnitQuality`.
- * A failed QC step already auto-tags one server-side
- * (`/api/serial-units/[id]/checklist`); this hook is how an operator names one
- * by hand at the same grain.
- *
- * Session-cached like its sibling, and returns null until the first load
- * resolves so callers can render a settled empty state rather than a flash.
- */
+/** Client read for the **failure-mode taxonomy** — Testing's "why" vocabulary, the sibling of `useReasonVocabulary`'s `reason_codes` reads. */
 export interface FailureModeRow {
   id: number;
   code: string;

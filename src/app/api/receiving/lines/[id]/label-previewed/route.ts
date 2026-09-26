@@ -1,33 +1,4 @@
-/**
- * POST /api/receiving/lines/[id]/label-previewed
- *
- * Stamp that an operator read this line's printed label face
- * (`receiving_line_testing.label_previewed_at`) — the gate for the Unbox
- * procedure's `label` capture step. `{ confirmed: false }` retracts it.
- *
- * WHY A COLUMN OF ITS OWN. Reading a label leaves no evidence behind, so unlike
- * every photo step there is no carton fact to derive from. The two columns that
- * already exist answer different questions: `receiving_line.label_note` says the
- * face was CUSTOMISED (null on every carton whose default face was right, so
- * gating on it parks the procedure pointer forever), and `label_printed_at` is
- * the COMMIT act the terminal dock owns — gating a capture step on it would
- * invert the phase order. Same shape and same justification as the sibling
- * carton-acknowledgement route `/api/receiving/[id]/contents-confirm`.
- *
- * PERMISSION. `receiving.mark_received`, matching that sibling: anyone who can
- * finish a carton can say they read the face it prints. Minting a new permission
- * nobody's role grants is the `integrations.zendesk` failure — an ADMIN_ONLY gate
- * 403'ing the floor operator the surface was built for.
- *
- * NOT COALESCE. `label_printed_at` keeps its first stamp because a reprint does
- * not re-print a *different* face; this one overwrites, because re-reading after
- * editing the face is a new acknowledgement of new text.
- *
- * AUDIT. The stamp is clearable, so a reopen leaves no trace in the column;
- * `audit_logs` is the only place the original claim survives, and confirm /
- * reopen are two distinct actions so a rollup cannot count a retraction as a
- * confirmation.
- */
+/** POST /api/receiving/lines/[id]/label-previewed */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';
@@ -56,10 +27,7 @@ export const POST = withAuth(
     const confirmed = body.confirmed !== false;
     const staffId = Number(ctx.staffId) || null;
 
-    // Narrow upsert, mirroring the sibling label-printed route: the testing row
-    // may not exist yet (its other columns all carry DB defaults), so INSERT …
-    // ON CONFLICT. The FOR UPDATE spine read preserves the 404 and locks the
-    // line.
+    // Narrow upsert, mirroring the sibling label-printed route:
     const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
       const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
         `SELECT id, receiving_id FROM receiving_line

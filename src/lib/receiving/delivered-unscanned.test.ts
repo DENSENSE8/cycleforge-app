@@ -1,9 +1,4 @@
-/**
- * Unit tests for the single-source-of-truth delivered-unscanned helper.
- * Asserts the count path and the list path share the exact same canonical
- * base SQL, so `count === list.length` holds by construction.
- * Run: `npm run test:shipping-status`.
- */
+/** Unit tests for the single-source-of-truth delivered-unscanned helper. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

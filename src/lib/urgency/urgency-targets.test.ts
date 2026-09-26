@@ -46,12 +46,7 @@ test('every target self-describes its storage, and the keys match the union', ()
   }
 });
 
-/**
- * The carton and the ticket carry richer scales of their own; the order does
- * not. Recording that here is what keeps someone from "completing" this module
- * by absorbing the four manual carton tiers — see the header of
- * `urgency-targets.ts` for why the shared rung stays binary.
- */
+/** The carton and the ticket carry richer scales of their own; the order does not. */
 test('records that own a richer scale point at the module that owns it', () => {
   assert.equal(URGENCY_TARGETS.order.ownScale, null);
   assert.match(URGENCY_TARGETS.receiving.ownScale ?? '', /priority-override/);

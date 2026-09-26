@@ -16,12 +16,7 @@ import { enableOrgFeatureFlag, INCOMING_UNIVERSAL_FLAG } from '@/lib/feature-fla
 import { ensureEbayInboundSourceEnabled } from '@/lib/inbound/org-settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/ebay/callback
- * Landing route for the eBay OAuth redirect (configured as the RuName target).
- * No withAuth — eBay's server-side redirect carries no app session; tenant +
- * user identity come from the encrypted, cookie-bound `state`.
- */
+/** GET /api/ebay/callback Landing route for the eBay OAuth redirect (configured as the RuName target). */
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   // Single-use nonce: clear it on every terminal outcome.
@@ -55,9 +50,6 @@ export async function GET(req: NextRequest) {
     const accountRole = normalizeEbayRole(verdict.state.role);
 
     // Membership re-check (the encrypted state cannot vouch for the present):
-    // the staff who started this connect must STILL be an active member of the
-    // workspace the tokens are about to be vaulted into. The 10-minute consent
-    // window is long enough for a demotion or deactivation to land.
     if (!(await connectActorStillMember(organizationId, createdBy))) {
       return finish('error=ebay_membership_revoked');
     }
@@ -84,11 +76,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (!tokenResponse.ok) {
-      // eBay returns { error, error_description } — surface the SHORT error CODE
-      // (safe, diagnostic; never the full body, which can echo request context).
-      // `invalid_client` = the app id/secret Basic auth was rejected: an app
-      // credential (Cert ID) problem, not a transient one — route it to a
-      // distinct, actionable banner so the admin fixes the Cert ID, not "retry".
+      // eBay returns { error, error_description } — surface the SHORT error CODE (safe, diagnostic; never the full body, which can echo request…
       let ebayErrorCode = '';
       try {
         ebayErrorCode = String((await tokenResponse.clone().json())?.error ?? '');
@@ -189,10 +177,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Purchasing connect → light up Universal Incoming so /incoming shows eBay
-    // buyer lines without a separate flag hunt (idempotent upsert). Also merge
-    // `ebay` into inbound.enabledSources so a stale explicit list cannot leave
-    // Import no-oping after a successful buyer OAuth.
+    // Purchasing connect → light up Universal Incoming so /incoming shows eBay buyer lines without a separate flag hunt (idempotent upsert).
     if (accountRole === 'buyer') {
       try {
         await enableOrgFeatureFlag(organizationId, INCOMING_UNIVERSAL_FLAG);

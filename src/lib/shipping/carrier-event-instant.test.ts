@@ -1,13 +1,4 @@
-/**
- * Carrier scan stamps → true instants. The fixture is the live UPS payload for
- * 1Z23A1E90339190802 (lane STN 43308): its MP scan is local 11:40:34 at
- * gmtOffset -07:00, i.e. 18:40:34Z — the pre-fix parser stored 11:40:34Z.
- *
- * Host-zone independence matters (a sync box in UTC and one in Pacific must
- * store the same instant), so run it both ways:
- *   TZ=UTC tsx --test src/lib/shipping/carrier-event-instant.test.ts
- *   TZ=America/Los_Angeles tsx --test src/lib/shipping/carrier-event-instant.test.ts
- */
+/** Carrier scan stamps → true instants. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

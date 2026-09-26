@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Backfill sync — the manual trigger for the Zoho purchase-receive push, and
- * the one place the push backlog is visible.
- *
- * Since 2026-09-23 receiving does NOT push to Zoho during the receive. The
- * floor commits locally, and a drain reconciles the provider in bulk (one
- * receive per PO instead of one per line). `zoho/httpClient.ts` caps outbound
- * traffic at 80 req/min behind a 750 ms dispatch floor, so per-line pushing
- * parked the station composer on work the operator could not act on; grouping
- * by PO collapses a twelve-line carton from ~24 calls to 2.
- *
- * ## Progress is the backlog, not a job record
- *
- * The drain's worklist is DERIVED — "received locally, no purchase-receive id
- * yet" IS the queue. So the bar here is literally `pending` falling against the
- * count captured when the run started. There is no progress channel, no job
- * row, and therefore no way for the number shown and the work remaining to
- * disagree. A reload mid-run picks the readout straight back up.
- *
- * Scheduled twin: cron `zoho.receive_backfill` (every 5 min). This button is a
- * cadence override for an operator who wants Zoho current right now; a failing
- * drain already turns the cron health dot red without anyone pressing anything.
- */
+/** Backfill sync — the manual trigger for the Zoho purchase-receive push, and the one place the push backlog is visible. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';

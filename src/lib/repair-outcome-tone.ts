@@ -1,10 +1,4 @@
 // Single source of truth for unit repair-history OUTCOME tones.
-//
-// Distinct from repair-service workflow status (see repair-status.ts) — this is
-// the per-repair outcome shown in the unit quality panel. Flat chip. Single
-// surface today (labels/unit-detail/UnitQualityPanel). Hues follow the color
-// story (DESIGN_SYSTEM.md): completed=success, in_progress=info, pending=neutral,
-// failed/scrapped=danger. src/lib is in Tailwind's content globs.
 
 export type RepairOutcome = 'completed' | 'in_progress' | 'pending' | 'failed' | 'scrapped';
 

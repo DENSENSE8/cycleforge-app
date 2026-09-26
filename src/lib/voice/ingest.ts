@@ -1,12 +1,4 @@
-/**
- * Voice ingestion — the single idempotent upsert path shared by the realtime
- * webhook and the catch-up poll (nextivaSync). Correctness comes from the
- * UNIQUE(org, provider, external_*_id) keys: a re-delivered webhook or an
- * overlapping sync collapses to a no-op `ON CONFLICT … DO UPDATE`.
- *
- * Deps-injected (real impls by default; fakes in tests) so the matching side
- * effect can be stubbed — mirrors `src/lib/studio/definitions.ts`.
- */
+/** Voice ingestion — the single idempotent upsert path shared by the realtime webhook and the catch-up poll (nextivaSync). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

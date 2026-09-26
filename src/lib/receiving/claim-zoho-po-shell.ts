@@ -1,18 +1,4 @@
-/**
- * Absorb an empty Incoming “PO shell” onto the operator’s working carton —
- * the missing dedupe path behind `ux_receiving_zoho_po_matched`.
- *
- * One `source='zoho_po'` carton is allowed per Zoho PO. Cron / Incoming often
- * pre-creates that row as an empty shell. When the operator then links a
- * scanned unmatched carton to the same PO, a blind UPDATE throws. This helper:
- *   • `free`     — no other matched carton holds the PO; caller may promote.
- *   • `already`  — working carton already is the matched holder.
- *   • `absorb`   — empty shell demoted; PO + lines/scans moved onto working.
- *   • `conflict` — another matched carton has real work; do not steal (409).
- *
- * Runs on an existing tenant tx client (relink / reconcile). Deps-injected for
- * emptiness checks so unit tests stay DB-free.
- */
+/** Absorb an empty Incoming “PO shell” onto the operator’s working carton — the missing dedupe path behind `ux_receiving_zoho_po_matched`. */
 import type { TxClient } from './relink-po';
 import { reparentReceivingCartonPhotos } from './reparent-carton-photos';
 

@@ -1,25 +1,4 @@
-/**
- * Phase F2 — periodic reconcile guard for carrier delivered-state.
- *
- * The poll path (updateShipmentSummary) is the primary writer, but two failure
- * modes can leave the DB inconsistent between sweeps:
- *
- *   1. A DELIVERED event lands in `shipment_tracking_events` but the summary
- *      write that should set `is_delivered` fails (transient DB error, a crash
- *      mid-sweep). The event log says delivered; the STN flag doesn't. The
- *      shipment may then climb to consecutive_error_count >= 5 and the cron
- *      stops polling it entirely — it silently stays "not delivered" forever.
- *   2. A row hits the consecutive_error_count >= 5 cutoff (a dead label, a
- *      flaky window) and `getDueShipments` permanently skips it.
- *
- * This job runs on a slow cron and:
- *   - re-derives delivered from the event log (idempotent, no carrier calls),
- *     making it monotonic + coherent — the ongoing version of the F1 backfill;
- *   - frees error-stuck rows for one more retry (NOT carrier-blocked ones — those
- *     have a 24h backoff already and would just burn the quota re-failing).
- *
- * Pure SQL, no carrier API calls — cheap and safe to run often.
- */
+/** Phase F2 — periodic reconcile guard for carrier delivered-state. */
 import pool from '@/lib/db';
 import {
   SHIPMENT_SCANNED_PREDICATE,
@@ -71,17 +50,7 @@ export async function runReconcileDeliveredJob(): Promise<ReconcileDeliveredResu
           AND (stn.is_delivered IS DISTINCT FROM true OR stn.delivered_at IS NULL)`,
     );
 
-    // 1b. Delivered-from-physical-scan: a box scanned/opened at the dock IS here,
-    //     even when the carrier never reports delivered — USPS access-blocked or
-    //     NULL-status, unknown-carrier numbers that never poll, or multi-week
-    //     carrier lag (observed up to ~87 days). The carrier signal is absent or
-    //     late for the majority of inbound boxes, so the physical scan is the
-    //     real delivery truth. Match on the SAME last-8 / shipment-link rule the
-    //     Incoming display uses (SHIPMENT_SCANNED_PREDICATE), stamp the earliest
-    //     matching scan as delivered_at, source 'receiving_scan', and make it
-    //     terminal so the poll loop stops chasing a box that's already in. These
-    //     rows are scanned, so the delivered-unscanned surface excludes them by
-    //     construction — flipping is_delivered can't resurface them.
+    // 1b. Delivered-from-physical-scan:
     const scanDelivered = await client.query(
       `UPDATE shipping_tracking_numbers stn
           SET is_delivered     = true,

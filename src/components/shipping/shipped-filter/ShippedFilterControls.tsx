@@ -73,15 +73,7 @@ export function StatusSelect({ value, onChange }: { value: ShipmentStatusCategor
   );
 }
 
-/**
- * Record TYPE — Orders · SKU · FBA · All. The "platform / source" axis of the
- * Shipped well: it aggregates channels into one archive and lets the operator
- * narrow to one, which is why platforms are a facet here rather than desk tabs
- * of their own (`shipping-desk-to-ship-prep-shipped-PLAN.md` §2.2).
- *
- * Pill-shaped twin of {@link CarrierSelect} so the inline well reads as one row
- * of the same control, not three unrelated widgets.
- */
+/** Record TYPE — Orders · SKU · FBA · All. */
 export function TypeSelect({ value, onChange }: { value: ShippedTypeFilter; onChange: (next: ShippedTypeFilter) => void }) {
   return (
     <label className="inline-flex items-center gap-1.5 rounded-none bg-surface-card px-2.5 py-1 text-role-caption font-semibold text-text-muted ring-1 ring-inset ring-border-soft">

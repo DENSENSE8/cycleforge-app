@@ -11,12 +11,7 @@ import { reducePresenceShape } from '../foundations/motion-framer-hooks';
 import { motionRole } from './roles';
 import { fadeInstant, springArmedTrack, springSnappy } from './tokens';
 
-/**
- * The role layer must stay an INDEXING layer over the preset catalog — never a
- * second copy of the physics. These assert identity (`===`), not deep equality:
- * a copied literal would pass a value comparison and then silently drift the
- * first time someone retuned one side.
- */
+/** The role layer must stay an INDEXING layer over the preset catalog — never a second copy of the physics. */
 
 test('every role resolves to the exact catalog object — no copied physics', () => {
   assert.equal(motionRole.swap.scan.presence, framerPresence.stationCartonSwap);
@@ -94,13 +89,7 @@ test('there are exactly eight roles', () => {
   );
 });
 
-/**
- * `feedback.liveChange` is the one role whose keyframes live at the call site
- * (`useLiveValueChange` hands `animate()` arrays, rather than a `motion.*`
- * component reading a presence shape). That makes the `times` map part of the
- * contract: Motion requires `keyframes.length === times.length`, and a mismatch
- * throws at runtime on the exact surface nobody is watching.
- */
+/** `feedback.liveChange` is the one role whose keyframes live at the call site (`useLiveValueChange` hands `animate()` arrays, rather than… */
 test('feedback.liveChange carries a double-pulse map and a shorter morph', () => {
   const { transition, morph } = motionRole.feedback.liveChange;
   assert.equal(transition.times.length, 6, 'double pulse: rest · peak · trough · peak · trough · settle');
@@ -112,13 +101,7 @@ test('feedback.liveChange carries a double-pulse map and a shorter morph', () =>
   assert.ok(transition.duration < 0.5, 'a one-shot ack stays under the house half-second ceiling');
 });
 
-/**
- * The station contract. `swap.scan`'s exit carries its own zero-duration
- * transition so `mode="wait"` completes it on the same frame — that is what
- * turned ~0.6s of empty canvas per scan into a 0.12s enter fade on the Unbox
- * bench. A "normalisation" onto `swap.focus`'s symmetric shape would silently
- * reintroduce the gap at scan cadence.
- */
+/** The station contract. */
 test('swap.scan keeps its zero-duration exit', () => {
   const { exit } = motionRole.swap.scan.presence;
   assert.deepEqual(exit, { opacity: 0, transition: { duration: 0 } });
@@ -173,12 +156,7 @@ test('every presence role keeps opacity under reduced motion', () => {
   }
 });
 
-/**
- * The bridge's own regression, re-pinned from the role layer's side: it once
- * flattened presence to bare opacity, which discarded `collapseHeight`'s height
- * keys and left elements faded at full box. `collapseHeight` is the one
- * sanctioned height animation in the house.
- */
+/** The bridge's own regression, re-pinned from the role layer's side: */
 test('reduced motion preserves the sanctioned height collapse', () => {
   const reduced = reducePresenceShape(framerPresence.collapseHeight);
   assert.ok('height' in reduced.initial, 'collapseHeight must still collapse under reduce');

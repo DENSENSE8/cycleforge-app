@@ -1,18 +1,4 @@
-/**
- * Shift-aware sign-in helpers. Sign-in == clock-in: a successful PIN/passkey
- * authentication opens a `time_punches` row tied to the staff's currently
- * active shift. Sign-out closes the row.
- *
- *   • findActiveShift(staffId)   — returns the shift the staff should be
- *                                  signing in to right now (or null).
- *   • clockIn(...)               — inserts an open time_punches row.
- *   • clockOut(staffId)          — closes the open punch, auto-deducting
- *                                  the default lunch break if the punch
- *                                  spanned the shop's lunch window.
- *
- * Materializes shifts on demand so a staff who comes in early (or whose
- * template was just edited) can still sign in without a cron pre-build.
- */
+/** Shift-aware sign-in helpers. */
 
 import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
@@ -32,12 +18,7 @@ interface PayrollSettings {
   timezone: string;
 }
 
-/**
- * Returns the staff's currently-active shift (one whose window covers
- * NOW() and is not cancelled/missed). If no concrete shift exists yet
- * for today, attempts to materialize one from the staff's templates —
- * this is the no-cron pre-build for someone arriving exactly at 9:00.
- */
+/** Returns the staff's currently-active shift (one whose window covers NOW() and is not cancelled/missed). */
 export async function findActiveShift(staffId: number, client?: PoolClient): Promise<ActiveShift | null> {
   const db = client ?? pool;
 
@@ -73,12 +54,7 @@ export async function findActiveShift(staffId: number, client?: PoolClient): Pro
   return slow.rows[0] ?? null;
 }
 
-/**
- * Opens a time_punches row tied to a session and a shift. Idempotent —
- * if the staff somehow already has an open punch, we leave the existing
- * one alone (the unique-index `idx_time_punches_one_open` enforces this
- * at the DB layer too).
- */
+/** Opens a time_punches row tied to a session and a shift. */
 export async function clockIn(
   staffId: number,
   /** Null when the staff is signing in off-schedule — the punch still
@@ -137,10 +113,7 @@ function punchSpannedLunch(
   punchedOutAt: Date,
   settings: PayrollSettings,
 ): boolean {
-  // Cheap check: does the punch window cover at least one minute of the
-  // configured lunch (in the shop's local timezone)? Falls back to
-  // "yes" when timezone lookups fail so we don't accidentally cheat
-  // staff out of a break.
+  // Cheap check: does the punch window cover at least one minute of the configured lunch (in the shop's local timezone)?
   try {
     const localStart = new Date(
       punchedInAt.toLocaleString('en-US', { timeZone: settings.timezone }),

@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * "Already unboxed" receipt — the read-only outcome of scanning a carton whose
- * unbox work is finished.
- *
- * Why a card and not a toast: the Station contract says an outcome is a big
- * card state the operator can read from three feet away with their hands full,
- * never a 4-second corner toast (6).
- *
- * Why read-only: the scan did not claim the work server-side (no
- * `scanned_by` overwrite, no `UNBOX_SCAN_OPENED`), so the pane must not present
- * the work editor as if it had. The primary action is therefore **Open package
- * details** — a search jump, not an editor — because someone scanning a
- * finished box is asking "what happened to this?", not "let me change it".
- * "Open anyway" survives as the deliberate escape (degrade, don't block),
- * demoted to a quiet ghost so it is a second thought, not the default.
- *
- * Surface + depth come from the SoT: `Panel elevation="overlay"` resolves via
- * `elevationClass('overlay')`. This card floats ABOVE the editor it covers, so
- * it sits on the overlay plane — not the `raised` plane an in-flow card uses,
- * and never a hand-rolled `shadow-*`. Actions compose `Button`; identifiers
- * compose the `CopyChip` family. Nothing here re-types a shell.
- */
+/** "Already unboxed" receipt — the read-only outcome of scanning a carton whose unbox work is finished. */
 
 import { useRouter } from 'next/navigation';
 import { Button, Panel } from '@/design-system/primitives';
@@ -69,18 +48,11 @@ export function UnboxLookupReceipt({
   const router = useRouter();
 
   const unboxedLabel = receipt.unboxedAt ? formatDateTimePST(receipt.unboxedAt) : 'Already unboxed';
-  // Server-resolved name wins: it is read off the carton at classification
-  // time, while the workspace-row fallback is often still hydrating when the
-  // receipt paints — which is why sourcing it from the row alone left the fact
-  // silently blank on the scan rungs.
+  // Server-resolved name wins:
   const unboxedBy = receipt.unboxedByName ?? unboxedByName ?? null;
   const poNumber = receipt.poNumber ?? null;
 
-  // Search the PO when the carton has one, else the tracking number: an unfound
-  // carton has no PO, and falling back keeps the primary action live rather
-  // than rendering a dead button. Either query resolves through hybrid search
-  // to the carton, its order and its units — the "what happened to this?"
-  // answer — instead of dropping the operator back into an editor.
+  // Search the PO when the carton has one, else the tracking number:
   const detailsQuery = poNumber ?? receipt.trackingNumber;
 
   return (

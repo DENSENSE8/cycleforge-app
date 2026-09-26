@@ -114,16 +114,9 @@ export function PackerTable({ packedBy }: PackerTableProps) {
       layout={packerLayout}
       savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
-      // History is WEEK-scoped, so an empty view is a no-results state, not a
-      // first run — hence no `firstRunEmpty`. Passing one also suppressed the
-      // shell's "back to this week" reset button (it only renders on the
-      // emptyMessage branch), and the state it passed was the Home task-inbox
-      // "No work assigned" — work-assignment copy on a scan-history surface.
+      // History is WEEK-scoped, so an empty view is a no-results state, not a first run — hence no `firstRunEmpty`.
       emptyMessage="No packs recorded this week"
-      // The find box is answered by `/api/packerlogs?q=`, not by a pass over
-      // the mounted week. `isRefreshing` is the in-flight flag for the CURRENT
-      // text, so the body holds its loading face instead of presenting the
-      // previous query's rows as this query's answer.
+      // The find box is answered by `/api/packerlogs?q=`, not by a pass over the mounted week.
       search={{ value: query, onChange: setQuery, pending: isRefreshing }}
       pipeline={{
         records: orderedRecords,

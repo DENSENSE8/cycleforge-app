@@ -22,10 +22,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       params.push(since);
     }
 
-    // Unified feed: station activity + stock-ledger deltas. Ledger rows are
-    // synthesized into the same shape; their id is negated to avoid collision
-    // with real station_activity_logs ids. Client treats them as first-class
-    // events and renders with reason-aware labels.
+    // Unified feed:
     const result = await tenantQuery<any>(
       orgId,
       `WITH sal_events AS (

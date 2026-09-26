@@ -1,11 +1,4 @@
-/**
- * Receiving row → {@link CompoundRowView}. Pure; no React, no hooks.
- *
- * One of N family adapters feeding the single compound renderer
- * (`components/tables/compound`). Adding a table means writing one of these,
- * never copying a cell — which is the property that keeps four surfaces on one
- * layout instead of four that drift.
- */
+/** Receiving row → {@link CompoundRowView}. */
 
 import {
   firstNote,
@@ -15,14 +8,7 @@ import {
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { formatCurrency } from '@/utils/_number';
 
-/**
- * Workflow status → the three-tone vocabulary.
- *
- * Deliberately coarse. The receiving lifecycle has many stages but a compound
- * row answers one question at a glance — "does this need me?" — so the mapping
- * collapses to done / needs-a-human / everything else, and the exact stage name
- * stays in the label beside it.
- */
+/** Workflow status → the three-tone vocabulary. */
 export function receivingStateTone(status: string | null | undefined): CompoundStateTone {
   const s = String(status || '').toUpperCase();
   if (!s) return 'neutral';
@@ -50,15 +36,7 @@ export interface ReceivingCompoundParts {
   title: string;
   /** Resolved stage name for this surface's vocabulary (fine vs coarse). */
   stateLabel: string;
-  /**
-   * Override the state TONE.
-   *
-   * Landed lines derive it from `workflow_status` (below). Incoming rows carry
-   * the same row type but report the CARRIER's lifecycle, whose urgency is
-   * already answered by the delivery-state face SoT — so that surface passes
-   * the resolved tone rather than having this module grow a second vocabulary
-   * it would have to keep in sync with a registry it does not own.
-   */
+  /** Override the state TONE. */
   stateTone?: CompoundStateTone;
   /** Hover detail for the state pill, when the label clips its track. */
   stateTip?: string;
@@ -76,15 +54,7 @@ export interface ReceivingCompoundParts {
  * computes them for the flat layout), so this adapter never re-derives display
  * logic that has a SoT elsewhere — it only decides SHAPE.
  */
-/**
- * The line's money — `unit_price` (a read-only mirror of the Zoho PO line rate,
- * `numeric` so it arrives as a string) times the quantity.
- *
- * Parsed defensively: a `numeric` column reaches the client as a string, and a
- * PO line that has never synced has no rate at all. `null` renders an empty
- * money cell, which is the honest answer for a line nobody has priced — a
- * `$0.00` there would be a number no buyer entered.
- */
+/** The line's money — `unit_price` (a read-only mirror of the Zoho PO line rate, `numeric` so it arrives as a string) times the quantity. */
 function lineMoney(row: ReceivingLineRow): Pick<CompoundRowView, 'amount' | 'amountNote'> {
   const unit = Number(row.unit_price);
   if (!Number.isFinite(unit)) return { amount: null };

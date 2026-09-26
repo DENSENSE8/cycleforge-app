@@ -275,11 +275,7 @@ test('the v3 lift no-ops when a role has only one of the two families', () => {
   assert.deepEqual(out.slots, [SPINE_STATIONS_SLOT_ID]);
 });
 
-// ── dnd-kit + namespace invariants (v3) ─────────────────────────────────────
-// `SortableContext items={spineOrder}` in SidebarNavList registers one sortable
-// per slot id, and each must resolve to exactly one rendered node. Before v3 the
-// desk block was a single 'desks' slot; now it is one slot per lane, so a slot
-// the role cannot paint would leave dnd-kit holding an id with no node.
+// ── dnd-kit + namespace invariants (v3) ───────────────────────────────────── `SortableContext items={spineOrder}` in SidebarNavList…
 
 test('every slot id resolves to exactly one map entry — no orphan sortable', () => {
   for (const perms of [
@@ -302,10 +298,7 @@ test('every slot id resolves to exactly one map entry — no orphan sortable', (
 });
 
 test('lane slot ids never collide with a slottable page id', () => {
-  // Lane ids are string-identical to some desk PAGE ids on purpose (see the
-  // SPINE_LANE_SLOT_IDS docblock). That is only safe while desk pages stay
-  // unslottable: a lane id that also names a slottable page would merge two
-  // meanings into one slot inside hydrateSpineSlots.
+  // Lane ids are string-identical to some desk PAGE ids on purpose (see the SPINE_LANE_SLOT_IDS docblock).
   const lanes = new Set<string>(SPINE_LANE_SLOT_IDS);
   for (const item of getSidebarNavItems()) {
     if (!isSpineSlottable(item)) continue;

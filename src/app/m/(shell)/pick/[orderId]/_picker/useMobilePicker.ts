@@ -11,13 +11,7 @@ import { setScanSubject } from '@/lib/stations/scan-subject-store';
 import { recordMobileSessionEntry } from '@/lib/mobile/mobile-session-feed';
 import { useWmsRealtime } from '@/components/mobile/realtime/WmsRealtimeProvider';
 
-/**
- * Owns the mobile picker session: auth bounce, camera lifecycle, the bootstrap
- * (fetch pick-tasks + open a picking session, resume to the first open task),
- * optimistic confirm-pick (auto-completes the session on the last task) and
- * short-pick with rollback, the scan-gate decode handler, and the derived
- * current-task/progress flags. Returns a controller bag the thin page renders.
- */
+/** Owns the mobile picker session: */
 export function useMobilePicker() {
   const router = useRouter();
   const params = useParams<{ orderId: string }>();

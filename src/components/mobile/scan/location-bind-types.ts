@@ -1,10 +1,4 @@
-/**
- * Shapes shared by the location record (`/m/loc/[code]`) and its faces.
- *
- * Their own module so the presentational faces (`LocationQtyStrip`,
- * `LocationSummaryCard`) and the hub can all name them without importing each
- * other in a cycle.
- */
+/** Shapes shared by the location record (`/m/loc/[code]`) and its faces. */
 
 export type LocationBindContent = {
   sku: string;

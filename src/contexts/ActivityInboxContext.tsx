@@ -62,12 +62,7 @@ export interface ActivityInboxItem {
   // tech-queue (return_pending_test / order_ready_ship) deep-link + detail
   lineId?: number;
   orderNumber?: string;
-  /**
-   * Raw platform key (`source_platform` / pill / inbound type — same ladder
-   * as {@link listTechQueueItemsForStaff}'s `sourcePlatform`), so the
-   * popover's `OrderIdChip` paints the same platform icon/color/tooltip the
-   * carton-context peek does instead of the flat unstyled fallback.
-   */
+  /** Raw platform key (`source_platform` / pill / inbound type — same ladder as {@link listTechQueueItemsForStaff}'s `sourcePlatform`), so… */
   sourcePlatform?: string;
   productTitle?: string;
   // work_task — the durable row lives in staff_inbox_items; this is its mirror,
@@ -181,10 +176,7 @@ export function ActivityInboxProvider({
   /** After "Clear all", ignore stale in-flight refreshes until a new realtime push. */
   const inboxSuppressedRef = useRef(false);
   const inboxFetchGenRef = useRef(0);
-  // Seed fetches (tech queue / support followups / staff messages) are not
-  // first-paint critical — defer them past idle so they never compete with the
-  // route's own data for main-thread + connection time. Realtime pushes still
-  // trigger the refresh callbacks directly whenever they land.
+  // Seed fetches (tech queue / support followups / staff messages) are not first-paint critical — defer them past idle so they never compete…
   const idleReady = useIdleReady();
 
   useEffect(() => {
@@ -357,14 +349,7 @@ export function ActivityInboxProvider({
       });
       if (fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       setStaffMessageItems(mapped);
-      // Deliberately does NOT chain `refreshSupportFollowups()`. It used to, and
-      // that made `/api/inbox/support` fetch twice on every load — once from its
-      // own idle effect, once again 6ms after this response landed, serially
-      // behind it. Support assignments are already covered from both ends: the
-      // idle effect seeds them on mount, and the `staff_message` Ably handler
-      // below routes `kind === 'support_assignment'` straight to
-      // `refreshSupportFollowups` (which is why THIS mapper filters that kind
-      // out). Re-adding the chain re-adds the duplicate request.
+      // Deliberately does NOT chain `refreshSupportFollowups()`.
     } catch {
       /* best-effort — next push or reload retries */
     }
@@ -438,15 +423,7 @@ export function ActivityInboxProvider({
     [user],
   );
 
-  /**
-   * A colleague handed you a record.
-   *
-   * The durable row is already in `staff_inbox_items` before this fires — this
-   * is the live mirror, so a dropped Ably message costs latency and nothing
-   * else (the row still arrives on the next Home Inbox fetch). Deduped on
-   * `inboxItemId` because the same push can arrive on two tabs, and this list
-   * is per-session client state with no unique index behind it.
-   */
+  /** A colleague handed you a record. */
   const pushWorkTask = useCallback(
     ({ inboxItemId, entityType, entityId, note, urgent, actorName }: PushWorkTaskArgs) => {
       if (!user) return;
@@ -526,16 +503,6 @@ export function ActivityInboxProvider({
   );
 
   // Both kinds of durable staff_inbox_items row arrive on this one event name.
-  //
-  // A colleague handed this staffer a record (WS-TASKS). The durable row is
-  // already in staff_inbox_items — this is the live mirror that makes a bench
-  // handoff land now instead of on the next window focus.
-  //
-  // A WATCHED DOMAIN EVENT (a carton this staffer follows scanned in at the
-  // door) is NOT mirrored into `items`: that array is session-scoped, carries
-  // an undo TTL, and `clear()` wipes it — a durable ledger row must not live
-  // under those semantics. The push only invalidates the inbox query the
-  // popover reads, so the server list stays the one source of those rows.
   useAblyChannel(
     inboxChannel,
     'inbox_item',
@@ -771,16 +738,7 @@ export function ActivityInboxProvider({
   );
 }
 
-/**
- * The one scannable fact for a handed-over record when the thrower left no
- * note. Deliberately a short noun + id rather than a chip parade — this face is
- * the compact activity row (`CompactActivityRow` + `RailRowBody`), which allows
- * exactly one meta fact.
- *
- * The noun comes from {@link INBOX_ENTITY_NOUN}, shared with the durable ledger
- * row below it: the live mirror and the row it mirrors must not spell the same
- * record two ways.
- */
+/** The one scannable fact for a handed-over record when the thrower left no note. */
 function entityLabelFor(entityType: string, entityId: number): string {
   return `${INBOX_ENTITY_NOUN[entityType as InboxEntityType] ?? 'Record'} ${entityId}`;
 }

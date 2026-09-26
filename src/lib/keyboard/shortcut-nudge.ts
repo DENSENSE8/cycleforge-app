@@ -1,10 +1,4 @@
-/**
- * Preference-gated shortcut nudge toasts — teach the leader-armed grammar
- * after a mouse click, never a bare wedge-reachable key.
- *
- * Preference key in localStorage so it fades once learned without a schema
- * migration. Staff can silence via `cycleforge:shortcut-nudges=0`.
- */
+/** Preference-gated shortcut nudge toasts — teach the leader-armed grammar after a mouse click, never a bare wedge-reachable key. */
 
 import { toast } from '@/lib/toast';
 

@@ -1,15 +1,4 @@
-/**
- * GET /api/admin/staff/[id]/roles  — list assigned roles for one staff
- * PUT /api/admin/staff/[id]/roles  — REPLACE the staff's role set
- *
- * Body for PUT: { roleIds: number[] }
- *
- * Idempotent PUT semantics: send the full desired set; the server diffs.
- * Removes any roleIds not in the new set, inserts any that are new, leaves
- * unchanged rows alone. Side-effect: keeps `staff.role` in sync with the
- * primary (lowest-position) role for legacy callers that still read that
- * column directly.
- */
+/** GET /api/admin/staff/[id]/roles — list assigned roles for one staff PUT /api/admin/staff/[id]/roles — REPLACE the staff's role set */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -33,10 +22,7 @@ function staffIdFromUrl(req: NextRequest): number | null {
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const staffId = staffIdFromUrl(req);
   if (!staffId) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
-  // Org-ownership gate: a staffId from another org reads as NOT_FOUND, so an
-  // admin can never enumerate another org's staff↔role assignments. `roles`
-  // itself is a system-global table (no organization_id) — we gate via the
-  // `staff` parent's org, not via roles.
+  // Org-ownership gate:
   const probe = await tenantQuery(
     ctx.organizationId,
     `SELECT id FROM staff WHERE id = $1 AND organization_id = $2`,
@@ -102,11 +88,7 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ ok: true, unchanged: true });
   }
 
-  // Use a single transaction so a partial failure leaves the assignment set
-  // unchanged. Run it under the org GUC: the staff parent is already org-gated
-  // by the probe above, and the trailing `staff` UPDATE re-asserts the org
-  // predicate so it can never sync a row in another org. `staff_roles`/`roles`
-  // have no organization_id, so they remain scoped only by the gated staffId.
+  // Use a single transaction so a partial failure leaves the assignment set unchanged.
   await withTenantTransaction(ctx.organizationId, async (client) => {
     if (toRemove.length > 0) {
       await client.query(

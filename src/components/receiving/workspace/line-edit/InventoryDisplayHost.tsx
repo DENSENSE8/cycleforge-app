@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * Unbox Displays → Inventory leaf — secondary Root-to-Leaf drill.
- *
- *   Inventory index ({@link StationArmedVerbList})
- *     → Information   (PO telemetry)
- *     → Lines         (qty · rate · line notes / SN·condition text)
- *     → PO notes      (overall inventory header notes)
- *     → Activity      (receive / unreceive trail)
- *
- * Nested drill reports trail / pop / restore UP via
- * {@link useDisplaysLeafChrome} — the stack owns ← → Esc / Back and the
- * column (no footer since 2026-08-19). This host never mounts
- * {@link StationDisplayLeafHeader}, a hand-rolled sub-index, an Action
- * KeyLegend floor, or `/` leaf-commands.
- *
- * Primary mutator for notes Save mounts in the sticky leaf header via
- * {@link useDisplaysLeafChrome} `setLeafTrailing`. Zoho inventory Refresh lives
- * on the carton Macro floor (`UnboxDisplaysActionFloor` refresh icon) — never
- * in the Inventory breadcrumb. Silent F5 / ⌘S still work (incl. inside the
- * notes field). Receive / Unreceive stay on the Unbox dock. Change PO → Pair
- * inventory empty state or Linkage. Focus restore: `data-station-action-dossier`.
- *
- * Law: instrument-panel.md · Station Action vs Context · Displays Root-to-Leaf.
- */
+/** Unbox Displays → Inventory leaf — secondary Root-to-Leaf drill. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

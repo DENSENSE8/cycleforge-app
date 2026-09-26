@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Desk page-header split CTA — a primary verb plus a chevron menu (To-ship's
- * Sync ShipStation, Incoming's Add purchase order).
- *
- * The desk hands over the verb and the menu; the BAR decides the face through
- * {@link useDeskHeaderFace}: the pill capsule on a card desk, the industrial
- * segment on a `stage="flush"` bar — where it sits flush against its
- * neighbours and works like the mode tabs on the bar's left end. Lives apart
- * from `DeskActionSlot` so the motion-backed dock stays off that module's
- * graph (every desk route imports it).
- */
+/** Desk page-header split CTA — a primary verb plus a chevron menu (To-ship's Sync ShipStation, Incoming's Add purchase order). */
 
 import { SlicedActionDock, type SlicedActionDockProps } from '../primitives/SlicedActionDock';
 import { useDeskHeaderFace } from './DeskActionSlot';

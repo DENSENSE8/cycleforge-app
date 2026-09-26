@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Task evidence — **Documents**: the markdown a job is run from, beyond its
- * instructions. Three ways in, one list out:
- *
- * - **Upload** — one or many `.md` files from the desktop; the text is stored.
- * - **Plan file** — a plan in THIS codebase (`docs/**`, `master-plan.mdx`,
- *   root `*.md`), linked by path and read live, so the floor always reads the
- *   current plan rather than the copy that existed when it was linked.
- * - **Write** — a document typed here (a one-off SOP the lead writes once).
- *
- * Opening one shows it full-height in the column (`TaskEvidence`'s document
- * face), rendered — no raw HTML.
- */
+/** Task evidence — **Documents**: */
 
 import { useRef, useState } from 'react';
 import { FileText, X } from '@/components/Icons';

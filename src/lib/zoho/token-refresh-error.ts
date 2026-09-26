@@ -1,10 +1,4 @@
-/**
- * Pure helpers for Zoho OAuth refresh failures.
- *
- * Keeps message shapes classifier-compatible with
- * `isCredentialAuthFailure` (`token refresh`, `invalid_code`, …) while
- * surfacing Zoho's `error` / `error_description` into `last_error`.
- */
+/** Pure helpers for Zoho OAuth refresh failures. */
 
 const DESC_MAX = 200;
 

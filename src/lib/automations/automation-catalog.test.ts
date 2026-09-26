@@ -1,11 +1,4 @@
-/**
- * The catalog is only trustworthy while every cron-triggered entry still names
- * a REAL job. This test is that pin — delete `tickets.designated_assign` from
- * `CRON_JOBS` and the catalog fails here rather than painting a row on
- * /studio/automations whose health can never be anything but "never".
- *
- *   npx tsx --test src/lib/automations/automation-catalog.test.ts
- */
+/** The catalog is only trustworthy while every cron-triggered entry still names a REAL job. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

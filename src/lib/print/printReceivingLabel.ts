@@ -50,16 +50,7 @@ export interface ReceivingLabelPayload {
 }
 
 
-/**
- * Compact platform name for small thermal labels where the full catalog name
- * overflows the top-left slot (e.g. "Amazon - Return" → "AMZ - Return",
- * "Amazon Renewed - Return" → "AMZRN - Return"). Without this the 2×1" `.tl`
- * ellipsis clips the type to "… - Re…".
- *
- * An org `short_label` is an explicit "print it as this" and wins always; the
- * built-in compact (`platform-display`) only steps in when a type shares the
- * slot, so a type-less carton still reads the full "Amazon".
- */
+/** Compact platform name for small thermal labels where the full catalog name overflows the top-left slot (e.g. */
 function receivingLabelPlatformName(platform: string): string {
   const meta = sourcePlatformMeta(platform);
   if (meta.value) return meta.label;
@@ -72,14 +63,7 @@ function receivingLabelPlatformCompact(platform: string, shortLabel: string, typ
   return builtinPlatformShortLabel(platform) || receivingLabelPlatformName(platform);
 }
 
-/**
- * Top-left label face — "Platform - Type" (e.g. "eBay - Return"), or just
- * the platform when no receiving type is set.
- *
- * When the type label already carries the platform (org catalog slugs like
- * `ECWID-RS`), print the type alone — `ECWID - ECWID-RS` truncates to ellipsis
- * ("…") on the 2×1" face.
- */
+/** Top-left label face — "Platform - Type" (e.g. */
 export function receivingLabelPlatformDisplay(
   payload: Pick<ReceivingLabelPayload, 'platform' | 'platformShortLabel' | 'receivingType' | 'receivingTypeLabel'>,
 ): string {
@@ -143,13 +127,7 @@ export function labelCornerTicketDigits(args: {
   return fromField ?? '';
 }
 
-/**
- * Bottom‑right carton label preference order:
- *   1. `#ticket` for a numeric Zendesk id
- *   2. Last‑4 of the PO# / scanValue (matched cartons)
- *   3. Last‑4 of the carton tracking number (unmatched cartons — scanValue
- *      is `RCV-{id}` which is meaningless to the operator)
- */
+/** Bottom‑right carton label preference order: */
 export function receivingLabelPoCornerDisplay(payload: ReceivingLabelPayload): string {
   const fromZk = zendeskTicketNumberForLabel(payload.zendeskTicket);
   if (fromZk) return `#${fromZk}`;
@@ -177,14 +155,7 @@ export function receivingLabelMatrix(payload: ReceivingLabelPayload): PrintMatri
   });
 }
 
-/**
- * The string actually encoded in the carton DataMatrix — a platform Digital
- * Link (`https://{slug}.app.cycleforge.ai/m/r/{id}`) when the slug is known,
- * else the bare `R-{id}` handle.
- *
- * Staff wedge ignores the host and parses the path / bare handle in
- * `routeScan()`. Consumer phones open the platform URL → public interstitial.
- */
+/** The string actually encoded in the carton DataMatrix — a platform Digital Link (`https://{slug}.app.cycleforge.ai/m/r/{id}`) when the… */
 export function resolveReceivingQrValue(payload: ReceivingLabelPayload): string {
   return receivingLabelMatrix(payload).value;
 }

@@ -1,10 +1,4 @@
-/**
- * Same-tab control for {@link DETAIL_STACK_COLLAPSE} — Band 3 inspector toggle /
- * Cmd+\ flip the parked state without clearing the rail occupant target.
- *
- * {@link useLocalStorage} in RightRailHost does not see cross-component writes;
- * this module writes storage + broadcasts a window event the host listens for.
- */
+/** Same-tab control for {@link DETAIL_STACK_COLLAPSE} — Band 3 inspector toggle / Cmd+\ flip the parked state without clearing the rail… */
 
 import { DETAIL_STACK_COLLAPSE } from './layout';
 

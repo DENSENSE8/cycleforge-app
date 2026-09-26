@@ -16,16 +16,7 @@ import {
   type UnfoundGridColumn,
 } from './unfound-grid-layout';
 
-/**
- * Unfound triage — an ops queue whose cells are read-only.
- *
- * `inCellEdit: false`: ticket id and the two team notes are corrected on the
- * record plane, so the grid has one job — show the hit and let the operator open
- * it. `multiSelect: false` — nothing on this surface acts on N rows at once, and
- * an inert checkbox gutter is dead chrome. `rowTriageFlags` stays off: a row
- * already carries checked / synced state; a third colour story would be chrome
- * inventing a fact.
- */
+/** Unfound triage — an ops queue whose cells are read-only. */
 export const UNFOUND_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,

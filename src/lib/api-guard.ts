@@ -1,30 +1,10 @@
-/**
- * Rate limiter — distributed when Upstash Redis is configured, in-memory
- * fallback otherwise. The previous implementation was an in-process `Map`
- * which broke under Vercel's autoscaler: each Lambda instance had its own
- * Map, so the effective limit was `limit × instances`.
- *
- * Public API is unchanged — `checkRateLimit({ headers, routeKey, limit,
- * windowMs })` still returns `{ ok, retryAfterSec? }`. The new
- * `checkRateLimitAsync` variant uses the distributed backend; the sync
- * `checkRateLimit` keeps the in-memory path so legacy callsites don't break,
- * but new code should prefer the async form.
- *
- * Backend selection:
- *   - If UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN are set, all
- *     async calls use Redis (sliding window via ZSET).
- *   - Otherwise the in-memory Map is used (fine for local dev, NOT fine
- *     for production multi-instance).
- */
+/** Rate limiter — distributed when Upstash Redis is configured, in-memory fallback otherwise. */
 
 import { isRedisConfigured, redisPipeline } from '@/lib/redis/client';
 
 const REDIS_PREFIX = 'rl:v1:';
 
-// Loud boot warning: in production, an unconfigured Redis means the limiter
-// silently falls back to a per-instance in-memory Map — effectively OFF under
-// Vercel autoscale (the real limit becomes limit × instances). Surface it so a
-// missing UPSTASH_REDIS_* in prod is caught instead of silently failing open.
+// Loud boot warning:
 if (!isRedisConfigured() && (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production')) {
   console.warn(
     '[api-guard] UPSTASH_REDIS_REST_URL/_TOKEN are not set in production — rate limiting is falling back to per-instance in-memory and is INEFFECTIVE under autoscale. Configure Upstash Redis.',
@@ -91,12 +71,7 @@ export function checkRateLimit(opts: RateLimitOptions): RateLimitResult {
   return { ok: true };
 }
 
-/**
- * Distributed sliding-window limiter. Uses Redis ZSET semantics: each call
- * appends now-ms as a score, expires old entries past windowMs, counts the
- * remaining elements. Falls back to checkRateLimit() if Redis isn't
- * configured.
- */
+/** Distributed sliding-window limiter. */
 export async function checkRateLimitAsync(opts: RateLimitOptions): Promise<RateLimitResult> {
   if (!isRedisConfigured()) return checkRateLimit(opts);
 
@@ -125,13 +100,7 @@ export async function checkRateLimitAsync(opts: RateLimitOptions): Promise<RateL
   }
 }
 
-/**
- * Org-scoped rate limit for authed routes. Combines the IP dimension (within-
- * tenant abuse) with the tenant org so one noisy tenant can't exhaust another
- * tenant's budget on a shared routeKey. Prefer this on withAuth routes — pass
- * `ctx.organizationId`. Public / pre-auth routes (e.g. auth/signup) stay
- * IP-only via `checkRateLimitAsync`. See tenancy exec plan §D5.
- */
+/** Org-scoped rate limit for authed routes. */
 export function checkRateLimitForOrg(
   opts: Omit<RateLimitOptions, 'scope'> & { organizationId: string },
 ): Promise<RateLimitResult> {

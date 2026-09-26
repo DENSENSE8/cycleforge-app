@@ -1,22 +1,4 @@
-/**
- * repairStepGates — the kiosk progress contract (PG6).
- *
- * The header's segments and count come from these gates, so what they must
- * defend is: a satisfied unit counts wherever the pointer is, and un-editing
- * a unit takes its segment back.
- *
- * ## TWO ARMS since 2026-09-16
- *
- * Called WITHOUT a device list — the staff single-intake form — the form's own
- * singular `serialNumber` + `price` are the device facts, byte-identical to
- * before. Called WITH one — the kiosk, which holds one cart line per unit on
- * the counter — every device answers for itself and the form's singular fields
- * are not consulted at all. The old single check passed a four-device visit on
- * the strength of device one's serial and wrote the other three blank; that is
- * the defect this file now pins shut.
- *
- *   npx tsx --test src/components/repair/repair-step-gates.test.ts
- */
+/** repairStepGates — the kiosk progress contract (PG6). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -41,13 +23,7 @@ function filled(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
   });
 }
 
-/**
- * The KIOSK's form: satisfied on every VISIT fact and empty on both device
- * fields and on reasons, because on that surface the device facts — reasons
- * included since 2026-09-25 — live on the cart line that will be written.
- * Anything these tests get right about it is only meaningful because the form
- * itself carries no serial, no quote and no reason.
- */
+/** The KIOSK's form: */
 function visitForm(overrides: Parameters<typeof buildInitialFormData>[0] = {}) {
   return filled({
     product: { type: '', model: '', sourceSku: null },
@@ -83,13 +59,7 @@ test('notes alone satisfy the issue unit — the domain predicate, not just chip
   assert.equal(repairStepGates(data, false, false)[0], true);
 });
 
-/**
- * DEVICE and CONTACT are separate units as of 2026-09-15. Operator: *"there
- * should be contact information just as phone number name email address and
- * address with serial number and price under a different stepper."* Before
- * that, one gate demanded a serial AND a phone, so a staffer who had the
- * device in hand but no customer details yet could not advance past either.
- */
+/** DEVICE and CONTACT are separate units as of 2026-09-15. */
 test('the staff arm: the device unit needs a serial and a price, and nothing about the customer', () => {
   const noSerial = filled({ serialNumber: '' });
   const noPrice = filled({ price: '' });
@@ -112,17 +82,7 @@ test('the contact unit is the phone alone — name and email never gate it', () 
   );
 });
 
-/**
- * AUTHORIZATION is the signature AND a settled ticket question (2026-09-15).
- *
- * The create-or-link question was briefly a fifth unit; the operator collapsed
- * it under the signature — *"would it be best to include a slider … below the
- * signature so it would be mounted under one step?"* — so the last unit now
- * demands both. SETTLED, not answered: the slider auto-selects Create, so the
- * caller passes `true` for an untouched visit and `false` only for the
- * half-finished link (see `isKioskTicketChoiceSettled`). Either half missing
- * leaves the segment empty and the commit key refused.
- */
+/** AUTHORIZATION is the signature AND a settled ticket question (2026-09-15). */
 test('authorization needs the signature AND a settled ticket question', () => {
   assert.equal(repairStepGates(filled(), false, false)[3], false, 'neither');
   assert.equal(repairStepGates(filled(), true, false)[3], false, 'signed, link unfinished');
@@ -186,13 +146,7 @@ test('an empty device list refuses the device unit and the commit', () => {
   );
 });
 
-/**
- * The kiosk form carries NO serial, NO price and NO product, because the cart
- * owns all three per device. This is the regression that matters most: while
- * `canSubmitRepairIntake` still asked `CONTACT_FIELDS`' legacy `extras` entry
- * (the form's own singular serial + price) of a device-list caller, "Submit
- * repair" was disabled forever with nothing on screen to fix.
- */
+/** The kiosk form carries NO serial, NO price and NO product, because the cart owns all three per device. */
 test('with devices, the form needs no serial, price or product of its own', () => {
   const form = visitForm();
   assert.equal(canSubmitRepairIntake(form, true, [device()]), true);
@@ -224,13 +178,7 @@ test('the refusal names WHICH device is short once there is more than one', () =
   );
 });
 
-/**
- * REASONS are per unit since 2026-09-25 (operator: "all devices, or per device
- * with a switcher"). Each unit is its own `repair_service` row whose `issue`
- * is that unit's reasons, and the counter refuses a row with neither a reason
- * nor notes (`missingRepairIntakeFields`) — so one answered unit must not
- * carry the other through.
- */
+/** REASONS are per unit since 2026-09-25 (operator: */
 test('the reason unit asks EVERY device; visit notes answer for all of them', () => {
   const answered = device();
   const blank = device({ title: 'Acoustimass 6', repairReasons: [] });
@@ -256,12 +204,7 @@ test('the reason unit asks EVERY device; visit notes answer for all of them', ()
   );
 });
 
-/**
- * A LINKED repair was taken in (and given its reason) when its ticket was
- * written; the reason gate must neither ask it nor count it. The rows come
- * from the cart through `repairDevicesFromLines`, the one source every gate
- * reads.
- */
+/** A LINKED repair was taken in (and given its reason) when its ticket was written; the reason gate must neither ask it nor count it. */
 test('a linked repair on the cart never gates the reason unit', () => {
   const lines: KioskCartLine[] = [
     {

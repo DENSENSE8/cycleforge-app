@@ -1,10 +1,4 @@
-/**
- * Resolve an order's shipment (STN) id for outbound-document linking.
- * Mirrors the backfill's resolution order (2026-07-01d_backfill_shipping_label_links.sql):
- * the denormalized `orders.shipment_id` cache first, falling back to the
- * `shipment_links` primary row. Returns null when neither resolves (order has
- * no tracking yet) — callers link ORDER-only in that case.
- */
+/** Resolve an order's shipment (STN) id for outbound-document linking. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

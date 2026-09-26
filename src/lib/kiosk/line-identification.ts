@@ -1,9 +1,4 @@
-/**
- * Canonical identifier a cart line is claimed by — serial / IMEI / SKU — for
- * the consult Show face (`consult-proposal.ts`), so the customer reads the
- * same string staff typed. {@link compactSerials} also feeds the cart card's
- * SN chip (`cart-card-view.ts`).
- */
+/** Canonical identifier a cart line is claimed by — serial / IMEI / SKU — for the consult Show face (`consult-proposal.ts`), so the… */
 
 import { isBuybackPayload, isRepairPayload, type KioskCartLine } from '@/lib/kiosk/cart-line';
 import { splitSerials } from '@/lib/kiosk/serial-list';

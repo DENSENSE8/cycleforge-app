@@ -1,18 +1,4 @@
-/**
- * Confirmed print-run dispatch for warehouse stickers.
- *
- * Location: register → printLocationLabelsJob → POST /api/label-print-jobs.
- * Tote:     mint     → printLabelFacesJob    → POST /api/label-print-jobs.
- *
- * Both shapes are the same law: the physical identity must EXIST before its
- * sticker leaves the printer, or the floor ends up holding paper that scans to
- * nothing. Locations register a code the builder derived; totes mint rows and
- * read `H-{id}` back, because that code is a database serial. The ledger POST
- * is best-effort in both cases — it runs after paper has already moved.
- *
- * Callers: LabelPrintRunSheet confirm; useBinLabelPrinter / useRackLabelPrinter
- * (single + bulk); the /m/print Totes grain.
- */
+/** Confirmed print-run dispatch for warehouse stickers. */
 
 import type { LocationSegments, RackSegments } from '@/lib/barcode-routing';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
@@ -162,16 +148,7 @@ export async function printRackLabelRun(input: {
   return { status: 'printed', channel, count: segments.length };
 }
 
-/**
- * Bulk tote (handling-unit) print run — mint N boxes, then print their `H-{id}`
- * plates as ONE batched job.
- *
- * Minting is a callback rather than a fetch in here for the same reason
- * `register` is on the location runs: this module owns the print channel and
- * the ledger, not the warehouse's write API. It also keeps the whole run
- * honest — a mint failure returns `mint_failed` and NOTHING prints, so an
- * operator never peels a plate whose row does not exist.
- */
+/** Bulk tote (handling-unit) print run — mint N boxes, then print their `H-{id}` plates as ONE batched job. */
 export async function printHandlingUnitLabelRun(input: {
   count?: number;
   /** Mints `count` boxes server-side and resolves to their label payloads. */

@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Config Sheet — Source / Display / Actions, opened on add and on ⚙.
- * Nothing in it is bespoke per block: every control renders from the three
- * registries (the block's roles + configSchema, the source's filters + shape,
- * the action registry's compatibility matching).
- */
+/** Config Sheet — Source / Display / Actions, opened on add and on ⚙. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';

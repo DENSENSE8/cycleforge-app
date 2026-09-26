@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Customer face — same kiosk session, stripped of operational data.
- *
- * Hides void / discount / cost notes. Read-only ledger + signature if a REPAIR
- * line needs one + calm Terminal wait (decaying timestamp, no bounce/glow).
- *
- * No title band of its own: the shell paints the ONE header band above this
- * face. A `Your order` band under it was a second chrome (2026-09-23).
- */
+/** Customer face — same kiosk session, stripped of operational data. */
 
 import { useEffect, useMemo, useState } from 'react';
 import { SignaturePad, type SignatureData } from '@/components/ui/SignaturePad';

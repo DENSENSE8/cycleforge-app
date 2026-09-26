@@ -1,9 +1,4 @@
-/**
- * Units catalog guards + resolver behaviour — wave 1.4's first family, and the
- * first SHEET port of that wave. The materialization smoke pins the port's
- * central promise: the product default reproduces the retired hand model's scan
- * order exactly.
- */
+/** Units catalog guards + resolver behaviour — wave 1.4's first family, and the first SHEET port of that wave. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

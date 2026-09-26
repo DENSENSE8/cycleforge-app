@@ -13,24 +13,7 @@ import {
 
 type LinePayload = { shipment_item_id: number; quantity?: number };
 
-/**
- * POST /api/fba/shipments/split-for-paired-review
- *
- * When combine review changes the FBA Shipment ID vs the active-shipment card’s prefilled ID,
- * create a **new** plan with the new Amazon ID, move only the selected lines off the source plan,
- * clear their tracking allocations on the source, then attach UPS on the new plan.
- *
- * Body: {
- *   source_shipment_id: number,
- *   new_amazon_shipment_id: string,
- *   tracking_number: string,
- *   carrier?: string,
- *   label?: string,
- *   staff_id?: number,
- *   station?: string,
- *   lines: [{ shipment_item_id, quantity? }]
- * }
- */
+/** POST /api/fba/shipments/split-for-paired-review */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();

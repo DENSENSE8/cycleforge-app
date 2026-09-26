@@ -6,13 +6,7 @@ import { isShipStationInternalStore } from '@/lib/catalog/shipstation-store-sync
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/integrations/shipstation/stores — the connected ShipStation
- * storefronts, live from v1 `/stores` (retired ones included: they still own
- * historical orders). ShipStation's own channels (manual orders, label API)
- * are not storefronts and are left out. `connected: false` when the org has
- * no v1 key/secret. Settings pairs this with /api/catalog/store-links.
- */
+/** GET /api/integrations/shipstation/stores — the connected ShipStation storefronts, live from v1 `/stores` (retired ones included: */
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {
     try {

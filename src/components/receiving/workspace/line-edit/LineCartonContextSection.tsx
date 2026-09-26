@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Carton-context section of the LineEditPanel — photos + claim + shipment
- * context (listing, PO#, tracking, platform + type + priority pills) in one
- * WorkspaceCard. Pure wiring from the controller bag to the station SoT
- * {@link CartonContextCard} (`@/components/station/entity-context`);
- * extracted from LineEditPanel so the panel stays a short composition surface.
- *
- * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
- * passes `onEdit*` + `*EditOpen`). PO# Edit always opens Package Pairing → PO
- * (`onEditPo`).
- *
- * Serves Unbox and Triage — both use the one-row family face. Pair the host
- * with `reserveIdentityClearance={false}` (in-flow) or legacy overlay clearance.
- *
- * Displays `←|` + carton `↑↓` live on ScanStationUtilityRail, not here.
- */
+/** Carton-context section of the LineEditPanel — photos + claim + shipment context (listing, PO#, tracking, platform + type + priority… */
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
@@ -30,15 +15,7 @@ interface LineCartonContextSectionProps {
   row: ReceivingLineRow;
   staffId: string;
   c: UnboxLineController;
-  /**
-   * Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard}
-   * — required, never defaulted (a defaulted safety classification is how
-   * bench photos silently became arrival evidence; see
- * The card renders identically in
-   * unbox and triage — both show the staff photo row and Claim — but the
-   * capture STAGE differs: triage passes `arrival_package` explicitly, unbox
-   * passes `unbox_carton`.
-   */
+  /** Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard} — required, never defaulted (a defaulted safety… */
   photoStage: 'arrival_package' | 'unbox_carton';
   /**
    * Serial-resolved outbound (return) order#. When the carton has no PO# of its
@@ -97,12 +74,7 @@ interface LineCartonContextSectionProps {
    * Replaces whatever Displays leaf is open; opens the column when closed.
    */
   onOpenPhotosDisplay?: () => void;
-  /**
-   * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
-   * Send open Displays via the external callbacks. Pill click stays
-   * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
-   * is set.
-   */
+  /** Opt-out: suppress Photos hover toolbar. */
   suppressPhotoHoverGallery?: boolean;
 }
 
@@ -139,38 +111,7 @@ export function LineCartonContextSection({
   // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
 
-  /**
-   * Order# for the identity chip — from the receiving SoT, NOT `c.poNumber`.
-   *
-   * `useReceivingLineCore` derives `poNumber` as
-   * `zoho_purchaseorder_number || zoho_purchaseorder_id`, with no
-   * `source_order_id` rung. A freshly scanned marketplace purchase has neither
-   * Zoho field yet — measured on this database, ten eBay lines from 2026-09-17
-   * to 09-19 carry a NULL PO number AND a NULL PO id while the real dashed
-   * order (`11-15183-54752`, `04-14979-98419`, …) sits in `source_order_id`.
-   * The chip therefore fell through to `linkedOrderNumber`, an internal
-   * numeric order id, and hover + copy handed the operator a dashless number
-   * string instead of the eBay order they scanned.
-   *
-   * `getReceivingPoIdentityParts` is the ladder the Unbox RAIL already uses
-   * (`ReceivingLineRailShell`), which is why one carton read
-   * `eBay · PO 22-15154-84089` on the left and `# 84089` with a dashless
-   * hover on the station bar. Same carton, two ladders — this removes the
-   * second one.
-   *
-   * Only the DISPLAY binding moves. `c.poNumber` keeps its write semantics:
-   * `useCartonLabelEditor` diffs the sticker reference against it before
-   * calling `persistPoNumber`, and `useUnboxLineController` guards
-   * serial auto-bind on it ("never overwrite an operator/Zoho-set PO#").
-   * Widening that value would silently change what gets written.
-   *
-   * The label resolver is unused here — only `poValue` is read — so it is the
-   * same no-op `() => ''` that `isReceivingPoGroupTitleRow` passes.
-   *
-   * The chip FACE is unchanged: `CartonContextCard` still runs this through
-   * `getLast8`, so it stays the truncated segment after the dash. Only the
-   * underlying value (hover preview + clipboard) regains its dashes.
-   */
+  /** Order# for the identity chip — from the receiving SoT, NOT `c.poNumber`. */
   const { poValue: cartonOrderNumber } = getReceivingPoIdentityParts(row, () => '');
 
   return (
@@ -182,11 +123,7 @@ export function LineCartonContextSection({
       classifyInteractive={classifyInteractive}
       poTotal={poTotal}
       showPoTotal
-      // Qty left this band on 2026-08-02: Unbox pins it on the Items eyebrow
-      // Qty roll-up lives on the PO line accordion (`POUnboxingSection`) as the
-      // carton's received/expected facts — not a separate items pin on main.
-      // Keeping it here doubled the same fraction in two places with two grains
-      // (active-line vs carton), which is how they drifted.
+      // Qty left this band on 2026-08-02:
       qty={null}
       showStaffPhotoRow
       photoStage={photoStage}

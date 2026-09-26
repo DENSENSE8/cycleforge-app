@@ -4,24 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, IconButton } from '@/design-system/primitives';
 import { ChevronDown, ExternalLink } from '@/components/Icons';
 
-/* ─────────────────────────────────────────────────────────────────────────
- *  ListingResizePanel
- *  ───────────────────────────────────────────────────────────────────────
- *  Pinned preview section with a draggable splitter. Marketplace listing
- *  pages block iframe embedding, so the body is always an "open externally"
- *  affordance. Operators drag the splitter to give the panel more room.
- *
- *  Interaction:
- *   • Drag up   → panel grows (content above gets less room).
- *   • Drag down → panel shrinks. Past a collapse threshold it snaps closed.
- *   • Double-click → toggles "max" (≈ viewport-200px) and "default" (≈55vh).
- *   • Chevron button → fully collapse / restore.
- *   • Keyboard: ↑/↓ resize, Home/End jump to extremes, Enter/Space toggle.
- *
- *  Height + collapsed state persist in localStorage under the supplied
- *  `storageNamespace` so each surface (tech station, product pairing, etc.)
- *  remembers its own sizing.
- *  ─────────────────────────────────────────────────────────────────── */
+/* ───────────────────────────────────────────────────────────────────────── ListingResizePanel… */
 
 const COLLAPSE_DRAG_THRESHOLD = 80;
 const MIN_OPEN_HEIGHT = 160;

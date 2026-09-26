@@ -43,13 +43,7 @@ export const catalogKeys = {
   shipstationStores: () => ['catalog', 'shipstation-stores'] as const,
 };
 
-/**
- * The org's priority-ladder overrides. No `includeInactive` twin: a rung cannot
- * be deactivated (see the priority_tiers migration), so there is only one view
- * of this catalog. An empty array is the normal, healthy answer — it means no
- * rung has been renamed or repainted, and the caller falls back to the built-in
- * PRIORITY_OVERRIDE_TIERS.
- */
+/** The org's priority-ladder overrides. */
 export function prioritiesQuery() {
   return queryOptions({
     queryKey: catalogKeys.priorities(),

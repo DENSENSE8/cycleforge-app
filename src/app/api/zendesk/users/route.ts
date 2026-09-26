@@ -11,15 +11,7 @@ import { getCachedUsers, upsertCachedUsers } from '@/lib/zendesk-users-cache';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Zendesk users batch lookup.
- *
- *   GET /api/zendesk/users?ids=1,2,3  → { success, users: [{id,name,email,...}] }
- *
- * Resolves comment authors (the requester / end users that aren't agents) to a
- * real name + email so the chat thread never shows a bare "User #<id>".
- * Gated by integrations.zendesk like the rest of the Zendesk surface.
- */
+/** Zendesk users batch lookup. */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

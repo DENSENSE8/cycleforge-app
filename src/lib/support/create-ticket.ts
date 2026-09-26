@@ -1,22 +1,4 @@
-/**
- * Generic support-ticket CREATE — the station-generic counterpart to the
- * receiving-anchored claim wizard (/api/receiving/zendesk-claim) and the
- * thread-anchored escalate path (threads/escalate.ts).
- *
- * Mints a live helpdesk ticket via the capability facade (never a direct vendor
- * import), then either links it to an anchor through the shared link waist
- * ({@link linkTicketToAnchor}) or just registers it in `support_tickets`. Because
- * it produces a PROVIDER ticket, the returned `providerTicketId` opens cleanly in
- * SupportTicketFocus (`?ticket=<providerTicketId>`) with no URL-key change.
- *
- * Optional `linkages` (order / tracking / serial) resolve via
- * {@link resolveOrderLinkage}; the primary anchor + extra STN references are
- * chosen by {@link pickAnchorFromLinkage}.
- *
- * Deps-injected (default real impls) so unit tests run DB-free and without a live
- * helpdesk connector. Runtime ticket-link /
- * helpdesk imports stay dynamic so this module stays importable from tests.
- */
+/** Generic support-ticket CREATE — the station-generic counterpart to the receiving-anchored claim wizard (/api/receiving/zendesk-claim)… */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { OrderLinkage, OrderLinkageInput } from '@/lib/order-linkage';
 import type {

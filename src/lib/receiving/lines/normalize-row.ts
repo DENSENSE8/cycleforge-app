@@ -1,16 +1,4 @@
-/**
- * Shape a raw `receiving_line` SQL row into the API's wire row.
- *
- * Extracted verbatim from `src/app/api/receiving-lines/route.ts`, where it was a
- * module-private function, so a SERVER caller can produce the exact same row
- * without paying an HTTP round trip (and a second auth) to its own API. The RSC
- * paint seed for `/unbox` is that caller: `serverSelfFetch` cost ~1.2s of auth
- * per call, which landed straight on TTFB because the seed blocks the shell.
- *
- * It is pure — no imports, no I/O, no tenancy — which is what makes moving it
- * safe: there is one implementation and both callers share it, so the seeded
- * row cannot drift from the fetched one and cause a rail remount on reconcile.
- */
+/** Shape a raw `receiving_line` SQL row into the API's wire row. */
 
 /**
  * Wire timestamps as strings. `SELECT rl.*` (and uncast street columns) arrive
@@ -30,11 +18,6 @@ function asStampText(value: unknown): string | null {
 
 export function normalizeRow(row: Record<string, unknown>) {
   // Tracking identity resolves in priority order:
-  //   1. shipping_tracking_numbers (canonical — joined via receiving_carton.shipment_id)
-  //   2. receiving_carton.receiving_tracking_number (legacy text on the package)
-  //   3. receiving_line.zoho_reference_number (legacy text on the line;
-  //      column may be absent post-retirement — guarded below)
-  // See inbound-tracking unification plan (2026-04-15 migrations).
   const shipmentTracking    = (row.shipment_tracking_number as string | null) ?? null;
   const receivingTracking   = (row.receiving_tracking_number as string | null) ?? null;
   const zohoReferenceNumber = (row.zoho_reference_number as string | null) ?? null;
@@ -73,9 +56,6 @@ export function normalizeRow(row: Record<string, unknown>) {
     zoho_purchaseorder_number: (row.zoho_purchaseorder_number as string | null) ?? (row.receiving_zoho_purchaseorder_number as string | null) ?? null,
     item_name:                (row.item_name as string | null) ?? null,
     // Canonical Zoho catalog title (sku_catalog.product_title), joined by SKU.
-    // Prefer this over item_name for display — item_name is the PO/platform
-    // line name (eBay etc.) and varies by source. Null when the SKU isn't in
-    // the catalog yet; callers fall back to item_name.
     catalog_product_title:    (row.catalog_product_title as string | null) ?? null,
     zoho_item_title:          (row.zoho_item_title as string | null) ?? null,
     // Canonical sku_catalog.id for this line's SKU (joined). Keys the SKU
@@ -90,21 +70,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     condition_grade:          (row.condition_grade as string) ?? 'USED_A',
     condition_set_at:         (row.condition_set_at as string | null) ?? null,
     label_printed_at:         (row.label_printed_at as string | null) ?? null,
-    // Unbox procedure ACKNOWLEDGEMENT stamps — the gates for the `condition`,
-    // `contents` and `label` capture steps (derive-capture-step-states.ts).
-    //
-    // This normalizer is a strict ALLOWLIST with no passthrough, so a column
-    // added to the SELECT but not to this object reaches the client as
-    // `undefined` — and `undefined` is indistinguishable from "not acknowledged".
-    // All three shipped that way: the routes wrote the stamps, the builders
-    // selected them, the step gates read them, and the steps could never go
-    // done because the value never crossed the wire. Nothing failed loudly;
-    // the procedure pointer simply parked forever.
-    //
-    // `?? null` is the right default rather than `undefined`: on a view whose
-    // SELECT omits these (the PATCH re-fetch, placeholder stubs) the honest
-    // answer is "no acknowledgement", which can only under-claim, never
-    // over-claim. Guard: `receiving-lines-procedure-gates.guard.test.ts`.
+    // Unbox procedure ACKNOWLEDGEMENT stamps — the gates for the `condition`, `contents` and `label` capture steps…
     condition_graded_at:      (row.condition_graded_at as string | null) ?? null,
     contents_confirmed_at:    (row.contents_confirmed_at as string | null) ?? null,
     label_previewed_at:       (row.label_previewed_at as string | null) ?? null,
@@ -121,13 +87,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     staged_location_code:     (row.staged_location_code as string | null) ?? null,
     staged_by:                row.staged_by != null ? Number(row.staged_by) : null,
     staged_by_name:           (row.staged_by_name as string | null) ?? null,
-    // Denormalized serial projection (rlt.serial_projection) surfaced by the list
-    // builders as `serials` — the FAST DEFAULT for first-frame chip display, so a
-    // row-click / deep-link / arrow-nav open paints serials without waiting on the
-    // heavy ?include=serials resolution. The authoritative include=serials path
-    // OVERWRITES this after normalize (see the includeSerials branches). undefined
-    // when the SELECT omits the column (e.g. the PATCH re-fetch or placeholder
-    // stubs) so consumers fall back cleanly.
+    // Denormalized serial projection (rlt.serial_projection) surfaced by the list builders as `serials` — the FAST DEFAULT for first-frame…
     serials:                  Array.isArray(row.serials)
                               ? (row.serials as Array<{ id: number; serial_number: string; condition_grade: string | null }>)
                               : undefined,
@@ -150,13 +110,6 @@ export function normalizeRow(row: Record<string, unknown>) {
     receiving_listing_url:    (row.receiving_listing_url as string | null) ?? null,
     listing_url:              (row.listing_url as string | null) ?? null,
     // Purchasing-source PO receipt state, and how old that answer is.
-    //
-    // `zoho_status` was SELECTed by the builders and read by `ReceivingLineRow`
-    // for months while this allowlist dropped it — the same silent-`undefined`
-    // trap as the procedure gates above, which is why both now carry a guard.
-    // `zoho_status_synced_at` rides with it because a mirror status is as fresh
-    // as the last poll, not as fresh as now, and the `zoho` chip discloses that
-    // age in its tooltip rather than implying the vendor just changed it.
     zoho_status:              (row.zoho_status as string | null) ?? null,
     zoho_status_synced_at:    (row.zoho_status_synced_at as string | null) ?? null,
     // view=incoming_removed only — the two removal signals the row shape does
@@ -171,9 +124,6 @@ export function normalizeRow(row: Record<string, unknown>) {
     expected_delivery_date:   (row.expected_delivery_date as string | null) ?? null,
     vendor_name:              (row.vendor_name as string | null) ?? null,
     // Universal Incoming purchase identity (spine cache cols via rl.*, plan §6.3).
-    // inbound_source_type badges the row's source ('zoho' | 'ebay' | …);
-    // source_order_id is the external order id (the eBay order#) when there's no
-    // Zoho PO; platform_account_* name the buyer account it was purchased on.
     inbound_source_type:      (row.inbound_source_type as string | null) ?? null,
     source_order_id:          (row.source_order_id as string | null) ?? null,
     platform_account_id:      row.platform_account_id != null ? Number(row.platform_account_id) : null,
@@ -190,10 +140,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     // Carton-level default receiving type (receiving.intake_type). The carton
     // pill edits this; receiving_type above overrides per line. Migration 2026-06-13b.
     carton_intake_type:        (row.receiving_intake_type as string | null) ?? null,
-    // Door-scan vs unbox split (history columns). received_at/scanned_at are the
-    // "arrived at the door" event; unboxed_at is when items were extracted.
-    // *_by_name resolve the staff who performed each (null on views that omit
-    // the joins / unmatched stubs).
+    // Door-scan vs unbox split (history columns).
     received_at:              asStampText(row.receiving_received_at),
     received_by_name:         (row.received_by_name as string | null) ?? null,
     // Terminal "Received" (DONE) transition time — distinct from the door-scan
@@ -221,11 +168,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     // Last write to the line itself (qty bump, condition, notes, …). Drives
     // the unbox_activity sort's tiebreak in the placeholder merge.
     updated_at:               asStampText(row.updated_at),
-    // Most-recent activity timestamp matching the server's sort order. For
-    // view=testing_opened this leads with QC-open time; for view=testing it
-    // leads with tested_at; for view=viewed, viewed_at. Falls through to
-    // received_at / created_at so the rail can render a single "last touched"
-    // field regardless of view.
+    // Most-recent activity timestamp matching the server's sort order.
     last_activity_at:         asStampText(row.testing_opened_at)
                               ?? asStampText(row.viewed_at)
                               ?? asStampText(row.tested_at)
@@ -247,32 +190,15 @@ export function normalizeRow(row: Record<string, unknown>) {
 }
 
 
-/**
- * A lineless carton rendered as a `receiving_line`-shaped placeholder row
- * (synthetic id `-receiving_id`). Unmatched/unfound cartons and finalized local
- * pickup POs have no `receiving_line` row, so the list query cannot return them;
- * the route appends them from a second query and shapes them here.
- *
- * Extracted alongside {@link normalizeRow} and for the same reason: the Unbox
- * paint seed has to build the SAME row in-process, and on the dogfood org the
- * most-recently-unboxed carton IS usually one of these placeholders — so a seed
- * that could not shape one would miss exactly the common case.
- */
+/** A lineless carton rendered as a `receiving_line`-shaped placeholder row (synthetic id `-receiving_id`). */
 const UNMATCHED_EMPTY_LINE_LABEL = 'Unfound PO';
 
 export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): Record<string, unknown> {
   const rid = Number(pkg.id);
-  // The same line-less placeholder serves both unmatched cartons and finalized
-  // local pickup POs (one receiving row per PO, items live in
-  // local_pickup_order_items). Honour the real source + label so the history
-  // row reads sensibly and the details overlay can branch to the pickup panel.
+  // The same line-less placeholder serves both unmatched cartons and finalized local pickup POs (one receiving row per PO, items live in…
   const source = String(pkg.receiving_source || 'unmatched');
   const isPickup = source === 'local_pickup';
-  // An unfound carton is RECEIVED once it has been unboxed at the dock — for a
-  // lineless placeholder the only signal is receiving.unboxed_at (set by the
-  // local-receive path in mark-received-po, which is purely local for unfound
-  // POs since there is no Zoho PO to reconcile). unboxed → DONE ("RECEIVED"),
-  // otherwise ARRIVED ("SCANNED"). See workflow-stages.ts / workflowStatusTableLabel.
+  // An unfound carton is RECEIVED once it has been unboxed at the dock — for a lineless placeholder the only signal is receiving.unboxed_at…
   const unboxedAt = pkg.receiving_unboxed_at ?? pkg.unbox_opened_at ?? null;
   return {
     id: -rid,
@@ -301,10 +227,7 @@ export function buildUnmatchedEmptyReceivingLine(pkg: Record<string, unknown>): 
     zoho_purchase_receive_id: null,
     zoho_purchaseorder_id: null,
     zoho_purchaseorder_number: pkg.receiving_zoho_purchaseorder_number ?? null,
-    // An operator-linked id on a carton that has no line yet
-    // (link-carton-identifier.ts writes receiving_carton.source_order_id and
-    // leaves the carton unmatched). Without it the chip reads "—" straight
-    // after a successful link, which looks exactly like a failed one.
+    // An operator-linked id on a carton that has no line yet (link-carton-identifier.ts writes receiving_carton.source_order_id and leaves the…
     source_order_id: pkg.receiving_source_order_id ?? null,
     quantity_received: 0,
     quantity_expected: null,

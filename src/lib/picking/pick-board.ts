@@ -1,17 +1,4 @@
-/**
- * Every order with open picks, with who each belongs to — the read the
- * directed feed (`nextDirectedPick`) and the Unassigned board
- * (`GET /api/picking/board`) share, so the phone's "next pick" and its list
- * can never disagree about ownership.
- *
- * Ownership comes from three stored facts, resolved by `pick-ownership.ts`:
- *   - the order's TEST assignee (`work_assignments.assigned_tech_id`) — what
- *     Pass / Take write through `POST /api/orders/assign`;
- *   - `sku_staff_pairings` — the SKU's owner, set by their first pick of it;
- *   - backups — pick history of the order's SKUs (180 days), then the
- *     `picker` roster (`staff_functional_roles`).
- * `listStaffOutOnDate` decides who is out today.
- */
+/** Every order with open picks, with who each belongs to — the read the directed feed (`nextDirectedPick`) and the Unassigned board (`GET… */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';

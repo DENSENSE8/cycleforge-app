@@ -1,14 +1,4 @@
-/**
- * Station Displays open/close chord — ⌘/Ctrl+] on {@link StationDisplaysEdgeToggle}.
- *
- * One owner, one label: the edge toggle's click handler IS the hotkey action
- * (`←|` open / `→|` close). Desk History / To-ship inspectors keep ⌘\ + bare `]`
- * — never cross-wire those chords here (Displays ≠ inspector).
- *
- * Modifier chord (⌘K rule): fires from text fields; stands down only for an
- * open overlay (`hasOpenOverlay`). Browser Forward (⌘]) is intentionally
- * stolen on station benches via preventDefault.
- */
+/** Station Displays open/close chord — ⌘/Ctrl+] on {@link StationDisplaysEdgeToggle}. */
 
 'use client';
 

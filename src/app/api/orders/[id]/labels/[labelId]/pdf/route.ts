@@ -5,13 +5,7 @@ import { getShipStationV2, ShipStationNotConnectedError } from '@/lib/shipping/s
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/orders/[id]/labels/[labelId]/pdf — the label's PDF, fetched from
- * ShipStation on the operator's Print click (never on render). For labels with
- * no stored document: returns and paired ShipStation labels. The v2 download
- * URL needs the account API key, which only this server holds (and only ever
- * sends to ShipStation hosts — `downloadLabel`). Read-only.
- */
+/** GET /api/orders/[id]/labels/[labelId]/pdf — the label's PDF, fetched from ShipStation on the operator's Print click (never on render). */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; labelId: string }> },

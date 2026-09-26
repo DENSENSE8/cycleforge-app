@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * ProgressDots — compact progress indicator for multi-step mobile flows.
- *
- * `done` filled, `current` ringed, remaining hollow. Designed to live in a
- * screen's status strip without competing with the primary action — small
- * footprint, no labels.
- *
- * When `total > maxVisible`, the rail compresses to "● ● … ◯ ◯" so it stays
- * glanceable on long pick lists.
- */
+/** ProgressDots — compact progress indicator for multi-step mobile flows. */
 
 import { useMemo } from 'react';
 
@@ -27,12 +18,7 @@ interface ProgressDotsProps {
 
 export type DotState = 'done' | 'current' | 'pending' | 'ellipsis';
 
-/**
- * The rail algorithm, exported as the contract seam: clamping, the
- * no-compression window, and head-2 + ellipsis + tail-2 compression where the
- * current step stays visible only while it sits inside a shown window.
- * Unit-tested in ProgressDots.test.tsx.
- */
+/** The rail algorithm, exported as the contract seam: */
 export function buildDotRail(done: number, total: number, maxVisible: number): DotState[] {
   const clampedDone = Math.max(0, Math.min(done, total));
   if (total <= maxVisible) {

@@ -1,16 +1,4 @@
-/**
- * Station-table URL contract (station-table-unification-plan §6) — the SoT for
- * the shared params every station/history table reads: layout (Pipeline/All),
- * staff scope (mine/all), staff filter, and week offset. Keeping the
- * param names + parsers here (not re-derived per surface) is the same
- * single-source discipline the design-system invariants enforce.
- *
- * Staff (`?staff=`) has its own SoT module (`useStaffFilter.ts`); this module
- * re-exports its param name so a surface has one import for the whole contract.
- *
- * `?density=` is gone — the comfortable ⇄ compact toggle went with the table
- * toolbar on 2026-08-29. One row box, everywhere.
- */
+/** Station-table URL contract (station-table-unification-plan §6) — the SoT for the shared params every station/history table reads: */
 
 import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 

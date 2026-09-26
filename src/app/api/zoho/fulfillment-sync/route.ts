@@ -1,21 +1,4 @@
-/**
- * POST /api/zoho/fulfillment-sync
- *
- * Manual / on-demand trigger for the shipped-order → Zoho fulfillment sync.
- * Intended for testing and one-off reconciliation from the admin UI.
- *
- * Body (all optional):
- *   {
- *     "reference": "ORDER-123",   // sync just this internal order_id
- *     "dryRun": true,             // default TRUE here for UI safety
- *     "force": false,             // re-process even if already completed
- *     "limit": 50,                // batch cap when no reference given
- *     "mode": "delta" | "full"    // delta uses the cron cursor; full ignores it
- *   }
- *
- * Returns the full SyncRunReport including the per-order `actions` trail, so you
- * can preview exactly what the sync will do before flipping it live.
- */
+/** POST /api/zoho/fulfillment-sync */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

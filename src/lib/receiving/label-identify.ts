@@ -1,18 +1,4 @@
-/**
- * Resolve a Bose model string read off a product label (by the LAN vision box's
- * /identify-label OCR endpoint) to a real catalog product.
- *
- *   "Bose Wave Music System AWRCC1"  ->  { zoho_item_id, sku, sku_catalog_id, title, image }
- *
- * The label OCR gives a canonical model name; we match it against the Zoho `items`
- * master (the source of truth for what we actually receive/sell), then resolve the
- * sku_catalog row via the existing crosswalk. This powers "add an unfound item by
- * photographing its label" in the receiving flow — see
- * docs/visual-receiving-identify-plan.md and src/lib/vision-identify.ts.
- *
- * Read-only. Pairing/creation stays in the existing idempotent endpoints
- * (add-unmatched-line / resolveOrCreateSkuCatalogId).
- */
+/** Resolve a Bose model string read off a product label (by the LAN vision box's /identify-label OCR endpoint) to a real catalog product. */
 import pool from '@/lib/db';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -64,14 +50,7 @@ function codeToken(model: string): string | null {
   return codes.sort((a, b) => b.length - a.length)[0] ?? null;
 }
 
-// The sku → sku_catalog join is on a STRING key, so organization_id is aligned
-// across it unconditionally (SKU IDENTITY LAW, src/lib/sku/sku-identity-law.ts).
-// `items` always carries organization_id, so the raw-pool path can align it too
-// — the old `joinAnd` parameter made the alignment conditional on a tenant
-// being passed, which left one code path able to attach another org's row.
-//
-// Identity comes from `items` here (this query DRIVES off the Zoho mirror), so
-// the catalog contributes only a fallback title and its image.
+// The sku → sku_catalog join is on a STRING key, so organization_id is aligned across it unconditionally (SKU IDENTITY LAW,…
 function selectClause(): string {
   return `
   SELECT i.zoho_item_id, i.name, i.sku,
@@ -148,10 +127,7 @@ export async function resolveModelToCatalog(model: string, orgId?: OrgId): Promi
   if (rows.length === 0) return empty;
 
   const best = rows[0];
-  // Belt-and-suspenders: resolve catalog id via the full crosswalk (sku OR the
-  // zoho_item_id platform mapping) in case the direct sku join missed it. orgId
-  // is the 4th positional arg (expectedTitle left undefined) so the resolver
-  // scopes its own reads to this tenant when present.
+  // Belt-and-suspenders:
   const skuCatalogId =
     best.sku_catalog_id ?? (await resolveSkuCatalogId(best.sku, best.zoho_item_id, undefined, orgId));
 
@@ -161,11 +137,7 @@ export async function resolveModelToCatalog(model: string, orgId?: OrgId): Promi
     sku: best.sku,
     item_name: best.name,
     sku_catalog_id: skuCatalogId,
-    // SKU IDENTITY LAW: this query drives off the Zoho mirror, so `i.name` IS
-    // the SoT. It used to read `best.product_title ?? best.name`, which handed
-    // a contaminated catalog title (132 rows) priority over the Zoho item the
-    // match was made against — a label OCR'd as a Wave Radio could answer with
-    // an unrelated remote control.
+    // SKU IDENTITY LAW:
     product_title: best.name || best.product_title,
     image_url: best.resolved_image_url,
     resolved: best.zoho_item_id != null,

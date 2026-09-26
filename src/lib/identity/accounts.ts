@@ -1,16 +1,4 @@
-/**
- * Identity-layer data access: global accounts + verified emails.
- *
- * These power account-level (email + password) login and the invitation accept
- * flow. Unlike memberships.ts (hot session path, best-effort) these run in
- * explicit auth flows, so they surface real errors to their callers.
- *
- * Functions accept an optional executor (the live pool by default, or a
- * transaction client) so the invitation accept flow can run account + email +
- * membership + staff creation atomically.
- *
- * See docs/identity-layer-plan.md.
- */
+/** Identity-layer data access: */
 
 import type { Pool, PoolClient } from 'pg';
 import pool from '@/lib/db';
@@ -51,17 +39,7 @@ export async function getAccountByEmail(
   return { id: row.id, displayName: row.display_name, passwordHash: row.password_hash, status: row.status };
 }
 
-/**
- * Create a new global account with an (optional) verified primary email and
- * optional password. Caller should run this inside a transaction when chaining
- * with membership/staff creation. Returns the new account id.
- *
- * `email` is optional so federated logins (OIDC SSO) that don't return an email
- * claim can still get a first-class account; when present it is recorded as a
- * verified email (the IdP / invite link is the verification) and becomes the
- * cross-org match key. `password` is optional so PIN/SSO-only owners get a
- * null-password account they log into via PIN or their IdP.
- */
+/** Create a new global account with an (optional) verified primary email and optional password. */
 export async function createAccount(
   input: { displayName: string; email?: string | null; password?: string | null },
   db: Executor = pool,
@@ -147,27 +125,6 @@ export async function addVerifiedEmail(
 }
 
 // ── Account merge (fold a duplicate account into a survivor) ─────────────────
-//
-// The other half of the multi-org enabler alongside invitations: when the same
-// human was provisioned as two distinct accounts (e.g. the Phase-1 backfill made
-// each per-org staff its own account), an admin folds the duplicate (`merged`)
-// into a `survivor`. We re-point the four account-owned relations — memberships,
-// staff profiles, federated identities, and passkeys — onto the survivor, then
-// mark the merged account `merged` (soft, with `merged_into`/`merged_at`) so the
-// audit trail survives. Never hard-deletes.
-//
-// PRECONDITION (the plan's "merge by verified email"): both accounts must each
-// carry at least one VERIFIED email and the two accounts must share a verified
-// email (case-insensitive). This is the conservative same-human gate; absent a
-// confirmed match the merge refuses rather than risk folding two real humans.
-//
-// IDEMPOTENT: a second run is a no-op — once `merged.merged_into === survivor`
-// the function returns `{ idempotent: true }` with zero re-points. (If the
-// merged account was already folded into a DIFFERENT survivor it errors, since
-// silently re-folding would corrupt the first merge.)
-//
-// Deps-injected so the fold logic unit-tests with zero DB. See accounts.merge
-// tests in src/lib/identity/accounts.test.ts.
 
 export type AccountMergeErrorCode =
   | 'SAME_ACCOUNT'

@@ -4,24 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 
-/**
- * GET /api/fba/stage-counts
- *
- * Returns live item counts grouped by status for all non-completed
- * fba_shipment_items. Drives the accordion section badges in the sidebar.
- *
- * Response:
- * {
- *   success: true,
- *   counts: {
- *     PLANNED:        number,
- *     TESTED:         number,
- *     PACKED:         number,
- *     OUT_OF_STOCK:   number,
- *     LABEL_ASSIGNED: number,
- *   }
- * }
- */
+/** GET /api/fba/stage-counts */
 export const GET = withAuth(async (_request, ctx) => {
   try {
     // 120s-polled sidebar accordion badges → short-TTL org-scoped cache. Every FBA

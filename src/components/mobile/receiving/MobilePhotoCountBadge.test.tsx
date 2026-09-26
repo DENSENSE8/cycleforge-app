@@ -1,13 +1,4 @@
-/**
- * MobilePhotoCountBadge contracts — the compact xN photo count.
- *
- *   npx tsx --test src/components/mobile/receiving/MobilePhotoCountBadge.test.tsx
- *
- * The load-bearing rule: **x0 is never a door.** A gallery link or button for
- * a count of zero sends a thumb to an empty screen, so plain ink is the only
- * render at x0 regardless of which interactive props were supplied. Negative
- * counts clamp — a transient −1 from a failed decrement must not paint "x-1".
- */
+/** MobilePhotoCountBadge contracts — the compact xN photo count. */
 import React from 'react';
 import assert from 'node:assert/strict';
 import test from 'node:test';

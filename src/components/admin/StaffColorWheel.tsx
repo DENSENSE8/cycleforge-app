@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Color wheel picker for staff identity color.
- *
- * Single large circular swatch showing the current color. Clicking opens the
- * native OS color picker (which is a wheel/spectrum on most platforms). A
- * small ring of conic-gradient hue hints frames the wheel so it reads as a
- * "color wheel" at rest. Hex code displays beneath.
- *
- * Controlled — the caller persists each change immediately via onChange.
- */
+/** Color wheel picker for staff identity color. */
 
 import { useRef } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

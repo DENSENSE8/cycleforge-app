@@ -4,14 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { OrgTableRow } from '@/lib/tables/org-tables';
 
-/**
- * The per-org sheet catalog — stored decisions only.
- *
- * Resolution against what the product offers lives in `org-tables.ts` so it can
- * be unit-tested without a database; this module does nothing but read and
- * write rows. `orgId` comes from `ctx.organizationId` at the route, never from
- * the body.
- */
+/** The per-org sheet catalog — stored decisions only. */
 
 interface DbRow {
   table_id: string;
@@ -35,18 +28,7 @@ export async function listOrgTables(orgId: OrgId): Promise<OrgTableRow[]> {
   }));
 }
 
-/**
- * Replace this org's catalog wholesale.
- *
- * A full replace rather than per-row patches because the picker's gesture is
- * "here is my set" — enabling one table and reordering the strip are the same
- * save. Patching would need the client to diff, and a dropped delete would
- * leave a tab the operator turned off still showing.
- *
- * The DELETE and the INSERT share one `tenantQuery` transaction, so a failed
- * insert cannot leave the org with an empty catalog — which, by the absence
- * rule, would silently read as "all tables on" rather than as an error.
- */
+/** Replace this org's catalog wholesale. */
 export async function replaceOrgTables(
   orgId: OrgId,
   rows: readonly OrgTableRow[],

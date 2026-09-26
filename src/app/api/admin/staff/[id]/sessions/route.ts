@@ -41,10 +41,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const id = idFromUrl(req);
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
-  // Org-ownership gate before revoking: a staffId in another org reads as
-  // NOT_FOUND, so an admin can never mass-revoke another tenant's sessions.
-  // staffId is org-unique, so once ownership is confirmed, revoking all of that
-  // staff's sessions is correctly scoped to this org.
+  // Org-ownership gate before revoking:
   const owns = await tenantQuery(
     ctx.organizationId,
     `SELECT id FROM staff WHERE id = $1 AND organization_id = $2`,

@@ -22,16 +22,7 @@ export interface LabelPrintFeedItem {
   current_location: string | null;
 }
 
-/**
- * Recently-printed label feed, backed by `station_activity_logs` rows
- * written by POST /api/post-multi-sn. THE recents SoT for printed labels — the
- * Products Labels Printed rail reads it via ProductLabelsRecentRail.
- *
- * It superseded a per-device localStorage twin (`useLabelRecents`), which kept
- * writing `sku-stock:label-recents:v1` for months after nothing read it. That
- * hook was deleted 2026-08-01; do not reintroduce a local mirror beside this
- * feed.
- */
+/** Recently-printed label feed, backed by `station_activity_logs` rows written by POST /api/post-multi-sn. */
 export function useLabelPrintFeed(limit = 50) {
   return useQuery<LabelPrintFeedItem[]>({
     queryKey: ['labels.recent', limit],

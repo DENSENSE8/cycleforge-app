@@ -1,13 +1,4 @@
-/**
- * applyListingAssignment — evaluate org automation_rules for an order and
- * write work_assignments via the shared upsert helper.
- *
- * Each action resolves primary → backup against who is out today
- * (listStaffOutOnDate); both out leaves the work unassigned for anyone to
- * claim. v1: do not overwrite a human ASSIGNED assignee (different from the
- * resolved staff). Idempotent when already assigned to the resolved staff.
- * CSV row assignees beat rules.
- */
+/** applyListingAssignment — evaluate org automation_rules for an order and write work_assignments via the shared upsert helper. */
 
 import type { PoolClient } from 'pg';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';

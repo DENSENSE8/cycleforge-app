@@ -6,13 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { EntityThread, ThreadMessage, ThreadMessageVisibility } from '@/lib/threads/types';
 
-/**
- * TanStack Query hook behind the ThreadPanel — resolve/create the entity's
- * conversation thread and post messages with the house optimistic contract
- * (`onMutate` snapshot+apply → `onError` rollback → `onSettled` invalidate;
- * A client-minted `clientEventId`
- * (safeRandomUUID) makes a flaky-network retry an idempotent no-op server-side.
- */
+/** TanStack Query hook behind the ThreadPanel — resolve/create the entity's conversation thread and post messages with the house optimistic… */
 
 export const threadKeys = {
   thread: (entityType: string, entityId: number) => ['entity-thread', entityType, entityId] as const,
@@ -260,10 +254,7 @@ export function useThread(entityType: string, entityId: number | null | undefine
     },
     onSuccess: (data) => {
       queryClient.setQueryData(threadKeys.thread(entityType, entityId ?? 0), data.thread);
-      // Escalating writes ticket_links, which is what the connections strip
-      // derives its SUPPORT_TICKET dot from — but only the thread row was being
-      // patched here, so the chip updated instantly while the strip kept a stale
-      // cache for its full 30s staleTime.
+      // Escalating writes ticket_links, which is what the connections strip derives its SUPPORT_TICKET dot from — but only the thread row was…
       if (data.thread?.id != null) {
         void queryClient.invalidateQueries({
           queryKey: threadKeys.connections(data.thread.id),

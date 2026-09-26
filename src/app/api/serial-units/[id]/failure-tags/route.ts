@@ -115,10 +115,7 @@ export const PATCH = withAuth(async (request, ctx) => {
     if (!(await unitExistsInOrg(serialUnitId, orgId))) {
       return NextResponse.json({ ok: false, error: 'unit not found' }, { status: 404 });
     }
-    // Validate the tag actually belongs to THIS unit AND this org before
-    // mutating — closes the cross-tenant-by-id leak where any tech could
-    // resolve/scrap any org's tag by enumerating tag ids. The serial_units join
-    // carries the org predicate (unit_failure_tags itself has no org column).
+    // Validate the tag actually belongs to THIS unit AND this org before mutating — closes the cross-tenant-by-id leak where any tech could…
     const owns = await tenantQuery<{ id: number }>(
       orgId,
       `SELECT t.id

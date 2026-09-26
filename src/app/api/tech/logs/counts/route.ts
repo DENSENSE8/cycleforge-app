@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * Tech-logs COUNTS sibling (station-table-unification-plan §5 / §7.2).
- *
- * A lightweight tally for the sidebar legend + lane bubble headers WITHOUT a full
- * row download — a `COUNT(*)` over the SAME base table + WHERE the list route
- * (`/api/tech/logs`) uses (`station_activity_logs`, `station='TECH'`, the two
- * tech activity types, staff + tenant scope, optional week range), grouped by PST
- * day. Lane counts are re-derived client-side from the TS lane SoT (Decision 12 —
- * lane membership is not re-implemented in SQL for display); this endpoint returns
- * only raw, indexed-column aggregates.
- *
- * GET /api/tech/logs/counts?weekStart=&weekEnd=  — defaults to the signed-in staff;
- *   admin.view_logs holders may pass ?techId=N.
- */
+/** Tech-logs COUNTS sibling (station-table-unification-plan §5 / §7.2). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const techIdParam = Number(searchParams.get('techId'));

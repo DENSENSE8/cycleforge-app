@@ -1,10 +1,4 @@
-/**
- * Draft query currently typed in {@link GlobalHeaderSearch}, so the far-right
- * assistant control can seed the composer without nesting Sparkles beside Search.
- *
- * Module waist (not React context): search owns the field; the assistant button
- * only reads on click. Cleared when the header search unmounts.
- */
+/** Draft query currently typed in {@link GlobalHeaderSearch}, so the far-right assistant control can seed the composer without nesting… */
 
 let draftQuery = '';
 

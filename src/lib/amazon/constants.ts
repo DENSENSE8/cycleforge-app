@@ -1,10 +1,4 @@
-/**
- * Amazon SP-API constants — regional hosts, OAuth/consent hosts, marketplace IDs.
- *
- * SP-API is LWA-only since 2023-10-02 (no AWS IAM/SigV4). We call the regional
- * API host with an `x-amz-access-token` header. See
- * docs/amazon-sp-api-order-import-plan.md.
- */
+/** Amazon SP-API constants — regional hosts, OAuth/consent hosts, marketplace IDs. */
 
 export type AmazonRegion = 'NA' | 'EU' | 'FE';
 

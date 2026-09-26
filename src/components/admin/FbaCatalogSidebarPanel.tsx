@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /shipping/fba?fbaMode=catalog — picker for the FNSKU catalog.
- *
- * URL-state contract:
- *   ?search=<q>     — search box value
- *   ?fnsku=<value>  — selected FNSKU (read by main pane)
- */
+/** Sidebar for /shipping/fba?fbaMode=catalog — picker for the FNSKU catalog. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

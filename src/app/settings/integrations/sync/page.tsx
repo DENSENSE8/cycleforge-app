@@ -7,21 +7,7 @@ import { ConnectionsSidebarPanel } from '@/components/sidebar/ConnectionsSidebar
 import { ZohoManagementPage } from '@/components/admin/connections/ZohoManagementPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-/**
- * `/settings/integrations/sync` — the sync tools workbench (ex-Admin › Sync
- * tools; admin dissolution). Manual triggers for every connected surface:
- * order exceptions (Ecwid tracking + clearing resolved), eBay token refresh,
- * inventory sync (Zoho token + expected POs + one-off receive import),
- * backfills, the Ecwid→Square catalog push, carrier tracking, and Amazon
- * connection checks — the same
- * {@link ConnectionsSidebarPanel} controller the admin sidebar mounted,
- * promoted from rail to page. `?page=zoho-management` opens the inventory sync
- * management sheet the Zoho section links to.
- *
- * It lives under Settings › Apps & integrations because this tree has no
- * `/apps` marketplace route — the same reason `settings-sections.ts` keeps
- * `integrations` at `/settings/integrations`.
- */
+/** `/settings/integrations/sync` — the sync tools workbench (ex-Admin › Sync tools; admin dissolution). */
 function SyncToolsBody() {
   const searchParams = useSearchParams();
   if (searchParams.get('page') === 'zoho-management') {

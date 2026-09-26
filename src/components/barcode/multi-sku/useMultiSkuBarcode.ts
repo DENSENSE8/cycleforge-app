@@ -19,19 +19,7 @@ function createClientEventId(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/**
- * Controller for the multi-SKU / serial barcode workspace. Composes
- * {@link useBarcodeModeStep} (URL-driven mode), {@link useSerialList} (serials)
- * and the pure {@link unit-label-api} network layer, and owns the product/label
- * state plus the three issue paths — print, sn-to-sku log, and reprint.
- *
- * Returns one bag consumed by {@link MultiSkuBarcodeWorkspace} so the view file
- * stays presentational.
- *
- * A second `vertical` wizard layout used to share this controller (hence the
- * former `layout` parameter, the `step` counter and the `density` switch). It
- * was deleted 2026-08-01 — the only mount always passed `horizontal`.
- */
+/** Controller for the multi-SKU / serial barcode workspace. */
 export function useMultiSkuBarcode() {
   const queryClient = useQueryClient();
   const { mode, handleModeChange } = useBarcodeModeStep();
@@ -81,11 +69,7 @@ export function useMultiSkuBarcode() {
     setError('');
   }, [error]);
 
-  // DataMatrix payload for the live preview — reuses the same builder the
-  // printed label uses so what you see matches what gets printed exactly.
-  // Products labels encode ONLY the bare unit id ({SKU}-{YYWW}-{SEQ6}); no GS1
-  // Digital Link, no GTIN/serial AIs. Passing it as `qrPayload` (a non-AI
-  // string) yields a plain `datamatrix` symbology.
+  // DataMatrix payload for the live preview — reuses the same builder the printed label uses so what you see matches what gets printed exactly.
   const previewPayload = useMemo(
     () =>
       buildUnitPayload({
@@ -113,12 +97,7 @@ export function useMultiSkuBarcode() {
     return data;
   }, []);
 
-  /**
-   * Reprint path — the SKU field holds an existing full unit id. Resolve its
-   * catalog row (no sequence allocation) and enrich title/stock/image; reprint
-   * the CANONICAL stored unit id so scanning a manufacturer serial still
-   * reproduces the original. Falls back to a plain SKU lookup for legacy ids.
-   */
+  /** Reprint path — the SKU field holds an existing full unit id. */
   const resolveReprintUnit = useCallback(async (unitIdInput: string) => {
     const trimmed = unitIdInput.trim();
     if (!trimmed) return;
@@ -190,10 +169,7 @@ export function useMultiSkuBarcode() {
         return;
       }
 
-      // Parallelize product-info lookup and next-unit-id allocation — the
-      // sequential chain used to add 400-900ms to first preview on station
-      // devices. /api/units/next-id resolves the sku_catalog row itself when no
-      // catalogIdHint is passed, so the title call need not finish first.
+      // Parallelize product-info lookup and next-unit-id allocation — the sequential chain used to add 400-900ms to first preview on station…
       setIsLoadingTitle(true);
 
       const titlePromise = (async () => {

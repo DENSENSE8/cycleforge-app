@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Deactivate confirm plane for /settings/staff — stage-overlay over the table
- * (law Q5). The table stays mounted underneath, so an admin can still read the
- * teammate they are about to lock out.
- *
- * Callers: StaffTable. Replaces the desk's bare
- * `confirm('Deactivate <name>? Their active sessions will be revoked
- * immediately.')`, which could not name their role, could not say what
- * happens to an invite, and could not be styled, tested or dismissed with a
- * keyboard the way every other destructive verb on this product is.
- */
+/** Deactivate confirm plane for /settings/staff — stage-overlay over the table (law Q5). */
 
 import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';

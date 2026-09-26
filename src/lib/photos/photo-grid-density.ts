@@ -50,19 +50,7 @@ export function photoGridTileProps(
   };
 }
 
-/**
- * Grid density + refresh — grid tile views only (not list).
- *
- * The `folderIsLeaf` argument this used to take is gone with the folder drill:
- * every surviving view paints photo tiles, so there is no longer a level at
- * which the tile controls must hide.
- *
- * Its sibling `photoLibraryShowsSelectControl` was **deleted** rather than left
- * returning a constant `true`. Multi-select was only ever gated because the
- * drill's year/month/week/day levels painted folder tiles with nothing to
- * select; with those gone the gate has no remaining case to express, and a
- * predicate that cannot be false is just a prop to thread and a lie to read.
- */
+/** Grid density + refresh — grid tile views only (not list). */
 export function photoLibraryShowsGridControls(view: PhotoLibraryViewMode): boolean {
   return view !== 'list';
 }

@@ -87,20 +87,9 @@ interface CandidateRow {
   zoho_line_item_id: string | null;
 }
 
-/**
- * Receive every incomplete line on a carton (receiving_id) with shared QA /
- * disposition / condition / notes, and append a single PO notes entry. All
- * quantity / serial / event writes go through receiveLineUnits() so the
- * sku_stock_ledger and inventory_events tables stay in sync for serialized AND
- * non-serialized lines. The Zoho purchase receive itself is NOT posted here —
- * linked lines land DONE locally and the `zoho.receive_backfill` drain posts
- * one purchase receive per PO out of band.
- */
+/** Receive every incomplete line on a carton (receiving_id) with shared QA / disposition / condition / notes, and append a single PO notes… */
 export const POST = withAuth(async (request, ctx) => {
-  // Tracks a pending idempotency claim we own so the catch can release it on a
-  // throw (the `const idempotencyKey` below is try-block-scoped, invisible to
-  // catch). releaseIdempotencyClaim only deletes a still-pending row, so a
-  // release after a successful finalize is a safe no-op.
+  // Tracks a pending idempotency claim we own so the catch can release it on a throw (the `const idempotencyKey` below is try-block-scoped,…
   let ownedClaim: { idempotencyKey: string; route: string } | null = null;
   try {
     const body = await request.json();
@@ -124,11 +113,7 @@ export const POST = withAuth(async (request, ctx) => {
       : null;
     const zendeskTicket = String(body?.zendesk_ticket || '').trim() || null;
     const notes = String(body?.notes || '').trim() || null;
-    // WS-PHOTO §4 soft block: an operator may consciously receive past the
-    // photo-evidence gate ONLY with a code from the receiving-exception system
-    // registry (`PHOTO_WAIVED_*`). Absent → the gate stays the hard 409 below;
-    // present-but-unrecognized → 400 (checked before the idempotency claim, so
-    // a malformed waiver never reserves a key it can't use).
+    // WS-PHOTO §4 soft block:
     const photoPolicyOverride = parsePhotoPolicyOverride(body?.[PHOTO_POLICY_OVERRIDE_BODY_KEY]);
     /** Set only when a valid override actually waived a real block. */
     let photoPolicyWaiver: { code: PhotoPolicyOverrideCode; blockers: string[] } | null = null;
@@ -160,15 +145,7 @@ export const POST = withAuth(async (request, ctx) => {
     // rewind to MATCHED, reverse Zoho PO received when linked. Distinct from
     // scan_only (workflow-only "mark scanned" that leaves qty/stamp alone).
     const isUnreceive = receiveIntentRaw === 'unreceive';
-    // 'local_receive' = unfound carton: mark its lines RECEIVED (promoted to
-    // DONE) locally, and never link them to a Zoho PO — there is no PO to
-    // reconcile against, so the receive-backfill drain never sees them. It is
-    // NOT scan_only: scan_only stays SCANNED (MATCHED); local_receive advances
-    // to RECEIVED just like a real receive. Treated as a non-scan receive
-    // everywhere the DONE promotion runs (`!skipZohoReceive`).
-    // Carton source can force local-only below once we load receiving_carton —
-    // never let an unmatched/unfound carton be treated as PO-linked even if the
-    // client sent zoho_receive by mistake.
+    // 'local_receive' = unfound carton:
     let localReceive = receiveIntentRaw === 'local_receive';
     /** Lines to load: scan_only + unreceive must see DONE lines to rewind them. */
     const includeAllLines = skipZohoReceive || isUnreceive;
@@ -186,17 +163,9 @@ export const POST = withAuth(async (request, ctx) => {
       return NextResponse.json(photoPolicyOverrideInvalidBody(), { status: 400 });
     }
 
-    // Idempotency: long-running Zoho-sync routes are exactly the place a
-    // network blip + client retry can fire the same request twice. Replay the
-    // prior response when we recognize the key, instead of running the full
-    // receive flow again (which could no-op on lines we just committed and
-    // double-call Zoho).
+    // Idempotency: long-running Zoho-sync routes are exactly the place a network blip + client retry can fire the same request twice.
     const idempotencyKey = readIdempotencyKey(request, clientEventId);
-    // Reserve-up-front idempotency. A concurrent duplicate (same Idempotency-Key
-    // still mid-flight) must NOT also run the receive flow + Zoho purchase-
-    // receive. claimOrReplay returns: 'replay' (a finished response exists —
-    // return it), 'in_progress' (a concurrent dup holds the claim — 409), or
-    // 'proceed' (we own the claim — finalize in respond(), release in catch).
+    // Reserve-up-front idempotency.
     if (idempotencyKey) {
       const claim = await claimOrReplay<Record<string, unknown>>(pool, {
         orgId: ctx.organizationId,
@@ -257,13 +226,7 @@ export const POST = withAuth(async (request, ctx) => {
     const cartonScannedAt = stampRes.rows[0]?.scanned_at ?? null;
     const cartonUnboxedAt = stampRes.rows[0]?.unboxed_at ?? null;
 
-    // scan_only is a local-only state action: include ALL lines (even DONE) so
-    // "Mark as scanned" can flip a previously-DONE line back to MATCHED for
-    // re-testing. Non-scan flows keep the DONE guard to avoid double-receiving
-    // in Zoho.
-    // Line-level Zoho identity comes from receiving_line_zoho (Wave-3 inversion —
-    // the spine zoho_* columns are dying); the LEFT JOIN keeps unmatched/manual
-    // lines (no rz row) in the candidate set with NULL Zoho ids, as before.
+    // scan_only is a local-only state action:
     const candidates = await tenantQuery<CandidateRow>(
       ctx.organizationId,
       includeAllLines
@@ -305,13 +268,7 @@ export const POST = withAuth(async (request, ctx) => {
       });
     }
 
-    // Photo-policy gate (WS-PHOTO Plan 5): judge the carton's staged evidence
-    // BEFORE any mutation. scan_only / unreceive are local state flips, not a
-    // receive, and a pure verify/replay pass (no open lines) never newly blocks.
-    // On a block, RELEASE the idempotency claim instead of finalizing —
-    // PHOTO_POLICY is a fixable condition, so the same key must be able to retry
-    // after the operator adds the missing photos (a finalized claim would replay
-    // the 409 forever). Default policy runs zero extra photo queries.
+    // Photo-policy gate (WS-PHOTO Plan 5):
     if (!skipZohoReceive && !isUnreceive && openForReceive.length > 0) {
       const gateOrg = await getOrganization(ctx.organizationId as OrgId);
       const photoPolicy = gateOrg ? getReceivingPhotoPolicy(gateOrg.settings) : 'optional';
@@ -322,11 +279,7 @@ export const POST = withAuth(async (request, ctx) => {
           policy: photoPolicy,
         });
         if (!gate.ok) {
-          // §4 soft block. WITHOUT an override this stays the byte-identical
-          // 409 — including the claim release, which is what lets the same key
-          // retry once the photos land. WITH a valid override the receive
-          // proceeds and KEEPS its claim (respond() finalizes it as normal),
-          // because a waived receive is a real, non-retryable effect.
+          // §4 soft block.
           if (photoPolicyOverride.state !== 'valid') {
             if (ownedClaim) {
               await releaseIdempotencyClaim(pool, ownedClaim).catch(() => {});
@@ -357,13 +310,7 @@ export const POST = withAuth(async (request, ctx) => {
         [receivingId, ctx.organizationId],
       );
       if (allLines.rows.length === 0) {
-        // No receiving_lines exist for this carton. For an unfound/unmatched
-        // carton (source='unmatched' with no Zoho PO) "receive" is a purely
-        // local act — there is no PO in Zoho to reconcile against, so we stamp
-        // unboxed_at and report it as received-local-only. This lets the empty
-        // "Unfound PO" placeholder advance from SCANNED → RECEIVED without
-        // forcing the operator to invent a line item. scan_only ("Mark as
-        // scanned") deliberately does NOT receive, so it falls through.
+        // No receiving_lines exist for this carton.
         const metaRes = await tenantQuery<{
           source: string | null;
           zoho_purchaseorder_id: string | null;
@@ -530,11 +477,7 @@ export const POST = withAuth(async (request, ctx) => {
         disposition_code: dispositionCode,
         condition_grade: conditionGrade,
         notes,
-        // Local receive commits DONE on this request. The provider push in
-        // after() is a second write — success stamps zoho_purchase_receive_id,
-        // failure must not rewind the staff face (Unbox recent rail reads
-        // coarse RECEIVED from workflow_status DONE, not from Zoho).
-        // Unfound cartons already use local_receive → DONE. scan_only keeps MATCHED.
+        // Local receive commits DONE on this request.
         set_workflow_status: skipZohoReceive
           ? 'MATCHED'
           : 'DONE',
@@ -673,13 +616,7 @@ export const POST = withAuth(async (request, ctx) => {
       }),
     ).catch(() => {});
 
-    // Stamp each serialized line's local Zoho item description with
-    // "SN: <serial> · <condition>" so the PO-items description toggle shows the
-    // condition + serial right away. The SAME snippet is pushed to the Zoho
-    // line-item description in after() (serialNotesByPo) — local and Zoho match.
-    // We APPEND via the shared merge helper (never overwrite): any manually-typed
-    // description is preserved, a prior bare-serial note is upgraded in place,
-    // and only serialized lines are touched.
+    // Stamp each serialized line's local Zoho item description with "SN:
     if (linesUpdatedViaReceiveUnits && updatedLines.length > 0) {
       const itemDescCond = conditionLabel(conditionGrade, 'full');
       await withTenantTransaction(ctx.organizationId, async (client) => {
@@ -749,17 +686,7 @@ export const POST = withAuth(async (request, ctx) => {
       localReceive = true;
     }
 
-    // Sync part: fill missing PO id from the package-level link (no Zoho
-    // call — pure DB lookup we already did above into packageZohoPoId).
-    // Never backfill a PO onto an unmatched carton — that would drag unfound
-    // lines into createPurchaseReceive.
-    // line_item_id resolution requires getPurchaseOrderById which is a
-    // synchronous Zoho roundtrip; that work moved into after() below so
-    // the receive click never waits on Zoho for any reason. The matcher
-    // (zoho-receiving-sync.syncPurchaseOrderLines) already fills
-    // zoho_line_item_id for lines imported via the normal PO sync path —
-    // after()'s resolve only fires for stragglers (manually-added lines
-    // promoted later) and no longer blocks the request.
+    // Sync part: fill missing PO id from the package-level link (no Zoho call — pure DB lookup we already did above into packageZohoPoId).
     for (const l of updatedLines) {
       if (isUnfoundCarton) continue;
       const poId = String(l.zoho_purchaseorder_id || '').trim();
@@ -776,11 +703,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
-    // Optimistic-view PO set for the response — every PO id touched by
-    // any updated line, regardless of whether its lines have a resolved
-    // line_item_id yet. after() resolves stragglers and then calls Zoho
-    // for the subset that resolves successfully. Unfound / local_receive
-    // never claim Zoho attempts.
+    // Optimistic-view PO set for the response — every PO id touched by any updated line, regardless of whether its lines have a resolved…
     const attemptedPoIds = new Set<string>();
     if (!localReceive) {
       for (const l of updatedLines) {
@@ -789,10 +712,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
-    // Unfound / local_receive: local lifecycle completes on Receive (no PO).
-    // Zoho-linked: stay UNBOXED until after() confirms the purchase receive —
-    // inventory is currently SoT for the Received face. scan_only / unreceive
-    // stay excluded (MATCHED).
+    // Unfound / local_receive:
     if (
       localReceive &&
       linesUpdatedViaReceiveUnits &&
@@ -828,12 +748,7 @@ export const POST = withAuth(async (request, ctx) => {
     // response carries skip_reason inventory_not_connected.
     const inventory = await getInventoryProvider(ctx.organizationId);
 
-    // Re-bind the tenant inside after(): the callback runs outside the
-    // request's async context, so the Zoho client would otherwise see no org
-    // binding (getPurchaseOrderById / updatePurchaseOrder).
-    // scheduleAfterResponse: on local Next, plain `after()` holds the HTTP
-    // response open until Zoho finishes — Unbox's 30s AbortSignal then aborts
-    // mid-flight as a "network timeout". Detach locally; waitUntil on Vercel.
+    // Re-bind the tenant inside after():
     scheduleAfterResponse(async () => withZohoOrg(ctx.organizationId, async () => {
       // Mirror newly-created serial units into the operations graph
       // (fire-and-forget — tapWorkflow never throws).
@@ -848,10 +763,7 @@ export const POST = withAuth(async (request, ctx) => {
         });
       }
 
-      // Line-item id resolution (was synchronous; moved here so receive
-      // click never waits on Zoho). For lines that already came through
-      // the matcher (zoho-receiving-sync), zoho_line_item_id is already
-      // set and this loop is a no-op.
+      // Line-item id resolution (was synchronous; moved here so receive click never waits on Zoho).
       const zohoPoDetailCache = new Map<
         string,
         { purchaseorder?: { line_items?: unknown[] } } | null
@@ -949,20 +861,14 @@ export const POST = withAuth(async (request, ctx) => {
       const localPromotionFailed = new Map<number, string>();
       try {
         if (!inventory) {
-          // No inventory integration connected: the local receive stands and
-          // the response already carries skip_reason inventory_not_connected.
-          // Nothing to un-receive, and nothing reaches Zoho until the vault is
-          // reconnected and the backfill drain runs.
+          // No inventory integration connected:
           if (byPo.size > 0) {
             console.warn(
               'mark-received-po: no inventory integration connected — provider sync skipped',
             );
           }
         } else if (reverseZohoReceive) {
-          // scan_only / unreceive: flip every linked Zoho PO back to issued so
-          // the local SCANNED state stays consistent with Zoho. Idempotent on
-          // POs not currently in `received` status. Un-receiving is a
-          // correction, not a backfill — it stays on the request tail.
+          // scan_only / unreceive:
           for (const zohoPoId of byPo.keys()) {
             try {
               await inventory.markPurchaseOrderUnreceived(zohoPoId);
@@ -979,14 +885,7 @@ export const POST = withAuth(async (request, ctx) => {
         console.warn('mark-received-po: Zoho unreceive background failed', err);
       }
 
-      // Local SoT: every Zoho-linked line in this receive lands DONE, full
-      // stop. Local promotion never waits on a provider round-trip, because
-      // the round-trip no longer happens in-request: the drain in
-      // src/lib/zoho/receive-backfill.ts derives its worklist from
-      // receiving_line.workflow_status = 'DONE' joined to a receiving_line_zoho
-      // row whose zoho_purchase_receive_id is still null. DONE is exactly what
-      // hands the line to the drain, so nothing here may stamp
-      // zoho_purchase_receive_id — the drain stamps it when the receive posts.
+      // Local SoT: every Zoho-linked line in this receive lands DONE, full stop.
       if (!skipZohoReceive && !isUnreceive && !localReceive) {
         const linkedIds = updatedLines
           .filter((l) => String(l.zoho_purchaseorder_id || '').trim())
@@ -994,12 +893,7 @@ export const POST = withAuth(async (request, ctx) => {
         if (linkedIds.length > 0) {
           await withTenantTransaction(ctx.organizationId, async (client) => {
             for (const id of linkedIds) {
-              // transitionReceivingLine RETURNS {ok:false,status:409} for a
-              // disallowed edge — it does not throw. Ignoring the result (as
-              // this loop did until 2026-08-21) meant a line that never left
-              // EXPECTED was still reported to the operator as received, and
-              // the Incoming board kept computing delivery_state='IN_TRANSIT'
-              // from `workflow_status = 'EXPECTED'`. Record the verdict.
+              // transitionReceivingLine RETURNS {ok:false,status:409} for a disallowed edge — it does not throw.
               const promoted = await transitionReceivingLine(
                 {
                   receivingLineId: id,
@@ -1018,20 +912,14 @@ export const POST = withAuth(async (request, ctx) => {
               localPromoted.add(id);
             }
           }).catch((err) => {
-            // The whole transaction rolled back: NOTHING was promoted, whatever
-            // the per-line loop recorded before the throw. Reset the trackers so
-            // the response mirrors the rows instead of inheriting a rolled-back
-            // success.
+            // The whole transaction rolled back:
             for (const id of linkedIds) {
               localPromoted.delete(id);
               localPromotionFailed.set(id, err instanceof Error ? err.message : String(err));
             }
             console.warn('mark-received-po: UNBOXED→DONE promotion failed', err);
           });
-          // Mirror ONLY what actually committed into the response rows. The old
-          // code stamped every linked id 'DONE' in memory even when the
-          // transition was refused or the transaction rolled back — the response
-          // then told the client the line was received when the row was not.
+          // Mirror ONLY what actually committed into the response rows.
           for (const l of updatedLines) {
             if (localPromoted.has(l.id)) l.workflow_status = 'DONE';
           }
@@ -1099,10 +987,6 @@ export const POST = withAuth(async (request, ctx) => {
               const newLine = noteTail ? `${noteHead} · ${noteTail}` : noteHead;
 
               // Skip if the exact line is already present (same-second duplicate).
-              // Also skip if every serial in this batch was already noted by a
-              // prior per-scan write (e.g. scan-serial's syncSerialToZohoPo ran
-              // concurrently). That check is content-based (ignores timestamp)
-              // so it catches the common case where the timestamps differ.
               const currentNotesUpper = currentNotes.toUpperCase();
               const allSerialsAlreadyNoted =
                 serialsForNote.length > 0 &&
@@ -1152,20 +1036,13 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }));
 
-    // Audit one row per touched line. Source = mobile-scanner when the call
-    // came from the phone station, else receiving-station. Action =
-    // PO_RECEIVE_REVERSE for scan_only / unreceive (markasunreceived), else
-    // PO_RECEIVE.
+    // Audit one row per touched line.
     const auditSource = station === 'MOBILE' ? 'mobile-scanner' : 'receiving-station';
     const auditAction = reverseZohoReceive
       ? AUDIT_ACTION.PO_RECEIVE_REVERSE
       : AUDIT_ACTION.PO_RECEIVE;
 
-    // §4 soft block — persist + audit the waiver alongside the per-line receive
-    // audit. One exception row and one audit row per received line: the waiver
-    // covers the whole receive act, and `require_one` blockers are carton-level
-    // so no single line is "the" culprit. An override without this trail would
-    // be worse than having no gate at all.
+    // §4 soft block — persist + audit the waiver alongside the per-line receive audit.
     if (photoPolicyWaiver) {
       await recordPhotoPolicyOverride(ctx.organizationId as OrgId, {
         code: photoPolicyWaiver.code,
@@ -1225,22 +1102,11 @@ export const POST = withAuth(async (request, ctx) => {
       });
     }
 
-    // Optimistic response: floor work is committed. Zoho-linked lines are
-    // promoted to DONE in after(); the provider purchase receive is posted
-    // later by the `zoho.receive_backfill` drain.
-    // Surface an already-open Zoho circuit at response time. This is a cheap
-    // in-process read of the shared breaker (no token mint, no network), and it
-    // replaces the former client-side /api/zoho/health pre-check that cost up to
-    // 3s on EVERY receive. The local DB commit already stands; after() will
-    // retry/skip the Zoho purchase receive per the breaker — we just tell the
-    // operator a cooldown is in effect instead of showing three false checks.
+    // Optimistic response:
     let circuitStatus: { isOpen: boolean; retryAfterMs: number; consecutiveFailures: number } | null =
       null;
     try {
-      // Facade equivalent of the former getZohoHttpClientStatus() read — still a
-      // cheap in-process breaker read. Null when no inventory integration is
-      // connected (nothing to cool down). Wire value 'zoho_circuit_open' below is
-      // kept as-is for API compatibility.
+      // Facade equivalent of the former getZohoHttpClientStatus() read — still a cheap in-process breaker read.
       circuitStatus = inventory?.clientStatus().circuit ?? null;
     } catch {
       circuitStatus = null;
@@ -1269,11 +1135,7 @@ export const POST = withAuth(async (request, ctx) => {
 
     const zohoPending = !skipReason && attemptedPoIds.size > 0;
 
-    // Checklist summary for the inline success display. descriptions_updated =
-    // lines carrying a serial (the background description PUT writes `SN: …` per
-    // line); notes_updated = a notes string was provided AND a PO is linked to
-    // receive the note against. Both collapse to 0/false when nothing reaches
-    // Zoho (scan-only, unreceive, no-PO-link, cooldown).
+    // Checklist summary for the inline success display.
     const descriptionsUpdated =
       attemptedPoIds.size > 0 && !skipZohoReceive && !isUnreceive
         ? updatedLines.filter((l) => (serialsByReceivingLineId.get(l.id)?.length ?? 0) > 0).length

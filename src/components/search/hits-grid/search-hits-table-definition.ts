@@ -1,11 +1,4 @@
-/**
- * `search.hits` — the `/search` find plane's table definition, capabilities
- * and surface descriptor.
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference,
- * and the canonical columns are the product-default MATERIALIZATION
- * (`SEARCH_HITS_COMPOUND_COLUMNS`), never a hand array.
- */
+/** `search.hits` — the `/search` find plane's table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -22,16 +15,7 @@ import {
   type SearchHitsGridColumn,
 } from './search-hits-grid-layout';
 
-/**
- * A READ plane. `/search` is a FIND surface — "query is the object, the hit is
- * a confirmation, work happens on the handoff" — so
- * there is no verb here and `multiSelect` stays off: the gutter checkbox would
- * be a control with no verb behind it, and a find plane that could mutate six
- * entity families at once is the second engine this law exists to refuse.
- *
- * Read-only is a TIER, not an exemption: the plane still gets header sort, the
- * one search box and the Fields picker, because every other mount does.
- */
+/** A READ plane. */
 export const SEARCH_HITS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: false,
@@ -40,12 +24,7 @@ export const SEARCH_HITS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeSearchHitsGridDescriptor(
   columns: readonly SearchHitsGridColumn[],
 ): GridSurfaceDescriptor<AiSearchHit, SearchHitsGridColumn> {
@@ -88,17 +67,7 @@ export const SEARCH_HITS_TABLE_BINDING: TableSurfaceBinding<
   definition: SEARCH_HITS_TABLE_DEFINITION,
   columns: SEARCH_HITS_COMPOUND_COLUMNS,
   makeDescriptor: makeSearchHitsGridDescriptor,
-  /**
-   * The HANDOFF, which is the only write path a FIND surface has. Picking a
-   * row writes `?sel=<entity>:<id>` on this same route and the page swaps the
-   * browse plane for that record's dossier — a URL commit, so `navigate` is
-   * the honest arm rather than a panel stacked over a table that is no longer
-   * on screen.
-   *
-   * This is a read plane's first sanctioned action verbatim: hand
-   * off to the desk that owns the family. The second (invoke a declared verb)
-   * has nothing to invoke here, because a find plane declares none.
-   */
+  /** The HANDOFF, which is the only write path a FIND surface has. */
   recordPlane: {
     kind: 'navigate',
     reason:

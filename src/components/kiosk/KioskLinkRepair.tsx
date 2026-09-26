@@ -2,22 +2,7 @@
 
 /**
  * KioskLinkRepair — the cart's door to an EXISTING repair.
- *
- * A key that swaps IN PLACE to a search (no modal over the cart): phone, RS
- * ticket, last four or name, the same box History answers. Only STANDALONE
- * tickets are offered — an Ecwid drop-off or desk ticket with no transaction
- * under it. A visit's repair is already on a receipt; linking it would pull it
- * off that receipt, which the server refuses, so the tablet never offers it.
- *
- * Tapping a ticket adds it as a LINKED line: no serial, no symptom, no
  * signature, no second RS number (operator 2026-09-24: *"I must be able to
- * link an existing repair service with signature NOT needed"*). The line is
- * built by `addLinkedRepair`, the same helper History's `Add to cart` uses.
- *
- * Callers: `KioskCartLedger` (Cart step), `KioskHistoryDetail` (the hook).
- * Affected API: GET `/api/kiosk/visit?q=&kind=repair` (read);
- * POST `/api/kiosk/intake` `linkedRepairs[]` at submit.
- * Schemas: `repair_service` (read), the kiosk session store (write).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';

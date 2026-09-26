@@ -1,9 +1,4 @@
-/**
- * Retail (non-repair) CATEGORY tree for the kiosk Buy/Sell rail.
- * Pure helpers: `sales-catalog-pure.ts`. Product rows come from
- * `catalog-search.ts` — it filters, ranks, and pages in SQL, which is why the
- * whole-table product loader that used to live here is gone.
- */
+/** Retail (non-repair) CATEGORY tree for the kiosk Buy/Sell rail. */
 
 import 'server-only';
 

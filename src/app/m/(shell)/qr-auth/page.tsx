@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Phone QR companion — signed-in phone session authorizes the desktop.
- *
- * Callers / importers: Next.js route `/m/qr-auth`; desktop SignInQrPanel QR URL.
- * Affected API: GET /api/auth/session; POST /api/auth/qr/authorize body `{ token }`.
- * Schemas: session user; qr_login_sessions.
- * User instruction: auth desktop button, not Face ID; phone session binds desk.
- */
+/** Phone QR companion — signed-in phone session authorizes the desktop. */
 
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';

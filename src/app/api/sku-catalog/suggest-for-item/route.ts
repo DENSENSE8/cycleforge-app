@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * GET /api/sku-catalog/suggest-for-item?title=...&limit=5
- *
- * Reverse of /suggest-pairings: given an UNPAIRED order item's product title,
- * suggest the catalog SKUs it most likely belongs to. Powers the "Suggested
- * matches" rows in the manuals SkuPairingPanel so operators get one-click
- * pairing instead of searching the catalog by hand (roadmap C5).
- *
- * The order item → catalog direction isn't modeled in sku_pairing_suggestions
- * (that table is catalog ↔ platform-listing), so we score on the fly using the
- * SAME pg_trgm title-similarity formula the nightly suggestion cron uses
- * (`refreshAllSuggestions`): confidence = round(similarity * 85), display floor
- * 40. Read-only — the operator still confirms before any pairing is written.
- */
+/** GET /api/sku-catalog/suggest-for-item?title=...&limit=5 */
 
 interface SuggestionRow {
   id: number;

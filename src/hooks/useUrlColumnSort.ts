@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * `useUrlColumnSort<K>` — the shared engine for URL-durable spreadsheet column
- * sort (**`?colsort=` + `?coldir=`** — the constants in
- * `@/lib/tables/grid-column-sort-params`, deliberately NOT `?sort=`/`?dir=`,
- * which the station routes already use for SERVER ordering).
- *
- * Workbench law: durable view state
- * lives in the URL, so a reload or a shared link reproduces the exact view.
- * Station grids used to hold sort in `useState`, which meant a column sort
- * silently died on reload and could not be sent to a colleague.
- *
- * This exists because the house already had TWO byte-for-byte copies of the
- * same read → replace → toggle logic ({@link useQueueDisplaySort},
- * {@link useRepairDisplaySort}); Incoming and Receiving would have made four.
- * Per `AGENTS.md` (compose → grow the SoT → compound), the shared half is
- * extracted here and the surface-specific vocabularies stay in their own
- * modules. Surfaces with composite modes (Pending's `priority`/`newest`, Repair's
- * `newest`) keep their own wrapper — this engine covers the column-only case.
- *
- * `null` sort = "no column sort" — the surface's server/mode default order,
- * with the param absent from the URL entirely.
- *
- * Header clicks paint **pending** before App Router's soft-replace lands, so
- * the arrow and the row order update in the same tick as the click rather than
- * waiting on `useSearchParams`.
- */
+/** `useUrlColumnSort<K>` — the shared engine for URL-durable spreadsheet column sort (**`?colsort=` + `?coldir=`** — the constants in… */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

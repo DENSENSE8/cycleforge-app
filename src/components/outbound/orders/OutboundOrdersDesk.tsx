@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Outbound orders desk body — Pending · Tested · Packed · Shipped.
- *
- * Mounted at `/shipping/orders` (canonical) and briefly at `/dashboard` only
- * while client redirects drain. Support › Inquiries aliases here with
- * `?context=support` and swaps the focus pane for ticket affordances.
- */
+/** Outbound orders desk body — Pending · Tested · Packed · Shipped. */
 
 import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -62,15 +56,7 @@ import {
   invalidateUnshippedCounts,
 } from '@/lib/queries/dashboard-cache-patch';
 
-// Support › Inquiries only. This host mounts behind TWO url params
-// (`?context=support` + `?openOrderId=`) and never on the default
-// `/shipping/orders` paint, but a static import anchored the whole support
-// station graph — EntityStationPane, the Displays registry, the Zendesk ticket
-// hub — into the desk's first-load chunk. `ssr: false` for the same reason
-// `UnboxWorkspaceView` opts out behind `?unboxdesk=1`: it is a client-only
-// branch already gated on a URL selection, so it is never this route's LCP
-// surface. The fallback stands in for the host's own "Loading order…" state,
-// which is what the operator saw here before the split.
+// Support › Inquiries only.
 const SupportOrdersFocusHost = dynamic(
   () =>
     import('@/components/support/orders/SupportOrdersFocusHost').then(
@@ -113,21 +99,7 @@ function OutboundOrdersDeskContent({
 
   /**
    * Ingest, run straight from the desk CTA.
-   *
    * The Add-orders RAIL is gone (operator, 2026-08-31): every method it listed
-   * is already an item on the CTA, so the rail was a second front door whose
-   * only job was hosting a button per method. Each method now does its own work
-   * here — and each one needed no host to begin with:
-   *
-   * - **sync** — `useOrdersSync().handleTransfer()`. The CTA's own face reports
-   *   it (`syncing` → "Syncing…" + spinner), which is why that prop existed and
-   *   went unwired while the rail owned the progress.
-   * - **file** — the OS file picker; CSV staging then takes over the desk. The
-   *   rail leaf was one `Choose CSV` button in front of exactly this call.
-   *
-   * Hand entry is the centered `OrderIntakeOverlay` (`onAdd`), which has been
-   * the acknowledgment intake's front door since 2026-08-30 — so the rail's
-   * `manual` leaf was the SECOND hand-entry path, not the only one.
    */
   const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
   const sync = useOrdersSync();
@@ -150,10 +122,7 @@ function OutboundOrdersDeskContent({
         const idempotencyKey = safeRandomUUID();
         const testToken = safeRandomUUID().replaceAll('-', '').slice(0, 10).toUpperCase();
         const orderId = `CF-TEST-${Date.now()}-${testToken.slice(0, 6)}`;
-        // The To ship query is intentionally label-scoped: label-less orders
-        // belong to Labels. Give this disposable fixture a syntactically valid
-        // synthetic UPS tracking number, while the API's `syncCarrier: false`
-        // path keeps it out of carrier lookups and preserves the work queue.
+        // The To ship query is intentionally label-scoped:
         const trackingNumber = `1Z999AA1${testToken}`;
         const response = await fetch('/api/orders/add', {
           method: 'POST',
@@ -188,14 +157,7 @@ function OutboundOrdersDeskContent({
     [csv, demo, queryClient, sync],
   );
 
-  /**
-   * ONE run surface for the table to yield to. The scripted demo and the live
-   * import publish the same shape — the run view cannot tell them apart, which
-   * is the point: what the demo shows is what production shows.
-   *
-   * The demo wins only while it holds a run; it never starts itself, so a real
-   * import can never be hidden behind sample numbers.
-   */
+  /** ONE run surface for the table to yield to. */
   const runSurface = useMemo<OrdersSyncRunSurface>(
     () =>
       demo.run

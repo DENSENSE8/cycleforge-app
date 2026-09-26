@@ -6,17 +6,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { readLiveOrderLabel, type LiveOrderLabel } from '@/lib/outbound/live-label';
 import type { OutboundFulfillmentRoute } from '@/lib/outbound/work-contract';
 
-/**
- * Write side of the Outbound Triage acknowledgment (`orders.acknowledged_at`,
- * `acknowledged_by`, `fulfillment_route`).
- *
- * An order is acknowledged once an operator has identified it, chosen its
- * route (PICK / QC) and made sure it carries exactly one live shipping label.
- * The label is a precondition, not a suggestion: acknowledging an order the
- * dock cannot scan out would hand the floor a box with nowhere to go, so the
- * refusal is decided here, under the order's row lock, with the same live-label
- * definition the Triage board displays (`readLiveOrderLabel`).
- */
+/** Write side of the Outbound Triage acknowledgment (`orders.acknowledged_at`, `acknowledged_by`, `fulfillment_route`). */
 
 type Queryable = Pick<PoolClient, 'query'>;
 

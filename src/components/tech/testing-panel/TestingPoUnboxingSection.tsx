@@ -5,16 +5,7 @@ import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
 import type { LineCollapseController } from '@/components/station/collapse';
 
-/**
- * Testing centre PO line list — the carton's lines (`TestingPoItemsSection`).
- *
- * Flush data floor (Unbox SoT) — zero radius / elevation. Depth lives on the
- * elevated action dock (notes + Pass · Print), not around PO line cards.
- * Sibling of Unbox's {@link POUnboxingSection}.
- *
- * Package Pairing / Ticket / Checklist / Manuals / Timeline are right-edge
- * Displays — never a centre `SectionTabsSlider` strip.
- */
+/** Testing centre PO line list — the carton's lines (`TestingPoItemsSection`). */
 export function TestingPoUnboxingSection({
   row,
   staffId,

@@ -3,16 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { fetchPackerLogRows } from '@/lib/neon/packer-logs-week';
 import { toPSTDateKey } from '@/utils/date';
 
-/**
- * Packer-logs COUNTS sibling (station-table-unification-plan §5 / §7.2). Reuses
- * the SAME query builder as the list route (`fetchPackerLogRows`) — Decision 3,
- * single SoT, no forked SQL — and derives `{ total, byDay }` from the bounded row
- * set (at the typical 10–50 rows/week the download is trivial; `truncated` flags
- * the ceiling for a future cheap-COUNT optimization). Lane counts re-derive
- * client-side from the TS lane SoT (Decision 12).
- *
- * GET /api/packerlogs/counts?packedBy=&weekStart=&weekEnd=&staff=
- */
+/** Packer-logs COUNTS sibling (station-table-unification-plan §5 / §7.2). */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const { searchParams } = new URL(req.url);
   const packerIdParam = searchParams.get('packerId') || searchParams.get('packedBy');

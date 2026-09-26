@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Line-scoped item photo verbs — one SoT for dock Band 1 (`item_photos`) and
- * the PO-line capture row Photos expand:
- *   [ Link a photo | Upload photos | Send to phone ]
- *
- * Link opens the **Photos Displays → Link leaf** (`?photoAction=link`) in the
- * right rail — not a popover (a 32rem attach grid clipped off-screen from an
- * in-row anchor). The strip does not own `openDisplays`, so it emits
- * `receiving-open-photo-link`; LineEditPanel opens the leaf for this line.
- * Upload / phone stamp `unbox_item` + the receiving line id.
- */
+/** Line-scoped item photo verbs — one SoT for dock Band 1 (`item_photos`) and the PO-line capture row Photos expand: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

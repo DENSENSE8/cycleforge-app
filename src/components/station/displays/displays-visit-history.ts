@@ -1,11 +1,4 @@
-/**
- * Station Displays visit history — Root Index ↔ leaf only (plus host nest
- * snapshots). Nested Inventory / Photos / Units / Linkage drills stay on the
- * breadcrumb trail (`popOne`); this stack does **not** accumulate leaf→leaf
- * hops (cockpit auto-swap Photos→Units must not make Back say "Photos").
- *
- * Pure module — no React. {@link StationDisplaysPushStack} owns the state.
- */
+/** Station Displays visit history — Root Index ↔ leaf only (plus host nest snapshots). */
 
 import { STATION_DISPLAY_INDEX } from './display-index';
 
@@ -48,17 +41,7 @@ function isIndexTab(tab: string): boolean {
   return tab === STATION_DISPLAY_INDEX;
 }
 
-/**
- * Record a divergent navigation — clears forward. No-op when equal to present.
- *
- * **Same-tab nest-only updates replace `present` in place** (do not grow
- * `past`). In-leaf drills (Photos `photoAction`, Linkage / Units / Ticket nest,
- * Inventory sub-leaves) are owned by the breadcrumb trail + `nestedForward`.
- *
- * **Leaf → leaf also replaces `present`** (do not stack the prior leaf). Visit
- * history is Index ↔ leaf; cockpit step swaps and topic jumps must not leave
- * "Back to Photos" on Units. Index ↔ leaf still pushes.
- */
+/** Record a divergent navigation — clears forward. */
 export function pushVisitFrame(
   state: DisplaysVisitHistoryState,
   next: DisplaysVisitFrame,
@@ -90,15 +73,7 @@ export function goVisitBack(
   };
 }
 
-/**
- * Leaf-root Back (trail length 1) — Displays index is the parent of every
- * topic leaf. Nested drills (Inventory sections · Linkage Link/Note · Photos
- * verbs) pop via breadcrumb first.
- *
- * Cockpit auto-open (Ticket · Inventory for `contents`) seeds history with a
- * leaf and empty past. Visit past may also hold another leaf; that is not a
- * parent — Back still lands on Root Index, and the left leaf stays Forward.
- */
+/** Leaf-root Back (trail length 1) — Displays index is the parent of every topic leaf. */
 export function goLeafRootBack(
   state: DisplaysVisitHistoryState,
 ): DisplaysVisitHistoryState {

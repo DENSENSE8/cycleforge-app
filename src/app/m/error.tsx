@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Error boundary for every /m/* route.
- *
- * Before this existed, any uncaught render error in the mobile tree (e.g. a
- * failed photo-capture return, a thrown hook) unmounted the whole React tree to
- * a BLANK WHITE SCREEN with no message and no way back — the "Done freezes on a
- * white screen" symptom. App Router renders the nearest error.tsx instead, so a
- * failure now shows a recoverable card with the real error and a way back to the
- * Unbox feed.
- */
+/** Error boundary for every /m/* route. */
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';

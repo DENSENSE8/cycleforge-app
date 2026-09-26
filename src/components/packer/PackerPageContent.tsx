@@ -18,20 +18,7 @@ interface PackerPageContentProps {
   packerId: string;
 }
 
-/**
- * Responsive packer tree.
- *
- * Desktop (≥768px): full PackerDashboard (table + details + scan + camera flow).
- * Mobile (<768px):  history-only feed mirroring /receiving's mobile UX —
- *                   tap a row to open the bottom sheet, photo CTA hands off
- *                   to /m/p/{packerLogId}/photos for fresh captures.
- *
- * Both subtrees mount (CSS visibility, not a JS branch) so legacy mobile
- * browsers that can't hydrate still see the correct view from the SSR HTML.
- *
- * Table surfaces rise on appear (`framerPresence.routeHistory`) — same SoT as
- * `RouteShell`, never a left→right wipe.
- */
+/** Responsive packer tree. */
 export function PackerPageContent({ packerId }: PackerPageContentProps) {
   useRealtimeToasts('packer');
   const presence = useMotionPresence(framerPresence.routeHistory);

@@ -1,25 +1,4 @@
-/**
- * The spine's flat DESTINATION list — every place an operator can land, in one
- * array, for the search path to rank with {@link searchNav}.
- *
- * ## Why a child page is a destination
- *
- * `/products?view=qc` is a place, not a setting. The old spine filter matched
- * child labels but could only ever *render* pages and sections, so typing a
- * child's name surfaced its parent page (or worse, its section) and the
- * operator had to finish by hand. Emitting children as first-class rows is most of
- * what makes the search feel like it answers the question asked.
- *
- * ## Why `context` and not a nested tree
- *
- * While searching there is no hierarchy to render — the whole point of
- * flattening is that the operator already told us what they want. But a bare
- * list of labels loses *where* things are, and some labels only make sense in
- * place ("Ready" is Fulfillment's; "Reference" is Catalog's). So the parent
- * rides along as one line of metadata ON the row: section for a page, page for
- * a child. That is the standard search face of a tree (VS Code, Linear, Notion),
- * and it is why the resting hierarchy can stay a hierarchy.
- */
+/** The spine's flat DESTINATION list — every place an operator can land, in one array, for the search path to rank with {@link searchNav}. */
 
 import {
   SPINE_SECTIONS,
@@ -54,26 +33,13 @@ function sectionLabel(id: SpineSectionId | null): string | null {
   return SPINE_SECTIONS.find((s) => s.id === id)?.label ?? null;
 }
 
-/**
- * Context is metadata, so it must SAY something the label does not. A page whose
- * name matches its section ("Inbound" inside Inbound) would otherwise render
- * `Inbound / INBOUND` — a second line that repeats the first and reads as a
- * rendering bug rather than as placement.
- */
+/** Context is metadata, so it must SAY something the label does not. */
 function contextFor(label: string, parent: string | null): string | null {
   if (!parent) return null;
   return parent.trim().toLowerCase() === label.trim().toLowerCase() ? null : parent;
 }
 
-/**
- * Flatten pages + their child pages into destinations.
- *
- * A page with children still emits its OWN row. It is a real place (its default
- * child)
- * and, more practically, dropping it would make the page's name unsearchable
- * whenever no child happens to share it — typing "shipping" would return four
- * children and never the page itself.
- */
+/** Flatten pages + their child pages into destinations. */
 export function buildNavDestinations(pages: readonly SidebarPageNav[]): NavDestination[] {
   const out: NavDestination[] = [];
 
@@ -98,10 +64,7 @@ export function buildNavDestinations(pages: readonly SidebarPageNav[]): NavDesti
     });
 
     for (const child of page.children ?? []) {
-      // Search is a DOOR. A parked tab keeps its URL and its `resolveChild`
-      // clause, so a bookmark still lands — but offering it here would hand
-      // the operator back the tab the spine just withdrew. Same ledger, same
-      // key shape (`<pageId>:<childId>`) as this row's own `key`.
+      // Search is a DOOR.
       if (isTabParked(page.id, child.id)) continue;
       out.push({
         key: `${page.id}:${child.id}`,

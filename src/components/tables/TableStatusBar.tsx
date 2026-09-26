@@ -1,64 +1,6 @@
 'use client';
 
-/**
- * The one status strip a table paints at its foot: selection CTAs left,
- * counts right (legacy sub-mode tabs still optional; idle-left `lead` optional).
- *
- * ```text
- * ┌────────────────────────────────────────────┬─────────────────────────────┐
- * │ [ Assign ] [ Copy ] [ Listing ]            │  12 selected · 200 of 922   │
- * └────────────────────────────────────────────┴─────────────────────────────┘
- *   after keyboard `?` ({@link KeyboardKey} overlay, right-aligned INSIDE the face):
- * │ [ Assign A] [ Copy C] [ Listing L]         │
- * ```
- *
- * Idle-left readout (no selection verbs, no sub-mode tabs) — Media Library path:
- * ```text
- * │ All dates › Aug 2026 › Aug 29              │  48 of 48                   │
- * ```
- *
- * ## Why it is its own component
- *
- * {@link DataTable} draws every binding-backed table, but the station desks
- * also mount `StationListTable` (the week-scoped history list, which is not on
- * the binding waist). Both need the SAME strip, and two copies of it is how the
- * display layer forked the last time. One component, two mounts — not one
- * component per surface. Media Library mounts this directly (no DataTable) for
- * the same reason.
- *
- * ## The tab half is being retired (2026-08-31)
- *
- * Tabs sat here on a spreadsheet argument: a sheet puts its tabs at the bottom
- * with the status summary beside them, and an operator who has used a
- * spreadsheet knows where to look. The operator overruled it. Page modes now
- * ride the TOP row of {@link DeskPageChrome} — the design system's one page
- * frame — on every desk AND every scan station, because two tab positions in
- * one product is two vocabularies for one job.
- *
- * The `tabs` props stay for the surfaces still passing them (Labels,
- * Locations, Support, Walk-in). **Do not wire a new one.** A page's modes
- * belong to its frame; what this strip is genuinely for is selection verbs +
- * shown / total / selected, which is the one thing a table knows and a frame
- * does not. {@link TableStatusBarProps.lead} fills the idle left for a
- * context readout (date/folder path) — never page navigation, never a CTA.
- *
- * ## Left-half precedence (2026-09-01)
- *
- * `selectionActions` (and legacy Copy) beat `tabs` beat `lead` beat empty
- * spacer. Never paint `lead` beside pill CTAs. Never grow `lead` into actions.
- * Path-contraction crumbs (Media) stay caption-weight `ds-raw-button`, not
- * {@link Button}. `lead` is not `DeskPageChrome`'s `tabsLead` — same idea of a
- * readout slot, different component.
- *
- * ## Selection CTAs + keyboard `?` (2026-09-01)
- *
- * Live verbs paint as compact pill Buttons flush-left. Hotkeys stay **bound**
- * and `?` reveal lives in {@link useSelectionStatusBarHotkeys} — one hook.
- * Faces stay clean until keyboard `?`; then {@link KeyboardKey} overlays the
- * face, right-aligned inside (`absolute right-1.5`) — gray sunken face, black
- * letter. Zero layout change. Never a white slab, never a foot `?`, never
- * key-repeat flash.
- */
+/** The one status strip a table paints at its foot: */
 
 import type { ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
@@ -80,21 +22,7 @@ export interface DataTableTab {
   count?: number;
 }
 
-/**
- * {@link TableTabs}' own props.
- *
- * It used to be a value a DESK threaded down into whichever body it mounted —
- * Testing: All ⇄ History, Shipping: Pending ⇄ All ⇄ History — because the strip
- * belonged to the table while the desk swapped tables. That plumbing was
- * deleted on 2026-08-31 when page modes moved to {@link DeskPageChrome}'s top
- * row: a body carries no navigation now, and every `tabStrip` prop that rode
- * through `TechAllTriageTable`, `TestingHistoryList` and `ReceivingGridHost`
- * went with it.
- *
- * What survives is the SECOND level — sub-modes inside one page tab (Locations'
- * Bin Tags / Bays / Rooms, Support's ticket statuses, Walk-in's per-mode
- * lanes). Those are not page navigation and do not belong on the page frame.
- */
+/** {@link TableTabs}' own props. */
 export interface DataTableTabStrip {
   tabs: readonly DataTableTab[];
   /** `undefined` = the unfiltered list. There is no `all` tab. */
@@ -118,16 +46,7 @@ export interface TableStatusBarProps {
   tabs?: readonly DataTableTab[];
   activeTab?: string;
   onTabChange?: (id: string) => void;
-  /**
-   * Idle-left context readout (date/folder path, archive place). Painted only
-   * when there are no selection CTAs and no legacy sub-mode `tabs`.
-   *
-   * Precedence: `selectionActions` (and legacy Copy) beat `tabs` beat `lead`
-   * beat empty spacer. A readout, never an action — same fence as
-   * `DeskPageChrome`'s `tabsLead`, different component. Path-contraction
-   * crumbs are the one allowed interactive exception and stay
-   * caption-weight `ds-raw-button`, not {@link Button}.
-   */
+  /** Idle-left context readout (date/folder path, archive place). */
   lead?: ReactNode;
   /**
    * Rows this view is showing. Omit on a desk whose body is a RAIL rather than
@@ -135,24 +54,11 @@ export interface TableStatusBarProps {
    * no number.
    */
   shown?: number;
-  /**
-   * Rows behind the CURRENT narrowing — the denominator of {@link shown}.
-   *
-   * Omit it whenever no single number honestly describes what is on screen
-   * (two filters composing, a set the server cannot count), and the bar prints
-   * the row count alone. It used to be handed the collection's UNFILTERED
-   * total, so a facet-narrowed view read "12 of 922" — a denominator for a set
-   * the operator was not looking at.
-   */
+  /** Rows behind the CURRENT narrowing — the denominator of {@link shown}. */
   total?: number;
   /** Rows the operator has picked. Zero prints nothing — see below. */
   selected?: number;
-  /**
-   * Live selection CTAs (Assign, Copy, Listing → staff, …). Painted flush left
-   * when a selection exists — the ONLY way a verb reaches this strip. There is
-   * no legacy Copy fallback and no bare "N more actions" count: a foot that
-   * synthesizes its own button is a second place to run a verb the row owns.
-   */
+  /** Live selection CTAs (Assign, Copy, Listing → staff, …). */
   selectionActions?: readonly TableStatusSelectionAction[];
   /**
    * Previous / next page, drawn with the count sentence. Page size lives in
@@ -172,12 +78,7 @@ export interface TableStatusBarProps {
   onLoadMore?: () => void;
 }
 
-/**
- * The tab strip itself, extracted so the two surfaces that mount a tab band
- * ABOVE their body (the walk-in desk, the photo-library scope band) draw the
- * same control the status bar foots a table with. One tab face, two positions —
- * a second copy of these buttons is how the display layer forked last time.
- */
+/** The tab strip itself, extracted so the two surfaces that mount a tab band ABOVE their body (the walk-in desk, the photo-library scope… */
 export function TableTabs({
   tabs,
   activeTab,
@@ -224,14 +125,7 @@ export function TableTabs({
                 {tab.count > 99 ? '99+' : tab.count}
               </span>
             ) : null}
-            {/*
-              Selection is a solid hairline UNDER the tab (operator ruling
-              2026-08-30) — not a filled face inside a border box. The old
-              treatment painted `border-x` + a card fill, which drew a
-              three-sided box that read as a raised chip and made the strip
-              look like two nested surfaces. An underline is one mark, moves no
-              neighbour, and needs no second colour.
-            */}
+            {/* Selection is a solid hairline UNDER the tab (operator ruling 2026-08-30) — not a filled face inside a border box. */}
             {active ? (
               <span
                 aria-hidden
@@ -312,12 +206,6 @@ export function TableStatusBar({
   const hasSelection = selected > 0;
 
   // Verbs come from the caller or not at all.
-  //
-  // There used to be a fallback here that HAND-ROLLED a Copy pill out of
-  // `onCopySelection` whenever a surface passed no verbs — a button this strip
-  // invented for itself, sitting under a table whose row already owns its
-  // actions. It went with the bottom action strip; a foot that builds its own
-  // CTA is how a second place to run a verb comes back.
   const leftActions: TableStatusSelectionAction[] =
     hasSelection && selectionActions ? [...selectionActions] : [];
 

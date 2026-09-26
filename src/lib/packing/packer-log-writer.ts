@@ -1,15 +1,4 @@
-/**
- * Canonical write boundary for `packer_logs`.
- *
- * `packer_logs` remains the compatibility parent for packing photos and legacy
- * shipped/history readers, but routes must not hand-roll writes to it. Keeping
- * the write mechanics here guarantees every row is tenant stamped, carries an
- * explicit completion state, and emits the long-term `ops_events` fact in the
- * same transaction.
- *
- * Route-owned concerns stay outside this module: request validation, audit
- * records, realtime publication, cache invalidation, and legacy SAL mirrors.
- */
+/** Canonical write boundary for `packer_logs`. */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';

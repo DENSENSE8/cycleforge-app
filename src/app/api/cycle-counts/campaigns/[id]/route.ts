@@ -7,16 +7,7 @@ import {
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/cycle-counts/campaigns/[id]?bin_id=
- *   Campaign header + filtered lines. Used by both the campaign manager
- *   page and the LocationDetailView's "active campaign" banner.
- *
- * PATCH /api/cycle-counts/campaigns/[id]
- *   Body: { action: 'close' | 'reopen', staffId } — close an open campaign, or
- *   reopen a mistakenly-closed one (closed → open). Counts are applied per-line
- *   at approve time, so reopen only flips the header status flag.
- */
+/** GET /api/cycle-counts/campaigns/[id]?bin_id= Campaign header + filtered lines. */
 
 export async function GET(
   request: NextRequest,

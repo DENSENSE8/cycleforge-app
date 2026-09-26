@@ -2,33 +2,7 @@
 
 /**
  * Add to the Daily agenda — ONE inline stage, with the TYPE picked at the top.
- *
  * Operator 2026-09-22: *"consolidate the tasks into one display just under a
- * type, like type daily checklist and type task."* The display merged, so the
- * create verb merged with it: one CTA, one stage, and a type switch that says
- * which of the two stores the row will land in.
- *
- * ## The grammar: queue rail left, grouped sections right
- *
- * Host `CONTEXT_PANEL_HOST_CLASS`, the agenda queue as a resizable
- * context-panel rail on the left, grouped {@link TriageScrollLayout} sections
- * on the right — the editor shape the operator asked for by name. The table
- * is unmounted while this is open: one surface answers one question at a time.
- *
- * ## Two stores, one form
- *
- * The TYPE section is first because it changes what every section under it
- * means. Checklist mounts {@link DailyComposerRow} — the checklist composer
- * SoT, shared with the phone's sheet, so its field order, palette and
- * validation cannot drift here. Task mounts
- * {@link useTaskComposerSections}, the same sequence the ⌘⇧U chord runs.
- *
- * ## The CTA is the page's, not the form's
- *
- * While this is open it registers `role="primary"` on the desk action slot,
- * which last-writer-wins over the agenda's own "Add". A desk has ONE primary
- * verb at a time, and a Create button inside the form plus an Add button in
- * the header is two.
  */
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
@@ -50,29 +24,14 @@ import {
 import { dailyComposerError, type DailyComposerDraft } from '@/lib/daily-checks/composer';
 import { DailyComposerRow } from './DailyComposerRow';
 
-/**
- * `TabSwitch` takes a mutable `Tab[]`, so this is not `readonly`. A shared
- * module-level array is still fine: nothing mutates it.
- *
- * THREE faces, one form. Checklist writes `daily_check_items`; Task and Ticket
- * both write a `FOLLOW_UP` `work_assignments` row and differ only in WHICH
- * record it anchors to — a carton you walk to, or a helpdesk thread you
- * answer. Two bands over one store is the display saying what the work is;
- * two stores would have been the fourth task system this page exists to refuse.
- */
+/** `TabSwitch` takes a mutable `Tab[]`, so this is not `readonly`. */
 const TYPE_TABS: Array<{ id: DailyAgendaType; label: string }> = [
   { id: 'task', label: DAILY_AGENDA_TYPE_LABEL.task },
   { id: 'ticket', label: DAILY_AGENDA_TYPE_LABEL.ticket },
   { id: 'checklist', label: DAILY_AGENDA_TYPE_LABEL.checklist },
 ];
 
-/**
- * What the header and the CTA call each face.
- *
- * `Ticket` is the BAND's word. The thing this composer creates is still a
- * TASK, about a ticket — a button reading "Create ticket" would promise a
- * helpdesk thread that `POST /api/tasks` never files.
- */
+/** What the header and the CTA call each face. */
 const TYPE_NOUN: Readonly<Record<DailyAgendaType, string>> = {
   checklist: 'daily checklist item',
   task: 'task',

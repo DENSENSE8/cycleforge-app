@@ -1,16 +1,4 @@
-/**
- * HID wedge scan machine — the PURE buffer classifier behind
- * {@link createWedgeKeyListener}.
- *
- * Warehouse scanners act as a keyboard: they hammer printable chars with
- * sub-50ms gaps and terminate with Enter (most) or Tab (some). This reducer
- * owns only the buffer + whether the DOM binding should `preventDefault`.
- * Timers, yield-before-React, and the window listener live in the listener
- * factory so the classification is testable without a DOM.
- *
- * Focus is never touched here. Editable targets reset (the operator is
- * typing). Modifier chords reset (a wedge never sends them).
- */
+/** HID wedge scan machine — the PURE buffer classifier behind {@link createWedgeKeyListener}. */
 
 export const WEDGE_MAX_INTER_KEY_MS = 50;
 export const WEDGE_IDLE_FLUSH_MS = 80;

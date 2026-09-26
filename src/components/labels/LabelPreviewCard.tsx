@@ -60,16 +60,7 @@ interface LabelPreviewCardProps {
   onEdit?: () => void;
 }
 
-/**
- * Live preview of the printed product/unit label, shared by the testing and
- * products pages. A thin card around {@link LabelFacePreview}: maps the unit
- * fields onto the common {@link LabelFaceModel} via `unitLabelToFace` — the exact
- * model `printProductLabel` prints — so the preview and the sticker can't drift.
- * Pass `onApplyAndPrint` to surface the Edit-label pencil.
- *
- * Shell = DS {@link WorkspaceCard} + {@link WORKSPACE_NESTED_FIELD}* (solid
- * Products / MultiSku surface — not the glass overview worksheet).
- */
+/** Live preview of the printed product/unit label, shared by the testing and products pages. */
 export function LabelPreviewCard({
   sku,
   title,

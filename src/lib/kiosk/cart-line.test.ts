@@ -113,11 +113,7 @@ describe('mapKioskCartToCounterParts', () => {
   });
 
   it('carries the cart line unitAmountCents onto the mapped service — was discarded until 2026-08-22', () => {
-    // The cart line's cents is the number the kiosk screen already totalled
-    // with. Losing it here forced `serviceLineCents` onto its fallback —
-    // parsing `repair_service.price`, a second, independent read of the same
-    // quote — for every kiosk-originated repair, not just the malformed ones
-    // the fallback exists for.
+    // The cart line's cents is the number the kiosk screen already totalled with.
     const mapped = mapKioskCartToCounterParts([repair({ unitAmountCents: 13000 })]);
     assert.equal(mapped.services[0]?.unitAmountCents, 13000);
   });

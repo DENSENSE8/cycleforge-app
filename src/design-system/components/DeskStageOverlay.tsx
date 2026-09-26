@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Center Lock L2 host — a multi-field record form stacked on the desk stage.
- *
- * The slot table stays mounted underneath (sibling in a `relative` wrapper).
- * This overlay is the ONLY desk record plane for new work (law Q5). Forbidden:
- * viewport Dialog and inbound RightPaneOverlay forks.
- *
- * ## Two fills (same host — never a second component)
- *
- * - `fill="inset"` (default) — padded max-measure card over a visible scrim.
- *   Use for short row-detail peeks where the grid map still guides the eye.
- * - `fill="stage"` — **stage-filling L2**: opaque panel covers the entire
- *   `desk-page-stage` card edge-to-edge (same footprint as DataTable /
- *   `DESK_TABLE_SURFACE_CLASS`). No inset gutters, no `max-w-*` island, no
- *   floating popover silhouette. Table remains mounted underneath (Q5) but
- *   is fully covered. Reading measure stays inside the form body
- *   (`TriageScrollLayout` / section `max-w-4xl`), not on the shell.
- *
- * @see docs/warehouse-os/PLAN-center-lock.md
- * @see docs/warehouse-os/LAWS.md Q5
- */
+/** Center Lock L2 host — a multi-field record form stacked on the desk stage. */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, X } from '@/components/Icons';
@@ -33,12 +13,7 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
 
-/**
- * Esc inside a text entry leaves the field before it closes a record. A
- * `role="combobox"` TRIGGER button (a staff picker after its list closed) is
- * not a field: the shared predicate counts it, so the record's Esc would be
- * spent blurring a button.
- */
+/** Esc inside a text entry leaves the field before it closes a record. */
 export function isRecordEscTextEntry(target: EventTarget | null): boolean {
   return isEditableKeyTarget(target) && !(target instanceof HTMLButtonElement);
 }
@@ -74,16 +49,7 @@ export interface DeskStageOverlayProps {
    * `stage` — full width + height of the desk stage card (inline L2).
    */
   fill?: DeskStageOverlayFill;
-  /**
-   * Paint the title / walk / ✕ band. Default true.
-   *
-   * Pass `false` ONLY where the desk header already owns entry and exit for
-   * this surface — a pressed `DeskActionSlot` toggle is the same control as a
-   * ✕, and Esc is wired here regardless. A second exit is not a second
-   * affordance, it is chrome. `title` stays required either way: with no
-   * header it is the region's accessible name, which is the one thing a
-   * screen reader cannot recover from the desk button.
-   */
+  /** Paint the title / walk / ✕ band. */
   showHeader?: boolean;
   /** The record's own verbs, painted in the header band before the walk controls. */
   actions?: ReactNode;
@@ -110,20 +76,14 @@ export function DeskStageOverlay({
   actions,
 }: DeskStageOverlayProps) {
   const stageFill = fill === 'stage';
-  // An inset form is a transient layer: it claims the overlay stack, so ambient
-  // record keys stand down while it is up. A stage fill is the record PLANE in
-  // its in-place view (placed by `DeskRecordPlane`), not a layer over the work —
-  // the record cursor's J/K must keep stepping it, so it does not claim.
+  // An inset form is a transient layer:
   const isTopmost = useRegisterOverlay(open && !stageFill);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Escape closes this overlay only when it owns the key: the innermost open
-  // overlay (a popover or inset form inside the record) goes first, a handler
-  // that already spent the press (a draft field cancelling itself) keeps it,
-  // and in a field the first Escape only leaves the field.
+  // Escape closes this overlay only when it owns the key:
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -157,10 +117,7 @@ export function DeskStageOverlay({
       role="region"
       aria-label={typeof title === 'string' ? title : 'Record editor'}
     >
-      {/* Scrim — opacity only (M2); table remains mounted underneath (Q5).
-          Not painted on stage fill: there the panel is opaque and covers the
-          host edge to edge, so the scrim was an inert, aria-hidden, unclickable
-          full-size element drawing the same fill directly beneath it. */}
+      {/* Scrim — opacity only (M2); table remains mounted underneath (Q5). */}
       {stageFill ? null : (
         <button
           type="button"

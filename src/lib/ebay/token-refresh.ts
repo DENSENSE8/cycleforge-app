@@ -22,22 +22,12 @@ interface TokenResponse {
   token_type: string;
 }
 
-/**
- * eBay OAuth access/refresh tokens are JWT-like strings that always begin with
- * "v^". The AES-GCM envelope produced by encryptIntegrationPayload is base64,
- * whose alphabet never contains "^", so the prefix is an unambiguous marker for
- * "this is a plaintext eBay token" vs "this is an encrypted envelope".
- */
+/** eBay OAuth access/refresh tokens are JWT-like strings that always begin with "v^". */
 function isPlaintextEbayToken(value: string): boolean {
   return value.startsWith('v^');
 }
 
-/**
- * Read a stored eBay token that may be either a plaintext eBay token (written by
- * the get-*-ebay-tokens.js helper scripts) or an encrypted integration envelope
- * (written by /api/ebay/callback). Backward/forward compatible: returns plaintext
- * as-is and decrypts envelopes. Throws only when a value is neither.
- */
+/** Read a stored eBay token that may be either a plaintext eBay token (written by the get-*-ebay-tokens.js helper scripts) or an encrypted… */
 function readEbayToken(stored: string | null | undefined): string {
   const raw = String(stored ?? '').trim();
   if (!raw) throw new Error('eBay token is empty');
@@ -71,12 +61,7 @@ export async function refreshEbayAccessToken(
   clientSecret: string,
   refreshToken: string,
   environment: EbayEnvironment | string = 'PRODUCTION',
-  /**
-   * Scope string to request on refresh. MUST match the set granted at consent —
-   * a buyer account must pass its buyer scopes (ebayScopeStringForRole('buyer')),
-   * or the refresh silently downgrades it to the seller set. Defaults to the
-   * seller scopes for backward compatibility.
-   */
+  /** Scope string to request on refresh. */
   scopes: string = ebayScopeString(),
 ): Promise<{ accessToken: string; expiresIn: number }> {
   const normalizedClientId = normalizeEnvValue(clientId);

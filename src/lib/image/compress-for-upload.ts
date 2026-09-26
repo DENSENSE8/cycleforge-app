@@ -1,11 +1,4 @@
-/**
- * Unified compression entry point for every photo upload path.
- *
- * Every capture site (camera, file picker, mobile receiving, packer spam,
- * station webcam) routes through here before it POSTs to a `/api/*-photos`
- * endpoint. That gives us one place to tune the 720p ceiling, JPEG quality,
- * and rollout telemetry — the underlying scaler lives in `./downscale.ts`.
- */
+/** Unified compression entry point for every photo upload path. */
 
 import {
   downscaleImageTo720,

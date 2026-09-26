@@ -16,16 +16,7 @@ import pool from '@/lib/db';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-/**
- * One paperwork row resolved for an order (To-ship paperwork walk + its
- * item-number view).
- *   PATCH  → JSON `{ displayName?, type?, pairing? }` rename / retype / re-pair
- *            (`pairing` = the complete new `{ orderId, itemNumber, sku }`), or
- *            multipart `{ file, displayName? }` replace the stored file.
- *   DELETE → `?mode=unpair` (default; every key cleared, back to the library
- *            unassigned) or `?mode=delete` (deactivate).
- * The row must currently resolve for the order (404 otherwise).
- */
+/** One paperwork row resolved for an order (To-ship paperwork walk + its item-number view). */
 
 type Params = { params: Promise<{ id: string; manualId: string }> };
 

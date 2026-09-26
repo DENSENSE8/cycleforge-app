@@ -1,26 +1,9 @@
-/**
- * Pure permission-matrix logic for the StaffAccessDetail `.access` card.
- *
- * This was previously inlined inside the component — the effective-permission
- * set was computed in the render body (former lines 370–392) and the per-page
- * grant/revoke reconciliation lived inside a `.map()` callback in JSX (former
- * lines 659–683), reachable only by clicking a toggle. Pulled out here it is
- * plain, synchronous, and unit-tested (see page-access-matrix.test.ts).
- *
- * No React — import-light on purpose so the test runner (node --test --import
- * tsx) doesn't pull the React renderer in.
- */
+/** Pure permission-matrix logic for the StaffAccessDetail `.access` card. */
 
 import { APP_SIDEBAR_NAV } from '@/lib/sidebar-navigation';
 import type { DetailEnvelope } from './staff-access-shared';
 
-/**
- * Where a page's *effective* on/off state comes from, for the badge column:
- *   - 'role'        : granted by an assigned role
- *   - 'revoked'     : granted by role but explicitly removed via override
- *   - 'granted'     : not in any role; granted via override
- *   - 'role-denies' : not in any role and no override (effective: off)
- */
+/** Where a page's *effective* on/off state comes from, for the badge column: */
 export type PermissionSource = 'role' | 'granted' | 'revoked' | 'role-denies';
 
 export function classifyPermissionSource(

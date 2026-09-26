@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * Inventory › Locations workspace — Receiving Sheets flush recipe:
- * Band 1 nested facet dropdown under DeskPageChrome · Band 2 KPI (Bins) ·
- * Band 3 triage · sheet grid.
- *
- * Replaces the framed `/warehouse` desk. Nested tools (Labels / Bays /
- * Rooms / Map) keep their bodies; any data table mounts flush.
- *
- * Callers: `src/app/inventory/locations/page.tsx` (L16). Existing workspace —
- * not a second Locations surface. URL `?tab=` only; no data-file I/O.
- * User: "Update the second tabs into a drop-down…" / "Ensure that the drop
- * down is in the center and fixed width, same width as the other components"
- */
+/** Inventory › Locations workspace — Receiving Sheets flush recipe: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

@@ -1,34 +1,4 @@
-/**
- * Correcting a SUBMITTED counter visit from the tablet's History face.
- *
- * Callers: PATCH /api/kiosk/visit/[id].
- * Affected API: /api/kiosk/visit/[id] (device principal + PIN step-up).
- * Data schemas: repair_service (serial_number · issue · notes), customers
- *   (display_name / customer_name / first_name / last_name · phone · email).
- * User: "edit" — the third History action, beside the two prints.
- *
- * ## The allowlist is the feature
- *
- * A tablet may correct **identity and description**, never **money or
- * finality** — the same boundary `kiosk-desk-session-channel-PLAN.md` D5 drew
- * for the live cart, applied to a visit that has already been written. Price,
- * totals, status, payment state and the staged provider order are absent from
- * {@link KIOSK_VISIT_EDITABLE_FIELDS} on purpose: a counter that can re-price
- * a settled visit from an unattended device is a refund path with no refund
- * controls.
- *
- * An unknown key is a **403**, not a silent strip. Zod's `.strip()` would let
- * a stale tablet post `price` and get a 200 back having changed nothing, which
- * is the failure mode where an operator believes a correction landed.
- *
- * ## Phone edits never merge customers
- *
- * `customers` has no unique index on phone; the counter dedupes by the last
- * ten digits (`findCustomerByPhoneDigits`). So re-pointing this visit's
- * customer at digits another row already owns would silently create the
- * duplicate that lookup exists to avoid — this refuses with `phone_conflict`
- * and leaves the merge to a staff surface that can show both records.
- */
+/** Correcting a SUBMITTED counter visit from the tablet's History face. */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

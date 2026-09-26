@@ -24,18 +24,7 @@ const WarrantyWorkspace = dynamic(
   },
 );
 
-/**
- * /support page body. Tickets is the only mode with a left column (recent
- * dock). Every other tab is rail-less and owns its picker on this stage:
- *
- * - tickets   → `service-workspace` shell (`SupportTicketsWorkspace`: board map
- *   keep-alive + thread focus when `?ticket=`). Sidebar shows recently selected.
- * - orders    → aliases Shipping · To ship (proxy); not mounted here.
- * - voicemail → queue ⇄ selected voicemail detail (`?vm=`).
- * - calls     → the org call-log Monitor stream (read-only).
- * - warranty  → Warranty Logger (coverage + claims table + claim detail).
- * - issues    → Reported-Issues console (KPI strip + fact stack, `?issueId=`).
- */
+/** /support page body. */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
   const searchParams = useSearchParams();

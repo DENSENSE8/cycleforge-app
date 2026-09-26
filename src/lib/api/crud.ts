@@ -8,23 +8,7 @@ import {
 import { ApiError, errorResponse } from './errors';
 import type { CrudConfig, CrudListParams } from './types';
 
-/**
- * Creates a unified CRUD route handler from a configuration object.
- *
- * Returns `{ GET, POST, PATCH, DELETE }` — spread directly into a Next.js route file:
- * ```ts
- * const handler = createCrudHandler({ ... });
- * export const { GET, POST, PATCH, DELETE } = handler;
- * ```
- *
- * Features:
- * - Automatic Upstash caching on GET with tag-based invalidation on mutations
- * - Zod validation on POST/PATCH bodies
- * - Consistent error responses (400/404/409/500) via ApiError
- * - Hooks for business logic (beforeCreate, afterCreate, etc.)
- * - Pagination, search, tab, sort param parsing
- * - x-cache: HIT/MISS headers for debugging
- */
+/** Creates a unified CRUD route handler from a configuration object. */
 export function createCrudHandler<TRow = any>(config: CrudConfig<TRow>) {
   const {
     name,

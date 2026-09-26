@@ -33,15 +33,7 @@ function formatTimelineAgo(iso: string): string {
   return `${Math.floor(h / 24)}d`;
 }
 
-/**
- * Curate the raw event stream for human reading — the API still returns the
- * full record, this only shapes what the panel shows:
- *   1. Drop net-zero workflow flip-flops (a Stage A→B reverted by B→A on the
- *      same line is churn, not history).
- *   2. Coalesce a run of serial RECEIVED events on one line into a single
- *      "Received N serials" group, expandable to the individual serials.
- * Input is newest-first; output preserves that order.
- */
+/** Curate the raw event stream for human reading — the API still returns the full record, this only shapes what the panel shows: */
 type AuditGroup =
   | { kind: 'event'; event: ReceivingAuditEvent }
   | { kind: 'serial_batch'; key: string; events: ReceivingAuditEvent[]; latest: ReceivingAuditEvent };

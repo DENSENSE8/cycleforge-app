@@ -1,44 +1,6 @@
 'use client';
 
-/**
- * Review · Catalog link RECORD plane — the two resolution forms, as NON-MODAL
- * right-rail occupants.
- *
- * They live here rather than in a cell popover because both are **side-effectful
- * multi-step work**: linking a chore backfills every matching order (and its
- * manuals), and supplying an Item Number re-runs the sheet → order import path
- * and CREATES an order. That is the record plane by the action-plane table
- * (`display/workbench.md`), which is also why the grid descriptor declares
- * `inCellEdit: false`.
- *
- * They also replace the in-flow `max-w-md` sibling column the surface used to
- * park beside its list — a permanently-mounted pane whose resting state was a
- * "Select a listing…" placeholder occupying a third of the workbench. A record
- * plane that is empty most of the time should not be holding width; the rail
- * mounts when a row is picked and pushes the grid rather than shrinking it
- * forever (`source-of-truth.md` → Right-rail modality).
- *
- * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`):
- * `[Title] ……… [verbs] [⤢] [✕]`. These two rails are reached by picking a
- * row on the queue behind them, not by walking an index, so they declare
- * `standalone` and are owed no Back cell.
- *
- * Until 2026-08-21 the header here was a `PaneHeader` whose `PaneHeaderActionBar`
- * carried its own `onClose` — a SECOND dismiss beside the host's singleton `✕`
- * that ran only the occupant's teardown and skipped `closeRightPanel`'s lifecycle
- * half — over a stacked `PaneHeaderIconBadge` + eyebrow/identity pair on a second
- * line. The verbs moved onto the one band; the identity
- * (item number / order id, platform, counts) was already a body fact row, which
- * is where it stays. Recipe: `display/right-rail-inspector.md`.
- *
- * **Occupant ids are STABLE** (`detail:catalog-link` / `detail:import-exception`),
- * not per-record: walking the queue row by row is the loop here, and a per-record
- * id would remount the whole push column on every step (`display/motion-crossfade.md`).
- * The exception's preconditions hold because each BODY is keyed on the record, so a
- * swap remounts it and every field re-seeds; nothing is auto-saved, so there is
- * no dirty draft to flush (a catalog pick for chore A must never survive onto
- * chore B).
- */
+/** Review · Catalog link RECORD plane — the two resolution forms, as NON-MODAL right-rail occupants. */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { AlertTriangle, Check, Flag, Link2, Loader2, Package } from '@/components/Icons';
@@ -108,15 +70,7 @@ function SeenLine({ firstSeenAt, lastSeenAt }: { firstSeenAt: string; lastSeenAt
   );
 }
 
-/**
- * ONE band + one body — the whole rail chrome.
- *
- * The band is {@link DeskInspectorIndexShell} in its `standalone` stance: no
- * index sits above these forms, so no Back cell is owed and none is painted.
- * `headerRightSlot` carries the contextual verbs; the shell reserves the
- * trailing cell the host paints its `⤢` / `✕` into, so this file paints no
- * close of its own.
- */
+/** ONE band + one body — the whole rail chrome. */
 function RecordRailShell({
   title,
   ariaLabel,
@@ -165,13 +119,7 @@ function RecordRailShell({
   );
 }
 
-/**
- * What one link actually did, in the operator's nouns.
- *
- * Honest absence both ways: a link that healed nothing says so plainly rather
- * than reporting "0 orders", and manuals are named only when some moved — a
- * count that is almost always zero is noise on every other link.
- */
+/** What one link actually did, in the operator's nouns. */
 function linkResultMessage(
   sku: string,
   body: { ordersBackfilled?: unknown; manualsBackfilled?: unknown },
@@ -247,13 +195,7 @@ function CatalogLinkFormBody({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.success) throw new Error(body.error || 'Link failed');
-      // ONE link heals EVERY order in the org whose item number normalizes to
-      // this listing — `batchPair` runs a single set-based UPDATE, including
-      // over historical rows that never enqueued a chore. The route has always
-      // returned that count and this rail has always dropped it, so the
-      // operator saw one row leave the queue and had no way to know the other
-      // eleven had just been fixed with it. The rail closes on `onDone`, so the
-      // toast is the only surface left that can say so.
+      // ONE link heals EVERY order in the org whose item number normalizes to this listing — `batchPair` runs a single set-based UPDATE,…
       toast.success(linkResultMessage(selected.sku, body));
       onDone();
     } catch (err: unknown) {
@@ -483,12 +425,7 @@ function ImportExceptionFormBody({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /**
-   * `explicit` is the one-shot Approve & resolve path: that flow sets the field
-   * and commits in the same beat, and `itemNumber` would still hold the PREVIOUS
-   * render's value at this point — so the approved candidate is passed in rather
-   * than read back out of state.
-   */
+  /** `explicit` is the one-shot Approve & resolve path: */
   const submitResolve = async (explicit?: string) => {
     const trimmed = (explicit ?? itemNumber).trim();
     if (!trimmed) {

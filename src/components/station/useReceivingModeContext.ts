@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Parses the receiving-lines table's URL state into the single `ReceivingModeContext`
- * bag the active mode descriptor consumes for every data-layer decision (which
- * API view to request, paging/keying/grouping/sorting, empty copy), plus the
- * presentational flags the component forks on. Extracted from ReceivingLinesTable;
- * behaviour is unchanged.
- */
+/** Parses the receiving-lines table's URL state into the single `ReceivingModeContext` bag the active mode descriptor consumes for every… */
 
 import { useMemo } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -107,12 +101,8 @@ export function useReceivingModeContext(): ReceivingModeState {
   // Filters date range). All flow straight into the API query string; no
   // client-side filtering of the date range (server already narrows).
   const incomingSort = isIncomingMode ? (searchParams.get('sort') || '').trim() : '';
-  // History reuses the shared `?sort=` param (modes are exclusive). The resolved
-  // axis drives client day-banding + within-day order; the same sort is sent to
-  // the API for the server ORDER BY window.
-  // History week window: ALL TIME unless `?weekOffset` is explicitly present
+  // History reuses the shared `?sort=` param (modes are exclusive).
   // (operator 2026-09-14 — the entire product/PO history is the default view;
-  // absent param and weekOffset=0 used to collide as "current week").
   const historyWeekExplicit = isHistoryMode && searchParams.has(WEEK_OFFSET_PARAM);
   const historySort = isHistoryMode ? (searchParams.get('sort') || '').trim() : '';
   const historyAxis: ReceivingActivityAxis = isHistoryMode
@@ -134,13 +124,7 @@ export function useReceivingModeContext(): ReceivingModeState {
   const incomingPage =
     Number.isFinite(incomingPageRaw) && incomingPageRaw >= 1 ? Math.floor(incomingPageRaw) : 1;
 
-  // "Delivered · not scanned" is an Incoming sub-facet fed by a separate
-  // shipment-level query; it owns its own empty copy, so the descriptor needs to
-  // know about it. Derived early so it can flow into the mode context.
-  // Scoped to the DEFAULT lane. Both facets swap in their own shipment-level
-  // feed, which answers "what is still waiting" — the opposite question from
-  // the removed lane, so a `?state=` left in the URL while switching to it must
-  // not hijack the fetch.
+  // "Delivered · not scanned" is an Incoming sub-facet fed by a separate shipment-level query; it owns its own empty copy, so the descriptor…
   const isDefaultIncomingLane = mode.id === 'incoming';
   const isDeliveredUnscannedFacet =
     isDefaultIncomingLane && incomingState === 'DELIVERED_UNOPENED';

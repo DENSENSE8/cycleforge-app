@@ -1,12 +1,4 @@
-/**
- * Tasks catalog guards + resolver behaviour — the `work_assignments` family.
- *
- * The guard that matters most here is the one pinning that Tasks and Daily are
- * two vocabularies: `work_assignments` is work handed from one person to
- * another with a deadline, `daily_check_items` is the org's shift checklist
- * with a roster behind every row and a per-day mark. They look alike and are
- * not the same question (R-A, 2026-09-22).
- */
+/** Tasks catalog guards + resolver behaviour — the `work_assignments` family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

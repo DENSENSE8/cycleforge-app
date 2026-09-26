@@ -1,9 +1,4 @@
-/**
- * Testing history board lanes (station-table-unification-plan §4.5) — the TS SoT
- * for how a tested receiving line buckets by verdict. O3: keyed on the row's
- * `qa_status` (`PENDING` | `PASSED` | `FAILED`, from the line-level QA rollup)
- * plus `needs_test` for the re-test bucket. Dots from the label-registry tone map.
- */
+/** Testing history board lanes (station-table-unification-plan §4.5) — the TS SoT for how a tested receiving line buckets by verdict. */
 
 import { TONE_CLASSES } from '@/lib/labels/registry';
 import type { LabelTone } from '@/lib/labels/types';

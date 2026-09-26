@@ -1,20 +1,4 @@
-/**
- * Workflow engine — Drizzle-backed store.
- *
- * The production WorkflowStore. The two ENGINE tables it owns —
- * `item_workflow_state` and `workflow_runs` — are tenant-scoped and slated for
- * RLS FORCE (Phase E), so every statement that touches them runs inside
- * `withTenantDrizzle(orgId, …)`: a GUC-bearing connection (`SET LOCAL
- * app.current_org`) on the tenant pool. organizationId is ALSO passed
- * explicitly on every read/write (defense in depth — RLS is a backstop, not a
- * substitute for a correct predicate).
- *
- * `loadNode` / `resolveNext` deliberately stay on the stateless neon-http `db`:
- * `workflow_nodes` / `workflow_edges` carry NO organization_id (they are scoped
- * via their parent workflow_definitions row), so they are never RLS-org-FORCED
- * and need no GUC — keeping them on neon-http avoids an extra pooled connection
- * per advance.
- */
+/** Workflow engine — Drizzle-backed store. */
 
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';

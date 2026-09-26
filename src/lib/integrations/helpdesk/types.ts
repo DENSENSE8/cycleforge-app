@@ -1,18 +1,4 @@
-/**
- * HelpdeskProvider — the capability facade for customer-ticket backends
- * ("Integrations as SoT" program, Wave B2).
- *
- * Product surfaces (support console, receiving claims, warranty, packing)
- * speak this interface — never a vendor client directly. The method set and
- * payload shapes mirror the live Zendesk client (src/lib/zendesk.ts) 1:1
- * because Zendesk is the first (and currently only) adapter; the aliases
- * below re-export those shapes under capability names so a second helpdesk
- * backend can implement the same surface without product code changing.
- *
- * This file is types-only (client-safe via `import type`); behavior lives in
- * the adapters + `getHelpdeskProvider()` in ./index.ts (SERVER-ONLY — they
- * read the org vault).
- */
+/** HelpdeskProvider — the capability facade for customer-ticket backends ("Integrations as SoT" program, Wave B2). */
 import type {
   CreateTicketInput,
   ListTicketsParams,
@@ -56,13 +42,7 @@ export interface HelpdeskCommentInput {
   uploads?: string[];
 }
 
-/**
- * One org-bound helpdesk connection. Every method is already scoped to the
- * org the provider was resolved for — call sites never pass an orgId.
- *
- * Signatures mirror src/lib/zendesk.ts exactly (minus the trailing orgId):
- * thin delegation, no payload redesign.
- */
+/** One org-bound helpdesk connection. */
 export interface HelpdeskProvider {
   /** Vault provider key backing this facade (e.g. 'zendesk'). */
   readonly provider: string;

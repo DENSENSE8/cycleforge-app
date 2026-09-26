@@ -181,12 +181,7 @@ test('every fold open makes the visible order equal the fold-blind order', () =>
 });
 
 test('a collapsed fold contributes its leading row ONLY where that row still renders', () => {
-  // `useSidebarRail` hides members with `groupIndex > 0`, so index 0 keeps its
-  // DOM node and IS the collapsed fold's scroll target. `QueueGroupRow` hands a
-  // multi-row group to `CollapsibleGroupRow`, which renders children only
-  // `{isOpen ? … : null}` and puts a DERIVED `OrderGroupSummary` in their place —
-  // so on that surface row 1 has no element and no id to scroll to. One answer
-  // for both surfaces silently no-ops the scroll on whichever one it got wrong.
+  // `useSidebarRail` hides members with `groupIndex > 0`, so index 0 keeps its DOM node and IS the collapsed fold's scroll target.
   const order = bandedOrder();
   const folds: FoldState = {
     mode: 'default-expanded',
@@ -209,11 +204,7 @@ test('a collapsed fold in one band does not collapse the same key in another', (
 });
 
 test('a singleton stays visible even when every fold reads as collapsed', () => {
-  // `QueueGroupRow` returns `renderRow(group.rows[0])` for a one-row group before
-  // it ever reaches `CollapsibleGroupRow`: no summary, no chevron, nothing to
-  // close. So a singleton must survive BOTH renderings — under 'summary-only' the
-  // absence of the singleton guard would delete rows 3 and 6 outright, leaving two
-  // records unreachable with no affordance to bring them back.
+  // `QueueGroupRow` returns `renderRow(group.rows[0])` for a one-row group before it ever reaches `CollapsibleGroupRow`:
   const order = bandedOrder();
   const collapseEverything: FoldState = { mode: 'default-collapsed', expanded: new Set() };
   assert.deepEqual(
@@ -240,10 +231,7 @@ test('a singleton stays visible even when every fold reads as collapsed', () => 
 });
 
 test('an EMPTY group contributes nothing — never an undefined hole', () => {
-  // `groupRowsBy` cannot mint one, but `GroupedRenderOrder` is a public input
-  // shape a caller assembles by hand. A collapsed-fold branch that reached for
-  // `rows[0]!` unguarded would push `undefined` into an array typed `T[]`, and
-  // the first `getId(row)` downstream throws on a value the types said was safe.
+  // `groupRowsBy` cannot mint one, but `GroupedRenderOrder` is a public input shape a caller assembles by hand.
   const order: GroupedRenderOrder<Row> = [
     ['2026-08-01', [{ key: 'empty', rows: [] }, { key: 'B', rows: [row(3, 'B')] }]],
   ];

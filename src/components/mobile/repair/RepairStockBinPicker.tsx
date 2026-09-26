@@ -28,11 +28,8 @@ type LoadState =
   | { kind: 'error'; message: string };
 
 /**
+ * Which bin the installed part is taken from (operator 2026-09-24:
  * Which bin the installed part is taken from (operator 2026-09-24: stock is
- * "tied to the specific bin, updating that bin's count"). Lists every bin
- * holding the SKU, most stock first; the save moves that bin's count and the
- * ledger together and is refused when the bin is short. Read fresh on every
- * open — a cached count is exactly what a bin take must not trust.
  */
 export function RepairStockBinPicker({
   sku,

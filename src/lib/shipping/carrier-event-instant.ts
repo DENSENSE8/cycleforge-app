@@ -1,30 +1,7 @@
 import { fromZonedTime } from 'date-fns-tz';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 
-/**
- * Carrier scan stamps → true instants.
- *
- * Every carrier reports a scan as a LOCAL wall clock at the scan facility, and
- * each API carries the zone differently:
- *
- *   UPS   activity.date "YYYYMMDD" + time "HHMMSS" (local), gmtDate + gmtTime
- *         "HH:MM:SS" (UTC), gmtOffset "-07:00".
- *   FedEx scanEvents[].date ISO with offset ("2026-05-15T17:39:53-05:00");
- *         date-only pickups arrive as "2026-06-12T00:00:00" with NO offset.
- *   USPS  trackingEvents[].GMTTimestamp "…Z" (UTC), eventTimestamp (local,
- *         no offset), GMTOffset "-07:00".
- *
- * Precedence per event: explicit UTC stamp → local stamp + explicit offset →
- * local stamp with no zone at all, read as the warehouse zone. The last rung is
- * a documented guess (the API gave nothing better); reading it as UTC — the
- * old behaviour — is never right for a carrier's local wall clock, and reading
- * it in the host's zone made the stored instant depend on which box ran the
- * sync.
- *
- * SQL twin: src/lib/migrations/2026-09-25h_carrier_event_instants_backfill.sql
- * recomputes stored rows with the same precedence — keep the two in step, or a
- * re-sync inserts a duplicate event (the dedupe key includes the instant).
- */
+/** Carrier scan stamps → true instants. */
 
 type Fields = Record<string, unknown>;
 
@@ -78,12 +55,7 @@ export function wallClockInstant(wall: string, offset: string | null): string | 
 const ISO_WALL_RE = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2})?)(\.\d+)?$/;
 const ISO_ZONED_RE = /(?:Z|[+-]\d{2}:?\d{2})$/i;
 
-/**
- * ISO-ish timestamp → instant. Carries its own zone ("…Z" / "…-05:00") → as
- * given; a bare wall clock → `fallbackOffset` when supplied, else the
- * warehouse zone. FedEx `scanEvents[].date` / `dateAndTimes[].dateTime` go
- * through here directly.
- */
+/** ISO-ish timestamp → instant. */
 export function isoStampInstant(raw: unknown, fallbackOffset: string | null = null): string | null {
   const s = nonEmptyString(raw);
   if (!s) return null;
@@ -111,12 +83,7 @@ export function upsActivityInstant(activity: unknown): string | null {
   );
 }
 
-/**
- * The pre-fix UPS event stamp — the LOCAL wall clock written as if UTC. Kept
- * ONLY as the stable identity inside `external_event_id`: every stored UPS row
- * already embeds it, and changing it would make the next sync insert every
- * event a second time. Never use it as a time.
- */
+/** The pre-fix UPS event stamp — the LOCAL wall clock written as if UTC. */
 export function upsActivityLegacyStamp(activity: unknown): string | null {
   const act = fieldsOf(activity);
   const date = isoDatePart(act.date);

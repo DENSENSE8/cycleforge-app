@@ -1,29 +1,7 @@
 'use no memo';
 'use client';
 
-/**
- * `useGridSurface<Row>` — the Cycle Forge **headless grid state waist**
- * (grid-surface-descriptor plan, engine hybrid B-).
- *
- * TanStack Table v8 owns the state math — column defs, sorting, visibility,
- * column order — while `LedgerGrid` + Kinetic Ledger cells own every pixel of
- * markup. Descriptors + staff prefs + URL sort flow IN as controlled state;
- * a table instance + freshly-computed leaf-column arrays flow OUT. **Zero
- * TanStack markup**; no grouping / range / fill models (quarantined until the
- * day-band surfaces adopt them — plan Phase E).
- *
- * ## `"use no memo"` (React Compiler trap — required)
- * `useReactTable`'s accessors (`getVisibleLeafColumns`, `getRowModel`, header
- * groups) return NEW references during render off a STABLE table instance.
- * Under the React Compiler those calls look pure-and-parameterless, get
- * memoized against the stable instance, and freeze the grid on sort/visibility
- * changes (TanStack/table#5567, facebook/react#33057). The directive opts this
- * module out; consumers read the ARRAYS this hook returns (fresh each render)
- * instead of calling table getters in their own (possibly compiled) render.
- * `next.config.ts` does not enable `reactCompiler` today — this keeps a later
- * flip from bricking the grid. Do not remove; do not disable the compiler
- * globally instead.
- */
+/** `useGridSurface<Row>` — the Cycle Forge **headless grid state waist** (grid-surface-descriptor plan, engine hybrid B-). */
 
 import {
   getCoreRowModel,

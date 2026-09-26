@@ -1,52 +1,4 @@
-/**
- * Lazy materialisation of `receiving_line_unit` — Phase 1 of the per-unit
- * "no serial" plan (docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §4).
- *
- * One row per *expected physical unit* on a receiving line, created on first
- * open rather than by a bulk backfill: `quantity_expected` is mutable, and rows
- * for lines nobody opens are waste.
- *
- * Two halves, same shape as {@link ./serial-projection}:
- *
- *   1. {@link planLineUnits} — a PURE function. Given the rows that already
- *      exist, the expected qty, and the line's current serials in scan order,
- *      it decides what to insert / release / attach. Every rule below is
- *      pinned by ensure-line-units.test.ts with zero DB.
- *   2. {@link ensureLineUnits} — the thin applier. Loads, plans, and only
- *      opens a write transaction when the plan is non-empty, so the steady
- *      state (every open after the first) costs exactly one indexed SELECT.
- *
- * ## Invariants
- *
- * - **`id` is identity; `ordinal` is display order.** New rows are APPENDED
- *   after the current max ordinal. An existing row is never renumbered and
- *   never re-pointed at a different unit — that is the whole reason this table
- *   exists instead of a `slot_index` keyed one (plan §2).
- * - **Never shrink.** A line whose `quantity_expected` drops keeps its surplus
- *   rows; deleting them would discard an operator's recorded judgement (plan §9
- *   Q1 — surfacing surplus as a distinct "beyond expected qty" state is Phase 3
- *   UI work). Nothing here ever DELETEs.
- * - **Row count tracks what the UI renders.** `ReceivingUnitRows` renders
- *   `total = max(quantityExpected, saved.length, 1)`; every rendered row needs a
- *   durable unit id or Phase 3's per-row check has nothing to hang on. So the
- *   target here is `max(expectedQty, serialCount, existingCount)` — the same
- *   expression minus the component's defensive `1` floor, which would otherwise
- *   materialise a phantom unit on every qty-0 / unfound placeholder line.
- *   **If that component's `total` changes, change this too.**
- * - **A waived unit is not a free slot.** A row with `serial_absent = true`
- *   never receives a serial (Phase 3 renders it as committed state, not an
- *   input).
- * - **Serials are the caller's, in scan order.** `fetchSerialsForLines`
- *   (serial-projection.ts) is the SoT for "which serials are on this line, in
- *   scan order" — including resolving a returned-then-re-received serial onto
- *   the line it is on NOW. Re-deriving that here would be a second
- *   implementation of the same mapping.
- *
- * Batched by line on purpose: both wired read paths are carton-scoped, and a
- * per-line round trip would turn a 12-line carton open into 12 SELECTs. The
- * plan sketched `ensureLineUnits(lineId, expectedQty, deps)`; the array form is
- * the same helper with the round trips folded.
- */
+/** Lazy materialisation of `receiving_line_unit` — Phase 1 of the per-unit "no serial" plan… */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -223,12 +175,7 @@ async function loadLineUnits(
   return grouped;
 }
 
-/**
- * Apply one line's plan inside a single tenant transaction. Order matters:
- * insert the slots, release stale claims, steal serials that moved here from
- * another line, then attach — so no statement can trip
- * `ux_receiving_line_unit_serial` on a claim a later statement would have freed.
- */
+/** Apply one line's plan inside a single tenant transaction. */
 async function applyLineUnitPlan(
   orgId: OrgId,
   lineId: number,
@@ -260,10 +207,7 @@ async function applyLineUnitPlan(
     if (plan.attach.length > 0) {
       const serialIds = plan.attach.map((a) => a.serialUnitId);
 
-      // A returned-then-re-received serial is still parked on its previous
-      // line's unit row. `fetchSerialsForLines` already resolved it onto THIS
-      // line, so release the old claim first — the old unit row survives with a
-      // null serial, exactly like a deleted serial.
+      // A returned-then-re-received serial is still parked on its previous line's unit row.
       await client.query(
         `UPDATE receiving_line_unit
             SET serial_unit_id = NULL, updated_at = now()
@@ -291,14 +235,7 @@ const defaultDeps: EnsureLineUnitsDeps = {
   applyPlan: applyLineUnitPlan,
 };
 
-/**
- * Materialise `receiving_line_unit` rows for the given lines. Idempotent: a
- * converged line plans to `noop` and writes nothing.
- *
- * Returns each line's plan so callers (and tests) can see what was done. Lines
- * with a non-positive id are skipped — unfound/placeholder rows carry synthetic
- * ids and own no real line.
- */
+/** Materialise `receiving_line_unit` rows for the given lines. */
 export async function ensureLineUnits(
   orgId: OrgId,
   lines: ReadonlyArray<EnsureLineUnitsLine>,
@@ -337,19 +274,7 @@ export interface FetchLineUnitsDeps {
 
 const defaultFetchDeps: FetchLineUnitsDeps = { query: tenantQuery };
 
-/**
- * Read the materialised units for a set of lines, grouped by line id and
- * ordered by ordinal — the wire shape both /api/receiving-lines and
- * /api/receiving/:id emit.
- *
- * **This is the only place that builds `units`.** Two endpoints returning the
- * same field from two queries is how they drift; a shared reader makes them
- * agree by construction (pinned by ensure-line-units.test.ts).
- *
- * Reading is safe on a line that was never materialised — it returns nothing
- * rather than inventing rows. Materialisation stays on the single writer chain
- * ({@link ensureLineUnitsSafe}), which only the `include=serials` reads drive.
- */
+/** Read the materialised units for a set of lines, grouped by line id and ordered by ordinal — the wire shape both /api/receiving-lines and… */
 export async function fetchLineUnits(
   lineIds: number[],
   orgId: OrgId,
@@ -395,12 +320,7 @@ export async function fetchLineUnits(
   return grouped;
 }
 
-/**
- * Best-effort {@link ensureLineUnits} for read paths — materialisation must
- * never fail the read that triggered it. The next open re-plans from scratch,
- * so a swallowed failure self-heals (same contract as
- * `refreshLineSerialProjectionSafe`).
- */
+/** Best-effort {@link ensureLineUnits} for read paths — materialisation must never fail the read that triggered it. */
 export async function ensureLineUnitsSafe(
   orgId: OrgId,
   lines: ReadonlyArray<EnsureLineUnitsLine>,

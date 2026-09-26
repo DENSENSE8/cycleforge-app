@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Local Pickup display data — the LCPU product lines feeding the `/pickup`
- * receiving mode's rail + table. Sourced from `GET /api/local-pickup-orders/lines`
- * (the only LCPU dataset with products — `local_pickup_orders` + items; the Zoho
- * PO mirror is header-only). Row = product, group = LCPU order (Unbox family).
- */
+/** Local Pickup display data — the LCPU product lines feeding the `/pickup` receiving mode's rail + table. */
 
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -75,17 +70,7 @@ export function pickupLineMatchesStatus(line: PickupLine, tab: PickupStatusTab):
   return !pickupOrderIsDone(line.order_status);
 }
 
-/**
- * React-query feed of every LCPU product line (newest pickup date first).
- *
- * `query` is the workbench's find text and it rides the FETCH KEY: the server
- * answers it (`?q=`), which is the only way a find can reach a PO past the 500
- * row window or a reference number no mounted track paints. `SearchField`
- * already debounces at 320ms, so this keys on the value it is handed and adds
- * no second timer. `placeholderData` holds the last answer on screen while the
- * next one is in flight — the caller lights the spinner from `isFetching`
- * instead of blanking the grid between keystrokes.
- */
+/** React-query feed of every LCPU product line (newest pickup date first). */
 export function usePickupLines(query = '') {
   const q = query.trim();
   return useQuery({

@@ -14,31 +14,7 @@ import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { parseReturnSerialTitle } from '@/components/station/receiving-line-serials';
 
-/**
- * Serial numbers as a SIDECAR. A `serial_units` row IS the item identity
- * (serial + condition + status + location) and is shared across
- * receiving/testing/shipping/inventory. Attaching or detaching a serial on a
- * receiving line is pure metadata CRUD:
- *
- *   - NO `sku_stock_ledger` delta
- *   - NO `receiving_line.quantity_received` change
- *   - NO workflow_status advance / workflow NOTE
- *   - NO cap — a line may carry unlimited serials (a unit can ship several
- *     serials: a pair, multi-component, part serials, etc.)
- *
- * Stock and received-quantity are owned exclusively by the PO line item via
- * the Receive action (`receiveLineUnits` in {@link ./receive-line}). These two
- * concerns are deliberately independent: scanning serials never moves stock.
- *
- * It DOES stamp the parent carton's `receiving_unbox.unboxed_at` (the first serial
- * scanned off a carton means the box was physically opened). Without this, a
- * serial-scanned-but-not-yet-Received carton stayed MATCHED/qty-0 and leaked
- * back into the "to unbox" scanned queue even though it had clearly been opened
- * (and labeled). The unboxed_at stamp moves it out of `view=scanned` and into
- * the unboxed/Recent rail (both key on unboxed_at) — while received-qty and
- * stock still wait for the explicit Receive action. Opening a box ≠ receiving
- * its units.
- */
+/** Serial numbers as a SIDECAR. */
 
 interface SerialLineTarget {
   id: number;
@@ -71,11 +47,7 @@ async function loadLine(
   lineId: number,
   orgId?: OrgId,
 ): Promise<SerialLineTarget | null> {
-  // When orgId is provided, add an explicit tenant predicate so a line from
-  // another tenant is invisible (the GUC-wrapped client also backstops via RLS
-  // once enforced). When omitted, behaviour is byte-identical to before.
-  // zoho_item_id reads from the receiving_line_zoho facts table (the spine
-  // column is a moved column, dropped in Wave 4).
+  // When orgId is provided, add an explicit tenant predicate so a line from another tenant is invisible (the GUC-wrapped client also…
   const r = orgId
     ? await client.query<SerialLineTarget>(
         `SELECT rl.id, rl.receiving_id, rl.sku, rl.item_name, rz.zoho_item_id,
@@ -123,12 +95,7 @@ export interface AttachSerialResult {
   line_state: ReturnType<typeof lineState>;
 }
 
-/**
- * Attach a serial to a receiving line. Upserts the `serial_units` row, writes a
- * `tech_serial_numbers` lineage row, and records a RECEIVED inventory_event for
- * the audit trail. Never touches quantity or the stock ledger. Idempotent: a
- * re-scan of a serial already on this line returns `already_attached: true`.
- */
+/** Attach a serial to a receiving line. */
 export async function attachSerialToLine(
   input: AttachSerialInput,
   orgId: OrgId,
@@ -138,15 +105,7 @@ export async function attachSerialToLine(
 
   const station: InventoryEventStation = input.station ?? 'RECEIVING';
 
-  // ── Tenant-scoped path (the only path) ─────────────────────────────────────
-  // orgId is required, so the whole unit of work runs inside
-  // `withTenantTransaction`: the `app.current_org` GUC is set for the duration
-  // (BEGIN/COMMIT/ROLLBACK + SET LOCAL are owned by the wrapper). Reads/writes on
-  // tenant tables carry an explicit `organization_id` predicate, and the child
-  // tech-serial insert is stamped via `organizationId`. The shared writer
-  // `upsertSerialUnit` is org-scoped explicitly (3rd arg). The pre-tenancy
-  // raw-pool fallback was removed — it relied on the column default, which
-  // loud-fails under FORCE RLS.
+  // ── Tenant-scoped path (the only path) ───────────────────────────────────── orgId is required, so the whole unit of work runs inside…
   return withTenantTransaction(orgId, async (client) => {
       const line = await loadLine(client, input.receiving_line_id, orgId);
       if (!line) {
@@ -250,16 +209,7 @@ export async function attachSerialToLine(
         orgId,
       );
 
-      // Stamp the carton "unboxed" — the first serial scanned off it is proof it
-      // was physically unboxed. Wave-3 writer inversion: the stamp lands
-      // DIRECTLY on the receiving_unbox street table (spine columns dropped in
-      // Wave 4). COALESCE-once inside the helper so re-scans / sibling-line
-      // scans never reset the original unbox time; intake_path derives in the
-      // same statement. Carton-scoped on purpose: opening one box moves the
-      // whole carton (all its lines) out of the scanned queue and into the
-      // unboxed rail. Deliberately NOT touching quantity_received /
-      // workflow_status / the stock ledger — those stay owned by the Receive
-      // action (receiveLineUnits).
+      // Stamp the carton "unboxed" — the first serial scanned off it is proof it was physically unboxed.
       if (line.receiving_id != null) {
         await upsertReceivingUnbox(client, orgId, line.receiving_id, {
           unboxedAt: 'now',
@@ -269,9 +219,6 @@ export async function attachSerialToLine(
       }
 
       // Generated return-intake titles bake the scanned serial into item_name.
-      // Keep that face aligned when the operator replaces/rescans the unit —
-      // otherwise the rail/title keep painting a stale serial while the chip
-      // shows the live one.
       let lineForState = line;
       const scannedSerial = String(input.serial_number || '').trim();
       if (scannedSerial && parseReturnSerialTitle(line.item_name) != null) {
@@ -316,13 +263,7 @@ export interface DetachSerialResult {
   line_state: ReturnType<typeof lineState> | null;
 }
 
-/**
- * Detach (delete) a serial from a receiving line. Identity match on the stable
- * `serial_unit_id` + org (the "Displayed ⟹ Deletable" contract — see the lookup
- * comment): the Units display resolves a serial to its CURRENT line, so the
- * request's `receiving_line_id` is recompute/audit context, not an identity
- * filter. Never decrements quantity or writes a reversing ledger row.
- */
+/** Detach (delete) a serial from a receiving line. */
 export async function detachSerialFromLine(
   input: DetachSerialInput,
   orgId: OrgId,
@@ -338,11 +279,7 @@ export async function detachSerialFromLine(
 
   const station: InventoryEventStation = input.station ?? 'RECEIVING';
 
-  // ── Tenant-scoped path ────────────────────────────────────────────────────
-  // Run inside `withTenantTransaction` (GUC set + BEGIN/COMMIT/ROLLBACK owned by
-  // the wrapper). Lookups, the DELETE, and the line-state reads all carry an
-  // explicit `organization_id` predicate so a unit/line owned by another tenant
-  // is invisible; `recordInventoryEvent` inherits the tenant via the GUC default.
+  // ── Tenant-scoped path ──────────────────────────────────────────────────── Run inside `withTenantTransaction` (GUC set +…
   if (orgId) {
     return withTenantTransaction(orgId, async (client) => {
       const lookup = await client.query<{
@@ -350,19 +287,7 @@ export async function detachSerialFromLine(
         sku: string | null;
         serial_number: string;
       }>(
-        // "Displayed ⟹ Deletable": the operator removes a serial they can SEE,
-        // and the Units display resolves a serial to its CURRENT receiving line
-        // (latest inventory_events touch, via fetchSerialsForLines /
-        // resolveCurrentReceivingLineIds) — NOT its frozen provenance origin. So
-        // the id path matches by the stable serial_unit_id + org ALONE; the
-        // request's receiving_line_id is context for the recompute/audit, not an
-        // identity filter. Filtering this lookup by provenance origin_id 404'd
-        // any serial whose current line ≠ origin line (a re-received / MOVED unit
-        // shown on a sibling line — the "serial not found on this line" bug).
-        //
-        // The serial_number branch has NO live caller (every DELETE sends
-        // serial_unit_id) and stays line-scoped by origin so a repeated serial
-        // string can't org-wide-match the wrong physical unit.
+        // "Displayed ⟹ Deletable":
         serialUnitId
           ? `SELECT id, sku, serial_number
                FROM serial_units
@@ -427,9 +352,6 @@ export async function detachSerialFromLine(
     });
   }
 
-  // orgId is required; the GUC-scoped path above always returns. The old
-  // un-scoped raw-pool fallback was removed — it ran the DELETE with no
-  // organization_id predicate and its inventory_events NOTE stamped a NULL
-  // organization_id. Unreachable now.
+  // orgId is required; the GUC-scoped path above always returns.
   throw new Error('detachSerialFromLine: orgId is required');
 }

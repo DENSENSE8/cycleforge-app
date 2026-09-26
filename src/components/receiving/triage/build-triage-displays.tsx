@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Arrival (triage) Displays — Ticket + Pairing/Linkage on the right-edge push
- * column ({@link StationDisplaysPushStack}), never a centre tab strip.
- *
- * Sibling of Unbox's {@link buildUnboxSideTabs} / Testing's
- * {@link buildTestingDisplayTabs}: Arrival's centre owns the door flow — items
- * (`POUnboxingSection`) and nothing stacked under them — the centre Classify
- * section and the Staging control both left 2026-08-20 (classify survives as the
- * identity header's pills). Displays =
- * **Ticket** (create / link / chat via {@link TicketDisplayHost}) + **Pairing**
- * (`CartonMatchHub`, `tabSet="arrival"`, `chrome="bare"`). The PO-avenue intent
- * arrives as DATA (`pairingFocus` → the hub's `focusTab`), read on mount —
- * never a timed event that the display's mount races.
- *
- * P3 Ticket body is dynamic — strip labels stay eager. Ticket identity is
- * passed as primitives (not the whole line controller) so the builder stays
- * mount-safe when the host reloads mid-edit.
- */
+/** Arrival (triage) Displays — Ticket + Pairing/Linkage on the right-edge push column ({@link StationDisplaysPushStack}), never a centre… */
 
 import dynamic from 'next/dynamic';
 import { History, Link2, MapPin, Ticket } from '@/components/Icons';
@@ -36,10 +19,7 @@ const TicketDisplayHost = dynamic(
   { loading: () => null },
 );
 
-// Timeline is the SAME pair Unbox mounts (`unbox-tabs.tsx` → Timeline): the
-// cross-entity timeline over the carton's PO / tracking, then the carton's own
-// audit rows. Deferred for the same reason — the audit read is a per-carton
-// round-trip that has no business firing behind every other leaf.
+// Timeline is the SAME pair Unbox mounts (`unbox-tabs.tsx` → Timeline):
 const WorkspaceTimelineTab = dynamic(
   () => import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab),
   { loading: () => null },
@@ -50,17 +30,7 @@ const ReceivingAuditPanel = dynamic(
   { loading: () => null },
 );
 
-/**
- * Arrival Displays vocabulary — Ticket + Pairing + Locations. Locations is now
- * the ONLY shelf/lane writer on this station (its `selectShelf` auto-routes the
- * lane), which is what keeps `completeTriage`'s Save-for-unbox gate reachable.
- *
- * `location` is a TOOL, not a beat of the carton's procedure: browse the
- * shelves, place the carton OR one of its products, reprint a scuffed sticker,
- * mint a new spot. It earns the right edge for the same reason Pairing does —
- * the centre stays ops-flow. Product placement writes line putaway, never the
- * carton's `staging_location_id`; the two grains stay two columns.
- */
+/** Arrival Displays vocabulary — Ticket + Pairing + Locations. */
 export type TriageDisplayTab = 'ticket' | 'linkage' | 'location' | 'timeline';
 
 interface BuildTriageDisplaysInput {
@@ -161,10 +131,7 @@ export function buildTriageDisplayTabs({
       id: 'location',
       label: 'Locations',
       icon: MapPin,
-      // Two grains behind one leaf: the CARTON's door shelf (triage
-      // `staging_location_id`, lane auto-routed) and each PRODUCT's putaway bin
-      // (`receiving_line_putaway`). The subject select lives in the adapter;
-      // the leaf and both writers are the shared ones.
+      // Two grains behind one leaf:
       content: (
         <ArrivalLocationsLeaf
           staging={staging}
@@ -178,10 +145,7 @@ export function buildTriageDisplayTabs({
       id: 'timeline',
       label: 'Timeline',
       icon: History,
-      // Where the notes composer's ⓘ lands. Arrival had no history leaf at all,
-      // so the door pass's only route to "received 14:32 by Mike" was a modal
-      // over the work — one control, one destination, and the destination is
-      // the right edge.
+      // Where the notes composer's ⓘ lands.
       content:
         row.receiving_id != null ? (
           <div className="space-y-4">

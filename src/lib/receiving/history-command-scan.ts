@@ -1,13 +1,4 @@
-/**
- * Unbox History command-row scan classifier.
- *
- * When `/unbox` History is the active workbench tab, wedge payloads that are
- * not station commands or carton handles land in the same `?rh_q=` / `?rh_field=`
- * state as Band 3 find — not a parallel search engine.
- *
- * Command vocabulary SoT: {@link parseStationCommand}. Carton handles defer to
- * global {@link routeScan} / Unbox scan bar (passthrough / open_carton).
- */
+/** Unbox History command-row scan classifier. */
 
 import { decodedHandle, type ScanRoute } from '@/lib/barcode-routing';
 import { parseStationCommand } from '@/lib/stations/station-command-codes';
@@ -65,12 +56,7 @@ export function classifyHistoryCommandScan(
     }
   }
 
-  // TRUST ONLY A DECODE, NEVER A GUESS — see `decodedHandle`. Reading the guess
-  // as a handle swallowed ordinary find text: `Dell Latitude 7420`, `HP-PSU-450`
-  // and any plain serial guessed `bin` and returned `passthrough`, so the find
-  // never ran. Only a carrier number (which guesses `sku`) reached `find`.
-  //
-  // A caller-supplied `route` is trusted as-is — it already decoded upstream.
+  // TRUST ONLY A DECODE, NEVER A GUESS — see `decodedHandle`.
   const resolved = route ?? decodedHandle(raw);
   if (resolved) {
     if (resolved.type === 'receiving') {

@@ -53,22 +53,10 @@ import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import type { PlacementResolverDeps } from '@/lib/workflow/placement';
 import { receivingDefaultPutawayPolicy } from '@/lib/receiving/putaway-placement';
 
-// Default putaway bin (cached per Function instance). When the receive
-// caller doesn't supply destination_bin_id, mark-received falls back to
-// the UNSORTED bin so the unit still progresses RECEIVED → STOCKED. Without
-// this, units pile up at RECEIVED and the picker has nothing to allocate.
-// See migration 2026-05-21_inventory_v2_unsorted_default_bin.sql.
-// Per-org cache (bins are tenant-owned, so the default bin id differs per org).
-// Cache key is `${orgId}:${barcode}` so an org changing its default-putaway-bin
-// setting (Settings Registry `receiving.defaultPutawayBin`) busts the cache.
+// Default putaway bin (cached per Function instance).
 const cachedDefaultPutawayBinId = new Map<string, number | null>();
 
-/**
- * The org's default-putaway bin BARCODE (Settings Registry
- * `receiving.defaultPutawayBin` → RECEIVING_DEFAULT_PUTAWAY_BIN_BARCODE env →
- * 'UNSORTED'). Extracted so the legacy resolver AND the declarative placement
- * policy (the strangle) read the symbol from one source and can't drift.
- */
+/** The org's default-putaway bin BARCODE (Settings Registry `receiving.defaultPutawayBin` → RECEIVING_DEFAULT_PUTAWAY_BIN_BARCODE env →… */
 async function defaultPutawayBarcode(orgId: string): Promise<string> {
   const org = await getOrganization(orgId as OrgId);
   return org
@@ -122,13 +110,7 @@ async function resolveDefaultPutawayBinId(orgId: string): Promise<number | null>
   return resolved;
 }
 
-/**
- * Directed-putaway suggestion (receiving-triage streamline Phase 4b). SKU
- * affinity: send the unit to the active bin where this SKU was last put away,
- * so like stock consolidates instead of scattering into UNSORTED. Returns null
- * when the SKU has no prior putaway (caller falls back to the UNSORTED default).
- * Only consulted when the operator didn't scan an explicit destination bin.
- */
+/** Directed-putaway suggestion (receiving-triage streamline Phase 4b). */
 async function suggestPutawayBinIdForSku(sku: string | null, orgId: string): Promise<number | null> {
   if (!sku) return null;
   try {
@@ -155,18 +137,7 @@ async function suggestPutawayBinIdForSku(sku: string | null, orgId: string): Pro
   }
 }
 
-/**
- * Receive-event overlay: emit inventory_events (RECEIVED + optional PUTAWAY)
- * and append a sku_stock_ledger row, all in one transaction. The serial_units
- * row itself is created by the caller via the canonical upsertSerialUnit and
- * its id is passed in as `serialUnitId` (we reuse it; the raw upsert here is
- * only a defensive fallback). Runs as a best-effort overlay after the serial
- * and line writes have committed.
- *
- * Inputs already validated by the caller (qtyReceived > 0, receivingLineId
- * exists, dispositionCode in the enum). Returns the inserted event/ledger
- * ids for the response payload.
- */
+/** Receive-event overlay: */
 async function applyInventoryV2Effects(input: {
   /** Tenant scope — stamped on the serial_units fallback upsert so the per-org natural key resolves. */
   organizationId: string;
@@ -175,13 +146,7 @@ async function applyInventoryV2Effects(input: {
   sku: string | null;
   qtyReceived: number;
   serialNumber: string | null;
-  /**
-   * Pre-resolved serial_units.id from the caller's canonical upsertSerialUnit
-   * (unit_uid mint + return-detection + metadata). When set, we reuse it and
-   * skip the raw upsert below so the canonical row isn't clobbered back to
-   * RECEIVED (which would erase a detected return). Null only for qty-only
-   * receives with no serial.
-   */
+  /** Pre-resolved serial_units.id from the caller's canonical upsertSerialUnit (unit_uid mint + return-detection + metadata). */
   serialUnitId: number | null;
   /**
    * True when the canonical writer detected this serial as a return (it was
@@ -199,17 +164,10 @@ async function applyInventoryV2Effects(input: {
   nowPst: string;
 }): Promise<{ ledgerId: number | null; receivedEventId: number; putawayEventId: number | null; serialUnitId: number | null }> {
   return withTenantTransaction(input.organizationId, async (client) => {
-    // 1. Serial unit. Normally the caller already created it via the canonical
-    //    upsertSerialUnit and passed the id in — reuse it. The raw upsert below
-    //    is a defensive fallback for a serial that somehow arrived without a
-    //    pre-resolved id; it mirrors the legacy SQL and additionally sets
-    //    current_location when a destination bin is provided.
+    // 1. Serial unit.
     let serialUnitId: number | null = input.serialUnitId ?? null;
     if (serialUnitId == null && input.serialNumber) {
-      // The conflict branch deliberately does NOT touch current_status: a
-      // pre-existing unit's status change is routed through the guarded
-      // transition() below instead of being force-clobbered to RECEIVED (which
-      // could erase e.g. a SHIPPED unit that is really a return).
+      // The conflict branch deliberately does NOT touch current_status:
       const upsert = await client.query<{ id: number; current_status: string }>(
         `INSERT INTO serial_units (
           serial_number, normalized_serial, sku, zoho_item_id,
@@ -241,12 +199,7 @@ async function applyInventoryV2Effects(input: {
       serialUnitId = upsert.rows[0]?.id ?? null;
       const existingStatus = (upsert.rows[0]?.current_status ?? null) as SerialState | null;
       if (serialUnitId != null && existingStatus != null && existingStatus !== 'RECEIVED') {
-        // Pre-existing unit re-scanned at receiving: advance it back to
-        // RECEIVED through the state machine (expectedFrom pinned to the status
-        // just read under this txn). Best-effort — a guard rejection (no modeled
-        // edge back to RECEIVED, e.g. SHIPPED) leaves the status untouched and
-        // the receive succeeds exactly as before; the RECEIVED/PUTAWAY events
-        // below still record the intake.
+        // Pre-existing unit re-scanned at receiving:
         const reset = await transition({
           unitId: serialUnitId,
           to: 'RECEIVED',
@@ -282,9 +235,6 @@ async function applyInventoryV2Effects(input: {
     }
 
     // 2. sku_stock_ledger row — only for ACCEPT disposition with qty.
-    //    The trg_sku_stock_from_ledger trigger will project the new
-    //    on-hand count back onto sku_stock.stock automatically. Skipped for
-    //    returns: a returned unit isn't fresh sellable stock until it's graded.
     let ledgerId: number | null = null;
     if (
       input.sku &&
@@ -362,24 +312,14 @@ async function applyInventoryV2Effects(input: {
       throw new Error('applyInventoryV2Effects: failed to insert or resolve RECEIVED event');
     }
 
-    // 4. inventory_events PUTAWAY — only when a destination bin is
-    //    provided AND the unit is accepted. Skipped for SCRAP/RTV so
-    //    those events don't imply the unit reached stock, and skipped for
-    //    returns so a detected return stays RETURNED (QC queue) instead of
-    //    being force-transitioned to STOCKED.
+    // 4. inventory_events PUTAWAY — only when a destination bin is provided AND the unit is accepted.
     let putawayEventId: number | null = null;
     if (input.destinationBinId != null && input.dispositionCode === 'ACCEPT' && !input.isReturn) {
       const putawayClientEventId = input.clientEventId
         ? `${input.clientEventId}:PUTAWAY`
         : null;
       if (serialUnitId) {
-        // Serialized putaway: route the RECEIVED→STOCKED change through the
-        // guarded transition(), which emits the PUTAWAY event (with receiving /
-        // bin / stock-ledger linkage carried via the passthrough fields) atomic
-        // with the status write. transition() writes status only, so the bin
-        // location is set in a follow-up UPDATE. Best-effort: a guard rejection
-        // (unit not RECEIVED — e.g. an already-stocked re-scan) leaves the unit
-        // as-is rather than force-stocking it.
+        // Serialized putaway:
         const t = await transition({
           unitId: serialUnitId,
           to: 'STOCKED',
@@ -451,12 +391,7 @@ export const POST = withAuth(async (request, ctx) => {
     const zohoPoId = String(body?.zoho_purchaseorder_id || '').trim();
     const zohoLineItemId = String(body?.zoho_line_item_id || '').trim();
     const zohoItemId = String(body?.zoho_item_id || '').trim();
-    // A QA FAIL reason is a receiving EXCEPTION, not a note. The mobile QA sheet
-    // used to offer free text here and post it as `notes`, which (a) would have
-    // overwritten the desktop operator's item note on every line in the carton
-    // and (b) left the reason as unqueryable prose. It now sends a code from the
-    // narrow QA-fail slice; present-but-unrecognized is a 400, never a silent
-    // drop — same stance as the photo-policy override below.
+    // A QA FAIL reason is a receiving EXCEPTION, not a note.
     const rawQaFailCode = body?.exception_code == null ? null : String(body.exception_code).trim();
     if (rawQaFailCode && !isQaFailExceptionCode(rawQaFailCode)) {
       return NextResponse.json(
@@ -466,11 +401,7 @@ export const POST = withAuth(async (request, ctx) => {
     }
     const qaFailCode = isQaFailExceptionCode(rawQaFailCode) ? rawQaFailCode : null;
 
-    // The reason and the verdict are ONE fact at two grains, so the code decides
-    // the verdict. (The sheet posted a hardcoded FAILED_FUNCTIONAL for every fail
-    // and put the real reason in free text — which is how the column built to tell
-    // a dead unit from a damaged one stopped being able to.) A body that supplies
-    // both and disagrees is a caller bug, not something to silently resolve.
+    // The reason and the verdict are ONE fact at two grains, so the code decides the verdict.
     const bodyQaStatus = body?.qa_status == null ? null : String(body.qa_status).trim();
     const derivedQaStatus = qaFailCode ? QA_FAIL_EXCEPTION_STATUS[qaFailCode] : null;
     if (derivedQaStatus && bodyQaStatus && bodyQaStatus !== derivedQaStatus) {
@@ -490,19 +421,11 @@ export const POST = withAuth(async (request, ctx) => {
     const serialNumber = String(body?.serial_number || '').trim() || null;
     const zendeskTicket = String(body?.zendesk_ticket || '').trim() || null;
     const notes = String(body?.notes || '').trim() || null;
-    // WS-PHOTO §4 soft block: an operator may consciously receive past the
-    // photo-evidence gate ONLY with a code from the receiving-exception system
-    // registry (`PHOTO_WAIVED_*`). Absent → the gate stays the hard 409 below;
-    // present-but-unrecognized → 400, even when the gate would have passed
-    // anyway (a waiver we cannot name must never ride along unnoticed).
+    // WS-PHOTO §4 soft block:
     const photoPolicyOverride = parsePhotoPolicyOverride(body?.[PHOTO_POLICY_OVERRIDE_BODY_KEY]);
     /** Set only when a valid override actually waived a real block. */
     let photoPolicyWaiver: { code: PhotoPolicyOverrideCode; blockers: string[] } | null = null;
-    // Optional destination bin
-    // scanned at the same time as the receive action. Triggers a PUTAWAY
-    // event + serial_units.current_location update inside the same txn.
-    // When the caller omits destination_bin_id on an ACCEPT receive, fall
-    // back to the UNSORTED default bin so the unit still reaches STOCKED.
+    // Optional destination bin scanned at the same time as the receive action.
     const destinationBinIdRaw = body?.destination_bin_id;
     let destinationBinId =
       Number.isFinite(Number(destinationBinIdRaw)) && Number(destinationBinIdRaw) > 0
@@ -584,10 +507,7 @@ export const POST = withAuth(async (request, ctx) => {
       return NextResponse.json(photoPolicyOverrideInvalidBody(), { status: 400 });
     }
 
-    // Validate destination bin exists before we commit anything else. The
-    // previous behavior was to fail silently inside applyInventoryV2Effects,
-    // leaving the line received but the bin assignment skipped. Bin storage
-    // lives in `locations` (see inventory_events.bin_id FK).
+    // Validate destination bin exists before we commit anything else.
     if (destinationBinId != null) {
       const binCheck = await tenantQuery<{ id: number }>(
         ctx.organizationId,
@@ -637,15 +557,7 @@ export const POST = withAuth(async (request, ctx) => {
       condition_grade: string | null;
     }>)[0] ?? null;
 
-    // WS-PHOTO Plan 5 — `receiving.photoPolicy` completion-insurance gate,
-    // judged BEFORE any mutation (the line/serial/event writes below and the
-    // PO_RECEIVE audit stay untouched on the happy path). Fast path: the
-    // `optional` default reads the per-instance-cached org row and runs ZERO
-    // photo queries — behavior byte-identical to the ungated route. The
-    // already-received skip runs BEFORE the gate so a replay/bounce-back of a
-    // line that already advanced past the pre-receive stages (UNBOXED Zoho
-    // retry, testing re-receive) can never newly 409 on missing photos. A
-    // missing line skips too — the folded UPDATE below stays the 404 authority.
+    // WS-PHOTO Plan 5 — `receiving.photoPolicy` completion-insurance gate, judged BEFORE any mutation (the line/serial/event writes below and…
     if (beforeRow) {
       const gateOrg = await getOrganization(ctx.organizationId as OrgId);
       const photoPolicy = gateOrg ? getReceivingPhotoPolicy(gateOrg.settings) : 'optional';
@@ -674,37 +586,10 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
-    // 1. Update the line locally. Local DONE stands on Receive — Zoho
-    //    createPurchaseReceive is best-effort afterward (Sync can fail without
-    //    parking the face at UNBOXED).
-    //
-    //    Chokepoint fold (§7 Step D): the facts half (qa/disposition/condition/
-    //    notes/quantity) is a raw UPDATE that deliberately does NOT list
-    //    workflow_status — the coarse trigger (trg_receiving_line_coarse_status)
-    //    fires whenever workflow_status appears in a SET clause, even unchanged,
-    //    and would COALESCE-stamp lifecycle timestamps on a non-transitioning
-    //    re-receive. The lifecycle half routes through transitionReceivingLine()
-    //    inside the SAME tenant transaction (the facts UPDATE's row lock makes
-    //    the chokepoint's FOR UPDATE re-lock a no-op) and ONLY when the status
-    //    actually changes (check-and-skip in TS). skipEvent: this route's
-    //    applyInventoryV2Effects emits the RECEIVED inventory_event and the
-    //    route records the PO_RECEIVE audit — the chokepoint must not
-    //    double-write. Bounce-backs from testing stay surfaced in the logs.
+    // 1. Update the line locally.
     const targetWorkflowStatus = 'DONE' as const;
     const foldedLine = await withTenantTransaction(ctx.organizationId, async (client) => {
-      // Wave-3 writer inversion: qa/disposition/condition are receiving_line_testing
-      // facts now — the spine UPDATE keeps only the columns that stay on the spine
-      // (notes + quantity_received). Same transaction = same atomicity the single
-      // statement had.
-      // `notes` is COALESCE'd, not assigned: a receive may SET the operator's
-      // item note but must never CLEAR one it was not given. A caller that
-      // passes `notes: null` (the retired phone QA sheet's Pass-all path did)
-      // met a bare `SET notes = $1` that erased whatever the desktop operator
-      // had typed on the Unbox panel — silently, on every phone-side pass.
-      // Clearing a note stays the notes composer's job (PATCH
-      // /api/receiving-lines, which presence-checks the field). Same semantics
-      // the sibling writers already document: receive-line.ts (`notes =
-      // COALESCE($3, notes)`) and lines/[id]/status.
+      // Wave-3 writer inversion:
       const lineUpdate = await client.query(
         `UPDATE receiving_line
          SET notes = COALESCE($1, notes),
@@ -748,10 +633,7 @@ export const POST = withAuth(async (request, ctx) => {
           ctx.organizationId,
         );
         if (tr.ok) {
-          // The facts UPDATE's RETURNING row predates the lifecycle write —
-          // patch it so downstream consumers (response payload, audit "after",
-          // the workflowStatus readout) see the post-transition status exactly
-          // as they did before the fold.
+          // The facts UPDATE's RETURNING row predates the lifecycle write — patch it so downstream consumers (response payload, audit "after", the…
           row.workflow_status = tr.to;
           row.receiving_line_status = tr.coarse;
         } else {
@@ -769,10 +651,7 @@ export const POST = withAuth(async (request, ctx) => {
       return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
     }
 
-    // §4 soft block — persist + audit the waiver as close to the mutation as
-    // possible (the line is now known to exist, so the exception FK is safe).
-    // An override that receives without a trail is worse than no gate at all,
-    // so this runs before any Zoho/side-effect work that could throw.
+    // §4 soft block — persist + audit the waiver as close to the mutation as possible (the line is now known to exist, so the exception FK is…
     if (photoPolicyWaiver) {
       await recordPhotoPolicyOverride(ctx.organizationId as OrgId, {
         code: photoPolicyWaiver.code,
@@ -796,11 +675,7 @@ export const POST = withAuth(async (request, ctx) => {
       });
     }
 
-    // The QA-fail reason lands in its own home — an OPEN line-level
-    // `receiving_exceptions` row (code + the operator's free text) — and NEVER in
-    // `receiving_line.notes`. Best-effort, exactly like the advance route's
-    // exception write: the verdict has already committed, and losing the reason
-    // row must not roll back a receive the operator watched succeed.
+    // The QA-fail reason lands in its own home — an OPEN line-level `receiving_exceptions` row (code + the operator's free text) — and NEVER…
     if (qaFailCode) {
       try {
         await recordReceivingException(ctx.organizationId as OrgId, {
@@ -839,25 +714,8 @@ export const POST = withAuth(async (request, ctx) => {
     }
 
     // 2. Serial/stock/event writes.
-    //
-    //  a) When a serial was scanned, create/advance the serial_units row through
-    //     the CANONICAL writer first. This owns its own txn and is the single
-    //     source of status-transition/return-detection, metadata, and unit_uid
-    //     minting (when the SKU is cataloged) — identical to every other
-    //     serial_units birth in the system. A failure here crashes the receive
-    //     (500), exactly as the legacy path did, rather than silently dropping
-    //     the unit. We hand the resolved id to the overlay below so it links its
-    //     events/ledger to this row instead of re-inserting and clobbering a
-    //     detected return back to RECEIVED.
-    //  b) Then emit RECEIVED + optional PUTAWAY inventory_events and append a
-    //     sku_stock_ledger row in one txn (best-effort overlay). See
-    //     applyInventoryV2Effects() above.
     let serialUnitId: number | null = null;
-    // A previously-SHIPPED serial coming back through the receiving door is a
-    // RETURN, not a fresh intake. The canonical writer detects this and lands
-    // the unit in RETURNED. We must NOT then auto-putaway it to STOCKED or add
-    // a sellable +qty ledger row — it belongs in the returns/QC queue until a
-    // human grades it. isReturn carries that signal into the overlay below.
+    // A previously-SHIPPED serial coming back through the receiving door is a RETURN, not a fresh intake.
     let isReturn = false;
     if (serialNumber) {
       const serialResult = await upsertSerialUnit({
@@ -902,11 +760,7 @@ export const POST = withAuth(async (request, ctx) => {
       console.warn('mark-received: applyInventoryV2Effects failed', err);
     }
 
-    // 3. Stamp the carton's unboxed milestone on the UNBOX street table (Wave-3
-    // writer inversion — the spine unboxed_* columns are dying). The helper is
-    // COALESCE-once (first stamp wins), so "just unboxed" = the street row had
-    // no unboxed_at before this call. Carton flags (is_return/is_priority stay
-    // spine) are read in the same tx so the tech-station inbox is nudged once.
+    // 3. Stamp the carton's unboxed milestone on the UNBOX street table (Wave-3 writer inversion — the spine unboxed_* columns are dying).
     if (receivingId) {
       const carton = await withTenantTransaction(ctx.organizationId, async (client) => {
         const meta = await client.query<{
@@ -989,11 +843,7 @@ export const POST = withAuth(async (request, ctx) => {
       } catch { /* silent — Zoho push will just skip */ }
     }
 
-    // Backfill shipment_id when this receiving row arrived via /lookup-po
-    // before the shipping_tracking_numbers row existed (or as a Zoho
-    // 'unmatched' carry-forward that never got linked). Without this, a
-    // second scan of the same tracking is forced to recreate state and the
-    // exception triage worker keeps re-finding the row as "orphaned."
+    // Backfill shipment_id when this receiving row arrived via /lookup-po before the shipping_tracking_numbers row existed (or as a Zoho…
     if (receivingId && trackingShipmentId == null && localTracking) {
       try {
         const shipment = await registerShipmentPermissive({
@@ -1120,11 +970,7 @@ export const POST = withAuth(async (request, ctx) => {
           console.warn('mark-received: updatePurchaseOrder sync failed', err);
         }
       } catch (err) {
-        // Inventory side already committed (line update + v2Effects). Zoho is
-        // now out of sync — the response carries `zoho_receive_ok:false` +
-        // error so the client can surface "Pending Zoho sync" and an admin
-        // can replay. Logged at ERROR level so monitoring picks it up;
-        // existing inventory_events are still authoritative on our side.
+        // Inventory side already committed (line update + v2Effects).
         zohoReceiveOk = false;
         zohoReceiveError = err instanceof Error ? err.message : String(err);
         console.error('[mark-received] createPurchaseReceive failed — inventory committed, Zoho pending', {

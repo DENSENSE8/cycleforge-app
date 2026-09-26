@@ -1,16 +1,4 @@
-/**
- * Unbox Middle region — carton-open declared nav keys (`⌘;` → `m` → letter).
- *
- * Mode-split from Band 3 browse (`UNBOX_BAND3_NAV_KEY` = `f` find · `r` refine):
- * when a carton line workspace is open, Middle targets are the scan focus, the
- * PO ledger capture steps, the dock step CTA, and (when settled) Print · Receive.
- * Only ONE Middle registration is live at a time — Band 3 nulls while the carton
- * is open; this map owns Middle in that mode.
- *
- * TELEMETRY IS NOT A TARGET — procedure-% / KPI carry no key.
- *
- * Spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md` § P2.
- */
+/** Unbox Middle region — carton-open declared nav keys (`⌘;` → `m` → letter). */
 
 export const UNBOX_MIDDLE_CARTON_NAV_KEY = {
   /** Focus the dock / serial wedge field (`receiving-focus-scan`). */

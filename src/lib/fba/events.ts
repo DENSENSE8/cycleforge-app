@@ -1,10 +1,4 @@
-/**
- * Centralized FBA custom-event name constants.
- *
- * Every `window.dispatchEvent(new CustomEvent('fba-…'))` and matching
- * `window.addEventListener('fba-…')` should reference a constant here
- * so typos become compile errors instead of silent no-ops.
- */
+/** Centralized FBA custom-event name constants. */
 
 // ── Board selection ─────────────────────────────────────────────────────────
 /** FbaBoardTable → sidebar: array of selected FbaBoardItem[] */

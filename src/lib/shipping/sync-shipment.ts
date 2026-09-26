@@ -125,10 +125,7 @@ export async function syncShipment(
     );
 
     await updateShipmentSummary(shipment.id, result, effectiveOrgId);
-    // Only notify clients when the poll actually surfaced new carrier events —
-    // otherwise every 2-hour sweep would publish a no-op realtime message per
-    // shipment and trigger needless client refetches. Webhook pushes are the
-    // real-time path; this poll is the fallback that fires on genuine movement.
+    // Only notify clients when the poll actually surfaced new carrier events — otherwise every 2-hour sweep would publish a no-op realtime…
     if (inserted > 0) {
       await publishShipmentStatusChange(
         shipment.id,
@@ -192,13 +189,7 @@ export async function registerAndSyncShipment(params: {
   return shipment;
 }
 
-/**
- * Permissive shipment registration for inputs that may not be real carrier tracking
- * numbers (e.g. Zoho PO Reference#, supplier invoice refs). Returns null instead of
- * throwing when the value can't be normalized or carrier-detected; stores the row
- * with carrier='UNKNOWN' when the number looks plausible but isn't one of the
- * carriers we actively sync with.
- */
+/** Permissive shipment registration for inputs that may not be real carrier tracking numbers (e.g. */
 export async function registerShipmentPermissive(params: {
   trackingNumber: string | null | undefined;
   sourceSystem: string;

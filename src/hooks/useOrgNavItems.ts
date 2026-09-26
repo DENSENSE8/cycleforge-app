@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * useOrgNavItems — the sidebar nav list with the per-org override applied
- * (operator-surfaces refactor Phase 4). Fetches the org's active `nav_definitions`
- * override via `/api/nav` and merges it onto the static `getSidebarNavItems`
- * result. Falls back to the static defaults on load/error/no-override, so a page
- * that adopts this hook behaves exactly as before until an org publishes an
- * override — the safe default.
- */
+/** useOrgNavItems — the sidebar nav list with the per-org override applied (operator-surfaces refactor Phase 4). */
 
 import { useQuery } from '@tanstack/react-query';
 import {

@@ -1,32 +1,11 @@
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 import { TRACKING_PATTERNS, type CarrierCode } from '@/utils/carrier-patterns';
 
-/**
- * scan-resolver.ts
- * ─────────────────────────────────────────────────────────────────
- * Dynamic Tracking Number + Serial Number Detection & Cascade Lookup
- *
- * FLOW:
- *   1. Classify input  →  tracking | serial_full | serial_partial | unknown
- *   2. Tracking path   →  lookup order  →  found ✅  |  orders_exceptions ⚠️
- *   3. Serial path     →  append serial to order OR exception record
- *   4. Partial serial  →  suffix match first, contains fallback (≤10 chars)
- * ─────────────────────────────────────────────────────────────────
- *
- * All patterns are applied against the *normalised* input
- * (upper-cased, non-alphanumeric chars stripped).  This mirrors how
- * barcode scanners emit data and avoids hyphens/spaces causing misses.
- *
- * Carrier patterns are imported from utils/carrier-patterns.ts (single
- * source of truth shared with tracking-format.ts).
- */
+/** scan-resolver.ts ───────────────────────────────────────────────────────────────── Dynamic Tracking Number + Serial Number Detection &… */
 
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
-// `ScanCarrier` — a deprecated alias of `CarrierCode` — was deleted 2026-08-02
-// with its last two consumers (`MobileScanSheet` / `MobileScanConfirmation`,
-// both barrel-only exports with zero callers). Import `CarrierCode` from
-// '@/utils/carrier-patterns' directly; there was never a second carrier type.
+// `ScanCarrier` — a deprecated alias of `CarrierCode` — was deleted 2026-08-02 with its last two consumers (`MobileScanSheet` /…
 
 type ClassifiedScanType = 'tracking' | 'serial_full' | 'serial_partial' | 'unknown';
 
@@ -44,12 +23,6 @@ interface SerialMatchResult {
 
 
 // ─── SERIAL NUMBER PATTERNS ───────────────────────────────────────────────────
-//
-//  Full serial  : 15-17 alphanumeric chars, with an optional 2-letter suffix
-//                 e.g. "ABC123456789012XY" (17+2 = 19 chars max)
-//  Partial entry: 1-10 alphanumeric chars — suffix / partial scan, or ambiguous
-//                 short strings that are not valid carrier tracking (e.g. 9 digits).
-//                 e.g. "4A2B", "012XY", "123456789", "ABCDEFGHIJ", "1ZSHORT"
 
 const SERIAL_FULL_REGEX    = /^[A-Z0-9]{15,17}([A-Z]{2})?$/i;
 const SERIAL_PARTIAL_REGEX = /^[A-Z0-9]{1,10}$/i;
@@ -68,12 +41,7 @@ export function scannedFnsku(value: string): string | null {
   return FNSKU_REGEX.test(v) ? v : null;
 }
 
-/**
- * The FNSKU a typed tail stands for — the 7 characters after `X00`, which is
- * what an operator reads off a worn label (`36X1R51` → `X0036X1R51`). Exact
- * shape only (no punctuation stripping, so a `L-123456` handle never counts);
- * a candidate, not a match — the caller confirms it against the catalog.
- */
+/** The FNSKU a typed tail stands for — the 7 characters after `X00`, which is what an operator reads off a worn label (`36X1R51` →… */
 export function fnskuFromTail(value: string): string | null {
   const v = value.trim().toUpperCase();
   return /^[A-Z0-9]{7}$/.test(v) ? `X00${v}` : null;
@@ -103,13 +71,7 @@ export function looksLikeFnskuPrefix(value: string): boolean {
 
 // ─── CLASSIFIER ───────────────────────────────────────────────────────────────
 
-/**
- * classifyInput(raw)
- *
- * Returns { type, carrier, normalized }.
- * Strips internal whitespace and non-alphanumeric chars before testing
- * tracking patterns; preserves original case for serial patterns.
- */
+/** classifyInput(raw) */
 export function classifyInput(raw: string): ClassifyResult {
   const stripped = raw.trim().replace(/\s+/g, '');
   if (!stripped) return { type: 'unknown', carrier: null, normalized: '' };
@@ -150,23 +112,6 @@ export function classifyInput(raw: string): ClassifyResult {
 }
 
 // ─── GS1 DIGITAL LINK + INTERNAL URL PARSER ──────────────────────────────────
-//
-// Recognizes scans that come in as URLs (printed QR codes on unit/bin/package
-// labels, customer-facing GS1 Digital Link tags, etc.) and resolves them to a
-// typed entity descriptor BEFORE the legacy `classifyInput` cascade.
-//
-// Patterns recognized:
-//   /01/{gtin}/21/{serial}         — GS1 Digital Link (unit-level)
-//   /01/{gtin}/10/{lot}            — GS1 lot (no serial)
-//   /01/{gtin}                     — GS1 product-level
-//   /l/{location_id_or_barcode}    — Internal bin/location
-//   /p/{tracking_number}           — Internal package (carrier tracking)
-//   /o/{order_id}                  — Internal order
-//   /s/{sku}                       — Internal SKU stock page
-//   /q/{anything}                  — Internal generic QR landing
-//
-// Returns null when the input is not a URL or the path prefix is unknown, so
-// callers can fall through to `classifyInput` without any branching cost.
 
 /**
  * Result of parsing a scanned URL. Discriminated by `type`; never returned
@@ -183,23 +128,12 @@ export type ScannedUrlEntity =
   | { type: 'stock'; sku: string; url: string }
   | { type: 'generic'; payload: string; url: string };
 
-/**
- * Parse a scanned URL into a typed entity descriptor. Returns null for
- * non-URL inputs or unrecognized path shapes — callers should then fall
- * back to {@link classifyInput}.
- *
- * Tolerant of trailing slashes, query strings, and mixed-case schemes. Does
- * NOT validate GTIN check digits or DB existence; callers do that after
- * resolving to an entity.
- */
+/** Parse a scanned URL into a typed entity descriptor. */
 export function parseScannedUrl(raw: string): ScannedUrlEntity | null {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) return null;
 
-  // Quick reject for things that obviously aren't URLs. A printed QR may
-  // omit the scheme on some scanners ("inv.example.com/01/...") so accept
-  // either a scheme-prefixed URL or a path-only fragment that starts with
-  // a known prefix.
+  // Quick reject for things that obviously aren't URLs.
   let url: URL;
   try {
     url = new URL(trimmed.includes('://') ? trimmed : `https://placeholder.invalid${trimmed.startsWith('/') ? '' : '/'}${trimmed}`);
@@ -244,22 +178,6 @@ export function parseScannedUrl(raw: string): ScannedUrlEntity | null {
 }
 
 // ─── MULTI-AI DATA MATRIX PARSER ──────────────────────────────────────────────
-//
-// Real Data Matrix codes from carrier shipping labels, pharma, and consumer
-// electronics packaging encode multiple GS1 Application Identifiers in one
-// payload. Two transmission forms in the wild:
-//
-//   1. FNC1-prefixed, GS-separated:
-//        <FNC1>0101234567890128<GS>21SERIAL123<GS>17251231<GS>10LOT1
-//      `<FNC1>` is typically transmitted as ASCII 0x1D ("]C1" symbology
-//      identifier prefix may also appear and is stripped by ZXing).
-//
-//   2. Human-readable, parenthesized:
-//        (01)01234567890128(21)SERIAL123(17)251231(10)LOT1
-//
-// Fixed-length AIs (01, 11, 13, 15, 17, 20, ...) terminate by length.
-// Variable-length AIs (10, 21, 240, 400, 420, ...) terminate at the next FS
-// (0x1D) or at end-of-string.
 
 /** GS1 Application Identifier dictionary (only the ones we route on). */
 const GS1_AI_FIXED_LEN: Record<string, number> = {
@@ -381,18 +299,7 @@ export function pickAiRoutingValue(tree: Gs1AiTree): { kind: 'serial' | 'trackin
 
 // ─── SERIAL MATCHER ───────────────────────────────────────────────────────────
 
-/**
- * findSerialInCatalog(input, serialCatalog)
- *
- * Matches a scanned partial or full serial against a list of known full serials.
- *
- * Strategy (in priority order):
- *   1. Exact   — normalised input equals a catalog entry
- *   2. Suffix  — catalog entry ends with the input  (partial suffix scan)
- *   3. Contains — catalog entry contains the input   (substring fallback)
- *
- * Returns all matches so the caller can surface ambiguous results to the user.
- */
+/** findSerialInCatalog(input, serialCatalog) */
 export function findSerialInCatalog(input: string, serialCatalog: string[]): SerialMatchResult {
   const q = input.toUpperCase();
 

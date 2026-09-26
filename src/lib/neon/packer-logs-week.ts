@@ -34,26 +34,9 @@ export interface FetchPackerLogRowsOptions {
   weekStart?: string;
   weekEnd?: string;
   trackingTypeFilter?: PackerLogsTrackingFilter;
-  /**
-   * The bench find box, ANSWERED HERE. Case-insensitive substring over the
-   * facts a packer bench row paints (`bench-row-view.ts` + `packer-resolve.ts`):
-   * title, order number, tracking / scan ref / FNSKU, SKU, item number, note,
-   * serial, and BOTH staff names the row prints (the packer who scanned it and
-   * the upstream tester).
-   *
-   * Present ⇒ the caller's `limit` / `offset` page bound is dropped (see the
-   * `searching` note in the body). Absent/empty ⇒ nothing changes.
-   */
+  /** The bench find box, ANSWERED HERE. */
   searchTerm?: string;
-  /**
-   * Spine-first render (immediate paint). When true, the two per-row
-   * `work_assignments` laterals (ship-by deadline + assigned tester) are dropped
-   * and the photos round-trip is skipped, so the page returns from cheap joins
-   * only; those display-only fields are filled in by a second `/api/packerlogs/
-   * hydrate` request. Column shape is identical (deferred cols come back NULL /
-   * []), so the table renders unchanged and just fills in on hydrate. Only
-   * applies on the enriched read path; ignored for the legacy query.
-   */
+  /** Spine-first render (immediate paint). */
   spineOnly?: boolean;
 }
 
@@ -69,48 +52,17 @@ const CACHE_NAMESPACE = 'api:packing-logs-v9';
 const CACHE_TAGS = ['packing-logs'];
 
 // Hard ceiling for a SEARCHING read — the page bound `searchTerm` replaces.
-// Not a window in the defect's sense: a week of PACK scans is two orders of
-// magnitude under it, so it never decides an operator's answer, it only keeps
-// a pathological single-character query from streaming history at the box.
 const SEARCH_ROW_CEILING = 5000;
 
-// Set once if `packer_log_enrichment` is absent (a DB that hasn't run the
-// 2026-06-29f migration — e.g. a fresh preview/branch). Lets the default-ON read
-// model degrade to the legacy query for the rest of the process instead of
-// re-attempting (and re-failing) the enriched query on every request.
+// Set once if `packer_log_enrichment` is absent (a DB that hasn't run the 2026-06-29f migration — e.g.
 let enrichmentTableMissing = false;
 
-/**
- * Shared loader for the /tech packer-logs week query. Lives in its own module so
- * the /api/packerlogs route and the /packer server-component prefetch can share
- * one code path (one cache key, one SQL string).
- *
- * Behavior intentionally mirrors the original inline route logic:
- *   • Same cache namespace/key shape (createCacheLookupKey + 'api:packing-logs-v5')
- *   • Same TTL rules (120s current/this-week, 86400s closed past weeks)
- *   • Same `tracking_type` filter semantics and SQL string
- *   • Cache write is deferred via `after()` so it never blocks TTFB
- */
+/** Shared loader for the /tech packer-logs week query. */
 export async function fetchPackerLogRows(
   opts: FetchPackerLogRowsOptions,
 ): Promise<FetchPackerLogRowsResult> {
   const searchTerm = (opts.searchTerm ?? '').trim();
-  /**
-   * A searching read drops the page bound and covers the whole week.
-   *
-   * The defect this prevents: the bench feed asks for `limit=1000` and the find
-   * box used to filter those mounted rows in React, so a pack that happened
-   * outside the newest thousand scans of the week answered "no results" for a
-   * tracking number the operator was holding in their hand. A window the
-   * operator cannot see must not decide whether their query has an answer —
-   * the orders desk already settled this (`src/lib/dashboard-table-data.ts:141-151`,
-   * where a `q` drops `listShape`/`limit`).
-   *
-   * The WEEK survives it. It is a scope the operator CHOSE and reads off the
-   * period pill, and `usePackerTableController` re-bands the answer to
-   * `weekRange` on arrival — rows from outside it would be fetched, paid for,
-   * and then dropped on the floor.
-   */
+  /** A searching read drops the page bound and covers the whole week. */
   const limit = searchTerm ? SEARCH_ROW_CEILING : (opts.limit ?? 500);
   const offset = searchTerm ? 0 : (opts.offset ?? 0);
   const weekStart = opts.weekStart ?? '';
@@ -160,10 +112,7 @@ export async function fetchPackerLogRows(
   params.push(orgId);
   conditions.push(`sal.organization_id = $${params.length}`);
 
-  // Row population: every PACK scan, plus ONE row per package that left the
-  // dock without ever being pack-scanned — its latest SHIP_CONFIRM, so the row
-  // sits in the week the box shipped (created_at = the scan-out) with packer
-  // fields null. A package that has any PACK scan is represented by those.
+  // Row population:
   conditions.push(`(
     sal.station = 'PACK'
     OR (
@@ -244,30 +193,7 @@ export async function fetchPackerLogRows(
     conditions.push(`COALESCE(pl.tracking_type, '') = 'SKU'`);
   }
 
-  /**
-   * The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's
-   * WHERE, above the LIMIT. Applied to the outer SELECT instead it would filter
-   * the very window that caused the defect and change nothing.
-   *
-   * The legs are the facts a packer bench row paints, one EXISTS per table so
-   * the common (unsearched) page keeps its two-table plan:
-   *   · `sal.scan_ref` / `sal.fnsku` — what the scanner actually read.
-   *   · `stn.tracking_number_raw` — the package's carrier tracking
-   *     (`package_tracking`, the Tracking cell), scan-out-only rows included.
-   *   · `packed_staff.name` — this bench's own actor; `packedStep` prints it.
-   *   · the order(s) owning the package — title, order number, SKU, item
-   *     number, note. Two legs (orders.shipment_id, shipment_links) so each
-   *     rides an index; one OR-joined leg scanned every org order per row.
-   *   · `tech_serial_numbers` — the serial cell, and with it the upstream
-   *     tester's name, which `testedStep` also prints. Matched by shipment
-   *     rather than by order id because the order is not resolved this early;
-   *     that is the same shipment fallback `test_data` uses downstream.
-   *
-   * Every EXISTS re-states `organization_id = sal.organization_id`. The CTE is
-   * already tenant-scoped, but a subquery joining a second table on a shared id
-   * would otherwise be free to read another tenant's row to decide this
-   * tenant's match.
-   */
+  /** The find box, as SQL — and it joins `conditions`, which is the PAGE CTE's WHERE, above the LIMIT. */
   if (searchTerm) {
     params.push(`%${escapeLike(searchTerm)}%`);
     const q = `$${params.length}`;
@@ -392,11 +318,7 @@ export async function fetchPackerLogRows(
         ) test_data ON TRUE`
     : '';
 
-  // The PACKAGE a row is about: the scanned box (`sal.shipment_id`), not the
-  // order's primary `o.shipment_id` — a multi-box order is one row per box.
-  // `package_line_count` = order lines owning the box (orders.shipment_id OR
-  // shipment_links ORDER), the same set `getShipmentRecord` lists as items;
-  // 0 = an unmatched box, null = no package on the row.
+  // The PACKAGE a row is about:
   const packageCols = `sal.shipment_id::int                   AS package_shipment_id,
         stn.tracking_number_raw                AS package_tracking,
         package_lines.line_count               AS package_line_count`;
@@ -417,11 +339,7 @@ export async function fetchPackerLogRows(
         ) pk_lines
     ) package_lines ON sal.shipment_id IS NOT NULL`;
 
-  // Resolve the page of station_activity_logs rows BEFORE the expensive per-row
-  // product-title / serial / order-match laterals run. Previously LIMIT was
-  // applied last, so Postgres evaluated every lateral for ALL PACK rows in
-  // history (thousands, unbounded growth) and only then kept 50 — ~20s/request.
-  // Selecting the page first caps the heavy work at `limit` rows (~350ms).
+  // Resolve the page of station_activity_logs rows BEFORE the expensive per-row product-title / serial / order-match laterals run.
   const pageCte = `
     WITH page AS MATERIALIZED (
         SELECT sal.id
@@ -804,21 +722,7 @@ export async function fetchPackerLogRows(
     ORDER BY sal.created_at DESC NULLS LAST
   `;
 
-  // Read-model path (PACKER_LOG_ENRICHMENT_READ): the 6 non-indexable per-row
-  // laterals (sku_lookup / order_match / ecwid / sku_catalog / sku_stock /
-  // order_trackings) are replaced by a single 1:1 join to the precomputed
-  // `packer_log_enrichment` projection. orders is re-joined cheaply on
-  // enr.order_row_id so every live o.* column (status_history, notes, condition,
-  // quantity) and the volatile stn carrier status / staff / deadline / scan-out
-  // laterals stay exactly as fresh as before. Column shape is identical to the
-  // legacy query (same aliases), so the route + client are unaffected. When the
-  // projection row is missing (e.g. packs after the backfill cutoff), fall back
-  // to the legacy order_match lateral so titles still resolve.
-  //
-  // Spine-first fragments (opts.spineOnly): defer the two per-row work_assignments
-  // laterals — ship-by deadline + assigned tester — so the page paints from cheap
-  // joins; those display-only fields arrive via /api/packerlogs/hydrate. Full mode
-  // substitutes the EXACT original SQL, so the full-mode query stays byte-identical.
+  // Read-model path (PACKER_LOG_ENRICHMENT_READ):
   const deadlineCols = spineOnly
     ? `NULL::text AS ship_by_date,
         NULL::text AS deadline_at,`
@@ -1047,9 +951,6 @@ export async function fetchPackerLogRows(
     );
   } catch (error) {
     // The enriched query is the only path referencing `packer_log_enrichment`.
-    // If that relation is absent (42P01 undefined_table on an un-migrated DB),
-    // degrade to the byte-identical legacy query instead of failing the whole
-    // shipped table — mirrors the row-level order_match_fallback safety net.
     if (usedEnriched && (error as { code?: string })?.code === '42P01') {
       enrichmentTableMissing = true;
       usedEnriched = false;

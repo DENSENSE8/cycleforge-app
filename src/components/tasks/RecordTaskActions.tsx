@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Staff task verbs on an open desk record: "Add task" (a task linked to this
- * record, yours until you hand it on) and "Send to staff as task" (the same
- * task, addressed to someone else). One composer on the house create path —
- * `useThrowTask` → `POST /api/tasks` with the record's `entityType` /
- * `entityId` — so the task lands in the assignee's list and inbox exactly as a
- * task thrown from anywhere else does.
- *
- * {@link buildRecordTaskVerbs} hands the two verbs to the record's action strip
- * (the composer is the verb's display); {@link RecordTaskActions} is the older
- * in-record button pair + inset composer. Any task entity kind
- * (`TaskEntityType`: order, receiving carton, support ticket) uses them; the
- * record IS the task's target, so there is no scan / resolve step here.
- */
+/** Staff task verbs on an open desk record: */
 
 import { useEffect, useRef, useState } from 'react';
 import type { RecordActionVerb } from '@/design-system/components/record-action-strip/RecordActionStrip';

@@ -21,12 +21,7 @@ export interface ReasonCodeRow {
 
 const COLS = `id, code, label, category, direction, requires_note, requires_photo, sort_order, is_active, flow_context, applies_to`;
 
-/**
- * Active reason codes for an org, filtered by the Class-D `flow_context`
- * vocabulary discriminator and, for inventory rows, the ledger `category` +
- * `direction`. The single server-side read SoT for every reason picker — see
- * docs/operations-studio/HARDCODED-STATUS-ENGINE-MIGRATION-PLAN.md §3.D / D1.
- */
+/** Active reason codes for an org, filtered by the Class-D `flow_context` vocabulary discriminator and, for inventory rows, the ledger… */
 export async function getActiveReasonCodes(
   orgId: OrgId,
   filters: {

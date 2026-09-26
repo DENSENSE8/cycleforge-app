@@ -1,18 +1,4 @@
-/**
- * Paperwork packets for the BROWSER print fallback — "the packer print station
- * is down, print it from the desk".
- *
- * One order or many: each order's packet resolves exactly as pack print
- * resolves it ({@link resolvePrintBundle}: shipping label, packing slip, then
- * the assigned manuals — pack order), and every page handed to the browser is
- * ledgered in `document_print_jobs` as `fallback_browser`, so pack history
- * still shows what was printed, by whom, and that it did not go through a
- * print station.
- *
- * The client renders and prints (`src/lib/print/printPaperworkPackets.ts`);
- * this module only decides WHAT, in which order, and records it. Never buys
- * postage, never dispatches to PrintNode.
- */
+/** Paperwork packets for the BROWSER print fallback — "the packer print station is down, print it from the desk". */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordDocumentPrintJob, type DocumentPrintJobType } from './document-print-jobs';

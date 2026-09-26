@@ -4,14 +4,8 @@ import Link from 'next/link';
 import { ChevronRight } from '@/components/Icons';
 
 /**
- * Read-only first view of a scanned entity: a compact title, up to two
- * job-relevant captions, mono ID bottom-left and status bottom-right. The
- * complete record and its only pencil edit live on the linked `/info` screen.
- *
+ * Read-only first view of a scanned entity:
  * Full-bleed, no box (operator 2026-09-25: edge to edge): the parent draws the
- * rule under it (`DetailHubScreen`'s divider); only the text keeps its inset.
- * Press inverts the whole card to ink at once (no transition) — the tap is
- * never in doubt on a slow network.
  */
 export function DetailSummaryCard({
   href,

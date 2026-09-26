@@ -1,17 +1,4 @@
-/**
- * GET /api/beta/spots
- *
- * PUBLIC, data-driven "spots remaining" counter for the marketing site.
- * total  = BETA_MAX_SPOTS env (default 20)
- * taken  = beta_waitlist rows whose status is 'invited' or 'converted'
- * available = max(0, total - taken)
- *
- * Cross-origin: answers CORS preflight (OPTIONS) and stamps CORS headers on
- * the GET response. Allowed origin = MARKETING_ORIGIN (default
- * https://cycleforge.com) + http://localhost:3001 in dev.
- *
- * Response: { total, taken, available }
- */
+/** GET /api/beta/spots */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

@@ -10,19 +10,7 @@ import { VoidLabelBodySchema } from '@/lib/shipping/shipstation/rate-request';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/labels/void — void/refund a purchased label by engine
- * label id (operator/station entry; the generic sibling of
- * /api/shipping/order-labels/void, which additionally unwinds an order's linkage).
- *
- * The carrier is the source of truth on whether the void is approved
- * (usage/time-window dependent) — a decline maps to 409. LABEL_VOIDED is an
- * AUDIT_REASON_REQUIRED action, so `reason` is mandatory.
- *
- * Missing per-org ShipStation credentials → 409 { error: 'NOT_CONNECTED' }.
- *
- * Body: { labelId, reason }
- */
+/** POST /api/shipping/labels/void — void/refund a purchased label by engine label id (operator/station entry; the generic sibling of… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;

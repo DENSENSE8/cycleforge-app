@@ -1,32 +1,4 @@
-/**
- * GET /api/kiosk/repair/ecwid-products
- *
- * Device-authed repair-service catalog for the kiosk repair rail. Same query
- * grammar and response shape as its sales twin (`readKioskCatalogQuery` /
- * `toKioskCatalogResponse`), so `ProductSelector` swaps `apiBasePath` without a
- * second picker.
- *
- * ## What changed
- * This route used to call `fetchRepairRootProductsCached`, which walks the live
- * Ecwid storefront (~25 sequential pages / ~16s cold) behind a two-tier cache,
- * then filtered and sliced in JS. A customer-facing counter must never sit on
- * that path — a cache miss during a walk-in is a 16-second stare. It now reads
- * the local projection through `searchKioskCatalog`, same as sales.
- *
- * ## Why the `-RS` suffix is the whole filter
- * The kiosk only ever offers real, bookable repair services. The old route
- * fetched the repair-root CATEGORY subtree and then narrowed to `-RS` SKUs, so
- * the category walk never changed the result — `isRepairServiceSku` was already
- * the binding constraint. `segment: 'service'` applies exactly that predicate
- * in SQL, which is why no category-chain walk has to be reproduced here.
- * Staff keep the fuller repair-root list on `/api/repair/ecwid-products`; they
- * need the adjacent shipping-fee and warranty line items, and the kiosk must
- * not offer them.
- *
- * Query: `?q=` (whole-catalog search) · `?barcode=` (wedge identity) ·
- *        `?mode=all` | `?mode=favorites` | `?categoryId=…` (browse), plus
- *        `limit` / `offset`.
- */
+/** GET /api/kiosk/repair/ecwid-products */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withKioskAuth } from '@/lib/auth/withKioskAuth';

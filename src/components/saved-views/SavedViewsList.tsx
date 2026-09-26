@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Saved-views list face — rail, Band-3 popover, or dedicated panel.
- *
- * One store, one apply-to-URL path (`useSavedViews`). A surface supplies
- * `storageKey` + `paramKeys`. Personal by default; optional **Share with org**
- * on save (and a share toggle on owned rows). Owners can **rename** in place
- * (`InlineEditableValue`). Non-owners see shared views but cannot mutate them.
- */
+/** Saved-views list face — rail, Band-3 popover, or dedicated panel. */
 
 import { useRef, useState } from 'react';
 import { Check, Pencil, Plus, Share2, Star, Trash2 } from '@/components/Icons';

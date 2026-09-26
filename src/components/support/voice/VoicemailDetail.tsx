@@ -26,13 +26,7 @@ import {
 } from './voice-presentation';
 import { isNotConfigured, useClickToCall, useUpdateFollowup, useVoicemailDetail } from './useVoiceQueries';
 
-/**
- * Voicemail mode — the Workbench right pane. Read view (audio + transcript +
- * matched customer + linked case) plus the action row: Call back, Mark done,
- * Snooze, Create ticket. Each sub-resource degrades to empty rather than
- * crashing the pane. The crossfade between voicemails is owned by the parent
- * (SupportWorkspace), keyed on `?vm` — this component just renders the record.
- */
+/** Voicemail mode — the Workbench right pane. */
 export function VoicemailDetail({ voicemailId, onBack }: { voicemailId: number; onBack: () => void }) {
   const { data, isLoading, error } = useVoicemailDetail(voicemailId);
   const followup = useUpdateFollowup(voicemailId);

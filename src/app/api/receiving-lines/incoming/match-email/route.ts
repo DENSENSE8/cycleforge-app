@@ -1,37 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/match-email — incoming-todo Phase 4a.
- *
- * Receiving-scoped "Match" for a Tier-0 unmatched shipping email: links an
- * `email_missing_purchase_orders` row to an EXISTING Zoho PO (matched against
- * the local `zoho_po_mirror` by PO number or reference number — no Zoho API
- * call), records the matched PO# on the row, and moves it to `pile='done'` so
- * it leaves the to-do. The `email_missing_purchase_orders_sync_status` trigger
- * keeps `status`/`resolved_at` in lockstep with `pile`.
- *
- * This is the floor-staff counterpart of the admin triage PATCH
- * (`/api/admin/po-gmail/triage/[id]`, `admin.view`): it can only *link to a PO
- * that already exists* — it never creates/publishes a Zoho PO — so it is safe
- * to grant under the narrower `receiving.match_email` permission (see
- * docs/todo/incoming-tracking-todo-plan.md §6, Phase 4 opt-in).
- *
- * Body: { emailId: string, poNumber: string }
- *   emailId  — email_missing_purchase_orders.id
- *   poNumber — Zoho PO number or reference/order number (normalized to
- *              alphanumerics for the mirror lookup, same rule as
- *              zoho_purchaseorder_number_norm)
- *
- * Responses:
- *   200 { success, matched, po, row }         — linked (or idempotent repeat)
- *   404                                       — PO not in the mirror, or email
- *                                               row not in this org
- *   409                                       — email already matched to a
- *                                               DIFFERENT PO (use the admin
- *                                               triage UI to re-point it)
- *
- * Naturally idempotent (a repeat match to the same PO is a no-op success), so
- * no clientEventId is threaded — this is a pointer-driven workbench action,
- * not a station scan mutation.
- */
+/** POST /api/receiving-lines/incoming/match-email — incoming-todo Phase 4a. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -155,10 +122,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // NOTE (deferred): an `email-signal.changed` realtime publish belongs here
-    // (via after()) so other clients' to-do lists drop the row instantly, but
-    // src/lib/realtime/publish.ts is in-flight/uncommitted — subscriber side is
-    // wired (Phase 4b); add publishEmailSignalChanged() once publish.ts settles.
+    // NOTE (deferred):
 
     return NextResponse.json({
       success: true,

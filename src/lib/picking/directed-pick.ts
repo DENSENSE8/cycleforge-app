@@ -1,14 +1,4 @@
-/**
- * Directed (system-fed) picking — the pure half.
- *
- * The phone never holds a list while picking: `POST /api/picking/next`
- * (`directed-feed.ts`) hands it ONE line — every open unit of one order that
- * shares a SKU and a bin — and this module owns what the screen does with it:
- * which step it is on (tote → location → item × N) and whether a scan
- * satisfies that step.
- *
- * Pure: no I/O, no React — the phone and the feed both import it.
- */
+/** Directed (system-fed) picking — the pure half. */
 
 export interface DirectedPickUnit {
   allocationId: number;
@@ -43,13 +33,7 @@ export interface DirectedPickLine {
   platforms: DirectedPickPlatformId[];
 }
 
-/**
- * Why an order's pick belongs to a picker:
- *   - `assigned` — someone passed it to them (the order's TEST assignee);
- *   - `sku`      — they own one of its SKUs (`sku_staff_pairings`, set by
- *                  their first pick of it);
- *   - `backup`   — the owner is out today and they are next in line.
- */
+/** Why an order's pick belongs to a picker: */
 export type PickOwnerVia = 'assigned' | 'sku' | 'backup';
 
 export interface PickStaffRef {
@@ -190,14 +174,7 @@ export function matchesLocationScan(scan: string, location: DirectedPickLocation
 
 const INTERNAL_UNIT_QR = /\/m\/u\/(\d+)(?:[/?#]|$)/;
 
-/**
- * Which open unit of the line this item scan picks, or `null` when the scan is
- * not this product.
- *
- * A serial (or the unit's `/m/u/<id>` QR) picks THAT unit. A SKU or a
- * marketplace id identifies the product, not the unit, so it picks the next
- * open one — the same acceptance ladder the order picker's scan gate uses.
- */
+/** Which open unit of the line this item scan picks, or `null` when the scan is not this product. */
 export function matchItemScan(
   scan: string,
   line: DirectedPickLine,

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * ManifestWorkbenchPanel — desktop detail for a preboxed KIT manifest, opened in
- * the shared right-rail drawer when an operator scans a `KIT-…` master label at
- * the testing bench (serial↔label pairing plan §5.2). Lists the child units with
- * line attribution and lets the operator combine (scan-in add), split (remove /
- * dissolve), seal, and reprint the master — over the existing manifest APIs.
- */
+/** ManifestWorkbenchPanel — desktop detail for a preboxed KIT manifest, opened in the shared right-rail drawer when an operator scans a… */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';

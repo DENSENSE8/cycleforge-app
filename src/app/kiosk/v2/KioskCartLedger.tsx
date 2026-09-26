@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Persistent right cart ledger — session root for `/kiosk/v2`.
- *
- * Always mounted (even empty). Staff face shows void + Save + Pay.
- * Customer face strips destructive actions (see KioskCustomerFace); the face
- * flips on tablet orientation (or Esc back), never a manual Customer button.
- */
+/** Persistent right cart ledger — session root for `/kiosk/v2`. */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -72,13 +66,7 @@ export function KioskCartLedger({
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [submitting, setSubmitting] = useState(false);
-  /*
-   * Bulk line selection deleted 2026-09-14, Phase 2. It existed because
-   * `CompoundRow` offers a select gutter, not because the cart had a bulk
-   * verb: nothing ever read `selectedLineIds` — no bulk void, no bulk
-   * discount, no selection action bar. A checkbox column on a counter tablet
-   * that does nothing is worse than no column, and it is desk chrome besides.
-   */
+  /* Bulk line selection deleted 2026-09-14, Phase 2. */
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -98,12 +86,7 @@ export function KioskCartLedger({
   const money = useMemo(() => cartMoneySplit(session.lines), [session.lines]);
   const itemCount = useMemo(() => cartUnitCount(session.lines), [session.lines]);
 
-  /*
-   * ONE gate model, three consumers: the stepper's segment count, each step's
-   * Continue key, and the Save/Pay submit gate all read `collectKioskTriage`
-   * through `cart-step-gates`, so the button, the header and the triage panel
-   * can never disagree about why this visit cannot submit.
-   */
+  /* ONE gate model, three consumers: */
   const triage = useMemo<KioskTriageSession>(
     () => ({
       lines: session.lines,
@@ -214,26 +197,8 @@ export function KioskCartLedger({
 
   /*
    * ## The cart wears the repair intake form's SKELETON, not a sheet
-   *
    * Operator 2026-09-15: *"in terms of the cart component, it should be very
-   * similar to the repair service intake form with the stepper on top and its
-   * full width and then a fixed width in the middle. Why are you fixing width
-   * for the entire display? … There should be no reason why you're wrapping
-   * the cart form and then having another background for it. There should just
-   * be a white background."*
-   *
-   * So there is NO `KIOSK_UTILITY_SHEET` here and no second plane behind it.
-   * The cart is the centre surface itself: white, full-bleed, exactly like
-   * `KioskRepairPane`. {@link KioskPaneForm} is the shared skeleton and it owns
-   * the split the operator is describing — the step band goes edge to edge, the
-   * BODY gets `KIOSK_POS_FORM_MEASURE`. A bounded card would fix the width of
-   * the chrome too, which is what made the last build read as a popover.
-   *
    * The band is also the ONLY band. Operator 2026-09-14, rejecting the titled
-   * build: *"displaying without the header and then the X button top left to
-   * close the cart and displaying a stepper on the top for the exact steps
-   * within the cart for the user to take."* No "Cart" title, no close control
-   * on the right; the X that exits is StepProgressHeader's, top-LEFT.
    */
   const exit = onClose ?? (() => {});
 
@@ -267,11 +232,8 @@ export function KioskCartLedger({
         footer={
           step === 0 && confirmVoid && session.lines.length > 0 ? (
             /*
+             * CONFIRM, in place (operator 2026-09-23:
              * CONFIRM, in place (operator 2026-09-23: "the clear cart button
-             * should have a confirmation button to clear all the cart items").
-             * The floor swaps to the question and its two answers — a modal
-             * over the work is not the house shape, and a relabelled button in
-             * the same spot was too easy to double-tap straight through.
              */
             <>
               <Button
@@ -365,9 +327,6 @@ export function KioskCartLedger({
               /*
                * Nothing is payable at this counter, so there is no Pay key to
                * offer. Operator 2026-09-15: *"a repair service on drop off
-               * never takes money off, it just prints out a receipt."* Same for
-               * a pure trade-in, where the money moves the other way. ONE key:
-               * check the visit in, and the next face prints.
                */
               <Button
                 size="lg"
@@ -431,15 +390,9 @@ export function KioskCartLedger({
           {step === LAST_STEP && (
             <div className="px-4 pb-6">
               {/*
-                TWO facts, not one total, because a walk-in settles in two
-                moments: goods at the counter, a service quote when the device
-                is collected (operator 2026-09-15 — a drop-off "never takes
-                money off, it just prints out a receipt"). Still ONE staged
-                header; `cartMoneySplit` is display + key selection, never a
-                wire field. The pickup row is omitted when there is no service,
-                and the goods row when there are no goods: a $0.00 line an
-                operator has to read past is noise.
-              */}
+ * TWO facts, not one total, because a walk-in settles in two moments:
+ * is collected (operator 2026-09-15 — a drop-off "never takes
+ */}
               <dl className="flex flex-col gap-2 border-t border-border-hairline pt-3">
                 {money.dueNowCents !== 0 && (
                   <div className="flex items-baseline justify-between gap-3">

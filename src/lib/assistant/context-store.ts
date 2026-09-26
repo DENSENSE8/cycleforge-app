@@ -1,16 +1,4 @@
-/**
- * Assistant context registry — the module-scope store behind
- * useAssistantContext (plan §-2 "Context injection is a registry hook, not
- * prop-drilling"). Modeled on src/lib/scan-hotkey/store.ts: pure module, a
- * LIFO registration stack (last-registered wins), a listener Set, and
- * useSyncExternalStore-compatible subscribe/get.
- *
- * Pages/regions register { page, station, selection, mode }; per-page SKILL
- * FRAGMENTS (prompt text the server injects into the system prompt) register
- * through the same stack. Both ride every /api/assistant/chat request.
- *
- * Pure module: no React, no DB — unit-testable and safe anywhere.
- */
+/** Assistant context registry — the module-scope store behind useAssistantContext (plan §-2 "Context injection is a registry hook, not… */
 
 export interface AssistantPageContext {
   /** Route/page identity, e.g. 'operations', 'studio', 'packer-station'. */

@@ -1,21 +1,4 @@
-/**
- * /api/receiving/email-po
- *
- * Operator-facing search over the PO-Gmail worklist (`email_missing_purchase_orders`)
- * — the purchase-order confirmation emails that were ingested from Gmail but had
- * no Zoho match. This is how a carton whose tracking arrived (but whose PO was
- * never imported, because the seller never gave the buyer tracking) gets paired
- * to its order: the operator finds the matching PO email here and links it.
- *
- * GET  ?q=…  → search pending email POs by PO number / subject / sender.
- * PATCH { id } → mark an email PO row 'resolved' (after the carton is linked).
- *
- * The carton↔PO# write itself reuses the existing PATCH /api/receiving/:id
- * ({ zoho_purchaseorder_number }) which flips the carton off the Unfound queue.
- * Org-scoped throughout (the worklist carries organization_id). The admin
- * console has its own admin-gated view of the same table; this is the
- * receiving-permissioned slice for the bench.
- */
+/** /api/receiving/email-po */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';

@@ -12,12 +12,7 @@ import {
 import type { RackLabelPrinterController } from './useRackLabelPrinter';
 import type { RackPrinterVariant } from './rack-printer-types';
 
-/**
- * Narrow-column builder (mobile / `lg:hidden`): full four-step flow inline.
- * Callers: RackLabelPrinter. No data schemas.
- * User: "toggle like single or bulk" / "remove the configure counts button" /
- * "slider on the top right" / "reset button away from the slider".
- */
+/** Narrow-column builder (mobile / `lg:hidden`): */
 export function RackBuilderMobile({
   c,
   variant,

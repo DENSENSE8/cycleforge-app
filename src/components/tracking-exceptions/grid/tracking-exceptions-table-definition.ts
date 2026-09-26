@@ -1,12 +1,4 @@
-/**
- * `ops.tracking-exceptions` — Tracking-exceptions table definition (plan Phase 1,
- * wave 2).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry. The descriptor id was kebabbed from `ops.trackingExceptions`
- * to satisfy the `<family>.<view>` id contract (it had no reader before this).
- */
+/** `ops.tracking-exceptions` — Tracking-exceptions table definition (plan Phase 1, wave 2). */
 
 import type { TrackingExceptionRow } from '../types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';

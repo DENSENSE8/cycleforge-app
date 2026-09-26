@@ -1,12 +1,4 @@
-/**
- * POST /api/admin/staff/[id]/reset-pin
- *
- * Clears the staff's PIN, sets status='invited', revokes their active
- * sessions, and mints a fresh 24-hour enrollment token. Returns the QR
- * URL the admin should hand to the staff to set a new PIN.
- *
- * Audit event: pin.reset_by_admin
- */
+/** POST /api/admin/staff/[id]/reset-pin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

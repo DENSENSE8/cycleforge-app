@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * @domain-job Portable location CRUD — browse / edit / delete / print a bin, and
- *   mint a new one, from ANY page.
- * @hardware-target Station
- * @density ops
- * @justification Cannot reuse `ArrivalLocationsDisplay`: that leaf is a Displays
- *   right-edge occupant bound to `TriageStagingController` (its rows COMMIT an
- *   arrival placement), it has no edit or delete verb, and it cannot mount off
- *   the triage station. This is the same job's page-agnostic dialog form. It
- *   forks NO waist: the catalog and its writes come from {@link useLocations},
- *   minting goes through `registerLocations` (the bin-label-printer door), and
- *   the sticker is the shared 2×1 {@link printLocationLabelsJob} face — so a
- *   printed address stays the one flat format `extractArrivalLocationBarcode`
- *   can decode.
- */
+/** @domain-job Portable location CRUD — browse / edit / delete / print a bin, and mint a new one, from ANY page. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, MapPin, Pencil, Plus, Printer, Search, Trash2 } from '@/components/Icons';

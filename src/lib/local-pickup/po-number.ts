@@ -1,12 +1,4 @@
-/**
- * Local pickup PO number helpers.
- *
- * A finalized local pickup becomes a Zoho Purchase Order numbered
- * `LCPU-{NAME}-{MMDDYY}` (e.g. `LCPU-KEN-060326`). NAME is the operator-typed
- * pickup name (uppercased, alphanumerics only). These are pure functions so the
- * client (review preview + receiving tracking) and the server (finalize → Zoho)
- * derive byte-identical numbers from the same inputs.
- */
+/** Local pickup PO number helpers. */
 
 /** Uppercase + strip everything but A–Z/0–9 (e.g. "Ken's Pickup" → "KENSPICKUP"). */
 function slugifyPickupName(name: string): string {

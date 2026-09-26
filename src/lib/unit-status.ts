@@ -1,13 +1,4 @@
-/**
- * Canonical unit-status → Tailwind color classes.
- *
- * This is the single source of truth for how a unit/serial lifecycle status
- * (RECEIVED, TESTED, STOCKED, SHIPPED, …) is colored across the app. It was
- * first centralized for the inventory views; the labels views (unit history,
- * recently-printed) now align to it too so the same status reads the same
- * color everywhere. PACKED / SHIPPED read LIFECYCLE (packed = fulfillment,
- * shipped = success) — never a colour picked here.
- */
+/** Canonical unit-status → Tailwind color classes. */
 
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';
 
@@ -35,13 +26,7 @@ const STATUS_BADGES: Record<string, string> = {
 
 const BADGE_FALLBACK = 'bg-surface-sunken text-text-muted';
 
-/**
- * Status-dot fill classes — the finer lifecycle vocabulary that leads the chip
- * INSIDE {@link GridStatusCellValue}. Solid `-500` fills matched to the pastel
- * badge family above; unknown/empty → neutral. This is the dot half of the same
- * registry, so a grid status cell resolves both the chip tone and its dot here
- * (never a local per-surface map).
- */
+/** Status-dot fill classes — the finer lifecycle vocabulary that leads the chip INSIDE {@link GridStatusCellValue}. */
 const STATUS_DOTS: Record<string, string> = {
     UNKNOWN: 'bg-text-faint',
     RECEIVED: 'bg-blue-500',

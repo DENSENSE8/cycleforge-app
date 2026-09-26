@@ -1,14 +1,4 @@
-/**
- * Raster a {@link LabelFaceModel} to raw thermal bytes so Print buttons can
- * send a real WebUSB / Web Serial job instead of only `window.print()`.
- *
- * Callers: printLabel silent USB path (every LabelFaceModel). Location branch
- * only — receiving/product raster unchanged. User: enlarge primary identifier;
- * keep identical small text under the 2D barcode.
- *
- * Ported from main (`cycleforge-app/src/lib/print/labelFaceBitmap.ts`) so 2×1
- * bin labels share the same silent-print path as receiving / product labels.
- */
+/** Raster a {@link LabelFaceModel} to raw thermal bytes so Print buttons can send a real WebUSB / Web Serial job instead of only… */
 
 import bwipjs from 'bwip-js/browser';
 import type { LabelLanguage, PaperSize, PrinterProfile } from '@/lib/print/browserPrint';
@@ -143,10 +133,7 @@ function drawFace(face: LabelFaceModel, size: PaperSize): HTMLCanvasElement {
     );
     context.textBaseline = 'top';
   } else if (face.kind === 'lpn') {
-    // Match the print-HTML LPN face: a small kicker at the top and the tote
-    // identity filling the remaining left column. The generic face puts the
-    // centre string in a tiny three-line note band, which made `H-100` appear
-    // clipped on silent-print inventory labels.
+    // Match the print-HTML LPN face:
     const kickerSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.kickerFontCssPx);
     const codeSize = cssPxToDots(LPN_LABEL_FACE_LAYOUT.codeFontCssPx);
     drawFittedText(context, face.topLeft, paddingX, paddingY, infoWidth, kickerSize, 800);
@@ -304,10 +291,7 @@ export function labelCanvasToRawCommands(
   rotatedContext.drawImage(canvas, 0, 0);
   const image = rotatedContext.getImageData(0, 0, width, height);
 
-  // Per-job multiplicity is NOT a printer repeat count — a run of N stickers is
-  // N plates (`labelCopies.expandPlateRun`), because this hardware answers
-  // `PRINT N,1` / `^PQN` on a raster job with a single label. What survives here
-  // is the printer profile's own Copies setting.
+  // Per-job multiplicity is NOT a printer repeat count — a run of N stickers is N plates (`labelCopies.expandPlateRun`), because this…
   const copies = clampLabelCopies(profile.copies ?? 1);
   const language: LabelLanguage = profile.language;
   if (language === 'none') return '';

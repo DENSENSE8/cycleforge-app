@@ -1,12 +1,4 @@
-/**
- * Governed outbound handling facts.
- *
- * These are product-level warehouse instructions, not prose inferred from an
- * order note. The catalog owns their truth; Orders, Picks, Packing and station
- * projections consume the same closed vocabulary. Unknown values deliberately
- * disappear at the boundary so an old integration cannot invent a new hazard
- * banner without first extending this law and its database constraint.
- */
+/** Governed outbound handling facts. */
 
 export const OUTBOUND_HANDLING_FACTS = [
   'hazmat',

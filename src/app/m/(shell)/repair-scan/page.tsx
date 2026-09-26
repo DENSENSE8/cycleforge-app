@@ -4,15 +4,7 @@ import { RepairScanCompanion } from '@/components/mobile/repair/RepairScanCompan
 
 export const metadata: Metadata = { title: 'Repair serials' };
 
-/**
- * `/m/repair-scan?t=<token>` — a staff phone joined to a counter tablet's
- * repair visit, scanning serial numbers into it. Reached from the QR on the
- * tablet's Device & quote step, never from the nav: without a token there is
- * no visit to join.
- *
- * Gated on `walk_in.intake`, the same permission as editing a counter line; a
- * phone that is not signed in is sent through sign-in and back here.
- */
+/** `/m/repair-scan?t=<token>` — a staff phone joined to a counter tablet's repair visit, scanning serial numbers into it. */
 export default async function MobileRepairScanPage({
   searchParams,
 }: {

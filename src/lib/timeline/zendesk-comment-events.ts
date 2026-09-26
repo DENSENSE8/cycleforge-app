@@ -1,28 +1,4 @@
-/**
- * Helpdesk comments → {@link TimelineItem}, so a customer message is the same
- * kind of row as a dock scan or a carrier event and the two can be read in one
- * merged stream (`MergedRecordStream`).
- *
- * Pure + dependency-free, like every sibling adapter here: it never imports
- * `@/lib/zendesk` and never resolves an author itself. The caller (which already
- * holds the agent/user rosters) maps each comment into a {@link TicketCommentRow}
- * and hands it over — same shape of boundary `stationActivityToTimeline` keeps.
- *
- * ## Why a message carries a payload the base row cannot
- *
- * `TimelineItem`'s display model is one line (`title`) plus a muted second line
- * (`subtitle`). A message body is block markdown with an attachment grid, which
- * that model cannot express — so a message row carries {@link TicketMessageDetail}
- * on `message` and the renderer branches on its presence. Everything else about
- * it (id, `at`, day banding, merge, sort) stays a plain timeline row, which is
- * the whole point: one waist, two row bodies.
- *
- * **Never `collapseTimeline` a list containing these.** That helper folds
- * ADJACENT rows with an equal `title + ref + actor + tone` signature — and every
- * message from one author has the same title and actor, so two consecutive
- * replies would collapse into one and a customer's words would silently vanish.
- * Collapse the event spines BEFORE merging messages in.
- */
+/** Helpdesk comments → {@link TimelineItem}, so a customer message is the same kind of row as a dock scan or a carrier event and the two… */
 import type { TimelineItem } from './types';
 
 /** An image/file attached to a helpdesk comment. */

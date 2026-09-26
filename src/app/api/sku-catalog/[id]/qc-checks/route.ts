@@ -60,10 +60,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const publishedOnly = req.nextUrl.searchParams.get('publishedOnly') === '1';
-    // Thread orgId so the category-default branch (category = $2 AND
-    // sku_catalog_id IS NULL) is org-scoped — without it, the shared query runs
-    // on the raw pool and a shared free-text category string leaks every other
-    // tenant's category-level qc_check_templates rows.
+    // Thread orgId so the category-default branch (category = $2 AND sku_catalog_id IS NULL) is org-scoped — without it, the shared query runs…
     const checks = await getQcChecks(
       skuCatalogId,
       catalog.category,
@@ -109,10 +106,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (hit) return NextResponse.json(hit.response_body, { status: hit.status_code });
     }
 
-    // Thread orgId so the INSERT runs inside withTenantTransaction and stamps
-    // organization_id = caller's org. Without it the shared helper runs on the
-    // raw pool with the GUC unset, so the table default resolves to the USAV
-    // org and a non-USAV tenant's QC row is silently written under USAV.
+    // Thread orgId so the INSERT runs inside withTenantTransaction and stamps organization_id = caller's org.
     const check = await createQcCheck({
       skuCatalogId,
       stepLabel: parsed.stepLabel,

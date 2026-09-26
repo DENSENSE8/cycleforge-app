@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * Operations TV / wall board (HOME-OPS Phase C, plan §7 / §27).
- *
- * Archetype: **Monitor** — observe-only, no durable selection, no edit chrome.
- * Data-first "what must be done on time" board for an unattended wall, read at
- * 3–5m: wall-scale KpiStrip + SectionCards (composed from the Monitor block
- * registry; the hero scale is the additive `size="wall"` grow of KpiTile, not a
- * page-local twin). Live via `ops_plan.updated` (useOperationsTvBoard); a
- * network blip degrades to a status pill over the last board, never a blank
- * freeze (§27 — the `tv=1` takeover overlay sits above the global banner's
- * z-band, so the wall carries its own read-only pill rather than the band).
- *
- * The pill's *state* now comes from the shared connection-health hooks the
- * banners use, so a wall reading "Live" while the station's realtime link is
- * dead is no longer possible — but it stays **read-only** (D12): no retry
- * button, no upload or pairing modal ever mounts on a Monitor surface.
- *
- * `blocked` has no first-class column until collab (Phase D); Overdue is the
- * honest stuck signal today and is what this shows.
- */
+/** Operations TV / wall board (HOME-OPS Phase C, plan §7 / §27). */
 
 import { type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';

@@ -1,12 +1,4 @@
-/**
- * Receiving priority badge — display tones for the platform-derived rank.
- *
- * The rank itself is single-sourced in src/lib/receiving/display/precedence.ts
- * (the rules-as-data SoT the server SQL `RECEIVING_PRIORITY_RANK_SQL` also
- * derives from, via priorityRankSql). Re-exported here as `receivingPriorityRank`
- * so existing badge importers keep their import path while the logic lives in one
- * place. Lower rank = higher priority.
- */
+/** Receiving priority badge — display tones for the platform-derived rank. */
 export { platformPriorityRank as receivingPriorityRank } from '@/lib/receiving/display/precedence';
 
 interface PriorityTone {
@@ -20,15 +12,7 @@ interface PriorityTone {
   className: string;
 }
 
-/**
- * Tone + label per rank. P1 is the most urgent (amber, like the unfound pill);
- * tagged platforms step down in heat; "other" is a quiet gray.
- *
- * Labels MUST stay within the manual-tier vocabulary in
- * lib/receiving/priority-override.ts (Priority/High/Medium/Low) — the urgency
- * pill shows this derived label collapsed and the manual tiers as options, so
- * a word that isn't a selectable tier reads as a broken picker.
- */
+/** Tone + label per rank. */
 export function receivingPriorityTone(rank: number): PriorityTone {
   switch (rank) {
     case 0:

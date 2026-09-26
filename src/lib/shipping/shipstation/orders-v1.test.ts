@@ -2,13 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createShipStationV1Client } from './orders-v1';
 
-/**
- * DB-free unit tests for the v1 client's raw→normalized MAPPING (mirrors
- * client.test.ts): `fetch` is stubbed with a docs-shaped v1 /orders payload;
- * no network, no DB. The buyer-identity fields (customerId, billTo,
- * countryCode alias) are the ones the customer-book sync depends on.
- * Run: npx tsx --test src/lib/shipping/shipstation/orders-v1.test.ts
- */
+/** DB-free unit tests for the v1 client's raw→normalized MAPPING (mirrors client.test.ts): */
 
 function stubFetch(routes: Record<string, unknown>): () => void {
   const orig = globalThis.fetch;

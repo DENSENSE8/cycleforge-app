@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Shared search-query state for the warehouse sidebar's rooms finder.
- *
- * The sidebar's top search bar (rendered in the header band by
- * WarehouseSidebarPanel) writes here; the rooms list below it
- * (RoomsSidebarList for the Rooms tab; LabelRoomSidebar for the Labels/
- * Bays tabs) reads here. One bar drives the whole surface so there's a
- * single, accessible search entry point per tab — no nested duplicates.
- */
+/** Shared search-query state for the warehouse sidebar's rooms finder. */
 
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 

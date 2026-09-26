@@ -1,13 +1,4 @@
-/**
- * Print-on-Pack-Confirm bundle resolver + dispatcher (JIT pack documents Phase 1–3).
- *
- * Phase 1: shipping_label + packing_slip via documents hub.
- * Phase 2–3: manuals via documents SoT (SKU links) with product_manuals fallback.
- *
- * Dispatches via PrintNode pdf_base64 when an `outbound` printer profile exists;
- * otherwise returns browser-fallback ids for the Station iframe path.
- * Never re-buys postage. Idempotent via client_event_id.
- */
+/** Print-on-Pack-Confirm bundle resolver + dispatcher (JIT pack documents Phase 1–3). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

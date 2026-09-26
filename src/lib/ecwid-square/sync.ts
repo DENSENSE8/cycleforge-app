@@ -109,15 +109,6 @@ export interface EcwidSquareSyncResult {
 }
 
 // ── Local catalog projection (2026-07-29e) ──────────────────────────────────
-//
-// Refreshes the priced, category-navigable mirror the counter reads from. Lives
-// in THIS module rather than a new service because this is already the
-// Ecwid→local sync home; a second sync service for the same storefront is the
-// fork the plan bans.
-//
-// Unlike syncEcwidToSquare (env-global, historically), this half is ORG-SCOPED
-// and vault-first via resolveEcwidCreds — a projection row carries an
-// organization_id, so guessing the tenant from env was never an option here.
 
 export interface EcwidProjectionResult {
   ok: boolean;
@@ -154,14 +145,7 @@ const defaultProjectionDeps: EcwidProjectionDeps = {
   now: () => Date.now(),
 };
 
-/**
- * Rebuild one org's local catalog projection from the provider.
- *
- * Never throws: this runs from a cron and a connections-panel button, and a
- * vendor outage must leave the PREVIOUS projection intact and readable rather
- * than half-wiping it. On failure the existing rows are untouched — the readers
- * keep serving a slightly stale catalog, which is exactly the staleness contract.
- */
+/** Rebuild one org's local catalog projection from the provider. */
 export async function projectEcwidCatalog(
   orgId: OrgId,
   deps: EcwidProjectionDeps = defaultProjectionDeps,

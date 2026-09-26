@@ -2,30 +2,7 @@
 
 /**
  * Dev-mode assertion that a band's height NEVER moves after mount.
- *
- * Static analysis cannot prove a React tree has constant height — it can only
- * catch the causes somebody already thought of. This measures the real element
- * and fails the first time the number changes, which catches the cause nobody
- * thought of.
- *
- * It enforces a fixed-height action bar
  * (operator 2026-09-15: *"the action buttons bar should not expand or collapse
- * in height from clicking on an action"*).
- *
- * ## Why it only runs outside production
- *
- * A `ResizeObserver` per mounted band is cheap but not free, and in production
- * the honest response to a height change is not a console error — it is the
- * clipping the band's `overflow-hidden` already produces. This exists to make
- * the mistake loud while somebody is in a position to fix it: the dev server,
- * a Playwright run, and `NODE_ENV=test`.
- *
- * ## Why it warns rather than throws
- *
- * Throwing from a `ResizeObserver` callback unmounts the surrounding tree, so a
- * geometry bug would become a blank desk — a worse failure than the one being
- * reported, and one that hides the report. It logs with the measured before /
- * after so the diff is actionable, and the e2e guard asserts on the message.
  */
 
 import { useEffect, type RefObject } from 'react';

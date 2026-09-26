@@ -1,28 +1,8 @@
 'use client';
 
 /**
- * Walk-in paperwork panel — the visit's repair agreement sheets, live, beside
- * the work.
- *
- * @domain-job Show the operator/customer exactly what this visit will print.
- * @hardware-target Station (counter tablet)
- * @density floor
+ * Walk-in paperwork panel — the visit's repair agreement sheets, live, beside the work.
  * @justification Paperwork is just paperwork (operator 2026-09-25: "remove the
- *   hard coded custom display at the top for the paperwork"). The panel used to
- *   paint its own Customer and Items recap above a single agreement built from
- *   the FIRST repair line only — a second rendering that could disagree with
- *   the sheets Review & sign shows. It now renders exactly those sheets, one
- *   per unit, from the same builder (`repairPaperworkSheets`), and nothing
- *   else. A visit with no repair unit has no paperwork: one quiet line.
- *
- * NO TITLE BAND of its own (2026-09-23). The shell paints the ONE header band
- * above this sheet while it is open, and that band's paperwork toggle is both
- * the name of this panel and its way back — a `Paperwork` title and a close X
- * under it were a second band repeating the toggle's own name.
- *
- * Staged toward the unified walk-in document — plan:
- * `docs/todo/kiosk-walkin-paperwork-PLAN.md`. The legal sheet is still
- * `RepairServiceForm` (unchanged wording).
  */
 
 import { useMemo } from 'react';

@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * The tablet half of the bridge: mirror whatever the desk is doing.
- *
- * Three moving parts, in the order they matter:
- *
- *  1. **Ask about yourself.** `GET /api/kiosk/session` answers with the session
- *     bound to THIS device — the tablet never names a session id — plus the
- *     channel it should listen on. It cannot build that name itself: it is
- *     `org:{orgId}:kiosk:{deviceId}` and the device knows neither id (its
- *     principal lives in an httpOnly cookie).
- *  2. **Subscribe.** Every event lands in `applySessionEvent` against a local
- *     snapshot, so a duplicate is dropped and a gap triggers a refetch instead
- *     of painting a cart that skipped a line.
- *  3. **Mirror.** The projection goes into `kioskSessionStore`, which every
- *     existing kiosk pane already reads. Nothing downstream knows the transport
- *     changed.
- *
- * The poll stays as the D7 floor — 3s with no channel, 30s once events arrive.
- * A tablet that loses its socket keeps showing the right cart, a few seconds
- * behind, which is the difference between a degraded counter and a stopped one.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P4b · D1 · D2 · D6 · D7).
- */
+/** The tablet half of the bridge: */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
@@ -114,13 +92,7 @@ function mirror(
   });
 }
 
-/**
- * The write-through path for a co-edited visit.
- *
- * `expectedVersion` is read at SEND time from the mirror, not captured when the
- * component rendered — the desk is editing the same cart, so a version captured
- * a second ago is already stale and would 409 every time.
- */
+/** The write-through path for a co-edited visit. */
 function makeWriter(getVersion: () => number, onWrote: () => void) {
   const send = async (path: string, method: string, body: Record<string, unknown>) => {
     await kioskFetchHealed(path, {

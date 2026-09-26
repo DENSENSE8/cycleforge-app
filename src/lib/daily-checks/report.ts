@@ -1,15 +1,4 @@
-/**
- * Daily checklist read model — marks + roster + list → one day's report.
- *
- * PURE: no React, no fetch, no DB. The route hands it three arrays and gets the
- * shape the surface renders, so the report can be unit-tested with zero DB and
- * the view never assembles facts itself.
- *
- * The load-bearing decision here is that the roster is an INPUT, not something
- * derived from the marks. Deriving it would make a staffer who checked nothing
- * invisible — and "who has not done their checks yet" is the single most useful
- * question this report answers. Honest absence: they appear with 0 / N.
- */
+/** Daily checklist read model — marks + roster + list → one day's report. */
 
 import type {
   DailyCheckItem,
@@ -97,11 +86,7 @@ export function buildDailyCheckReport(input: BuildDailyCheckReportInput): DailyC
       row.doneItemIds.push(mark.itemId);
       row.doneCount += 1;
     }
-    // WHEN, per task — the manager report reads a shift task by task, so the
-    // instant is kept beside the tick instead of being collapsed into
-    // `lastMarkedAt`. Earliest wins on a duplicate: the first attestation is
-    // the one that happened; an optimistic re-render must not move a time the
-    // operator already saw.
+    // WHEN, per task — the manager report reads a shift task by task, so the instant is kept beside the tick instead of being collapsed into…
     const seen = row.markedAtByItemId[mark.itemId];
     if (seen == null || mark.markedAt < seen) {
       (row.markedAtByItemId as Record<number, string>)[mark.itemId] = mark.markedAt;

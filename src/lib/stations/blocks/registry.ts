@@ -1,9 +1,4 @@
-/**
- * Block registry — same shape and discipline as the workflow node registry
- * (src/lib/workflow/registry.ts). The palette, Config Sheet and renderer all
- * derive from registry metadata; hard-coding a block type in a component is
- * a bug.
- */
+/** Block registry — same shape and discipline as the workflow node registry (src/lib/workflow/registry.ts). */
 
 import type { BlockDefinition, BlockMeta } from '../contract';
 

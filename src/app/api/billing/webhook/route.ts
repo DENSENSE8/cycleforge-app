@@ -1,25 +1,4 @@
-/**
- * POST /api/billing/webhook
- *
- * Stripe webhook receiver. Public (no session) — secured by signature
- * verification against STRIPE_WEBHOOK_SECRET. Allowlisted in proxy.ts so
- * the auth gate doesn't intercept it.
- *
- * We respond 200 even on errors AFTER the signature check passes, because
- * Stripe will retry indefinitely on non-2xx. We log into stripe_events so
- * unprocessed events are visible.
- *
- * Handled events:
- *   - customer.subscription.created
- *   - customer.subscription.updated
- *   - customer.subscription.deleted
- *   - checkout.session.completed (links the org to the new sub)
- *   - invoice.payment_failed    (dunning: mark the mirror past_due)
- *   - invoice.payment_succeeded (recovery: clear past_due back to active)
- *
- * Everything else is ack-logged and dropped so we don't accidentally
- * mutate state on an event we don't model yet.
- */
+/** POST /api/billing/webhook */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyStripeSignature } from '@/lib/billing/stripe';
@@ -120,10 +99,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'BAD_JSON' }, { status: 400 });
   }
 
-  // Idempotency gate: Stripe guarantees at-least-once delivery. Record the
-  // event id FIRST; process it on a brand-new delivery OR a prior delivery whose
-  // handler never completed (processed_at NULL). An already-handled duplicate is
-  // skipped. The handler is marked processed only after it fully succeeds.
+  // Idempotency gate:
   const eventObject = event.data.object as { metadata?: { organization_id?: string } };
   const orgId = orgIdFromMetadata(eventObject?.metadata);
   const shouldProcess = await recordStripeEvent(event.id, event.type, orgId, event);

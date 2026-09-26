@@ -23,15 +23,7 @@ import { Panel } from '@/design-system/primitives';
 const NO_ALLOCATIONS: readonly UnitAllocationTableRow[] = [];
 const NO_TSN_LINKS: readonly UnitTsnLinkTableRow[] = [];
 
-/**
- * Panel height for the two engine panes.
- *
- * A slot `DataTable` is a scroll surface and needs a bounded box; this page is
- * itself a long scroll of panels, so the panes are short enough that neither
- * eats the page (the Returns dock's `h-[60vh]` is a full-page desk, not a
- * detail pane). A unit is allocated a handful of times and has a handful of v1
- * records, so ~8 rows is the whole history in most cases.
- */
+/** Panel height for the two engine panes. */
 const PANE_HEIGHT = 'h-[22rem]';
 
 
@@ -84,18 +76,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
         };
     }, [ref, reloadKey]);
 
-    /**
-     * The two engine panes, resolved BEFORE the loading / error returns — a
-     * spreadsheet feed is a hook, and hooks below an early return would change
-     * order the moment the fetch settles.
-     *
-     * The allocations feed is WIDENED with the unit this page is about. The
-     * `/api/serial-units` payload omits `serial_unit_id` (the page IS the
-     * unit), but the `unit-allocations` family is shared with the per-SKU
-     * mount, where that fact is the one distinguishing two allocations — so
-     * the desk hands over what it already knows instead of the family
-     * carrying a hole. Same widening precedent as `skuUnitsOverviewRows`.
-     */
+    /** The two engine panes, resolved BEFORE the loading / error returns — a spreadsheet feed is a hook, and hooks below an early return would… */
     const unitId = payload?.success ? payload.serial_unit.id : null;
     const allocations = useMemo<readonly UnitAllocationTableRow[]>(() => {
         const rows = payload?.allocations;
@@ -311,17 +292,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                 </Panel>
             ) : null}
 
-            {/*
-              * Allocations — the `unit-allocations` slot DataTable.
-              *
-              * Was raw hand HTML — five header/cell pairs — wrapped in
-              * `allocations.length > 0 ?`. The conditional is GONE: the engine
-              * has a real empty face, and a section that vanished made "never
-              * allocated" read identically to "this panel does not exist" —
-              * which on a unit history is the answer an operator came for. The
-              * pane also brings header sort, the Fields picker and org binding,
-              * none of which raw HTML could ever grow.
-              */}
+            {/* Allocations — the `unit-allocations` slot DataTable. */}
             <Panel radius="lg" padding="none">
                 <header className="border-b border-border-hairline px-6 py-4">
                     <h2 className="text-lg font-medium text-text-default">Order allocations</h2>

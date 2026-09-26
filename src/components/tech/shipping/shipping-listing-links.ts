@@ -1,10 +1,4 @@
-/**
- * Ready-to-Pack / Shipping listing face — same item-number → storefront URL
- * SoT the identity chip uses ({@link getExternalUrlByItemNumber}).
- *
- * Pure: no React. Shared by {@link ShippingEntityContextHeader} and the
- * Displays Listings leaf on {@link ActiveOrderWorkspace}.
- */
+/** Ready-to-Pack / Shipping listing face — same item-number → storefront URL SoT the identity chip uses ({@link getExternalUrlByItemNumber}). */
 
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { CartonListingLink } from '@/lib/receiving/listing-links';

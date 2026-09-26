@@ -127,12 +127,7 @@ function feedback(kind: ScanFeedbackKind): void {
   vibrateScan(kind);
 }
 
-/**
- * The directed picker's session: asks `POST /api/picking/next` for one line,
- * walks it tote → location → item × N on scans (camera or wedge), confirms
- * each unit through the WMS execution socket (`pick.confirm`, idempotent per
- * allocation), and asks for the next line the moment the last unit lands.
- */
+/** The directed picker's session: */
 export function useDirectedPick(scanPaused = false): DirectedPickController {
   const { user, isLoaded } = useAuth();
   const { execute } = useWmsRealtime();
@@ -270,12 +265,7 @@ export function useDirectedPick(scanPaused = false): DirectedPickController {
     [line, order, user, data?.sessionId, tote, execute, picked, advanceSoon],
   );
 
-  /**
-   * Pair the line's open units to the scanned location — the same write the
-   * unit hub's "Move to bin" makes (`POST /api/serial-units/:id/move`: the
-   * unit's `current_location` + a MOVED event). The worker is standing at
-   * that bin, so it counts as the confirmed location for this line.
-   */
+  /** Pair the line's open units to the scanned location — the same write the unit hub's "Move to bin" makes (`POST /api/serial-units/:id/move`: */
   const pairBin = useCallback(
     async (raw: string) => {
       if (!line) return;

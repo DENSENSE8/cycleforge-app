@@ -1,19 +1,4 @@
-/**
- * Server-only: the directed putaway target for one receiving line.
- *
- * Two sources, strongest first — see {@link ./suggested-putaway-location} for
- * why the basis travels with the answer:
- *
- *   1. `sku_history` — where the last {@link SKU_HISTORY_SAMPLE} units of THIS
- *      SKU were staged (`receiving_line_putaway.staged_location_id`), ranked by
- *      {@link pickSkuHistoryWinner}. No new column; degrades to (2) on a
- *      first-ever SKU.
- *   2. `recent_stage` — {@link fetchMostRecentStagedLocation}, the same read the
- *      Unbox composer's **Last entry** already uses.
- *
- * Never invents a bin. `null` means "we have nothing honest to point at", and
- * the leaf then paints its searchable list alone.
- */
+/** Server-only: the directed putaway target for one receiving line. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

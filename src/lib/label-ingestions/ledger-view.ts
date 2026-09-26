@@ -1,11 +1,4 @@
-/**
- * The ONE status resolver for the label-intake ledger (desk and `/m` alike).
- *
- * A row never derives its colour, written label, sort rank or permitted action
- * from anything but the server's lifecycle `state`. Colour reinforces the
- * written label and never carries the meaning alone. Client-safe: no server,
- * parser, resolver or apply import — the server stays the only rule engine.
- */
+/** The ONE status resolver for the label-intake ledger (desk and `/m` alike). */
 import type { LabelIngestionState, LabelQuarantineReasonCode } from './types';
 
 export type LedgerTone = 'danger' | 'warning' | 'info' | 'fulfillment' | 'success';

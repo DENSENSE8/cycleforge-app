@@ -24,34 +24,7 @@ export interface DetailDockSelection {
 /** A second tap on the bar inside this window is a nervous double-tap, not a verb. */
 export const DETAIL_DOCK_LOCK_MS = 500;
 
-/**
- * The phone's ONE bottom execution bar (the exoskeleton dock, operator
- * 2026-09-24; the industrial terminal block, 2026-09-25): at most three verbs,
- * one primary, pinned under the thumb on every scroll position.
- *
- * - **Terminal block.** Flush 0→390, 72px cells (`min-h-18`), square, no gap;
- *   a 1px mode rule on top and between cells. `sticky bottom-0` at the end of
- *   the route's flex column, not `fixed`, so the last row is never hidden
- *   under it; the safe-area inset rides on the bottom padding.
- * - **State 3 — one job.** A single verb fills the whole bar (Next unit, Scan
- *   another label): tap anywhere on the bottom of the phone.
- * - **State 2 — selection.** With `selection`, a dark dismiss cell (`✕ 3 SEL`,
- *   30%) leads the verbs (70%, split evenly for two). The asymmetric split
- *   keeps cancel away from the thumb aiming at execute.
- * - **Press.** The cell inverts to ink the instant it is pressed (CSS
- *   `:active`, no transition, no scale — a shrinking flush cell pulls off its
- *   rules) and, when the staffer turned haptics on (`receiving.scanHaptics`,
- *   default off), the phone buzzes where the Vibration API exists (not iOS).
- * - **Lock.** Leading edge: the first verb tap fires at once; further verb
- *   taps are dropped for {@link DETAIL_DOCK_LOCK_MS}, or until the verb's
- *   promise settles if `onVerb` returns one. Nothing is delayed. The
- *   selection's dismiss cell is outside the lock (backing out is never
- *   swallowed) but arms it: the bar swaps to its idle verbs under the same
- *   thumb, and a nervous second tap must not land on the verb swapped in.
- *
- * No global navigation here: the bottom nav was removed for accidental taps
- * (`MobileSidebarDrawer`) and stays in the drawer.
- */
+/** The phone's ONE bottom execution bar (the exoskeleton dock, operator 2026-09-24; the industrial terminal block, 2026-09-25): */
 export function DetailDock<Id extends string>({
   label,
   verbs,

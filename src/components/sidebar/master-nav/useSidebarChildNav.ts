@@ -10,15 +10,7 @@ import {
   getSidebarPageNav,
 } from '@/lib/sidebar-navigation';
 
-/**
- * The write half of the master nav (plan §3.3 + D2). `navigate(pageId, childId?)`:
- *   • No `childId` → land on the page's bare href (resolves to its default child).
- *   • With `childId` → apply that child's `to()` on top of the current params.
- *   • Page change → `router.push` (new history entry); same-page child flip →
- *     `router.replace` (matches what every panel does today, so back-button
- *     semantics are unchanged).
- * Unrelated query params are preserved on same-page flips via `applyChildTarget`.
- */
+/** The write half of the master nav (plan §3.3 + D2). */
 export function useSidebarChildNav() {
   const router = useRouter();
   const pathname = usePathname();
@@ -29,10 +21,7 @@ export function useSidebarChildNav() {
       const page = getSidebarPageNav(pageId);
       const samePage = getSidebarNavPageId(pathname, searchParams) === pageId;
 
-      // Single-surface page, unknown page, or "just go there": bare href.
-      // Resolve through `getSidebarHref` so childless pages (operations, admin,
-      // settings, …) — which aren't in SIDEBAR_PAGE_NAV — still land on their
-      // real route instead of falling back to the current pathname (no-op).
+      // Single-surface page, unknown page, or "just go there":
       if (!page || !childId) {
         // Search is header-find only — never push bare `/search` (blank page).
         if (pageId === 'search') {

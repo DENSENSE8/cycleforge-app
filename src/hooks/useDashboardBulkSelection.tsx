@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * Dashboard bulk-selection for the Unshipped / Packed / Shipped order tables.
- *
- * The tables share one selection scope (only one mounts per `?view`); FBA opts
- * out. Selection is always on when the surface supports it — left-gutter
- * checkboxes + column select-all, no chrome pencil. This hook owns the clear-
- * on-view-flip resets and the bulk actions. The floating action bar is rendered
- * by the page from `selectionActions`; overlays those actions open (the
- * one-shot assign picker, condition / qty / notes / ship-by dialogs) come
- * back as `selectionOverlays`.
- *
- * Right-rail publishers wrap this via {@link useOrderRailSelection} — do not
- * add a publish flag here. Surfaces that still need a floating capsule (none of
- * the order queues) would call this hook directly; Pack / Shipping / dashboard
- * all publish through the wrapper.
- *
- * **Actions diverge by lifecycle stage, layout does not** (the house rule these
- * lanes are built on). All four outbound tabs render one grid component with one
- * persisted column layout, but "assign a tester" is meaningless on Shipped and
- * "print a shipping label" is meaningless on Pending — so every action declares
- * the views it belongs to via `enabled`, and the rail action region drops the
- * ones that cannot fire instead of showing dead buttons.
- */
+/** Dashboard bulk-selection for the Unshipped / Packed / Shipped order tables. */
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -165,11 +143,7 @@ export function useDashboardBulkSelection(
   );
   const deleteOrderRow = useDeleteOrderRow();
 
-  // The rows a DIALOG verb was run WITH. The catalog is offered at n=1 too
-  // (the Selected-order column runs a verb on the open record without it being
-  // checked), so a dialog must confirm against the rows it was opened for —
-  // not whatever the check-set holds. Null = no dialog verb in flight; the
-  // table bar passes the check-set itself, so its behaviour is unchanged.
+  // The rows a DIALOG verb was run WITH.
   const [dialogRows, setDialogRows] = useState<DashSelectableRow[] | null>(null);
   const targetRows = dialogRows ?? selectedRows;
   // Link label pairs ONE order with a ShipStation label (return / replacement /
@@ -180,15 +154,7 @@ export function useDashboardBulkSelection(
     emitToggleAll(DASHBOARD_ORDERS_SELECTION_SCOPE, 'none');
   }, []);
 
-  // Clear checks on view flip — row types + delete semantics differ. Also clear
-  // when leaving a selectable surface (FBA) so a stale set never lingers.
-  //
-  // The DOMAIN switch clears too (dashboard IA rework 2.4): outbound rows are
-  // sales orders and inbound rows are receiving cartons, so a live multi-select
-  // does not survive the crossing. Carrying it would leave the selection bar
-  // offering "print a shipping label" over a set of cartons — the ids would
-  // even resolve, against the wrong table. Clearing is the only safe answer for
-  // a scope whose rows change entity.
+  // Clear checks on view flip — row types + delete semantics differ.
   useEffect(() => {
     clearSelection();
   }, [orderView, domain, clearSelection]);
@@ -211,11 +177,7 @@ export function useDashboardBulkSelection(
       return;
     }
     const ok = () => toast.success(`Copied ${rows.length} row${rows.length === 1 ? '' : 's'}`);
-    // `navigator.clipboard` is undefined outside a secure context — which is
-    // exactly how the floor reaches this app (plain-HTTP LAN host). The old
-    // `navigator.clipboard?.writeText(…).then(…)` short-circuited the WHOLE
-    // chain there: no copy, no toast, no error. The button looked broken
-    // because it silently was.
+    // `navigator.clipboard` is undefined outside a secure context — which is exactly how the floor reaches this app (plain-HTTP LAN host).
     if (navigator.clipboard?.writeText) {
       void navigator.clipboard.writeText(text).then(ok, () => {
         if (!copyViaExecCommand(text)) toast.error('Copy failed');
@@ -252,21 +214,7 @@ export function useDashboardBulkSelection(
     toast.success(urls.length === 1 ? 'Downloading photo' : `Downloading ${urls.length} photos`);
   }, []);
 
-  /*
-   * Scale confirmation for a write that fans out over a selection.
-   *
-   * Ship-by and Flag already open a picker, so they were never "one click with
-   * no dialog" — but the picker asks WHAT VALUE, never HOW MANY ROWS. An
-   * operator who picked a date saw a date, hit save, and moved the ship-by on
-   * every row they happened to still have checked, with a toast as the first
-   * mention of the count. On a desk whose whole job is meeting ship-by dates,
-   * that is the one number the dialog had to say out loud.
-   *
-   * Below the threshold it stays a single gesture: a confirm on three rows the
-   * operator can see is a click tax, and a dialog that always appears is a
-   * dialog nobody reads by the end of a shift. Delete keeps its own unscaled
-   * confirm — destruction is not a matter of degree.
-   */
+  /* Scale confirmation for a write that fans out over a selection. */
   const BULK_CONFIRM_THRESHOLD = 5;
   const BULK_WRITE_CAP = 500;
   const confirmBulkWrite = useCallback(async (count: number, verb: string) => {
@@ -554,10 +502,7 @@ export function useDashboardBulkSelection(
       .catch(() => toast.error('Could not load the label printer — reload and retry'));
   }, []);
 
-  // ─── Export CSV ────────────────────────────────────────────────────────────
-  // Client-side only: the rows are already in hand, so a round trip would just
-  // be a second definition of "what this lane contains" and a chance for the
-  // file to disagree with the screen it was exported from.
+  // ─── Export CSV ──────────────────────────────────────────────────────────── Client-side only:
   const handleExportCsv = useCallback(
     (rows: DashSelectableRow[]) => {
       if (rows.length === 0) return;
@@ -623,15 +568,7 @@ export function useDashboardBulkSelection(
     [isShippedView, deleteOrderRow, clearSelection],
   );
 
-  /**
-   * The dock scan-out, both directions.
-   *
-   * `direction` was resolved from the ROWS before the operator pressed it
-   * (majority; the remainder was named in the tooltip), so this applies that
-   * one direction and skips the rows it does not cover rather than silently
-   * doing two different things to one selection. POST records the SHIP_CONFIRM,
-   * DELETE removes it — the same pair the dock station uses.
-   */
+  /** The dock scan-out, both directions. */
   const handleScanOut = useCallback(
     async (rows: DashSelectableRow[], resolved?: { direction: VerbDirection }) => {
       const direction: VerbDirection = resolved?.direction ?? 'do';
@@ -871,10 +808,7 @@ export function useDashboardBulkSelection(
     [verbCatalog],
   );
 
-  // Overlays the actions open. Rendered by the page beside the selection bar —
-  // they are modal surfaces, so they must not live inside the bar's capsule.
-  // Pick / Pack assign opens as an upward search under the column-foot icons
-  // (no Dialog / Popover).
+  // Overlays the actions open.
   const selectionOverlays = (
     <>
       {listingRuleOrderIds.length > 0 ? (

@@ -1,27 +1,4 @@
-/**
- * The allocation MATCH: which stocked unit satisfies which order line, and
- * what to tell the operator when none does.
- *
- * ## Why this is a separate, pure module
- *
- * Two reasons. It is the only interesting half — assignment over two lists,
- * with a marketplace-contract gate in the middle — so it earns tests that do
- * not need a database. And `auto-allocate.ts` statically imports the Neon pool
- * (`server-only`), which cannot be imported under `node:test` at all; keeping
- * the rules here is the same altitude split the codebase already uses for
- * `order-exception-types.ts` vs `order-exceptions.ts`.
- *
- * ## Why shortfalls are first-class, never silent
- *
- * A two-unit order that gets one unit is the failure the floor complained
- * about: from the picker's seat a silent 90% allocation looks exactly like the
- * data-not-syncing bug. Every line that does not get its full quantity
- * produces a shortfall carrying needed/matched and a reason — including the
- * partial case, which emits the allocations it COULD make alongside it.
- *
- * Pure: no I/O, no clock, no randomness. The same two lists always produce the
- * same plan, so a re-run is explainable.
- */
+/** The allocation MATCH: */
 
 import {
   GRADE_ORDER,
@@ -81,21 +58,7 @@ const UNGRADED_SORT_RANK = GRADE_ORDER.length;
 const sortRank = (grade: ConditionGrade | null): number =>
   grade ? GRADE_RANK[grade] : UNGRADED_SORT_RANK;
 
-/**
- * Candidate order within one SKU: lowest acceptable grade first, then bin,
- * then id.
- *
- * Lowest-first is the REVERSE of `gradesSatisfying`, which is best-first
- * because a human picker over-delivers to protect the INAD rate. A machine
- * sweep must do the opposite: handing the BRAND_NEW unit to a bare "USED"
- * listing — the majority of the book, 2869 of 4581 rows promise no tier at
- * all — strands the only unit a NEW listing could have been filled from, and
- * nothing re-plans that later. Spending the cheapest unit that still honours
- * the contract keeps premium stock sellable as premium.
- *
- * Bin then id afterwards so the plan is reproducible run to run, and so a
- * multi-unit line collects from one bin instead of two walks.
- */
+/** Candidate order within one SKU: */
 function compareCandidates(a: AllocationSupplyUnit, b: AllocationSupplyUnit): number {
   const byGrade = sortRank(a.grade) - sortRank(b.grade);
   if (byGrade !== 0) return byGrade;
@@ -110,13 +73,7 @@ function unitsNeeded(quantity: number): number {
   return Math.max(1, Math.floor(quantity));
 }
 
-/**
- * Assign units to lines.
- *
- * A unit appears in at most one allocation across the whole plan, mirroring
- * the DB's `idx_oua_open_unit` partial UNIQUE — so a plan can always be
- * inserted in one statement without fighting the constraint.
- */
+/** Assign units to lines. */
 export function planAllocations(
   demand: readonly AllocationDemandLine[],
   supply: readonly AllocationSupplyUnit[],

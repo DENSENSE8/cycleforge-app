@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * The PACKAGE record — one carrier tracking number read whole
- * (`GET /api/shipments/[id]/record`, {@link useShipmentRecord}), placed by
- * `DeskRecordPlane` through the Shipped ledger: in place of the list by
- * default, beside it when the staffer chooses fullscreen.
- *
- *   state strip   CODE · word ······························ → next
- *   main          Items (every line in the box) · Actions (newest first)
- *                 · Other boxes on this order
- *   aside         tracking · carrier · packer · packed · shipped · carrier
- *                 milestones · box k of N · orders · exception · sync error
- *
- * Every instant arrives as ISO-with-offset and is painted in the warehouse
- * zone (`formatDateTimePST` / `formatMonthDayTimePST`). A missing fact paints
- * what its absence MEANS (`Never pack-scanned`, `Not scanned out`), never a
- * blank. The record carries no verbs — they live in the list's action strip.
- */
+/** The PACKAGE record — one carrier tracking number read whole (`GET /api/shipments/[id]/record`, {@link useShipmentRecord}), placed by… */
 
 import { DeskRecordLayout } from '@/design-system/components/DeskRecordPlane';
 import { EvidenceNotice, EvidenceSection, EvidenceStateStrip } from '@/design-system/components/record-ledger/RecordEvidence';

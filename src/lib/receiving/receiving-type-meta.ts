@@ -1,14 +1,4 @@
-/**
- * Single source of truth for receiving-type → label / short / tone / icon key.
- *
- * Mirrors `src/lib/source-platform.ts`: every surface that shows a receiving
- * type (classify faces, pills, labels) resolves through here so PO / Return /
- * Repair / Trade In / Pick Up never present two ways. Org catalog labels still
- * win at the picker layer; tones + icon keys stay built-in (custom slugs fall
- * back to a neutral tag face).
- *
- * Pure — no React. Glyphs resolve in {@link ReceivingTypeMark}.
- */
+/** Single source of truth for receiving-type → label / short / tone / icon key. */
 
 export type ReceivingTypeIconKey =
   | 'package'
@@ -68,11 +58,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
       'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
   },
   {
-    // Orange — matches functional.repair (DESIGN_SYSTEM.md functional hue
-    // table) and TicketChip. Was violet until 2026-08-07: two registries
-    // named a color for "repair" and disagreed; orange is the one already
-    // load-bearing on the ticket/support side, so violet lost. Violet is
-    // free again elsewhere in the color system as of this change.
+    // Orange — matches functional.repair (DESIGN_SYSTEM.md functional hue table) and TicketChip.
     value: 'REPAIR',
     label: 'Repair',
     short: 'Rep',

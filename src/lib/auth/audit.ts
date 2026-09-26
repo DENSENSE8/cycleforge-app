@@ -1,10 +1,6 @@
 /**
- * Single writer for `auth_audit`. Every auth-relevant action goes through
+ * Single writer for `auth_audit`.
  * here so we have one place to grep when a security question comes up.
- *
- * Events are kebab-case, namespaced: `signin.pin`, `signin.passkey`,
- * `signout`, `pin.set`, `stepup.granted`, `permission.denied`,
- * `enrollment.consumed`, `role.changed`, etc.
  */
 
 import pool from '@/lib/db';

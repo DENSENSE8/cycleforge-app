@@ -1,14 +1,4 @@
-/**
- * PATCH /api/admin/roles/reorder
- *
- * Body: { order: number[] }   — role ids in the desired top-down order.
- *                               First id gets position=1, next gets 2, …
- *
- * Why renumber instead of accepting per-row positions: keeps the editor
- * simple (drag-and-drop produces an array) and avoids needing a CHECK
- * constraint or gap-management. The drag-handle is in the sidebar; the
- * editor calls this once per drop.
- */
+/** PATCH /api/admin/roles/reorder */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

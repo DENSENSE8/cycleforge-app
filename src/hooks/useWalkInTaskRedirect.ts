@@ -16,13 +16,7 @@ function isMobileUserAgent(): boolean {
   );
 }
 
-/**
- * Returns true while a redirect is in flight (caller should show a spinner).
- * Handles the "start a task" deep-links only — `?mode=` now selects a Sales-hub
- * mode (Local Pickup · Sales · Repair) and must NOT redirect:
- * - `?new=true` / `?openRepair=` → `/pickup?job=repair` (+ params)
- * - Mobile `?openRepair=` → `/m/rs/{id}`
- */
+/** Returns true while a redirect is in flight (caller should show a spinner). */
 export function useWalkInTaskRedirect(): boolean {
   const router = useRouter();
   const searchParams = useSearchParams();

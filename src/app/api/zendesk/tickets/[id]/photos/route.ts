@@ -11,16 +11,7 @@ import { getEntityPhotos, getTicketEntity } from '@/lib/zendesk-links';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/zendesk/tickets/:id/photos
- *
- * Resolves the ticket's linked internal entity (ticket_links → external_id →
- * unfound_overlay), then returns that entity's Vercel Blob photos. Photos are
- * NOT fetched from Zendesk — our Blob is the source of truth for ticket images.
- *
- * Returns { success, entity, photos } — entity is null when no link is known
- * (e.g. inbound / Zendesk-native tickets), in which case photos is [].
- */
+/** GET /api/zendesk/tickets/:id/photos */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

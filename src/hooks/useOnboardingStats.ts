@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Org activation counts (`GET /api/onboarding/stats`) as a hook.
- *
- * Extracted from `GettingStartedChecklist`, which had the fetch inline, because
- * a SECOND consumer arrived: the To-ship queue needs to know whether an empty
- * result set means "brand-new org" or "queue is clear". Two copies of this
- * query would be two answers to one question — and the one that matters here is
- * whether to teach an established org to set itself up.
- *
- * `staleTime` is deliberately long: activation counts change a handful of times
- * in an org's entire life, and the server caps every COUNT for cheapness.
- */
+/** Org activation counts (`GET /api/onboarding/stats`) as a hook. */
 
 import { useQuery } from '@tanstack/react-query';
 import type { OnboardingStats } from '@/lib/onboarding/steps';
@@ -33,15 +22,7 @@ export function useOnboardingStats() {
   });
 }
 
-/**
- * True when the org has DONE something — ingested an order or connected a
- * channel. The negation is the only honest trigger for a first-run teaching
- * state, and it is deliberately not derived from a filtered query result: an
- * empty queue on a mature org is a clear queue, not a fresh install.
- *
- * Unknown (loading / failed) is NOT "new": pass `undefined` and callers keep
- * their ordinary empty state.
- */
+/** True when the org has DONE something — ingested an order or connected a channel. */
 export function orgHasActivity(stats: OnboardingStats | undefined): boolean | undefined {
   if (!stats) return undefined;
   return stats.orders > 0 || stats.integrationsConnected > 0 || stats.receivingLines > 0;

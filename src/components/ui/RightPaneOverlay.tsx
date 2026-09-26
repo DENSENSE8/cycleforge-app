@@ -24,12 +24,7 @@ import {
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-// ─── Host ─────────────────────────────────────────────────────────────────────
-// Marks the right-pane content column as the anchor for every `RightPaneOverlay`
-// rendered beneath it. The overlay reads this element from context and pins its
-// panel over the element's on-screen rect — so pane-focused surfaces (audit log,
-// NAS picker, detail slide-overs) land on the right panel, while the backdrop
-// still dims the whole viewport (sidebar + header included).
+// ─── Host ───────────────────────────────────────────────────────────────────── Marks the right-pane content column as the anchor for…
 
 const RightPaneHostContext = createContext<HTMLElement | null>(null);
 
@@ -72,12 +67,7 @@ interface RightPaneOverlayProps {
    * right  → full-height slide-over from the pane's right edge (detail panels).
    */
   align?: RightPaneOverlayAlign;
-  /**
-   * pane (default) → pin over the nearest {@link RightPaneOverlayHost}'s rect, so
-   * the surface sits inside the right content column (below the global header).
-   * viewport → ignore any host and span the full viewport, so an `align="right"`
-   * drawer runs top-to-bottom over the global header too (the audit log).
-   */
+  /** pane (default) → pin over the nearest {@link RightPaneOverlayHost}'s rect, so the surface sits inside the right content column (below… */
   anchor?: 'pane' | 'viewport';
   /** Slide-over width in px for `align="right"`. Ignored for `center`. Default / seed when resizable. */
   width?: number;
@@ -106,20 +96,7 @@ interface RightPaneOverlayProps {
   'aria-labelledby'?: string;
 }
 
-/**
- * Right-pane-anchored overlay shell.
- *
- * The backdrop dims the entire viewport (everything greys out), while the panel
- * is pinned over the nearest {@link RightPaneOverlayHost}'s rect — so the dialog
- * sits on the right pane, not the centre of the whole screen. With no host
- * mounted (mobile, other routes) it degrades to a normal viewport-centred modal
- * / right drawer.
- *
- * The shell owns chrome only — portal, backdrop, Escape, scroll-lock, motion and
- * the panel surface (white, rounded/bordered, `flex flex-col overflow-hidden`).
- * Compose the header + body as children; a scrollable body should be
- * `min-h-0 flex-1 overflow-y-auto`.
- */
+/** Right-pane-anchored overlay shell. */
 export function RightPaneOverlay({
   open,
   onClose,
@@ -253,11 +230,7 @@ export function RightPaneOverlay({
   const target = typeof document !== 'undefined' ? document.body : null;
   if (!target || !present) return null;
 
-  // Positioning frame: sized to the pane rect (or the whole viewport when no
-  // host). It's pointer-events-none so backdrop clicks still reach the dim
-  // layer; the panel re-enables pointer events. The frame is non-transformed so
-  // the panel's framer-motion transform (scale/slide) stays conflict-free.
-  // Frame sits one above the backdrop within the panelPopover band.
+  // Positioning frame:
   const frameStyle: CSSProperties = rect
     ? { position: 'fixed', left: rect.left, top: rect.top, width: rect.width, height: rect.height, zIndex: zLayer.panelPopover + 1 }
     : { position: 'fixed', inset: 0, zIndex: zLayer.panelPopover + 1 };

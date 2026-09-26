@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * URL SoT for new-order entry (`?new=true`) on the current workbench path.
- * Shared by Pack / `/test` Shipping overlays; Labels uses
- * {@link useOutboundUrlState}.newOpen (same SoT hook shape). Dashboard wires
- * the same param via {@link useDashboardSearchController}.
- */
+/** URL SoT for new-order entry (`?new=true`) on the current workbench path. */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

@@ -7,15 +7,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import pool from '@/lib/db';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 
-/**
- * Append one ops note onto many orders — the multi-select Notes CTA.
- *
- * Does NOT go through `/api/orders/assign`. Notes are an append-only trail
- * (`order_notes`); the assign waist must not grow a second writer.
- *
- * Ids the org does not own are dropped, not fatal — the response reports what
- * actually changed.
- */
+/** Append one ops note onto many orders — the multi-select Notes CTA. */
 
 const BulkNotesBody = z.object({
   orderIds: z.array(z.number().int().positive()).min(1).max(500),

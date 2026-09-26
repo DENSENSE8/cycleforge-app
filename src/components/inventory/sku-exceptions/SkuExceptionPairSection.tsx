@@ -19,12 +19,7 @@ import type { ProvisionalSkuDetail } from '@/lib/neon/provisional-sku-queries';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
-/**
- * Pair to Zoho SKU — the resolution. Pick the real item out of the Zoho mirror,
- * read what will be true afterwards ("N units become X"), confirm. The merge
- * moves every bin, ledger row, photo and the description onto the real SKU and
- * retires the placeholder, so on success the record no longer exists.
- */
+/** Pair to Zoho SKU — the resolution. */
 export function SkuExceptionPairSection({
   fieldId,
   item,

@@ -19,12 +19,7 @@ import { STATION_CONTEXT_PICKUP_CHROME_CLASS } from '@/components/station/entity
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';
 
-/**
- * Non-copy pickup indicator for the tracking slot.
- * - `chip` (default) — ring badge for table columns, popovers, dense rows.
- * - `rail` — the carton-bar word cell ({@link STATION_CONTEXT_PICKUP_CHROME_CLASS}),
- *   so it measures and reads exactly like Listing / Claim beside it.
- */
+/** Non-copy pickup indicator for the tracking slot. */
 export function FulfillmentPickupPill({
   dense,
   variant = 'chip',
@@ -65,16 +60,7 @@ export function FulfillmentPickupPill({
   );
 }
 
-/**
- * The slim, color-coded, last-8 chip cluster shared by the desktop receiving
- * table row ({@link ReceivingLineOrderRow}) and the scanned-line / receipt
- * detail headers on mobile. Each chip shows the last-8 preview and copies the
- * full value on tap. Pass only the identifiers a surface has — empties render
- * as placeholder chips so the row stays aligned.
- *
- * Keeping this in one place is the point: the phone display and the desktop
- * table can't drift because they render the same component.
- */
+/** The slim, color-coded, last-8 chip cluster shared by the desktop receiving table row ({@link ReceivingLineOrderRow}) and the… */
 export interface ReceivingIdentityChipsProps {
   po?: string | null;
   sku?: string | null;
@@ -87,12 +73,7 @@ export interface ReceivingIdentityChipsProps {
   includeSku?: boolean;
   includeTracking?: boolean;
   includeSerial?: boolean;
-  /**
-   * Desktop table mode: lay the chips out as fixed-width {@link ChipColumns} so
-   * PO / SKU / tracking / serial line up vertically across rows and the trailing
-   * chip is flush with the day-group count. Left off (default) the chips render
-   * as a free-flowing wrap row — used by the mobile receiving detail headers.
-   */
+  /** Desktop table mode: */
   asColumns?: boolean;
   /** Wrapper layout classes for the free-flow (non-columns) layout. */
   className?: string;

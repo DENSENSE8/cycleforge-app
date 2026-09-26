@@ -1,10 +1,4 @@
-/**
- * Unit tests for the station-builder semantic validation + registry lookups
- * (Operations Studio layer 2). These ran against zero coverage before Phase D.
- * Pure / DB-free: validateStationConfig + the registries are all in-memory CODE.
- *
- *   node --import tsx --test src/lib/stations/validate.test.ts
- */
+/** Unit tests for the station-builder semantic validation + registry lookups (Operations Studio layer 2). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

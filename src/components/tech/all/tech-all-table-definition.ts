@@ -1,10 +1,4 @@
-/**
- * `tech.all` — Tech All triage table definition (plan Phase 1, wave 2).
- *
- * Re-declares nothing: columns + capabilities are the family SoT by reference;
- * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry. Frozen pane is `select · identity` (not `select · order`).
- */
+/** `tech.all` — Tech All triage table definition (plan Phase 1, wave 2). */
 
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
@@ -29,11 +23,7 @@ export const TECH_ALL_TABLE_BINDING: TableSurfaceBinding<TechAllTriageRow, TechA
   definition: TECH_ALL_TABLE_DEFINITION,
   columns: TECH_ALL_SHEET_COLUMNS,
   makeDescriptor: makeTechAllGridDescriptor,
-  // A triage row is a POINTER at work living somewhere else: a receiving line
-  // hands off to its station bench, a repair or a pickup navigates to its own
-  // desk (`/repair?openRepair=`, `/pickup?lcpu=`). There is no record of "a
-  // triage row" to peek at, so an inspector here would open a panel about a
-  // join, not about a thing.
+  // A triage row is a POINTER at work living somewhere else:
   recordPlane: {
     kind: 'navigate',
     reason:

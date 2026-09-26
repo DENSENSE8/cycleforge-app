@@ -1,14 +1,4 @@
-/**
- * Line-money identity — engine law for every PRODUCT_TABLES peer.
- *
- * Price / amount is not an Amount column after Status. It is the fact under
- * the Item title after qty (a `subtitle:N` track after Title on sheet). A
- * family that catalogs `{family}.amount` or `{family}.price` as money +
- * subtitle gets that place automatically via {@link ensureLineMoneySubtitle}.
- *
- * Occupancy (`sku-velocity.stock`, `dead-stock.stock`, `bins.total_qty`) is
- * not line money. `catalog.cost` is last-cost analytics, not a line price.
- */
+/** Line-money identity — engine law for every PRODUCT_TABLES peer. */
 
 import {
   COMPOUND_MONEY_TONE_CLASS,

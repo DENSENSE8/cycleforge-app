@@ -17,15 +17,7 @@ function parseId(raw: string): number | null {
 
 const RuleUpdateBody = z.object({ isDefault: z.boolean() });
 
-/**
- * PATCH /api/catalog/platform-type-rules/[id] — make this the platform's
- * pre-selected type (or clear that flag).
- *
- * Promoting a default DEMOTES the current one, in one transaction, server-side.
- * `uq_platform_type_rules_org_platform_default` makes two defaults
- * unrepresentable, so a client doing clear-then-set as two requests would
- * collide on that index the moment anyone changes their mind.
- */
+/** PATCH /api/catalog/platform-type-rules/[id] — make this the platform's pre-selected type (or clear that flag). */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');
@@ -60,14 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 }
 
-/**
- * DELETE /api/catalog/platform-type-rules/[id] — stop allowing this type here.
- *
- * A hard delete, not a soft one: a rule is a statement about what is allowed,
- * and an inactive rule would be a statement nobody can see. Removing a
- * platform's LAST rule REOPENS it to every type — the editor confirms that,
- * because "remove the last allowed type" reads like "allow nothing".
- */
+/** DELETE /api/catalog/platform-type-rules/[id] — stop allowing this type here. */
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');

@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * One order's paperwork, client side: the packing slips + shipping labels on
- * the order (`documents`) and every `product_manuals` row (manual, packing
- * list, PL + M…) pinned to the order, its item number or its SKU. Reads share
- * the `['order-documents', id]` key the shipping panel and pack print already
- * use, so every surface agrees.
- *
- * Writes:
- *   documents — upload (multipart → GCS), replace (upload the new file, then
- *               unlink the old), delete, fetch from the platform.
- *   paperwork — upload new (pinned to this order / its item # / its SKU), pair
- *               an existing library row, rename / retype / re-pair, replace the
- *               file, unpair, delete from the library.
- */
+/** One order's paperwork, client side: */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';

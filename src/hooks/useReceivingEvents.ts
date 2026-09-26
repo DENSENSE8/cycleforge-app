@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Typed subscription to the receiving cross-pane event bus. Thin wrapper over
- * `useEventBridge` (one declarative effect, ref-held handlers so re-renders
- * never re-bind) that resolves each handler's `detail` type from the
- * `ReceivingEventDetail` registry — the sanctioned replacement for hand-wired
- * `window.addEventListener('receiving-…')` effects.
- *
- *   useReceivingEvents({
- *     'receiving-line-deleted': ({ id }) => id != null && dropLine(id),
- *     'receiving-workspace-close': () => resetSelection(),
- *   });
- *
- * Dispatch side: `emitReceiving` (`@/components/receiving/receiving-events`).
- */
+/** Typed subscription to the receiving cross-pane event bus. */
 
 import { useEventBridge } from '@/hooks/_events';
 import type {

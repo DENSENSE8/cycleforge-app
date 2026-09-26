@@ -5,17 +5,7 @@ import { toast } from '@/lib/toast';
 import type { ZendeskComment } from '@/lib/zendesk';
 import { zendeskKeys, type CommentsResult } from './useZendeskQueries';
 
-/**
- * Post a public reply / internal note to a ticket — with optional drag-dropped
- * file attachments and CC collaborator emails. Routes through
- * POST /api/zendesk/photo-ticket (mode=update), the same chokepoint the
- * photo→ticket modal uses, so chat replies and the modal share one attachment
- * pipeline.
- *
- * Optimistic: the new comment is inserted into the comments cache immediately so
- * it appears as a chat entry the instant you send, then reconciled against the
- * server on settle. Rolls back on error.
- */
+/** Post a public reply / internal note to a ticket — with optional drag-dropped file attachments and CC collaborator emails. */
 export interface SupportReplyVars {
   ticketId: number;
   body: string;

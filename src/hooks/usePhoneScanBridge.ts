@@ -19,16 +19,7 @@ type ScanResultMsg = {
   error?: string | null;
 };
 
-/**
- * Desktop-side bridge for phone-originated tracking scans.
- *
- * Keyed by the signed-in staff (`useAuth().user.staffId`) — no pair handshake
- * required. When the user is signed in on both desktop and phone with the
- * same staff ID, the desktop subscribes to the per-staff phone bridge and
- * either lets the receiving sidebar handle the lookup (on /receiving) or
- * performs the PO lookup itself and echoes the result back on the per-staff
- * station bridge.
- */
+/** Desktop-side bridge for phone-originated tracking scans. */
 export function usePhoneScanBridge(): void {
   const { user } = useAuth();
   const { getClient } = useAblyClient();

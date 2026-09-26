@@ -1,31 +1,4 @@
-/**
- * Shopify connector sync adapter — connection-driven order ingestion.
- *
- * Shopify is a Nango-connected storefront (authKind 'nango'), mirroring Square:
- * the hosted Connect flow lands a connection marker in organization_integrations
- * and Nango custodies the OAuth token + its refresh. This adapter is the only
- * net-new code per provider — it pulls the org's Shopify orders and upserts them
- * into `orders` with the SAME shape eBay/Amazon/Square use (account_source /
- * sale_amount / currency), so every downstream surface (price chip, tracker,
- * source-platform label) renders it generically.
- *
- * Transport: Shopify's GraphQL Admin API through Nango's proxy. REST is avoided
- * on purpose — its cursor pagination lives in the `Link` response header, which
- * `nangoProxy` discards (it returns the body only). GraphQL carries the cursor
- * in the JSON body (`pageInfo.endCursor`), so it paginates cleanly through the
- * proxy and never handles a raw token. A vault paste-key fallback
- * (ShopifyCredentials.shopDomain + accessToken) covers orgs on the non-Nango
- * path or a custom-app token.
- *
- * Reuses:
- *   - nangoProxy / getIntegrationCredentials (token + shop resolution)
- *   - the orders upsert shape from src/lib/integrations/connectors/square.ts
- *     (idx_orders_unique_account_order)
- *   - getSyncCursor / updateSyncCursor for the incremental updated_at watermark
- *
- * Lazily imported by the registry so the connection reader never pulls in this
- * module.
- */
+/** Shopify connector sync adapter — connection-driven order ingestion. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestConnectorOrders } from './ingest-connector-orders';
@@ -83,18 +56,7 @@ async function shopifyGraphql<T>(
 ): Promise<T> {
   let body: GraphqlResponse<T>;
 
-  // Branch on whether THIS ORG has a Nango connection — not on whether Nango is
-  // configured process-wide. `isNangoConfigured()` only reports that
-  // NANGO_SECRET_KEY is present, which is true on every environment that has
-  // ever connected any Nango provider (Square, today). It said nothing about
-  // Shopify, so a Shopify-on-vault org took the Nango branch and died in
-  // nangoProxy with "No Nango connection for shopify" — while the vault
-  // fallback below sat unreachable in the `else`.
-  //
-  // Shopify cannot even obtain a connection marker yet: the connect flow gates
-  // on NANGO_BACKED_PROVIDERS (src/lib/integrations/nango-providers.ts), which
-  // lists only `square`. So this branch is currently always false and the vault
-  // path is the live one — as intended until the Nango dashboard config lands.
+  // Branch on whether THIS ORG has a Nango connection — not on whether Nango is configured process-wide.
   const nangoConn = isNangoConfigured() ? await getNangoConnection(orgId, 'shopify') : null;
 
   if (nangoConn) {

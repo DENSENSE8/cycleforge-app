@@ -1,22 +1,4 @@
-/**
- * Core PO-mailbox reconcile pipeline, extracted so it can be driven from
- * two routes with different auth scopes + response shapes:
- *
- *   • /api/admin/po-gmail/reconcile  (admin.view)    — returns the full
- *     payload incl. per-message email bodies for the triage UI.
- *   • /api/receiving-lines/incoming/email-rescan (receiving.view) — returns
- *     counts only (no email bodies), for the Incoming toolbar's Email button.
- *
- * Fetches unread (or query-matched) Gmail messages from the PO mailbox,
- * extracts order-number candidates, diffs them against receiving_lines
- * (our Zoho mirror), writes any *missing* matches into the
- * email_missing_purchase_orders worklist, auto-resolves rows whose PO has
- * since appeared, logs "ORDER DELIVERED" emails as delivery signals, and
- * stamps carrier tracking# onto matched POs that still lack a shipment.
- *
- * No Zoho API calls — webhooks + the shipping sync cron keep
- * receiving_lines populated.
- */
+/** Core PO-mailbox reconcile pipeline, extracted so it can be driven from two routes with different auth scopes + response shapes: */
 
 import pool from '@/lib/db';
 import { listMessageIds, fetchMessagesByIds } from '@/lib/po-gmail/messages';
@@ -32,10 +14,7 @@ import { promoteEmailDeliverySignalsToStn } from '@/lib/receiving/delivered-unsc
 import { linkTrackingToPo } from '@/lib/po-gmail/link-tracking';
 
 export const DEFAULT_LIMIT = 25;
-// Cap on the per-call scan window. Operators occasionally want to backfill
-// (e.g. after fixing a parser bug), so 200 is the ceiling. Anything larger
-// risks the function timing out — the cron is the right tool for ongoing
-// sweeps, not a one-shot button.
+// Cap on the per-call scan window.
 export const MAX_LIMIT = 200;
 const BODY_PREVIEW_CHARS = 800;
 
@@ -115,11 +94,7 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
   const { ids } = await listMessageIds(query, limit, undefined, orgId);
   const messages = await fetchMessagesByIds(ids, orgId);
 
-  // Build the union of normalized candidates across all messages, so we
-  // can do one ANY($1) query against receiving_lines regardless of N.
-  // Tracking# extraction runs alongside PO extraction so the same email
-  // body is parsed once. Tracking-link writes only happen below for emails
-  // whose POs actually match (status='in_zoho' / 'received').
+  // Build the union of normalized candidates across all messages, so we can do one ANY($1) query against receiving_lines regardless of N.
   const perMessageExtracted = messages.map((m) => {
     const body = `${m.subject}\n${m.bodyText}`;
     const e = extractOrderNumbers(body);
@@ -283,12 +258,7 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
           );
           resolved += rowCount ?? 0;
 
-          // Gmail leg: when the email body carries a carrier tracking#
-          // AND the matched Zoho PO's receiving row has no shipment_id
-          // yet, stamp it. Drains the AWAITING_TRACKING bucket on the
-          // Incoming pill for POs purchasing never put a `reference_number`
-          // on. linkTrackingToPo runs outside the transaction so a slow
-          // upsertShipment call doesn't keep the worklist lock open.
+          // Gmail leg: when the email body carries a carrier tracking# AND the matched Zoho PO's receiving row has no shipment_id yet, stamp it.
           if (item.trackingCandidates.length > 0) {
             for (const match of item.matches) {
               if (!match.zoho_purchaseorder_id) continue;

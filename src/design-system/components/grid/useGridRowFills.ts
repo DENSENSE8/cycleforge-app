@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Per-staff LedgerGrid row fills (`tableColumns[tableId].rowFills`).
- *
- * Optimistic staff-preferences write: it patches only its own `rowFills` slot
- * and spreads the rest of `tableColumns[tableId]` through untouched, so a
- * legacy key it does not know about survives the round trip.
- */
+/** Per-staff LedgerGrid row fills (`tableColumns[tableId].rowFills`). */
 
 import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

@@ -7,14 +7,7 @@ import { useBodyScrollLock } from '@/design-system/hooks';
 import { PhotoViewerModal } from './PhotoViewerModal';
 import type { PhotoGalleryController } from './usePhotoGallery';
 
-/**
- * SoT mount shell for {@link PhotoViewerModal}.
- *
- * Owns the body portal, `present`-until-exit teardown (RightPaneOverlay pattern),
- * a stable AnimatePresence key, and scroll-lock through the exit fade. Hosts
- * must render this — never a local `createPortal` + `AnimatePresence mode="wait"`
- * fork (that deadlocks the scrim and leaves a ghost overlay).
- */
+/** SoT mount shell for {@link PhotoViewerModal}. */
 export function PhotoViewerPortal({
   g,
   onDismissed,

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * React Query hooks for the voice support modes. These read the planned
- * endpoints (`/api/voicemails`, `/api/voicemails/[id]`, `/api/call-events`;
- * see docs/nextiva-voice-support-mode-plan.md). Until the Nextiva connector
- * ships, those routes 404/501 — the hooks surface that as `notConfigured` so
- * the UI shows a teaching "connect Nextiva" empty state instead of a red error
- * (degrade-not-fail, per the Workbench/Monitor archetype rules).
- */
+/** React Query hooks for the voice support modes. */
 
 import {
   useMutation,

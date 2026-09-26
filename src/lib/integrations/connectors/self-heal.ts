@@ -1,20 +1,4 @@
-/**
- * Connection self-heal sweep.
- *
- * WHY (2026-09-14 Zoho blackout): `organization_integrations.status='error'` is
- * a LATCH — nothing cleared it but a human re-running OAuth. A 10-minute Zoho
- * mint throttle therefore took inventory offline for 25 hours, and receiving
- * could not push cartons as received the whole time.
- *
- * Two defences now exist. First, transient failures no longer latch at all
- * (credential-auth-failure.ts). Second — this sweep — anything that DID latch
- * gets revalidated on a schedule: if the stored credential still works, the
- * latch is lifted automatically. A genuinely revoked credential keeps failing
- * validation and stays `error`, so "Needs attention" still means what it says.
- *
- * Deps-injected so the unit test runs DB-free. Driven by
- * GET /api/cron/integrations/refresh.
- */
+/** Connection self-heal sweep. */
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {

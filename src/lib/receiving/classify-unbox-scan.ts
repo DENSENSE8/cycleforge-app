@@ -1,18 +1,4 @@
-/**
- * Surface-aware scan classification for the receiving Station surfaces (Unbox /
- * Triage). `detectStationScanType` is a pure string heuristic; this layer adds
- * the surface's *context* — which surface issued the scan, and whether the
- * active carton is still short on serials — to resolve the operator's INTENT.
- *
- * The load-bearing rule (mirrors `resolveScanType` in
- * `useStationTestingController`): on a scan surface, when the active carton is
- * still short of its expected serials, a *carrier-unknown* "tracking-looking"
- * barcode is almost certainly the next product SERIAL, not a new carton — so the
- * operator never has to arm a mode mid-flow. Known carrier prefixes still route
- * as TRACKING.
- *
- * Pure + dependency-light so it unit-tests DB-free.
- */
+/** Surface-aware scan classification for the receiving Station surfaces (Unbox / Triage). */
 
 import { detectStationScanType, type StationScanType } from '@/lib/station-scan-routing';
 import { getSurface, type SurfaceKey } from '@/lib/stations/surface-keys';
@@ -25,13 +11,7 @@ export type UnboxScanIntent =
   | 'repair' // an RS-#### repair ticket
   | 'sku_lookup' // a SKU (`SKU:...`)
   | 'command' // an unregistered/session `CMD-*` sticker — nack or arm a mode
-  /**
-   * A registered `CMD-GO-*` sticker. Unbox does not act on it: the scan bar and
-   * the global wedge listener claim nav commands one level up, so a scan that
-   * reaches this classifier as `NAV` is one the station must pass over rather
-   * than resolve. Naming it keeps the switch exhaustive — folding it into
-   * `command` would let a jump sticker arm a session mode.
-   */
+  /** A registered `CMD-GO-*` sticker. */
   | 'navigate'
   /**
    * A registered action / compound sticker. Like `navigate`, Unbox passes over
@@ -39,15 +19,7 @@ export type UnboxScanIntent =
    * a carton.
    */
   | 'station_action'
-  /**
-   * One of OUR printed handles that is not a unit serial — carton, line, LPN,
-   * kit manifest, ticket, shelf address. Resolve it through `routeScan` and go
-   * where it points; never guess at it and never persist it as an identity.
-   *
-   * It is deliberately NOT folded into `open_carton`: a ticket and a shelf code
-   * decode here too, and sending those down the carton-open path would trade a
-   * wrong classification for a wrong destination.
-   */
+  /** One of OUR printed handles that is not a unit serial — carton, line, LPN, kit manifest, ticket, shelf address. */
   | 'open_handle';
 
 export interface UnboxScanContext {
@@ -141,12 +113,7 @@ export function lineNeedsSerials(line: SerialNeedLine): boolean {
   return serialCount + perUnitAbsent < expected;
 }
 
-/**
- * Carton-level: any sibling line on the open carton still owes serials.
- * `lines` should be the selected line plus `scanMatchedRows` scoped to the
- * same `receiving_id` (caller owns that filter). Callers pass the result as
- * `activeCartonNeedsSerials` into {@link classifyUnboxScan}.
- */
+/** Carton-level: */
 export function cartonNeedsSerials(lines: readonly SerialNeedLine[]): boolean {
   return lines.some(lineNeedsSerials);
 }

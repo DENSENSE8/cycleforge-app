@@ -1,58 +1,17 @@
-/**
- * Which carrier owns a tracking number — resolved, not guessed twice.
- *
- * `shipping_tracking_numbers.carrier` is not decoration: it is the key the poll
- * loop filters on (`getDueShipments` → `ENABLED_SYNC_CARRIERS`). A row whose
- * carrier reads `UNKNOWN` is never polled, so it can never hold a status, and a
- * desk cannot tell that apart from "the carrier has not scanned it yet". On the
- * lane DB that was 1,002 rows whose carrier THIS repo's own detector can name
- * (506 USPS, 410 FedEx, 67 Amazon, 17 DHL, 2 GSO).
- *
- * So carrier becomes a DERIVED fact with provenance:
- *
- * - `detected` — `detectCarrierFromTracking`, the one pattern list
- *   (`@/utils/carrier-patterns`), shared with the scan resolver. There is no
- *   second copy here and there must never be one in SQL.
- * - `reported` — whatever the label, feed or operator claimed.
- * - `carrier` — the resolved value written to the column, always UPPERCASE.
- *
- * **Conflicts are reported, never silently resolved.** When both name a carrier
- * and they disagree, the caller gets `conflict: true` and decides; a backfill
- * must leave the row alone and queue it for a human. Two rows on the lane DB
- * are stored USPS while the pattern list reads them as UPU international
- * (`LX088692799IL`, `LM221449617CA`) — guessing either way is how a shipment
- * spends three months returning 404 under a catch-all `SYNC_ERROR`.
- *
- * Pure: no DB, no clock, no env.
- */
+/** Which carrier owns a tracking number — resolved, not guessed twice. */
 
 import { detectCarrierFromTracking, type CarrierCode } from '@/utils/carrier-patterns';
 
 /** Absent carrier. Never polled — see {@link ENABLED_SYNC_CARRIERS}. */
 export const UNKNOWN_CARRIER = 'UNKNOWN';
 
-/**
- * The stored vocabulary is the detector's vocabulary, with one collapse:
- * UPS Mail Innovations tracks through the UPS API, so it is stored as UPS.
- * Everything else keeps its granular code, because "can we track this?" is a
- * per-integration question and collapsing DHL Express into a generic DHL throws
- * away the only fact that answers it.
- */
+/** The stored vocabulary is the detector's vocabulary, with one collapse: */
 export function toStoredCarrier(code: CarrierCode | null | undefined): string {
   if (!code) return UNKNOWN_CARRIER;
   return code === 'UPS_MI' ? 'UPS' : code;
 }
 
-/**
- * A ShipStation v2 `carrier_code` in the stored vocabulary, or `null` when the
- * code names no carrier we store.
- *
- * ShipStation reports the ACCOUNT the label was bought through, not the
- * carrier that moves it: `stamps_com` / `endicia` are USPS resellers,
- * `ups_walleted` is UPS. Passing those raw as a `reported` carrier would
- * store `STAMPS_COM` and flag every USPS label as a conflict — so unmapped
- * codes report nothing and the tracking-number detector decides alone.
- */
+/** A ShipStation v2 `carrier_code` in the stored vocabulary, or `null` when the code names no carrier we store. */
 export function shipStationCarrierToStored(code: string | null | undefined): string | null {
   const c = String(code ?? '').trim().toLowerCase();
   if (!c) return null;
@@ -100,13 +59,7 @@ export interface ResolvedCarrier {
   conflict: boolean;
 }
 
-/**
- * Resolve the carrier for one tracking number.
- *
- * Precedence: a silent detector yields to the reported word; a detector that
- * names a carrier wins over an ABSENT or `UNKNOWN` report; a genuine
- * disagreement keeps the report and raises {@link ResolvedCarrier.conflict}.
- */
+/** Resolve the carrier for one tracking number. */
 export function resolveStoredCarrier(input: {
   /** Raw or normalized tracking string — the detector normalizes either. */
   tracking: string | null | undefined;

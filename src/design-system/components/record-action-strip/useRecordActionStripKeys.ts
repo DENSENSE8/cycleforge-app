@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * The keyboard of {@link RecordActionStrip}: a display claims the overlay
- * stack and backs out on Escape (after any popover opened inside it); the
- * verbs view runs each verb's letter, owns `?` (the shared selection-hotkey
- * reveal store) and, when the host passes `onDismiss`, Escape.
- */
+/** The keyboard of {@link RecordActionStrip}: */
 
 import { useEffect, useRef } from 'react';
 import { claimOverlay, hasOpenOverlay } from '@/lib/overlay-stack/store';

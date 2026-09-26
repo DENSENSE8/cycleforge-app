@@ -1,24 +1,4 @@
-/**
- * Receiving lines-table mode registry.
- *
- * The right-pane lines table renders three distinct display types — Receive,
- * History, and Incoming — that share one mounted component (so react-query
- * cache + scroll position survive a tab flip) but differ in nearly every
- * data-layer decision: which API `view` to request, how to page, how to key the
- * query, how to group/sort rows, whether to skip week scoping, and what the
- * empty state reads.
- *
- * Historically those decisions lived as ~40 scattered `isHistoryMode` /
- * `isIncomingMode` ternaries inside the component. A single wrong branch =
- * cross-contamination (e.g. History rendering Incoming rows). This registry
- * makes each mode a self-contained descriptor: the table looks up the active
- * descriptor and delegates, so adding a mode means adding one entry and the
- * compiler forces every field to be answered.
- *
- * Pure data + functions only — no JSX, no React. The presentational fork
- * (which header component, which row chips) is driven off the boolean flags
- * here but rendered by the component.
- */
+/** Receiving lines-table mode registry. */
 
 import {
   RECEIVING_HISTORY_URL_PARAMS,
@@ -36,24 +16,12 @@ export const INCOMING_PAGE_SIZE = 50;
 export const RECEIVING_TABLE_LIMIT = 500;
 
 /**
+ * History ceiling (operator 2026-09-14:
  * History ceiling (operator 2026-09-14: "the inbound history displays the
- * ENTIRE history of all the products"). History is the all-time log — its
- * fetch asks for the whole timeline, not a funnel page, so its limit (and the
- * matching server cap in `parseReceivingLinesQuery`) sits above
- * {@link RECEIVING_TABLE_LIMIT}. Sized for the org's full line count with
- * headroom; the week pill still narrows to one week when chosen explicitly.
  */
 export const RECEIVING_HISTORY_LIMIT = 3000;
 
-/**
- * The display modes the lines table itself knows how to render. The sidebar's
- * full `ReceivingMode` union also has `pickup` and `unfound`, but those are
- * handled upstream (a route switch / a different right-pane component), never
- * by this table — so they're intentionally absent here.
- *
- * Unbox workbench tabs (`?unboxview=`) resolve to `unbox_queue` / `unbox_viewed`
- * / `history` via {@link resolveUnboxReceivingTableMode} — not via `?mode=`.
- */
+/** The display modes the lines table itself knows how to render. */
 export type ReceivingTableMode =
   | 'receive'
   | 'history'
@@ -62,33 +30,12 @@ export type ReceivingTableMode =
   | 'unbox_queue'
   | 'unbox_viewed';
 
-/**
- * Resolve the raw `?mode=` URL value to the table mode. Anything that isn't
- * `incoming` or `history` (including absent) is the default Receive workspace —
- * matching the prior `pageMode === 'history' ? … : 'receive'` fallback.
- * Unbox tab modes are never resolved from `?mode=` — see
- * {@link resolveUnboxReceivingTableMode}.
- */
+/** Resolve the raw `?mode=` URL value to the table mode. */
 export function resolveReceivingTableMode(raw: string | null | undefined): ReceivingTableMode {
   return raw === 'incoming' ? 'incoming' : raw === 'history' ? 'history' : 'receive';
 }
 
-/**
- * Unbox workbench tab → lines-table mode.
- *
- * The two vocabularies meet here: the UI tab `recent` (this operator's opens)
- * resolves to the `unbox_viewed` mode, whose `apiView` is `viewed` and whose
- * feed is `receiving_line_views`. `viewed` stays the server-side name; `Recent`
- * is what the operator reads (`utils/unbox-workspace-state.ts`).
- *
- * `urgent` is no longer a tab (2026-08-08) — it was this same Queue descriptor
- * plus `?priority_only=1`, and urgency is a flag a carton carries at any stage
- * rather than a stage it sits in. Urgent cartons pin to the top of the queue
- * rows instead, so the descriptor it used to borrow is simply `queue` now.
- * `all` mounts `TechAllTriageTable` and does not use this table — fall through
- * to queue so accidental callers stay typed. `incoming` mounts the Incoming
- * Pipeline feed, now the first system tab rather than a pinned extra.
- */
+/** Unbox workbench tab → lines-table mode. */
 export function resolveUnboxReceivingTableMode(
   tab: UnboxWorkspaceTab,
 ): ReceivingTableMode {
@@ -151,12 +98,7 @@ export function historySortGroupAxis(
   return 'unboxed';
 }
 
-/**
- * Everything a descriptor needs from the URL, parsed by the component once and
- * handed to whichever descriptor is active. A flat bag (rather than per-mode
- * context types) keeps the call sites and the registry simple; each descriptor
- * reads only the fields relevant to it.
- */
+/** Everything a descriptor needs from the URL, parsed by the component once and handed to whichever descriptor is active. */
 export interface ReceivingModeContext {
   // History facets
   historySearch: string;
@@ -164,14 +106,7 @@ export interface ReceivingModeContext {
   historySearchScope: ReceivingHistorySearchScope;
   /** History sort axis (`?sort=`); see HISTORY_SORT_WIRE_IDS / HISTORY_SORT_OPTIONS. */
   historySort: string;
-  /**
-   * TRUE only when `?weekOffset` is EXPLICITLY in the URL (operator
-   * 2026-09-14: History defaults to the ENTIRE timeline — "all the products,
-   * all time" — and the week window narrows only when a week is actually
-   * chosen). Absent param and `weekOffset=0` both used to parse to "current
-   * week"; this flag is what keeps "All" and "this week" distinct. Parsed in
-   * `useReceivingModeContext` via `searchParams.has(...)`.
-   */
+  /** TRUE only when `?weekOffset` is EXPLICITLY in the URL (operator 2026-09-14: */
   historyWeekExplicit?: boolean;
   // Incoming facets
   incomingSearch: string;
@@ -180,13 +115,7 @@ export interface ReceivingModeContext {
   incomingPoFrom: string;
   incomingPoTo: string;
   incomingPage: number;
-  /**
-   * Purchasing-source filter (`?inbound=`): which account the incoming order came
-   * from. `'all'` (default) unions every source; `'zoho'` narrows to Zoho POs;
-   * `'ebay'` narrows to the eBay purchasing account (Universal Incoming). Maps
-   * 1:1 to the server's `?inbound=` facet in `build-sql`. Written by Incoming's
-   * DataTable filter (search · funnel), not a Band-3 FilterMenu or hunt-tile strip.
-   */
+  /** Purchasing-source filter (`?inbound=`): */
   incomingSource: 'all' | 'zoho' | 'ebay';
   /**
    * Incoming sub-facet: the shipment-anchored "delivered but not dock-scanned"
@@ -221,13 +150,7 @@ export interface ReceivingModeContext {
    * scanned queue. Owned by `normalizeUnboxWorkspaceTabParams` when tab=urgent.
    */
   priorityOnly: boolean;
-  /**
-   * `?tracking_in=` — canonical tracking keys from a bulk paste. Empty = absent.
-   *
-   * Forwarded verbatim; the SERVER decides what it relaxes. Deciding here would
-   * mean the client and the SQL each held half the rule, and the half nobody
-   * updated would be the one that silently dropped rows.
-   */
+  /** `?tracking_in=` — canonical tracking keys from a bulk paste. */
   trackingIn: string[];
 }
 
@@ -426,11 +349,8 @@ const historyMode: ReceivingModeDescriptor = {
     return p;
   },
   skipWeekFilter(ctx) {
+    // ALL TIME by default (operator 2026-09-14:
     // ALL TIME by default (operator 2026-09-14: "the inbound history displays
-    // the entire history of all the products"). The week window narrows only
-    // when `?weekOffset` is explicitly chosen (historyWeekExplicit — absent
-    // param used to collide with weekOffset=0 as "current week"). Text or
-    // non-default source scope still narrows globally regardless of week.
     return (
       ctx.historyWeekExplicit !== true
       || ctx.historySearch.length > 0
@@ -509,18 +429,7 @@ const incomingMode: ReceivingModeDescriptor = {
     return true;
   },
   emptyMessage(ctx) {
-    // A paste DROPS the vendor-receipt guard server-side (`build-sql.ts` →
-    // "The vendor-receipt guard is dropped entirely under `?tracking_in=`"), so
-    // the default line below — which explains exactly that guard — is a claim
-    // about a predicate this query did not run. An operator who filtered to one
-    // tracking and got "Zoho says everything issued is already received" reads
-    // it as the filter failing, which is how this surfaced.
-    //
-    // The honest answer is that these keys are not ON this lane, and the panel
-    // beside the table already knows why each one is not (off the list, or not
-    // found at all) — so point at it rather than re-deriving the reason here.
-    // The `incoming_removed` sibling has always branched this way; this lane
-    // was the one that never did.
+    // A paste DROPS the vendor-receipt guard server-side (`build-sql.ts` → "The vendor-receipt guard is dropped entirely under…
     if (ctx.trackingIn.length > 0) {
       return 'None of these tracking numbers are on Incoming — the tracking list says where each one went.';
     }
@@ -537,15 +446,7 @@ const incomingMode: ReceivingModeDescriptor = {
   },
 };
 
-/**
- * Incoming · Recently removed (`?incview=removed`) — "where did it go".
- *
- * Same shell, same page size, same purchasing-source tab as `incoming`; the
- * only difference is the server view, which inverts the lane's exit conditions
- * inside a recency window. Deliberately NOT a sort or a filter on `incoming`:
- * the rows it shows are precisely the ones that lane's WHERE excludes, so there
- * is no narrowing of that lane that could produce them.
- */
+/** Incoming · Recently removed (`?incview=removed`) — "where did it go". */
 const incomingRemovedMode: ReceivingModeDescriptor = {
   id: 'incoming_removed',
   apiView: 'incoming_removed',

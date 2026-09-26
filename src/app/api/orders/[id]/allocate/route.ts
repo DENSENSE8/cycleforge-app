@@ -2,25 +2,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { allocateOrder, isValidConditionGrade } from '@/lib/inventory/allocate';
 
-/**
- * POST /api/orders/[id]/allocate
- *
- * Phase 4 of the inventory v2 plan. Reserves specific serial_units for an
- * order line. FIFO by serial_units.id within (sku, optional condition_grade)
- * among rows where current_status='STOCKED'.
- *
- * Body:
- *   {
- *     quantity?: number,        // override orders.quantity for partial alloc
- *     condition_grade?: 'BRAND_NEW' | 'USED_A' | 'USED_B' | 'USED_C' | 'PARTS',
- *     client_event_id?: string  // UUID, idempotent retries
- *   }
- *
- * The allocation transaction itself lives in src/lib/inventory/allocate.ts
- * so the bulk-allocate admin page can call the same code path.
- *
- * Permission: orders.view.
- */
+/** POST /api/orders/[id]/allocate */
 export const POST = withAuth(async (request, ctx) => {
   // Parse the [id] segment from the URL — Next 16 route params via the
   // wrapper would require a different overload of withAuth; this is fine.
@@ -47,11 +29,7 @@ export const POST = withAuth(async (request, ctx) => {
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;
 
   try {
-    // Pass ctx.organizationId so allocateOrder runs inside a tenant-scoped
-    // transaction: the order load is org-gated (cross-tenant id → 404), the
-    // candidate serial_units selection is org-scoped (the su.sku string join
-    // can't reach another tenant's stock), and the order_unit_allocations
-    // INSERT is org-stamped.
+    // Pass ctx.organizationId so allocateOrder runs inside a tenant-scoped transaction:
     const result = await allocateOrder({
       orderId,
       quantity: Number.isFinite(qtyOverride) && qtyOverride > 0 ? qtyOverride : undefined,

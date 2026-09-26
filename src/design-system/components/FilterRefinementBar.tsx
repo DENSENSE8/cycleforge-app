@@ -40,14 +40,7 @@ export interface FilterRefinementBarProps {
   barClassName?: string;
 }
 
-/**
- * FilterRefinementBar
- * 
- * A specialized 2026-standard filter component.
- * - Glassmorphic dropdown with backdrop-blur.
- * - Spring-driven interactions (scale/motion).
- * - "Plain" active refinements surfaced below the trigger.
- */
+/** FilterRefinementBar */
 export function FilterRefinementBar({
   label = 'Filters',
   refinements = [],
@@ -119,11 +112,7 @@ export function FilterRefinementBar({
         />
       </motion.button>
 
-      {/* ── Dropdown Popover (Glassmorphic) ─────────────────────────────
-          Portaled via AnchoredLayer so the popover (and its high z) escapes any
-          transformed/blurred ancestor of the bar. AnchoredLayer owns dismissal
-          (outside-click + Escape); the optional dim layer is a separate Layer so
-          it can sit full-screen behind the popover. */}
+      {/* ── Dropdown Popover (Glassmorphic) ───────────────────────────── Portaled via AnchoredLayer so the popover (and its high z) escapes any… */}
       {dimBackdrop && isOpen ? (
         <Layer level="dropdown">
           <motion.div

@@ -1,18 +1,4 @@
-/**
- * stationNode — the factory behind every built-in floor node.
- *
- * Phase-1 engine taps run AFTER the domain mutation commits (the "tap-after"
- * pattern, see ../tap.ts): receiving/testing/repair routes do their work via
- * the existing src/lib/* modules, then tapWorkflow() advances the unit. So a
- * node's run() does NO domain work — it only translates the domain event in
- * ctx.input into an output port. That keeps the one law intact (no business
- * logic in nodes) with the engine as observer, not driver.
- *
- * Every station node is event-gated: unless ctx.input.event is the event the
- * node is waiting on, it parks (`await: true`). This is what makes taps
- * idempotent — replaying an event against a unit that already advanced past
- * the node just re-parks it where it sits, it never double-advances.
- */
+/** stationNode — the factory behind every built-in floor node. */
 
 import type { NodeContext, NodeDefinition, NodeOutputPort, NodeResult } from '../contract';
 

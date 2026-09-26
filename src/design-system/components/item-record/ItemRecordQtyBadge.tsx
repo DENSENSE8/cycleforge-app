@@ -2,18 +2,7 @@ import { qtyProgress } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import type { ItemRecordQuantity } from './item-record-types';
 
-/**
- * Quantity face for an item row. Three honest states, and they are different
- * claims — do not collapse them:
- *
- *   - counted + expected → `2/3`, emerald once the count is satisfied
- *   - counted only       → `2 counted` (nothing to satisfy)
- *   - expected only      → `3` (a record that states a quantity but counts
- *                          nothing, e.g. a sales order line)
- *
- * Ported from `receiving/workspace/PoLineBadges` (`ProgressBadge`). The copy
- * stays **counted**, never the inventory noun *received*.
- */
+/** Quantity face for an item row. */
 export function ItemRecordQtyBadge({
   quantity,
   className,

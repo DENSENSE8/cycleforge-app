@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Single source of truth for the dashboard's main table queries.
- *
- * Every consumer — the table components AND any prefetcher (the page-level
- * warm-up effect, the sign-in BootGate) — builds its query from these
- * factories. Because React Query dedupes by `queryKey`, a prefetch and the
- * `useQuery` that later mounts MUST share an identical key + queryFn or the
- * cache silently misses and the table refetches (the "spinner after the
- * splash" bug). Keeping the key here, in one place, makes that impossible to
- * drift.
- *
- * UI-only options that don't belong to a fetch definition stay at the call
- * site, NOT in these factories:
- *   - `placeholderData` (keep-previous-data while typing a search)
- *   - `enabled`         (shipped view disables the week query while searching)
- *   - `refetchInterval` (FBA board polls every 60s)
- * Those are also not accepted by `prefetchQuery`, so leaving them out keeps the
- * factory output safe to pass to both `useQuery` and `prefetchQuery`.
- */
+/** Single source of truth for the dashboard's main table queries. */
 
 import { queryOptions } from '@tanstack/react-query';
 import {
@@ -54,14 +36,7 @@ export interface OrderQueryParams {
   limit?: number;
 }
 
-/**
- * Per-week (and all-time) fetch ceiling. The week query returns at most this
- * many rows, newest-first; the day-banded list virtualizes them. When a week
- * actually hits this ceiling it is TRUNCATED (more rows exist), which the table
- * surfaces as an explicit "Load more" (never a silent cap) by re-requesting the
- * same week at a higher multiple of this size. Past weeks cache per (week,limit)
- * pair, so a bumped week fetches once then serves from cache forever.
- */
+/** Per-week (and all-time) fetch ceiling. */
 export const SHIPPED_WEEK_PAGE_SIZE = 1000;
 
 export interface ShippedQueryParams {
@@ -72,15 +47,7 @@ export interface ShippedQueryParams {
   /** Universal staff filter (P1-WORK-02): packed_by OR tested_by this staff. */
   staffId?: number;
   shippedFilter?: string;
-  /**
-   * Desk find text, answered SERVER-side by `/api/packerlogs?q=`.
-   *
-   * Part of the cache key on purpose: a searched window is a DIFFERENT row set
-   * from the same window unsearched, and sharing one entry would let a narrowed
-   * answer overwrite the desk's full week (or the reverse) under the same key.
-   * Empty string ⇒ byte-identical key to the pre-search behaviour, so warmed
-   * and unsearched weeks still hit the entries they always did.
-   */
+  /** Desk find text, answered SERVER-side by `/api/packerlogs?q=`. */
   searchTerm?: string;
   /** Row ceiling for this fetch; default {@link SHIPPED_WEEK_PAGE_SIZE}. */
   limit?: number;
@@ -105,12 +72,7 @@ export function pendingOrdersQuery({
   });
 }
 
-/**
- * The merged **Unshipped** queue — the whole pre-ship backlog (Awaiting ∪ Pending).
- * Single source behind `UnshippedTable`; the per-stage split is a UI filter.
- * staleTime 60s (the more-live of the old pending/awaiting values) since this is
- * the active fulfilment work queue.
- */
+/** The merged **Unshipped** queue — the whole pre-ship backlog (Awaiting ∪ Pending). */
 export function unshippedOrdersQuery({
   searchQuery = '',
   packedBy,
@@ -160,12 +122,7 @@ export function unshippedOrdersQuery({
   });
 }
 
-/**
- * Lightweight Unshipped-queue counts (total + per-stage + lane combos) WITHOUT
- * the row payload (Phase 2). The sidebar legend / stage dropdown / nav badge use
- * this instead of counting off the full fulfillment rows. Its own key namespace
- * so it never collides with the row list. `staffId` scopes it to `?staff=`.
- */
+/** Lightweight Unshipped-queue counts (total + per-stage + lane combos) WITHOUT the row payload (Phase 2). */
 export function unshippedQueueCountsQuery({ staffId }: { staffId?: number } = {}) {
   return queryOptions({
     queryKey: ['dashboard-table', 'unshipped-counts', { staffId: staffId ?? null }],
@@ -260,19 +217,7 @@ interface ShippedWeekQueryParams {
   phase?: 'spine' | 'full';
 }
 
-/**
- * One canonical Mon–Sun week of shipped records — the SoT for both the bucketed
- * `useQueries` in `useShippedWeekBuckets` AND the warm-up prefetch, so their keys
- * never drift. Past weeks are immutable (`staleTime: Infinity`) so they're
- * fetched once then served from cache forever; the current week stays live and
- * is refreshed by the dashboard refresh/Ably invalidations.
- *
- * A SEARCHED week is never treated as immutable even when it is in the past.
- * `searchTerm` is in the key, so every keystroke mints its own entry; parking
- * each one for a day would leave a typed-through word's worth of dead week
- * payloads resident for the session. Search entries keep the live TTLs and get
- * collected once the operator moves on.
- */
+/** One canonical Mon–Sun week of shipped records — the SoT for both the bucketed `useQueries` in `useShippedWeekBuckets` AND the warm-up… */
 export function dashboardShippedWeekQuery({
   weekStart,
   weekEnd,

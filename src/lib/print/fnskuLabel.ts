@@ -1,17 +1,4 @@
-/**
- * The Amazon FBA unit label — Code 128 FNSKU, the FNSKU in text, the product
- * title (start…end when it does not fit, the way Amazon's own label reads) and
- * the condition — on the 2×1" thermal stock every other label here uses.
- *
- * Not a {@link LabelFaceModel}: that face is a DataMatrix beside an info
- * column, and Amazon's receiving scanners read a linear Code 128 across the
- * top of the sticker. The silent path shares the raster plumbing
- * (`createLabelCanvas` → `labelCanvasToRawCommands`); the fallback prints the
- * same layout as HTML through the hidden iframe.
- *
- * Heavy (bwip-js): load it with `import()` on the actual print.
- * Callers: `printFnskuStationJob` (the print station, on a phone's Reprint).
- */
+/** The Amazon FBA unit label — Code 128 FNSKU, the FNSKU in text, the product title (start…end when it does not fit, the way Amazon's own… */
 
 import bwipjs from 'bwip-js/browser';
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
@@ -74,13 +61,8 @@ function measuredLines(context: CanvasRenderingContext2D, text: string, maxWidth
 }
 
 /**
+ * Operator 2026-09-25:
  * Operator 2026-09-25: "the barcode must be edge to edge and focused in the
- * middle, and condition right below the text, not bottom aligned."
- *
- * Bars: the largest WHOLE-dot module whose run plus both quiet zones fits the
- * full face width, centred — never a smoothed stretch, so every bar edge lands
- * on the head. A 10-character FNSKU is 145 modules, so 2" stock (406 dots)
- * takes 2 dots a module; wider stock takes more.
  */
 function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasElement {
   const { canvas, context, width } = createLabelCanvas(paper);
@@ -120,12 +102,7 @@ function drawFnskuLabel(face: FnskuLabelFace, paper: PaperSize): HTMLCanvasEleme
 
 // ── Fallback (HTML) ──────────────────────────────────────────────────────────
 
-/**
- * The same face as HTML, `copies` stickers as `copies` pages of ONE document
- * (one print dialog / one kiosk print). The bars span the whole 2" page less
- * the quiet zone, as a percentage of the module count, so they scale with
- * the stock exactly like the raster.
- */
+/** The same face as HTML, `copies` stickers as `copies` pages of ONE document (one print dialog / one kiosk print). */
 function buildFnskuLabelHtml(face: FnskuLabelFace, copies: number): string {
   const svg = bwipjs
     .toSVG({ bcid: 'code128', text: face.fnsku, scale: 1, height: 8, includetext: false })
@@ -162,16 +139,7 @@ window.onafterprint=function(){setTimeout(function(){window.close();},80);};
 </body></html>`;
 }
 
-/**
- * Print `copies` FNSKU labels: raw over the paired USB/serial label profile
- * when silent printing is on, else (or when that fails) the HTML through the
- * hidden iframe — the same ladder as `printLabelJob`.
- *
- * Copies are PLATES, not a printer repeat count (`labelCopies.expandPlateRun`):
- * the CX418 prints one label per raster job whatever `PRINT N` asks, so the
- * raw path sends the same raster N times, and the HTML path prints N pages.
- * A raw run that fails part-way hands only the stickers still owed to HTML.
- */
+/** Print `copies` FNSKU labels: */
 export async function printFnskuLabelJob(face: FnskuLabelFace, copies: number): Promise<'usb' | 'iframe'> {
   const total = clampLabelCopies(copies);
   let printed = 0;

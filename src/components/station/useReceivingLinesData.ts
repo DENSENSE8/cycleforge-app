@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Data layer for the receiving-lines table: the main list query + the
- * shipment-level "delivered · not scanned" feed, the local working copy
- * (`localRows`) that effects mutate, and the window-event bridges that keep it
- * fresh (refresh/entry-added invalidation, optimistic line updates, scan-match
- * prepends). Also drops a stale `?page` past the end of the Incoming result set.
- * Extracted from ReceivingLinesTable; behaviour is unchanged.
- */
+/** Data layer for the receiving-lines table: */
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
@@ -70,22 +63,14 @@ export function useReceivingLinesData({
   const pathname = usePathname();
   const [localRows, setLocalRows] = useState<ReceivingLineRow[]>([]);
 
-  // Shared spine-first query layer (useReceivingLinesQuery): key + params both
-  // come from the active descriptor via receivingLinesTableQuery, so the Unbox
-  // KPI strip reads the SAME cache entry — no second fetch of the same view.
-  // Unbox tabs paint the cheap spine phase first; the authoritative
-  // include=serials rows land in a background pass and upgrade in place.
+  // Shared spine-first query layer (useReceivingLinesQuery):
   const { data, isLoading, isError, refetch } = useReceivingLinesQuery({
     mode,
     modeContext,
     enabled: !isDeliveredUnscannedFacet && !isDeliveredNotUnboxedFacet,
   });
 
-  // "Delivered · not scanned" facet: shipment-anchored SoT lives ONLY on
-  // `/incoming/delivered-unscanned` (not view=incoming PO lines). The main list
-  // query above is disabled for this facet; remap via deliveredUnscannedToRow
-  // so rows flow through the same Incoming grid. Shares the
-  // `incoming-delivered-unscanned` key so Refresh invalidates both.
+  // "Delivered · not scanned" facet:
   const { data: deliveredData } = useQuery<DeliveredUnscannedResponse>({
     queryKey: ['incoming-delivered-unscanned'],
     queryFn: async () => {

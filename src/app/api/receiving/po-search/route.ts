@@ -2,18 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * Read-only PO typeahead for the Package Pairing "Link a PO" tab.
- *
- * LOCAL mirror first (`zoho_po_mirror`) — no Zoho round-trip, no side effects.
- * This is deliberately pure: it never creates/adopts a carton (that's
- * lookup-po's job). The "Link a PO" tab calls this to pick a PO, then POSTs
- * /api/receiving/relink to write the linkage. Org-scoped (the mirror carries
- * organization_id since the 2026-06-14 org phase).
- *
- * Matches PO# (normalized), reference# (normalized), raw PO#, or vendor name.
- *   GET /api/receiving/po-search?q=6000  →  { success, candidates: PoCandidate[] }
- */
+/** Read-only PO typeahead for the Package Pairing "Link a PO" tab. */
 interface PoCandidateRow {
   zoho_purchaseorder_id: string;
   zoho_purchaseorder_number: string | null;
@@ -62,16 +51,6 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   );
 
   // Previous ORDERS — the second identifier namespace an operator pairs from.
-  // A box rarely carries a Zoho PO#: it carries a marketplace order number, and
-  // before this the pairing surface could not see `orders` at all, so a real
-  // order that was already in the system read as "no matches". Matched on the
-  // order id (exact, prefix and normalized contains) plus the product title,
-  // newest first.
-  // The thumb runs the SKU IDENTITY LAW ladder (src/lib/sku/sku-identity-law.ts):
-  // the Zoho item photo when an active `items` row exists for that SKU (proxied
-  // when Zoho stored a document id rather than a URL), catalog image ONLY when
-  // it does not — a bare `sku_catalog` image beside a Zoho-twinned SKU is how
-  // the wrong product ends up on a row. Both lookups are org-scoped.
   const orderRows = hasQuery
     ? (
         await tenantQuery<OrderCandidateRow>(

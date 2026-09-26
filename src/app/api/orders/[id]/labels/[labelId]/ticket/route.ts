@@ -9,18 +9,7 @@ import { linkLabelToTicket, unlinkLabelFromTicket } from '@/lib/shipping/order-l
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 
-/**
- * /api/orders/[id]/labels/[labelId]/ticket — a label (and its order) ↔ a
- * helpdesk ticket, through the existing `ticket_links` waist: the order
- * anchors a ticket that has no anchor yet, the label's tracking becomes a
- * SHIPMENT reference (what the ticket's Connections strip renders).
- *
- * POST   { ticket: '#48120' }  — link; idempotent.
- * DELETE ?ticketId=48120       — drop the label's reference (the anchor stays).
- *
- * Gated on `integrations.zendesk` — the same permission as
- * `/api/support/tickets/link`, the waist this delegates to.
- */
+/** /api/orders/[id]/labels/[labelId]/ticket — a label (and its order) ↔ a helpdesk ticket, through the existing `ticket_links` waist: */
 
 function ids(raw: { id: string; labelId: string }): { orderId: number; rowId: number } | null {
   const orderId = Number(raw.id);

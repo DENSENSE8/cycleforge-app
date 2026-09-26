@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Selection hub for the receiving sidebar — the source of truth for the line
- * the operator is working: `selectedLine`, the sibling `scanMatchedRows`, the
- * accordion bootstrap mode, and the scan-driven flag.
- *
- * Owns every INBOUND window-event bridge that mutates the selection (table row
- * clicks, line/package updates, workspace open, full deselect, line/carton
- * deletes) plus the on-mode-switch converge-to-empty. The OUTBOUND workspace
- * dispatch (open/close + nav-state) lives in useReceivingWorkspaceBridge so it
- * can read the navigation hook's derived values. Extracted from
- * ReceivingSidebarPanel; behaviour is unchanged.
- */
+/** Selection hub for the receiving sidebar — the source of truth for the line the operator is working: */
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -67,10 +56,7 @@ export function useReceivingSelection({
   const [preview, setPreview] = useState(false);
   const [scanMatchedRows, setScanMatchedRows] = useState<ReceivingLineRow[]>([]);
 
-  // Refs the handlers read so the single subscription never re-binds on
-  // selection/mode change: the id-compare (delete/entry) and the live-mode gate
-  // (select/open) always see the current value. Without the mode ref, a
-  // History-mode click captures a stale closure and tries to open the workspace.
+  // Refs the handlers read so the single subscription never re-binds on selection/mode change:
   const selectedLineRef = useRef<ReceivingLineRow | null>(selectedLine);
   selectedLineRef.current = selectedLine;
   const modeRef = useRef<ReceivingMode>(mode);
@@ -78,10 +64,7 @@ export function useReceivingSelection({
     modeRef.current = mode;
   }, [mode]);
 
-  // Inbound cross-pane bus (typed). Every receiving event that mutates this
-  // hook's selection lands in one declarative subscription instead of a dozen
-  // hand-wired addEventListener effects. Dispatch side: `emitReceiving` and the
-  // `dispatch*` helpers in `@/utils/events`.
+  // Inbound cross-pane bus (typed).
   useReceivingEvents({
     // Workspace X-button → clear our own state so both panes converge on empty.
     'receiving-workspace-close': () => {
@@ -167,10 +150,7 @@ export function useReceivingSelection({
         rows.map((r) => mergeReceivingPackageMetaIntoRow(r, detail) ?? r),
       );
     },
-    // Mirror selectedLine from workspace-open so the rail highlights restored
-    // lines (localStorage + most-recent fallback dispatch open directly,
-    // bypassing select-line). Id-compare guards the open→setState loop.
-    // History/Incoming are table-only — never mirror a workspace pick there.
+    // Mirror selectedLine from workspace-open so the rail highlights restored lines (localStorage + most-recent fallback dispatch open…
     'receiving-workspace-open': (detail) => {
       const row = detail?.row;
       if (!row || typeof row.id !== 'number') return;
@@ -186,10 +166,7 @@ export function useReceivingSelection({
     },
   });
 
-  // Selection must NOT carry across modes. On a genuine mode SWITCH (not the
-  // initial mount — that would clobber a deep-linked carton), converge both
-  // panes on empty so the new mode re-renders fresh and its rail auto-selects
-  // the top of its OWN queue.
+  // Selection must NOT carry across modes.
   const prevModeForResetRef = useRef<ReceivingMode | null>(null);
   useEffect(() => {
     const prev = prevModeForResetRef.current;

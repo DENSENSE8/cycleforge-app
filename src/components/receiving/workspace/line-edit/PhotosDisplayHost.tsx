@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Unbox Displays → Photos leaf — armed rows + drill-down bodies (no nested tabs).
- *
- * Nest altitude (`UNBOX_PHOTO_ACTION_ORDER`): Actions (default) → Link · Move ·
- * Send → Compare. Default (`photos` leaf / absent `photoAction`): keyboard-armed
- * verb list ({@link PhotosActionsArmedList}). Drill-downs via local nest:
- * `photoAction` link|move|send|compare (legacy `browse` → Actions list).
- *
- * **Chunk split:** Actions rides this host module (default face). Link · Move ·
- * Send · Compare are `dynamic()` so opening Photos does not download those panels.
- *
- * Drill trail reports via {@link useDisplaysLeafChrome} so sticky Back / Esc
- * pops Compare|Move|Send|Link → Actions → index (never a second LeafHeader).
- *
- * Identity Photos pill: click = send-to-phone; hover = PhotoLauncher dropdown
- * (Move / Send open this leaf's drills); double-click = open this leaf's
- * Actions list. Column `→|` / Esc own dismiss; Back from a drill-down returns
- * to the row list.
- */
+/** Unbox Displays → Photos leaf — armed rows + drill-down bodies (no nested tabs). */
 
 import { useEffect } from 'react';
 import dynamic from 'next/dynamic';

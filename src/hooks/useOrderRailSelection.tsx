@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Order-table rail-selection path (dashboard outbound, Pack queue, Shipping
- * pending/urgent).
- *
- * Owns the publish bridge to `rail-actions-store` so the right rail (mounted
- * off the root layout via `GlobalDetailStackHost`) can render the action
- * region. Surfaces opt in by calling this wrapper instead of mounting a
- * bottom ContextualSelectionBar — do not dual-publish from the plain bulk hook.
- *
- * Plan: docs/todo/order-rail-selection-plane-PLAN.md; hoard History rail SoT.
- */
+/** Order-table rail-selection path (dashboard outbound, Pack queue, Shipping pending/urgent). */
 
 import { useEffect } from 'react';
 import { useDashboardBulkSelection } from '@/hooks/useDashboardBulkSelection';
@@ -43,10 +33,7 @@ export function useOrderRailSelection(
   const selectableTotal = useTableSelectionTotal(DASHBOARD_ORDERS_SELECTION_SCOPE);
   const shouldPublish = publish && selectionEnabled;
 
-  // Publish the live selection so the RAIL can render the action region. The
-  // rail's 1-row body (`ShippedDetailsPanel`) is mounted by
-  // `GlobalDetailStackHost` off the root layout, not under this page, so a
-  // module store is the only path between them — see `rail-actions-store.ts`.
+  // Publish the live selection so the RAIL can render the action region.
   useEffect(() => {
     if (!shouldPublish) {
       clearRailActions(DASHBOARD_ORDERS_SELECTION_SCOPE);

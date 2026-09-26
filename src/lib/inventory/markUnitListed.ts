@@ -1,22 +1,4 @@
-/**
- * markUnitListed — record that a serial unit went live on a sales channel.
- *
- * The per-unit "listed" fact (UNIFIED-ENGINE-MASTER-PLAN §1.4). A unit that
- * passes test pools at the `list_ebay` workflow node because nothing marks a
- * *unit* listed — `platform_listings` is SKU-level. This helper writes the
- * missing per-unit row (serial_unit_listings) + one LISTED inventory_event,
- * atomically and tenant-scoped. The caller then fires tapWorkflow('listed')
- * AFTER commit so an enrolled unit advances list_ebay → pack.
- *
- * It does NOT change serial_units.current_status: LISTED is a SEPARATE AXIS from
- * lifecycle status (DISCOVERY §3). Listing is orthogonal to where the unit sits
- * in the receive→test→ship lifecycle.
- *
- * Idempotency: one listing row per (org, unit, platform). A re-list UPSERTs and
- * returns idempotent:true (the LISTED event de-dupes a true retry on
- * client_event_id). Collaborators are injected (real impls by default) so this
- * is unit-testable DB-free — same pattern as applyTransition().
- */
+/** markUnitListed — record that a serial unit went live on a sales channel. */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -121,10 +103,7 @@ export async function markUnitListed(
     const listingRow = listingQ.rows[0];
     const idempotent = !listingRow.inserted;
 
-    // 3. One LISTED inventory_event for the unit timeline (separate axis: no
-    //    status change, so no prev/next status). The event INSERT inherits the
-    //    GUC org from the transaction client. A timeline hiccup must not fail the
-    //    list — the serial_unit_listings row is the SoT.
+    // 3. One LISTED inventory_event for the unit timeline (separate axis:
     let eventId: number | null = null;
     try {
       const ev = await deps.recordEvent(

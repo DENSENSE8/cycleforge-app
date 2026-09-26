@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * The ticket's editable FIELDS — status, priority, helpdesk assignee, our staff
- * assignment — extracted from `SupportChatHeader`'s field band when that band was
- * removed (2026-08-02).
- *
- * They are extracted rather than deleted because they are still real controls;
- * what was wrong was the *placement*, not the fields. They had a wrapping
- * four-dropdown row permanently docked under the subject on a surface whose job
- * is reading a conversation.
- *
- * Each host now mounts the pair it owns, and **each fact has exactly one
- * editable home per host** — that is the rule these small components exist to
- * make keepable:
- *
- * | Host | Status / priority | Assignment |
- * |---|---|---|
- * | `/support` | pane header identity row | rail → Connections display |
- * | Unbox ticket push · Links rail | {@link SupportDetailsStack} popover | same popover |
- *
- * A second copy of any of these on the same host is the duplication the band's
- * removal was meant to end — the status was already being told, quietly, by an
- * 8px dot one row above the dropdown that set it.
- */
+/** The ticket's editable FIELDS — status, priority, helpdesk assignee, our staff assignment — extracted from `SupportChatHeader`'s field… */
 
 import { useEffect, useState } from 'react';
 import type { ZendeskTicket } from '@/lib/zendesk';
@@ -83,12 +61,7 @@ export function TicketPrioritySelect({
   );
 }
 
-/**
- * The two assignment controls, which answer two different questions and must not
- * be collapsed into one: the helpdesk **assignee** is who owns the ticket in the
- * external system, and the **staff** assignment is who on our floor was told
- * about it (it writes to our own inbox, not to the helpdesk).
- */
+/** The two assignment controls, which answer two different questions and must not be collapsed into one: */
 export function TicketAssignmentFields({
   ticket,
   size = 'dense',

@@ -11,13 +11,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { tenantQuery } from '@/lib/tenancy/db';
 import pool from '@/lib/db';
 
-/**
- * Confirm a relationship edge belongs to `orgId`. `sku_relationships` is
- * tenant-owned (carries organization_id), but its query helpers don't take an
- * orgId yet — so we org-scope the edge here with an explicit inline check. A
- * cross-tenant id reads as missing → the caller 404s, exactly as if the edge
- * never existed.
- */
+/** Confirm a relationship edge belongs to `orgId`. */
 async function relationshipBelongsToOrg(id: number, orgId: string): Promise<boolean> {
   const { rows } = await tenantQuery<{ id: number }>(
     orgId,

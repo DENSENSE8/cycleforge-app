@@ -1,16 +1,4 @@
-/**
- * Outbound KPI registry — the single declarative index of every metric the
- * dashboard's Outbound overview can show. Each entry is a pure descriptor:
- * `{ id, label, modes, compute(ctx) }`. `compute` returns a `ComputedMetric` when
- * the data is populated, or **null to drop the tile** (the "no zeros" rule —
- * deadline / dock-scan / labor columns are null-heavy).
- *
- * To add or change a KPI, edit ONE entry here — the strip renders whatever this
- * array yields, and every tile gets a gauge + good/bad status for free via
- * `MetricTile`. No component edits, no scattered tile-builder branches.
- *
- * Pure + isomorphic (no React, no fetch): unit-testable in isolation.
- */
+/** Outbound KPI registry — the single declarative index of every metric the dashboard's Outbound overview can show. */
 
 import type { MetricIntent } from '@/design-system/components/monitor';
 import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
@@ -19,12 +7,7 @@ import type { FulfillmentState } from '@/lib/unshipped-state';
 
 export type OutboundMode = 'shipped' | 'unshipped';
 
-/**
- * Shipped-side fulfillment rollups, derived once from the week fetch (by
- * `useShippedScanOutData`). Kept here — the pure domain module — so the registry
- * and its tests never pull the React hook. Every `*Coverage` is the non-null
- * denominator for its rate (deadline / dock-scan columns are null-heavy).
- */
+/** Shipped-side fulfillment rollups, derived once from the week fetch (by `useShippedScanOutData`). */
 export interface OutboundMetrics {
   shipped: number;
   delivered: number;
@@ -97,30 +80,13 @@ export interface ComputedMetric {
   status?: string;
   delta?: number;
   deltaInvert?: boolean;
-  /**
-   * Attention rank — how loudly this wants a human RIGHT NOW. `0` = not an
-   * attention item (pure status/trend; the strip shows it only if it carries an
-   * honest week-over-week `delta`, else drops it). `1` = focus/pressure (a
-   * backlog to work down), `2` = warn, `3` = critical (check immediately). The
-   * strip sorts the attention zone by this descending, so the most urgent fact
-   * sits leftmost — reading order = priority.
-   */
+  /** Attention rank — how loudly this wants a human RIGHT NOW. */
   severity: number;
   /** One-line HoverTooltip definition (with numerator/denominator where it clarifies). */
   tooltip?: string;
-  /**
-   * When set, the tile is a Monitor filter: clicking it toggles the shipped board's
-   * `?ostatus` to this outbound state (via `useOutboundStatusFilter`). Level metrics
-   * that map to a real derived state get this; rate/trend metrics (packed, on-time)
-   * have no honest state filter, so they stay tooltip-only.
-   */
+  /** When set, the tile is a Monitor filter: */
   filterState?: OutboundState;
-  /**
-   * When set, the tile toggles the To Ship / Shipping Pending board's `?ustatus`
-   * URL facet (row narrowing — never a column swap). Maps ready → TESTED, pending → PENDING,
-   * blocked → BLOCKED (Out of stock). Mutually exclusive with {@link filterState}
-   * and {@link filterAttention}.
-   */
+  /** When set, the tile toggles the To Ship / Shipping Pending board's `?ustatus` URL facet (row narrowing — never a column swap). */
   filterUstatus?: FulfillmentState;
   /**
    * When set, the tile toggles Urgent-only (`?attention=1` / `orders.is_urgent`).
@@ -452,22 +418,7 @@ export function resolveOutboundMetrics(ctx: OutboundMetricCtx): ComputedMetric[]
     .filter((m): m is ComputedMetric => m != null);
 }
 
-/**
- * The attention view over the resolved metrics — the shape the redesigned
- * OutboundKpiStrip renders. Three zones:
- *
- *   • `queue` — pinned left on unshipped: Pending → Urgent → Out of stock
- *     ({@link OUTBOUND_QUEUE_ZONE_IDS}), only when each compute returned a tile.
- *   • `attention` — remaining `severity > 0` (not in queue), sorted by severity
- *     DESC then value DESC. Capped so the header stays scannable.
- *   • `trend` — `severity === 0` metrics that carry an honest week-over-week
- *     `delta` ("what's down from previous weeks"). Today only throughput has a
- *     real baseline; more join once the ROI endpoint returns prior-period values.
- *
- * Pure status with neither severity nor delta (delivered, in-transit) is
- * dropped on shipped — it lives on the board. When ALL zones are empty the
- * strip shows an all-clear.
- */
+/** The attention view over the resolved metrics — the shape the redesigned OutboundKpiStrip renders. */
 export interface OutboundAttention {
   queue: ComputedMetric[];
   attention: ComputedMetric[];

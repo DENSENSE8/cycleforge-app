@@ -1,21 +1,4 @@
-/**
- * Org invitations — the multi-org on-ramp.
- *
- * An invitation targets an EMAIL (not an existing account) so you can invite
- * people who have no account yet. On accept we: find-or-create the global
- * account, upsert the membership, and create the per-org staff PROFILE — all in
- * one transaction. This is what lights up the Phase 1 switcher: invite the same
- * human's email to a second org and they gain a second membership.
- *
- * Distinct from `staff_enrollments` (src/lib/auth/enrollment.ts), which is the
- * single-org device/PIN enrollment for an already-created staff row. Invitations
- * operate at the account+membership layer and can create the staff row.
- *
- * Token handling: a 24-byte base64url token is emailed; only its sha256 hash is
- * stored (unlike staff_enrollments which stores the raw token).
- *
- * See docs/identity-layer-plan.md.
- */
+/** Org invitations — the multi-org on-ramp. */
 
 import { randomBytes, createHash } from 'node:crypto';
 import pool from '@/lib/db';
@@ -158,16 +141,7 @@ export interface AcceptResult {
   orgId: string;
 }
 
-/**
- * Accept an invitation. Atomically (within the target org's tenant transaction):
- *   1. Claim the invite (accepted_at), failing on a double-accept race.
- *   2. Find-or-create the global account by email (new accounts require a password).
- *   3. Upsert an active membership.
- *   4. Create the per-org staff profile + role assignment (or reuse an existing one).
- *
- * `name`/`password` are used only when creating a NEW account; an existing
- * account keeps its own credentials and simply gains the membership.
- */
+/** Accept an invitation. */
 export async function acceptInvitation(input: {
   token: string;
   name: string;
@@ -214,10 +188,7 @@ export async function acceptInvitation(input: {
     const existing = await getAccountByEmail(invite.email, client);
     let accountId: string;
     if (existing) {
-      // The email already has an account. Possession of the invite link is NOT
-      // proof of ownership of that account, so require its password before we
-      // attach the membership and mint a session as it. (New accounts set their
-      // password here instead.)
+      // The email already has an account.
       const ok = await verifyPassword(input.password, existing.passwordHash);
       if (!ok) throw new InvitationError('PASSWORD_MISMATCH');
       accountId = existing.id;

@@ -1,21 +1,4 @@
-/**
- * PATCH /api/receiving/lines/[id]/condition
- *
- * Inline condition_grade update from the per-line pill row. Used by the
- * UnfoundLineEditPanel — equally valid for Zoho-sourced lines.
- *
- * Scoped narrowly to the condition facts so the surface stays small and the
- * existing lines/[id]/status (workflow events) endpoint isn't disturbed.
- *
- * Also the writer of `condition_graded_at` / `condition_graded_by` — the GATE
- * for the Condition procedure step (2026-08-01c). `condition_grade` is NOT NULL
- * with a default, so it exists on a line nobody has touched and can never say
- * whether an operator graded it; this route is the only place that act happens,
- * so this is the only place that records it.
- *
- * `{ reopen: true }` retracts the act (stamp → NULL) without asserting a grade,
- * which is what makes the receipt's "open again to edit" bar honest.
- */
+/** PATCH /api/receiving/lines/[id]/condition */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -52,10 +35,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({ success: false, error: 'invalid JSON body' }, { status: 400 });
   }
 
-  // Reopen: retract the grading claim without asserting a new grade. The stored
-  // grade itself is deliberately left alone — it is NOT NULL and pre-selects the
-  // chip when the operator comes back, so a reopen returns them to a
-  // confirmation, never to a decision from scratch.
+  // Reopen: retract the grading claim without asserting a new grade.
   const reopen = body.reopen === true;
 
   const grade = reopen ? null : normalizeGrade(body.condition_grade);
@@ -69,12 +49,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
-  // Wave-3 writer inversion: condition_grade + condition_set_at are
-  // receiving_line_testing facts now. Inline UPSERT (narrow.ts can't express
-  // the COALESCE-once first-set stamp): grade always overwrites,
-  // condition_set_at keeps the first explicit set — same semantics the old
-  // spine UPDATE had. The FOR UPDATE spine read preserves the 404 and locks
-  // the line for the duration, like the former single-statement UPDATE did.
+  // Wave-3 writer inversion:
   const updated = await withTenantTransaction(ctx.organizationId, async (client) => {
     const lineRes = await client.query<{ id: number; receiving_id: number | null }>(
       `SELECT id, receiving_id FROM receiving_line
@@ -86,10 +61,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     if (!line) return null;
 
     if (reopen) {
-      // Retract the grading act, keep the grade. `condition_set_at` is
-      // deliberately untouched: it is the COALESCE-once "first explicit set"
-      // stamp and answers a historical question, where `condition_graded_at`
-      // answers "does the Condition step currently stand".
+      // Retract the grading act, keep the grade.
       const cleared = await client.query<{
         condition_grade: Grade;
         condition_set_at: string | null;
@@ -119,11 +91,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       condition_set_at: string | null;
       condition_graded_at: string | null;
     }>(
-      // `condition_graded_at` overwrites (NOW() every time) while
-      // `condition_set_at` stays COALESCE-once. They are two different
-      // questions: "when was a grade FIRST chosen for this line" vs "is the
-      // Condition step satisfied right now". The second must be re-stampable
-      // after a reopen, or the step could never be completed twice.
+      // `condition_graded_at` overwrites (NOW() every time) while `condition_set_at` stays COALESCE-once.
       `INSERT INTO receiving_line_testing (
           receiving_line_id, organization_id, condition_grade, condition_set_at,
           condition_graded_at, condition_graded_by)

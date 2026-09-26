@@ -16,19 +16,6 @@ export const SHIPPED_BY_CARRIER_SQL = `COALESCE(
   false
 )`;
 
-/**
- * Bins a unit must never be picked from.
- *
- * Staging and dock are outbound-committed, receiving is not put away yet, and
- * quarantine / damaged / returns are not sellable. A unit in one of these is
- * not supply.
- *
- * Read by the allocator's `selectSupply` (src/lib/allocation/auto-allocate.ts),
- * which decides what it may reserve. Any surface that promises a picker stock
- * must read this same list — a second copy is how a phone comes to promise
- * stock the allocator refuses.
- *
- * Formatted as a parenthesised SQL list for direct `IN` interpolation.
- */
+/** Bins a unit must never be picked from. */
 export const NON_PICKABLE_BIN_ROLES =
   "('STAGING','DOCK','QUARANTINE','DAMAGED','RETURNS','RECEIVING')";

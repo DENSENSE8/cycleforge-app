@@ -1,11 +1,4 @@
-/**
- * `orders-import.staging` — the To-Ship CSV import staging table definition.
- *
- * Its own `entityFamily` / prefs bucket rather than `orders`: a staging row is
- * a parsed CSV record with a triage state, not a live order, and hiding a
- * column here must never change the density of the live To-Ship queue an
- * operator is about to import into.
- */
+/** `orders-import.staging` — the To-Ship CSV import staging table definition. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import { parseTableDefinition } from '@/lib/tables/table-definition';

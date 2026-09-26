@@ -1,12 +1,4 @@
-/**
- * Local pickup order status → presentation (dot · label · chip).
- *
- * Operator tabs: All · Need to process · Draft · Done.
- * DB statuses remain DRAFT | COMPLETED | VOIDED — "Need to process" is a
- * derived queue (DRAFT + has items + no receiving carton yet), not a DB value.
- * Rail dots, grid Product dots, and the Status column chip all read from here
- * so they cannot drift. Pure + DB-free for client bundles.
- */
+/** Local pickup order status → presentation (dot · label · chip). */
 
 /** True when the order has left Draft (`COMPLETED`). */
 export function pickupOrderIsDone(status: string | null | undefined): boolean {

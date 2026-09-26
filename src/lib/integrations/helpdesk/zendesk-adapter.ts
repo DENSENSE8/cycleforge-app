@@ -1,13 +1,4 @@
-/**
- * Zendesk adapter for the HelpdeskProvider facade — binds the existing
- * per-tenant Zendesk client (src/lib/zendesk.ts) to one orgId.
- *
- * Thin delegation only: every method lazy-imports the Zendesk module (so
- * loading the facade never eagerly pulls the vendor client) and forwards the
- * arguments unchanged with the bound orgId appended. Credential resolution,
- * error classes (ZendeskNotConfiguredError / ZendeskApiError), caching, and
- * payload shapes all stay in src/lib/zendesk.ts.
- */
+/** Zendesk adapter for the HelpdeskProvider facade — binds the existing per-tenant Zendesk client (src/lib/zendesk.ts) to one orgId. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import type { HelpdeskProvider } from './types';

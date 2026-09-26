@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * The catalog-link slot-layout hook — the Review · Listing match CONFIG on the
- * shared {@link useSlotTableLayout} engine. The ninth family on the engine.
- *
- * Compound morph only; a stored `sheet` layout would open `subtitle:N` tracks
- * nothing draws — `paintMorph` coerces, the org write gate
- * (`slotMorphsFor('catalog-link')`) refuses.
- */
+/** The catalog-link slot-layout hook — the Review · Listing match CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   CATALOG_LINK_FIELD_CATALOG,

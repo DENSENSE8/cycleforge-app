@@ -31,14 +31,7 @@ function parseLinkFilter(raw: string | null): SkuCatalogLinkFilter | undefined {
   return undefined;
 }
 
-/**
- * GET /api/sku-catalog — Paginated SKU catalog list with platform/manual/QC counts.
- *
- * Optional `platform=zoho|amazon|…` for Products Catalog chrome tabs (zoho /
- * omit = inventory-master MDM list). Optional `linkFilter=active_linked|
- * unlinked_pending|all` is a refine scope — when omitted, preserves historic
- * active-only admin list behavior.
- */
+/** GET /api/sku-catalog — Paginated SKU catalog list with platform/manual/QC counts. */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
@@ -77,15 +70,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'sku_stock.view' });
 
-/**
- * POST /api/sku-catalog — Create a new SKU catalog entry.
- *
- * Body: { sku, productTitle, category?, upc?, ean?, imageUrl?, isActive?, idempotencyKey? }
- *
- * `sku` is the natural unique key. A retried create with the same
- * `Idempotency-Key` (header or body) replays the original 201 instead of
- * colliding; a genuinely different request for an already-active SKU is a 409.
- */
+/** POST /api/sku-catalog — Create a new SKU catalog entry. */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

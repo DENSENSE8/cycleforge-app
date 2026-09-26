@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Leaf + detail band, or the same facts in a BottomSheet on `/m/*`.
- * Does not change CompoundItem paint.
- *
- * Callers: CompoundRow, OrdersQueueTableRow. No API/schema.
- * User: make SLOT_TABLE_ENGINE_CONTRACT green; do not change paint.
- */
+/** Leaf + detail band, or the same facts in a BottomSheet on `/m/*`. */
 
 import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';

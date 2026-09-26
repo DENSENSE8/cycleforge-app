@@ -1,28 +1,8 @@
 'use client';
 
 /**
- * The INCOMING DELIVERY RECORD — the one record for an inbound purchase line,
- * on every desk that lists deliveries (`/incoming` On the way, the Unbox
- * Inbound tab). Same component in both views of the record plane: in place
- * (main 2/3 · aside 1/3 on the fixed stage) and the fullscreen split pane
- * (columns stack by container query).
- *
+ * The INCOMING DELIVERY RECORD — the one record for an inbound purchase line, on every desk that lists deliveries (`/incoming` On the way,…
  * Built for triage at a glance (owner 2026-09-25), on the order record's shape:
- *   - TOP — {@link ReceivingStatusStrip}: the delivery state in the ledger row's
- *     own vocabulary (so row and record agree), the next step, the loud alerts
- *     (unpaired, wrong destination, carrier trouble, claims) and the pipeline
- *     ordered → tracking → carrier → delivered → door scan → unboxed → received
- *     with who / when (`incoming-record-status.ts`, real row fields only).
- *   - MAIN — the ITEMS: each purchase-order line ordered vs received, with its
- *     own status chain where the line has reached the warehouse; then Pairing
- *     (unpaired only), the carrier trail, receiving activity and email.
- *   - ASIDE — purchase / vendor / source, shipment, location, ticket, notes,
- *     the delivery's verbs (sync, claim, open in Unbox, copy, remove) and the
- *     task actions (a task anchors the CARTON, so it needs a door scan first).
- *
- * The details read + verbs live in one controller ({@link useIncomingDelivery})
- * owned by the ledger, so the record body and its
- * verbs (`incoming-record-verbs.tsx`, the ledger's action strip) share it.
  */
 
 import type { ReactNode } from 'react';

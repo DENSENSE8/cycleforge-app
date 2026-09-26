@@ -1,10 +1,4 @@
-/**
- * Kiosk counter scan classifier — pure, client-safe.
- *
- * Do NOT reuse warehouse `scan-resolver.ts`: a 12-digit FedEx STN and a 12-digit
- * UPC collide there. At the counter, digit-length + Luhn (IMEI) + RS# grammar
- * decide the action. Side effects (append cart / open pane) live in the shell.
- */
+/** Kiosk counter scan classifier — pure, client-safe. */
 
 type KioskScanKind = 'upc' | 'imei' | 'pickup_ref' | 'unknown';
 

@@ -1,26 +1,4 @@
-/**
- * POST   /api/receiving/lines/[id]/loss   — write the line's goods off as lost
- * DELETE /api/receiving/lines/[id]/loss   — the carton turned up; reopen it
- *
- * Phase 3 of docs/todo/ebay-delivered-not-unboxed-PLAN.md. The exit door for the
- * "Delivered · not unboxed" lane: before this, a carrier-delivered carton whose
- * goods never materialized could only leave by aging out of the query window, so
- * the exception disappeared with no record of what happened to the goods.
- *
- * Writes an OPEN `receiving_exceptions` row and does NOT touch `workflow_status` —
- * the rationale (PROBLEM is orthogonal to the lifecycle; `FAILED` would stamp
- * `received_at` on goods that never arrived) lives in `lib/receiving/loss-writeoff.ts`.
- *
- * DELETE is a real reopen, not a delete: it resolves the open loss exceptions, so
- * the write-off stays in history and the line returns to the lane.
- *
- * Permission: `receiving.mark_received`. Deliberately reuses the existing receive
- * permission rather than minting `receiving.write_off` — a new permission id is not
- * granted by `scripts/seed-roles.mjs` until that script is updated, so a fresh id
- * would 403 every operator (the trap `integrations.zendesk` hit). An operator
- * trusted to declare a carton received is trusted to declare it lost; splitting
- * them is a follow-up that must touch seed-roles in the same change.
- */
+/** POST /api/receiving/lines/[id]/loss — write the line's goods off as lost DELETE /api/receiving/lines/[id]/loss — the carton turned up;… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { after } from 'next/server';

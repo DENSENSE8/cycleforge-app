@@ -1,24 +1,4 @@
-/**
- * Amazon External Fulfillment Returns lookup — match an inbound return package to
- * its Amazon return record by reverse (carrier) tracking id.
- *
- * Thin wrapper over `callSpApi` (house no-SDK pattern, cf. order-sync.ts). Uses
- * the External Fulfillment Returns API `listReturns` with its `reverseTrackingId`
- * filter, then `getReturn` for the full payload:
- *   GET /externalFulfillment/returns/2021-08-19/returns?reverseTrackingId=…
- *   GET /externalFulfillment/returns/2021-08-19/returns/{returnId}
- * (docs: developerdocs.smartconnect.amazon.com/returnsUseCaseGuide.html)
- *
- * AVAILABILITY — this API is gated on enrollment in Amazon External Fulfillment
- * (Seller Flex). A connection without that authorization gets an SP-API 401/403;
- * we classify that as UNSUPPORTED (not a hard error) so the UI can say "Amazon
- * Returns access is not enabled for this connection" rather than failing. There
- * is no other SP-API surface that resolves an arbitrary inbound return package by
- * its carrier tracking for a standard seller, so unsupported is the honest state
- * for a non-Seller-Flex org.
- *
- * Deps-injected (backend-patterns.md) so unit tests run with zero DB / network.
- */
+/** Amazon External Fulfillment Returns lookup — match an inbound return package to its Amazon return record by reverse (carrier) tracking id. */
 
 import type { AmazonCredentials } from '@/lib/integrations/credentials';
 import { callSpApi, type AmazonAccount } from './client';
@@ -67,12 +47,7 @@ interface ListReturnsResponse {
   [k: string]: unknown;
 }
 
-/**
- * An SP-API failure that means "this connection can't call the Returns API"
- * (missing External Fulfillment authorization) rather than a transient error.
- * `callSpApi` throws a plain Error with the HTTP status in its message, so we
- * classify by status token / access-denied language.
- */
+/** An SP-API failure that means "this connection can't call the Returns API" (missing External Fulfillment authorization) rather than a… */
 function isUnsupportedSpApiError(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   return (
@@ -123,12 +98,7 @@ const defaultDeps: ReturnsLookupDeps = {
   callApi: callSpApi,
 };
 
-/**
- * Look up an Amazon return across the org's connected accounts by reverse
- * (carrier) tracking id. Returns the first match, else no-match. If EVERY
- * connected account is unauthorized for the Returns API (or has no creds), the
- * result is `unsupported` (the org isn't on External Fulfillment / Seller Flex).
- */
+/** Look up an Amazon return across the org's connected accounts by reverse (carrier) tracking id. */
 export async function lookupAmazonReturnByTracking(
   orgId: string,
   reverseTrackingId: string,

@@ -144,12 +144,7 @@ const packerInputThemeClasses: Record<PackerStationTheme, StationInputThemeClass
   },
 };
 
-/**
- * Anchor hexes for each StationTheme. Used to map an arbitrary DB color_hex
- * onto the nearest themed Tailwind class chain (FBA chrome, packer/tech
- * inputs, print queue, etc.). Tuned to match the actual class palettes in
- * {@link stationThemeColors} so the chrome stays visually coherent.
- */
+/** Anchor hexes for each StationTheme. */
 const THEME_ANCHOR_HEX: Record<StationTheme, [number, number, number]> = {
   green:     [16, 185, 129],   // emerald-500
   blue:      [59, 130, 246],   // blue-500
@@ -161,39 +156,13 @@ const THEME_ANCHOR_HEX: Record<StationTheme, [number, number, number]> = {
   pink:      [236, 72, 153],   // pink-500
 };
 
-/**
- * Module-level cache of per-staff IDENTITY facets keyed by staff ID — the
- * assigned `color_hex` and the profile `avatar_photo_id`. Populated once on app
- * boot by <StaffColorsProvider> (root layout) from `/api/staff`. Drives the
- * synchronous resolvers ({@link getStaffThemeById}, {@link getStaffColorHex},
- * {@link getStaffAvatarPhotoId}) that 30+ components depend on without forcing
- * every consumer to thread the staff record through props.
- *
- * The avatar id rides HERE rather than through each payload for the same reason
- * the colour does: an actor is identified by a staff id in a dozen feeds
- * (timelines, journeys, schedule pills) that have no business growing a photo
- * join. `<StaffAvatar>` reads this cache; a caller that already holds the row
- * may still pass `avatarPhotoId` explicitly and skip the lookup.
- *
- * Reactivity: when the cache is replaced (an admin changes a colour, a staffer
- * uploads a photo), subscribers are notified. Components that read the
- * resolvers during render call {@link useStaffColorVersion}.
- */
+/** Module-level cache of per-staff IDENTITY facets keyed by staff ID — the assigned `color_hex` and the profile `avatar_photo_id`. */
 const _staffColorCache = new Map<number, string>();
 const _staffAvatarCache = new Map<number, number>();
 let _staffColorVersion = 0;
 const _staffColorSubscribers = new Set<() => void>();
 
-/**
- * Persists the cache between page loads so themed chrome (packer scan-bar
- * border, FBA sidebar gradients, spine footer avatar) paints with the right
- * hue/photo immediately on cold boot instead of flashing the emerald default
- * until <StaffColorsProvider>'s /api/staff fetch resolves.
- *
- * Entries are `[id, hex, avatarPhotoId | null]`. The two legacy keys held
- * 2-tuples; they are still READ (hue-only) so an existing browser does not
- * lose its warm colours on the first load after this ships.
- */
+/** Persists the cache between page loads so themed chrome (packer scan-bar border, FBA sidebar gradients, spine footer avatar) paints with… */
 const STORAGE_KEY = 'cf_staff_identity_v1';
 const LEGACY_STORAGE_KEYS = ['cf_staff_colors_v1', 'usav_staff_colors_v1'] as const;
 
@@ -268,12 +237,7 @@ export function setStaffColorCache(entries: Array<StaffIdentityCacheEntry>): voi
   _staffColorSubscribers.forEach((fn) => fn());
 }
 
-/**
- * Patch ONE staffer's avatar without discarding the rest of the cache — used
- * right after a self-upload / clear so the spine footer flips before the
- * `/api/staff` query refetches. A full {@link setStaffColorCache} would drop
- * every other staffer's warm colour until that fetch lands.
- */
+/** Patch ONE staffer's avatar without discarding the rest of the cache — used right after a self-upload / clear so the spine footer flips… */
 export function setStaffAvatarPhotoId(
   staffId: number,
   avatarPhotoId: number | null,
@@ -356,13 +320,7 @@ export function themeFromHex(hex: string | null | undefined): StationTheme {
 /** Default fallback hex when no DB color is available (cache miss or pre-load). */
 const DEFAULT_COLOR_HEX = '#10b981';
 
-/**
- * Sync theme resolver keyed by staff ID. Reads from the module-level color
- * cache populated by <StaffColorsProvider>. Returns the emerald default when
- * the cache hasn't been populated yet, when the ID is missing, or when the
- * staff hasn't had a color assigned. There is no longer a hardcoded id→theme
- * fallback — the DB column staff.color_hex is the only source of truth.
- */
+/** Sync theme resolver keyed by staff ID. */
 export function getStaffThemeById(
   staffId: number | string | null | undefined,
 ): StationTheme {

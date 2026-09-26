@@ -1,23 +1,4 @@
-/**
- * GET  /api/counter/companion?t=<token> — the joined phone reads the visit's units.
- * POST /api/counter/companion — the phone scans a serial into one unit.
- *
- * Callers: `/m/repair-scan` (`RepairScanCompanion`).
- * Affected API: this route (staff session, `walk_in.intake` — the same gate as
- *   editing a counter session line).
- * Data schemas: `kiosk_companion_links` via `readCompanionForPhone` /
- *   `queueSerialFromPhone`; the read also names the tablet (`kiosk_devices`)
- *   and the customer on the cart it holds (`kiosk_carts`) — `CompanionVisit`.
- * User: "join the same repair service session and then scan something like a
- *   serial number to input and update the form on your phone as well".
- *
- * The token is the capability for WHICH tablet; the staff session is the
- * capability to touch a visit at all, and it pins the org — a token from
- * another org's tablet is simply not found here.
- *
- * No audit row: a scan only fills a form field on the tablet. The visit the
- * serial lands on is audited when the tablet submits it.
- */
+/** GET /api/counter/companion?t=<token> — the joined phone reads the visit's units. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

@@ -9,20 +9,7 @@ import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import { refreshDomain } from '@/lib/refresh/bus';
 
-/**
- * WorkOrderAssignPopover — P1-WORK-01 acceptance A.
- *
- * A lightweight POPOVER variant of work-order assignment (the existing
- * WorkOrderAssignmentCard is a full-screen takeover overlay). Built on the
- * P0-DS-01 Popover primitive + the existing StaffButtonGrid picker, and it
- * persists through the SAME endpoint via saveWorkOrder() (PATCH /api/work-orders)
- * — so this is purely an additive, alternate trigger surface, not a new model.
- *
- * Use it anywhere a row already has an anchor button (table rows, detail panels)
- * and a takeover modal would be too heavy. Assigns/reassigns the tester slot for
- * any entity; for ORDER it also exposes the packer slot (matching the endpoint's
- * TEST/PACK work-assignment split).
- */
+/** WorkOrderAssignPopover — P1-WORK-01 acceptance A. */
 
 interface WorkOrderAssignPopoverProps {
   row: WorkOrderRow;

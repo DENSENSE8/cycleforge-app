@@ -1,20 +1,4 @@
-/**
- * Photo labels — the library's orthogonal, many-to-many tagging axis.
- *
- * A photo has ONE image type (photo_image_types / photos.photo_type) but MANY
- * labels (front / back / serial-tag / defect / accessories / box …). Labels are
- * an org-scoped vocabulary in `photo_labels`; assignments live in
- * `photo_label_assignments` (UNIQUE per photo+label).
- *
- * Mirrors `image-types.ts`: Deps-injected for DB-free unit tests; every read and
- * write goes through `tenantQuery` / `withTenantTransaction` (SET LOCAL
- * app.current_org) AND keeps an explicit `organization_id = $1` clause (belt and
- * suspenders while the app connects as a BYPASSRLS role). Writes are audited by
- * the `/api/photos/labels*` routes.
- *
- * `is_system` labels (seeded listing angles) are non-deletable / non-renamable.
- * `color` is validated against the semantic-token registry in `label-colors.ts`.
- */
+/** Photo labels — the library's orthogonal, many-to-many tagging axis. */
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -235,12 +219,7 @@ export async function getPhotoLabelIds(
   return res.rows.map((r) => Number(r.label_id));
 }
 
-/**
- * Replace a photo's label set with exactly `labelIds` (PUT semantics). Computes
- * the add/remove diff inside one transaction so the chip set is atomic. Only
- * label ids that actually belong to the org are inserted (a foreign id is
- * silently dropped, not an error). Returns the resulting label rows.
- */
+/** Replace a photo's label set with exactly `labelIds` (PUT semantics). */
 export async function setPhotoLabels(
   orgId: OrgId,
   photoId: number,

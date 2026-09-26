@@ -45,12 +45,7 @@ const TECH_LANES: SwimlaneLaneDef<TechHistoryLane>[] = TECH_HISTORY_BOARD_LANES.
 interface TechTableProps {
   /** Signed-in tech — used when `staffScope` is `'self'` (legacy default). */
   testedBy: number;
-  /**
-   * `'self'` — always this tech (legacy TechTable callers).
-   * `'url'` — org-wide by default; `?staff=` narrows via useStaffFilter.
-   * `'url-or-self'` — logged-in tech by default (absent param); `?staff=N`
-   * narrows; `?staff=all` is explicit org-wide (Shipping History).
-   */
+  /** `'self'` — always this tech (legacy TechTable callers). */
   staffScope?: 'self' | 'url' | 'url-or-self';
 }
 
@@ -153,10 +148,7 @@ export function TechTable({
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      // The find box is answered by `/api/tech-logs?q=`, not by a pass over the
-      // mounted week. `isRefreshing` is the in-flight flag for the CURRENT
-      // text, so the body holds its loading face instead of presenting the
-      // previous query's rows as this query's answer.
+      // The find box is answered by `/api/tech-logs?q=`, not by a pass over the mounted week.
       search={{ value: query, onChange: setQuery, pending: isRefreshing }}
       pipeline={{
         records: orderedRecords,

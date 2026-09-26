@@ -44,14 +44,7 @@ import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 import { addUnmatchedLine } from '@/lib/receiving/add-unmatched-line-client';
 
-/**
- * Owns an unmatched (no-Zoho-PO) carton's items section: fetching the carton's
- * receiving_lines, the carton-level return-serial scan (optimistic create+attach
- * → bind order# → flip off the Unfound queue), the unified add-line path
- * (catalog/web/repair-service), optimistic line removal, per-line condition
- * updates, and the add/repair popover + assigned-box state. Returns a controller
- * bag the thin section shell renders from.
- */
+/** Owns an unmatched (no-Zoho-PO) carton's items section: */
 export function useUnmatchedItems({
   receivingId,
   staffId,
@@ -68,11 +61,7 @@ export function useUnmatchedItems({
   /** Box this carton's units last landed in — shows as a chip in the header. */
   const [assignedBox, setAssignedBox] = useState<AssignedBox | null>(null);
 
-  // Carton-level serial matcher. An unfound carton has no lines until something
-  // is added, so this lets the operator scan a serial directly: on a shipped-
-  // serial match we create a line populated from the matched sales order and
-  // attach the serial; when there is no order match we still record the serial
-  // (create line → scan-serial → log-serial) and flag RETURN_NO_ORDER for triage.
+  // Carton-level serial matcher.
   const [returnScanBusy, setReturnScanBusy] = useState(false);
   // Ref so refreshLines can skip destructive clears without re-subscribing the
   // mount effect every time a return scan starts/finishes.
@@ -102,19 +91,13 @@ export function useUnmatchedItems({
       });
       const body = (await res.json().catch(() => null)) as CartonResponse | null;
       if (!res.ok || !body?.success) {
-        // Carton not visible yet — an optimistic/just-promoted open, a mid-create
-        // race, or a stale unfound-queue stub. Degrade silently; NEVER toast a
-        // raw "Package not found". Do not wipe local lines while a return scan
-        // is in flight or we already have rows (optimistic chip SoT for Testing).
+        // Carton not visible yet — an optimistic/just-promoted open, a mid-create race, or a stale unfound-queue stub.
         setLines((prev) =>
           returnScanBusyRef.current || prev.length > 0 ? prev : [],
         );
         return;
       }
-      // Merge + preserve: empty / serial-less snapshots must not wipe the
-      // optimistic chip (Testing paints from local `lines`, not siblings cache).
-      // `mergeUnfoundLinesWithPreserve` keeps prev on empty incoming — same
-      // effect as skipping apply while returnScanBusy during mid-create.
+      // Merge + preserve:
       setLines((prev) => mergeUnfoundLinesWithPreserve(prev, body.lines ?? []));
       if (body.receiving) {
         // intake_type maps onto the SoT's `receiving_type` slot.
@@ -136,12 +119,7 @@ export function useUnmatchedItems({
     }
   }, [receivingId]);
 
-  // Persist a door-classification pick: map it to the carton columns and PATCH,
-  // then broadcast the same `receiving-package-updated` event the platform/type
-  // pills fire so the sibling carton-context surfaces stay in sync. intake_type
-  // only accepts PO|RETURN|TRADE_IN at the carton level (PICKUP is a carton
-  // source, not an intake_type), so it is skipped for LOCAL_PICKUP to avoid a
-  // 400 that would roll back the return columns.
+  // Persist a door-classification pick:
   const saveClassification = useCallback(
     async (next: IntakeClassification) => {
       setClassification(next);
@@ -178,15 +156,7 @@ export function useUnmatchedItems({
     [receivingId],
   );
 
-  // Load the carton's lines on mount and whenever the carton changes
-  // (`refreshLines` is keyed on `receivingId`). Clear foreign carton rows
-  // FIRST so the previous selection never paints as "last lines" during the
-  // GET. Do NOT depend on `onActiveConditionChange` here: the parent passes
-  // it as a fresh inline arrow every render, so listing it re-fired this full
-  // `GET /api/receiving/:id` refetch + `setLines` on EVERY render — a refetch
-  // storm that re-rendered the whole active row (and reset the serial input)
-  // on each serial add. Carton reconciliation still flows through the
-  // `app-refresh-data` / feed paths.
+  // Load the carton's lines on mount and whenever the carton changes (`refreshLines` is keyed on `receivingId`).
   useEffect(() => {
     setLines([]);
     void refreshLines();
@@ -213,10 +183,7 @@ export function useUnmatchedItems({
     [lines],
   );
 
-  // Scan a returned serial against the whole carton. Optimistic line + chip on
-  // frame 1; create-line → scan-serial in the background. Server return-linkage
-  // (when the serial was previously shipped) supplies order# / line_patch —
-  // no pre-scan lookup, no blocking log-serial / carton PATCH / full refresh.
+  // Scan a returned serial against the whole carton.
   const handleReturnSerialScan = useCallback(
     async (rawSerial: string) => {
       const serial = rawSerial.trim();
@@ -532,10 +499,7 @@ export function useUnmatchedItems({
           return;
         }
         toast.success('Item removed');
-        // Keep the Unboxed carton row keyed as `carton:{receivingId}` — retarget
-        // the representative line or collapse to an unfound stub in place. Then
-        // fire line-deleted so selection/workspace clears without remounting the
-        // rail (localRows filter misses the retargeted id / stub id).
+        // Keep the Unboxed carton row keyed as `carton:{receivingId}` — retarget the representative line or collapse to an unfound stub in place.
         const remaining = prev.filter((l) => l.id !== lineId);
         if (remaining.length === 0) {
           reconcileUnboxRailAfterLineDelete(queryClient, receivingId, {
@@ -599,13 +563,7 @@ export function useUnmatchedItems({
     [refreshLines, onActiveConditionChange],
   );
 
-  // Lineless carton ("PO ITEMS · 0"): grading the carton's scan condition is a
-  // genuine operator acknowledgement that the box was opened, but there is no
-  // receiving_line to hang the "Unboxed" stamp on. Set the local grade (still
-  // carried into the eventual serial scan) AND set-once stamp the carton's
-  // Unboxed milestone so the details stepper reflects it. Best-effort: a failed
-  // ack must not block re-grading. Set-once server-side, so repeat clicks are
-  // cheap no-ops.
+  // Lineless carton ("PO ITEMS · 0"):
   const handleCartonConditionChange = useCallback(
     (next: string) => {
       setCartonScanCondition(next);

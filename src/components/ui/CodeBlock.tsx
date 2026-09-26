@@ -5,12 +5,7 @@ import { Copy } from '@/components/Icons';
 import { Panel } from '@/design-system/primitives';
 
 
-/**
- * Fenced code block chrome for chat answers: a language label + copy button
- * over a light, horizontally-scrollable code surface. `children` are the
- * already-highlighted nodes produced by rehype-highlight (see MarkdownRenderer);
- * the raw text for copy is read from the rendered DOM.
- */
+/** Fenced code block chrome for chat answers: */
 export default function CodeBlock({ language, children }: { language?: string; children: ReactNode }) {
   const codeRef = useRef<HTMLElement>(null);
   const [copied, setCopied] = useState(false);

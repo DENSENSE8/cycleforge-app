@@ -1,30 +1,4 @@
-/**
- * Warranty claims spreadsheet column model — MATERIALIZED from a
- * {@link SlotLayout}, never a hand array (the warranty-native sibling of the
- * other house spreadsheets).
- *
- * A claim row is a support record, not a station line: no unbox/serial/receive
- * lifecycle, no in-cell edit, no fold. So this is a small, read-only column set
- * — Item · Claim · Customer · Status · Warranty · Logged — composing the SAME
- * shared geometry (`receivingGridCell` /
- * `ORDERS_QUEUE_FROZEN_CELL`) so the warranty grid lines up pixel-for-pixel with
- * every other house spreadsheet.
- *
- * The static `WARRANTY_GRID_COLUMNS` died with wave 1.4 of the seller-table
- * program: tracks whose keys WERE fields (`customer`, `status`, `warranty`) are
- * a frozen layout no organization can capture.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `select` gutter
- * (empty, keeps the left rhythm), the frozen flexing `title` item cell, the
- * `claim` identity track (`warranty.claim` is the fact it resolves), and the
- * trailing `ticket` action. A claim is corrected at the record plane (the
- * `?open=` detail panel), never in a cell.
- *
- * `ticket` is an ACTION track, not a fact: it carries no `hideKey`, so it is
- * structural (`isGridColumnVisible` rule 1) and the Fields menu never offers it.
- * Row-scoped actions must not be something a staffer can hide and then wonder
- * where the control went.
- */
+/** Warranty claims spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array (the warranty-native sibling of… */
 
 import {
   gridFrozenLeft,

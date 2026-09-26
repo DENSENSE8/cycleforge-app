@@ -18,13 +18,7 @@ interface PopoverChrome {
   onClose: () => void;
 }
 
-/**
- * Anchored popover panel. Portaled to <body> via AnchoredLayer so a high
- * z-index can never be trapped by an ancestor stacking context; pinned
- * below-right of the header's trigger `relative` wrapper (`anchorRef`). Callers
- * mount the shell only while their popover is open, so `open` is constant true;
- * AnchoredLayer owns click-away + Escape and routes them through `onClose`.
- */
+/** Anchored popover panel. */
 export function PopoverShell({
   title,
   icon,

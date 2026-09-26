@@ -14,12 +14,7 @@ import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-e
 
 export type { PhotoGalleryInput } from './photo-gallery/photo-gallery-utils';
 
-/**
- * Photo gallery: a launcher surface (thumbnail strip / slim toolbar / button)
- * plus a portaled fullscreen viewer with zoom, download, PO photo moves, and a
- * two-step delete. Thin composition layer — state/logic live in
- * {@link usePhotoGallery} under `./photo-gallery/`.
- */
+/** Photo gallery: */
 export function PhotoGallery(props: PhotoGalleryProps) {
   const g = usePhotoGallery(props);
   const { isMobile } = useUIModeOptional();

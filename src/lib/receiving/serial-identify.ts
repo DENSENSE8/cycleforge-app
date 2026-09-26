@@ -1,31 +1,4 @@
-/**
- * Serial OCR candidate resolution — the domain half of
- * `POST /api/receiving/identify-serial`.
- *
- * ## It receives TEXT, never an image
- *
- * Same contract as the label path (`./label-identify.ts`): the browser posts the
- * captured frame straight to the LAN vision box, which does the OCR, and only
- * the resulting STRINGS come here. A full-res frame never reaches Vercel. This
- * module could not accept one if it wanted to.
- *
- * ## OCR proposes; the operator commits
- *
- * Nothing here writes. A read pre-fills the serial field and flags duplicates so
- * the operator can see what they are about to do; attaching a serial stays
- * `POST /api/receiving/scan-serial`. A vision system that wrote directly would
- * be attributing a scan to a person who never made one — the same class of
- * falsifiable claim the derived procedure exists to prevent.
- *
- * ## Classification is the existing scan vocabulary, not a new one
- *
- * Reads are normalized through `classifyInput` (`@/lib/scan-resolver`) — the
- * same classifier the station scan bar routes on — and anything that comes back
- * as a carrier tracking number, an FNSKU or a SKU is DROPPED. An OCR pass over a
- * unit's back panel picks up the shipping label, a barcode and a model string as
- * readily as it picks up the serial; offering those as serial candidates is how
- * a tracking number ends up attached as a unit's identity.
- */
+/** Serial OCR candidate resolution — the domain half of `POST /api/receiving/identify-serial`. */
 
 import { classifyInput } from '@/lib/scan-resolver';
 import { detectStationScanType } from '@/lib/station-scan-routing';
@@ -37,12 +10,7 @@ interface SerialCandidate {
   normalized: string;
   /** Already attached to THIS line — re-scanning it is a no-op, not a new unit. */
   alreadyOnLine: boolean;
-  /**
-   * Attached to a DIFFERENT line in this org. Not an error — a return of a unit
-   * this warehouse shipped is exactly this — but the operator must see it before
-   * committing, because the alternative is silently minting a second unit for
-   * one physical thing.
-   */
+  /** Attached to a DIFFERENT line in this org. */
   alreadyOnAnotherLine: boolean;
   /** The other line's id, when known. */
   otherReceivingLineId: number | null;
@@ -59,26 +27,7 @@ export interface SerialIdentifyDeps {
   ) => Promise<Array<{ normalized: string; receivingLineId: number | null }>>;
 }
 
-/**
- * Normalize one OCR read to a serial candidate string, or null when it is not a
- * serial at all.
- *
- * TWO different normalizations are in play here and conflating them is the trap:
- *
- *   - The **verdict** ("is this a serial?") is `detectStationScanType`, the
- *     station's own precedence chain (SKU → repair → FNSKU → command → carrier
- *     tracking → serial). Asked rather than re-implemented, so an OCR read
- *     routes exactly the way the same string typed into the scan bar would.
- *   - The **identity key** ("is this the same unit?") is `upper(trim(...))`,
- *     because that is the definition of `serial_units.normalized_serial`
- *     (`serial-attach.ts`). `classifyInput`'s `normalized` must NOT be used
- *     here: for a long read it strips non-alphanumerics, so `ABC-1234…` would
- *     be compared as `ABC1234…` against a stored `ABC-1234…` and every
- *     dash-bearing serial would read as brand new.
- *
- * The lookup SQL applies the same `upper(trim())` to its parameter, so the two
- * sides cannot drift into disagreeing about what "the same serial" means.
- */
+/** Normalize one OCR read to a serial candidate string, or null when it is not a serial at all. */
 export function normalizeSerialRead(raw: string): string | null {
   const trimmed = String(raw ?? '').trim();
   if (!trimmed) return null;

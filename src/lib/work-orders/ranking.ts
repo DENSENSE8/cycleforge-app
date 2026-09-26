@@ -1,24 +1,6 @@
 import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
-/**
- * Shared work-order ranking SoT.
- *
- * Extracted verbatim from /api/work-orders/route.ts so that the queue route AND
- * the per-operator "my top work order" endpoint (/api/work-orders/mine, feeding
- * the global-header priority chip) rank rows through ONE comparator instead of
- * forking the logic.
- *
- * Lower sorts first / is "more important". The order of tie-breaks:
- *   1. stock level  (replenish queue: lower stock = more urgent)
- *   2. status rank  (IN_PROGRESS → ASSIGNED → OPEN → DONE)
- *   3. priority     (work_assignments.priority; lower = higher priority; def 100)
- *   4. deadline     (earlier deadline first; no-deadline sorts to the end)
- *   5. entityId     (stable tiebreak)
- *
- * The priority number itself is the existing per-row priority sourced from the
- * active work_assignments row — this is the de-facto "which work order matters
- * most" signal, so reusing it keeps the header chip consistent with the queue.
- */
+/** Shared work-order ranking SoT. */
 export function workStatusRank(value: WorkStatus): number {
   if (value === 'IN_PROGRESS') return 0;
   if (value === 'ASSIGNED') return 1;

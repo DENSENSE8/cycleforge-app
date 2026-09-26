@@ -1,29 +1,10 @@
-/**
- * The SQL reads behind the ASN projection. SERVER-ONLY.
- *
- * Not re-exported from any barrel — same bundle-altitude reason as
- * `./epcis-queries.ts`.
- *
- * Three narrow reads rather than one join: the hierarchy is built in memory
- * anyway (the HL numbering is a property of the whole document), and a single
- * shipment→carton→line join would multiply the shipment row by every line,
- * which is a lot of duplicated wide columns for no benefit.
- */
+/** The SQL reads behind the ASN projection. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { AsnCartonRow, AsnLineRow, AsnShipmentRow } from './asn-projection';
 
-/**
- * The shipment row.
- *
- * `shipping_tracking_numbers` predates the tenant sweep and carries no
- * `organization_id` of its own, so it cannot be filtered by org directly.
- * Reachability through THIS org's cartons is the scope check: a shipment with
- * no carton in this tenant is invisible here, which is the same answer an
- * org-column filter would give. The `EXISTS` also keeps the check
- * index-friendly rather than materialising the carton set.
- */
+/** The shipment row. */
 export async function fetchAsnShipment(args: {
   orgId: string;
   shipmentId: number;
@@ -68,14 +49,7 @@ export async function fetchAsnCartons(args: {
   return res.rows;
 }
 
-/**
- * Lines for a set of cartons.
- *
- * `sku_catalog` is joined ONLY through `receiving_line.sku_catalog_id`. A join
- * on the SKU string would silently attach one product's GTIN to another
- * product's line — `items` and `sku_catalog` are independent numbering schemes
- * whose SKUs collide (SKU identity).
- */
+/** Lines for a set of cartons. */
 export async function fetchAsnLines(args: {
   orgId: string;
   cartonIds: number[];

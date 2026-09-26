@@ -1,23 +1,4 @@
-/**
- * Inventory › Ledger activity column model — MATERIALIZED from a
- * {@link SlotLayout} onto the SHARED compound skeleton, never a hand array.
- *
- * A row is one inventory event: what happened to a unit, when, where and by
- * whom. It replaced a `<ul>` of `EventRow` cards — a display with fixed spans,
- * no header, no sort and no Fields picker, which is exactly the second table
- * the one-table SoT exists to prevent.
- *
- * The first port (2026-09-04, morning) materialized its own SHEET skeleton with
- * a frozen `sku` track, which is why the Ledger painted a thin one-line
- * spreadsheet instead of To-ship's two-line WMS row. There is nothing about an
- * inventory event that wants a different row shape, so the base is now
- * {@link compoundColumnsFor} — the same tracks Orders, Receiving, Incoming and
- * Tasks mount — and the identity fact resolves into the shared `fulfillment`
- * track exactly as `materialize-tracks.ts` documents.
- *
- * Sort and frozen-offset helpers derive from the MOUNTED model, never a module
- * constant.
- */
+/** Inventory › Ledger activity column model — MATERIALIZED from a {@link SlotLayout} onto the SHARED compound skeleton, never a hand array. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -53,18 +34,7 @@ export interface InventoryEventsGridColumn
   key: InventoryEventsGridColumnKey;
 }
 
-/**
- * Materialize the mounted ledger columns from an effective layout.
- *
- * Two shared tracks are filtered off this MOUNT (never removed from
- * `COMPOUND_TRACKS`):
- *
- * - `dates` — an inventory event has no start-over-deadline pair. The ledger's
- *   one date, `occurred`, is a bound STATUS track: a ledger is ORDERED by time,
- *   and a sortable track orders it where a chrome cell would only display it.
- * - `select` — the ledger is a read map (`multiSelect: false`). A gutter
- *   checkbox that selects rows nothing can act on is a control with no verb.
- */
+/** Materialize the mounted ledger columns from an effective layout. */
 export function inventoryEventsCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly InventoryEventsGridColumn[] {
@@ -83,17 +53,7 @@ export function inventoryEventsCompoundColumnsFor(
 export const INVENTORY_EVENTS_COMPOUND_COLUMNS: readonly InventoryEventsGridColumn[] =
   inventoryEventsCompoundColumnsFor(INVENTORY_EVENTS_PRODUCT_LAYOUT);
 
-/**
- * The FACT a column sorts by, or null when it offers no sort.
- *
- * `inventory-events.status_change` and `inventory-events.bin` are deliberately
- * unsortable wherever they are bound: each is a TRANSITION of two independent
- * values, so ordering it would compare whichever end happened to be first.
- * That rule belongs to the FACT, not to a track key — a rebind must carry it.
- *
- * Chrome tracks (`thumb`, `_fill`, the gutters) carry no `fieldId` and fall
- * through to `null`, which is what keeps them out of the header-sort law.
- */
+/** The FACT a column sorts by, or null when it offers no sort. */
 export function inventoryEventsSortFactFor(
   col: { key: string; fieldId?: string; sortable?: boolean },
 ): string | null {

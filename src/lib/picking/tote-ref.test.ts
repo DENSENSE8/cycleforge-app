@@ -2,11 +2,7 @@ import { strictEqual } from 'node:assert';
 import test from 'node:test';
 import { toteRefFromScan } from './tote-ref';
 
-// The tote gate's whole contract: a scan either names THE tote for this
-// session (canonical H-{id} form, straight through to confirm-pick's
-// tote_scan) or it does not (null → falls through to task matching / error).
-// House plates arrive bare or as the QR redirect path; external tote barcodes
-// cannot be classified from bytes and stay the server resolver's job.
+// The tote gate's whole contract:
 
 test('bare house plates canonicalize to H-{id}', () => {
   strictEqual(toteRefFromScan('H-12'), 'H-12');

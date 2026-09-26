@@ -68,11 +68,8 @@ describe('radius SoT', () => {
   });
 
   it('the header icon face is FLUSH — square, edge to edge on the beam', () => {
+    // Operator 2026-09-22:
     // Operator 2026-09-22: "no spacing or padding for the icons … zero corner
-    // radius on hover state and a selection state." HEADER_ICON_CORNER was the
-    // named 8px exemption behind HEADER_ICON_BTN_CLASS; with the face squared
-    // it had no header consumer left and was retired, so the three dropdown
-    // shells that had borrowed it now name DROPDOWN_SHELL_CORNER directly.
     assert.equal(cornerClass('flush'), 'rounded-none');
   });
 
@@ -94,10 +91,7 @@ describe('radius SoT', () => {
 
   describe('nestedCorner — concentric inner = outer − padding', () => {
     it('reproduces the one pairing the house already documents by hand', () => {
-      // nestedCorner keys off CORNER_PX (untouched by the zero-radius staging),
-      // so the returned ROLE is still `field` for a canvas + p-3 nest. But the
-      // `field` role now renders `rounded-none` (flushed in Wave 0b), so the
-      // nested field is flush — WORKSPACE_NESTED_FIELD is `rounded-none`.
+      // nestedCorner keys off CORNER_PX (untouched by the zero-radius staging), so the returned ROLE is still `field` for a canvas + p-3 nest.
       assert.equal(nestedCorner('canvas', 3), 'field');
       assert.equal(nestedCornerClass('canvas', 3), 'rounded-none');
     });

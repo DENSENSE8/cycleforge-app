@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * useStudioSimulation — the client-side ghost-run driver for the Operations
- * Studio (ST6 Simulate, Phase E2).
- *
- * A "ghost" dot walks a hypothetical unit through the in-context graph (the
- * CURRENT published graph, or the DRAFT being edited — whichever the workspace
- * is showing), driven by an outcome script: at each node the owner fires one
- * output port and the ghost hops along that edge. It is a pure dry-run:
- *
- *   ZERO engine writes. No transition()/applyTransition()/tapWorkflow(), no
- *   inventory_events / workflow_runs / item_workflow_state INSERT, no DB write,
- *   no fetch. Everything here is in-memory routing over the graph the Studio
- *   already holds, via the pure `src/lib/studio/simulate.ts` helpers — which
- *   mirror the engine's first-match edge router exactly so the ghost follows
- *   the same path a real unit would.
- *
- * State lives here (not in StudioWorkspaceContext's data fetch lifecycle) so the
- * simulation is a self-contained overlay that never triggers a graph reload or
- * re-layout (Studio law #3). The Shell mounts it once and threads its return
- * value into the Simulate panel + the canvas ghost props.
- */
+/** useStudioSimulation — the client-side ghost-run driver for the Operations Studio (ST6 Simulate, Phase E2). */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { findEntryNode, outputPortsOf, stepSimulation } from '@/lib/studio/simulate';

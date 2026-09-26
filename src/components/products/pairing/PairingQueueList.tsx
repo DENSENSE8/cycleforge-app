@@ -19,16 +19,7 @@ interface PairingQueueListProps {
   onSelect: (item: PairingQueueItem) => void;
 }
 
-/**
- * Left rail: canonical SKUs that have at least one pairing suggestion.
- *
- * Search and sort are both owned by the parent sidebar — the SearchBar drives
- * `query` and the sort-pill row drives `sort`. This component is dumb: it just
- * fetches + renders. Default sort is `volume` (most-ordered first) so the
- * highest-leverage SKUs sit on top.
- *
- * Empty results = "everything's paired" success state.
- */
+/** Left rail: canonical SKUs that have at least one pairing suggestion. */
 export function PairingQueueList({ query, sort, selectedSku, onSelect }: PairingQueueListProps) {
   // Debounce the search prop locally so a sidebar keystroke doesn't slam the
   // API on every character.

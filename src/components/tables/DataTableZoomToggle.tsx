@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * Spreadsheet ZOOM — a percentage with a menu, the way a spreadsheet does it.
- *
- * One magnifying glass to the LEFT of the current percentage, and the number
- * itself is the control: click it, pick a zoom. That shape is deliberate rather
- * than borrowed — a pair of +/− steppers makes the operator click repeatedly to
- * cross a range and never tells them where they are, while the percentage is
- * both the readout and the affordance.
- *
- * ## What it actually drives
- *
- * `--cf-density`, which was already load-bearing and had no dial: every track
- * width, the row inset and the content-min width run through
- * `calc(Nrem * var(--cf-density, 1))` in `grid-column-geometry`. Nothing ever
- * set it, so every grid was pinned at 1.
- *
- * ## Why the root element, and why localStorage
- *
- * Density is a property of the OPERATOR (how far they sit from a 27" monitor),
- * not of one table, so it lands on `documentElement` and every grid on screen
- * agrees — the same reason the variable was declared with a global fallback.
- * It persists per viewer rather than in staff prefs because the same staffer at
- * a bench and at a desk wants different answers, and a server round trip to
- * change text size is a worse control than an instant one. Access is wrapped:
- * a private window throws rather than returning null.
- */
+/** Spreadsheet ZOOM — a percentage with a menu, the way a spreadsheet does it. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronDown, Search } from '@/components/Icons';

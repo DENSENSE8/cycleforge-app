@@ -42,14 +42,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'sourcing.view', feature: 'sourcing' });
 
-/**
- * POST /api/sourcing/alerts — Manually open a demand row ("Source this").
- *
- * Body: { skuId?, searchQuery?, boseModelId?, severity?, reason?, targetQty? }.
- * At least one of skuId / searchQuery is required. Lands as a `manual`
- * demand_source; idempotent for SKU-backed rows (returns the live row, 200) and
- * on Idempotency-Key. 201 when a new row is created.
- */
+/** POST /api/sourcing/alerts — Manually open a demand row ("Source this"). */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

@@ -1,18 +1,4 @@
-/**
- * Receiving sidebar-rail first-paint seed — the Upstash-backed replacement for
- * the old browser-`localStorage` rail snapshot.
- *
- *   GET  ?feed=<feedParam>          → the viewer's last-known rows for that rail
- *   POST { feed, rows }             → store the rows the rail just rendered
- *
- * Seed-only cache: a rail POSTs the rows it is showing, and on the next reload
- * GETs them to paint immediately while the (heavy) authoritative
- * `/api/receiving-lines` query resolves and reconciles over the seed. Because it
- * is only ever a transient seed — replaced by the authoritative fetch within one
- * round-trip — there is no audit, no domain mutation, and no invalidation
- * plumbing: a stale or missing seed self-heals. Keyed per org + viewer so a
- * shared terminal never seeds one staffer from another's rows.
- */
+/** Receiving sidebar-rail first-paint seed — the Upstash-backed replacement for the old browser-`localStorage` rail snapshot. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -50,10 +36,7 @@ export const GET = withAuth(
   { permission: 'receiving.view' },
 );
 
-// Rows are the viewer's own already-rendered rail rows. Validate only the shape
-// we depend on (a numeric `id`) and cap the count — this is a per-viewer seed,
-// never a shared read model, so a bad write only affects the writer's own
-// transient first paint.
+// Rows are the viewer's own already-rendered rail rows.
 const POST_BODY = z.object({
   feed: FEED_PARAM,
   rows: z.array(z.object({ id: z.number() }).passthrough()).max(RAIL_SNAPSHOT_MAX_ROWS * 3),

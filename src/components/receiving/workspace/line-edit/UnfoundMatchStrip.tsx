@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * Auto-match toolkit for an UNFOUND carton — lives inside {@link CartonMatchHub}
- * BELOW the Package Pairing search (the search bar leads the display).
- * Operator-initiated only; nothing here runs on the scan path (see
- * useUnfoundRefetchActions).
- *
- * **Armed verb ROWS, never a segmented one-row strip.** Five cells in a ~300px
- * Displays column truncated to "Find …" / "Retu…" / "Ama…"; a label you cannot
- * read is not a label. Composes {@link StationArmedVerbList} (Photos ·
- * Inventory golden) — full labels + one fact each, ↑↓ cursor, mouse =
- * keyboard. Never absorbed into the Pairing avenue combobox.
- *
- *   • **Find ticket** (TicketHelp) — when `onFindTicket` is set, jumps to the
- *     Ticket Displays topic (claim · link). Ticket is the main display for
- *     helpdesk work; this strip never hosts an in-lane picker.
- *   • **Return #** (Search) — opens the search row (back chip · return #
- *     input · search icon). Typing surfaces a live list of matching shipped
- *     orders; an EXACT order-number match auto-links the order onto the
- *     carton (import-sales-order), and picking a list row links that order.
- *     The search icon runs the read-only serial compare instead (for
- *     verifying before linking) — a confirmed match then logs the serial /
- *     files a support ticket inline. Back returns to the action row.
- *     **Every outcome is spoken as a toast**, and opening it without a serial
- *     in hand says so: the result panel is below the fold on a ~300px column,
- *     so a silent status change reads as "nothing happened".
- *   • **Store** (ShoppingCart) — only where the host's pairing surface is not a
- *     Linkage leaf. On Unbox it is OMITTED: Store is one of Link's three
- *     avenues, so a peer row would be a second door onto the same search one
- *     level above it.
- *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
- *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
- */
+/** Auto-match toolkit for an UNFOUND carton — lives inside {@link CartonMatchHub} BELOW the Package Pairing search (the search bar leads… */
 
 import {
   useCallback,
@@ -138,17 +107,7 @@ interface UnfoundMatchStripProps {
   showTopRule?: boolean;
 }
 
-/**
- * The Auto-match toolkit as DATA — verb rows + their commit + the merged fetch
- * notice, without owning where they render.
- *
- * Unbox's pairing surface is the **Linkage leaf's own actions list**, so it
- * merges these rows beside `Link` / `Zoho note` (one list, one armed cursor —
- * two `StationArmedVerbList`s stacked would both register keyboard region
- * `right` and fight over the same letters). Hosts whose pairing surface *is*
- * {@link CartonMatchHub} (Arrival · Testing · Incoming · mobile) compose
- * {@link UnfoundMatchStrip}, which wires this hook to its own list.
- */
+/** The Auto-match toolkit as DATA — verb rows + their commit + the merged fetch notice, without owning where they render. */
 export function useUnfoundMatchVerbs({
   receivingId,
   trackingNumber,
@@ -178,12 +137,7 @@ export function useUnfoundMatchVerbs({
   const hasSerial = Boolean((receivedSerial ?? '').trim());
   const noReceiving = receivingId == null;
 
-  /**
-   * ARMED ROWS, never a crammed `divide-x` cell strip. Five cells in a ~300px
-   * Displays column truncated to "Find …" / "Retu…" / "Ama…" — a label you
-   * cannot read is not a label. Rows are the house nested-leaf verb grammar
-   * (Photos · Inventory golden).
-   */
+  /** ARMED ROWS, never a crammed `divide-x` cell strip. */
   const verbs: StationArmedVerb[] = [
     ...(typeof onFindTicket === 'function'
       ? [
@@ -247,11 +201,7 @@ export function useUnfoundMatchVerbs({
         onFindTicket?.();
         return;
       case 'return_number':
-        // ALWAYS speak. The lane opens either way — an exact order number links
-        // without a serial — but the operator must know which half is armed:
-        // with a serial the compare runs, without one only the link does. A
-        // silent open on a ~300px column reads as a dead button, and this row
-        // WAS dead for a day (the display snapshot writer dropped `return`).
+        // ALWAYS speak.
         if (hasSerial) {
           toast.info(
             `Return # — comparing serial ${getLast8(receivedSerial ?? '')} against that order’s shipped serials.`,
@@ -415,14 +365,7 @@ export function UnfoundMatchStrip({
   );
 }
 
-/**
- * The return-# search bar — one row: back chip (leftmost) · return # input ·
- * search icon (rightmost, tooltip). Typing surfaces a live list of matching
- * shipped orders; an EXACT order-number match auto-links the order onto the
- * carton (import-sales-order) — the same auto-import the PO# field does.
- * Picking a list row links that order. The search icon runs the read-only serial
- * compare instead, for when the operator wants to verify before linking.
- */
+/** The return-# search bar — one row: */
 function OrderSearchRow({
   state,
   receivedSerial,
@@ -520,12 +463,7 @@ function OrderSearchRow({
             }),
           });
         }
-        // The server returns the exact row patch (type→RETURN, listing, carton
-        // source, order#, status). Apply it optimistically so the accordion /
-        // table / rail flip within a frame — the old field-less
-        // `receiving-line-updated {id}` was a no-op that left everything waiting
-        // on the app-refresh-data refetch. Keep app-refresh-data for the
-        // cross-feed reconcile (the carton also leaves the Unfound queue).
+        // The server returns the exact row patch (type→RETURN, listing, carton source, order#, status).
         if (data.line_patch?.id) {
           dispatchUnboxRailLineUpdated(data.line_patch);
         }

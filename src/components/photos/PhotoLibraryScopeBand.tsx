@@ -1,50 +1,6 @@
 'use client';
 
-/**
- * Media Library **scope** — the lifecycle tabs plus the leading media-type
- * cube. This file is the SINGLE WRITER of `sourceScope` / `imageType` on this
- * surface, and that is the whole point of it being one file.
- *
- * ## It is no longer a band (2026-08-31)
- *
- * It was Band 1 of a three-band chrome stack. The page now wears the design
- * system's one page frame ({@link DeskPageChrome}), so the tabs ride the
- * frame's tab row and the cube rides that row's `tabsLead` — the SAME row, in
- * the same order, one altitude up.
- *
- * The single-writer law is why this is a HOOK plus a component rather than two
- * components handed to the frame separately. `usePhotoLibraryScope` owns
- * `selectSection`; the page threads its tabs into the frame and renders its
- * cube into the lead. Both halves still resolve from one function in one file,
- * which is the invariant — not the fact that they used to share a `<div>`.
- *
- * ## The reversal this performs (2026-08-09)
- *
- * Until today the scope control lived in a resident left rail
- * (`PhotoLibrarySidebarPanel`), whose docblock said it was "the ONLY writer of
- * `sourceScope` / `imageType` (2026-07-29)" and forbade a scope control in the
- * chrome. That ban was earned: a chrome media-type dropdown had shipped whose
- * built-in rows were byte-for-byte the rail's source scopes, so **two controls
- * wrote one param and could disagree**. The remedy chosen then was "delete one,
- * and the survivor is the rail."
- *
- * The **invariant is kept and the survivor is swapped**: the rail is deleted,
- * `/ops/photos` is rail-less (Pattern E), and Band 1 is now the one writer.
- * "Exactly one writer" was always the law; "the writer must be a rail" never
- * was. Deleting the rail *before* porting the tabs is what makes the two-writer
- * state unreachable rather than temporary.
- *
- * ## Why the tabs and the cube share one component
- *
- * They answer one question — *which media am I looking at* — and they are
- * mutually exclusive: picking a custom type clears the lifecycle scope, and
- * picking a lifecycle tab clears the custom type. Splitting them across two
- * files would be two writers of one param sitting one import apart, which is
- * exactly the 2026-07-29 shape. One `selectSection` serves both groups.
- *
- * Header CTAs (Export · Add photos) register via {@link DeskActionSlotRegistrar}
- * from `PhotoLibraryDeskActions` — this band only owns the tab row + type cube.
- */
+/** Media Library **scope** — the lifecycle tabs plus the leading media-type cube. */
 
 import { useMemo, useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
@@ -83,24 +39,13 @@ export interface PhotoLibraryScope {
   lead: ReactNode;
 }
 
-/**
- * The scope control, as data for the frame.
- *
- * Returns the tab list, the lit tab and the one `selectSection` that writes
- * both halves — plus the cube already wired to it, so a caller cannot mount the
- * overflow against a different writer.
- */
+/** The scope control, as data for the frame. */
 export function usePhotoLibraryScope(): PhotoLibraryScope {
   const { filters, patch } = usePhotoLibraryUrlState();
   const activeScope = sourceScopeFromFilters(filters);
   const { custom, isLoading: typesLoading, createType } = useImageTypes();
 
-  /**
-   * ONE active value across both groups. A custom type deselects every
-   * lifecycle tab (empty `activeTab`), which is the honest render: the stream
-   * is scoped by media type, not by lifecycle, and lighting a tab would claim a
-   * filter that is not applied.
-   */
+  /** ONE active value across both groups. */
   const activeSection = filters.imageType ?? activeScope;
   const activeTab = filters.imageType ? '' : activeScope;
 
@@ -125,12 +70,7 @@ export function usePhotoLibraryScope(): PhotoLibraryScope {
     });
   };
 
-  // Paired glyph + label (`ui-design-system.md` → Icons: structural and
-  // paired). These are not lifecycle STAGES of one collection (Queue · Viewed ·
-  // History, where a glyph would be decoration) — each one names a physical
-  // station the operator already knows by its glyph, and `scope-icons.ts` was
-  // authored for exactly this pairing so the Unboxing facet and the Unbox bench
-  // read as the same thing.
+  // Paired glyph + label (`ui-design-system.md` → Icons:
   const tabs = PHOTO_LIBRARY_SCOPE_TABS.map((id) => ({
     id,
     label: PHOTO_LIBRARY_SCOPE_TAB_LABEL[id],
@@ -149,9 +89,7 @@ export function usePhotoLibraryScope(): PhotoLibraryScope {
         }}
       />
     ),
-    // `selectSection` is redeclared each render (it closes over `patch`), so it
-    // is deliberately not a dep — the popover reads the latest through the
-    // element it is rebuilt into whenever the values below change.
+    // `selectSection` is redeclared each render (it closes over `patch`), so it is deliberately not a dep — the popover reads the latest…
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [custom, typesLoading, activeSection, createType],
   );
@@ -159,17 +97,7 @@ export function usePhotoLibraryScope(): PhotoLibraryScope {
   return { tabs, activeTab, selectSection, lead };
 }
 
-/**
- * The leading cube — same flush whisper face as Unbox's Band-1 pin-list cube:
- * abutting the tab rail (`gap-0`, no host air, no rest-state box), never a
- * naked header glyph and never a soft pill.
- *
- * Seven built-in scopes plus N operator-defined types cannot all be tabs — the
- * facets overflowing this row and clipping its own right controls is recorded
- * history on this surface. The custom half therefore lives one click deep, in
- * the SAME band, because promoting it to its own control altitude would rebuild
- * the split the 2026-07-29 ruling closed.
- */
+/** The leading cube — same flush whisper face as Unbox's Band-1 pin-list cube: */
 function PhotoMediaTypePopover({
   custom,
   isLoading,
@@ -267,12 +195,7 @@ function PhotoMediaTypePopover({
             ))
           )}
 
-          {/*
-            Inline create — the same DS input path `MediaSavedViewsSection`
-            already uses on this surface. It replaces a `window.prompt`, which
-            is a native dialog the house bans (it steals keyboard-wedge focus
-            and cannot be styled or tested).
-          */}
+          {/* Inline create — the same DS input path `MediaSavedViewsSection` already uses on this surface. */}
           {adding ? (
             <div
               className={cn(
@@ -280,14 +203,7 @@ function PhotoMediaTypePopover({
                 cornerClass('flush'),
               )}
             >
-              {/*
-                The shadcn-lane field, not a hand-rolled `<input>`: this is a
-                labelled field inside an overlay, which is exactly the lane
-                `ui/input` is pinned for. It carried its own border / bg /
-                focus-ring stack that restated what the primitive already owns.
-                Height is trimmed to the popover's density — the only thing this
-                surface actually needed to say.
-              */}
+              {/* The shadcn-lane field, not a hand-rolled `<input>`: */}
               <Input
                 autoFocus
                 value={name}

@@ -1,12 +1,4 @@
-/**
- * Load seller-claimed listing facts for Testing QC.
- *
- * Prefer matched outbound / return order sold-as (`orders.condition`), then
- * `platform_listings.listing_condition`. Never invent from warehouse
- * `condition_grade` — that is our grade, not the marketplace claim.
- *
- * Pure DB reads; callers pass whatever keys their surface already holds.
- */
+/** Load seller-claimed listing facts for Testing QC. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';

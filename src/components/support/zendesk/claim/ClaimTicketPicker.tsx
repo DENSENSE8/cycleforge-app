@@ -11,14 +11,7 @@ import type { PickedTicket } from './claim-types';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-/**
- * Search + pick an existing ticket (Update mode) for the Photo Library /
- * Zendesk claim modal.
- *
- * Row identity composes {@link TicketPickRow}. Receiving claim already wraps
- * the shared {@link TicketPicker}; this surface keeps its own search hook
- * (`useZendeskTickets`) but must not invent a third `#id` · subject grammar.
- */
+/** Search + pick an existing ticket (Update mode) for the Photo Library / Zendesk claim modal. */
 export function ClaimTicketPicker({
   ticket,
   onPick,

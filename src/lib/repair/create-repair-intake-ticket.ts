@@ -1,14 +1,4 @@
-/**
- * createRepairIntakeTicket — org-scoped helpdesk create for repair intake.
- *
- * Parity with receiving claim create (`/api/receiving/zendesk-claim`):
- * `getHelpdeskProvider(orgId).createTicket` + `linkTicketToAnchor`, never a
- * bare Zendesk client call without org scope.
- *
- * Walk-in availability trade: failures must not block intake. When immediate
- * create fails (or no provider), enqueue `CREATE_TICKET` for the outbox drain.
- * Counter composition passes `ticketWork: 'skip'` because it owns the enqueue.
- */
+/** createRepairIntakeTicket — org-scoped helpdesk create for repair intake. */
 
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import type { HelpdeskProvider } from '@/lib/integrations/helpdesk';

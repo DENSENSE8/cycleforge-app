@@ -71,10 +71,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
     const tokens = (await tokenRes.json()) as TokenResponse;
     if (!tokens.refresh_token) {
-      // Google only returns refresh_token on the very first consent for an
-      // (app, account) pair. If we land here, the account previously
-      // granted access — revoke the app under "Apps with account access"
-      // in your Google account, then reconnect.
+      // Google only returns refresh_token on the very first consent for an (app, account) pair.
       throw new Error('Google did not return a refresh token. Revoke the app in your Google account and retry.');
     }
 
@@ -114,10 +111,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       [accountEmail, PO_GMAIL_SCOPE, tokens.refresh_token, tokens.access_token, expiresAt, ctx.staffId],
     );
 
-    // Vault dual-write (organization_integrations, provider='gmail') — the
-    // preferred token home the po-gmail client reads first. App-level OAuth
-    // client creds are copied into the row so the refresh path is
-    // self-contained at runtime (mirrors GoogleDriveCredentials / Amazon LWA).
+    // Vault dual-write (organization_integrations, provider='gmail') — the preferred token home the po-gmail client reads first.
     const vaultPayload: GmailCredentials = {
       clientId,
       clientSecret,

@@ -31,15 +31,7 @@ function canMutate(action: RepairActionOwnerRow, ctxStaffId: number, ctxRole: st
 /** Fields that decide what came off the shelf — frozen once the ledger was written. */
 const STOCK_BOUND_FIELDS = ['actionType', 'newSku', 'donorSource'] as const;
 
-/**
- * PATCH /api/repair/actions/[id]
- *
- * Editable fields: actionType, partName, oldSku, newSku, oldSerial, newSerial,
- * durationMin, notes, donorSource, donorRef, componentRef, componentValue,
- * componentQty. Author or admin only. An action that took its part from stock
- * cannot change actionType / newSku / donorSource — delete it (which returns
- * the part) and log it again.
- */
+/** PATCH /api/repair/actions/[id] */
 export const PATCH = withAuth(
   async (req, ctx) => {
     const orgId = ctx.organizationId;

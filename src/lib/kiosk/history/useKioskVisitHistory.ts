@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * The History rail's query state — search, pages, and the selected visit.
- *
- * Callers: `KioskHistoryPane`. Affected API: GET `/api/kiosk/visit` (through
- * `kiosk-history-client`). Schemas: none.
- *
- * One hook owns paging AND search because they are the same cursor: typing a
- * new query must throw the old pages away, or "load more" appends the
- * unfiltered tail underneath filtered rows. Keeping them in two hooks is how
- * that bug is written.
- *
- * Every fetch carries an `AbortController` and a request sequence number. A
- * counter operator types faster than a query returns, and without both an
- * earlier response can land last and repaint the rail with results for a
- * prefix of what is now in the box.
- */
+/** The History rail's query state — search, pages, and the selected visit. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -66,12 +51,7 @@ export function useKioskVisitHistory(): KioskVisitHistoryState {
 
   const requestSeq = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
-  /**
-   * The query the current `cursor` was cut from. "Load more" must compare
-   * against THIS, not the live box: between a keystroke and the debounce the
-   * search has already changed while the cursor still belongs to the old
-   * query, and appending that page puts unfiltered rows under filtered ones.
-   */
+  /** The query the current `cursor` was cut from. */
   const cursorQuery = useRef<{ search: string; kind: KioskVisitKindFilter }>({ search: '', kind: 'all' });
 
   // First page: debounced on the query, re-armed by `refresh()`.

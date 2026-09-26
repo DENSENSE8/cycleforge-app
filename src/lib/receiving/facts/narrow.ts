@@ -1,20 +1,4 @@
-/**
- * Receiving narrow-facts helpers — typed read/write for the four 1:1 facts
- * tables (receiving_line_zoho / _testing / _return / _putaway).
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §4 (Layer 2).
- *
- * Each table is keyed on receiving_line_id (the 1:1 subtype shape), so writes are
- * an upsert on that key. The upsert is PARTIAL: a field left `undefined` is not
- * touched; a field set to `null` clears it. This lets a street set just the facts
- * it owns (e.g. testing sets needs_test without disturbing a return's columns).
- *
- * Org-scoped + Deps-injected (default real impls) so unit tests run DB-free —
- * same convention as exceptions.ts / store.ts.
- *
- * Table + column names here are fixed internal constants (never user input), so
- * the small amount of identifier interpolation in upsertNarrow is injection-safe.
- */
+/** Receiving narrow-facts helpers — typed read/write for the four 1:1 facts tables (receiving_line_zoho / _testing / _return / _putaway). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

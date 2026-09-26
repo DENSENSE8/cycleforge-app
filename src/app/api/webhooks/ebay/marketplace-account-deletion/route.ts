@@ -1,20 +1,4 @@
-/**
- * GET/POST /api/webhooks/ebay/marketplace-account-deletion
- *
- * eBay Marketplace Account Deletion / Closure notification endpoint.
- * Required to unlock Production keysets in the eBay Developer Portal.
- *
- * Public HTTPS URL (must match portal + EBAY_MARKETPLACE_DELETION_ENDPOINT_URL):
- *   https://app.cycleforge.ai/api/webhooks/ebay/marketplace-account-deletion
- *
- * Auth: anonymous webhook under /api/webhooks/* (proxy exemption). Gate is the
- * challenge verification token (GET) + X-EBAY-SIGNATURE (POST).
- *
- * Developer-portal note: configuring this URL requires an eBay Developer
- * Program team member with Admin (or equivalent) access on the application.
- * Cycle Forge OAuth account_role (seller|buyer) is unrelated — both are purged
- * when eBay notifies for that ebay_user_id.
- */
+/** GET/POST /api/webhooks/ebay/marketplace-account-deletion */
 import { NextRequest, NextResponse } from 'next/server';
 import {
   buildChallengeResponse,

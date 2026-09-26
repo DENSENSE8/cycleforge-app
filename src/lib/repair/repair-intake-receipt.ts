@@ -43,30 +43,14 @@ export function buildRepairIntakeReceiptProps(
   };
 }
 
-/**
- * The DEVICE facts a paperwork sheet states, per unit on the counter.
- *
- * Structural on purpose — `src/lib/kiosk/repair-devices.ts`'s
- * `KioskRepairDevice` satisfies it, so this module never imports the kiosk
- * cart to render one repair agreement.
- */
+/** The DEVICE facts a paperwork sheet states, per unit on the counter. */
 export interface RepairReceiptDevice {
   title: string;
   serialNumber: string;
   price: string;
 }
 
-/**
- * ONE device's paperwork, on a visit that may have several.
- *
- * The VISIT facts (customer, date, ticket) are shared — one drop-off, one
- * agreement, one signature — and `issueText` is the caller's per-unit issue
- * (on the kiosk, that unit's own reasons), because each unit becomes its own
- * `repair_service` row. The serial is EVERY serial on that unit (a Wave and
- * its CD changer), in the one stored form `joinSerials` writes.
- *
- * Kiosk caller: `repairPaperworkSheets` (`src/lib/kiosk/repair-paperwork-sheets.ts`).
- */
+/** ONE device's paperwork, on a visit that may have several. */
 export function repairReceiptPropsForDevice(
   customer: RepairReceiptCustomer,
   device: RepairReceiptDevice,

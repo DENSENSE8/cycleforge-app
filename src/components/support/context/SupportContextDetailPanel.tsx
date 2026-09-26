@@ -19,66 +19,16 @@ export interface SupportContextDetailPanelProps {
   open: boolean;
   onClose: () => void;
   embedded?: boolean;
-  /**
-   * Whether this occupant reflows the work surface (`true`) or floats over it
-   * (`false`).
-   *
-   * **Required on purpose — never defaulted.** The house default is push, but
-   * this panel has two hosts with opposite answers, and a default is a silent
-   * opt-out that every call site you did not visit takes automatically
-   * (`backend-patterns.md` → a safety classification is a required parameter).
-   * Making it required turns a missed host into a compile error.
-   */
+  /** Whether this occupant reflows the work surface (`true`) or floats over it (`false`). */
   push: boolean;
-  /**
-   * Opt-in DISPLAYS — the right edge as a display column, one showing at a
-   * time via DeskInspectorIndexShell (Unbox index→leaf grammar).
-   * `/support` passes Connections · Conversations · Timeline · Assist.
-   *
-   * Omit for the historical body — linkage strip above the hub's own
-   * Customer | Team | Activity pills, which is what the Unbox "Links" rail has
-   * always shown and what its badge promises.
-   *
-   * **Assist landed 2026-08-02**, and the condition this docblock used to state
-   * is what unblocked it: the AI display was absent because
-   * `SupportSuggestionPanel` had no bridge into any composer, so it would have
-   * rendered a control that could not deliver its draft anywhere.
-   * `ThreadComposerBridge.setDraft` is that bridge; the panel it replaced was
-   * deleted rather than left beside its successor. The rule stands unchanged —
-   * a display that cannot do its job is worse absent than mounted empty.
-   */
+  /** Opt-in DISPLAYS — the right edge as a display column, one showing at a time via DeskInspectorIndexShell (Unbox index→leaf grammar). */
   displays?: SectionTab[];
-  /**
-   * Ask the rail to show a particular display — e.g. Assist, the moment an
-   * image is pasted onto the ticket.
-   *
-   * **The intent travels as DATA, never as a timed event.** Opening the rail is
-   * a state change this panel may only mount *after*, so a dispatched event
-   * would fire into an empty room (the same trap Unbox hit with a
-   * `requestAnimationFrame` dispatch at `CartonMatchHub`). `focusRequestId` is
-   * what makes a repeat ask work: selecting Assist twice in a row is the same
-   * `focusDisplay` and a different request.
-   */
+  /** Ask the rail to show a particular display — e.g. */
   focusDisplay?: string;
   focusRequestId?: number;
 }
 
-/**
- * Ticket linkage / team / activity in the global detail-stack shell
- * ({@link DetailStackRailRegistrar} → the one `RightRailHost` slot).
- *
- * NON-MODAL (`modal={false}`): reference context read BESIDE the ticket thread —
- * a scrim would hide the very conversation the linkage is about. A non-modal
- * surface has no backdrop to click off, so a visible dismiss is mandatory —
- * and it is the HOST's singleton `✕` at the flush top-right, which this panel
- * reserves a cell for (via the shell's band) and never paints a twin of.
- *
- * **This is the only right-edge home for ticket context.** `ServiceWorkspaceShell`
- * shipped a private `<aside>` rendering the same `SupportContextHub` until
- * 2026-08-01 — a second permanent consumer of the right edge, which is exactly
- * what `lib/right-rail/store.ts` exists to prevent. It was deleted rather than
- * migrated: this panel was already correct.
- */
+/** Ticket linkage / team / activity in the global detail-stack shell ({@link DetailStackRailRegistrar} → the one `RightRailHost` slot). */
 export function SupportContextDetailPanel({
   ticketId,
   anchor,
@@ -142,10 +92,7 @@ export function SupportContextDetailPanel({
   return (
     <DetailStackRailRegistrar
       id={`detail:support-context:${ticketId}`}
-      // Per host, not per panel: inside `SupportTicketDetail` this registers from
-      // within Unbox Displays Ticket (`StationDisplaysPushColumn`) — so pushing
-      // would make them two columns fighting one edge. On `/support` nothing else
-      // owns the edge, so it pushes and the thread reflows beside it.
+      // Per host, not per panel:
       push={push}
       onClose={onClose}
       enabled={open}
@@ -153,17 +100,7 @@ export function SupportContextDetailPanel({
       ariaLabel={`Ticket #${ticketId} support context`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        {/* Display state lives HERE, above the registrar, so switching pushes a
-            fresh node through `updateRightRailPanelNode` without touching the
-            occupant id — the host keys its AnimatePresence on that id, so a
-            re-key would replay the whole panel crossfade on every click.
-
-            ONE band, and it is the top row. The `PaneHeaderLabel` identity
-            block that used to lead this stack ("Support context" over `#N`)
-            was a second header line above the shell's own band, and it sat
-            under the host's absolutely-positioned `⤢ ✕`. The durable key is
-            not lost: `#N` is a read-only metric, so it rides the band's
-            trailing cell beside the current segment's name. */}
+        {/* Display state lives HERE, above the registrar, so switching pushes a fresh node through `updateRightRailPanelNode` without touching the… */}
         {hasDisplays ? (
           <DeskInspectorIndexShell
             stance="index"

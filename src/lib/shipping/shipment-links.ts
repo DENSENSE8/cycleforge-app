@@ -1,21 +1,4 @@
-/**
- * Unified shipment linkage helper — the single write/read API for the polymorphic
- * `shipment_links` table that subsumes the two parallel junctions
- * (`receiving_shipments` inbound + `order_shipment_links` outbound) against the one
- * STN master. One row per (org, owner, shipment); many-trackings-per-owner; the
- * is_primary row mirrors the denormalized receiving.shipment_id / orders.shipment_id
- * caches.
- *
- * During the bake, writers DUAL-WRITE: they keep writing their legacy junction
- * (the read path still uses it) and ALSO call `linkShipment()` so shipment_links
- * stays current. After the read cutover + bake, the legacy junctions are dropped
- * (Phase 6) and this is the sole linkage SoT.
- *
- * Org-scoped. Pass a tx `client` to enlist in the caller's transaction (the
- * common dual-write case); omit it to run self-contained under
- * withTenantTransaction. Deps-free at the query layer — testable by passing a
- * fake `client`.
- */
+/** Unified shipment linkage helper — the single write/read API for the polymorphic `shipment_links` table that subsumes the two parallel… */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

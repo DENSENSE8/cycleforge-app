@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * **Unit-allocations spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second
- * table component.
- *
- * ```tsx
- * const sheet = useUnitAllocationsSpreadsheet({ rows });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * This is a PANE on a detail page, not a lane that owns a route: `?unit=` is
- * the inventory shell's own view channel (`useInventoryUrlState`), and the page
- * mounts a second table beside this one. Two panes writing the same `?sort=`
- * would fight — the rule the per-SKU islands and the Ledger's two mounts
- * already follow. Durability in the URL is the rule for a lane that IS a page;
- * it is not a rule for a pane.
- */
+/** **Unit-allocations spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

@@ -1,17 +1,4 @@
-/**
- * POST /api/counter/session/{id}/device — put this visit on a tablet.
- *
- * Its own verb, not a field on some general header PATCH: which screen the
- * customer is reading is not the same kind of fact as their phone number, and
- * `DEVICE_BUSY` is a refusal only this write can produce.
- *
- * `kioskDeviceId: null` hands the tablet back — a real act (the counter goes
- * desk-only and the iPad returns to its own local cart), not a missing field,
- * so the body requires the key rather than treating absence as unbind.
- *
- * Plan: `docs/todo/kiosk-desk-session-channel-PLAN.md` (P5) ·
- * `docs/todo/kiosk-counter-consult-PLAN.md` (Phase 0).
- */
+/** POST /api/counter/session/{id}/device — put this visit on a tablet. */
 
 import { NextRequest } from 'next/server';
 import { z } from 'zod';

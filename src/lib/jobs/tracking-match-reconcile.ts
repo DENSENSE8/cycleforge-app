@@ -1,38 +1,4 @@
-/**
- * Phase D — tracking ↔ receiving match reliability.
- *
- * Historically this job also back-linked receiving rows that carried a carrier
- * tracking number in the legacy `receiving.receiving_tracking_number` text column
- * but had no `shipment_id` (D2 exact/suffix link + D3 residual register/except).
- * That column has been DROPPED: every intake path now registers its tracking into
- * `shipping_tracking_numbers` and sets `receiving.shipment_id` at scan time
- * (`record-scan` → `linkScanToStn`, the unmatched/door inserts, the manual-edit
- * routes), and a one-time backfill linked all historical rows. With no text column
- * left to reconcile, D2/D3 are retired.
- *
- * What remains is D4 — the only stage that never touched the dropped column:
- *   D4  advance still-EXPECTED PO lines whose shipment tracking's LAST 8 matches
- *       a dock scan → MATCHED + attach to the scanned carton, so a scanned box
- *       actually leaves Incoming in the data (not just hidden by the read-side
- *       SHIPMENT_SCANNED_PREDICATE). Keyed on last-8 because the Zoho-pasted
- *       number and the scanned barcode are different representations of the same
- *       package; this is the write-path twin of that predicate.
- *
- * Chokepoint fold (§7 Step D): the former single set-based CTE UPDATE on the raw
- * pool wrote `workflow_status` directly with ZERO org scoping (cross-tenant cron).
- * Now: a read-only candidates SELECT (raw pool, carries organization_id and
- * org-scopes the carton/scan joins so a line can never match another tenant's
- * dock scan), then per org one withTenantTransaction that (a) does the raw
- * receiving_id-linkage UPDATE — deliberately NOT listing workflow_status, so the
- * coarse trigger can't spuriously stamp scanned_at on rows that end up skipped —
- * and (b) routes each status advance through transitionReceivingLine() with
- * expectedFrom:'EXPECTED' (409 = the line left EXPECTED since the SELECT → skip,
- * reproducing the old `WHERE workflow_status = 'EXPECTED'` double-guard).
- * skipEvent: this reconcile is a system-side data repair; the dock scan that
- * justified it already lives in receiving_scans.
- *
- * Deps-injected (default real impls) so unit tests run DB-free.
- */
+/** Phase D — tracking ↔ receiving match reliability. */
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -78,18 +44,7 @@ export async function runTrackingMatchReconcileJob(
 ): Promise<TrackingMatchReconcileResult> {
   const start = Date.now();
 
-  // ─── D4a. Candidates (read-only, raw pool) ────────────────────────────────
-  // A still-EXPECTED incoming line should leave Incoming once its box is scanned
-  // at the dock. The PO-id linker (lookup-po's linkLocalPoLinesToReceiving) only
-  // fires when the scan resolves to the PO at scan time, so lines scanned via the
-  // unmatched path — or synced after the scan — stay EXPECTED forever. Bridge them
-  // by tracking number: resolve each incoming line to its shipment (the carton it
-  // soft-joins to, FK or PO# fallback), and if any dock scan's digits contain that
-  // shipment tracking's LAST 8, the line is a candidate to advance to MATCHED and
-  // attach to the scanned carton. Last-8 because the Zoho-pasted value and the
-  // scanned barcode are different representations — the same key the read-side
-  // predicate uses, so the display guard and this write agree. Carton + scan
-  // joins are org-scoped so a line never matches another tenant's dock scan.
+  // ─── D4a. Candidates (read-only, raw pool) ──────────────────────────────── A still-EXPECTED incoming line should leave Incoming once its…
   const candidates = await deps.query(
     `WITH inc AS (
        SELECT rl.id AS rl_id, rl.receiving_id, rz.zoho_purchaseorder_id,
@@ -151,11 +106,7 @@ export async function runTrackingMatchReconcileJob(
   let advancedLines = 0;
   for (const [orgId, rows] of byOrg) {
     advancedLines += await deps.withTenantTx(orgId as OrgId, async (client) => {
-      // Linkage half: receiving_id only — deliberately does NOT list
-      // workflow_status (the coarse trigger fires on any SET of that column and
-      // would COALESCE-stamp scanned_at even on rows the guard below skips).
-      // The still-EXPECTED WHERE mirrors the old atomic UPDATE's guard so a
-      // line that advanced meanwhile is neither re-linked nor re-transitioned.
+      // Linkage half:
       await client.query(
         `UPDATE receiving_line rl
             SET receiving_id = COALESCE(rl.receiving_id, v.scan_carton),
@@ -167,10 +118,7 @@ export async function runTrackingMatchReconcileJob(
       );
       let advanced = 0;
       for (const r of rows) {
-        // expectedFrom:'EXPECTED' reproduces the old WHERE double-guard: a 409
-        // (line left EXPECTED since the candidates SELECT) is a per-row skip,
-        // never a tx failure. The linkage UPDATE above already row-locked the
-        // still-EXPECTED rows, so the chokepoint's FOR UPDATE re-lock is a no-op.
+        // expectedFrom:'EXPECTED' reproduces the old WHERE double-guard:
         const tr = await deps.transitionLine(
           {
             receivingLineId: r.rlId,

@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Pick the printer a phone's jobs go to: one row per computer signed in as this
- * staffer with a printer set up, by the name it was given, with one status word.
- * Tap a row to use it; the pick is remembered per staffer on this device by
- * `useStaffPrintBridgeClient`, which also re-asks every station on a poll — so
- * there is no Refresh here.
- *
- * Callers: `/m/print` (MobilePrintWorkspace), repair paperwork
- * `/m/rs/[id]/paperwork`, the FNSKU hub's printer sheet.
- */
+/** Pick the printer a phone's jobs go to: */
 
 import { Check, Printer } from '@/components/Icons';
 import { isStaffPrintStationLive, roleReady } from '@/lib/print/staff-print-bridge';

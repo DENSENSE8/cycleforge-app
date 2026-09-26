@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * @domain-job Resolve an ambiguous Testing scan — choose which of several
- *   candidate receiving lines the bench is about to test.
- * @hardware-target Station
- * @density floor
- * @justification A scan that matches more than one line has to be disambiguated
- *   before any work can start, and the choice is about the ACTIVE ENTITY — which
- *   a Station draws in exactly one region, the middle (`display/station.md` §11).
- *   Until 2026-08-19 this list rendered in the scan column above the recent rail,
- *   which is the anti-pattern that section names outright ("don't put a
- *   browsable, clickable list in the scan column") and put the operator's next
- *   decision in the narrow surface furthest from their work. No existing host
- *   fits: `TestingPanel` renders a line that is already open, and the history
- *   browse underneath is exactly what this must cover.
- */
+/** @domain-job Resolve an ambiguous Testing scan — choose which of several candidate receiving lines the bench is about to test. */
 
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens';

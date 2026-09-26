@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * The shared checklist list — used by the Recurring and To-do modes of the
- * header's pace-and-next panel.
- *
- * ## Full CRUD, and where each verb lives
- *
- * | Verb | Control |
- * |---|---|
- * | Create | the footer add row (inline field, Enter commits) |
- * | Read | the row itself (the full list, sorted and inspectable, is `Home → Tasks`) |
- * | Update — check / uncheck | the box, or the row label (both are the hit target) |
- * | Update — rename | `⋯ → Edit`, which turns the row INTO the field in place |
- * | Delete | `⋯ → Delete` (a soft archive — restorable from `Home → Tasks`) |
- *
- * Rename edits in place rather than opening a dialog: this panel is 290px of
- * triage chrome and a modal over it would cost more taps than retyping the task.
- *
- * ## Density is a required prop, not a media query in here
- *
- * `touch` is passed down by the host that knows which surface it is (`popover`
- * on the desktop anchor, `sheet` on the phone). The list never guesses — a
- * component that measures its own viewport gets it wrong the moment it is
- * mounted inside something else.
- */
+/** The shared checklist list — used by the Recurring and To-do modes of the header's pace-and-next panel. */
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';

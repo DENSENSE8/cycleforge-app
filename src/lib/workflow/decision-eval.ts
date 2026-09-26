@@ -1,17 +1,4 @@
-/**
- * decision-eval — the pure rule-table evaluator behind the `decision` node.
- *
- * Track 1, Stage 1 (in-house): instead of routing baked into a node's port()
- * (inspection's verdict→port), an OPERATOR-EDITABLE rule table picks the output
- * port from item facts (grade / channel / disposition). This module is the pure
- * core — no node, no engine, no DB — so first-match-wins, partial-when matching
- * and the default fallback are all unit-testable in isolation
- * (decision-eval.test.ts).
- *
- * Stage 2 (deferred) swaps this hand-rolled matcher for a GoRules ZEN decision
- * table; the node + editor + this signature stay, only the engine inside flips.
- * See docs/operations-studio/ — Track 1 decision/placement layer.
- */
+/** decision-eval — the pure rule-table evaluator behind the `decision` node. */
 
 /** The facts a rule matches against — the item's current routing-relevant context. */
 export interface DecisionFacts {
@@ -20,18 +7,7 @@ export interface DecisionFacts {
   disposition?: unknown;
 }
 
-/**
- * The placement directive a matched rule may carry alongside its output port
- * (Track 1, Stage 1.x — the placement strangle). Where `thenPort` is the GRAPH
- * routing (which lane the unit advances down), this is the DOMAIN routing the
- * action layer consumes: which bin/lane the unit physically moves to, which
- * table/queue it lands in, what category it's filed under. Every field is
- * optional — a route-only rule omits it entirely (the route-only behavior that
- * shipped first stays byte-identical), and a placement-only follow-up only reads
- * the keys it needs. Values are SYMBOLIC (e.g. a bin barcode, a channel name);
- * resolving a symbol to a concrete `bin_id` is the action layer's job, not the
- * pure evaluator's.
- */
+/** The placement directive a matched rule may carry alongside its output port (Track 1, Stage 1.x — the placement strangle). */
 export interface DecisionPlacement {
   /** Symbolic destination the action layer resolves (e.g. a bin barcode / lane key). */
   placement?: string;
@@ -61,14 +37,7 @@ export interface DecisionRule {
   then?: DecisionPlacement;
 }
 
-/**
- * Parse an unknown JSON value (operator config / DB row) into a DecisionPlacement,
- * or null when it carries no usable directive. The single SoT for reading the
- * `then` shape — the engine's `configRules`, the Studio editor's `readRules`, and
- * the per-org policy loader all go through this so they can never drift on which
- * keys count or how they coerce. Returns null when every field is empty so a
- * route-only rule (no `then`, or an all-blank `then`) stays placement-free.
- */
+/** Parse an unknown JSON value (operator config / DB row) into a DecisionPlacement, or null when it carries no usable directive. */
 export function parseDecisionPlacement(raw: unknown): DecisionPlacement | null {
   if (raw == null || typeof raw !== 'object') return null;
   const row = raw as Record<string, unknown>;
@@ -90,13 +59,7 @@ export function parseDecisionPlacement(raw: unknown): DecisionPlacement | null {
   return p || c || tt || tq ? placement : null;
 }
 
-/**
- * Parse an unknown JSON array (a node's `config.rules`, or a DB row) into typed
- * DecisionRule[] — the single SoT for the rule shape. The engine's decision node
- * and the per-org placement-policy loader both go through this, so runtime
- * routing and runtime placement can never read the table differently. Rows
- * without a usable `thenPort` are dropped (an unwireable rule is noise).
- */
+/** Parse an unknown JSON array (a node's `config.rules`, or a DB row) into typed DecisionRule[] — the single SoT for the rule shape. */
 export function parseDecisionRules(raw: unknown): DecisionRule[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -129,12 +92,7 @@ interface DecisionOutcome {
 /** The three fact keys a rule can constrain on (kept in sync with DecisionRule.when). */
 const WHEN_KEYS = ['grade', 'channel', 'disposition'] as const;
 
-/**
- * Does a rule match the facts? A rule matches when EVERY present `when` key
- * equals the corresponding fact (compared as strings, so a numeric grade and a
- * "3" rule still line up). An empty `when: {}` is a catch-all that always
- * matches — placed last it doubles as an inline default.
- */
+/** Does a rule match the facts? */
 function ruleMatches(rule: DecisionRule, facts: DecisionFacts): boolean {
   for (const key of WHEN_KEYS) {
     const expected = rule.when?.[key];
@@ -146,12 +104,7 @@ function ruleMatches(rule: DecisionRule, facts: DecisionFacts): boolean {
   return true;
 }
 
-/**
- * Evaluate the rule table against the facts.
- *   • FIRST matching rule wins → its `thenPort`.
- *   • No rule matches → `defaultPort` (or null when none is set, which the node
- *     turns into a park so a misrouted item is never silently dropped).
- */
+/** Evaluate the rule table against the facts. */
 export function evaluateDecision(
   rules: readonly DecisionRule[],
   defaultPort: string | null | undefined,
@@ -160,15 +113,7 @@ export function evaluateDecision(
   return resolveDecision(rules, defaultPort, facts).port;
 }
 
-/**
- * Like `evaluateDecision`, but returns the matched rule's domain placement
- * directive alongside the port (Stage 1.x — the placement strangle). FIRST
- * matching rule wins → `{ port: rule.thenPort, placement: rule.then ?? null }`.
- * No rule matches → `{ port: defaultPort ?? null, placement: null }` (a default
- * is a graph lane only; it carries no placement). A matched rule that omits
- * `then` yields `placement: null`, so a route-only table behaves exactly as it
- * did before this seam existed.
- */
+/** Like `evaluateDecision`, but returns the matched rule's domain placement directive alongside the port (Stage 1.x — the placement strangle). */
 export function resolveDecision(
   rules: readonly DecisionRule[],
   defaultPort: string | null | undefined,

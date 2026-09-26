@@ -1,21 +1,4 @@
-/**
- * `search_query_log` writer + the zero-result worklist reader.
- *
- * WHY THIS EXISTS
- *   Search relevance cannot be improved by argument. Before this module there
- *   was no record of what operators typed, so "search is bad" and "search is
- *   fine" were equally unfalsifiable and every synonym or ranking change was a
- *   guess that could not be checked afterwards. Every row written here is
- *   evidence; {@link zeroResultWorklist} is the report that turns it into work.
- *
- * LATENCY CONTRACT
- *   Logging must never slow a search down and must never fail one. Callers run
- *   {@link recordSearchQuery} inside `after()` so it lands off the response
- *   path, and every function here swallows its own errors: a telemetry outage
- *   degrades to blindness, never to a broken find bar. That is also why there
- *   is no read-back or returned id — nothing downstream is allowed to depend on
- *   the write having happened.
- */
+/** `search_query_log` writer + the zero-result worklist reader. */
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -62,13 +45,7 @@ const defaultDeps: QueryLogDeps = {
   },
 };
 
-/**
- * Record one executed search.
- *
- * A blank query is dropped rather than logged: the palette fires on an empty
- * field during open/close and those rows would be most of the table while
- * meaning nothing.
- */
+/** Record one executed search. */
 export async function recordSearchQuery(
   entry: SearchQueryLogEntry,
   deps: QueryLogDeps = defaultDeps,
@@ -110,15 +87,7 @@ export interface SearchOpenedEntry {
   entityId: number;
 }
 
-/**
- * Stamp the record an operator opened onto the search that surfaced it.
- *
- * Targets the most recent still-unopened row for this (org, staff, query).
- * "Most recent" matters: a keystroke-debounced palette writes several rows for
- * one search as the query grows, and the last one is the query that was on
- * screen when the operator chose. Rows left unstamped are the abandonment
- * signal and are deliberately never backfilled.
- */
+/** Stamp the record an operator opened onto the search that surfaced it. */
 export async function markSearchResultOpened(
   entry: SearchOpenedEntry,
   deps: QueryLogDeps = defaultDeps,
@@ -156,16 +125,7 @@ export interface ZeroResultRow {
   lastSeenAt: string;
 }
 
-/**
- * The worklist: queries operators ran that found nothing, worst first.
- *
- * This is the input to synonym curation and to coverage decisions — a term
- * that recurs here is either a missing synonym or a missing entity, and the
- * distinction is usually obvious once you can see the string. Ranked by miss
- * count then by how many different people hit it, because a term ten people
- * tried once is a vocabulary gap while a term one person tried ten times is
- * usually one bad afternoon.
- */
+/** The worklist: */
 export async function zeroResultWorklist(
   orgId: OrgId,
   opts: { limit?: number; sinceDays?: number } = {},

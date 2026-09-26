@@ -25,13 +25,7 @@ import { cn } from '@/utils/_cn';
 
 export interface ShippedDetailsBodyProps {
   context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed'>;
-  /**
-   * The ONE descriptor this body reads for plane availability — documents mode,
-   * record CTAs, dispatch extras, delete, editor dock. It used to be five
-   * separate props plus two locally-derived booleans (`showDashboardDelete`,
-   * `showEditorDock`), each re-deriving the lane from `context` in a slightly
-   * different way. `resolveOrderInspectorContext` owns that decision now.
-   */
+  /** The ONE descriptor this body reads for plane availability — documents mode, record CTAs, dispatch extras, delete, editor dock. */
   inspectorContext: OrderInspectorContext;
   /** Body section for non-Order topics. */
   activeSection: ShippedActiveSection | undefined;
@@ -53,16 +47,7 @@ export interface ShippedDetailsBodyProps {
   onUpdateAction: (key: OrderInspectorUpdateActionKey) => void;
 }
 
-/**
- * The scrollable body of the shipped details panel. Topic content renders in the
- * upper scroll region; header-action editors live in {@link ShippedPanelEditorDock}.
- * Host is flush — content rows own their inset (Unbox Displays grammar).
- *
- * The Order leaf is intentionally empty: the dossier stack it used to render
- * (`ShippedDetailsPanelContent` and its dashboard/tech/packer wrappers) was
- * retired 2026-08-30. The Order topic keeps only its update dock until a
- * replacement body lands.
- */
+/** The scrollable body of the shipped details panel. */
 export function ShippedDetailsBody({
   context,
   inspectorContext,

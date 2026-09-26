@@ -1,12 +1,4 @@
-/**
- * Shipment-anchored "delivered, no dock scan yet" boxes (incoming-only).
- * The dedicated `/incoming/delivered-unscanned` feed is the sole read model for
- * the DELIVERED_UNOPENED hunt facet — the main receiving-lines query is disabled
- * while this facet is active (see useReceivingLinesData).
- *
- * The endpoint resolves each box's Zoho PO from its tracking#, so PO#, vendor,
- * dates, product/item name, age band, and Zoho status ride along.
- */
+/** Shipment-anchored "delivered, no dock scan yet" boxes (incoming-only). */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
@@ -39,14 +31,7 @@ export interface DeliveredUnscannedResponse {
   items: DeliveredUnscanned[];
 }
 
-/**
- * Recover the real `shipping_tracking_numbers.id` from a shipment-anchored
- * delivered-unscanned row, or null if `row` isn't one. Reads the explicit
- * {@link ReceivingLineRow.shipment_ref} field — never decodes `row.id`, which is
- * a namespaced negative React key with no identity contract. A delivered-unscanned
- * row is the only producer of `tracking_source === 'shipment'` + null `receiving_id`
- * carrying a `shipment_ref` (see {@link deliveredUnscannedToRow}).
- */
+/** Recover the real `shipping_tracking_numbers.id` from a shipment-anchored delivered-unscanned row, or null if `row` isn't one. */
 export function shipmentIdFromDeliveredUnscannedRow(row: ReceivingLineRow): number | null {
   if (row.tracking_source !== 'shipment' || row.receiving_id != null) return null;
   const shipmentId = row.shipment_ref;

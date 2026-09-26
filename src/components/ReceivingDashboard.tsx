@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * `/receiving` right pane — thin composition layer. Headerless; driven entirely
- * by the sidebar's mode pills (`?mode=`) + selection state.
- *
- *   workspace open          → ReceivingLineWorkspace (focused line editor)
- *   no selection, receive   → ReceivingLinesTable (history)
- *
- * Logic lives in focused hooks; the rail-selection layer publishes bulk actions
- * into `rail-actions-store` so History / Incoming / Tech Testing open the right
- * rail instead of the bottom capsule:
- *   - useReceivingDashboardMode .... `?mode=` → surface flags
- *   - useReceivingWorkspacePane .... workspace + nav + scan loader + recovery
- *   - useReceivingLineRailSelection  publish + claim for History/Incoming
- */
+/** `/receiving` right pane — thin composition layer. */
 
 import { useCallback } from 'react';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';

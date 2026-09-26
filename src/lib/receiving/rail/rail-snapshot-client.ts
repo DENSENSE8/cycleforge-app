@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Client half of the receiving rail first-paint seed (Upstash-backed). A rail
- * GETs its last-known rows to paint a reload immediately, and POSTs the rows it
- * just rendered so the next reload has a seed. Both are best-effort: a failed
- * GET falls back to the skeleton, a failed POST just means a cold next reload.
- *
- * The `feedParam` is fully client-composed (see rail-snapshot-cache.ts), so the
- * read and write keys can never drift; the server namespaces it by org + viewer.
- */
+/** Client half of the receiving rail first-paint seed (Upstash-backed). */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RAIL_SNAPSHOT_MAX_ROWS } from './rail-snapshot-cache';
@@ -29,10 +21,7 @@ export async function fetchRailSnapshot(feedParam: string): Promise<ReceivingLin
   }
 }
 
-// Debounced, per-feed, fire-and-forget persistence. Rails settle their rows
-// several times on load (seed → authoritative → optimistic patches); debouncing
-// collapses that into one write. Keyed by feedParam so sibling rails don't share
-// a timer.
+// Debounced, per-feed, fire-and-forget persistence.
 const PERSIST_DEBOUNCE_MS = 800;
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
 

@@ -2,15 +2,7 @@
 
 import { useEffect } from 'react';
 
-/**
- * Grid/page-level keyboard shortcuts for the media library (`/ops/photos`).
- *
- * These are the *grid* shortcuts only — the fullscreen viewer owns its own keys
- * (`←`/`→`/`Esc`/`+`/`-`/`0`/`r`/`i`, in usePhotoGallery). We deliberately bail
- * while the lightbox or any modal dialog is open so the two layers never fight
- * over the same key, and while focus is in an editable field so `⌘A` selects
- * text and digits type normally.
- */
+/** Grid/page-level keyboard shortcuts for the media library (`/ops/photos`). */
 export interface MediaLibraryShortcutHandlers {
   /** When false, the listener is not attached (e.g. page not focused). Default true. */
   enabled?: boolean;

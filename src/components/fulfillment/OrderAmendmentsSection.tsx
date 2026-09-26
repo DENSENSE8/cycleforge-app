@@ -3,12 +3,7 @@
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import { amendmentsToTimeline, type AmendmentTimelineRow } from '@/lib/timeline';
 
-/**
- * The order's substitutions, rendered through the shared EventTimeline (via
- * TimelineSection — header + skeleton + empty for free). Drop into the testing /
- * packing card or the order history pane. Feed it the rows from
- * GET /api/orders/[id]/amendments; the adapter owns the row→TimelineItem mapping.
- */
+/** The order's substitutions, rendered through the shared EventTimeline (via TimelineSection — header + skeleton + empty for free). */
 export interface OrderAmendmentsSectionProps {
   rows: AmendmentTimelineRow[];
   loading?: boolean;

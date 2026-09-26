@@ -1,9 +1,4 @@
-/**
- * Door / Unbox tracking → already-imported Incoming carton (Amazon / eBay /
- * manual desk CSV). Complements STN `resolveShipmentForScan` for rows whose
- * tracking lives on inbound_purchase_order_mirror (ingest snapshot) even when
- * carton.shipment_id was not stamped.
- */
+/** Door / Unbox tracking → already-imported Incoming carton (Amazon / eBay / manual desk CSV). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { extractCanonicalTracking } from '@/lib/tracking-format';

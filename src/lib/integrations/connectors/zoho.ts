@@ -1,15 +1,4 @@
-/**
- * Zoho connector validate adapter (INT-011) — thin adapter over the
- * /api/zoho/health check logic: resolve this org's Zoho credentials from the
- * vault (env bridge for the dogfood org) and confirm the stored refresh token
- * still mints an access token. Lazily imported by the registry so the
- * lightweight connection reader never pulls in the Zoho client.
- *
- * With `allowInactive` it also validates a connection latched to
- * `status='error'` — that is how the hourly self-heal sweep proves a
- * throttle-latched connection is alive again and lifts the latch instead of
- * waiting for a human to re-run OAuth.
- */
+/** Zoho connector validate adapter (INT-011) — thin adapter over the /api/zoho/health check logic: */
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getAccessToken, loadZohoCredentials, ZohoNotConnectedError } from '@/lib/zoho/core';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';

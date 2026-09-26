@@ -1,23 +1,6 @@
 import { Sandbox } from '@vercel/sandbox';
 
-/**
- * Server-side DOCX → PDF conversion via headless LibreOffice in a Vercel
- * Sandbox (ephemeral microVM).
- *
- * Why a sandbox and not an in-process library: Vercel's serverless runtime
- * has no Word/Office engine, and JS-only converters (mammoth + HTML→PDF) lose
- * Word's table/header/styling fidelity. LibreOffice's `soffice --convert-to
- * pdf` produces true Word-grade output. The sandbox keeps the heavyweight
- * binary out of our function bundle and out of our own infra.
- *
- * Speed: a cold sandbox that has to `dnf install` LibreOffice takes ~30-60s.
- * Set MANUAL_CONVERT_SNAPSHOT_ID (see scripts/create-manual-convert-snapshot.ts)
- * to boot from a pre-baked image instead — conversions then run in ~2-5s.
- *
- * Auth: on Vercel deployments the SDK authenticates automatically via OIDC.
- * For local dev, set VERCEL_TOKEN / VERCEL_TEAM_ID / VERCEL_PROJECT_ID in
- * .env.local — without them this throws and the caller surfaces the error.
- */
+/** Server-side DOCX → PDF conversion via headless LibreOffice in a Vercel Sandbox (ephemeral microVM). */
 
 // LibreOffice Writer provides `soffice`; --headless needs no display server.
 const LIBREOFFICE_INSTALL =

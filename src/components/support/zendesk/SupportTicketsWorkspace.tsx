@@ -1,25 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets — the `service-workspace` branch mount.
- *
- *   list     = SupportTicketsBoard (the queue map, ALWAYS mounted)
- *   thread   = SupportTicketFocus  (`?ticket=`, crossfades on ticket id)
- *   inspector = SupportContextDetailPanel, a `RightRailHost` occupant that PUSHES
- *
- *
- * The context pane is mounted here rather than passed into the shell: it is a
- * rail occupant, so it registers itself and renders nothing in place. The shell
- * carried a private `<aside>` for it until 2026-08-01 — a second permanent owner
- * of the right edge, duplicating a panel that was already correct.
- *
- * Until 2026-08-01 this component returned the board **or** the focus pane, so
- * opening a ticket unmounted the queue — losing its scroll position, page, and
- * in-flight search every time an operator opened a row. The sidebar did not
- * cover for it either: for Tickets it mounts the *recently selected* dock, not
- * the queue. `ServiceWorkspaceShell` keeps the map mounted; the crossfade and
- * the `AnimatePresence` now belong to the shell.
- */
+/** Support · Tickets — the `service-workspace` branch mount. */
 
 import { useCallback, useMemo, useState } from 'react';
 import { SupportTicketFocus } from '@/components/support/service-workspace/SupportTicketFocus';
@@ -48,16 +29,10 @@ export function SupportTicketsWorkspace() {
   // into the same composer. One owner, one composer.
   const [ticketBridge, setTicketBridge] = useState<ThreadComposerBridge | null>(null);
 
-  // Open by default (the old private aside was unconditional), but dismissible —
-  // a non-modal push column has no scrim, so its close button must lead
-  // somewhere, and it survives a ticket→ticket step because it is a workspace
-  // preference, not a property of the record.
+  // Open by default (the old private aside was unconditional), but dismissible — a non-modal push column has no scrim, so its close button…
   const [contextOpen, setContextOpen] = useState(true);
 
-  // Same cached query the thread and the rail already read — one fetch, three
-  // readers. Resolved HERE so the provider ticket id has one derivation: the
-  // staged photos, the composer and the drafting route must all agree on which
-  // ticket they are talking about.
+  // Same cached query the thread and the rail already read — one fetch, three readers.
   const { data: contextBundle } = useSupportContext(anchor ?? {}, anchor != null);
   const providerTicketId = contextBundle?.ticket?.providerTicketId ?? ticketId ?? 0;
 
@@ -71,14 +46,7 @@ export function SupportTicketsWorkspace() {
     req: 0,
   });
 
-  /**
-   * An image was pasted onto the ticket. Stage it, bring the rail forward on
-   * Assist, and ask for one draft covering the whole paste.
-   *
-   * Selecting the display is DATA (`focusDisplay` + a request id), not a
-   * dispatched event: the rail may still be closed at this instant, so an event
-   * would fire before anything was listening.
-   */
+  /** An image was pasted onto the ticket. */
   const handlePastedImages = useCallback((files: File[]) => {
     if (!files.length) return;
     photoStaging.addFiles(files);

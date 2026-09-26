@@ -1,10 +1,4 @@
-/**
- * Editable customer-update prefills for the mobile repair workbench. Keyed on
- * the STORED repair status (queue-compatible values, see `@/lib/repair-status`);
- * a status without a customer-facing moment returns '' so nothing is suggested.
- * These are starting text only — the operator edits and sends them in the
- * ticket thread (`/m/t/[ticketId]?draft=`).
- */
+/** Editable customer-update prefills for the mobile repair workbench. */
 
 export interface CustomerUpdateDraftContext {
   firstName: string;

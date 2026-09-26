@@ -77,14 +77,7 @@ interface TestingHistoryListProps {
   /** The desk's mode strip, drawn on this table's own bottom bar. */
 }
 
-/**
- * Full Testing workbench table for Pending, Returns, and History. Queue tabs
- * read `view=needs-test` with a server-owned return partition; History reads
- * `view=testing` and defaults to the signed-in tester unless staff=all.
- *
- * The sidebar's Recent rail remains a compact quick-reopen map. This table is
- * the searchable browse-and-bulk-act surface.
- */
+/** Full Testing workbench table for Pending, Returns, and History. */
 export function TestingHistoryList({
   staffId,
   mode = 'history',
@@ -167,13 +160,7 @@ export function TestingHistoryList({
     explicitlyAll,
   });
 
-  /**
-   * Testing's record plane: open the line in the `TestingPanel` that covers
-   * this browse (`TestingLineWorkspace`) — the same in-place open the Unbox
-   * workbench does, so no navigation and no `openRow`-style destination change.
-   * It is an override only because the open also has to tell the host
-   * (`onOpenLine`), which the hook's bare dispatch has no slot for.
-   */
+  /** Testing's record plane: */
   const openTestingLine = useCallback(
     (row: ReceivingLineRow) => {
       dispatchSelectLine(row);
@@ -189,11 +176,7 @@ export function TestingHistoryList({
     handleToggleRow,
   } = useReceivingRowSelection({
     selectMode,
-    // The two planes, split across ALL THREE tabs as a set. `browseActive`
-    // pins `selectMode` ON (`useTechTestingSelection`), so before this the row
-    // body was one big checkbox and the panel had no click gesture at all —
-    // measured on dogfood: 5 rows this week / 20 at weekOffset=3, role
-    // `checkbox`, zero `receiving-select-line` events on click.
+    // The two planes, split across ALL THREE tabs as a set.
     rowClickOpens: true,
     openRow: openTestingLine,
     // Testing broadcasts on its own bus — the tech dashboard mounts the bar.
@@ -212,10 +195,7 @@ export function TestingHistoryList({
         isHistory={mode === 'history'}
         activityAxis={mode === 'history' ? 'tested' : 'unboxed'}
         selectMode={selectMode}
-        // Two planes on the board too: the tap opens, the gutter box selects.
-        // Without `onToggleSelect` the split would leave the board's always-on
-        // checkbox painted and its bulk set unreachable — the same dead gutter
-        // this change set exists to remove.
+        // Two planes on the board too:
         isSelected={selectedId === row.id}
         isChecked={selectMode && selectedIds.has(row.id)}
         onSelect={() => handleSelectRow(row)}

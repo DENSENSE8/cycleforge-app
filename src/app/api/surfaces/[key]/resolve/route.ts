@@ -1,15 +1,4 @@
-/**
- * GET /api/surfaces/:key/resolve — how should this operator surface render for
- * the caller's org, right now? (Studio-driven operator-surfaces refactor,
- * Phase 3b.)
- *
- * Returns `render: 'legacy' | 'composed'`. `composed` requires BOTH an active
- * `station_definitions` composition for the surface AND the per-org
- * `surface_composed_render` flag — so `legacy` is the safe default and the
- * hard-coded tree keeps rendering until an org opts in. Gated `dashboard.view`
- * (any signed-in staff needs to know how to render their surface); per-block
- * visibility is enforced at render time by each block's permissions.
- */
+/** GET /api/surfaces/:key/resolve — how should this operator surface render for the caller's org, right now? */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';

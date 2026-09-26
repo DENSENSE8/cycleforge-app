@@ -10,18 +10,7 @@ const VALID_CODES: ReadonlySet<DispositionCode> = new Set([
   'SCRAP',
 ]);
 
-/**
- * POST /api/rma/[id]/disposition
- *
- * Records a per-unit disposition tied to this RMA. Inserts a row in
- * `return_dispositions` and emits an `inventory_events` NOTE for the unit.
- *
- * Body: {
- *   serial_unit_id?: number,
- *   disposition_code: 'ACCEPT' | 'HOLD' | 'RTV' | 'REWORK' | 'SCRAP',
- *   notes?: string,
- * }
- */
+/** POST /api/rma/[id]/disposition */
 export const POST = withAuth(async (request, ctx) => {
   const actorStaffId: number | null =
     typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null;

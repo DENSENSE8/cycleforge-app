@@ -71,10 +71,6 @@ async function createAuditLog(
 }
 
 // ── Canonical vocabulary ───────────────────────────────────────────────────
-//
-// Industry-standard audit reads filter on `action` and `entity_type`. Both
-// must be stable strings — never rename them. New verbs go here; downstream
-// dashboards key off these constants.
 
 export const AUDIT_ENTITY = {
   COUNTER_SESSION: 'counter_session',
@@ -221,23 +217,9 @@ export const AUDIT_ACTION = {
   RECEIVING_DISPOSITION_SET: 'receiving.disposition.set',
   RECEIVING_LINE_QTY_UPDATE: 'receiving_line.qty.update',
   RECEIVING_HEADER_UPDATE:   'receiving.header.update',
-  /**
-   * An operator consciously received a carton that the `receiving.photoPolicy`
-   * evidence gate had blocked (WS-PHOTO §4 soft block). `reason_code` carries a
-   * `PHOTO_WAIVED_*` code from the receiving-exception system registry — never
-   * free text — and the same act writes a `receiving_exceptions` row per line.
-   * Distinct from PO_RECEIVE: that says the line was received; this says the
-   * completion-insurance gate was waived to do it.
-   */
+  /** An operator consciously received a carton that the `receiving.photoPolicy` evidence gate had blocked (WS-PHOTO §4 soft block). */
   RECEIVING_PHOTO_POLICY_OVERRIDE: 'receiving.photo_policy.override',
-  /**
-   * An operator declared a carrier-delivered carton's goods LOST — written off
-   * rather than received. `reason_code` carries a `LOST_IN_TRANSIT` / `EMPTY_BOX` /
-   * `MISDELIVERED` / `STOLEN` code from the receiving-exception system registry
-   * (never free text), and the same act writes an OPEN `receiving_exceptions` row.
-   * Distinct from PO_RECEIVE (the goods arrived) and from the OS&D SHORT/DAMAGED
-   * codes (the goods arrived, imperfectly).
-   */
+  /** An operator declared a carrier-delivered carton's goods LOST — written off rather than received. */
   RECEIVING_LOSS_WRITE_OFF:  'receiving.loss.write_off',
   /**
    * The written-off carton turned up — the loss exception is resolved and the line
@@ -245,28 +227,14 @@ export const AUDIT_ACTION = {
    * the original write-off in history; this is not a delete.
    */
   RECEIVING_LOSS_REOPEN:     'receiving.loss.reopen',
-  /**
-   * Operator-driven PO relink — make the website authoritative over Zoho. Writes
-   * the chosen PO (and optional SKU correction) onto the line + carton, even when
-   * Zoho already had a different (wrong) link. Distinct from RECEIVING_MATCH
-   * (adopt expected lines) and the upgrade-only header update.
-   */
+  /** Operator-driven PO relink — make the website authoritative over Zoho. */
   RECEIVING_RELINK:          'receiving.relink',
-  /** An operator linked ANY identifier (PO#, marketplace order#, RMA, supplier
-   *  ref) to a carton from Unbox. Either it resolved to a local purchase order
-   *  and its items were imported, or it was recorded as PENDING on a still-
-   *  unmatched carton for a later import to claim. Distinct from
-   *  RECEIVING_RELINK (operator picked a known PO) — here the id may not exist
-   *  in the system yet. */
+  /** An operator linked ANY identifier (PO#, marketplace order#, RMA, supplier ref) to a carton from Unbox. */
   RECEIVING_IDENTIFIER_LINKED: 'receiving.identifier.linked',
   /** A marketplace purchase (eBay buyer account, …) was imported onto the Incoming
    *  spine via the bridge/sync (Universal Incoming Phase 2). */
   RECEIVING_INBOUND_IMPORT:  'receiving.inbound.import',
-  /** An operator manually linked one Incoming spine row to a second purchase
-   *  identity (e.g. an eBay line → its Zoho PO), writing the secondary link +
-   *  cross-source equivalence and optionally collapsing a duplicate spine row
-   *  (Universal Incoming Phase 4, §7.2). Distinct from RECEIVING_RELINK, which
-   *  re-points a carton at a different Zoho PO. */
+  /** An operator manually linked one Incoming spine row to a second purchase identity (e.g. */
   RECEIVING_INBOUND_LINKED:  'receiving.inbound.linked',
   /** An operator created / edited / reordered / deleted a durable carton listing
    *  link (`receiving_listing_links`), or bound one to a line. One action for the
@@ -276,28 +244,10 @@ export const AUDIT_ACTION = {
   RECEIVING_LINE_ADVANCE:    'receiving_line.advance',
   /** Real "Save for unbox" transition — stamps receiving.triage_complete. */
   RECEIVING_TRIAGE_COMPLETE: 'receiving.triage.complete',
-  /**
-   * An operator confirmed this carton's contents against its line list — the
-   * `contents` step of the Unbox procedure
-   * (`receiving_unbox.contents_confirmed_at`).
-   *
-   * Paired with its retraction rather than folded into one toggle action,
-   * because the two are different claims and a dashboard counting
-   * "confirmations" must not be able to count a reopen as one. The stamp is
-   * clearable, so the audit trail is the only place the original claim survives
-   * a reopen.
-   */
+  /** An operator confirmed this carton's contents against its line list — the `contents` step of the Unbox procedure… */
   RECEIVING_CONTENTS_CONFIRMED: 'receiving.contents.confirmed',
   RECEIVING_CONTENTS_REOPENED:  'receiving.contents.reopened',
-  /**
-   * An operator confirmed they read this LINE's printed label face — the
-   * `label` step of the Unbox procedure
-   * (`receiving_line_testing.label_previewed_at`).
-   *
-   * Paired with its retraction for the same reason as the contents pair above,
-   * and a LINE fact rather than a carton one because a multi-line PO prints one
-   * face per line.
-   */
+  /** An operator confirmed they read this LINE's printed label face — the `label` step of the Unbox procedure… */
   RECEIVING_LABEL_PREVIEWED: 'receiving.label.previewed',
   RECEIVING_LABEL_REOPENED:  'receiving.label.reopened',
   /**
@@ -319,12 +269,7 @@ export const AUDIT_ACTION = {
    *  (reversible, never a shared delete). */
   RAIL_EXCLUSION_ADD:        'rail_exclusion.add',
   RAIL_EXCLUSION_REMOVE:     'rail_exclusion.remove',
-  /**
-   * A scanned serial was auto-resolved to a previously-shipped order during
-   * receiving (the shipped↔returned loop), flipping the carton to a return and
-   * its open allocation SHIPPED→RETURNED. Distinct from a manual returns-dock
-   * intake — this fires on the normal unbox serial scan.
-   */
+  /** A scanned serial was auto-resolved to a previously-shipped order during receiving (the shipped↔returned loop), flipping the carton to a… */
   RETURN_LINK:               'return.link',
   // Bin / location
   BIN_CREATE: 'bin.create',
@@ -444,27 +389,16 @@ export const AUDIT_ACTION = {
   THREAD_LINK:             'thread.link',
   THREAD_UNLINK:           'thread.unlink',
   // Support ticket ↔ entity linkage (the /api/support/tickets/link waist).
-  // The operator-facing timeline reads ops_events TICKET_LINKED/TICKET_UNLINKED,
-  // not these — audit_logs is the admin field-diff spine and is gated on
-  // admin.view_logs. These exist so the mutation is auditable, per the house
-  // route skeleton (backend-patterns.md step 5), which this waist never had.
   SUPPORT_TICKET_LINKED:   'support.ticket.linked',
   SUPPORT_TICKET_UNLINKED: 'support.ticket.unlinked',
   // Station-generic ticket create (POST /api/support/tickets) via the helpdesk facade.
   SUPPORT_TICKET_CREATE:   'support.ticket.create',
-  // Minted the org's LOCAL mirror of a provider ticket (`support_tickets`) so a
-  // task could anchor to it. Distinct from SUPPORT_TICKET_CREATE: nothing was
-  // created at the helpdesk — the ticket already existed there and this is the
-  // registry row catching up.
+  // Minted the org's LOCAL mirror of a provider ticket (`support_tickets`) so a task could anchor to it.
   SUPPORT_TICKET_REGISTER: 'support.ticket.register',
   // Photo library — minted N temporary signed share links for selected photos
   PHOTO_SHARE_LINK:        'photo.share_link',
   PHOTO_REASSIGN:          'photo.reassign',
-  // Photo ASPECT — *what this shot shows*, claimed after the fact. Two actions,
-  // not one with a null `after`: `photos.photo_aspect` is overwritable, so
-  // audit_logs is the only place the original claim survives, and a rollup that
-  // counted a retraction as a classification would read the trail backwards.
-  // Same pairing as RECEIVING_LABEL_PREVIEWED / …_REOPENED.
+  // Photo ASPECT — *what this shot shows*, claimed after the fact.
   PHOTO_ASPECT_SET:        'photo.aspect_set',
   PHOTO_ASPECT_CLEARED:    'photo.aspect_cleared',
   // Same-carton stage claim (bench → door): remaps photo_type + sets a legal
@@ -502,13 +436,7 @@ export const AUDIT_ACTION = {
   AI_SEARCH_ASK: 'ai_search.ask',
   // Personal UI preferences (e.g. configurable focus-scan hotkey)
   STAFF_PREFERENCE_UPDATE: 'staff_preference.update',
-  /**
-   * Staff profile photo set / replaced / cleared (`staff.avatar_photo_id`).
-   * Audited even for a self-change because the avatar is how every timeline,
-   * journey and schedule pill ATTRIBUTES work to a face — a silently swapped
-   * face is an attribution change, and `actor_staff_id ≠ entity_id` is what
-   * distinguishes an admin acting on behalf from the staffer themselves.
-   */
+  /** Staff profile photo set / replaced / cleared (`staff.avatar_photo_id`). */
   STAFF_AVATAR_SET:   'staff.avatar.set',
   STAFF_AVATAR_CLEAR: 'staff.avatar.clear',
   /**
@@ -517,13 +445,7 @@ export const AUDIT_ACTION = {
    * there is no photo. Self OR admin; `extra.self` distinguishes the actor.
    */
   STAFF_COLOR_SET: 'staff.color.set',
-  /**
-   * Staff display-name change (`staff.name`). Audited for the same reason as the
-   * avatar and colour verbs, and more sharply: the name is the PRIMARY thing a
-   * timeline, journey or schedule pill attributes work to, so renaming is the
-   * cheapest way to make past work read as someone else's. Self OR admin;
-   * `extra.self` distinguishes which.
-   */
+  /** Staff display-name change (`staff.name`). */
   STAFF_NAME_SET: 'staff.name.set',
   /**
    * Floor functional role granted / revoked (`staff_functional_roles`:
@@ -645,10 +567,7 @@ export const AUDIT_ACTION = {
   LABEL_UNLINKED: 'orders.label.unlinked',
   LABEL_TICKET_LINKED: 'orders.label.ticket_linked',
   LABEL_TICKET_UNLINKED: 'orders.label.ticket_unlinked',
-  // Outbound documents (docs/outbound-documents-plan.md) — packing slips +
-  // shipping labels stored on `documents` + linked via `document_entity_links`.
-  // LABEL_PRINTED (above) is preserved for the timeline on an order's FIRST
-  // label attach; these cover the general CRUD lifecycle for both doc types.
+  // Outbound documents (docs/outbound-documents-plan.md) — packing slips + shipping labels stored on `documents` + linked via…
   ORDER_DOCUMENT_ATTACH: 'order.document.attach',
   ORDER_DOCUMENT_FETCH:  'order.document.fetch',
   ORDER_DOCUMENT_REPLACE: 'order.document.replace',
@@ -798,10 +717,6 @@ export const AUDIT_REASON_REQUIRED: ReadonlySet<string> = new Set([
 ]);
 
 // ── Server-trusted wrapper ─────────────────────────────────────────────────
-//
-// Prefer this over calling createAuditLog directly. Pulls actor from the
-// auth context and ip/ua/request-id from the request headers so call sites
-// can't accidentally trust the request body for attribution.
 
 export interface RecordAuditArgs {
   source: string;       // e.g. 'sku-stock-page', 'mobile-scanner', 'receiving-station'

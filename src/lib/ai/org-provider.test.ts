@@ -1,14 +1,4 @@
-/**
- * DB-free unit tests for the per-org AI provider chain.
- *
- * The load-bearing case is Cloudflare Access: `hermes-client.getHermesHeaders()`
- * was the ONLY thing in src/ that emitted `CF-Access-Client-Id/Secret`, so
- * retiring it without this coverage drops edge auth on every tunnelled
- * self-hosted endpoint — a Cloudflare 403 that reads like a model failure.
- * See docs/todo/ai-provider-consolidation-HANDOFF.md, Phase 0.
- *
- * Run: node --import tsx --test src/lib/ai/org-provider.test.ts
- */
+/** DB-free unit tests for the per-org AI provider chain. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -264,10 +254,7 @@ test('an unreadable ORDER preference still yields the platform default', async (
   assert.equal(cfg?.source, 'platform');
 });
 
-// ─── The assistant's Anthropic-native brain (agent loop) ─────────────────────
-// Deliberately NOT the OpenAI-wire chain: the agent loop speaks Anthropic's
-// native tool-use protocol, which an Ollama or Gateway endpoint does not
-// implement.
+// ─── The assistant's Anthropic-native brain (agent loop) ───────────────────── Deliberately NOT the OpenAI-wire chain:
 
 test("the org's OWN Anthropic key wins over the platform key", async () => {
   // Before this resolver existed the loop read process.env directly, so every

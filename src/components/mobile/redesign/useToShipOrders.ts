@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * To-ship queue for the mobile `/m/work` list.
- *
- * Reuses {@link unshippedOrdersQuery} — the same in-warehouse fetch the
- * desktop to-ship table already uses — so assignment writes on that desk
- * show up here without a second orders API.
- */
+/** To-ship queue for the mobile `/m/work` list. */
 
 import { useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -40,9 +34,6 @@ export function useToShipOrders({
   isFetching: boolean;
 } {
   // A realtime cache patch preserves every untouched source-row reference.
-  // Preserve the corresponding phone-row reference too, so an `order.tested`
-  // receipt only asks React to paint the one physical row that changed instead
-  // of rebuilding a 150-row handheld roster.
   const workRowsBySource = useRef(new Map<number, { source: ShippedOrder; workRow: WorkOrderRow }>());
   const q = searchQuery.trim();
   const unshipped = useQuery({

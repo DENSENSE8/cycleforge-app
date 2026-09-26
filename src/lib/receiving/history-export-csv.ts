@@ -1,23 +1,8 @@
-/**
- * Unbox History view → CSV. Pure string building, no DOM — the surface owns the
- * Blob download, this module owns what the file says. Mirrors the Orders desk
- * export (`src/lib/dashboard/order-export-csv.ts`).
- *
- * The export mirrors the receiving-lines grid the operator is looking at (PO ·
- * tracking · product · SKU · condition · qty · status · location · platform ·
- * scanned/unboxed dates), so a spreadsheet pulled off the History tab reconciles
- * against the surface it came from. It is a read of the rows already in hand —
- * never a second query, never a second definition of a History row.
- */
+/** Unbox History view → CSV. */
 
 import { getCurrentPSTDateKey } from '@/utils/date';
 
-/**
- * The fields the export reads. Every one is optional — a column absent from a
- * row is honest absence (empty cell), never a reason to fail the export. This is
- * a structural subset of `ReceivingLineRow`; keep it permissive so the exporter
- * never couples to the full row type.
- */
+/** The fields the export reads. */
 interface ExportableReceivingRow {
   id?: number | string | null;
   receiving_id?: number | null;

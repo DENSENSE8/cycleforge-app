@@ -1,11 +1,4 @@
-/**
- * Outbound desk views — the ONE registry the desktop desk sidebar, its collapsed
- * rail and the routing contract read. A view is a URL (pathname + fixed params);
- * selecting it is a navigation, never component state, so a cold load of any
- * view URL paints the matching sidebar selection.
- *
- * Plan: docs/refactors/desk-3pane-ai-first-PLAN.md §2.
- */
+/** Outbound desk views — the ONE registry the desktop desk sidebar, its collapsed rail and the routing contract read. */
 
 import {
   SHIPPING_EXCEPTIONS_PATH,

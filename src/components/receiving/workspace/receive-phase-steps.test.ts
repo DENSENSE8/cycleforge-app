@@ -1,11 +1,4 @@
-/**
- * Pins the ONE property that matters about the receive ticker: every string it
- * shows is derived from state the client actually holds.
- *
- * A regression here looks like a passing UI — a smooth multi-step loop that
- * narrates work nobody measured. So the tests assert on what CANNOT appear
- * (a second step before the request is genuinely slow) as much as on what does.
- */
+/** Pins the ONE property that matters about the receive ticker: */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Unbox Queue / Viewed / History chrome, as DATA — the same job
- * {@link useIncomingTableChrome} does for Incoming and {@link useToShipChrome}
- * does for To-ship.
- *
- * KPI tiles and this funnel share `?ukpi=`. Queue / Viewed / History page tabs
- * stay DeskPageChrome body-switchers — they are not facets in this menu.
- */
+/** Unbox Queue / Viewed / History chrome, as DATA — the same job {@link useIncomingTableChrome} does for Incoming and {@link… */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

@@ -2,19 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * LEGACY — /api/webhooks/zoho/orders is retired (audit F05).
- *
- * This route used to ingest Zoho order-created webhooks scoped to the USAV
- * org. It has been replaced by the tokenized, org-resolving endpoint
- * `/api/zoho/webhooks/[token]` (see src/app/api/zoho/webhooks/README.md and
- * src/lib/zoho/webhooks/resolve-org.ts), which resolves the tenant from the
- * webhook token instead of assuming a single org.
- *
- * The file is kept (not deleted) because this URL may still be registered in
- * a Zoho console; a loud 410 with a pointer is the safe strangler. Do not
- * re-add ingestion logic here.
- */
+/** LEGACY — /api/webhooks/zoho/orders is retired (audit F05). */
 
 const GONE_BODY = {
   ok: false,

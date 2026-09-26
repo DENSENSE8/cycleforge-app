@@ -1,15 +1,4 @@
-/**
- * DB-free unit test for the aspect-classification waist.
- *
- * Run: `npx tsx --test src/lib/photos/set-photo-aspect.test.ts`
- *
- * The load-bearing assertions here are the ones a 200 from the route cannot
- * make: that an illegal (aspect, stage) pair is REJECTED rather than widening
- * the vocabulary, that clearing writes `null` instead of being COALESCE'd away,
- * and that a no-op writes nothing at all — because the route only audits when
- * `idempotent` is false, so a wrong answer there silently fills the trail with
- * classifications nobody made.
- */
+/** DB-free unit test for the aspect-classification waist. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -3,16 +3,7 @@
 import type { ReactNode } from 'react';
 import { ItemRecordMetaGrid } from '@/design-system/components/item-record';
 
-/**
- * Boxed meta sub-grid for PO line rows — the receiving name for the shared
- * five-track ledger, whose implementation moved to
- * `design-system/components/item-record` (2026-08-22).
- *
- * Kept as a named door because the tech shipping rows compose the same grid
- * without being PO lines. The two legacy flags are inert and stay that way:
- * neither ever changed the layout, and `unitsChrome` in particular must never
- * collapse a track (Arrival door-flow SKU face parity).
- */
+/** Boxed meta sub-grid for PO line rows — the receiving name for the shared five-track ledger, whose implementation moved to… */
 export function PoLineMetaGrid({
   qty,
   sku,

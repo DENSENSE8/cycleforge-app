@@ -9,15 +9,7 @@ import { recordAudit } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * Org-ownership precheck for a resolved handling_units.id.
- *
- * `handling_units` is tenant-owned (carries organization_id), but the
- * handling-unit-queries helpers this route delegates to are not org-aware, so
- * we gate at the route boundary: GUC-wrap + explicit `organization_id = $2`
- * filter. Returns true only when the box exists AND belongs to the caller's
- * org; a cross-tenant id therefore reads as "not found" (404), never 403.
- */
+/** Org-ownership precheck for a resolved handling_units.id. */
 async function ownsHandlingUnit(orgId: string, id: number): Promise<boolean> {
   const r = await tenantQuery<{ id: number }>(
     orgId,
@@ -27,13 +19,7 @@ async function ownsHandlingUnit(orgId: string, id: number): Promise<boolean> {
   return r.rows.length > 0;
 }
 
-/**
- * GET /api/handling-units/:id — box + contents + rollup status.
- *
- * Accepts a numeric handling_units.id OR an `H-{id}` / external `code` in the
- * URL segment. Returns `handling_unit` with `units`, `receiving_line_ids` (what
- * the testing resolver fans out to), and a `rollup` { total, tested, untested }.
- */
+/** GET /api/handling-units/:id — box + contents + rollup status. */
 export const GET = withAuth(
   async (request: NextRequest, ctx) => {
     const raw = extractIdSegment(request.nextUrl.pathname);
@@ -76,13 +62,7 @@ export const GET = withAuth(
   { permission: 'handling_unit.view' },
 );
 
-/**
- * DELETE /api/handling-units/:id — dissolve an H-box (reverse of create).
- *
- * Unassigns every member unit (handling_unit_id → NULL) then deletes the box
- * row, so a mis-scanned / abandoned tote can be removed without orphaning its
- * units. Accepts the same numeric id / `H-{id}` / code forms as GET.
- */
+/** DELETE /api/handling-units/:id — dissolve an H-box (reverse of create). */
 export const DELETE = withAuth(
   async (request: NextRequest, ctx) => {
     const raw = extractIdSegment(request.nextUrl.pathname);

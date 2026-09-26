@@ -1,21 +1,4 @@
-/**
- * Resolve an unmatched pack scan (an open `orders_exceptions` row) from the
- * package record — `POST /api/shipments/[id]/resolve-exception`.
- *
- *   · `link-order` — the box belongs to an order the scan could not find. In
- *     one tenant transaction: link the package to the order (`shipment_links`,
- *     OUTBOUND; ORDER_PRIMARY + `orders.shipment_id` when the order has no
- *     primary package yet, else ORDER_SPLIT), move the order to `packed` the
- *     way `syncOrderExceptionsToOrders` does (never back from `shipped`), mark
- *     the exception `resolved`, and recompute the PACK enrichment projection
- *     for the package's scans so the Shipped feed paints the order at once.
- *   · `close` — no order will ever own it; mark `resolved` and append the
- *     operator's reason to the exception notes.
- *
- * Idempotent on `clientEventId` (API idempotency claim, keyed per package):
- * a replay does not write again and returns the fresh record with
- * `idempotent: true`. 404 unknown package / order; 409 no open exception.
- */
+/** Resolve an unmatched pack scan (an open `orders_exceptions` row) from the package record — `POST /api/shipments/[id]/resolve-exception`. */
 
 import type { PoolClient } from 'pg';
 import pool from '@/lib/db';

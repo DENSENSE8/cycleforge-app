@@ -1,15 +1,4 @@
-/**
- * Onboarding activation stats — one cheap, org-scoped aggregate
- * (onboarding-foundational-plan §8). Backs GET /api/onboarding/stats.
- *
- * One round-trip: a single SELECT of capped COUNT scalar subqueries under the
- * standard tenant path (withTenantTransaction → GUC + RLS + explicit org
- * filter). Counts are capped (LIMIT inside the subquery) because the checklist
- * only needs small thresholds — never a full-table scan on a mature org.
- *
- * Degrade-not-fail: any error resolves to all-zero stats so the dashboard
- * checklist renders (as "nothing done yet") instead of 500ing the page.
- */
+/** Onboarding activation stats — one cheap, org-scoped aggregate (onboarding-foundational-plan §8). */
 
 import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';

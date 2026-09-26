@@ -139,12 +139,7 @@ interface PaneHeaderCloseButtonProps {
   ariaLabel?: string;
   title?: string;
   className?: string;
-  /**
-   * `push` (default) — `ArrowRightToLine` (`>|`): this pane is parked back
-   * against the right edge it came from. Every right-rail / push surface.
-   * `dismiss` — the classic `X`, for a pane that genuinely goes away rather
-   * than sliding aside.
-   */
+  /** `push` (default) — `ArrowRightToLine` (`>|`): */
   intent?: 'push' | 'dismiss';
 }
 
@@ -162,10 +157,7 @@ export function PaneHeaderCloseButton({
         onClick={onClick}
         ariaLabel={ariaLabel}
         className={cn(
-          // Flush-square: ops chrome carries no soft radius (`AGENTS.md` — only
-          // status dots / avatars / Switch tracks keep a curve). `rounded-lg`
-          // here read as a notch once the control moved flush into the panel's
-          // corner, where the button edge and the panel edge are the same line.
+          // Flush-square:
           'inline-flex h-8 w-8 shrink-0 items-center justify-center hover:bg-surface-sunken active:scale-95',
           cornerClass('flush'),
           className,
@@ -182,10 +174,7 @@ export function PaneHeaderCloseButton({
   );
 }
 
-// ─── PaneHeaderStatusPill ───────────────────────────────────────────────────
-// Small status pill — sits inline next to the label/value to call out current
-// state. Matches the Plain / Pylon / ops-dashboard pattern surfaced by 2026
-// research (status as headline, not as right-meta sidebar like Linear).
+// ─── PaneHeaderStatusPill ─────────────────────────────────────────────────── Small status pill — sits inline next to the label/value to…
 
 type StatusTone = 'neutral' | 'blue' | 'emerald' | 'amber' | 'yellow' | 'rose' | 'red' | 'purple';
 
@@ -242,11 +231,7 @@ export function PaneHeaderStatusPill({
   );
 }
 
-// ─── PaneHeaderTabs ─────────────────────────────────────────────────────────
-// Segmented tab strip for the secondary row beneath the identity header — the
-// dual-sticky pattern that Vercel/Front/operations dashboards converge on for
-// detail panes with 3+ sub-views (e.g. Lines / Receiving / Audit / Photos).
-// Render inside `PaneHeader`'s `belowSlot`.
+// ─── PaneHeaderTabs ───────────────────────────────────────────────────────── Segmented tab strip for the secondary row beneath the…
 
 interface PaneHeaderTab<TValue extends string> {
   value: TValue;
@@ -259,12 +244,7 @@ interface PaneHeaderTabsProps<TValue extends string> {
   value: TValue;
   onChange: (next: TValue) => void;
   className?: string;
-  /**
-   * Condensed strip — tighter padding + smaller type for panes where the tab row
-   * competes for vertical space (e.g. the shipped slide-over, which pairs it with
-   * an action bar and now a full-page launcher). Default keeps the roomy sizing
-   * every existing consumer (Lines / Receiving / Audit / Photos) relies on.
-   */
+  /** Condensed strip — tighter padding + smaller type for panes where the tab row competes for vertical space (e.g. */
   dense?: boolean;
   /** Far-right affordance on the tab row (e.g. Open in unbox). */
   rightSlot?: ReactNode;
@@ -333,12 +313,7 @@ export function PaneHeaderTabs<TValue extends string>({
   );
 }
 
-// ─── PaneHeaderActionBar ────────────────────────────────────────────────────
-// Horizontal utility toolbar — icon+label action buttons on the left, optional
-// status indicator, optional prev/next chevrons on the right. The shape
-// originated in `LineEditPanel`'s in-body toolbar (Refresh / Share / Audit /
-// Copy + ↑ ↓) and has become the canonical action surface for detail panes.
-// Use inside a PaneHeader's belowSlot or at the top of a panel body.
+// ─── PaneHeaderActionBar ──────────────────────────────────────────────────── Horizontal utility toolbar — icon+label action buttons on…
 
 export interface PaneHeaderActionBarAction {
   key: string;
@@ -365,26 +340,10 @@ interface PaneHeaderActionBarProps {
   actions: PaneHeaderActionBarAction[];
   /** Optional aria-live status text (e.g. "Syncing", "Saving"). */
   status?: ReactNode;
-  /**
-   * Dismiss the panel. Renders {@link PaneHeaderCloseButton} as the LAST item of
-   * the trailing cluster, so `up · down · close` is one right-aligned group by
-   * construction — the SoT grammar (`source-of-truth.md` → Right-rail modality →
-   * Panel header grammar), not something each header re-assembles.
-   *
-   * It lives here rather than in a host's `rightSlot` because it was the split
-   * that caused the bug: close sat in the row ABOVE prev/next, so the two halves
-   * of one cluster drifted apart and two headers ended up swallowing the prop
-   * entirely. A non-modal panel has no scrim to click off, so this control is
-   * mandatory on every record inspector.
-   */
+  /** Dismiss the panel. */
   onClose?: () => void;
   closeTitle?: string;
-  /**
-   * Card = rounded pill with subtle border + shadow. Flat = no chrome.
-   * Header = full-width 28px ops chrome band (`h-7`) with a top hairline,
-   * matching house header rows (e.g. the workspace toolbar pinned beneath
-   * the stepper).
-   */
+  /** Card = rounded pill with subtle border + shadow. */
   variant?: 'card' | 'flat' | 'header';
   /** Icon-only mode — hides text labels but preserves them as aria-label/title for accessibility. */
   iconOnly?: boolean;
@@ -487,10 +446,7 @@ export function PaneHeaderActionBar({
     </>
   );
 
-  // Header = full-width 40px white band with the house bottom hairline (matches
-  // the other header rows for consistency). Its content sits in the SAME
-  // centered max-w-3xl column as the stepper + body cards so the icons (left)
-  // and chevrons (right) line up with the rest of the workspace.
+  // Header = full-width 40px white band with the house bottom hairline (matches the other header rows for consistency).
   if (variant === 'header') {
     return (
       <div
@@ -511,11 +467,7 @@ export function PaneHeaderActionBar({
   return <div className={cn(shell, className)}>{content}</div>;
 }
 
-// ─── PaneHeaderPagination ─────────────────────────────────────────────────────
-// Compact workbench trailing control — icon + range label + chevron, sibling of
-// {@link QueueSortSwitch}. Prev/next live in the popover
-// so the resting chrome stays one labeled pill. `iconOnly` drops the range /
-// caret (Incoming Pipeline — Unbox triage density).
+// ─── PaneHeaderPagination ───────────────────────────────────────────────────── Compact workbench trailing control — icon + range label +…
 
 interface PaneHeaderPaginationProps {
   /** Current 1-based page index. */
@@ -647,37 +599,12 @@ export function PaneHeaderPagination({
   );
 }
 
-// ─── CursorPositionReadout ──────────────────────────────────────────────────
-// `3 / 47` — where the open record sits in the collection that published the
-// record cursor.
-//
-// **This is the point of the readout, not decoration.** A panel that can step
-// has to say where it is, or the operator cannot tell a chevron that is disabled
-// from one that is broken — which is exactly how the receiving details stack
-// shipped two dead chevrons for months (`receiving-navigate-detail-overlay` had
-// zero listeners; see `docs/todo/record-cursor-unification-PLAN.md` §2.1, §3.6).
-//
-// Renders nothing when no cursor is published (a panel opened from search, or a
-// surface that has not migrated yet). A placeholder "1 / 1" would be a claim
-// about a queue that does not exist — honest absence instead.
-//
-// Composed into `PaneHeaderActionBar`'s existing `rightSlot`, which paints
-// immediately before the chevrons — never as a new prop on that shared
-// primitive (`pattern-evolution.md` → Ask first). It lives here, beside that
-// bar, because both order headers render it today and Phase 6 merges them into
-// one `RecordPaneHeader`; a copy inside either consumer is a cross-family import
-// for the other.
+// ─── CursorPositionReadout ────────────────────────────────────────────────── `3 / 47` — where the open record sits in the collection…
 
 interface CursorPositionReadoutProps {
   position?: number | null;
   total?: number;
-  /**
-   * Render the count ALONE (`4`) instead of `n / m`. Opt-in, so a caller that
-   * publishes no cursor still renders nothing by default — the honest absence
-   * above. For a collapsed picker the population is the fact worth showing:
-   * the trigger already names WHICH item is selected, and how many sit behind
-   * it is what the collapse hides (Unbox Listings combo).
-   */
+  /** Render the count ALONE (`4`) instead of `n / m`. */
   totalOnly?: boolean;
 }
 

@@ -40,38 +40,7 @@ import { OrderRateDimensionsSchema } from '@/lib/shipping/shipstation/order-parc
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/order-labels/purchase
- *
- * Buy a rate-shopped label via ShipStation v2, then wire it into the existing
- * outbound plumbing:
- *   1. purchase the label (IRREVERSIBLE — charges the account)
- *   2. register the tracking as the order's primary (applyOrderTrackingOps →
- *      STN + shipment_link + orders.shipment_id)
- *   3. store the label bytes as a `shipping_label` document + generate & store a
- *      packing slip (best-effort; GCS-gated, degrades to the public label URL)
- *   4. audit (LABEL_PURCHASED, + LABEL_PRINTED on first label, + TRACKING_ADDED)
- *   5. fire-and-forget realtime + customer ship-notification email
- *
- * Idempotency: `clientEventId` is required. It is CLAIMED in
- * `shipping_label_purchases` before the charge and the purchase is recorded the
- * moment ShipStation answers — before the label bytes are downloaded or stored
- * (`purchaseLabelOnce`, src/lib/shipping/label-purchase-ledger.ts). A retry
- * under the same key replays the recorded purchase and backfills whatever the
- * first attempt did not finish (tracking link, label document, slip); a key
- * whose first attempt never recorded an outcome answers 409 instead of buying
- * again. The label document still carries the key as its sourceHash, so keys
- * minted before the ledger existed keep short-circuiting on the document.
- *
- * Body: { orderId, rateId, clientEventId, labelFormat?: 'pdf'|'png'|'zpl', notifyCustomer?: boolean,
- *         purpose?: 'outbound'|'return'|'replacement',
- *         carrierId?, serviceCode?, weightOz?, dimensions? — return only: the chosen
- *         rate's carrier/service and the parcel it was rated with }
- *
- * Every purpose lands on the SAME order (same number, same name) in the
- * label ledger with its purpose and creation type `bought_in_app`; a return
- * or replacement also writes the order's notes trail. See finishPurchase.
- */
+/** POST /api/shipping/order-labels/purchase */
 
 // `type` (not `interface`) so it satisfies pg/tenantQuery's `QueryResultRow`
 // constraint — interfaces lack the implicit index signature.
@@ -170,20 +139,7 @@ function buildShipEmail(to: string, orderRef: string, label: PurchasedLabel) {
   return { to, subject: `Your order ${orderRef} has shipped`, text, html };
 }
 
-/**
- * Everything after the charge. Each step is safe to repeat — tracking upserts,
- * the documents dedupe on their sourceHash — so a replayed key re-runs this to
- * backfill whatever the first attempt did not finish. Nothing here may throw:
- * the label is already paid for.
- *
- * Purpose decides where the label goes:
- *   outbound     the order's primary tracking + label document + packing slip
- *   replacement  an ADDITIONAL tracking on the order (the original shipment
- *                stays primary) + its own label document + packing slip
- *   return       nothing on the order's tracking or paperwork: the parcel
- *                travels to us. It is on the order's label list (ledger row)
- *                and prints through the label proxy from its ShipStation URL.
- */
+/** Everything after the charge. */
 async function finishPurchase(input: {
   orgId: OrgId;
   order: OrderRow;
@@ -244,10 +200,7 @@ async function finishPurchase(input: {
       }
     }
 
-    // 2b. Snapshot the AS-SHIPPED ship-to onto the STN row. The address a
-    // label was bought against otherwise exists only inside the PDF bytes —
-    // unrecoverable for a return/replacement label once the marketplace order
-    // ages out. Best-effort: a failed snapshot must not fail the purchase.
+    // 2b. Snapshot the AS-SHIPPED ship-to onto the STN row.
     try {
       const { shipTo } = await resolveOrderShipTo(orgId, order);
       if (shipTo && primaryShipmentId != null) {

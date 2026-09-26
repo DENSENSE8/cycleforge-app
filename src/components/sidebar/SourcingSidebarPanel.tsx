@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /sourcing. Owns per-mode search/filter inputs. L2 modes live in
- * GlobalHeader (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV) — no mode rail twin.
- *
- * URL-state contract:
- *   ?mode=scout|watchlist           (bare = queue, the default demand surface)
- *   scout:     ?q=<term> ?by=serial|model
- *   queue:     ?status=''(live)|resolved|dismissed
- *   watchlist: ?status=''(all)|watching|ordered|imported
- */
+/** Sidebar for /sourcing. */
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -150,10 +141,7 @@ export function SourcingSidebarPanel() {
     );
   }
 
-  // Absorbed from /admin (dissolution): Models and Compatibility keep the
-  // pickers their console sections carried. Without them `?model=` — which
-  // `BoseModelsManagementTab` reads to open its editor — would have no writer,
-  // and the pane would sit on its empty-detail state with no way in.
+  // Absorbed from /admin (dissolution):
   if (mode === 'models') return <BoseModelsSidebarPanel />;
   if (mode === 'compatibility') return <CompatibilitySidebarPanel />;
 

@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * To-ship selection overlay: save (item #, SKU) → QC + packer (each with an
- * optional backup for days the primary is out) as automation_rules
- * and assign the selected orders now. Mirrors WorkOrderAssignmentCard chrome
- * (AssignmentOverlayCard + StaffButtonGrid) without the per-row carousel.
- */
+/** To-ship selection overlay: */
 
 import { useEffect, useState } from 'react';
 import { AssignmentOverlayCard } from '@/design-system/components/AssignmentOverlayCard';

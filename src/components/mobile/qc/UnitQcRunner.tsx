@@ -19,17 +19,7 @@ const VERDICT_CHIP = {
   open: { label: 'Open', className: 'border-mode-edge bg-mode-well text-mode-ink' },
 } as const;
 
-/**
- * The QC runner body for one unit — the compact summary card (the repair
- * hub's; it opens the unit hub for every fact), then the checklist with one
- * Fail · Add note · Pass row per step. Hosts own the `ModeRegion` and top bar
- * and mount this as a direct child of their flex column: it renders the flat
- * body and, with `onNext` (continuous QC), a one-verb "Next unit" dock after it.
- *
- * `unitRef` is whatever the label carried (id, serial or unit_uid); writes key
- * on the resolved numeric id. Everything shown about a result — verdict, who,
- * when — is the server's re-read, never the phone clock.
- */
+/** The QC runner body for one unit — the compact summary card (the repair hub's; it opens the unit hub for every fact), then the checklist… */
 export function UnitQcRunner({ unitRef, onNext }: { unitRef: string; onNext?: () => void }) {
   const unitQuery = useMobileUnit(unitRef);
   const unit = unitQuery.data?.serial_unit ?? null;

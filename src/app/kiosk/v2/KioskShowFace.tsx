@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Consult Show — one proposal, huge, no catalog, no spine, no void.
- *
- * Staff picked this in Work (catalog row or cart line). The customer reads
- * the canonical title, type, paperwork identifier, and price.
- *
- * Plan: `docs/todo/kiosk-counter-consult-PLAN.md` (Phase 3).
- */
+/** Consult Show — one proposal, huge, no catalog, no spine, no void. */
 
 import { cn } from '@/utils/_cn';
 import {
@@ -47,13 +40,7 @@ export function KioskShowFace() {
           <p className={cn('uppercase tracking-widest text-text-soft', COUNTER_TEXT.label)}>
             {lineTypeLabel(proposal.lineType)}
           </p>
-          {/*
-            The customer reads THIS. A drop-off can carry several devices, so the
-            proposal title is either one product or a summary of many, and at
-            `text-3xl` an unbounded string walks straight off the counter display.
-            Two lines, then an ellipsis. No `truncate` — its `whitespace-nowrap`
-            cancels the clamp (law: `src/components/search/search-result-faces.tsx:154-158`).
-          */}
+          {/* The customer reads THIS. */}
           <h2 className="text-3xl font-semibold leading-tight tracking-tight text-text-default line-clamp-2 break-words text-pretty">
             {proposal.title}
           </h2>

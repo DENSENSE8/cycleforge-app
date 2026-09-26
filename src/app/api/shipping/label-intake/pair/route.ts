@@ -12,16 +12,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/shipping/label-intake/pair
- *
- * Attach every reference-only label recorded under `ref` to the order that now
- * carries that number: `order_id` is set, a replacement joins the order's
- * tracking, each label writes the order's notes trail. Idempotent — a second
- * call finds nothing unpaired and returns `paired: 0`.
- *
- * Body: { ref, orderId }
- */
+/** POST /api/shipping/label-intake/pair */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const orgId = ctx.organizationId as OrgId;
   try {

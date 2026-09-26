@@ -6,12 +6,7 @@ import { cn } from '@/utils/_cn';
 import { SkuGraphWorkspace } from './SkuGraphWorkspace';
 import { PartsGraphWorkspace } from './partsGraph/PartsGraphWorkspace';
 
-/**
- * Top-level router for `/inventory/graph`. `?view=parts` renders the derived
- * (Zoho-items, `-P`-classified) parts overview; any other value renders the
- * existing sku_catalog relationship graph. The two surfaces are kept fully
- * separate — `items` and `sku_catalog` are independent SKU schemes.
- */
+/** Top-level router for `/inventory/graph`. */
 export function InventoryGraphRouter() {
   const router = useRouter();
   const searchParams = useSearchParams();

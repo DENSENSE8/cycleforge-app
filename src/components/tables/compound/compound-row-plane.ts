@@ -1,23 +1,4 @@
-/**
- * The row-anchored ACTION PLANE gesture — engine-owned, family-agnostic.
- *
- * ## Why this is here and not in `lib/outbound`
- *
- * It was written for CYC-82 (To-ship's assign manifold) and lived under
- * `lib/outbound/morphing-row-action.ts`. It had already stopped being an
- * outbound rule before this move: `TasksWorkbench` calls it too, and the
- * compound gutter that fires it is shared chrome on every compound family. A
- * gesture three unrelated surfaces obey, named after one of them, is a fork
- * waiting for the fourth surface to re-derive it slightly differently.
- *
- * So the RULE moves to the engine and `morphing-row-action.ts` re-exports it —
- * one implementation, every existing caller and every existing grep intact.
- *
- * The rule itself: **the checkbox ALWAYS toggles, including unselect.** Opening
- * the plane is a side-effect of becoming selected, never a substitute for the
- * toggle. Shift is the range walk. Adding another row, or unselecting one while
- * others remain, MUST NOT unmount the plane — bulk verbs ride that one bar.
- */
+/** The row-anchored ACTION PLANE gesture — engine-owned, family-agnostic. */
 
 let livePlanes = 0;
 

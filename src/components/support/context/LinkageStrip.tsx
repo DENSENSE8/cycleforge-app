@@ -105,12 +105,7 @@ export function LinkageStrip({
   const serial = linkage.serials[0]?.serial ?? null;
 
   const canLinkTicket = Boolean(canZendesk && !ticket && linkable?.canLinkTicket);
-  // `!tracking` USED to gate this, which meant the control vanished the moment a
-  // ticket resolved ANY tracking — so a second STN could never be added from the
-  // support side. ticket_links is many-per-ticket now (one anchor + N shipment
-  // references), so the only real precondition is a ticket to attach to.
-  // Prefer resolved provider id (registry OR ticket-anchor fallback) so Connections
-  // stays actionable when the live ticket is open but support_tickets is empty.
+  // `!tracking` USED to gate this, which meant the control vanished the moment a ticket resolved ANY tracking — so a second STN could never…
   const canLinkTracking = Boolean(canZendesk && providerTicketId != null);
   // Ticket → Ecwid / order # when the loop has no order yet (walk-in / phone).
   const canLinkOrder = Boolean(canZendesk && providerTicketId != null && !order);

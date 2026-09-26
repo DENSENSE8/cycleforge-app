@@ -1,11 +1,4 @@
-/**
- * Thread assignment domain — one staff OWNER per entity thread (conversation
- * ownership; migration 2026-07-15_thread_crud_connections.sql). Mirrors
- * support_ticket_assignments: upsert-to-reassign, delete-to-clear, org-led.
- * Distinct from work_assignments (work-queue "who does the TEST/PACK task").
- *
- * Deps-injected (default real impls) so it unit-tests DB-free.
- */
+/** Thread assignment domain — one staff OWNER per entity thread (conversation ownership; migration 2026-07-15_thread_crud_connections.sql). */
 
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

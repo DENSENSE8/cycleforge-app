@@ -1,12 +1,4 @@
-/**
- * search-scope-labels — the single resolver from a canonical recents `scope`
- * key to its human label (docs/unified-global-search-consolidation-plan.md §8).
- *
- * Scope keys are `'global'` or `'<surface>[:<sub>]'` (e.g. `'inventory:skus'`,
- * `'dashboard:unshipped'`). Every recents chip label flows through here so the
- * strings live in ONE place — never inlined at a call site (§8 "do not
- * duplicate label strings inline").
- */
+/** search-scope-labels — the single resolver from a canonical recents `scope` key to its human label… */
 
 /** Top-level surface → label. */
 const SURFACE_LABELS: Record<string, string> = {

@@ -1,46 +1,6 @@
 'use client';
 
-/**
- * Arrival station controller — the door's contextual scan loop.
- *
- * ## The contextual decision, in three reads and one write
- *
- * A carrier label arrives with no declaration of intent. What it MEANS depends
- * entirely on whether the warehouse has seen that tracking number before:
- *
- *   never seen  → this is an ARRIVAL. Record the incoming package.
- *   seen        → this box is already in the system. Report it; write nothing.
- *
- * So the loop is: classify the bytes (`arrivalScanIntent` — pure, no I/O),
- * then, for a carrier label, READ whether we know it
- * (`/api/receiving/preview-scan`, which creates nothing), then let the dispatch
- * table decide (`planDoorScan`), and only then commit through the same
- * `resolveViaLookupPo` rung the desktop station and `/m/scan` already use.
- *
- * The read before the write is the load-bearing part. `lookup-po` MINTS an
- * unfound carton for a never-seen tracking, so classifying from its response
- * alone cannot distinguish "this just arrived" from "this arrived on Tuesday" —
- * that is the exact defect `mobile-arrival-door.ts` was written to close.
- * Arrival differs from `/m/scan` only in what it does with the answer: `/m/scan`
- * paints a Card and lets the operator choose, whereas the DOOR station's scan
- * *is* the intake — the box is physically here, so the arrival is recorded and
- * the tape says so.
- *
- * ## Async, like the dock
- *
- * `submitRaw` never blocks the camera: the sheet keeps decoding while a commit
- * is in flight, several scans can be settling at once, and every settle is
- * handed up in ARRIVAL order (`onSettled`) rather than through a single "active"
- * slot a faster response would overwrite.
- *
- * ## No outbox, deliberately
- *
- * Scan-out queues a failed confirm because the package genuinely left the
- * building — the fact is true whether or not the wifi carried it. An arrival
- * that never reached the server is the opposite: nothing is recorded, the box is
- * still un-arrived, and only a re-scan makes it real. A queue here would tell
- * the operator a carton is logged when it is not.
- */
+/** Arrival station controller — the door's contextual scan loop. */
 
 import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -68,17 +28,7 @@ interface PreviewAnswer {
   hit: PreviewHit | null;
 }
 
-/**
- * Read-only: has this tracking already been scanned into the system?
- *
- * `mode=tracking`, never `auto`: the door reads carrier labels, and letting the
- * PO/ticket rungs answer would call a box "already arrived" because its PURCHASE
- * ORDER is known — which is true of every expected delivery and would make the
- * station unable to arrive anything.
- *
- * Throws on a non-OK response. That is deliberate: a failed read means we do not
- * know whether this box is new, and guessing "new" mints a duplicate carton.
- */
+/** Read-only: has this tracking already been scanned into the system? */
 async function previewTracking(raw: string): Promise<PreviewAnswer> {
   const res = await fetch(
     `/api/receiving/preview-scan?value=${encodeURIComponent(raw)}&mode=tracking`,

@@ -1,12 +1,4 @@
-/**
- * Scan-station depth — shared well / plate / slot / Displays column recipe.
- *
- * Classes consume `--ds-station-*` Color fills (see station-skins.ts) and
- * `--ds-station-bevel-width` from Depth (see station-depths.ts). Industrial +
- * Mill are the defaults. Import these. Do not retype `bg-surface-sunken` on a
- * station centre, and do not use desk `DETAIL_STACK_PUSH_COLUMN_CLASS` for the
- * scan Displays column.
- */
+/** Scan-station depth — shared well / plate / slot / Displays column recipe. */
 
 /** Ply lines — painted only when Depth is Deep (`data-station-depth='deep'`). */
 export const STATION_SCAN_GRAIN_CLASS = 'station-scan-grain';

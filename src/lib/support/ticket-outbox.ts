@@ -1,34 +1,4 @@
-/**
- * ticket-outbox — a transactional outbox for helpdesk work.
- *
- * WHY THIS EXISTS
- * Repair intake must not block a walk-in on a helpdesk outage — that trade is
- * correct. The compensating mechanism lives here: enqueue CREATE_TICKET /
- * ATTACH / POST_REPLY, drain via the helpdesk capability facade, link the
- * repair anchor, and stamp `repair_service.ticket_number`. Without this outbox,
- * a failed or deferred create leaves a repair with `ticket_number = NULL` and
- * no retry surface.
- *
- * SHAPE
- * Follows `entity_search_outbox` + `search-outbox-worker.ts` exactly — the house
- * precedent. No message bus, no new queue service:
- *
- *   enqueue (inline, cheap, never throws into the caller's path)
- *     → claim N pending rows (FOR UPDATE SKIP LOCKED, attempts+1)
- *     → do the provider work through the helpdesk CAPABILITY FACADE
- *     → link the ticket to its entity anchor
- *     → mark processed, or mark failed (released for retry until a cap)
- *
- * Cross-org claim/mark run on the owner pool (same posture as other cron
- * drains); every org-scoped read/write goes through the tenant helpers.
- *
- * Idempotent: `ux_ticket_work_outbox_pending` dedupes unclaimed rows, and the
- * provider create carries an idempotency key so a retry after a timeout that
- * actually succeeded does not mint a second ticket.
- *
- * NEVER import Zendesk here. Helpdesk access is `getHelpdeskProvider` only
- * (capability facades).
- */
+/** ticket-outbox — a transactional outbox for helpdesk work. */
 
 import pool from '@/lib/db';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
@@ -135,16 +105,7 @@ const defaultEnqueueDeps: EnqueueTicketWorkDeps = {
   },
 };
 
-/**
- * Queue helpdesk work for an entity.
- *
- * Returns the new row id, or null when an identical unclaimed row already
- * existed (a duplicate submit) — both are success from the caller's view.
- *
- * **Never throws.** This is called from the counter write path, where a queueing
- * failure must not fail a transaction the customer already paid for. A throw
- * here would defeat the entire purpose of the outbox.
- */
+/** Queue helpdesk work for an entity. */
 export async function enqueueTicketWork(
   args: EnqueueTicketWorkArgs,
   deps: EnqueueTicketWorkDeps = defaultEnqueueDeps,
@@ -281,10 +242,7 @@ const defaultDeps: TicketOutboxDeps = {
       body: comment.body,
       public: comment.publicReply,
     });
-    // A null return is the provider's 404: the ticket no longer exists, so
-    // retrying cannot fix it. Report done and let the row settle rather than
-    // looping it to the attempts cap. A genuine transport failure throws, and
-    // the drain's catch marks it failed for retry.
+    // A null return is the provider's 404:
     return true;
   },
 
@@ -307,12 +265,7 @@ const defaultDeps: TicketOutboxDeps = {
 
   async stampEntityTicketNumber({ orgId, entityType, entityId, providerTicketId }) {
     if (entityType !== 'REPAIR') return;
-    // Only fill an EMPTY slot — never overwrite a number an operator or an
-    // earlier successful call already put there. `createRepair` parks an
-    // `RS-0074` placeholder in the column when no ticket exists yet, and that
-    // placeholder counts as empty (same shape as `isRsDisplayCode`): guarding
-    // on `IS NULL` alone left every counter-minted ticket unstamped, so the
-    // paperwork printed no ticket number (RS-4868 → Zendesk #10063, 2026-09-25).
+    // Only fill an EMPTY slot — never overwrite a number an operator or an earlier successful call already put there.
     await tenantQuery(
       orgId,
       `UPDATE repair_service
@@ -361,13 +314,7 @@ const defaultDeps: TicketOutboxDeps = {
   },
 };
 
-/**
- * Drain queued helpdesk work.
- *
- * One row = one unit of provider work. A row that fails is released for retry
- * (up to {@link ATTEMPTS_CAP}); a row whose org has no helpdesk connected is
- * released WITHOUT burning an attempt, because there is nothing to retry yet.
- */
+/** Drain queued helpdesk work. */
 export async function drainTicketWorkOutbox(
   opts: { batchSize?: number; counterTransactionId?: number } = {},
   deps: TicketOutboxDeps = defaultDeps,

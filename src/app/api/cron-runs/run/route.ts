@@ -1,10 +1,4 @@
-/**
- * POST /api/cron-runs/run?job=<key>  — admin "Run now".
- *
- * Triggers the job's cron route on this same deployment with the CRON_SECRET,
- * so the job runs through its normal withCronRun() path (and shows up in the
- * history). Gated by `admin.view`.
- */
+/** POST /api/cron-runs/run?job=<key> — admin "Run now". */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

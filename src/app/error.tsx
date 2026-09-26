@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Per-route error boundary for the main app tree.
- *
- * Catches an uncaught render error in a *route segment's* page content and
- * renders a recoverable card in its place — the root layout (sidebar, header,
- * offline banner) stays mounted, so the user keeps their navigation and can
- * retry or move on. Layout-shell failures fall through to `global-error.tsx`
- * instead; the sidebar has its own `ErrorBoundary` in `ResponsiveLayout`.
- */
+/** Per-route error boundary for the main app tree. */
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';

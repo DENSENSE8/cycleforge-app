@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * @domain-job Station Displays carton Macro verbs — optional Refresh, optional
- *   Print, Edit, and a trailing `⋯` holding Resolve + Delete — one row in the
- *   push column's top-right corner.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse InspectorActionFloor — C2 station Displays vs
- *   desk RightRailHost. This compound composes StationDisplaysHeaderActions and
- *   optional Print/Refresh slots so Unbox / Arrival / Testing stay thin recipes.
- *
- * Carton Macro compound over {@link StationDisplaysHeaderActions}:
- *   [ Refresh? ][ Print? ][ Edit ][ ⋯ ]
- *
- * Verb set is decided by slot presence, not taste:
- *   Unbox    — Refresh + Print (4)
- *   Arrival  — Refresh only (3)
- *   Testing  — neither (2)
- *
- * `⋯` never moves and is never disabled — Delete always populates it.
- *
- * Never desk `InspectorActionFloor` / `FloorIconButton`.
- */
+/** @domain-job Station Displays carton Macro verbs — optional Refresh, optional Print, Edit, and a trailing `⋯` holding Resolve + Delete —… */
 
 import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

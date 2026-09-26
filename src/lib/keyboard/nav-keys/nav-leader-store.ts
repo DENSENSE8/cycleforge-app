@@ -1,29 +1,6 @@
 'use client';
 
-/**
- * Nav-keys leader store — THE single owner of the `⌘;` leader chord and the
- * region-arm keyboard (spec: `docs/todo/nav-keys-selection-keyboard-HANDOFF.md`).
- *
- * Same module-store shape as `scan-hotkey/store` and `overlay-stack/store`: a
- * framework-agnostic store consumed through `useNavRegion` / `useNavMode`, with
- * ONE global keydown listener installed lazily on first subscribe/register.
- *
- * OWNERSHIP + COEXISTENCE
- *  - The leader is `⌘;` / `Ctrl+;` — a modifier chord, so a barcode wedge (which
- *    emits no modifiers) can never arm it. It is not one of the seven existing
- *    owners (⌘K · ⌘B · ⌘] · ⌘\ · ⌘⇧V · ⌘1-9 · Escape).
- *  - While a session is live the store `pushOverlay()`s the overlay-stack, so the
- *    ambient record / queue keyboards stand down and nav owns the keys.
- *  - The listener is CAPTURE phase: mapped keys `preventDefault` + `stopPropagation`
- *    so a letter can never fall through into a focused input ("the scan bar cannot
- *    be typed into while armed").
- *
- * WEDGE SAFETY (all live here)
- *  - refuse to arm while a text input holds focus (the machine's `leader.editable`),
- *  - a ~1.5s idle timeout, a pointerdown / blur / tab-hide cancel, Escape cancel,
- *  - a scan-burst detector (keys faster than a human = a wedge → drop nav, don't act),
- *  - and an unmapped key exits WITHOUT swallowing the keystroke.
- */
+/** Nav-keys leader store — THE single owner of the `⌘;` leader chord and the region-arm keyboard (spec: */
 
 import { isEditableActiveElement } from '@/lib/keyboard/is-editable-key-target';
 import { pushOverlay } from '@/lib/overlay-stack/store';

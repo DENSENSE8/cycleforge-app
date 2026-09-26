@@ -1,15 +1,4 @@
-/**
- * ensureLineUnits / planLineUnits — Phase 1 tests
- * (docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §4, §5).
- *
- * Two halves:
- *   1. planLineUnits — the pure planner. Pins every rule the applier depends
- *      on: idempotence, append-only ordinals, never-shrink, scan-order
- *      attachment, waived slots, and the gate cases from the plan's §5 table.
- *   2. ensureLineUnits — the applier, with injected deps so it runs DB-free.
- *      Asserts the write actually skipped on a converged line (that skip IS the
- *      steady-state cost profile, not an optimisation detail).
- */
+/** ensureLineUnits / planLineUnits — Phase 1 tests (docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §4, §5). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -33,14 +33,7 @@ const CLOSED_STATUSES = [...REPAIR_DONE_TAB_STATUSES];
 const OUT_OF_STOCK_SELECT = `wa.out_of_stock   AS "outOfStock"`;
 const REPAIR_OUTCOME_SELECT = `wa.repair_outcome AS "repairOutcome"`;
 
-/**
- * GET /api/repair-service/next?techId=<id>
- *
- * Returns repairs assigned to the given tech PLUS all unassigned repairs
- * (repairs with no active work_assignment row, or an assignment row with
- * assigned_tech_id IS NULL).  Uses LEFT JOIN so repairs without any
- * work_assignment row are included.
- */
+/** GET /api/repair-service/next?techId=<id> */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId;

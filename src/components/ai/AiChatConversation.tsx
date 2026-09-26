@@ -84,15 +84,7 @@ export interface AiChatConversationProps {
   chat: ReturnType<typeof useAiChat>;
 }
 
-/**
- * Presentational streaming chat surface. State lives in the `useAiChat` hook
- * passed in by the parent (sidebar panel or full page), so the same UI renders
- * in both places. Light theme throughout.
- *
- * Keyboard: Enter / ⌘↵ send · Shift+Enter newline · Esc cancel-edit or stop ·
- * ↑ (empty input) edit last message. NOT ⌘K — that chord opens the CommandBar
- * palette and has exactly one owner; the composer auto-focuses instead.
- */
+/** Presentational streaming chat surface. */
 export default function AiChatConversation({ variant = 'panel', chat }: AiChatConversationProps) {
   const { messages, status, step, send, stop, retry, editMessage } = chat;
   const [input, setInput] = useState('');
@@ -124,11 +116,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
     const el = scrollRef.current;
     if (!el) return;
     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    // A SMOOTH scroll we started ourselves emits `scroll` on every frame of its
-    // animation, each one still far from the bottom. Reading those as "the user
-    // scrolled away" un-pins us mid-flight — which kills auto-follow and flashes
-    // the jump pill on for the length of the animation. Ignore our own frames
-    // until the animation arrives.
+    // A SMOOTH scroll we started ourselves emits `scroll` on every frame of its animation, each one still far from the bottom.
     if (programmaticRef.current) {
       if (!atBottom) return;
       programmaticRef.current = false;
@@ -152,10 +140,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
 
   useEffect(() => {
     if (!pinnedRef.current) return;
-    // Instant, always. This is auto-FOLLOW, not navigation: deltas can arrive
-    // many times a second, and an animated catch-up both stutters and fights
-    // the pinned-tracking above. The one smooth scroll is `scrollToLatest`,
-    // where the operator asked for the trip.
+    // Instant, always.
     endRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, status]);
 

@@ -1,32 +1,6 @@
 /**
  * Auto-collapse rules for a station centre's context blocks — pure, no React.
- *
- * The centre opens with its reference blocks (Items · Status &amp; Timeline)
- * EXPANDED, then yields that vertical space once the operator says they are
- * done reading it. ONE automatic signal, plus the explicit ones:
- *
- *   1. they scroll down
- *   2. Collapse all / a band toggle (`toggle`, `collapse-all`, `expand-all`)
- *
- * Composer FOCUS used to be signal 2, and `engage` / `disengage` are still here
  * for it. No station calls them any more (operator ruling, 2026-08-30): a caret
- * landing in the note field folded Items and Label away on the station whose
- * whole job is the note, and in Ticket mode the operator is writing ABOUT the
- * items. A click into a field is not a request to hide the page.
- *
- * The rules live here rather than inline in the view because the failure modes
- * are all about ORDER and INTENT, and neither is observable in JSX:
- *
- * - **A manual toggle outranks both triggers.** An operator who deliberately
- *   re-opened Status while typing must not have it slammed shut by the next
- *   scroll event. The pin is released only by returning to the top, which is an
- *   unambiguous "show me the header again".
- * - **Blur does NOT re-expand.** Yanking two blocks back into the flow the
- *   instant someone clicks out of the composer would shove the thread they are
- *   reading down the page. Collapse is sticky; only the top edge restores it.
- * - **Scrolling back to the top re-expands** — but only when the composer is
- *   not focused, so a composer that grew tall enough to bounce the scrollport
- *   cannot flip the blocks open under the operator's hands.
  */
 
 /** Px of scroll that counts as "the operator scrolled down". */

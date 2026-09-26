@@ -18,34 +18,13 @@ export function useDashboardScrollParent(): RefObject<HTMLElement | null> {
 export interface DashboardScrollShellProps {
   children: ReactNode;
   className?: string;
-  /**
-   * Pinned chrome docked ABOVE the scroll body — the single always-visible top
-   * bar (lifecycle tabs + filters). It lives *outside* the scroll port, so it
-   * is the only sticky top layer: inner sticky elements (day-band headers) then
-   * dock at `top-0` of the body directly beneath it, with **no offset math**.
-   *
-   * This is the house "sticky chrome outside the scroll container" pattern
-   * (see {@link DateGroupHeader}) — it replaces stacking two `sticky top-*`
-   * bands in one port, where the second band had to guess the first's height.
-   * The chrome slot owns the `z-header` band; nothing in the body can overlap
-   * it because it is a non-scrolling sibling, not a competing sticky layer.
-   */
+  /** Pinned chrome docked ABOVE the scroll body — the single always-visible top bar (lifecycle tabs + filters). */
   chrome?: ReactNode;
-  /**
-   * Pinned chrome docked BELOW the scroll body — same outside-the-port pattern
-   * as {@link chrome}. Media Library mounts {@link TableStatusBar} here so the
-   * foot cannot float mid-stream when the panel overflows a `flex-1` column
-   * inside the scrollport (sticky `bottom-0` alone cannot save that geometry).
-   */
+  /** Pinned chrome docked BELOW the scroll body — same outside-the-port pattern as {@link chrome}. */
   footer?: ReactNode;
 }
 
-/**
- * Workbench scroll shell for Dashboard · Outbound — a non-scrolling outer
- * column that pins `chrome` on top of one vertical scroll body (KPI + tables).
- * Mirrors {@link MonitorPageShell}. Virtualization targets the scroll body via
- * {@link useDashboardScrollParent}.
- */
+/** Workbench scroll shell for Dashboard · Outbound — a non-scrolling outer column that pins `chrome` on top of one vertical scroll body… */
 export function DashboardScrollShell({
   children,
   className,
@@ -56,10 +35,7 @@ export function DashboardScrollShell({
 
   return (
     <DashboardScrollContext.Provider value={scrollRef}>
-      {/* No ground fill here — `appContentShellClass` (the `<main>`) owns the
-          single page ground, and under receiving the context host paints the
-          wash on top of it. An opaque canvas fill at this level covered that
-          wash and left a tone seam at the rail edge. */}
+      {/* No ground fill here — `appContentShellClass` (the `<main>`) owns the single page ground, and under receiving the context host paints the… */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         {chrome ? (
           <div

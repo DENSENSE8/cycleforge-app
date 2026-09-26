@@ -55,12 +55,7 @@ interface Props {
   /** Optional condition picker integrated into the scan row. */
   condition?: string | null | undefined;
   onConditionChange?: (grade: string) => void;
-  /**
-   * When false, the collapsed condition picker shows only its edit pencil (no
-   * selected-grade pill) — for surfaces where the grade is already displayed
-   * elsewhere (the PO-line meta row chip), so the pill isn't a redundant second
-   * label. Defaults to true (labeled pill) for the standalone unmatched flows.
-   */
+  /** When false, the collapsed condition picker shows only its edit pencil (no selected-grade pill) — for surfaces where the grade is already… */
   collapsedConditionLabel?: boolean;
   /**
    * When the serial input is empty, show a green check in place of the disabled
@@ -108,28 +103,14 @@ interface Props {
   externalInputRef?: RefObject<HTMLInputElement | null>;
   /** Nested inside {@link PoLinesAccordion} — skip duplicate card chrome. */
   embedded?: boolean;
-  /**
-   * When embedded under a flush leading shell (`ActiveLineConditionSerial`
-   * `activeRowLeading`), the parent owns the horizontal hairlines
-   * (`border-y border-border-hairline`) — this bar stays `border-0` so each
-   * seam is painted once.
-   */
+  /** When embedded under a flush leading shell (`ActiveLineConditionSerial` `activeRowLeading`), the parent owns the horizontal hairlines… */
   omitBottomHairline?: boolean;
   /** Controlled edit target from the PO item header chip. */
   editingSerial?: SavedSerial | null;
   onEditingSerialChange?: (serial: SavedSerial | null) => void;
 }
 
-/**
- * Top-of-workspace scan card. Hosts the everyday "scan a serial → ⏎" path
- * with the existing-serial chips rendered BELOW the input as `SerialChip`
- * copy-chips (last-8 display, emerald underline). Each chip exposes an
- * Edit / Delete dropdown on hover.
- *
- * Edit flow: clicking Edit populates the scan input with the chip's current
- * value and tracks it via local state. Submitting the input replaces the
- * original serial via `onReplaceSerial`. The X-clear button cancels the edit.
- */
+/** Top-of-workspace scan card. */
 export function SerialCard({
   saved,
   onAdd,
@@ -195,11 +176,7 @@ export function SerialCard({
     ? 'w-full min-w-0 group'
     : 'rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60 group';
 
-  // Embedded (Unbox PO accordion): one joined flush bar — condition · SERIAL ·
-  // trailing, gap-0, square cells. Soft divide-x cell seams + top/bottom
-  // hairlines separating the bar from the PO meta above and the Label row below
-  // (unless a flush leading shell already owns those rules). Standalone keeps
-  // soft gaps.
+  // Embedded (Unbox PO accordion):
   const rowClass = embedded
     ? cn(
         'flex h-11 w-full min-w-0 items-stretch overflow-hidden bg-surface-card divide-x divide-border-soft',
@@ -297,10 +274,7 @@ export function SerialCard({
         </div>
       ) : null}
 
-      {/* Notes — co-located with the serial input so the operator never has
-          to expand a separate section to leave context for the next person.
-          Same card chrome, same width; a hairline divider signals it's a
-          distinct field, not part of the scan flow. */}
+      {/* Notes — co-located with the serial input so the operator never has to expand a separate section to leave context for the next person. */}
       {showNotes ? (
         <div className="mt-3 border-t border-border-hairline pt-3">
           <label
@@ -324,13 +298,7 @@ export function SerialCard({
   );
 }
 
-/**
- * {@link SerialChip} wrapped with a hover menu (Edit / Delete) positioned below
- * the chip. Click the chip to copy; hover to reveal actions.
- *
- * Wired from {@link PoLinesAccordion} when `LineEditPanel` passes
- * `activeSerialActions`, and reused by SerialCard / InlineSerialAdder chip lists.
- */
+/** {@link SerialChip} wrapped with a hover menu (Edit / Delete) positioned below the chip. */
 export function SerialChipWithMenu({
   serial,
   onEdit,
@@ -355,11 +323,7 @@ export function SerialChipWithMenu({
   const pending = serial._optimistic;
   const hasActions = !pending && !!(onEdit || onDelete || onSetCondition);
 
-  // The menu renders in a BODY PORTAL (not an `absolute` child) so it is never
-  // clipped by an `overflow:hidden` ancestor — the PO-line meta grid's `truncate`
-  // serial cell and the accordion row's `overflow-hidden` were swallowing the old
-  // in-flow dropdown, which is why Edit/Delete "didn't work". Same rationale as
-  // HoverTooltip's portal. Positioned from the chip's rect and viewport-clamped.
+  // The menu renders in a BODY PORTAL (not an `absolute` child) so it is never clipped by an `overflow:hidden` ancestor — the PO-line meta…
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

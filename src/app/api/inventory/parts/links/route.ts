@@ -6,15 +6,7 @@ import { assignParent } from '@/lib/inventory/part-links';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * POST /api/inventory/parts/links — assign a whole-unit parent to a logical part.
- *
- * Body: { childLogicalKey, childBase, parentItemId (items.id), qty?, notes? }
- *
- * The parent must be an active `items` row owned by this org (404 otherwise).
- * Re-assigning the same (child, parent) updates qty/notes; any prior
- * `not_a_part` acknowledgement for the child is cleared.
- */
+/** POST /api/inventory/parts/links — assign a whole-unit parent to a logical part. */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     try {

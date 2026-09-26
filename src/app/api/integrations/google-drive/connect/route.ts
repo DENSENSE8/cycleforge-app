@@ -6,16 +6,7 @@ import { driveAppConfig, isDriveBackupConfigured, DRIVE_SCOPES } from '@/lib/pho
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/integrations/google-drive/connect
- *
- * "Sign in with Google" entry point. Redirects the workspace owner to Google's
- * consent screen for the drive.file scope. Tenant identity travels in an
- * encrypted (tamper-proof) `state` so the callback — hit by Google's
- * server-side redirect without our cookies — can recover the org.
- *
- *   access_type=offline + prompt=consent  → guarantees a refresh_token.
- */
+/** GET /api/integrations/google-drive/connect */
 export const GET = withAuth(async (_req, ctx) => {
   if (!isDriveBackupConfigured()) {
     return NextResponse.json(

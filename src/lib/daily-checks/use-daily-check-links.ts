@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Daily-check item LINKS — the query half both faces share.
- *
- * Lives in `lib` (not `features/daily-checks`) on purpose: `/m` surfaces may
- * not import desktop feature dirs, and the phone detail sheet paints links
- * too. The desk inspector consumes the same hooks, so the two faces can never
- * disagree about what is attached.
- */
+/** Daily-check item LINKS — the query half both faces share. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type {

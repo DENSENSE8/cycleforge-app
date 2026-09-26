@@ -1,19 +1,4 @@
-/**
- * `reports.tasks` — the completed-tasks table definition, capabilities and
- * surface descriptor.
- *
- * Re-declares nothing: the column model, the sort law and the default
- * direction are the ENGINE's (`slot-table-columns.ts`) read through this
- * family's record, and the canonical columns are the product-default
- * MATERIALIZATION — never a hand array, and no per-family copy of the
- * materializer either (`SLOT_TABLE_COLUMN_MODULE_DEBT` is shrink-only).
- *
- * Its OWN tableId, never the working desk's `tasks`: the Fields menu keys off
- * `tableId`, so hiding `Deadline` on this report must not densify the desk a
- * staffer works their open queue on. Same reading as `report-packer-day`
- * beside the `packer` bench history — one activity, two documents, because one
- * is the queue and the other is the record.
- */
+/** `reports.tasks` — the completed-tasks table definition, capabilities and surface descriptor. */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
@@ -40,15 +25,7 @@ export const REPORT_TASKS_COMPOUND_COLUMNS: readonly SlotTableColumn[] = slotTab
   REPORT_TASKS_PRODUCT_LAYOUT,
 );
 
-/**
- * Nothing on this report writes. Reopening a finished task is a verb of the
- * task DESK (`PATCH /api/tasks/<id>`), where the row is still work; here the
- * row is a record, so there is no row verb and no cell editor.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting a week of one staffer's finished work into a review is the reason
- * this tab is opened at all.
- */
+/** Nothing on this report writes. */
 export const REPORT_TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
@@ -57,12 +34,7 @@ export const REPORT_TASKS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   dayBands: false,
 };
 
-/**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
- * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render. `columns` is REQUIRED: a module-constant default is the
- * `grid-default` debt the discover scanner deletes.
- */
+/** Build the descriptor from a RESOLVED column list (post-visibility), so `contentMinWidthRem` and the TanStack defs follow the tracks that… */
 export function makeReportTasksGridDescriptor(
   columns: readonly SlotTableColumn[],
 ): GridSurfaceDescriptor<TaskDeskRow, SlotTableColumn> {
@@ -98,13 +70,7 @@ export const REPORT_TASKS_TABLE_BINDING: TableSurfaceBinding<TaskDeskRow, SlotTa
   definition: REPORT_TASKS_TABLE_DEFINITION,
   columns: REPORT_TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeReportTasksGridDescriptor,
-  /**
-   * HONEST ABSENCE, ruled rather than defaulted. A finished task's own detail
-   * plane is the task desk's inspector, which exists to CHANGE the row —
-   * reassign it, move its deadline, reopen it — and none of those verbs belong
-   * on a record. What an operator wants from a row here is the thing the task
-   * was about, and the title already opens it (`taskDeskRecordHref`).
-   */
+  /** HONEST ABSENCE, ruled rather than defaulted. */
   recordPlane: {
     kind: 'none',
     reason:

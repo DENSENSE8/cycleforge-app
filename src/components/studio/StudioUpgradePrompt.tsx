@@ -3,17 +3,7 @@ import { Lock, Sparkles } from '@/components/Icons';
 import { Panel } from '@/design-system/primitives';
 
 
-/**
- * Shown in place of the Studio canvas when the tenant's plan does not include
- * the Operations Studio capability AND entitlement enforcement is on. It is a
- * soft upsell — never a hard 404/redirect — so the operator understands what
- * Studio is and how to unlock it.
- *
- * Only ever rendered when STUDIO_ENTITLEMENT_ENFORCED is set; under the
- * permissive default this component is unreachable and the full Studio renders
- * exactly as before. Styling follows the house dashed-box empty state with
- * semantic tokens only.
- */
+/** Shown in place of the Studio canvas when the tenant's plan does not include the Operations Studio capability AND entitlement enforcement… */
 export function StudioUpgradePrompt() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-surface-canvas p-6">

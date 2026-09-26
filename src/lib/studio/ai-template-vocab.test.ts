@@ -1,10 +1,4 @@
-/**
- * DB-free tests for ai-template-vocab (Phase 5). Registry readers + predicates
- * are injected, so we assert: the palette is derived from the registries, and
- * the constrain pass drops off-palette nodes + their dangling edges while leaving
- * a fully on-palette graph untouched.
- *   npx tsx --test src/lib/studio/ai-template-vocab.test.ts
- */
+/** DB-free tests for ai-template-vocab (Phase 5). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

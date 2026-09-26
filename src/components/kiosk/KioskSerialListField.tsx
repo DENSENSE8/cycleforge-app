@@ -2,25 +2,7 @@
 
 /**
  * KioskSerialListField — every serial number on ONE repair unit.
- *
  * One unit can carry several (operator 2026-09-25: a Wave system and its CD
- * changer — "multiple endless serial numbers"). More UNITS is still the card's
- * `−  N  +`; more SERIALS on one unit is this field's `+ Add serial`, with no
- * upper limit, and a × on every extra field.
- *
- * The unit's serials travel as ONE string (`serial-list.ts`): this field keeps
- * a local DRAFT list so a just-added empty field survives (the stored string
- * drops blanks), and emits `joinSerials(draft)` on every keystroke. When the
- * stored value changes from OUTSIDE — a serial scanned on the phone companion
- * — the draft is re-synced without disturbing the field being typed in: fields
- * whose serials are still stored stay put (blanks included), new serials fill
- * a blank field first, then append.
- *
- * The FIRST field keeps the caller's name and `testId`, so every existing
- * target (`kiosk-repair-serial`, `kiosk-line-serial`) still addresses it.
- *
- * Callers: `KioskRepairPane` (Device & quote), `KioskCartLineEditor`,
- * `KioskHistoryDetail` (edit). Affected API: none. Schemas: none.
  */
 
 import { useState } from 'react';

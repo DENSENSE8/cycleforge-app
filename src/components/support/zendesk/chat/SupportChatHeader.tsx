@@ -6,14 +6,7 @@ import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { TicketSubjectField } from './TicketSubjectField';
 
-/**
- * Inline ticket title — one row, click-to-edit subject.
- *
- * Ticket # / opened date live on the host (carton context, `/support`
- * identity). Restating them under this title duplicated that chrome.
- * `/support` still hides this entirely (`hideTitle` + `hideRequesterBand`)
- * because the split header owns the subject.
- */
+/** Inline ticket title — one row, click-to-edit subject. */
 export function SupportChatHeader({
   ticket,
   onBack,

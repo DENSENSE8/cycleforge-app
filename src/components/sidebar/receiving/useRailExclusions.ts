@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * The signed-in staffer's rail-dismiss set for a feed (universal-feed plan
- * Phase 4 read filter). Fetches GET /api/receiving/rail-exclusions?feedKey= and
- * returns the excluded rows as a Set of RAIL IDS (row.id space) so a rail
- * fetcher can drop them with `rows.filter(r => !set.has(r.id))`.
- *
- * A dismissed row is hidden for THIS staffer only; the row still exists. The
- * write path (useRailEditMode) invalidates ['rail-exclusions', feedKey] after a
- * dismiss so the filter picks it up before the next rail refetch un-hides it.
- */
+/** The signed-in staffer's rail-dismiss set for a feed (universal-feed plan Phase 4 read filter). */
 
 import { useQuery } from '@tanstack/react-query';
 import { exclusionToRailId } from '@/lib/receiving/rail/exclusion-feed-key';

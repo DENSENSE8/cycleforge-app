@@ -1,9 +1,4 @@
-/**
- * DB-free tests for the granular draft-graph writers (draft-graph-writes.ts).
- * `npm run test:assistant` supplies DATABASE_URL via tsx's .env injection (the
- * @/lib/workflow barrel needs a well-formed URL at load; no query runs).
- * Run: npm run test:assistant
- */
+/** DB-free tests for the granular draft-graph writers (draft-graph-writes.ts). */
 
 import '@/lib/assistant/test-db-url'; // MUST be first: sets DATABASE_URL before the barrel loads
 import { test } from 'node:test';

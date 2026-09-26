@@ -39,20 +39,7 @@ function _getPSTWeekRange(pstTimestamp: string): { startStr: string; endStr: str
     return { startStr: fmt(monday), endStr: fmt(friday) };
 }
 
-/**
- * Background auto-match linker (chokepoint fold, §7 Step D). Inside ONE tenant
- * transaction: lock the candidate lines (`lockSql` must SELECT
- * `id, workflow_status::text AS workflow_status … FOR UPDATE`), link them to the
- * carton via a raw UPDATE that deliberately does NOT list workflow_status
- * (listing it fires the coarse trigger and COALESCE-stamps scanned_at even on
- * rows that aren't transitioning — Scanned is triage-owned), then advance ONLY
- * currently-EXPECTED/ARRIVED rows to MATCHED through transitionReceivingLine
- * (executor mode — same tx; skipEvent: this background auto-match has never
- * emitted per-line inventory_events, and still doesn't). Lines already at or
- * beyond MATCHED keep the linkage but are never status-regressed — the old
- * unconditional SET could pull an UNBOXED/DONE line back to MATCHED.
- * Returns how many lines were linked (0 = no candidates found).
- */
+/** Background auto-match linker (chokepoint fold, §7 Step D). */
 async function linkAndMatchLines(
     orgId: OrgId,
     receivingId: number,
@@ -168,27 +155,15 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }, ctx.organizationId);
 
         const { columns: availableColumns, dateColumn } = await getReceivingSchema();
-        // `receiving.source` is NOT NULL with CHECK (source IN
-        // ('zoho_po','unmatched','local_pickup')) and no DB default, so the
-        // insert must supply a valid value. Loose scans default to
-        // 'unmatched'; local-pickup intakes pass 'local_pickup'. Whitelist so
-        // a bad body value can't trip the check constraint at INSERT time.
+        // `receiving.source` is NOT NULL with CHECK (source IN ('zoho_po','unmatched','local_pickup')) and no DB default, so the insert must…
         const sourceAllowed = new Set(['zoho_po', 'unmatched', 'local_pickup']);
         const rawSource = String(body?.source || '').trim().toLowerCase();
         const source = sourceAllowed.has(rawSource) ? rawSource : 'unmatched';
 
-        // Normalized catalog link (Phase 2). Resolve the flow type from the
-        // intake shape (a return → the 'return' type; otherwise the default
-        // 'po'). Added to valuesByColumn below — the schema-driven insert only
-        // writes it when migration 2026-06-14f added the column, so this is a
-        // no-op until then. The is_return text column stays the cache.
+        // Normalized catalog link (Phase 2).
         const typeId = await resolveReceivingTypeId(ctx.organizationId, { isReturn });
 
-        // Door stamp (received_at/received_by) moved to the triage street table
-        // (receiving_triage.door_received_at/door_received_by) — written via
-        // upsertReceivingTriage inside the insert transaction below. Deliberately
-        // NOT in this probe-driven column list so the dynamic INSERT can't
-        // silently regress to spine writes.
+        // Door stamp (received_at/received_by) moved to the triage street table (receiving_triage.door_received_at/door_received_by) — written via…
         const valuesByColumn: Record<string, any> = {
             [dateColumn]: now,
             // Legacy receiving_tracking_number dropped — tracking lives in STN
@@ -225,10 +200,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }
 
         const valuePlaceholders = insertColumns.map((_, i) => `$${i + 1}`).join(', ');
-        // Carton INSERT + triage door stamp in ONE tenant transaction. The door
-        // stamp is triage-owned street state (receiving-entry is a dock intake),
-        // so it lands on receiving_triage — never the spine. The helper is
-        // COALESCE-once, so a pre-existing door stamp is never re-stamped.
+        // Carton INSERT + triage door stamp in ONE tenant transaction.
         const inserted = await withTenantTransaction(orgId, async (client) => {
             const ins = await client.query(
                 `INSERT INTO receiving_carton (${insertColumns.join(', ')})
@@ -296,13 +268,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             // ── Zoho auto-match (slow, best-effort) — skip for bulk scans ──
             if (skipZohoMatch) return;
             try {
-                // 1a. Check local receiving_lines first — lock, link, and advance
-                // via the guarded chokepoint in one tenant transaction (see
-                // linkAndMatchLines above).
-                // Zoho identity lives on receiving_line_zoho (rz) now — the spine
-                // zoho columns are write-dead and drop in the next migration, so
-                // the candidate match keys off rz. FOR UPDATE OF rl: lock only the
-                // line rows (an outer-join side can't be locked).
+                // 1a. Check local receiving_lines first — lock, link, and advance via the guarded chokepoint in one tenant transaction (see…
                 const localLinkedCount = await linkAndMatchLines(
                     orgId,
                     newReceivingId,

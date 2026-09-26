@@ -1,21 +1,4 @@
-/**
- * Unbox / History / Testing spreadsheet column model — SoT for receiving-line
- * LedgerGrid surfaces that are not Incoming POS.
- *
- * Same spreadsheet family as Pending / Incoming (Date as a per-row column —
- * no sticky day-band headers on these rails):
- *   select · order · title · status · date · qty · price · cond · location · tracking · serial · _fill
- *
- * Frozen identity pane: `select · order` (PO stays pinned while Product / Date /
- * facts h-scroll). Incoming POS mounts no column model — `/incoming` is a
- * RecordLedger; only its sort vocabulary lives below. The activity-axis stamp (Unboxed / Scanned /
- * Tested) renders as `date` (civil day; full stamp on hover) and its stage NAME
- * as `status`; there is no separate `stage` track. Location is triage shelf
- * placement (`staging_location_label`).
- *
- * Product is a hard preferred track (Sheets-exact drag-resize). Trailing
- * `_fill` owns the sole `1fr` slack — same law as Orders.
- */
+/** Unbox / History / Testing spreadsheet column model — SoT for receiving-line LedgerGrid surfaces that are not Incoming POS. */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
@@ -59,14 +42,7 @@ export type ReceivingGridColumnKey =
   /** Org-defined custom columns (`custom:<defKey>`). */
   | CustomFieldColumnKey;
 
-/**
- * EXTENDS the house model — it does not re-declare it. Every shared field
- * (`width` · `label` · `gridLabel` · `labelFitRem` · `type` · `align` ·
- * `omitCellIcon` · `hideKey` · `tier`) is inherited, so a new presentation
- * field lands once on `LedgerGridColumnModel` instead of being re-typed in
- * each of the five surface layouts. Only `key` narrows, plus genuinely
- * receiving-specific fields.
- */
+/** EXTENDS the house model — it does not re-declare it. */
 export interface ReceivingGridColumn
   extends Omit<LedgerGridColumnModel, 'key'>,
     SlotTrackFields {
@@ -76,25 +52,7 @@ export interface ReceivingGridColumn
 }
 
 
-/**
- * COMPOUND (two-row) Unbox / History / Testing columns.
- *
- * A **sibling array, never a filter of {@link RECEIVING_GRID_COLUMNS}**. The
- * two models answer different questions: the flat one is a spreadsheet (one fact per track, each
- * independently sortable), this one is a scan list (four compound cells, each
- * pairing an identifier with its qualifier).
- *
- * **The geometry is not declared here.** It comes from `COMPOUND_TRACKS`
- * (`components/tables/compound/compound-columns.ts`), the one declaration every
- * compound family derives from, so Receiving cannot drift from Orders /
- * Tasks by an edit to this file. This line only narrows the key type
- * to `ReceivingGridColumnKey`.
- *
- * **The engine is unchanged.** `LedgerGridSurface` still owns width, freeze,
- * resize, per-staff visibility and virtualization, and `ReceivingGridRow` still
- * dispatches per key. Swapping presentation is therefore a `columns` prop, not
- * a second table component.
- */
+/** COMPOUND (two-row) Unbox / History / Testing columns. */
 export function receivingCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly ReceivingGridColumn[] {
@@ -107,16 +65,7 @@ export function receivingCompoundColumnsFor(
   });
 }
 
-/**
- * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
- *
- * With the product layout's empty status band that is the shared
- * `COMPOUND_TRACKS` verbatim, which is the point: the port reproduces what
- * Unbox / History / Testing paint today, and every catalog fact becomes
- * bindable without a deploy. The `unbox-compound-columns` and
- * `compound-row-model` guards still pin this array against the shared
- * skeleton, so a drift shows up as a red build rather than a visual bug.
- */
+/** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] =
   receivingCompoundColumnsFor(RECEIVING_PRODUCT_LAYOUT);
 
@@ -129,14 +78,7 @@ const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozen
   RECEIVING_COMPOUND_COLUMNS,
 );
 
-/**
- * The fact words this family sorts by — declared, not derived.
- *
- * It used to be a filter over the deleted flat `RECEIVING_GRID_COLUMNS`. A sort
- * vocabulary is not a column layout: deriving it from a dead model kept the
- * model alive for nothing, and every compound track resolves to one of these
- * words through {@link RECEIVING_TRACK_SORT_FACTS} anyway.
- */
+/** The fact words this family sorts by — declared, not derived. */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
   'order',
   'title',
@@ -151,12 +93,7 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
   'zoho',
 ];
 
-/**
- * The comparator shape each fact sorts under. On the FACT rather than read off
- * a column: it used to be `RECEIVING_GRID_COLUMNS.find(...)?.type`, which
- * returns `undefined` for every compound track and died with the flat array.
- * Values are byte-identical to what that array declared.
- */
+/** The comparator shape each fact sorts under. */
 export const RECEIVING_SORT_FACT_TYPES: Readonly<
   Partial<Record<ReceivingGridColumnKey, LedgerGridColumnModel['type']>>
 > = {
@@ -173,44 +110,8 @@ export const RECEIVING_SORT_FACT_TYPES: Readonly<
   zoho: 'tag',
 };
 
-/**
- * Click-to-sort predicate — the ONE sortability answer for this family.
- *
- * Three call sites read it together, which is why admitting a key here is the
- * whole fix rather than a third of it: the descriptor's `isSortable` (TanStack
- * column defs), `ReceivingGridColumnHeader`'s click-to-sort, and
- * `useUrlColumnSort`'s `isColumn` guard (URL durability). A key accepted here
- * is sortable, clickable, and survives a reload as one unit.
- *
- * Org custom columns (`custom:*`) are merged into the column model at RUNTIME
- * from `custom_field_defs`, so they can never appear in the static
- * {@link RECEIVING_GRID_SORTABLE_KEYS} derivation above — they are admitted by
- * key SHAPE instead. Consequence, deliberately accepted: a stale
- * `?colsort=custom:<archived-or-typo>` stays "valid" and degrades to every row
- * blank ⇒ a stable id-order tie. That is quieter than rejecting the param,
- * which would silently drop an operator's shared link back to default order.
- */
-/**
- * Compound track → the FLAT fact word it carries.
- *
- * The twin of `queue-display-sort`'s `COMPOUND_TRACK_SORT_KEYS`, and it exists
- * for the bug that module documents: when To-Ship's mount moved to the compound
- * tracks nothing updated the sort vocabulary, so `isColumn` rejected every
- * header key and **clicking a header silently did nothing**. Wave 1.3 moved
- * Unbox / History / Testing onto the same tracks with the same omission.
- *
- * A compound track is a CONTAINER for facts the flat model already sorted by,
- * so this re-connects existing comparators rather than inventing orderings:
- * `fulfillment` carries the PO (`order`), `item` the product title, `amount`
- * the Zoho line rate (`price`).
- *
- * `state` is deliberately ABSENT. `compareReceivingGridRows` has no `status`
- * arm — the flat model never column-sorted the stage either — so admitting the
- * track would offer a click that resolves to `null` for every row. Incoming's
- * twin DOES map it, because `compareIncomingGridRows` has a real `statusRank`.
- * Adding one here means adding a comparator arm, which is the point at which it
- * is a product decision rather than a restoration.
- */
+/** Click-to-sort predicate — the ONE sortability answer for this family. */
+/** Compound track → the FLAT fact word it carries. */
 const RECEIVING_TRACK_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey>> = {
   dates: 'date',
   fulfillment: 'order',
@@ -219,13 +120,7 @@ const RECEIVING_TRACK_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey
   state: 'status',
 };
 
-/**
- * Normalize a header key to the fact word this family sorts by.
- *
- * Both mounts run through it: the compound desks emit track keys, and the flat
- * `/test` history mount (which takes the definition's own columns) emits the
- * flat words. One function, so the two models cannot drift into two answers.
- */
+/** Normalize a header key to the fact word this family sorts by. */
 export function receivingSortFactFor(key: string): ReceivingGridColumnKey | null {
   if (isCustomFieldColumnKey(key)) return key as ReceivingGridColumnKey;
   const track = RECEIVING_TRACK_SORT_FACTS[key];
@@ -262,10 +157,7 @@ export {
   ledgerGridRowShellClass as receivingGridRowShellClass,
 } from '@/design-system/components/grid/grid-cell-chrome';
 
-// ---------------------------------------------------------------------------
-// Incoming POS — sort vocabulary only. `/incoming` mounts the RecordLedger
-// (`IncomingDeliveriesLedger`); no Incoming column model or slot table exists.
-// ---------------------------------------------------------------------------
+// --------------------------------------------------------------------------- Incoming POS — sort vocabulary only.
 
 export type IncomingGridColumnKey =
   | 'select'
@@ -308,15 +200,7 @@ const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
   'zoho',
 ];
 
-/**
- * Compound track → the FLAT fact word it carries — Receiving's twin, same
- * reason (see {@link receivingSortFactFor}).
- *
- * `state` IS mapped here, unlike Receiving: `compareIncomingGridRows` carries a
- * real `statusRank` (delivery state, then confidence), so the stage pill has an
- * ordering to restore rather than one to invent. `amount` stays absent — an
- * inbound POS line has no money track to sort.
- */
+/** Compound track → the FLAT fact word it carries — Receiving's twin, same reason (see {@link receivingSortFactFor}). */
 const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
   dates: 'date',
   fulfillment: 'order',

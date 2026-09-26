@@ -1,22 +1,6 @@
 'use client';
 
-/**
- * `/m/u/[id]` — the unit HUB, same layout as the repair hub (`/m/rs/[id]`):
- * identity in the top bar, an Information panel of the facts a tech glances
- * at, then doors to contextual screens from the `useUnitHubRows` registry
- * (Quality control, Line test, Pair with order, Move to bin, Stash in bin,
- * Receiving line, History).
- *
- * Reached from any unit label scan — `U-{id}`, GS1 `(01)(21)` / Digital Link,
- * or a minted unit_uid; `GET /api/serial-units/[ref]` resolves all three.
- * Line test and Stash are the receiving-line verbs the old phone unit page
- * (`/serial/[id]`, now desktop-only) carried.
- *
- * The verbs are sheets on this screen. On mount the page reads
- * `mobile.scan.recent`: when the previous scan (within five minutes) was an
- * order it opens Pair prefilled, else when it was a bin it opens Move
- * prefilled — "scan order → scan unit" is one tap from confirm.
- */
+/** `/m/u/[id]` — the unit HUB, same layout as the repair hub (`/m/rs/[id]`): */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';

@@ -1,22 +1,6 @@
 import { redirect } from 'next/navigation';
 
-/**
- * `/admin` — DISSOLVED. Every console section found its one true home; this
- * route is the permanent redirect table. The spine's Admin row is gone with
- * it — permission is `requires` on rows, not a destination.
- *
- * Homes: goals/quality/staff/sync/logs → Operations desk modes;
- * suppliers/models/compatibility → Sourcing modes; locations → Inventory ›
- * Locations `manage` tab; reason_codes/favorites → their own Inventory pages;
- * fba catalog → Shipping › FBA `catalog` mode; retired po_mailbox → Inbound;
- * station_photos → Settings › Photos & NAS; repair_issues →
- * Settings › Repair issues; connections → Settings › Apps & integrations ›
- * Sync tools; integrations/access/roles were already Settings; architecture →
- * /studio; overview → the monitor desk.
- *
- * This tree has no `/apps` marketplace route, so the integration homes stay
- * under `/settings/integrations` (same reason `settings-sections.ts` does).
- */
+/** `/admin` — DISSOLVED. */
 const SECTION_HOMES: Record<string, string> = {
   overview: '/operations',
   goals: '/operations?mode=goals',

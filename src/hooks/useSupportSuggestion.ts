@@ -6,17 +6,7 @@ import type { PhotoEvidence } from '@/lib/support/photo-evidence';
 import type { SuggestionConfidence, SuggestionSource } from '@/lib/support/suggest-reply-core';
 import type { SupportVisionLane } from '@/lib/support/vision-lane';
 
-/**
- * The drafted reply plus its provenance.
- *
- * `sources` widened from `string[]` to typed objects in Phase 4: once a draft
- * can stand on a document, an OCR'd serial AND a matched row, a bare string can
- * no longer say which of those it is — and a draft about to reach a customer
- * has to be able to.
- *
- * Note there is no image URL anywhere in this shape. The client sends photo
- * IDs; the route resolves a signed storage URL server-side and keeps it.
- */
+/** The drafted reply plus its provenance. */
 export interface SupportSuggestionResult {
   suggestion: string;
   sources: SuggestionSource[];

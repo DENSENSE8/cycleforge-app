@@ -1,12 +1,4 @@
-/**
- * FBA catalog guards + resolver behaviour — the third family's mirror of
- * `orders.test.ts` / `pickup.test.ts`: duplicate ids, a product default that
- * does not parse against its own catalog, a field bindable nowhere, and the
- * row → paint contract per field.
- *
- * Sheet materialization tests lived on `fbaSheetColumnsFor` in the torn-out
- * board display; they return with the rebuilt table.
- */
+/** FBA catalog guards + resolver behaviour — the third family's mirror of `orders.test.ts` / `pickup.test.ts`: */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

@@ -27,10 +27,7 @@ test('registry: every TerminalWorkspaceMode has a structurally complete entry', 
 });
 
 test('registry: every terminal mode either has WORKSPACE_MODES row or is documented chrome-less', () => {
-  // Guard G — keep the two registries in sync. Every TerminalWorkspaceMode must
-  // be either an Unbox-family mode with a WORKSPACE_MODES row (nav + terminal
-  // slice), or explicitly listed as chrome-less (shipping/pickup/repair own a
-  // dock but no Unbox-family mode row). A new terminal mode must pick a side.
+  // Guard G — keep the two registries in sync.
   const CHROME_LESS = new Set<TerminalWorkspaceMode>(
     TERMINAL_MODES_WITHOUT_HEADER_CHROME as readonly TerminalWorkspaceMode[],
   );

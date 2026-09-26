@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Manual “Sync to NAS” control for a filed claim ticket.
- *
- * Shared by carton ticket chrome, the photo-library ticket leaf / group
- * headers, and (via the same archive-only API) the claim modal — so backup is
- * not claim-wizard-only.
- */
+/** Manual “Sync to NAS” control for a filed claim ticket. */
 
 import { Archive } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

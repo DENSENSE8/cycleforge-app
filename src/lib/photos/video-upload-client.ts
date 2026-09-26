@@ -17,22 +17,7 @@ export interface ClientVideoUploadResult {
   createdAt: string;
 }
 
-/**
- * Browser video upload — the video twin of `uploadPhotoClient`, routed by the
- * same `entityType` + `entityId`, so any entity screen can reuse it:
- *
- *   1. `POST /api/photos/upload/video` → a pending row + a signed GCS PUT.
- *   2. `PUT uploadUrl` straight to the bucket with exactly the signed `headers`
- *      (XMLHttpRequest, for upload progress).
- *   3. `POST /api/photos/upload/video/{videoId}/finalize` → the server checks
- *      what GCS stored and marks it ready.
- *
- * The pre-check refuses an unsupported or empty file before any request; the
- * size cap is the server's (`PHOTOS_VIDEO_MAX_BYTES`) and comes back as the
- * create step's error. A failure at any step rejects with an operator-readable
- * message; calling again starts a fresh upload (an abandoned pending row is
- * never listed).
- */
+/** Browser video upload — the video twin of `uploadPhotoClient`, routed by the same `entityType` + `entityId`, so any entity screen can… */
 export async function uploadVideoClient(input: ClientVideoUploadInput): Promise<ClientVideoUploadResult> {
   const { file } = input;
   const verdict = validateVideoUpload(

@@ -65,10 +65,7 @@ export async function GET(
   }
 }
 
-// ── DELETE /api/fba/logs/[id] ─────────────────────────────────────────────────
-// Void a log entry by inserting a compensating VOID log row.
-// The original row is never hard-deleted (immutable audit trail).
-// Query params: staff_id (required), reason (optional note)
+// ── DELETE /api/fba/logs/[id] ───────────────────────────────────────────────── Void a log entry by inserting a compensating VOID log row.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Params }

@@ -1,30 +1,4 @@
-/**
- * GS1 identification keys — what this product may and may not claim.
- *
- * Pure and client-safe. This module is deliberately more about REFUSAL than
- * about minting: its most load-bearing export is `hasCompanyPrefix()`, which
- * makes it impossible to construct a GS1 key for a tenant that has not
- * configured a real GS1 Company Prefix.
- *
- * ## Why the refusal is the feature
- *
- * A GS1 key without a real Company Prefix is not a GS1 key. Emitting one is a
- * compliance claim the tenant cannot back, and — worse — the digits belong to
- * whichever company actually licensed that prefix, so a partner's system reads
- * it as a collision against a real trade item. That is strictly worse than
- * emitting nothing: EPCIS, EDI 856 and the EU DPP all tolerate an ABSENT
- * optional identifier, and none tolerate a wrong one.
- *
- * ## This is not hypothetical in this repo
- *
- * `DEFAULT_GLN` in `@/lib/barcode-routing` is `0614141000005` — GS1's own
- * documentation placeholder, on the `0614141` example prefix — and it is
- * printed on warehouse bin labels today via `gs1LocationAi()`. It is fine on
- * an internal sticker that only this app's scan router reads. It must never
- * reach an interop projection, where a partner would resolve it against the
- * real licensee. `isPlaceholderGs1Prefix()` exists to catch exactly that, and
- * `resolveGs1Identity()` refuses any prefix it matches.
- */
+/** GS1 identification keys — what this product may and may not claim. */
 
 /**
  * The GS1 keys this product can meaningfully talk about.
@@ -49,13 +23,7 @@ export const GS1_KEY_TYPES = [
 
 export type Gs1KeyType = (typeof GS1_KEY_TYPES)[number];
 
-/**
- * GS1 Application Identifiers, for the keys that have one.
- *
- * SGTIN has no AI of its own — it is carried as the AI `(01)` GTIN plus the
- * AI `(21)` serial, which is why it is absent here rather than assigned a
- * made-up value.
- */
+/** GS1 Application Identifiers, for the keys that have one. */
 export const GS1_APPLICATION_IDENTIFIERS = {
   GTIN: '01',
   SSCC: '00',
@@ -67,16 +35,7 @@ export const GS1_APPLICATION_IDENTIFIERS = {
 /** AI `(21)` — the serial half of an SGTIN. */
 export const GS1_AI_SERIAL = '21';
 
-/**
- * Prefixes GS1 itself uses in documentation, sandboxes and conformance
- * samples. A tenant that pasted one of these into settings has copied an
- * example, not licensed a prefix.
- *
- * `0614141` is GS1 US's documentation prefix and is the one already sitting
- * in this repo's `DEFAULT_GLN`. `9521141` / `9526000` are the GS1 Global
- * Office sample prefixes that appear throughout the Digital Link and EPCIS
- * specifications.
- */
+/** Prefixes GS1 itself uses in documentation, sandboxes and conformance samples. */
 export const PLACEHOLDER_GS1_PREFIXES = ['0614141', '9521141', '9526000'] as const;
 
 /** True when the digits are a known GS1 example prefix rather than a licensed one. */
@@ -88,14 +47,7 @@ export function isPlaceholderGs1Prefix(prefix: string): boolean {
   );
 }
 
-/**
- * True when a GTIN sits on a placeholder company prefix.
- *
- * A plain prefix check is not enough for a GTIN-14: its first digit is the
- * packaging-level INDICATOR, and the company prefix starts at digit two. So
- * `10614141000002` is a documentation GTIN that a naive `startsWith('0614141')`
- * would wave through. Both alignments are checked.
- */
+/** True when a GTIN sits on a placeholder company prefix. */
 export function isPlaceholderGtin(gtin: string): boolean {
   const digits = gtin.replace(/\D/g, '');
   if (!digits) return true;
@@ -114,49 +66,7 @@ const RESTRICTED_CIRCULATION_PREFIXES = [
   '02', '20', '21', '22', '23', '24', '25', '26', '27', '28', '29',
 ] as const;
 
-/**
- * True when a GTIN is a Restricted Circulation Number — internal-only, and
- * therefore **not** a key that may leave this tenant.
- *
- * ## Why this exists, and why it is not the same as a placeholder
- *
- * This app MINTS these. `src/lib/inventory/internal-gtin.ts` lazily stamps
- * `"02" + 11-digit sku_catalog.id + check digit` onto `sku_catalog.gtin` the
- * first time a unit label needs one, precisely so a tenant with no GS1
- * membership still gets a scannable, check-digit-valid product number. That is
- * correct and stays — inside the warehouse an RCN is exactly the right tool.
- *
- * It is wrong the moment it crosses a tenant boundary, and the failure differs
- * from the placeholder case in a way worth keeping straight:
- *
- *  - A **placeholder** prefix (`0614141`) belongs to someone else, so emitting
- *    it is a false identity claim that can collide with a real licensee.
- *  - An **RCN** collides with nobody — the range exists so it cannot. What it
- *    falsely claims is *global resolvability*. `gtinIdentifier` renders a GTIN
- *    as `https://id.gs1.org/01/{gtin}`, GS1's canonical resolver; an RCN will
- *    never resolve there. A partner filtering on `scheme: 'gs1'` — the entire
- *    purpose of that field — would be handed a number it cannot look up.
- *
- * Both end at the same verdict (omit the key), for different reasons. Kept as
- * two predicates rather than one so the reason survives, and because a future
- * caller may legitimately want to accept an RCN for an internal-only surface.
- *
- * ## The prefix is read in GTIN-13 space, and that is load-bearing
- *
- * Every length is normalised to 13 digits BEFORE the prefix is examined, rather
- * than testing the raw string at two alignments the way `isPlaceholderGtin`
- * does. That shortcut is safe for a 7-digit documentation prefix and **wrong**
- * here, because these prefixes are two digits:
- *
- *  - A GTIN-14's leading digit is the packaging INDICATOR, legally `1`–`8` for
- *    any trade item. So `20812345000019` — indicator `2` on the perfectly
- *    licensed prefix `0812345` — starts with `20` and a raw check would refuse
- *    a real GTIN. Drop the indicator first.
- *  - A UPC-A (GTIN-12) carries its restricted marker as number system `2`,
- *    which only lines up with `02` once zero-padded to 13.
- *
- * So: 14 → drop the indicator · 12 / 8 → zero-pad · 13 → as-is.
- */
+/** True when a GTIN is a Restricted Circulation Number — internal-only, and therefore **not** a key that may leave this tenant. */
 function toGtin13(digits: string): string | null {
   if (digits.length === 14) return digits.slice(1);
   if (digits.length === 13) return digits;
@@ -189,36 +99,7 @@ interface GtinEntryVerdict {
   message: string | null;
 }
 
-/**
- * The gate for a GTIN a **person** entered, as opposed to one this app minted.
- *
- * The predicates it composes already existed for the interop projections; what
- * this adds is the entry-point ORDER and one message per refusal, so the field
- * and the route give the same answer. Two copies of "is this GTIN acceptable"
- * is how the placeholder GLN got printed in the first place.
- *
- * Order is deliberate — each rung answers a different question and a later one
- * cannot run on digits the earlier rejected:
- *
- *  1. **Length** — 8 / 12 / 13 / 14. Anything else is a typo or a different
- *     identifier entirely (a UPC-E, an ASIN, an MPN pasted into the wrong box).
- *  2. **Check digit** — catches the single transposed digit, which is the
- *     failure mode of typing 14 digits off a label. Not pedantry: bwip-js
- *     THROWS on a bad AI (01) checksum, so a bad GTIN here blanks every unit
- *     label it reaches instead of degrading.
- *  3. **Placeholder prefix** — the digits belong to GS1's own documentation
- *     examples. Someone copied a spec, and the number names another company.
- *  4. **Restricted circulation** — a `02…` / `20`–`29` internal number. This is
- *     the one refusal that is not an error on the operator's part: it is very
- *     likely THIS app's own minted value (`generateInternalGtin`) being typed
- *     back in. Refused because the field means *a key you licensed*, and the
- *     honest way to go back to the internal number is to clear the field —
- *     `getOrCreateInternalGtin` re-mints the same deterministic value.
- *
- * Clearing is NOT this function's job: an empty box means "no licensed GTIN",
- * which is a legal state, and the caller maps it to `null`. `'empty'` exists so
- * a caller that requires a value can say so.
- */
+/** The gate for a GTIN a **person** entered, as opposed to one this app minted. */
 export function classifyGtinEntry(raw: string | null | undefined): GtinEntryVerdict {
   const digits = (raw ?? '').replace(/\D/g, '');
 
@@ -284,14 +165,7 @@ export interface Gs1OrgIdentity {
   cbvUriForm?: 'urn' | 'webUri';
 }
 
-/**
- * Normalize a settings blob into an identity, dropping anything that is not
- * a usable GS1 value.
- *
- * A placeholder prefix is dropped rather than passed through — see the
- * module docblock. A GLN whose leading digits are a placeholder prefix is
- * dropped for the same reason, which is what keeps `DEFAULT_GLN` out.
- */
+/** Normalize a settings blob into an identity, dropping anything that is not a usable GS1 value. */
 export function resolveGs1Identity(
   raw: Gs1OrgIdentity | null | undefined,
 ): Gs1OrgIdentity {
@@ -324,13 +198,7 @@ export function hasCompanyPrefix(
   return typeof identity.companyPrefix === 'string' && identity.companyPrefix.length > 0;
 }
 
-/**
- * GS1 mod-10 check digit for a numeric key, computed over all but the last
- * digit. Weights alternate 3/1 from the rightmost payload digit leftwards.
- *
- * Shared by GLN-13 and GTIN-8/12/13/14 — one algorithm, as the standard
- * defines it once.
- */
+/** GS1 mod-10 check digit for a numeric key, computed over all but the last digit. */
 export function gs1CheckDigit(payload: string): number {
   const digits = payload.replace(/\D/g, '');
   let sum = 0;
@@ -351,22 +219,7 @@ export function hasValidGs1CheckDigit(key: string): boolean {
   return gs1CheckDigit(body) === check;
 }
 
-/**
- * True when a string is a GLN this tenant may actually assert: exactly 13
- * digits, a valid check digit, and not on a GS1 example prefix.
- *
- * THE shared predicate — the printed-label path
- * (`@/lib/barcode-routing` → `locationLabelPayload`) composes this too, so
- * "is this GLN real?" has one answer in the product. A second copy beside the
- * label printer is how the placeholder got printed in the first place.
- *
- * **The check digit is not pedantry, it is a render-time crash.** bwip-js
- * validates AI 414 when encoding a GS1 DataMatrix and THROWS
- * (`GS1badChecksum: AI 414: Bad checksum`) on a bad one — so a single typo in
- * the printer's GLN field would blank every label instead of degrading. This
- * predicate is what turns that into a quiet fallback to the bare code. Caught
- * by `location-label-encoding.guard.test.ts`.
- */
+/** True when a string is a GLN this tenant may actually assert: */
 export function isLicensedGln(gln: string | null | undefined): boolean {
   const digits = (gln ?? '').replace(/\D/g, '');
   if (digits.length !== 13) return false;
@@ -374,17 +227,7 @@ export function isLicensedGln(gln: string | null | undefined): boolean {
   return !isPlaceholderGs1Prefix(digits);
 }
 
-/**
- * True when the tenant configured a real GLN we may put in `bizLocation`.
- *
- * Re-checks the placeholder list even though `resolveGs1Identity` already
- * dropped it. That is deliberate belt-and-braces, not redundancy: this
- * predicate and `glnIdentifier` are reachable with a RAW identity by any
- * caller that forgets to resolve first, and the failure mode of that mistake
- * is publishing GS1's documentation GLN to a partner. A check at the boundary
- * only protects callers who went through the boundary; a check at the mint
- * protects everyone.
- */
+/** True when the tenant configured a real GLN we may put in `bizLocation`. */
 export function hasGln(
   identity: Gs1OrgIdentity,
 ): identity is Gs1OrgIdentity & { gln: string } {
@@ -417,24 +260,7 @@ interface Gs1Requirement {
   unmet: boolean;
 }
 
-/**
- * Decide whether a tenant needs a licensed GS1 key, from what they told us.
- *
- * **This is a GTIN question, not a GLN one.** Amazon enforces a product
- * identifier when you create a listing for a BRAND-NEW item; selling refurb
- * against an existing ASIN needs no key you own, and eBay accepts "does not
- * apply" for used goods outright. A GLN answers to an EDI / EPCIS partner and
- * is deliberately NOT part of this verdict — gating it here would tell a
- * refurb reseller they need a warehouse identifier to sell a used laptop.
- *
- * **A Company Prefix is not the only legal answer.** GS1 sells individual
- * GTINs, and a brand owner may be exempt; both store nothing org-level because
- * the values land per-SKU on `sku_catalog.gtin`. Treating "no prefix on file"
- * as non-compliance would nag those tenants forever, which is why `unmet`
- * reads `gs1Status` rather than testing `hasCompanyPrefix` alone.
- *
- * Unanswered is never `unmet`: a tenant who has not been asked has not failed.
- */
+/** Decide whether a tenant needs a licensed GS1 key, from what they told us. */
 export function resolveGs1Requirement(
   answers: Gs1ComplianceAnswers | null | undefined,
   identity: Gs1OrgIdentity = {},
@@ -461,15 +287,7 @@ export function resolveGs1Requirement(
   return { answered, required, reasons, unmet: answered && required && !met };
 }
 
-/**
- * An identifier as it will appear in a projection.
- *
- * `scheme: 'gs1'` means a real, licensed key. `scheme: 'internal'` means a
- * Cycle Forge handle (`R-1234`, `H-88`, a carrier tracking number) rendered
- * in a URI namespace that is unmistakably ours. The distinction is the whole
- * point: a consumer can filter to `gs1` and get only keys it may resolve
- * globally, and the internal ones never masquerade as standards-backed.
- */
+/** An identifier as it will appear in a projection. */
 export interface InteropIdentifier {
   scheme: 'gs1' | 'internal';
   /** The GS1 key type when `scheme === 'gs1'`. */
@@ -480,14 +298,7 @@ export interface InteropIdentifier {
   value: string;
 }
 
-/**
- * URI namespace for Cycle Forge's internal handles.
- *
- * EPCIS explicitly allows non-GS1 EPC URIs, and a private URN is the
- * standard-sanctioned way to say "this identifies something, and it is mine".
- * A partner sees `urn:cycleforge:carton:1234` and knows not to try resolving
- * it against GS1.
- */
+/** URI namespace for Cycle Forge's internal handles. */
 export const INTERNAL_URN_NAMESPACE = 'urn:cycleforge';
 
 export type InternalEntityKind =
@@ -518,20 +329,7 @@ export function internalIdentifier(
   };
 }
 
-/**
- * Build the SGTIN for a serialized unit — "this individual unit of this
- * product", the key a reseller actually needs.
- *
- * Returns `null` when either half is missing. A serialized used unit is
- * exactly GTIN + serial, and `serial_units` already holds the serial half;
- * the GTIN half comes from `sku_catalog.gtin` and is frequently absent, which
- * is precisely when this must decline rather than improvise.
- *
- * Note this does NOT need `companyPrefix`: an SGTIN is not minted, it is
- * COMPOSED from a GTIN the tenant already holds (which carries its own
- * licensed prefix) plus a serial the tenant assigned. `companyPrefix` gates
- * the keys that must be constructed from scratch — SSCC, GRAI, GIAI.
- */
+/** Build the SGTIN for a serialized unit — "this individual unit of this product", the key a reseller actually needs. */
 export function sgtinIdentifier(
   gtin: string | null | undefined,
   serial: string | null | undefined,

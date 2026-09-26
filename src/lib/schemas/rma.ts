@@ -3,10 +3,6 @@ import { z } from 'zod';
 const trimmed = z.string().trim();
 
 // ─── PATCH /api/rma/[id] ────────────────────────────────────────────────────
-//
-// Only mutable record metadata. `direction`, `status`, `order_id` etc. are not
-// editable here — status moves through the dedicated lifecycle verb routes.
-// Keys are snake_case to match the rest of the RMA API surface (POST /api/rma).
 
 export const RmaUpdateBody = z
   .object({

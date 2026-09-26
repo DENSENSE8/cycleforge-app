@@ -14,44 +14,7 @@ import { AllocationCandidatesTable } from './AllocationCandidatesTable';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/bulk-allocate
- *
- * Operations tool for Phase 4 rollout. Lists orders that have a SKU but
- * no open order_unit_allocations row, alongside how many STOCKED
- * serial_units exist for the same SKU. A per-row server action calls
- * allocateOrder() (the same helper /api/orders/[id]/allocate uses) and
- * revalidates the page so the result lands in the same render cycle.
- *
- * Off `AdminTable` 2026-09-12 (Wave D). The candidate list is the slot
- * `DataTable` (`admin-bulk-allocate` PRODUCT_TABLES peer): header sort, the
- * Fields picker and org-bindable columns arrive from the engine, none of which
- * the seven hand-written column objects it replaced could ever grow. That
- * history — where each retired cell's fact landed, why the tri-coloured
- * availability ink became a WORD, and why the order stamp joined the query —
- * lives in `@/lib/tables/field-catalog/admin-bulk-allocate`.
- *
- * Allocate is a ROW VERB (`admin-bulk-allocate-verbs.ts`), not a seventh
- * column of `<form>` JSX; `AllocationCandidatesTable` is the client island
- * that carries the rows and this file's server action to it. The `?page=`
- * offset links stay here, on the server, where the query is.
- *
- * Permission gate: `admin.view` to RENDER, `orders.view` inside the server
- * action — the latter matching POST /api/orders/[id]/allocate, the other door
- * onto `allocateOrder`. This line claimed "orders.view (matches the API)" while
- * the action actually gated `admin.view`, which matches neither.
- *
- * Tenant scoping: the candidate list runs through `tenantQuery(orgId, …)` with
- * an explicit `organization_id` predicate on `orders`, on the open-allocation
- * NOT EXISTS, and on the STOCKED-count LATERAL, with `orgId` from the auth ctx.
- * Unscoped, this listed EVERY tenant's unallocated orders and offered an
- * Allocate button on each — the allocation itself is org-safe (`allocateOrder`
- * takes `orgId` and predicates its own order load), so a cross-tenant click
- * failed to match rather than allocating, but the order ids, SKUs, quantities
- * and conditions were already on screen. `available_stocked` was also counting
- * other tenants' STOCKED units, so the eligibility flag was wrong for one's own
- * orders too. Live until 2026-08-21.
- */
+/** /inventory/bulk-allocate */
 
 const PAGE_SIZE = 100;
 
@@ -60,17 +23,6 @@ async function loadCandidates(
   orgId: OrgId,
 ): Promise<{ rows: AllocationCandidateRow[]; total: number }> {
   // Orders that meet ALL of:
-  //   - have a non-empty SKU
-  //   - have NO open (non-RELEASED) order_unit_allocations row
-  //   - status is null or NOT 'shipped' (don't re-allocate shipped orders)
-  // The available_stocked column reflects current STOCKED inventory for
-  // the SKU at query time — purely diagnostic, not locked.
-  // `order_date` / `created_at` are the row's ONE temporal fact, read in that
-  // preference order (the channel's purchase instant, then the insert stamp).
-  // The compound row's DATES track paints them and its header sorts them; a
-  // desk whose rows carry no stamp at all would mount a dead header over a
-  // permanently blank column. It is also the fact this list was missing — how
-  // long an order has waited for units.
   try {
     // The NOT EXISTS is org-scoped too: an open allocation belonging to another
     // tenant must not suppress one's own order from the candidate list.
@@ -129,15 +81,7 @@ async function allocateOne(formData: FormData): Promise<void> {
   const id = Number(formData.get('orderId'));
   if (!Number.isFinite(id) || id <= 0) return;
 
-  // The guard sits OUTSIDE the try. `requirePermission` signals denial by
-  // THROWING a NEXT_REDIRECT error, so from inside the catch it was swallowed,
-  // logged as "allocateOne failed", and the caller got a silent no-op instead
-  // of /not-authorized. (The allocation itself still didn't run — the throw
-  // skipped it — so this was a broken guard, not an open one.)
-  //
-  // `orders.view` is the permission the twin door enforces
-  // (POST /api/orders/[id]/allocate); a server action is its own POST
-  // entrypoint and gates on its WRITE's permission, not the page's.
+  // The guard sits OUTSIDE the try.
   const user = await requirePermission('orders.view', { enforce: true });
 
   try {

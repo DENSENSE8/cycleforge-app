@@ -40,14 +40,7 @@ export interface ResolvedAuthor {
   isOurs: boolean;
 }
 
-/**
- * Resolve a comment author. Cycle Forge staff wins when we have a staff id
- * (app-posted, or Zendesk agent email matching `staff.email`). Otherwise the
- * Zendesk roster photo + name stay — comments typed only in Zendesk.
- *
- * `isOurs` drives bubble styling: a comment is ours if its author is an agent,
- * OR it's a non-public internal note, OR it's our optimistic echo.
- */
+/** Resolve a comment author. */
 export function resolveAuthor(
   c: ZendeskComment,
   maps: {
@@ -127,13 +120,7 @@ export function resolveAuthor(
  */
 export const STREAM_AT_END_SLACK_PX = 96;
 
-/**
- * Is the conversation port parked at the newest message?
- *
- * Gates the re-dock when the floating composer changes height: re-scrolling a
- * reader who has moved up into history would yank the thread out from under
- * them, so growth only re-docks someone already at the end.
- */
+/** Is the conversation port parked at the newest message? */
 export function isConversationAtEnd(
   port: Pick<HTMLElement, 'scrollHeight' | 'scrollTop' | 'clientHeight'>,
   slackPx: number = STREAM_AT_END_SLACK_PX,

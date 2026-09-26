@@ -17,15 +17,7 @@ import { WorkOrderCalendarChip } from './WorkOrderCalendarChip';
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_VISIBLE_PER_DAY = 4;
 
-/**
- * Month-view scheduling calendar for work-order assignments (P3-ADM-03).
- *
- * Reads the windowed work_assignments feed (GET /api/work-orders/calendar) and
- * places each assignment on the day of its deadline (the reused placement
- * field — work_assignments has no scheduled_at). Each chip opens the shared
- * WorkOrderAssignPopover, which writes through the existing PATCH endpoint, so
- * the calendar both REFLECTS and CREATES/edits work_assignments.
- */
+/** Month-view scheduling calendar for work-order assignments (P3-ADM-03). */
 export function WorkOrderCalendar() {
   // The first day of the visible month, normalized to local midnight.
   const [visibleMonth, setVisibleMonth] = useState(() => {

@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Right-pane workspace orchestration for `/receiving`. Owns the focused-line
- * workspace state, the prev/next nav mirror, and the scan-in-flight loader, and
- * keeps the pane authoritative across the full lifecycle:
- *   - workspace open/close/update + nav-state (dispatched by the sidebar)
- *   - the skeleton loader's grace-delay show / lingered clear around a scan
- *   - station-first Unbox (auto-open Unboxed MRU on bare `/unbox`; desk via
- *     `?unboxdesk=1` after Back to list — never re-open MRU until resume/scan)
- *   - delete recovery onto desk (no surprise MRU reopen)
- *   - Unbox URL stickiness (`?openReceivingId=` / `?lineId=`) so refresh
- *     reopens the station overlay
- *
- * Reads the live `?mode=` so a client-side mode switch is honored without a
- * render lag. Extracted from ReceivingDashboard; behaviour is unchanged.
- */
+/** Right-pane workspace orchestration for `/receiving`. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -54,13 +40,7 @@ export interface WorkspaceState {
    * `readSelectLineDetail`.
    */
   recordView?: boolean;
-  /**
-   * Preview stance. The pane opens for real — identity, middle ops-flow and the
-   * Displays column all paint exactly as a scan's would — but it is INERT: no
-   * edit lands, and the open itself wrote nothing (no `receiving_scans` row, no
-   * `receiving_unbox.opened_at`, no recents view). Answers *"what is this?"*
-   * without answering it by doing the work.
-   */
+  /** Preview stance. */
   preview?: boolean;
 }
 
@@ -77,12 +57,7 @@ export interface ReceivingWorkspacePane {
   nav: NavState | null;
   setNav: React.Dispatch<React.SetStateAction<NavState | null>>;
   scanInFlight: { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null;
-  /**
-   * A deep-link restore (`?openReceivingId=`) is resolving but the overlay is
-   * not open yet. Seeded synchronously from the URL so the first paint shows the
-   * workspace skeleton instead of flashing the browse feed before the async
-   * carton fetch lands.
-   */
+  /** A deep-link restore (`?openReceivingId=`) is resolving but the overlay is not open yet. */
   restorePending: boolean;
   /**
    * The last scan resolved to a carton whose unbox work is already DONE, so it
@@ -98,12 +73,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  // `?openReceivingId=` is the Unbox surface's focused-carton URL SoT. The write
-  // side (`syncUnboxOpenUrl`) only stamps it on `/unbox`, so the read side (the
-  // restore effect below) is gated on the same surface. A stale value that rode
-  // a mode switch onto Incoming/Triage must NOT restore — its
-  // `dispatchSelectLine` is caught by the Incoming overlays listener and pops the
-  // details panel on load.
+  // `?openReceivingId=` is the Unbox surface's focused-carton URL SoT.
   const isUnboxSurface =
     receivingSurfaceBasePath(pathname) === UNBOX_SURFACE_ROUTE;
 
@@ -112,12 +82,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const [scanInFlight, setScanInFlight] = useState<
     { tracking: string; startedAt: number; surface: ScanIntakeSurface } | null
   >(null);
-  // Seed from the URL on first render so a deep-link load shows the workspace
-  // skeleton immediately — no browse-feed flash before the restore resolves.
-  // Unbox-surface only: a leaked param elsewhere must not hold a phantom
-  // skeleton (there is no restore for it — see the effect's gate).
-  // Station-first: bare `/unbox` (auto-open MRU pending) also starts pending so
-  // the empty desk sheet never flashes before the MRU resolve.
+  // Seed from the URL on first render so a deep-link load shows the workspace skeleton immediately — no browse-feed flash before the restore…
   const [restorePending, setRestorePending] = useState<boolean>(() =>
     shouldRestoreOpenReceiving(isUnboxSurface, searchParams.get('openReceivingId')) ||
       shouldAutoOpenUnboxMru(isUnboxSurface, searchParams),
@@ -125,10 +90,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   const [lookupReceipt, setLookupReceipt] = useState<UnboxLookupScanDetail | null>(null);
   const clearLookupReceipt = useCallback(() => setLookupReceipt(null), []);
 
-  // A scan of an already-unboxed carton. Announced twice on some rungs (an
-  // optimistic client classification, then the authoritative server one) — the
-  // second is a harmless re-set of the same carton. Typed bus, not raw
-  // listeners (`receiving-events.ts` + its ratchet guard).
+  // A scan of an already-unboxed carton.
   useReceivingEvents({
     'receiving-lookup-scan': (detail) => {
       if (!detail || typeof detail.receivingId !== 'number') return;
@@ -149,17 +111,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // Last Unboxed-rail MRU receiving_id we auto-opened (avoid re-entry loops).
   const mruOpenedReceivingIdRef = useRef<number | null>(null);
 
-  /**
-   * Station-first MRU auto-open is a **Scan-stance** affordance: it puts the
-   * operator's last carton back under their hands so they can keep unboxing.
-   *
-   * In Preview it answers a question nobody asked, and — because the restore is
-   * async (rail query → carton fetch) exactly like the preview open (preview-scan
-   * → lines) — the two race for the pane. The MRU won on the default Queue tab
-   * whenever the rail's newest carton was not the previewed one, so the operator
-   * typed a value, hit Enter, and got somebody else's carton. Standing the MRU
-   * down in Preview removes the race rather than ordering it.
-   */
+  /** Station-first MRU auto-open is a **Scan-stance** affordance: */
   const scanStance = useScanStance();
   // `history.replaceState` writes `?unboxdesk=1` without notifying Next's
   // `useSearchParams`. Hold the same flag in React so Back to list cannot
@@ -375,12 +327,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
           : prev,
       );
     };
-    // Scan-loader events: sidebar dispatches in-flight at scan submit; resolved
-    // when the response lands. Soft-swap workspaces update in place — clear the
-    // loader immediately on resolve (no linger that stacks with a remount).
-    // Grace delay before the skeleton takeover mounts. A scan that resolves from
-    // Phase-0 cache under this threshold flips inline and never flashes the
-    // loader. (Standard skeleton-delay: never flash for sub-threshold latencies.)
+    // Scan-loader events:
     const SCAN_LOADER_GRACE_MS = 300;
     let showTimer: ReturnType<typeof setTimeout> | null = null;
     const handleInFlight = (e: Event) => {
@@ -442,30 +389,14 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
     return () => window.removeEventListener('receiving-workspace-nav-state', handler);
   }, []);
 
-  // Deep-link: cmd+k / search / refresh stickiness emit
-  // /unbox?openReceivingId=<receiving.id>&lineId=<optional>. Resolve the carton
-  // (prefer lineId) via /api/receiving-lines and select once so the right pane
-  // opens AND the sidebar/rail highlight stay in sync. Best-effort: missing /
-  // empty carton no-ops. Param is path-agnostic so legacy /receiving?… still works.
-  // Key already restored (fetched + dispatched) — never re-fetch it.
+  // Deep-link: cmd+k / search / refresh stickiness emit /unbox?openReceivingId=<receiving.id>&lineId=<optional>.
   const deepLinkedKeyRef = useRef<string | null>(null);
-  // Key whose restore fetch is currently in flight. This ref — NOT a per-effect
-  // `cancelled` boolean — is the staleness guard: a cold load / reload re-renders
-  // (searchParams identity churns) while the fetch is pending, and the old code
-  // cancelled the fetch on cleanup then early-returned on the re-run because the
-  // key was already marked restored, so the dispatch was dropped and the pane
-  // never reopened. Now an incidental re-render with the SAME key is a no-op that
-  // lets the fetch finish; only a genuinely different/cleared URL invalidates it.
+  // Key whose restore fetch is currently in flight.
   const deepLinkInFlightRef = useRef<string | null>(null);
   useEffect(() => {
     const target = searchParams.get('openReceivingId');
     if (!shouldRestoreOpenReceiving(isUnboxSurface, target)) {
-      // No restorable carton param on the Unbox surface — drop any restore state
-      // so a resolving stale fetch skips its dispatch and a later re-open of the
-      // same id re-fetches. Non-Unbox surfaces land here too: `openReceivingId`
-      // is Unbox-only, so a value that rode a mode switch onto Incoming/Triage
-      // must never `dispatchSelectLine` (which would pop the Incoming details
-      // panel on load).
+      // No restorable carton param on the Unbox surface — drop any restore state so a resolving stale fetch skips its dispatch and a later…
       deepLinkedKeyRef.current = null;
       deepLinkInFlightRef.current = null;
       // Keep restorePending if station-first MRU auto-open is still pending.
@@ -511,14 +442,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
         // or a switch to another carton clears/overwrites the in-flight ref.
         if (deepLinkInFlightRef.current === deepLinkKey && pick) {
           deepLinkedKeyRef.current = deepLinkKey;
-          // Open the overlay directly from this hook's own state. Routing the
-          // restore through `dispatchSelectLine` alone is a mount-order race: the
-          // sidebar's `receiving-select-line` listener lives in a Suspense-mounted
-          // sibling that can commit AFTER this fetch resolves, dropping the
-          // one-shot event so refresh lands on the browse feed. `handleOpen`
-          // (below) is registered in THIS hook, so setting the workspace here is
-          // race-free; `dispatchSelectLine` still fires so the sidebar rail
-          // highlights the restored line once it mounts.
+          // Open the overlay directly from this hook's own state.
           const restored: WorkspaceState = {
             row: pick,
             accordionBootstrap: 'default',
@@ -645,10 +569,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
 
   // Guards delete-recovery while choosing the next line so it doesn't race.
   const recoveringRef = useRef(false);
-  // Any mode switch must drop the focused workspace from state — even though
-  // ReceivingRightPane hides the overlay via isTableOnlyMode / presence keys,
-  // stale state lets a late receiving-workspace-open or a zero-duration race
-  // repaint the prior mode's panel (Triage ↔ Unbox ↔ History bleed).
+  // Any mode switch must drop the focused workspace from state — even though ReceivingRightPane hides the overlay via isTableOnlyMode /…
   const prevModeForWorkspaceRef = useRef<string | null>(null);
   useEffect(() => {
     const liveMode = searchParams.get('mode') ?? 'receive';

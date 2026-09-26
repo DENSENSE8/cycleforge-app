@@ -6,12 +6,7 @@ import { STATUS_COLOR } from '@/components/work-orders/types';
 import { WorkOrderAssignPopover } from '@/components/work-orders/WorkOrderAssignPopover';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-/**
- * A single assignment placed on a calendar day. Renders a compact chip showing
- * the record + assignee; clicking it opens the shared WorkOrderAssignPopover so
- * the user can view/assign/reassign — persisting through the SAME PATCH
- * /api/work-orders endpoint (acceptance B). No new write path is introduced.
- */
+/** A single assignment placed on a calendar day. */
 export function WorkOrderCalendarChip({
   row,
   onAssigned,

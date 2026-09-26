@@ -1,19 +1,4 @@
-/**
- * Operations catalog — the reference content behind the Operations sidebar.
- *
- * A hand-curated, schema-grounded map of the real system: the STATIONS work
- * happens at, the IDENTIFIERS that travel through it (tracking numbers, serial
- * numbers, inventory SKUs, order numbers, FNSKUs…), and the FLOWS that string the
- * lifecycle states together (receiving, shipping, FBA, repair, returns).
- *
- * Station names + activity types are the REAL values observed in
- * station_activity_logs / inventory_events. Table refs point at the columns
- * that actually hold each identifier so the sidebar doubles as a data map.
- *
- * The lifecycle `states` use the same keys as the flow-audit board nodes
- * (serial_status_enum + the receiving workflow states), so selecting an item
- * can highlight its path on the canvas.
- */
+/** Operations catalog — the reference content behind the Operations sidebar. */
 
 export type OpsCategory = 'flow' | 'station' | 'identifier';
 
@@ -88,10 +73,7 @@ export const STATIONS: OpsStation[] = [
       'Inbound dock. Scans the incoming carton, matches it to a PO / order, unboxes it, and creates one serial unit per item.',
     activityTypes: ['WS_RECEIVING_CHANGED', 'TRACKING_SCANNED', 'SERIAL_ADDED'],
     handles: ['receivingTracking', 'serial', 'sku', 'zohoItem', 'conditionGrade', 'binLocation'],
-    // Operator 3-state lifecycle (Scanned → Unboxed → Received), using valid
-    // inbound_workflow_status_enum keys only — DONE renders as "Received" per the
-    // lifecycle map below. (The old 'RECEIVED' here was not an enum key and showed
-    // as a blank ⓪ in Studio.)
+    // Operator 3-state lifecycle (Scanned → Unboxed → Received), using valid inbound_workflow_status_enum keys only — DONE renders as…
     states: ['ARRIVED', 'UNBOXED', 'DONE'],
   },
   {

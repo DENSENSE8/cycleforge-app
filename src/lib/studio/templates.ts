@@ -1,25 +1,4 @@
-/**
- * studio/templates — clone a system-owned workflow_templates blueprint into the
- * calling org's workflow_definitions as a new is_active = FALSE draft (Studio
- * ST6 / Phase E4). Onboarding = import + edit + publish, zero deploy.
- *
- * This mirrors copyDefinitionToDraft (./definitions) but the SOURCE is a global
- * template row (graph stored as JSONB) rather than a sibling definition: there
- * is no per-(org,name) source to FOR UPDATE — instead we lock the (org, name)
- * version group for the NEW draft's name so two concurrent imports of the same
- * template can't read the same MAX(version) and collide on the unique
- * (org, name, version) index. Same id-minting discipline: every template node id
- * is re-minted to a fresh global id and edges are remapped through that map, so
- * the cloned graph shares no id with the template (or with any other org's
- * import). Every cloned row is org-stamped (the definition via INSERT, the
- * node/edge children via the org-verified workflow_definition_id fk).
- *
- * DB-free: every collaborator that isn't the raw tx client is INJECTED (real
- * impls by default) so the unit test passes fakes that capture the SQL calls.
- * The route owns the withTenantTransaction(orgId, …) boundary, the body parse,
- * and the audit; this helper just runs inside the tx, exactly like the C-phase
- * draft/publish helpers.
- */
+/** studio/templates — clone a system-owned workflow_templates blueprint into the calling org's workflow_definitions as a new is_active =… */
 
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
@@ -96,18 +75,7 @@ function normalizeGraph(raw: unknown): TemplateGraph {
   };
 }
 
-/**
- * Clones a system template into the org's NEXT version of `name` (default: the
- * template name), is_active = FALSE. Node ids are re-minted (global TEXT PKs);
- * edges remapped accordingly; every row org-stamped. Locks the whole (org, name)
- * version group FOR UPDATE so concurrent imports of the same template can't read
- * the same MAX(version) and collide on the unique (org, name, version) index.
- *
- * The definition INSERT passes organization_id explicitly (NOT relying on the
- * GUC default) so the row is unambiguously stamped to the caller's org; the
- * node/edge children inherit tenant scope from the org-verified
- * workflow_definition_id fk (those tables have no org column).
- */
+/** Clones a system template into the org's NEXT version of `name` (default: */
 export async function createDraftFromTemplate(
   args: CreateDraftFromTemplateArgs,
   deps: CreateDraftFromTemplateDeps = defaultDeps,
@@ -126,10 +94,7 @@ export async function createDraftFromTemplate(
   const name = (args.name ?? template.name).trim() || template.name;
   const graph = normalizeGraph(template.graph);
 
-  // Lock the (org, name) version group so two concurrent imports of the same
-  // template can't both read the same MAX(version) and collide on the unique
-  // (org, name, version) index. The group may be empty (first import of this
-  // name) — the lock is still correct (it just locks no rows).
+  // Lock the (org, name) version group so two concurrent imports of the same template can't both read the same MAX(version) and collide on…
   await client.query(
     `SELECT id FROM workflow_definitions
       WHERE organization_id = $1 AND name = $2 FOR UPDATE`,

@@ -6,17 +6,7 @@ import { workflowTemplates } from '@/lib/drizzle/schema';
 import type { TemplateGraph } from '@/lib/studio/templates';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
 
-/**
- * GET /api/studio/templates
- *
- * The Operations Studio template library (Studio ST6 / Phase E4): system-owned
- * DEFAULT workflow graphs a tenant can clone into its own definitions. These
- * rows are GLOBAL (no organization_id) — they hold no tenant data, so the list
- * is the same for every org. studio.view gates it (importing is studio.manage).
- *
- * Node/edge counts are derived from the stored graph so the Library card can
- * show the shape without shipping the full graph (use the [id] detail for that).
- */
+/** GET /api/studio/templates */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

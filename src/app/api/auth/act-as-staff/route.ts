@@ -1,23 +1,4 @@
-/**
- * POST /api/auth/act-as-staff  (session-gated; DOGFOOD / QA only)
- *
- * Mint a session for ANY active staff in the caller's org WITHOUT a PIN — the
- * SHARED-account umbrella switch. Only works when the caller already holds a
- * session in a shared-account workspace (`settings.staffLoginModel = 'shared'`).
- * The shared email+password login is the entry gate (see
- * /api/auth/account/signin, which returns the umbrella staff picker for these
- * orgs); this route performs the actual switch.
- *
- * Mirrors /api/auth/switch (revoke-prev-after-new, cookie overwrite, audit) but
- * replaces the PIN check with the org-flag + same-org gate in evaluateActAs.
- *
- * Body: { staffId: number, deviceKind?: 'personal' | 'station', persistent?: boolean }
- *
- * `persistent` is the sign-in page's "Keep me signed in" checkbox. Omitted, it
- * INHERITS the caller's session — acting as a staff member is a re-mint on the
- * same device, so the device's persistence choice carries over rather than
- * silently downgrading to the idle window.
- */
+/** POST /api/auth/act-as-staff (session-gated; DOGFOOD / QA only) */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

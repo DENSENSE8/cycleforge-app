@@ -17,14 +17,7 @@ export interface InventoryTimelineRow {
   sku: string | null;
   prev_status: string | null;
   next_status: string | null;
-  /**
-   * `inventory_events.notes` — what a person actually wrote.
-   *
-   * The spine reader has always selected this; the adapter dropped it, so a
-   * NOTE row rendered as the literal word "Note" and the sentence someone
-   * recorded ("Unmatched return serial … — no order match") was visible
-   * nowhere on the journey. A note whose text you cannot read is not a note.
-   */
+  /** `inventory_events.notes` — what a person actually wrote. */
   notes?: string | null;
   /** Bin barcode (locations.barcode) when the event carried a bin_id. */
   bin_barcode?: string | null;
@@ -32,13 +25,7 @@ export interface InventoryTimelineRow {
   payload?: Record<string, unknown> | null;
 }
 
-/**
- * event_type → display. The `inventory_events` spine is the cross-station
- * lifecycle log (RECEIVED, TEST_*, PUTAWAY, …); this is the single curated
- * title/tone map for rendering those through the shared {@link EventTimeline}.
- * Unmapped types fall back to a prettified label + muted tone, so a new engine
- * event type still renders (just without a custom color).
- */
+/** event_type → display. */
 const EVENT_MAP: Record<string, { title: string; tone: TimelineTone }> = {
   RECEIVED: { title: 'Received', tone: 'info' },
   TRIAGED: { title: 'Triaged', tone: 'muted' },
@@ -87,28 +74,13 @@ function binHref(barcode: string): string {
   return `/inventory/location/${encodeURIComponent(barcode)}`;
 }
 
-/**
- * Map `inventory_events` spine rows → {@link TimelineItem}s for the shared
- * `EventTimeline`. The secondary line carries the unit (serial/SKU) and the
- * prev→next status transition when present, so a verdict reads
- * "Tested — Pass · IN_TEST → TESTED · SERIAL123".
- *
- * PUTAWAY / MOVED prefer a bin chip (deep-link to the location page) when a
- * barcode is present — the serial already bands the Trace.
- */
+/** Map `inventory_events` spine rows → {@link TimelineItem}s for the shared `EventTimeline`. */
 export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {
     const mapped = EVENT_MAP[r.event_type];
     const tone = mapped?.tone ?? 'muted';
 
-    // On a NOTE the text IS the event, so it is the title. The KIND is already
-    // said by the rail glyph (paper), so the word "Note" adds nothing and the
-    // sentence adds everything.
-    //
-    // Deliberately NOT applied to the other event types: their `notes` carry
-    // machine text ("Serial 049331F81860251AE" on a RECEIVED), and letting it
-    // win would replace the curated "Received" with a restatement of the chip
-    // beside it.
+    // On a NOTE the text IS the event, so it is the title.
     const noteText = NOTE_TITLED_EVENTS.has(r.event_type) ? r.notes?.trim() : null;
     const title = noteText || mapped?.title || pretty(r.event_type);
 

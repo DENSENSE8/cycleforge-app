@@ -44,13 +44,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'work_orders.claim' });
 
-/**
- * POST /api/automations/listing-assign
- * save_and_assign — upsert one rule per (item #, SKU) pair (primary + optional
- *   backup per role) + assign TEST/PACK on selected orders now, backup when the
- *   primary is out today.
- * apply_existing — fire existing automation_rules against the selection.
- */
+/** POST /api/automations/listing-assign save_and_assign — upsert one rule per (item #, SKU) pair (primary + optional backup per role) +… */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const raw = await req.json().catch(() => ({}));

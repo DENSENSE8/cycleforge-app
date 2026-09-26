@@ -10,37 +10,7 @@ import { EventsExplorerTable } from './EventsExplorerTable';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * /inventory/events — Global inventory_events explorer.
- *
- * Server-rendered filters with URL-query composition. The grid is the same
- * `inventory-events` family Pulse mounts — this page is a second FEED, not a
- * second table. Pagination is offset-based via ?page=N (zero-indexed).
- *
- * Query params:
- *   event_type   one of the canonical event_type values
- *   station      RECEIVING | TECH | PACK | SHIP | MOBILE | SYSTEM
- *   sku          exact match
- *   unit         serial_units.id (numeric)
- *   since        ISO date (YYYY-MM-DD) — inclusive lower bound
- *   until        ISO date — exclusive upper bound (so "today" = today+1)
- *   actor        staff.id (numeric)
- *   q            the table's find box — substring, over every painted fact
- *   page         zero-indexed page number
- *
- * `?q=` is the FETCH KEY for the client island's find box (it writes the param
- * through `useOptimisticUrlParams` and declares the search server-answered).
- * Until this loader spent it, the box filtered the HUNDRED rows one offset page
- * happened to hold, and said so in its placeholder: this tenant has 8.8k
- * events, `PUTAWAY` first appears at rank 2266 and a "Supplemental serial" note
- * at rank 7450, so the desk answered "no events match" for thousands of records
- * that exist. The predicate in {@link loadEvents} runs over the same eleven
- * facts `inventory-events-resolve.ts` paints, and the COUNT beside it runs over
- * the matched set so the pager cannot offer a page with nothing on it.
- *
- * Tenant scoping: every read goes through `tenantQuery(orgId, …)` with an
- * explicit `organization_id` predicate, and `orgId` comes from the auth ctx.
- */
+/** /inventory/events — Global inventory_events explorer. */
 
 const PAGE_SIZE = 100;
 
@@ -171,11 +141,7 @@ async function loadEvents(opts: {
     // so no ESCAPE clause is needed (see `@/lib/sql-like`).
     params.push(`%${escapeLike(opts.query)}%`);
     const like = `$${params.length}`;
-    // The facts `inventory-events-resolve.ts` paints, and only those: the SKU
-    // cell prints "SKU · title" so both halves have to answer, the bin and
-    // status cells print a `prev → next` pair so both ends do, and the notes
-    // line is searched raw (the resolver's "Supplemental serial X" rewrite is a
-    // display face; the stored text is what an operator pasted from).
+    // The facts `inventory-events-resolve.ts` paints, and only those:
     filters.push(`(
            ie.event_type                    ILIKE ${like}
         OR COALESCE(ie.station, '')         ILIKE ${like}
@@ -192,15 +158,7 @@ async function loadEvents(opts: {
   }
   const whereSql = `WHERE ${filters.join(' AND ')}`;
 
-  /**
-   * The five enrichment joins, as ONE string, because the count and the page
-   * must read the same FROM: five of the eleven facts the find predicate
-   * matches live on a joined table, and a count that omitted them would either
-   * fail to parse or answer for a different set than the rows. Every join is
-   * on a unique key (`staff`/`locations`/`serial_units` by id,
-   * `sku_catalog` by `(organization_id, sku)`), so none of them fans a row out
-   * and `COUNT(*)` stays a count of events.
-   */
+  /** The five enrichment joins, as ONE string, because the count and the page must read the same FROM: */
   const joinSql = `
         LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $1
         LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = $1
@@ -209,11 +167,7 @@ async function loadEvents(opts: {
         LEFT JOIN sku_catalog sc ON sc.sku = ie.sku AND sc.organization_id = $1`;
 
   try {
-    // Counted over the MATCHED set — this is the number the header prints and
-    // the number `totalPages` divides, so the pager offers a "next →" only when
-    // a next page of MATCHES exists. Without the find predicate there is
-    // nothing on a joined table to filter by, so the count skips the joins and
-    // stays the single-table scan it has always been.
+    // Counted over the MATCHED set — this is the number the header prints and the number `totalPages` divides, so the pager offers a "next →"…
     const countSql = `SELECT COUNT(*)::int AS n FROM inventory_events ie${
       opts.query ? joinSql : ''
     } ${whereSql}`;
@@ -376,12 +330,7 @@ export default async function EventsExplorerPage({
             <label htmlFor="until" className="block text-xs font-medium text-text-muted">Until (inclusive)</label>
             <input id="until" name="until" type="date" defaultValue={until ?? ''} className="mt-1 block w-full rounded-md border border-border-default px-2 py-1.5 text-sm" />
           </div>
-          {/*
-            `?q=` rides a HIDDEN input because a GET form submits its own fields
-            and nothing else: without it, pressing Apply would silently empty the
-            table's find box, which is a param this form does not own. Clear
-            drops it along with everything else — it is the reset.
-          */}
+          {/* `?q=` rides a HIDDEN input because a GET form submits its own fields and nothing else: */}
           <input type="hidden" name="q" value={query ?? ''} />
           <div className="flex items-end gap-2">
             <Button variant="primary" size="sm" type="submit">

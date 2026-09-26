@@ -1,10 +1,4 @@
-/**
- * The flat `RECEIVING_GRID_COLUMNS` spreadsheet array is DELETED — every desk
- * (Unbox, History, Testing) mounts `RECEIVING_COMPOUND_COLUMNS`. The shape
- * assertions that pinned that hand array went with it; what survives here is
- * the vocabulary a consumer can still observe: which keys sort, and which
- * tracks the mounted model freezes.
- */
+/** The flat `RECEIVING_GRID_COLUMNS` spreadsheet array is DELETED — every desk (Unbox, History, Testing) mounts `RECEIVING_COMPOUND_COLUMNS`. */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
@@ -37,11 +31,7 @@ describe('isReceivingGridSortable — the one sortability answer', () => {
     }
   });
 
-  // Custom columns are merged in at runtime, so they can never appear in the
-  // static sortable-key list — they are admitted by key SHAPE. All three
-  // consumers (descriptor `isSortable`, the header, `useUrlColumnSort`'s
-  // `isColumn`) read this one predicate, so this is what makes a custom column
-  // clickable AND durable in `?colsort=` together.
+  // Custom columns are merged in at runtime, so they can never appear in the static sortable-key list — they are admitted by key SHAPE.
   it('admits org custom columns by key shape', () => {
     assert.equal(isReceivingGridSortable('custom:rack_slot'), true);
     assert.equal(isReceivingGridSortable('custom:vendor_ref'), true);

@@ -23,13 +23,7 @@ function isMineRow(row: WorkOrderRow, staffId: number): boolean {
   );
 }
 
-/**
- * A queue card's count comes from ONE of two places: the work-order rows this
- * feed already fetched (`match`), or a query only this card needs
- * (`countFrom: 'external'`). The external branch used to be a hardcoded
- * `link.key === 'support'` check in two places; naming it on the entry is what
- * lets a second such card exist without a third key check.
- */
+/** A queue card's count comes from ONE of two places: */
 const QUEUE_SURFACE_LINKS: Array<{
   key: string;
   label: string;
@@ -89,10 +83,7 @@ const QUEUE_SURFACE_LINKS: Array<{
     showAtZero: true,
   },
   {
-    // Orders that named a product the catalog does not know. Permission is the
-    // DESTINATION's gate (`/review?mode=catalog-link`), like every sibling —
-    // a card is a door, so it is filtered by whether the operator may walk
-    // through it, not by whether they may read the count behind it.
+    // Orders that named a product the catalog does not know.
     key: 'catalog_link',
     label: 'Needs item number',
     permission: 'packing.review',
@@ -179,12 +170,7 @@ export async function aggregateMyDayFeed(args: {
   // operator who can never see the card never pays for its count.
   const canSeeCatalogLink = permissions.has('packing.review');
 
-  // ONE concurrent wave, not three serial ones. The queue fan-out and the two
-  // interrupt queries are independent — nothing here reads another's result —
-  // yet this used to await the queues, then the interrupts. On the dogfood
-  // tenant each query costs 350ms–1.0s of round-trip largely independent of how
-  // many rows it returns, so every imposed wave was a full round-trip of pure
-  // latency on the first screen an operator sees each morning.
+  // ONE concurrent wave, not three serial ones.
   const [allRows, techItems, supportItems, unpairedListings] = await Promise.all([
     canSeeWorkOrders
       ? fetchAllWorkOrderQueues(organizationId, { unified: true })

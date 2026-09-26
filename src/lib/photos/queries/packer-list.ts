@@ -1,14 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Packer-photo read helpers — the packing mirror of `receiving-list.ts`.
- *
- * Packer photos are stored polymorphically on the `photos` table, linked via
- * `photo_entity_links` with `entity_type='PACKER_LOG'`, `entity_id=packer_logs.id`.
- * Same `pool` + explicit `organization_id` predicate convention as the receiving
- * list (tenant boundary is the predicate, not a per-call GUC txn here).
- */
+/** Packer-photo read helpers — the packing mirror of `receiving-list.ts`. */
 
 const LINK_JOINS = `
   INNER JOIN photo_entity_links l ON l.photo_id = p.id AND l.organization_id = p.organization_id
@@ -97,20 +90,7 @@ export async function getPackerPhotoLogId(
   return res.rows[0] ? Number(res.rows[0].entity_id) : null;
 }
 
-/**
- * Batch packer-photo counts keyed by TRACKING number — the read behind the
- * search row's pack-photo CTA.
- *
- * Search hits carry a tracking number and no packerLogId, so this walks the
- * same join the media library uses (`packer_logs.shipment_id →
- * shipping_tracking_numbers`) rather than making every caller resolve a log id
- * first. Keys are `tracking_number_normalized`, so callers must normalize with
- * `normalizeTrackingKey` on both the request and the lookup.
- *
- * Tracking numbers WITHOUT a packer log simply do not appear in the result —
- * callers read a missing key as 0, which is the same answer as "a log exists
- * but nobody captured anything".
- */
+/** Batch packer-photo counts keyed by TRACKING number — the read behind the search row's pack-photo CTA. */
 export async function countPackerPhotosByTracking(input: {
   organizationId: OrgId;
   trackingKeys: string[];

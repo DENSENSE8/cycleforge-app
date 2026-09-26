@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * The order-note waist: read the trail, append to it. One query key and one
- * writer, so the record-plane trail (`OrderNotesTrail`) and the grid's in-cell
- * "Add note" can never disagree about where a note goes or what the list holds
- * after one lands.
- *
- * `order_notes` is the ONLY writable home for an order annotation — the legacy
- * scalar `orders.notes` is read-only history (
- * → Order note grain). There is deliberately no update/delete: the trail is
- * append-only, because a note is a statement someone made at a time.
- */
+/** The order-note waist: */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { refreshDomain } from '@/lib/refresh/bus';

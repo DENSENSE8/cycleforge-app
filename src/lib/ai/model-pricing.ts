@@ -1,18 +1,4 @@
-/**
- * model-pricing — published per-token PROVIDER rates for cost estimation
- * (AI search per-org metering; docs/ai-search-modernization-plan.md).
- *
- * Pure data + math, DB-free. Rates are USD per 1M tokens, matched by model
- * substring (gateway model strings look like "openai/text-embedding-3-small";
- * direct strings like "text-embedding-3-small" — substring match covers
- * both). Unknown models return null cost — the usage row still records
- * tokens, and the settings page labels those rows "rate unknown".
- *
- * cost unit: MICROCENTS (1e-8 USD; 1_000_000 microcents = 1¢) — integer math
- * end to end, no float drift in the ledger. The BILLED price applies
- * AI_USAGE_MARGIN_PERCENT at read time (never persisted), so changing the
- * margin never rewrites history.
- */
+/** model-pricing — published per-token PROVIDER rates for cost estimation (AI search per-org metering; docs/ai-search-modernization-plan.md). */
 
 interface ModelRate {
   /** Substring matched against the model id (lowercase). */

@@ -1,19 +1,8 @@
 'use client';
 
 /**
- * `/m/orders?display=ledger` — the industrial record at phone width (HANDOFF
- * Step 3). Same state codes, faces and ship-by face as the desk ledger, in the
+ * `/m/orders?display=ledger` — the industrial record at phone width (HANDOFF Step 3).
  * F-pattern the owner set on 2026-09-24 (Context → Identity → Execution) with
- * one right column down all three bands (date · QTY · next):
- *
- *   spine │ CODE · PLATFORM · order # ··············│ SEP 11 · 13d
- *         │ ▣ title ································│ QTY [n]
- *         │ CONDITION · BIN <location> · SKU ········│ → next
- *
- * ▣ is a rigid 32px micro-thumbnail — enough colour and shape to confirm the
- * box in the bin without spending the row's width. Tapping it (or the record)
- * opens the evidence sheet: the high-resolution image, the specs, price and
- * the exception controls. Price is not on the row (noise on the floor).
  */
 
 import { memo } from 'react';

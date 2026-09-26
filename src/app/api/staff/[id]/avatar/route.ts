@@ -1,18 +1,4 @@
-/**
- * POST   /api/staff/[id]/avatar — set / replace a staffer's profile photo.
- * DELETE /api/staff/[id]/avatar — clear it (falls back to colour + initials).
- *
- * Composes the photos platform waist (`uploadPhoto` → GCS → `photo_storage` +
- * `photo_entity_links` with entity_type `STAFF`) and stores the resulting
- * PHOTO ID on `staff.avatar_photo_id`. There is deliberately no second upload
- * path and no avatar URL column: bytes are served by
- * `/api/photos/{id}/content`, org-scoped like every other tenant photo.
- *
- * Gate — self OR `admin.manage_staff`. `withAuth` has no expression for "the
- * subject of this route is the caller", so the permission check is inline and
- * explicit rather than a route-level `permission:` that would lock every
- * staffer out of their own profile.
- */
+/** POST /api/staff/[id]/avatar — set / replace a staffer's profile photo. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
@@ -72,14 +58,7 @@ async function resolveSubject(
   return { staffId, currentPhotoId: row.avatar_photo_id ?? null, name: row.name };
 }
 
-/**
- * Point the staff row at the new photo and return the id it replaced.
- *
- * `FOR UPDATE` before the write, in one transaction: two uploads racing on the
- * same profile would otherwise both read the same prior id, and the loser would
- * delete the photo the winner had just installed — leaving a pointer at a
- * deleted row, which renders as a broken mark on every surface.
- */
+/** Point the staff row at the new photo and return the id it replaced. */
 async function setAvatarPointer(
   organizationId: string,
   staffId: number,
@@ -101,12 +80,7 @@ async function setAvatarPointer(
   });
 }
 
-/**
- * Drop the photo the pointer no longer names. Best-effort: the avatar is
- * already swapped, so a storage hiccup must not fail the request and leave the
- * operator thinking their upload was rejected. `deletePhoto` also removes the
- * `photo_entity_links` row and the GCS objects.
- */
+/** Drop the photo the pointer no longer names. */
 async function discardReplacedPhoto(photoId: number | null, organizationId: string): Promise<void> {
   if (!photoId || photoId <= 0) return;
   try {

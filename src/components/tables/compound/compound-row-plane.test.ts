@@ -7,14 +7,7 @@ import {
 } from './compound-row-plane';
 import { ORDERS_DEFAULT_TABLE_BINDING } from '@/components/dashboard/orders-queue/orders-table-definition';
 
-/**
- * The row-anchored plane seam — the last thing that forced a family to own a
- * row component (`OrdersQueueTableRow`).
- *
- * Two claims are worth pinning mechanically: the CYC-82 click rule survived the
- * move out of `lib/outbound` unchanged, and the plane is registered to the
- * ENTITY rather than mounted by a page.
- */
+/** The row-anchored plane seam — the last thing that forced a family to own a row component (`OrdersQueueTableRow`). */
 describe('the CYC-82 gutter rule, now engine-owned', () => {
   it('always toggles: opening the plane is a side-effect of becoming selected', () => {
     assert.deepEqual(compoundRowPlaneGutterClick({ isChecked: false, shiftKey: false }), {
@@ -88,10 +81,7 @@ describe('the plane is registered to the entity, not mounted by a page', () => {
   });
 
   it('reaches every lane of the entity — there is no per-lane opt-in to fork', () => {
-    // The binding is one object; a lane cannot hold a different plane without
-    // registering a second binding, which invariant 2 already refuses. Gating
-    // the plane per lane is exactly how Shipped once had the checkbox and no
-    // manifold.
+    // The binding is one object; a lane cannot hold a different plane without registering a second binding, which invariant 2 already refuses.
     const source = ORDERS_DEFAULT_TABLE_BINDING;
     assert.equal(source.definition.tableId, 'orders');
     assert.ok(source.rowPlane);

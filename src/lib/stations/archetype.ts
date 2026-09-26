@@ -1,17 +1,4 @@
-/**
- * Display archetype — the four contextual-display archetypes and the decision
- * algorithm that picks one per region.
- *
- * This is the code form of the `pickArchetype()` pseudocode in
- * `.claude/rules/contextual-display.md`. A surface declares an explicit
- * `archetype` hint in `SURFACE_REGISTRY`; when that hint is absent (a region
- * decided at runtime), `pickArchetype()` runs the same Q1→Q4 discriminator the
- * rules doc mandates. The hint always wins — the algorithm is the fallback.
- *
- * Archetypes (see the rule): Station (scan → crossfade → display), Workbench
- * (list → select → detail → update), Monitor (filter → stream → read), Canvas
- * (graph → zoom/lens → focus → inspect).
- */
+/** Display archetype — the four contextual-display archetypes and the decision algorithm that picks one per region. */
 
 export const ARCHETYPE_IDS = ['station', 'workbench', 'monitor', 'canvas'] as const;
 export type ArchetypeId = (typeof ARCHETYPE_IDS)[number];
@@ -38,12 +25,7 @@ export function isArchetypeId(value: string | null | undefined): value is Archet
   return value != null && (ARCHETYPE_IDS as readonly string[]).includes(value);
 }
 
-/**
- * Pick the archetype for a region. An explicit hint short-circuits; otherwise
- * run the discriminator in order — first yes wins (Q1 scanner → Station,
- * Q2 observe-only → Monitor, Q3 node-graph → Canvas, Q4 default → Workbench).
- * Workbench is the fallthrough, exactly as the rules doc specifies.
- */
+/** Pick the archetype for a region. */
 export function pickArchetype(region: RegionSignals = {}): ArchetypeId {
   if (region.archetype) return region.archetype; // explicit hint wins
 

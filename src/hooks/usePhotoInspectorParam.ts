@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * Media Library `?photoId=` paint-pending — the desk inspector's open record.
- *
- * Mount-gated: the rail only exists while a photo id is present, so the write
- * has to paint before App Router's soft-replace lands or the tick reads dead
- * (`source-of-truth.md` → Optimistic URL-param paint). Modelled on
- * {@link useLabelsHistoryIdParam}.
- *
- * The param is a DISPLAY param (`parsePhotoLibraryDisplayParams`), never a
- * filter — it must not reach `buildLibraryWhere`. Eviction is stated there:
- * written from selection, cleared with it.
- *
- * `shareKey` exists because the library's chrome and its grid are separate React
- * subtrees under `DashboardScrollShell`; one pending has to paint both.
- */
+/** Media Library `?photoId=` paint-pending — the desk inspector's open record. */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

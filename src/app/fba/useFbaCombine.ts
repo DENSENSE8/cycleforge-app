@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Combine-workspace state for the FBA board. The board selection drives the
- * kanban builder, but the workspace opens only when the user presses "Combine
- * items" (not on first selection) so they can multi-select packed items first;
- * leaving combine mode resets it. Extracted from fba/page; behaviour is unchanged.
- */
+/** Combine-workspace state for the FBA board. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FBA_COMBINE_STARTED } from '@/lib/fba/events';

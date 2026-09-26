@@ -5,17 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { StationPanelRoot } from './StationPanelRoot';
 import { StationWorkbench } from './StationWorkbench';
 
-/**
- * The station plane is FLAT WHITE — no grey anywhere (operator ruling,
- * 2026-08-30).
- *
- * The shell tried three planes in one day: a leaking `surface-sunken`, then a
- * proper canvas WELL with white band cards and a gutter, then this. The ruling
- * is no grey on a station at all — it is one continuous work surface, and
- * anything inside it separates with padding and a seam. These pin the plane and
- * the one thing that made every earlier grey reachable: the workbench inside
- * paints nothing, so whatever the root paints is what the operator sees.
- */
+/** The station plane is FLAT WHITE — no grey anywhere (operator ruling, 2026-08-30). */
 describe('station panel plane', () => {
   const render = (props: Partial<React.ComponentProps<typeof StationPanelRoot>> = {}) =>
     renderToStaticMarkup(

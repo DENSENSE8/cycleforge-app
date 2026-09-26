@@ -1,11 +1,4 @@
-/**
- * FBA board KPI registry — pure stage-count + metric resolvers for the FBA
- * outbound workspace (`/shipping?mode=fba`). Sibling of
- * `lib/tech/shipping-metrics.ts` / `lib/dashboard/outbound-metrics.ts`;
- * composes the same `ComputedMetric` shape so Monitor `KpiTile`s stay one
- * family. Counts are over the loaded board slice (mode + week filtered), not
- * the org-wide `/api/fba/stage-counts` rollup the `/test` Shipping strip reads.
- */
+/** FBA board KPI registry — pure stage-count + metric resolvers for the FBA outbound workspace (`/shipping?mode=fba`). */
 
 import type { ComputedMetric } from '@/lib/dashboard/outbound-metrics';
 import type { FbaBoardItem } from '@/lib/fba/types';
@@ -19,12 +12,7 @@ export type FbaBoardStatusFilter =
   | 'LABEL_ASSIGNED'
   | 'OUT_OF_STOCK';
 
-/**
- * The facets an operator can narrow BY, in lifecycle order. `ALL` is absent on
- * purpose: it is the absence of a filter, not one of them — the filter menu's
- * "Clear all" is how a narrowed board gets back to it, the same rule that keeps
- * an "All" tab off a bottom strip.
- */
+/** The facets an operator can narrow BY, in lifecycle order. */
 export const FBA_BOARD_STATUS_FACETS = [
   'PLANNED',
   'TESTED',

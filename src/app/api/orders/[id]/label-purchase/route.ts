@@ -3,13 +3,7 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { getOrderLabelSummary } from '@/lib/shipping/order-label-summary';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * GET /api/orders/[id]/label-purchase — the order's shipping label as the
- * To-ship evidence column shows it: status (none / bought / pending / linked /
- * voided) plus the current purchase-ledger row (carrier, service, cost,
- * tracking, who bought it and when). Read-only.
- * Domain logic: lib/shipping/order-label-summary.
- */
+/** GET /api/orders/[id]/label-purchase — the order's shipping label as the To-ship evidence column shows it: */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

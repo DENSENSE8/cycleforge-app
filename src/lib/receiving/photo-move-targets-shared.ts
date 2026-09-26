@@ -21,13 +21,7 @@ interface PhotoMoveSearchIntent {
   pattern: string | null;
 }
 
-/**
- * Classify the operator's Move-photos search string.
- *
- * Carton handles win first (same as po/list). `#N` is always a ticket id.
- * Bare 1–8 digit strings are treated as ticket ids AND still searched as
- * free-text (PO / tracking / external ticket id / subject) via `pattern`.
- */
+/** Classify the operator's Move-photos search string. */
 export function parsePhotoMoveSearch(raw: string): PhotoMoveSearchIntent {
   const trimmed = String(raw || '').trim();
   // Detect `#232` BEFORE parsePoListSearch strips leading `#` (used for `#R-…`).
@@ -69,17 +63,7 @@ export function parsePhotoMoveSearch(raw: string): PhotoMoveSearchIntent {
   };
 }
 
-/**
- * Carton picker title — {@link resolveSkuIdentityTitle}, the one ladder
- * (`src/lib/sku/sku-identity-law.ts`): Zoho item name → marketplace catalog
- * title → listing item_name → sku. PO identity stays on `PoChip`; never
- * invent a platform · PO title here. Generated return-serial titles paint
- * last-8.
- *
- * Until 2026-09-15 this read `catalog_product_title` first and so painted the
- * Ecwid listing for any Zoho-twinned SKU whose catalog title had been
- * overwritten — 132 rows, including PO 10-15153-01528's soundbar.
- */
+/** Carton picker title — {@link resolveSkuIdentityTitle}, the one ladder (`src/lib/sku/sku-identity-law.ts`): */
 export function resolvePhotoMoveTargetTitle(row: {
   catalog_product_title?: string | null;
   zoho_item_title?: string | null;

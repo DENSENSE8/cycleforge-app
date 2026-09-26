@@ -1,16 +1,4 @@
-/**
- * Substitution reason-code vocabulary — the shared SoT for WHY a fulfilled unit
- * deviates from what was ordered/listed. Used three ways:
- *   - the operator picker on the testing/packing card (label + tone),
- *   - the amendment timeline adapter (badge label + tone),
- *   - default display for the audit trail.
- *
- * This is the BUILT-IN vocabulary. An org may still pass a custom reason string
- * (the reason-codes table / REASON_CODE entity is the extensible store) — unknown
- * codes prettify gracefully via substitutionReasonLabel(), they are not rejected.
- * Mirrors the "format in lib, render dumb" rule: components choose a code, never
- * a class string.
- */
+/** Substitution reason-code vocabulary — the shared SoT for WHY a fulfilled unit deviates from what was ordered/listed. */
 
 import type { TimelineTone } from '@/lib/timeline/types';
 
@@ -57,15 +45,7 @@ export function isBuiltInSubstitutionReason(code: string): code is SubstitutionR
   return BY_CODE.has(code);
 }
 
-/**
- * Merge tenant-stored substitution rows (rows from `reason_codes`, flow_context
- * ='substitution' — the DB owns code + label so an org can rename a built-in or
- * add a custom reason) into the display shape the picker renders. Tone + hint are
- * built-in display metadata resolved from the registry, defaulting to 'muted' /
- * no-hint for custom codes — the same graceful path as substitutionReasonLabel/
- * Tone. An empty input (DB unseeded / fetch failed) lets the caller fall back to
- * SUBSTITUTION_REASONS.
- */
+/** Merge tenant-stored substitution rows (rows from `reason_codes`, flow_context ='substitution' — the DB owns code + label so an org can… */
 export function mergeSubstitutionReasons(rows: readonly { code: string; label: string }[]): SubstitutionReason[] {
   return rows.map((r) => ({
     code: r.code,

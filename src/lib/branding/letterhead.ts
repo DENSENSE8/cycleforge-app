@@ -1,9 +1,4 @@
-/**
- * Tenant letterhead — the company block rendered on printed repair paper,
- * walk-in receipts, and warehouse labels. Workspace-dynamic (per org.name +
- * settings.letterhead), never the platform Cycle Forge brand — see
- * src/lib/branding/constants.ts and docs/cycle-forge-branding-spec.md §3.
- */
+/** Tenant letterhead — the company block rendered on printed repair paper, walk-in receipts, and warehouse labels. */
 
 import type { OrgSettings } from '@/lib/tenancy/settings';
 

@@ -1,13 +1,6 @@
 import 'server-only';
 
-/**
- * Real tenant bindings for task media links (`work_assignment_media_links`).
- *
- * `task-media-links.ts` owns the refusals and the row mapper; this file owns
- * the SQL. Every statement runs through the GUC wrappers in
- * `@/lib/tenancy/db` AND names `organization_id` explicitly — `orgId` /
- * `staffId` come from the route's auth context, never a body.
- */
+/** Real tenant bindings for task media links (`work_assignment_media_links`). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

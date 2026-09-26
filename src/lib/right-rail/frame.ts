@@ -1,78 +1,6 @@
 'use client';
 
-/**
- * Right-rail FRAME store + the push/overlay decision.
- *
- * `store.ts` answers "who is in the right-edge slot". This answers the other
- * half — "can that occupant PUSH the work surface, and how wide may it grow".
- *
- * ## Why a store and not a prop
- *
- * The three parties are in three different subtrees and none of them can see the
- * others: `ResponsiveLayout` owns the content row's width, `ContextPanelLayout`
- * owns the route rail's width and collapse, and `RightRailHost` owns the panel's
- * demand. Threading that through would mean lifting two pieces of state into the
- * app frame and prop-drilling them past every route. A module singleton with the
- * same subscribe/emit/cached-snapshot shape as {@link RightRailPanel}'s store is
- * the idiom this file already uses next door.
- *
- * ## Width pressure (ruled 2026-08-05)
- *
- * Opening a right-edge panel must **not** auto-close or ephemeral-mask the left
- * context rail. Both stay open. Desk inspectors reserve
- * {@link MIN_WORK_SURFACE_PX} for the center. Scan-station Displays push
- * reserves {@link STATION_PUSH_CENTER_FLOOR_PX} (720 — the center floor) so the
- * middle never yields below it. Cap: `left + centerFloor + right ≤ frame`. Never
- * a floating card over the work.
- *
- * MasterNav spine remains operator-owned (`SidebarNavColumn` never auto-closes).
- *
- * ## The station frame — elastic center, local sashes (Option A, 2026-08-10)
- *
- * The three-column Station frame (Context · **elastic** Primary · Displays) is
- * the VS Code editor model with a cascade: the center is the primary elastic
- * absorber, and the OPPOSITE rail is the secondary absorber once the center is
- * exhausted. Dragging a sash a little never moves the far rail (the center
- * absorbs — an operator flagged the old always-coupled behaviour as unintuitive);
- * dragging it far — past the point where the center hits its 720 floor — lets the
- * far rail yield so the pane can keep growing.
- *
- *  - **Stage 1 (center absorbs):** while the center is above its 720 floor, a
- *    sash resizes only its own rail and the flex-1 center takes the change; the
- *    far rail is untouched.
- *  - **Stage 2 (far rail yields):** the ACTIVE sash's cap opens to the ladder max
- *    (`frame − peerMin − 720`) while it is being dragged, so it can grow past the
- *    center floor; the PASSIVE rail's cap goes tight (`frame − active − 720`) and
- *    its own resize-clamp shrinks it toward its min. One-directional (active →
- *    passive), so there is no bidirectional coupling to oscillate. The single
- *    signal is {@link setStationDisplaysSashDragging} — the LEFT rail is the
- *    default authority (loose) while idle; opening Displays or narrowing the
- *    viewport prefers parking the LEFT rail so Displays stays open.
- *  - Below the open-left min-fit threshold with Displays open: **park the left
- *    rail first** ({@link requestStationCollapseContext}). Displays only
- *    auto-parks ({@link resolveStationDisplaysCollapse}) when even a parked
- *    left strip cannot seat it — never overlays, never off-screen overflow.
- *
- * Pure sash-cap math: {@link stationDisplaysSashMaxPx} / {@link stationContextSashMaxPx}
- * (`frame − arg − 720`, floored at the pane's min). The store feeds the peer's
- * MIN (loose) or ACTUAL width (tight) depending on which sash is active.
- *
- * The DESK lane (context 360 · primary {@link MIN_WORK_SURFACE_PX} 784 ·
- * inspector {@link DETAIL_STACK_RESIZE} 360/420) resolves through
- * {@link resolveRightRailFrame}; its budget is proved by `frame.test.ts`, which
- * also proves the station caps + collapse.
- *
- * ## Why the inputs cannot oscillate
- *
- * `frameWidthPx` is measured on the content ROW, whose width is invariant under
- * everything this resolver decides — growing the panel redistributes space
- * *inside* it. And `railCostOpenPx` is the rail's OPEN width from its resize
- * state, never a live measurement of a parked DOM, so the resolver can always
- * ask "what does the left cost" without reading back the consequence of its
- * own answer. A resolver fed the grid's live `contentMinWidthRem` instead would
- * be circular: on `/dashboard` that value is filtered by a `ResizeObserver` on
- * the very scrollport the push narrows.
- */
+/** Right-rail FRAME store + the push/overlay decision. */
 
 import {
   CONTEXT_PANEL_COLLAPSE,
@@ -100,17 +28,7 @@ export const CONTEXT_RAIL_PARKED_PX = CONTEXT_PANEL_COLLAPSE.stripWidthPx;
  */
 export const STATION_PUSH_CENTER_FLOOR_PX = STATION_WORKBENCH_LOCK_PX;
 
-/**
- * The work surface's floor for **desk** inspectors (dashboard / History peek).
- *
- * Derived from Outbound show-all (~704). Scan-station Displays push publishes
- * {@link STATION_PUSH_CENTER_FLOOR_PX} (720) so the middle stays locked while
- * rails trade width. Desk keeps this floor so the queue stays readable.
- *
- * **Deliberately ONE static constant for desk, not a per-lane published floor.**
- * On `/dashboard` `contentMinWidthRem` is filtered by a `ResizeObserver` on the
- * scrollport the push resizes — feeding it back would be circular.
- */
+/** The work surface's floor for **desk** inspectors (dashboard / History peek). */
 export const MIN_WORK_SURFACE_PX = 784;
 
 interface RightRailFrameInput {
@@ -148,34 +66,13 @@ interface RightRailFrameResolution {
  * store, not in the pure {@link resolveRightRailFrame}).
  */
 interface RightRailFrameSnapshot extends RightRailFrameResolution {
-  /**
-   * Station Displays has auto-parked to the slim right-edge strip at this frame
-   * width ({@link resolveStationDisplaysCollapse}). Not an overlay — the middle
-   * / dock stay visible; Displays does not paint off-screen. Consumers render
-   * the parked strip while this is true.
-   */
+  /** Station Displays has auto-parked to the slim right-edge strip at this frame width ({@link resolveStationDisplaysCollapse}). */
   stationDisplaysCollapsed: boolean;
-  /**
-   * Local clamp for the station **Displays** sash — the widest Displays may reach
-   * beside the live left-rail cost and the 720 center floor
-   * ({@link stationDisplaysSashMaxPx}). Reactive so the sash updates when the
-   * left rail changes, without any inverse coupling.
-   */
+  /** Local clamp for the station **Displays** sash — the widest Displays may reach beside the live left-rail cost and the 720 center floor… */
   stationDisplaysCapPx: number;
-  /**
-   * Local clamp for the station **context** sash — the widest the rail may reach
-   * beside the current Displays width and the 720 center floor
-   * ({@link stationContextSashMaxPx}). Reactive so the sash updates when Displays
-   * changes, without any inverse coupling.
-   */
+  /** Local clamp for the station **context** sash — the widest the rail may reach beside the current Displays width and the 720 center floor… */
   stationContextCapPx: number;
-  /**
-   * The **Displays** sash is armed to park the CONTEXT rail — the operator is
-   * dragging Displays past its cap (the rail already pinned at its min) into the
-   * Stage-3 slack. Relayed so `ContextPanelLayout` lights its own seam warning
-   * (the sash and the far rail live in different subtrees). One writer:
-   * {@link setStationDisplaysSashArmed}.
-   */
+  /** The **Displays** sash is armed to park the CONTEXT rail — the operator is dragging Displays past its cap (the rail already pinned at its… */
   stationDisplaysSashArmed: boolean;
   /**
    * The **context** sash is armed to close DISPLAYS — the reverse cascade. Relayed
@@ -220,38 +117,15 @@ export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFram
     return { mode: 'overlay', capPx, coverPx };
   }
 
-  // A resident non-modal inspector never flashes through the historical
-  // floating-card geometry while the content row is still being measured.
-  // Whether the preferred width fits the surplus or not, we still PUSH and let
-  // `capPx` / the flex center constrain — never park the left donor, never overlay.
+  // A resident non-modal inspector never flashes through the historical floating-card geometry while the content row is still being measured.
   return { mode: 'push', capPx, coverPx };
 }
 
-/**
- * The narrowest content row that seats both the work-surface floor and panel
- * minimum without constraining either (assuming no open context rail). Below
- * this, the rail still pushes; this value is diagnostic geometry, not an
- * overlay breakpoint.
- */
+/** The narrowest content row that seats both the work-surface floor and panel minimum without constraining either (assuming no open context… */
 export const RIGHT_RAIL_PUSH_MIN_FRAME_PX =
   MIN_WORK_SURFACE_PX + RIGHT_RAIL_GUTTER_PX * 2 + DETAIL_STACK_RESIZE.minWidthPx;
 
-/**
- * Pure hysteresis: should the station Displays column auto-park (slim strip)
- * at this frame width?
- *
- * Prefer parking the **left** rail first so Displays can stay open on a small
- * width. Callers therefore pass `leftCostPx` as the left rail's **yielded**
- * cost ({@link CONTEXT_RAIL_PARKED_PX} when a rail exists, else 0) — not the
- * open width. Displays only parks when even a parked left cannot seat its
- * hardMin (280) beside the center floor (720). Close edge is HARD at that
- * threshold. It only REOPENS once the frame clears the threshold by the full
- * deadband (`2 × hysteresisPx`).
- *
- * The named sum {@link STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX} (300 + 720 + 280)
- * is the open-rail-at-min diagnostic; with a parked strip
- * (`leftCostPx = 32`) closeAt drops to `32 + 720 + 280`.
- */
+/** Pure hysteresis: */
 export function resolveStationDisplaysCollapse(input: {
   frameWidthPx: number;
   leftCostPx: number;
@@ -269,15 +143,7 @@ export function resolveStationDisplaysCollapse(input: {
   return input.wasCollapsed ? frame < reopenAt : frame < closeAt;
 }
 
-/**
- * The widest the station **Displays** sash may reach: `frame − leftCost − floor`,
- * floored at the Displays min (280). The store passes the left rail's ACTUAL cost
- * when Displays is idle (the sash stops at the center floor — the left rail is
- * untouched), or the left rail's MIN while Displays is being dragged (Stage 2 —
- * the sash may grow past the center floor and the left rail yields toward its min
- * via its own resize-clamp). Replaces the desk `capPx`'s 360 floor, which was too
- * high for a 280-min station column.
- */
+/** The widest the station **Displays** sash may reach: */
 export function stationDisplaysSashMaxPx(
   frameWidthPx: number,
   leftCostPx: number,
@@ -289,15 +155,7 @@ export function stationDisplaysSashMaxPx(
   return Math.max(displaysMinPx, frame - centerFloorPx - left);
 }
 
-/**
- * The widest the station **context** rail may reach: `frame − displays − floor`,
- * floored at the context min (300). Symmetric to {@link stationDisplaysSashMaxPx}.
- * The store passes Displays' MIN when Displays is idle (the LEFT rail is the
- * default authority — its sash may grow to the ladder max, and Displays yields
- * toward its own min via its resize-clamp), or Displays' ACTUAL width while
- * Displays is being dragged (the rail's cap goes tight so the rail yields to the
- * growing Displays — Stage 2).
- */
+/** The widest the station **context** rail may reach: */
 export function stationContextSashMaxPx(
   frameWidthPx: number,
   displaysWidthPx: number,
@@ -315,15 +173,7 @@ type Listener = () => void;
 
 const listeners = new Set<Listener>();
 
-/**
- * Frame inputs are split across writers:
- *  - RightRailHost → `wantsPush` / `desiredWidthPx` (inspector / assistant slot)
- *  - StationDisplaysPushColumn → `stationPushActive` / `stationPushDesiredWidthPx`
- *
- * `resolveRightRailFrame` sees the OR of both push demands so a station push
- * still publishes into the shared width budget (cap) while the assistant stays
- * `push: false`.
- */
+/** Frame inputs are split across writers: */
 const state: RightRailFrameInput & {
   /** Preferred width still published by hosts (drag freeze / diagnostics); not a ladder input. */
   desiredWidthPx: number;
@@ -331,12 +181,7 @@ const state: RightRailFrameInput & {
   stationPushDesiredWidthPx: number;
   /** Sticky prior collapse state — the hysteresis latch. */
   stationDisplaysCollapsed: boolean;
-  /**
-   * True while the operator is DRAGGING the Displays sash — the one signal that
-   * flips the two sash caps into their Stage-2 (far-rail-yields) configuration.
-   * Idle: the LEFT rail is the default authority (loose). See the cascade
-   * docblock at the top of this file.
-   */
+  /** True while the operator is DRAGGING the Displays sash — the one signal that flips the two sash caps into their Stage-2 (far-rail-yields)… */
   stationDisplaysSashDragging: boolean;
   /** True while the Displays sash is armed to park the context rail (Stage 3). */
   stationDisplaysSashArmed: boolean;
@@ -398,8 +243,6 @@ function recompute() {
 
   // Prefer parking the LEFT rail so an open Displays can stay seated on a small
   // width (operator ask 2026-08-10). Desk inspectors do not take this path —
-  // `station` is false for them. Idempotent: ContextPanelLayout collapse is a
-  // no-op when already parked.
   const preferParkLeft =
     station &&
     state.railCostOpenPx > 0 &&
@@ -422,19 +265,7 @@ function recompute() {
     wasCollapsed: state.stationDisplaysCollapsed,
   });
   state.stationDisplaysCollapsed = collapsed;
-  // Directional sash caps — the cascade. The center absorbs first (Stage 1);
-  // once it hits its floor the FAR rail yields (Stage 2), driven only by whether
-  // the Displays sash is being dragged:
-  //  - Displays DRAGGING → Displays cap opens to the ladder max (peer at its MIN)
-  //    so it can grow past the center floor, and the left rail's cap goes tight
-  //    (`frame − displays − 720`) so the rail's own resize-clamp yields it.
-  //  - Otherwise (idle / context drag) → the LEFT rail is authority: its cap is
-  //    the ladder max (Displays at its MIN) and Displays' cap is tight
-  //    (`frame − leftCost − 720`) so Displays yields on open / viewport narrow /
-  //    a context-sash drag. One-directional (active → passive) — no oscillation.
-  // When we just requested preferParkLeft, size Displays against the parked
-  // strip immediately so it does not paint off-screen for a frame while the
-  // left rail's React collapse catches up.
+  // Directional sash caps — the cascade.
   const displaysDragging = state.stationDisplaysSashDragging;
   const looseLeftMinPx =
     state.railCostOpenPx <= 0
@@ -476,15 +307,7 @@ function recompute() {
   listeners.forEach((l) => l());
 }
 
-/**
- * True when opening station Displays at the current frame would park the left
- * rail. Cold-load gate for cockpit auto-open — opening Displays that parks the
- * rail shifts the surface ~328px after paint (CLS 0.227).
- *
- * Reads the **frame store** (same threshold as `preferParkLeft` in
- * {@link recompute}). Never `window.innerWidth` — that version reported "fits"
- * at 1350px against a 1318px content row and moved CLS not at all.
- */
+/** True when opening station Displays at the current frame would park the left rail. */
 export function stationDisplaysOpenWouldParkRail(): boolean {
   if (!state.stationPushActive) return false;
   if (state.railCostOpenPx <= 0) return false;
@@ -566,24 +389,14 @@ export function setStationPushDemand(next: {
   recompute();
 }
 
-/**
- * `StationDisplaysPushColumn` — is the operator DRAGGING the Displays sash right
- * now? This flips the two sash caps into their Stage-2 configuration (Displays
- * loose so it can grow past the center floor; the left rail tight so it yields).
- * The left rail is the default authority when this is false.
- */
+/** `StationDisplaysPushColumn` — is the operator DRAGGING the Displays sash right now? */
 export function setStationDisplaysSashDragging(dragging: boolean): void {
   if (state.stationDisplaysSashDragging === dragging) return;
   state.stationDisplaysSashDragging = dragging;
   recompute();
 }
 
-/**
- * `StationDisplaysPushColumn` — is the Displays sash ARMED to park the context
- * rail (dragging past its cap into the Stage-3 slack, one shove from closing)?
- * Relayed so the far context rail lights its own seam warning. One writer, so it
- * never stomps the reverse ({@link setStationContextSashArmed}).
- */
+/** `StationDisplaysPushColumn` — is the Displays sash ARMED to park the context rail (dragging past its cap into the Stage-3 slack, one… */
 export function setStationDisplaysSashArmed(armed: boolean): void {
   if (state.stationDisplaysSashArmed === armed) return;
   state.stationDisplaysSashArmed = armed;
@@ -601,12 +414,6 @@ export function setStationContextSashArmed(armed: boolean): void {
 }
 
 // ── Stage-3 "close the far rail" request bus ────────────────────────────────
-//
-// The far rail lives in a different component than the sash that closes it: a
-// Displays-sash overshoot must park the CONTEXT rail (owned by
-// `ContextPanelLayout`), and a context-sash overshoot must close DISPLAYS (owned
-// by `StationDisplaysPushColumn`). Neither can call the other directly, so the
-// active sash requests through this tiny emitter and the far rail's owner acts.
 type StationFarRailRequest = 'collapse-context' | 'close-displays';
 const farRailListeners = new Set<(req: StationFarRailRequest) => void>();
 
@@ -639,10 +446,5 @@ export function getStationPushActive(): boolean {
   return state.stationPushActive;
 }
 
-/**
- * Viewport pad for station Unbox / Arrival / Testing Displays push resize.
- * `0` — the hard stop is {@link STATION_PUSH_CENTER_FLOOR_PX} (720) via
- * `resolveRightRailFrame`, not a viewport pad. Desk inspectors still use
- * {@link MIN_WORK_SURFACE_PX} via `resolveRightRailFrame`.
- */
+/** Viewport pad for station Unbox / Arrival / Testing Displays push resize. */
 export const UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX = 0;

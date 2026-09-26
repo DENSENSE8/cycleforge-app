@@ -24,17 +24,7 @@ function nodeIdFromPath(pathname: string): string {
   return decodeURIComponent(segments[segments.length - 2] ?? '');
 }
 
-/**
- * GET /api/studio/nodes/[id]/station
- *
- * The read-only L2 "station detail" feed (Operations Studio). Returns the
- * ACTIVE station_definition bound to a workflow node instance
- * (station_definitions.workflow_node_id = id), enriched on the server with the
- * block / data-source / action registry metadata so the client renders a
- * dependency-free, render-ready slot → block view. `{ station: null }` when the
- * node has no station bound. Read-only — editing lives behind studio.manage in
- * a later phase (Studio law #6: drafts only, publish atomically).
- */
+/** GET /api/studio/nodes/[id]/station */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(
@@ -145,15 +135,7 @@ export const GET = withAuth(
   { permission: 'studio.view', feature: 'studio' },
 );
 
-/**
- * PUT /api/studio/nodes/[id]/station
- *
- * The node-scoped station WRITE (Operations Studio Phase D / ST5): upsert a
- * DRAFT station_definition bound to this workflow node (workflow_node_id = id),
- * under the reserved ('studio-node', <id>) namespace. Draft-first (Studio law
- * #6) — publishing is the separate POST .../station/publish step; the active
- * row is never mutated here. The node id comes from the PATH, never the body.
- */
+/** PUT /api/studio/nodes/[id]/station */
 export const PUT = withAuth(
   async (request, ctx) => {
     const nodeId = nodeIdFromPath(request.nextUrl.pathname);

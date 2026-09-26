@@ -73,12 +73,7 @@ function toNullable(value: string): string | null {
   return v.length > 0 ? v : null;
 }
 
-/**
- * Manage favorite SKU shortcuts per workspace (repair / sku-stock / fba). These
- * power the quick-pick pickers in each workspace; this tab is the source of truth
- * for editing them. The list shows only active favorites; turning Active off
- * hides one, Delete removes it permanently.
- */
+/** Manage favorite SKU shortcuts per workspace (repair / sku-stock / fba). */
 export function FavoritesManagementTab() {
   const queryClient = useQueryClient();
   const [workspace, setWorkspace] = useState<WorkspaceKey>('repair');

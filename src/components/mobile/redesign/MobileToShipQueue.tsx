@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Phone to-ship queue — canonical `/m/orders`; `/m/work` is a compatibility
- * alias.
- *
- * Industrial two-row bar (view tabs · tools: search icon, platform, sort,
- * Ledger, sync icon), sort including Title A–Z. White floor; raised white cards. Product thumb,
- * qty, and condition use the existing item-record / grade faces. Out of
- * stock writes through useOrderAssignment and disables Ship.
- */
+/** Phone to-ship queue — canonical `/m/orders`; `/m/work` is a compatibility alias. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -61,8 +53,6 @@ import { getCurrentPSTDateKey } from '@/utils/date';
 /**
  * `?display=ledger` — the desk's industrial record ported to the phone
  * (owner 2026-09-24), mounted beside the governed card roster so the floor
- * can test the record, the evidence sheet and the pick → pack walk before
- * it replaces the cards. Cards stay the default.
  */
 type MobileOrdersDisplay = 'cards' | 'ledger';
 
@@ -117,17 +107,7 @@ export function MobileToShipQueue({
     return () => window.clearInterval(timer);
   }, []);
 
-  /**
-   * Assignment tabs belong to PICKS, not to Orders (operator 2026-09-15:
-   * *"orders should just be in orders display while the picks should be the
-   * component that displays all assigned and unassigned"*).
-   *
-   * Orders is the in-warehouse to-ship list — one job, no assignment state to
-   * refine by. Picks is where work is claimed, so All · Assigned · Unassigned
-   * is its question. With the strip gone from Orders, a stale `?tab=` in a
-   * bookmark must not silently filter that list either, so the FEED decides the
-   * effective tab rather than the URL.
-   */
+  /** Assignment tabs belong to PICKS, not to Orders (operator 2026-09-15: */
   const showAssignmentTabs = feed === 'pending';
   const activeTab = showAssignmentTabs ? tab : 'all';
   const platforms = useMemo(
@@ -313,37 +293,20 @@ export function MobileToShipQueue({
   );
 
   /**
-   * Importing orders is a PHONE verb (SURFACE_LAW: every operator verb must be
-   * completable on `/m` first), so Sync lives on this screen.
-   *
+   * Importing orders is a PHONE verb (SURFACE_LAW:
    * Operator 2026-09-24: it is a refresh ICON, the last cell at the right end of
-   * the tool row (row 2 of the industrial bar) — not a labelled button in the
-   * content, not in the host header, not a third strip. Earlier homes that were
-   * rejected (2026-09-15): an icon in the middle of the tab row, the shell's
-   * `MobileActionSlot` seat beside Scan, and its own bordered band.
-   *
-   * OUTBOUND ORDERS ONLY. This component is also `/m/pick` (`feed="pending"`),
-   * a picking queue that imports nothing, so it is gated on the feed as well as
-   * the permission.
    */
   const { has } = useAuth();
   const showImportSync = allowImportSync && feed === 'unshipped' && has('orders.import');
 
   const sortLabel = MOBILE_TO_SHIP_SORTS.find((option) => option.id === sort)?.label ?? 'Ship by';
   /**
+   * Search is an icon cell until pressed (operator 2026-09-24:
    * Search is an icon cell until pressed (operator 2026-09-24: "a search icon,
-   * not a full search header"). Pressed, the field takes over row 2; closing it
-   * clears the query. A query that arrives by URL keeps the icon ink-filled so
-   * a filtered list never looks unfiltered.
    */
   const [searchOpen, setSearchOpen] = useState(false);
   const searchActive = Boolean(searchQuery.trim());
-  /**
-   * Per-view counts inline on the tabs, as the desk's mode segments carry them.
-   * Exceptions reads its own feed, so it has no count here; while the queue is
-   * loading (or disabled with nothing cached) no view gets a count rather than
-   * a false zero.
-   */
+  /** Per-view counts inline on the tabs, as the desk's mode segments carry them. */
   const viewCounts = useMemo(() => {
     const counts = new Map<string, number>();
     if (isPending) return counts;
@@ -357,12 +320,9 @@ export function MobileToShipQueue({
   return (
     <div data-testid="to-ship-queue" className="flex h-full min-h-full flex-col bg-surface-card">
       {/*
-        The desk's industrial bar, on the phone (operator 2026-09-24): two rows,
-        both flush mono segments — full row height, square, a 1px edge between
-        neighbours, active/pressed = ink fill. Row 1 is the view tabs; row 2 is
-        the tools (search icon · platform · sort · display) with Sync as the
-        right-most icon.
-      */}
+ * The desk's industrial bar, on the phone (operator 2026-09-24):
+ * The desk's industrial bar, on the phone (operator 2026-09-24): two rows,
+ */}
       <div className="shrink-0 bg-mode-bar">
         <div
           role="tablist"

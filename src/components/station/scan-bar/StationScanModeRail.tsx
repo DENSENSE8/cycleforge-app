@@ -48,19 +48,7 @@ const TRIGGER_BY_SIZE = {
 /** Auto is a real selected state — faint/neutral, not a loud type hue. */
 const AUTO_ARMED_CLASS = 'text-text-soft';
 
-/**
- * Scan TYPE picker — one full-height flush dropdown at the bar's trailing edge.
- *
- * Was a rail of N abutting icon segments (Auto · Ticket · Tracking · PO). Four
- * unlabelled glyphs cost four cells of a 40px band and were read once; the
- * trigger now shows only the live answer (armed type's glyph in its hue, or the
- * neutral Auto stack) and the menu names every option in words. No caret — the
- * band is 40px and the glyph IS the affordance.
- *
- * Armed = solid `surface-card` (same plane as the work canvas). Picking the
- * armed type again, or picking Auto, releases to Auto. Type is menu-only —
- * digits in the field are always a scan, never an arm shortcut.
- */
+/** Scan TYPE picker — one full-height flush dropdown at the bar's trailing edge. */
 export function StationScanModeRail<T extends string>({
   modes,
   armedMode,

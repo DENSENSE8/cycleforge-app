@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * shadcn/ui Checkbox (Radix), restyled to house tokens.
- *
- * shadcn STRUCTURE (`data-slot`, Radix root + indicator), house COLOUR. The
- * checked fill uses the house primary accent — same tone family as the DS
- * Button's `primary` — because a bare `bg-primary` token does not exist here.
- * No animation: the indicator appears or it does not (AGENTS.md motion law).
- */
+/** shadcn/ui Checkbox (Radix), restyled to house tokens. */
 
 import * as React from 'react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';

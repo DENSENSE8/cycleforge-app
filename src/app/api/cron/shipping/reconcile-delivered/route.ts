@@ -1,28 +1,4 @@
-/**
- * GET /api/cron/shipping/reconcile-delivered
- *
- * Phase F2 reconcile guard. Re-derives carrier delivered-state from the
- * append-only event log and frees error-stuck shipments for another poll —
- * the ongoing version of the F1 backfill. Pure SQL, no carrier API calls.
- *
- * Catches the two drift modes the poll path can leave behind:
- *   - a DELIVERED event logged but is_delivered never set (failed summary write),
- *     which can then get stranded behind consecutive_error_count >= 5;
- *   - rows permanently skipped by getDueShipments after hitting the error cutoff.
- *
- * Auth: `Authorization: Bearer ${CRON_SECRET}` (Vercel injects on cron runs;
- * manual invocations must pass the same header).
- *
- * Cadence (vercel.json): hourly — cheap, and keeps the delivered surface honest
- * between the 15-min carrier sweeps.
- *
- * Tenancy (Phase D category B — global, org-agnostic reconcile): all three
- * sub-jobs are pure set-based SQL keyed by shipment / event-log / claim
- * surrogate ids, not by org, and they derive any stamped org from the parent
- * row (e.g. clock-sweep reads warranty_claims.organization_id) — so they never
- * misroute to one tenant. Runs cross-org on the owner pool. Phase E follow-up:
- * GUC-scope or shard per org once the tables move under the FORCE-enforced role.
- */
+/** GET /api/cron/shipping/reconcile-delivered */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from '@/lib/cron/auth';

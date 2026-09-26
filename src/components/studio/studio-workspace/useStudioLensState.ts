@@ -27,12 +27,7 @@ interface StudioLensStateParams {
   organizationId: string | undefined;
 }
 
-/**
- * Lens render-layers (Studio law #3): the graph is fetched once per definition
- * and only repainted. Live adds one occupancy fetch + an Ably subscription to
- * the engine's item_workflow_state db-events; Flow² / People each fetch once on
- * activation. All paints are best-effort — the graph stands on its own.
- */
+/** Lens render-layers (Studio law #3): */
 export function useStudioLensState({
   active,
   v,

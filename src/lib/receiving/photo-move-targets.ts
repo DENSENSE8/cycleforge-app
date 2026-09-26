@@ -1,13 +1,4 @@
-/**
- * Move-photos carton-target search (server).
- *
- * Unlike GET /api/receiving/po/list (Zoho-PO line groups only), this resolves
- * any org-scoped receiving carton the operator can reassign photos onto —
- * including unmatched / ticket-anchored cartons with no PO lines — by
- * tracking #, PO #, carton QR, support ticket id, or ticket subject.
- *
- * Pure parse/label helpers: {@link ./photo-move-targets-shared}.
- */
+/** Move-photos carton-target search (server). */
 
 import {
   parsePhotoMoveSearch,
@@ -74,12 +65,7 @@ export interface SearchPhotoMoveTargetsDeps {
   query: (orgId: OrgId, sql: string, values: unknown[]) => Promise<TargetRow[]>;
 }
 
-/**
- * Carton photo-count subquery — keep in lock-step with
- * `sqlReceivingPhotoCount` in `@/lib/photos/queries/receiving-list`.
- * Inlined here so this module stays free of that file's `server-only` pool
- * import (unit tests + tree-shaking).
- */
+/** Carton photo-count subquery — keep in lock-step with `sqlReceivingPhotoCount` in `@/lib/photos/queries/receiving-list`. */
 function photoCountSql(receivingIdExpr: string, orgIdExpr: string): string {
   return `(SELECT COUNT(DISTINCT p.id)
      FROM photos p
@@ -302,15 +288,7 @@ async function queryTargets(
   values.push(args.limit);
   const limitIdx = idx;
 
-  /**
-   * Prefer a line with real product identity over an early `'Unfound PO'` stub
-   * (ORDER BY rl.id alone often picked the placeholder). Rank order IS the
-   * title ladder — {@link SKU_IDENTITY_TITLE_ORDER}: the Zoho item name first,
-   * the marketplace catalog title second. Before 2026-09-15 the catalog ranked
-   * 0 here AND won the ladder in `resolvePhotoMoveTargetTitle`, which is how
-   * carton 52827 (PO 10-15153-01528) painted the Ecwid wall mount while the PO
-   * desk painted the Zoho soundbar.
-   */
+  /** Prefer a line with real product identity over an early `'Unfound PO'` stub (ORDER BY rl.id alone often picked the placeholder). */
   const productLineOrder = `
     CASE
       WHEN (
@@ -500,16 +478,7 @@ async function queryTargets(
     .filter((r) => Number.isFinite(r.receiving_id) && r.receiving_id > 0);
 }
 
-/**
- * Search receiving cartons eligible as Move-photos targets.
- *
- * Empty `search` browses Unboxed-rail cartons (same membership + first-open
- * order as `view=unbox_opened`), still excluding `excludeReceivingId` when set.
- *
- * When a non-empty needle + exclude returns zero rows because the needle only
- * matched the excluded carton, returns the recent browse instead and sets
- * `matchedExcludedSelf` so the UI can label it.
- */
+/** Search receiving cartons eligible as Move-photos targets. */
 export async function searchReceivingPhotoMoveTargets(
   args: SearchPhotoMoveTargetsArgs,
   deps: SearchPhotoMoveTargetsDeps = { query: defaultQuery },

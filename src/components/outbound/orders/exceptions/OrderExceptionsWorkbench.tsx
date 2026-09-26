@@ -2,47 +2,7 @@
 
 /**
  * **Order exceptions** — the held-order queue, on the ONE outbound grid.
- *
- * The Exceptions surface is the same full-width industrial ledger as To ship
- * and Pending. It does not mount the slot `DataTable`: `OutboundOrdersLedger`
- * owns the toolbar, row chrome, grouping, paging, fullscreen affordance, and
- * the order record. Exception rows are adapted into the shared `ShippedOrder`
- * shape, so the design-system table has one implementation and one visual law.
- *
- * Category controls are a narrow banner passed into that ledger. They filter
- * the server-backed exception feed; they do not introduce a second table,
- * column model, or row renderer.
- *
- * ## Image gutter
- *
- * Tabs fork row data only — never the thumb track. An exception row may have
- * no photo; the shared Image chrome still mounts. Dropping `thumb` here was the
- * skeleton-cut fork the header-sort law forbids.
- *
- * ## The record is the order record, placed by the desk
- *
- * A row (or `?order=<id>`, or the header's Resolve) opens the held order's
- * record — the same `OrderRecordView` every outbound desk opens, in its
  * `exceptions` sections — through `DeskRecordPlane` (owner 2026-09-25): in
- * place of the ledger by default, list-left / record-right when the staffer
- * turns fullscreen on. Not a `RightRailHost` occupant, not a modal, not a body
- * swap with a second queue rail: in the split view the ledger IS the queue you
- * walk (J / K) while you fix one. The deep link an operator sends a colleague
- * — "this one is wrong, look" — still lands on the same record.
- *
- * ## What the record is for (R-FLOW-7)
- *
- * Pairing the item number to the Zoho inventory SKU
- * ({@link ExceptionResolveSection}, the record's `resolve` section). That write
- * un-cages the order and it leaves this queue, which closes the record and
- * hands the operator the queue back.
- *
- * ## Scope is fixed to `actionable`
- *
- * There is no Actionable | All control. `all` does not narrow this queue, it
- * REDEFINES it — from "what is blocked right now" to a several-thousand-row
- * backlog sweep — so it is a mode, not a filter chip, and the operator ruled
- * the control off the surface.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * POUnboxingSection — the PO **line list** (flat data floor) with optional
- * condition + serial. No glass card shell — elevation belongs on the action dock.
- *
- * Unbox centre mounts this with `editLines` + `serialScan` + `dockOwnsCapture`
- * — dual loci: meta chips → dock step; active line mounts mouse editor.
- * Arrival (`TriagePanel`) mounts `editLines` with `serialScan={false}` +
- * `unitsChrome={false}` (door flow — no serial stamp / Units editors; meta
- * still paints the Unbox five-track face). Testing composes it too.
- *
- * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
- * the right edge ({@link buildUnboxSideTabs}).
- */
+/** POUnboxingSection — the PO **line list** (flat data floor) with optional condition + serial. */
 
 import { LinePoItemsSection } from './LinePoItemsSection';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

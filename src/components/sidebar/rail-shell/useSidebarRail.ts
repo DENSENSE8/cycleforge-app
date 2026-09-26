@@ -22,23 +22,10 @@ const EMPTY_DOMAINS: readonly RefreshDomain[] = [];
 /** Stable empty exclusion set — a fresh `new Set()` each render would defeat memo identity. */
 const EMPTY_EXCLUDED: ReadonlySet<number> = new Set();
 
-/**
- * Debounce/defer window for the reconciling refetch triggered by refresh events.
- * A single mutation often fires a BURST of broad `app-refresh-data` events, and
- * firing the invalidate eagerly races the write's `after()` side-effects
- * (returning a transient empty). Coalesce the burst and let the write settle,
- * then refetch once. Optimistic prepend/update/delete events already gave the
- * instant feedback; this path is only reconciliation, so a small delay is free.
- */
+/** Debounce/defer window for the reconciling refetch triggered by refresh events. */
 const RAIL_REFRESH_DEBOUNCE_MS = 350;
 
-/**
- * Owns the generic sidebar-rail engine: data fetch + local mirror, optimistic
- * update/delete/group-delete event listeners, refresh-event invalidation,
- * top-N + pinned-selection, package grouping + collapse, keyboard nav +
- * roving focus, edit-mode range/shift selection, and navigate-event stepping.
- * Returns a controller bag the thin {@link SidebarRailShell} renders from.
- */
+/** Owns the generic sidebar-rail engine: */
 export function useSidebarRail<TRow>({
   queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, refreshDomains,
   restoreEvent, restoreGroupEvent,
@@ -51,10 +38,7 @@ export function useSidebarRail<TRow>({
   preserveServerOrder = false,
   getId, getGroupId, getActivityAt, getReconcileId, getRowDisabled, onSelect,
 }: SidebarRailShellProps<TRow>) {
-  // Render identity: the durable key the React list reconciles by. Prefer the
-  // caller's reconcile id (e.g. a client-minted `client_event_id` that survives
-  // an optimistic stub → resolved-row swap) so the row UPDATES in place instead
-  // of unmount+remount; fall back to the numeric `id`.
+  // Render identity:
   const reconcileKey = useCallback(
     (r: TRow): string | number => (getReconcileId ? getReconcileId(r) : getId(r)),
     [getReconcileId, getId],
@@ -64,10 +48,7 @@ export function useSidebarRail<TRow>({
   // when no provider). While active, row clicks toggle checkboxes instead of
   // opening the workspace.
   const editMode = useRailEditMode();
-  // Shift-select anchor: the id of the last row whose checkbox was toggled by a
-  // plain click. A shift-click then applies the clicked row's NEW state to the
-  // whole visible range between anchor and click (Gmail-style). Anchored by id,
-  // not index, so live feed reordering can't silently shift the range.
+  // Shift-select anchor:
   const editAnchorIdRef = useRef<number | null>(null);
   useEffect(() => { editAnchorIdRef.current = null; }, [editMode.active]);
 
@@ -88,17 +69,10 @@ export function useSidebarRail<TRow>({
   }, [preserveServerOrder, getActivityAt, getId]);
 
   const [localRows, setLocalRows] = useState<TRow[] | null>(null);
-  // Mirror query data. For the SAME queryKey, keep the prior rows while a refetch
-  // is in flight (prevents unfound flicker during invalidate/refetch). But when
-  // the queryKey itself changes, clear immediately so rows from the previous feed
-  // can't render under the new feed's label.
+  // Mirror query data.
   const queryKeySig = useMemo(() => JSON.stringify(queryKey), [queryKey]);
   const prevKeySigRef = useRef<string>(queryKeySig);
-  // Once this feed has rendered real rows, never swap back to the full skeleton
-  // on background refetch — that remount kills stagger + hover popovers and
-  // reads as a loading↔loaded flash. Also never blank an established list on an
-  // empty refetch (tracking / shipment.changed invalidates race to [] often);
-  // genuine removals arrive via delete / group-delete events only.
+  // Once this feed has rendered real rows, never swap back to the full skeleton on background refetch — that remount kills stagger + hover…
   const hadRowsForKeyRef = useRef(false);
   useEffect(() => {
     const keyChanged = prevKeySigRef.current !== queryKeySig;
@@ -129,13 +103,7 @@ export function useSidebarRail<TRow>({
     persistSnapshot,
   ]);
 
-  // First-mount cold-reload seed. Fetches the viewer's last-known rows (a fast
-  // server read) and paints them while the heavy authoritative query resolves —
-  // so a reload fills in quickly instead of waiting the full round-trip. Async
-  // (unlike the old localStorage seed). Snapshot-enabled rails keep their
-  // settled chrome visible while the seed races the authoritative fetch, then
-  // reconcile in place. One-shot: once live data or a key change arrives, the
-  // mirror effect above owns `localRows`.
+  // First-mount cold-reload seed.
   const seededRef = useRef(false);
   useEffect(() => {
     if (seededRef.current || !loadSnapshot) return;
@@ -182,17 +150,7 @@ export function useSidebarRail<TRow>({
     return () => window.removeEventListener(updateEvent, handlePatch);
   }, [updateEvent, getId, getActivityAt, sortRowsByActivity]);
 
-  // Ids removed via `deleteEvent`/`deleteGroupEvent`. These MUST outlive the
-  // refetch: `app-refresh-data` invalidates the query right after a delete, but
-  // that refetch can race the server (eventually-consistent read / GET cache not
-  // yet evicted for this view) and hand back the just-deleted rows. The
-  // data-mirror effect would then write them straight back into `localRows`. So
-  // we keep a sticky suppression set and filter against it in `allRows`/the pin
-  // below — display stays correct no matter what the refetch returns. Receiving
-  // ids/receiving_ids are monotonic DB serials (never reused), so suppressing
-  // for the lifetime of the mounted rail is safe; the set resets on remount.
-  // Events only fire on a CONFIRMED server delete, so a suppressed id is never a
-  // false positive.
+  // Ids removed via `deleteEvent`/`deleteGroupEvent`.
   const [deletedIds, setDeletedIds] = useState<ReadonlySet<number>>(() => new Set());
   const [deletedGroupIds, setDeletedGroupIds] = useState<ReadonlySet<number>>(() => new Set());
 
@@ -209,10 +167,7 @@ export function useSidebarRail<TRow>({
     return () => window.removeEventListener(deleteEvent, handleDelete);
   }, [deleteEvent, getId]);
 
-  // Whole-carton delete: drop every row sharing the removed group id at once.
-  // Carries the group id (e.g. receiving_id) as a bare-number detail, so a
-  // carton removed from the detail panel clears all its lines from the rail
-  // immediately instead of waiting for the refetch.
+  // Whole-carton delete:
   useEffect(() => {
     if (!deleteGroupEvent || !getGroupId) return;
     const handleGroupDelete = (event: Event) => {
@@ -225,11 +180,7 @@ export function useSidebarRail<TRow>({
     return () => window.removeEventListener(deleteGroupEvent, handleGroupDelete);
   }, [deleteGroupEvent, getGroupId]);
 
-  // Undo. The suppression above is deliberately sticky, which is right for a
-  // real delete and wrong for a reversible one (a per-staff dismiss): with the
-  // id still suppressed, the refetch that follows an Undo would fetch the row
-  // and then filter it straight back out. These clear the sticky set so the
-  // row is allowed to return; the refetch itself is the caller's job.
+  // Undo. The suppression above is deliberately sticky, which is right for a real delete and wrong for a reversible one (a per-staff dismiss):
   useEffect(() => {
     if (!restoreEvent) return;
     const handleRestore = (event: Event) => {
@@ -314,10 +265,6 @@ export function useSidebarRail<TRow>({
     let timer: ReturnType<typeof setTimeout> | null = null;
     const handler = () => {
       // Debounce + defer the reconciling refetch (see RAIL_REFRESH_DEBOUNCE_MS):
-      // coalesce a mutation's burst of refresh events and let its write settle,
-      // so the refetch reads committed state instead of racing to a transient
-      // empty. The optimistic delete/group-delete handlers still fire eagerly, so
-      // real removals are instant; only the full reconciliation is deferred.
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => {
         timer = null;
@@ -345,22 +292,7 @@ export function useSidebarRail<TRow>({
     },
     [deletedIds, deletedGroupIds, getId, getGroupId],
   );
-  // Drop deleted rows AND this viewer's dismissed rows (excludedIds), then any
-  // facet keep-filter (`includeRow`). Both are filtered HERE, not in the
-  // queryKey/fetch, so loading/changing them re-filters in place instead of
-  // forcing a queryKey change that would blank the whole list to a skeleton.
-  // Rows to render BEFORE the mirror effect has ever run — i.e. the server pass
-  // and the first client render. `localRows` is written from a `useEffect`,
-  // which does not run during SSR, so a rail whose data is already in the cache
-  // (an RSC seed) still server-rendered "No packages yet" and only filled in
-  // after hydration. On the Unbox bench that was the whole LCP: the largest
-  // element on the page is a rail row's product title.
-  //
-  // This is a fallback, not a second source. The moment the effect commits,
-  // `localRows` is non-null and owns the list forever after — so every rule the
-  // effect encodes (never-self-blank on an empty refetch, clear-on-key-change,
-  // snapshot persistence) is untouched. Those rules are all about the SECOND
-  // and later updates; there is nothing yet to preserve on the first.
+  // Drop deleted rows AND this viewer's dismissed rows (excludedIds), then any facet keep-filter (`includeRow`).
   const mirroredRows = localRows ?? (Array.isArray(data) ? sortRowsByActivity(data) : null);
   const baseRows = (Array.isArray(mirroredRows) ? mirroredRows : []).filter(
     (r) =>
@@ -368,15 +300,7 @@ export function useSidebarRail<TRow>({
       && !excludedIds.has(getId(r))
       && (includeRow ? includeRow(r) : true),
   );
-  // An optimistic leading row (e.g. the triage "importing" stub) renders at the
-  // very top through the SAME row component. It is KEPT (not dropped) once the
-  // feed catches up, and its single feed twin is dropped instead — matched by
-  // exact `id` OR `reconcileKey`. This is what lets the stub reconcile to its
-  // resolved row IN PLACE: the lead keeps a stable `reconcileKey` (its
-  // client-minted id) across the swap, so React updates it rather than
-  // remounting, and the authoritative feed row it merged into is suppressed
-  // until the lead clears. Matching the EXACT twin (not the whole receiving_id
-  // group) keeps sibling lines of a multi-line carton visible.
+  // An optimistic leading row (e.g.
   const allRows = (() => {
     if (leadingRow == null) return baseRows;
     const leadId = getId(leadingRow);
@@ -446,10 +370,7 @@ export function useSidebarRail<TRow>({
   const [focusIndex, setFocusIndex] = useState<number>(-1);
   useEffect(() => { if (focusIndex >= rows.length) setFocusIndex(rows.length - 1); }, [rows.length, focusIndex]);
 
-  // Row indices that actually render a button — collapsed package members render
-  // nothing, so DOM button positions no longer map 1:1 to row indices. Keyboard
-  // nav walks this list (skipping hidden rows) and focus targets a row by its
-  // logical index via data-rail-index, not DOM position.
+  // Row indices that actually render a button — collapsed package members render nothing, so DOM button positions no longer map 1:1 to row…
   const visibleIndices = useMemo(() => {
     const out: number[] = [];
     for (let i = 0; i < rows.length; i++) {
@@ -461,12 +382,6 @@ export function useSidebarRail<TRow>({
   }, [rows.length, grouped, collapsedGroups]);
 
   // Header chevrons (or any external prev/next source) dispatch `navigateEvent`.
-  // Walks the SAME visible order keyboard nav uses (skips collapsed group
-  // members) so a chevron press never lands selection on a hidden row. With
-  // nothing selected yet, prev/next both open the first rendered row.
-  // When the selected line is a sibling not listed in a carton-deduped rail
-  // (unbox Unboxed keeps one row per receiving_id), fall back to matching the
-  // selected row's group id so PO-level chevrons still step.
   useEffect(() => {
     if (!navigateEvent) return;
     const handler = (event: Event) => {
@@ -545,11 +460,7 @@ export function useSidebarRail<TRow>({
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLUListElement>) => {
     if (visibleIndices.length === 0) return;
-    // Arrow/Home/End move focus only (roving tabindex); selection happens on
-    // Enter/Space or click. Previously every arrow keypress dispatched onSelect,
-    // opening the line in the workspace on each step. In edit mode, Shift+Arrow
-    // additionally extends the checked range as focus moves (standard
-    // multi-select keyboarding).
+    // Arrow/Home/End move focus only (roving tabindex); selection happens on Enter/Space or click.
     const moveTo = (rowIdx: number, extend = false) => {
       if (extend && editMode.active && rowIdx >= 0 && rowIdx < rows.length) {
         const ids = [rowIdx, focusIndex]

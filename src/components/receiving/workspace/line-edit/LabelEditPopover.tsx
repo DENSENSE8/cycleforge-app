@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Custom-print editor for the receiving (PO/carton) label. Opened from the
- * pencil in the label preview card's header. Lets an operator hand-edit the
- * printed *face* of the label — platform + type, center notes, condition, the
- * bottom-right corner (order# / ticket# / tracking#), and the date — then
- * "Save & print".
- *
- * Built for UNFOUND cartons, where the record is missing the info that would
- * normally fill the label, but it's available on every PO-label line so any
- * carton can get a one-off custom print.
- *
- * WYSIWYG: the popover renders the SAME {@link ReceivingPoLabelPreview} the
- * card shows, fed by the live draft via `buildPayload`, so what you see is
- * exactly what prints. The scannable DataMatrix encodes the carton's
- * receiving id (not the face), so editing the text never breaks scanning.
- *
- * Chrome is {@link RightPaneOverlay} (align="center"), matching ReceivingClaimModal
- * — the card sits over the right pane, not the whole viewport.
- *
- * Persistence is "where it can": notes / condition / reference / type write
- * back to the carton record through the controller's handlers; the label-only
- * platform-display, date, and corner choice are kept as a print-time override.
- * All of that lives in the controller — this component only owns draft UI state
- * and hands the final draft back via `onApplyAndPrint`.
- */
+/** Custom-print editor for the receiving (PO/carton) label. */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';

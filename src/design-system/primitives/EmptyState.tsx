@@ -3,18 +3,7 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 
-/**
- * The house "there is nothing here" face.
- *
- * `tone` exists so a caller stops hand-painting one. `/search` carried
- * `[&_h3]:text-rose-800 [&_p]:text-rose-700` class overrides on two of its four
- * mounts — a descendant-selector reach into this component's internals, which
- * breaks silently the moment the heading stops being an `h3`.
- *
- * `danger` is for a state the operator has to ACT on (a permission they lack, a
- * failed call). An ordinary absence — no photos, no results for a filter — is
- * `neutral`, and painting it red teaches an error where there is none.
- */
+/** The house "there is nothing here" face. */
 export type EmptyStateTone = 'neutral' | 'danger';
 
 interface EmptyStateProps {

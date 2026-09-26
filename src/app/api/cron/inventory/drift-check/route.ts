@@ -9,13 +9,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-/**
- * GET /api/cron/inventory/drift-check  (Vercel cron, daily 11:00)
- *
- * Surfaces SKUs where sku_stock disagrees with SUM(sku_stock_ledger.delta) —
- * the canary that a writer bypassed the ledger. Opens DRIFT stock_alerts
- * (idempotent via idx_stock_alerts_open) and resolves cleared ones.
- */
+/** GET /api/cron/inventory/drift-check (Vercel cron, daily 11:00) */
 export async function GET(request: NextRequest) {
   if (!isAuthorizedCronRequest(request.headers)) return unauthorizedCronResponse();
   try {

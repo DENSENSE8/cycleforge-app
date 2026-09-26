@@ -1,24 +1,4 @@
-/**
- * View-monitor evaluation core — the pure, edge-triggered hysteresis state
- * machine for watch-a-view alerts.
- * ─────────────────────────────────────────────────────────────────────────────
- * Deps-free by design: it takes a monitor's definition, its persisted runtime
- * state, the value the resolver just computed, and `now`, and returns whether to
- * FIRE (breach / recovery) and the next state to persist. No DB, no clock, no
- * I/O — so the whole alerting contract (fire once, stay silent while breached,
- * recover on clear, throttle repeats by cooldown) is unit-tested with zero
- * network and is stable under `TZ=UTC` (all time math is epoch-ms).
- *
- * Plan: docs/todo/view-threshold-alerts-and-digests-IMPLEMENTATION-PLAN.md
- * (Phase 0). Locked decision "Hysteresis mandatory": the #1 alerting failure
- * mode is fatigue, so a crossing fires exactly ONCE; it does not re-fire until
- * the value clears the recovery band (→ recovery) or, if a cooldown is set, the
- * cooldown elapses (→ a throttled repeat).
- *
- * `scheduled_digest` is NOT a threshold monitor — it is compiled on a cadence
- * (Phase 4) and must never be routed here; passing it is a programming error and
- * throws.
- */
+/** View-monitor evaluation core — the pure, edge-triggered hysteresis state machine for watch-a-view alerts. */
 
 /** The four monitor kinds. Kept in lockstep with view_monitors_threshold_type_chk. */
 export type ThresholdType =
@@ -60,20 +40,7 @@ export interface ViewMonitorRuntime {
   readonly lastFiredAt: Date | null;
 }
 
-/**
- * The evaluator's verdict. The caller (the cron) persists:
- *   monitor_state     = nextState
- *   breached_at       = breachedAt
- *   last_value        = <the currentValue it passed in>
- *   last_evaluated_at = <now>
- *   last_fired_at     = <now> ONLY when `fire` is set
- * and, when `fire` is set, emits the matching event.
- *
- * Not exported: it is the inferred return type of `evaluateViewMonitor`, so a
- * caller gets the shape for free. Phase 2 (the cron) can name it via
- * `ReturnType<typeof evaluateViewMonitor>` or this can be exported when a real
- * consumer needs the name.
- */
+/** The evaluator's verdict. */
 interface EvaluateResult {
   /** Emit a breach or recovery this cycle; absent = stay quiet. */
   readonly fire?: 'breach' | 'recovery';
@@ -146,9 +113,6 @@ export function evaluateViewMonitor(
   }
 
   // Still breached (over the line, or sitting in the hysteresis dead-band).
-  // A throttled REPEAT fires only when the value is genuinely still over the
-  // line AND the cooldown has elapsed since the last fire; the breach episode
-  // (breachedAt) continues unchanged so it reads as one episode, not a new one.
   if (over && cooldownElapsed(def, state.lastFiredAt, now)) {
     return { fire: 'breach', nextState: 'breached', breachedAt: state.breachedAt };
   }

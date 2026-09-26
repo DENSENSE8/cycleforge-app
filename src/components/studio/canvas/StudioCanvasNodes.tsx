@@ -431,12 +431,7 @@ export function DepartmentNode({ data }: NodeProps) {
   );
 }
 
-// ─── Annotation (sticky-note) node (Phase E3) ────────────────
-// A pure canvas decoration: no handles (it never wires into routing), an amber
-// sticky tone, draggable in edit mode (React Flow position changes flow up via
-// the canvas), inline-editable text + a delete affordance in edit mode, and
-// read-only on the active version. Tones use already-generated amber shades to
-// match the canvas's soft-decoration convention.
+// ─── Annotation (sticky-note) node (Phase E3) ──────────────── A pure canvas decoration:
 export function AnnotationNode({ data }: NodeProps) {
   const { annotation, editable, onUpdateText, onDelete } = data as AnnotationNodeData;
   return (

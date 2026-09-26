@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * GlobalHeader activity inbox — ephemeral + dismissible feed.
- *
- * Rows compose {@link CompactActivityRow} + {@link RailRowBody} (SoT compact
- * activity face): status mark · title · one fact · short age. Never a large
- * kind glyph, prose `4 hrs ago`, or tone-pill parade. Tech-queue ready/return
- * identity keys compose {@link joinStackedIdentityKeys} + house CopyChips
- * (same last-8 grammar as {@link StackedRowIdentity} keys — never mono prose).
- */
+/** GlobalHeader activity inbox — ephemeral + dismissible feed. */
 
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
@@ -181,13 +173,7 @@ function metaFactFor(
   return it.subtitle?.trim() || KIND_LABEL[it.kind];
 }
 
-/**
- * The durable notification ledger (`staff_inbox_items` via `GET /api/inbox`).
- *
- * Deliberately NOT an {@link ActivityInboxItem} kind: those are session-scoped
- * (undo TTL, `clear()` wipes them), while these rows outlive the tab and are
- * triaged on the server. Same compact activity face, separate source.
- */
+/** The durable notification ledger (`staff_inbox_items` via `GET /api/inbox`). */
 const DURABLE_INBOX_QUERY_KEY = ['api-inbox'] as const;
 
 /**
@@ -241,19 +227,7 @@ function DurableInboxRow({
           activityAt={Number.isFinite(occurredMs) ? occurredMs : Date.now()}
           actions={
             <>
-              {/*
-                The bell's own docblock says it is "mounted on the HOME INBOX
-                ROW only" — and until this row existed there WAS no home inbox
-                row, so the control sat written and unreachable. `knownState`
-                comes off the DTO the feed already resolved, so following or
-                muting a carton from here costs no extra request.
-
-                GATED on the notifiable vocabulary, because `entity_type` on an
-                inbox row is free text as far as this face knows:
-                `toggleEntitySubscription` answers `invalid_entity` for anything
-                outside that set, so an ungated bell would be a control that
-                errors on click.
-              */}
+              {/* The bell's own docblock says it is "mounted on the HOME INBOX ROW only" — and until this row existed there WAS no home inbox row, so the… */}
               {isNotifiableEntityType(item.entityType) ? (
                 <span className="pointer-events-auto">
                   <SubscribeToggle
@@ -374,11 +348,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
       {/* "Where my work is", above "what just happened". The strip answers a
           different question from the feed below it and has its own source, so
           it renders in both the empty and the populated branch. */}
-      {/* "Your next work order" left this popover 2026-08-08 for the header's
-          pace-and-next button (`HeaderGoalChip`), where it shares one control
-          with the goal ring. It is still not a header occupant of its own — the
-          slot count is unchanged — but "what is next" now sits with "how is
-          today going" instead of two clicks into the notification channel. */}
+      {/* "Your next work order" left this popover 2026-08-08 for the header's pace-and-next button (`HeaderGoalChip`), where it shares one… */}
       <InboxQueueLinks onNavigate={onClose} />
 
       {items.length === 0 && durableItems.length === 0 ? (
@@ -399,12 +369,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
             const href = hrefFor(it);
             const navigable = href != null;
             const primary = primaryFor(it);
-            // `it.sourcePlatform` (tech-queue items only — see
-            // ActivityInboxItem's doc) resolves through the same catalog the
-            // carton-context peek uses (RailPeekIdentityFacts), so this
-            // OrderIdChip paints the identical platform icon/color/tooltip
-            // instead of the flat unstyled fallback it fell back to when this
-            // always resolved `''` (2026-08-24) — that was the fork.
+            // `it.sourcePlatform` (tech-queue items only — see ActivityInboxItem's doc) resolves through the same catalog the carton-context peek uses…
             const platformMeta = resolvePlatformMeta(it.sourcePlatform ?? '');
             const platformLabel =
               platformMeta && platformMeta.label !== UNKNOWN_PLATFORM.label
@@ -501,14 +466,7 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                           <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
                             {metaFactFor(it, platformLabel, platformIconTone)}
                             {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
-                              // `text-role-eyebrow` bundles its own ~13.2px line-height
-                              // (taller than this line's `text-role-micro` ~12px), so
-                              // without `leading-none` a repair row carrying this badge
-                              // rendered ~1px taller than one without it — the same
-                              // "conditional inline content taller than its host line"
-                              // shape as the RecentActivityRailBase ticket flag
-                              // (2026-08-24). `leading-none` collapses it to the font's
-                              // own glyph height so every row stays the same height.
+                              // `text-role-eyebrow` bundles its own ~13.2px line-height (taller than this line's `text-role-micro` ~12px), so without `leading-none` a…
                               <span
                                 className={cn(
                                   'ml-1.5 text-role-eyebrow font-semibold uppercase tracking-widest leading-none',

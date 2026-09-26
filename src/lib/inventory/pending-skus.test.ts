@@ -1,11 +1,4 @@
-/**
- * Guards for the pending_skus "create in Zoho" queue (relational-reuse plan P3 §7).
- *
- * 1. queuePendingSku upserts via fn_normalize_sku, bumps occurrences on conflict,
- *    and no-ops on an empty SKU — verified against an injected executor.
- * 2. The migration installs the padding normalizer, the dedup key, the status
- *    CHECK, and the auto-resolve trigger on sku_catalog.
- */
+/** Guards for the pending_skus "create in Zoho" queue (relational-reuse plan P3 §7). */
 
 import { test } from 'node:test';
 import { equal, ok } from 'node:assert';

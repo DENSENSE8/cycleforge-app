@@ -29,13 +29,7 @@ function getSourceDotBg(row: PackerLogRow): string {
   return 'bg-fill-success';
 }
 
-/**
- * Mobile packing row — the same display as {@link MobileReceivingRow}: shared
- * RowTitle + RowMetaColumns + ReceivingIdentityChips primitives, a compact
- * photo chip on collapsed rows, and a big "Take Photos" CTA on the bottom-pinned
- * expanded card. Packing carries no SKU/serial chip — order # + tracking only.
- * Plan §2e: slip/box presence + latest verification outcome hydrate from the feed.
- */
+/** Mobile packing row — the same display as {@link MobileReceivingRow}: */
 export function MobilePackingRow({ row, variant, fresh = false, onTap, photosHref }: MobilePackingRowProps) {
   const router = useRouter();
   const productTitle = row.product_title || row.item_number || row.sku || 'Unnamed pack line';

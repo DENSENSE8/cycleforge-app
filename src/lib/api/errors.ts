@@ -37,12 +37,7 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Converts any caught error into a standardized NextResponse.
- * - ApiError → { error, details?, statusCode }
- * - ZodError → { error: 'Validation failed', details: formatted issues, statusCode: 400 }
- * - Unknown → { error: 'Internal server error', statusCode: 500 }
- */
+/** Converts any caught error into a standardized NextResponse. */
 export function errorResponse(err: unknown, context?: string): NextResponse {
   if (err instanceof ApiError) {
     const body: Record<string, unknown> = { error: err.message };

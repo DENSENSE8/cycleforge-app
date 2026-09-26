@@ -1,49 +1,6 @@
 'use client';
 
-/**
- * SectionTabsSlider — labeled section displays for Station Workbench (and
- * siblings). Owns the CONTENT too: the caller passes tabs with their
- * `content`, and the slider renders the bar plus the active panel under ONE
- * container — panels stay mounted (`hidden`) so per-panel state survives
- * switching.
- *
- * - `density="inline"` renders ONE flush {@link SearchableSelectField} combobox
- *   — the house switcher face, shared with the ticket claim panel's
- *   Create|Link and every Displays child mode. It replaced a `TabDisplay`
- *   `appearance="underline"` strip on 2026-08-19: a strip is priced in
- *   horizontal room this component never has once a caller passes six displays
- *   and a `rightSlot`, which is what the ⋯ bucket was papering over.
- * - Tabs marked `priority: 'overflow'` are no longer a ⋯ menu at inline
- *   density — they are simply the last entries in the same list, so a
- *   deprioritized display costs one keystroke, not two clicks. The ⋯ trigger
- *   survives only on the fixed-width icon plate below.
- * - With a single tab there is no bar — it renders exactly like the plain
- *   display, and the switcher only appears once a second display exists.
- *
- * ## `density="icon"` — SpaceX Displays topic plate
- *
- * Edge-to-edge **PRIMARY_CHROME_ROW_FACE** instrument plate at the top of a Displays push column —
- * a four-edge **`border-border-default`** frame (readable chrome 1px rule — not
- * near-invisible `border-hairline`, which is for internal row dividers only).
- * Primary cells **share the rail equally** (`flex-1`, icon centered) with a
- * {@link HoverTooltip} when idle; the ACTIVE cell keeps icon + caption label
- * with a bottom underline — layout FLIP + label width/opacity via
- * `motionRole.push.rail` (geometry tween, never a spring). Vertical dividers
- * stay Cybertruck-segment. Trailing **⋮** (`MoreVertical`) + optional
- * `rightSlot` (procedure ring) are a right-edge peer cluster on the same row.
- * Nested verb strips sit `gap-0` flush under this plate — no vertical air
- * between tab rows. No soft sunken pills / corner radius.
- *
- * `compact` only tightens the *selected* cell's horizontal padding — never
- * shortens the plate face (a short strip above nested verb rows / claim mode —
- * inverted hierarchy).
- *
- * **Icon-only idle cells are the sanctioned nav-chrome exception**, not a
- * break of `ui-design-system.md` → *Icons: structural and paired*: this is a
- * mode switcher (same job as GlobalHeader Mode / Recents / Pins), each cell
- * carries its label as the tooltip AND the accessible name, and the selected
- * display renders its label as visible text. No display is ever unnamed.
- */
+/** SectionTabsSlider — labeled section displays for Station Workbench (and siblings). */
 
 import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal, MoreVertical } from '@/components/Icons';
@@ -65,12 +22,7 @@ import { SearchableSelectField } from './SearchableSelectField';
 
 const FLUSH = cornerClass('flush');
 
-/**
- * SpaceX topic-plate cell face (`density="icon"`). Always
- * {@link PRIMARY_CHROME_ROW_FACE} — the Displays mode plate must outrank nested
- * verb underlines below. Primary cells share the rail equally (`flex-1`); icons
- * stay centered in each share.
- */
+/** SpaceX topic-plate cell face (`density="icon"`). */
 const ICON_CELL_CLASS = cn(
   'relative flex min-w-0 flex-1 items-center justify-center transition-colors',
   PRIMARY_CHROME_ROW_FACE,
@@ -84,12 +36,7 @@ const SECTION_TAB_ICON_OVERFLOW_CELL_CLASS = cn(
 );
 const SECTION_TAB_ICON_CELL_IDLE_CLASS =
   'border-b-2 border-b-transparent text-text-soft hover:bg-surface-hover hover:text-text-default';
-/**
- * Selected topic cell: parent underline. Staff accent stays an icon TINT.
- * Idle cells keep a transparent 2px bottom border so selection does not shift.
- * Bottom-only color (`border-b-*`) — never `border-transparent` / `border-text-*`
- * on all sides (those fight `divide-x` cell seams).
- */
+/** Selected topic cell: */
 const SECTION_TAB_ICON_CELL_ACTIVE_CLASS =
   'border-b-2 border-b-text-default font-semibold text-text-default';
 
@@ -166,10 +113,8 @@ export function SectionTabsSlider({
   /** Context control pinned to the right of the bar row (e.g. an Edit-PO pencil). */
   rightSlot?: ReactNode;
   /**
+   * @deprecated No-op since 2026-08-19.
    * @deprecated No-op since 2026-08-19. The eyebrow existed because a ⋯ bucket
-   * could hide the active display's name; inline density is now a combobox
-   * whose trigger IS the active label, and the icon plate labels its own
-   * selected cell. Kept so call sites do not break; remove once none pass it.
    */
   showActiveLabel?: boolean;
   /**
@@ -183,12 +128,7 @@ export function SectionTabsSlider({
    * a short strip above nested verb rows / claim mode — inverted hierarchy.
    */
   compact?: boolean;
-  /**
-   * Fill the host column: strip stays `shrink-0`, the active tab panel owns
-   * remaining height (`min-h-0 flex-1`). Opt-in for push columns whose body
-   * pins a footer (Unbox Displays → Ticket → Claim). Default stays content-
-   * sized so Workbench / Support callers do not change.
-   */
+  /** Fill the host column: */
   fillHeight?: boolean;
 }) {
   const menuListId = useId();
@@ -284,11 +224,7 @@ export function SectionTabsSlider({
           role="menu"
           id={menuListId}
           aria-label="More displays"
-          // Industrial flush plate — square (`rounded-none`) with a four-edge
-          // `border-border-default` frame + `divide-y` rows matching the SpaceX
-          // topic plate, not a floating `rounded-xl` card. Overrides the Popover
-          // primitive default via `cn(base, className)` (twMerge). Full-bleed
-          // rows: no menu `py-*`; each row owns its `px-3 py-2.5`.
+          // Industrial flush plate — square (`rounded-none`) with a four-edge `border-border-default` frame + `divide-y` rows matching the SpaceX…
           className="min-w-[12rem] rounded-none border border-border-default divide-y divide-border-default"
         >
           {overflow.map((tab) => {

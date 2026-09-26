@@ -35,15 +35,7 @@ interface Props {
   onTrackEachUnit: () => void;
 }
 
-/**
- * Qty roll-up surface for high-qty identical lines (AliExpress-style bulk).
- * One composition: grade + count (+ optional 2-way condition split). Zero
- * per-unit DOM rows — stamps via the parent's mark helpers.
- *
- * Stamp row anatomy: qty display left · all actions justify-end.
- * Progressive Unbox = flush full-width h-11 band under the capture face
- * (host `p-0` / `gap-0` — never decorative `px-*` / `pb-*` around the stamp).
- */
+/** Qty roll-up surface for high-qty identical lines (AliExpress-style bulk). */
 export function BulkQuantityPanel({
   quantityExpected,
   lineCondition,

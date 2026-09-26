@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Rail selection band + action region — regions 1 and 4 of the rail anatomy
- * (`docs/todo/order-rail-selection-plane-PLAN.md` §2).
- *
- * Shared by the orders selection plane and the receiving-line selection plane.
- * Reads from `rail-actions-store` so inspector hosts (mounted off the root
- * layout) and batch shells can both render the live action set without a prop
- * path between trees.
- *
- * Lifted out of `dashboard/rail/OrderRailActions` so receiving does not import
- * dashboard UI.
- */
+/** Rail selection band + action region — regions 1 and 4 of the rail anatomy (`docs/todo/order-rail-selection-plane-PLAN.md` §2). */
 
 import { useSyncExternalStore } from 'react';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
@@ -37,32 +26,14 @@ export function useRailActionSnapshot() {
   return useSyncExternalStore(subscribeRailActions, getRailActions, getServerRailActions);
 }
 
-/**
- * How many verbs the CURRENT selection can actually run.
- *
- * For the table's status bar, which advertises the count from the first checked
- * row. The rail that hosts these verbs only registers at 3+ rows, so an
- * operator who checked one saw a corner offering Copy and had no way to learn
- * that seven more existed — bulk label printing was discoverable only by
- * guessing to select three things.
- *
- * Counts what would really fire (`resolveSelectionAction`), so a lane where
- * half the verbs are out of scope advertises the half that work.
- */
+/** How many verbs the CURRENT selection can actually run. */
 export function useRailActionCount(): number {
   const { scope, rows, actions } = useRailActionSnapshot();
   if (!scope || rows.length === 0) return 0;
   return actions.filter((action) => !resolveSelectionAction(action, rows).disabled).length;
 }
 
-/**
- * The live actions as **header icon** actions for `PaneHeaderActionBar` /
- * Desk chrome trailing slots.
- *
- * `delete` is dropped here deliberately: destructive removal of the record in
- * hand belongs to the record's own control, not to the multi-select action set
- * that happens to have one row in it.
- */
+/** The live actions as **header icon** actions for `PaneHeaderActionBar` / Desk chrome trailing slots. */
 export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
   const { scope, rows, actions } = useRailActionSnapshot();
   if (!scope || rows.length === 0) return [];
@@ -81,13 +52,7 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
     }));
 }
 
-/**
- * Live selection CTAs for {@link TableStatusBar}'s left cluster.
- *
- * Assign / Copy / … from the first checked row. Export is omitted — the table
- * toolbar already owns CSV. Delete is kept (danger). Labels / fills / hotkeys
- * come from {@link SELECTION_STATUS_BAR_META} — add a row there for a new verb.
- */
+/** Live selection CTAs for {@link TableStatusBar}'s left cluster. */
 export function useRailStatusBarActions(): TableStatusSelectionAction[] {
   const { scope, rows, actions } = useRailActionSnapshot();
   if (!scope || rows.length === 0) return [];
@@ -115,18 +80,7 @@ export function useRailStatusBarActions(): TableStatusSelectionAction[] {
     });
 }
 
-/**
- * Region 1 — the selection band. Carries the affordances the capsule owned and
- * the rail would otherwise lose: the count, select-all, and clear.
- *
- * **It mounts no close.** It used to carry a `→|` at its top-left, and that was
- * the ONLY dismiss that did the right thing: the host's own control ran the
- * lifecycle half only, so it hid the rail and left every row checked with
- * nothing on screen saying so. `closeRightPanel` now runs the occupant's
- * `onClose` too — for these shells that is `emitToggleAll(scope, 'none')` — so
- * the singleton `X` clears the selection and the band's twin is redundant.
- * The trailing cell it reserves is where that `X` paints.
- */
+/** Region 1 — the selection band. */
 export function RailSelectionBand({
   className,
 }: {
@@ -216,12 +170,7 @@ export function RailActionRegion({ className }: { className?: string }) {
         className,
       )}
     >
-      {/*
-        Grouped by verb KIND when a lane names them (assign / output / …), so a
-        wall of eight buttons reads as three short shelves. Ungrouped actions
-        ride the leading band, which is what every lane that sets no `group`
-        gets — the render is unchanged for them.
-      */}
+      {/* Grouped by verb KIND when a lane names them (assign / output / …), so a wall of eight buttons reads as three short shelves. */}
       {ordinaryBands.map((band) => (
         <div key={band.key || 'ungrouped'} className={band.key ? 'mt-2 first:mt-0' : undefined}>
           {band.key ? (

@@ -1,16 +1,4 @@
-/**
- * The organization ship-from address (`organizations.settings.shipFrom`) — the
- * warehouse origin every ShipStation rate and label is quoted from
- * (`resolveShipFrom`, src/lib/shipping/shipstation/config.ts).
- *
- * Written from Settings → Organization → Ship-from address
- * (`PATCH /api/admin/organization/profile`). An address is either EMPTY (the
- * org falls back to the SHIPSTATION_SHIP_FROM_* env vars) or COMPLETE — line 1,
- * city, state and ZIP — because a half-filled one saves fine and then still
- * answers every rate request with SHIP_FROM_NOT_CONFIGURED.
- *
- * Pure: no DB, no env.
- */
+/** The organization ship-from address (`organizations.settings.shipFrom`) — the warehouse origin every ShipStation rate and label is quoted… */
 
 import { z } from 'zod';
 import { ShipFromSchema } from '@/lib/tenancy/settings';

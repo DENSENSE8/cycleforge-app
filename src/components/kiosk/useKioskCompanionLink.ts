@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * useKioskCompanionLink — the tablet's half of the phone companion.
- *
- * `open()` mints this tablet's link (a token shown as a QR). While a link is
- * live the tablet syncs about once a second: it pushes its device snapshot
- * (what the phone shows) and applies every serial the phone scanned since the
- * last sync through `onSerial` — the same line write the serial field makes,
- * so a scanned serial and a typed one are the same fact.
- *
- * The link outlives the pane. The repair flow unmounts whenever the staffer
- * goes back to the catalog (the X, `+ Add another device`), and a phone that
- * joined for the first device must still reach the second — so the link is
- * held at module scope for the life of the page, not in component state.
- *
- * Callers: `KioskRepairPane` (Device & quote).
- * Affected API: POST `/api/kiosk/companion`, POST `/api/kiosk/companion/sync`
- *   (both `kioskFetchHealed`).
- * Schemas: `CompanionDevice` / `CompanionSerial`.
- * User: "scan something like a serial number to input and update the form on
- *   your phone as well".
- */
+/** useKioskCompanionLink — the tablet's half of the phone companion. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { kioskFetchHealed } from '@/lib/kiosk/kiosk-self-heal';

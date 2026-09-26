@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * `?import=csv` paint-pending — generalized off the To-Ship-only hook.
- *
- * The Import control and the desk that swaps its middle are separate React
- * trees, so they share one pending channel (keyed per family, so two staging
- * surfaces can never paint each other).
- *
- * Without this the surface could not open at all: the store publishes the draft
- * SYNCHRONOUSLY, so the desk re-rendered with a draft while `useSearchParams`
- * still said `import` was absent — and its "leaving staging via URL should drop
- * the draft" effect fired on that frame and threw the draft away before the
- * soft-replace landed. House law: a mount-gated URL open paints through
- * `useOptimisticUrlParam`, never a feature-local pending twin waiting on
- * soft-replace (`source-of-truth.md` → Optimistic URL-param paint).
- *
- * The URL VALUE is the same on every desk (`csv`) — the ROUTE says which
- * surface, and `descriptor.deskPath` is where the soft-replace lands.
- */
+/** `?import=csv` paint-pending — generalized off the To-Ship-only hook. */
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

@@ -31,12 +31,7 @@ test('every source has a label; ebay maps to its facts kind', () => {
   assert.equal(INBOUND_SOURCE_FACT_KIND.zoho, null);
 });
 
-// ── Drift guard: the code registry and every DB *discriminator-domain* CHECK
-//    must enumerate the SAME set (plan §2.3 / the polymorphic contract). If they
-//    drift, a write the app accepts would violate a DB CHECK (or vice-versa) —
-//    fail loudly here instead. Keyed off the constraint NAME so the conditional
-//    receiving_lines_zoho_item_required_chk (which deliberately lists only the
-//    non-zoho sources) is not mistaken for a domain enumeration.
+// ── Drift guard:
 const DOMAIN_CHK_NAME = /(source_type_chk|type_a_chk|type_b_chk|primary_type_chk|secondary_type_chk)$/;
 
 test('DB source_type domain CHECKs match the code registry', () => {

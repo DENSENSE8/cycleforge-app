@@ -6,11 +6,7 @@ import {
   type TrackingMatchReconcileDeps,
 } from './tracking-match-reconcile';
 
-// ─── Deps fakes ───────────────────────────────────────────────────────────────
-// The job is deps-injected: `query` (candidates SELECT on the raw pool),
-// `withTenantTx` (per-org transaction) and `transitionLine` (the chokepoint).
-// The fakes capture every call so we assert on grouping, linkage SQL shape,
-// what was threaded into the chokepoint, and the advanced-rows count — DB-free.
+// ─── Deps fakes ─────────────────────────────────────────────────────────────── The job is deps-injected:
 
 interface Candidate {
   rl_id: number;

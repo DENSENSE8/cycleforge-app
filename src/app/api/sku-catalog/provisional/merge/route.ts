@@ -9,15 +9,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { publishSkuExceptionChanged, publishStockLedgerEvent } from '@/lib/realtime/publish';
 
-/**
- * The override: fold an on-hold placeholder into the real SKU.
- *
- * Gated on `sku_stock.manage`, NOT the `sku_stock.adjust` that creating a
- * placeholder takes. Creating one is a floor action that can only ever add a
- * row nobody can sell; merging REWRITES stock history onto a real, sellable
- * product, and an operator counting boxes should not be able to do that by
- * accident from a phone.
- */
+/** The override: */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;
@@ -64,26 +56,10 @@ export const POST = withAuth(
       },
     });
 
-    // The merge DELETED the placeholder's `sku_catalog` row and may have minted
-    // a `sku_stock` row for the target. The desktop's cached catalog read models
-    // would otherwise keep resolving the placeholder's barcode to a SKU that no
-    // longer exists (`scan/resolve`, 30 min).
+    // The merge DELETED the placeholder's `sku_catalog` row and may have minted a `sku_stock` row for the target.
     await invalidateCacheTags(orgId, [CACHE_TAGS.skuCatalog]);
 
-    // Realtime: a merge MOVES stock between two keys — bin rows folded or
-    // re-keyed, the whole ledger history re-filed — without going through
-    // `adjustBinQty`, so it is the one stock move that publishes nothing of its
-    // own. A phone can run it (`/m/on-hold` → MobileOnHoldMerge), so an open
-    // desk elsewhere must not sit on the placeholder's rows.
-    //
-    // The event carries the PLACEHOLDER's sku, not the target's: a subscriber
-    // decides whether it cares by matching the sku it is currently showing
-    // (`LocationDetailView`), and every bin this touched is a bin that holds
-    // the placeholder right now. Folds only happen where the placeholder's row
-    // was, so the target's bins are the same bins.
-    //
-    // No re-keyed ledger row means nothing the books record moved — a
-    // never-stocked placeholder — and there is nothing to refetch.
+    // Realtime: a merge MOVES stock between two keys — bin rows folded or re-keyed, the whole ledger history re-filed — without going through…
     if (result.feedLedgerId != null) {
       try {
         await publishStockLedgerEvent({

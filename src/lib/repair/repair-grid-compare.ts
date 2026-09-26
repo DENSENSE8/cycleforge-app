@@ -25,16 +25,7 @@ function createdTime(repair: RSRecord): number {
   return src ? new Date(src).getTime() : 0;
 }
 
-/**
- * Compare two repair rows for a column sort. Negative ⇒ `a` before `b` under
- * the given direction (ASC: smaller first). Empty identifier values (walk-in
- * order, missing ticket) always sort last in BOTH directions.
- *
- * Keyed by the queue's URL SORT WORD, not by a mounted track key: repair shares
- * `?sort=`/`?dir=` with a chrome dropdown, so the vocabulary a bookmark carries
- * is the one thing here that must not move (wave 1.4 slot port —
- * `repairSortFactFor` maps a mounted column onto one of these words).
- */
+/** Compare two repair rows for a column sort. */
 export function compareRepairGridRows(
   a: RSRecord,
   b: RSRecord,

@@ -1,10 +1,4 @@
-/**
- * DB-free unit tests for order-import-exceptions — exercises enqueue / ignore /
- * resolve through injected fakes (no Postgres).
- *
- *   node --test --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     src/lib/inventory/order-import-exceptions.test.ts
- */
+/** DB-free unit tests for order-import-exceptions — exercises enqueue / ignore / resolve through injected fakes (no Postgres). */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

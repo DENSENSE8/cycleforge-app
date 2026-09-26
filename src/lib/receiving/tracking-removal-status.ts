@@ -1,23 +1,4 @@
-/**
- * "I pasted 40 trackings and only saw 34 — where are the other 6?"
- *
- * Resolves a paste list against everything this org knows about those
- * trackings, so the bulk-filter panel can report its residuals honestly:
- * **not found at all** (no inbound shipment in this org) vs **found but
- * normally hidden** (it left the Incoming lane, and here is why).
- *
- * This is NOT a second search engine and not a second list query. It is an
- * exact-key resolve over the same spine `?tracking_in=` filters on, run once
- * for the whole paste so the answer is independent of the list's pagination —
- * a residual computed from page 1 of a 50-row page would over-report
- * "not found" the moment a paste matched more than a page.
- *
- * The reason itself is NOT decided here: this function gathers signals and
- * hands them to {@link resolveIncomingRemovalReason}, the one ladder the
- * recently-removed lane also uses. Two surfaces, one derivation.
- *
- * Server deps load lazily so the pure shaping stays unit-testable.
- */
+/** "I pasted 40 trackings and only saw 34 — where are the other 6?" */
 
 import {
   INBOUND_SOURCE_SYSTEMS,
@@ -43,15 +24,7 @@ export interface TrackingRemovalStatusRow {
   known: boolean;
   /** Why it is off the Incoming lane, or `null` when it is still on it. */
   reason: IncomingRemovalReason | null;
-  /**
-   * The PO this tracking resolved to, when one did.
-   *
-   * The row is keyed by a tracking number, but the operator navigates by the
-   * PO — it is the handle on the pick list, the carton label and the vendor
-   * email, and it is what the reason chips now name ("PO cancelled"). Reported
-   * from the SAME `zoho_po_mirror` row the status came from, so the number and
-   * the status can never describe two different POs.
-   */
+  /** The PO this tracking resolved to, when one did. */
   po_number: string | null;
   /** Purchasing-source PO status, and the age of that answer. */
   zoho_status: string | null;
@@ -104,19 +77,7 @@ interface TrackingRemovalStatusDeps {
 
 const INBOUND_SOURCE_SQL = INBOUND_SOURCE_SYSTEMS.map((s) => `'${s}'`).join(',');
 
-/**
- * One indexed query for the whole paste.
- *
- * Tenant scoping: `shipping_tracking_numbers` and `zoho_po_mirror` both carry
- * `organization_id` under FORCE RLS, so `tenantQuery` scopes them; every
- * org-bearing alias reached through the join is additionally pinned to `$2`,
- * the same belt-and-braces the sibling check applies.
- *
- * The shipment join is a plain indexed equality on `tracking_number_normalized`
- * (unique btree) with no last-8 tolerance — what an operator pastes IS the
- * canonical stored form, and the tolerance exists for SCANNED barcodes, which
- * `SHIPMENT_SCAN_MATCH_CONDITION` already handles on its own side.
- */
+/** One indexed query for the whole paste. */
 async function lookupTrackingStatus(orgId: OrgId, keys: string[]): Promise<StatusRow[]> {
   const { tenantQuery } = await import('@/lib/tenancy/db');
   if (keys.length === 0) return [];
@@ -199,14 +160,7 @@ async function lookupTrackingStatus(orgId: OrgId, keys: string[]): Promise<Statu
   return rows;
 }
 
-/**
- * Resolve a paste into its residual report.
- *
- * Never throws for a lookup failure — an empty result would claim "none of
- * these exist", which is a stronger statement than the check can make. A failed
- * lookup rejects so the caller can say the residual report is unavailable
- * rather than quietly reporting zero.
- */
+/** Resolve a paste into its residual report. */
 export async function resolveTrackingRemovalStatus(
   orgId: OrgId,
   input: string | string[],

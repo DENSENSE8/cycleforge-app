@@ -48,20 +48,9 @@ const STATUS_DOT: Record<string, string> = {
   closed: 'bg-border-emphasis',
 };
 
-/**
- * Zendesk status → the one-row-anatomy status dot.
- *
- * Lived as two identical private `STATUS_DOT` maps in `SupportTicketRow` and
- * `SupportTicketsRecentRail` — the second even carried a "mirrors
- * SupportTicketRow" comment, which is a copy admitting it is one. Unknown /
- * unset falls back to the neutral hue rather than rendering no dot, so the
- * row's left edge never loses its alignment anchor.
- */
+/** Zendesk status → the one-row-anatomy status dot. */
 export function statusDot(status?: string | null): string {
-  // Lowercased on the same terms as statusBadge above — the row renders both off one
-  // status, and `ZendeskTicket.status` is typed `ZendeskTicketStatus | string`, so a
-  // differently-cased value would send the dot neutral while the badge stayed correct
-  // and the row would contradict itself.
+  // Lowercased on the same terms as statusBadge above — the row renders both off one status, and `ZendeskTicket.status` is typed…
   return STATUS_DOT[String(status ?? '').toLowerCase()] ?? 'bg-border-emphasis';
 }
 

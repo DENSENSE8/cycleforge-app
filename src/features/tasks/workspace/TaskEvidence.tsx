@@ -1,27 +1,6 @@
 'use client';
 
-/**
- * The open TASK in the Daily ledger's evidence column — everything a staffer
- * needs to finish it without leaving the list:
- *
- *   TASK 812 · Order 112-…                      (title)
- *   ● OPEN · Open ·························· → Start
- *   [ Task | Ticket #48120 | Ticket #48133 ]      (only when a ticket is named)
- *   What to do        the description, editable
- *   Media             photos + videos — drop / paste / pick anywhere here
- *   Linked records    anchor + orders · tracking · tickets
- *   Schedule & owner  due · remind me · priority · hand off · facts
- *   ─ decision bar ─  Mark done · Start · Add media · Open record   (keys 1–4)
- *
- * ## A ticket is read HERE, not behind a link
- *
- * The ticket face embeds {@link SupportTicketDetail} (the scan stations'
- * renderer) so the operator answers the customer beside the job. It takes the
- * PROVIDER number — never `entityId` / a link's `entityId`, which are LOCAL
- * registry ids. `SupportTicketDetail` measures its host, so the face gets a
- * DEFINITE height; inside this scrolling column an indefinite one chased
- * itself into "Maximum update depth exceeded" once already (2026-09-23).
- */
+/** The open TASK in the Daily ledger's evidence column — everything a staffer needs to finish it without leaving the list: */
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useRouter } from 'next/navigation';
@@ -85,12 +64,7 @@ export function TaskEvidence({
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
-  /**
-   * Which face of the job the column shows: `task`, `ticket:<provider #>`
-   * (a thread) or `doc:<id>` (a markdown document, full height). A face is a
-   * tab so stepping between the instructions, the plan and the customer is
-   * one click, never a lost scroll position.
-   */
+  /** Which face of the job the column shows: */
   const [face, setFace] = useState<string>('task');
   useEffect(() => setFace('task'), [row.id]);
 
@@ -113,12 +87,7 @@ export function TaskEvidence({
   const [faceKind, faceId] = face.split(':');
 
   const { upload, addLink } = media;
-  /**
-   * Paste is the fastest way in. A pasted screenshot uploads as a photo; a
-   * pasted YouTube / Loom / image LINK (outside a text field) attaches as
-   * media. Text pasted INTO a field — the instructions, the link box — is
-   * left to the field.
-   */
+  /** Paste is the fastest way in. */
   useEffect(() => {
     const onPaste = (event: ClipboardEvent) => {
       const files = filesOf(event.clipboardData);

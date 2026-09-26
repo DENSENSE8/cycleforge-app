@@ -1,12 +1,4 @@
-/**
- * Data-source registry — named, typed read feeds an integration exposes to
- * the station builder. Every source wraps an EXISTING GET route; extraction
- * logic ("pull the PO# out of the email") lives server-side in the
- * integration and is exposed here as just another field.
- *
- * Adding an integration = registering its sources + actions; every existing
- * block can immediately display and act on it with zero new UI code.
- */
+/** Data-source registry — named, typed read feeds an integration exposes to the station builder. */
 
 import type { DataSourceDefinition, DataSourceMeta, SourceRow, FieldDef, FilterDef } from './contract';
 
@@ -38,12 +30,7 @@ export function __clearDataSourceRegistry(): void {
 
 // ─── Builtin sources ─────────────────────────────────────────
 
-/**
- * Unmatched PO emails (Gmail) — the po-gmail pile already extracts PO
- * candidates server-side; `po_number` is just the first candidate exposed as
- * a `po_ref` field. Rows come from the inbox + upload piles (the unresolved
- * ones); `done`/`ignore` rows are resolved and excluded.
- */
+/** Unmatched PO emails (Gmail) — the po-gmail pile already extracts PO candidates server-side; `po_number` is just the first candidate… */
 const poGmailUnmatchedEmails: DataSourceDefinition = {
   id: 'po_gmail.unmatched_emails',
   label: 'Unmatched PO emails (Gmail)',
@@ -181,11 +168,6 @@ const receivingAwaitingTrackingPos: DataSourceDefinition = {
 };
 
 // ─── Universal Incoming sources (plan §9.3) ──────────────────
-//
-// The single Incoming spine, faceted by source. All wrap the same
-// GET /api/receiving-lines?view=incoming route (Phase 6 universal query) — one
-// checklist row per PO/order. `account_id` has no server param, so it filters
-// client-side on the resolved platform account.
 
 /** Shared row shape for the incoming spine (one row per PO/order). */
 function parseIncomingRows(json: unknown, filters: Record<string, unknown>): SourceRow[] {
@@ -349,12 +331,7 @@ const receivingAwaitingZohoLink: DataSourceDefinition = {
   realtime: { ablyChannel: 'receiving' },
 };
 
-/**
- * Open sourcing demand — the unified sourcing queue (Sourcing Hub) as a station
- * feed. Wraps GET /api/sourcing/alerts; a buyer's station can bind a Checklist
- * to it to work the queue. `?status` is server-side (buildUrl); the default
- * `live` is the route's open+sourcing set.
- */
+/** Open sourcing demand — the unified sourcing queue (Sourcing Hub) as a station feed. */
 const sourcingOpenDemand: DataSourceDefinition = {
   id: 'sourcing.open_demand',
   label: 'Sourcing queue (open demand)',
@@ -407,12 +384,7 @@ const sourcingOpenDemand: DataSourceDefinition = {
   permission: 'sourcing.view',
 };
 
-/**
- * Cartons arrived but not yet unboxed — the Unbox surface's work queue.
- * Wraps GET /api/receiving/pending-unboxing (one row per receiving carton).
- * A `rail_feed` or `checklist` block bound to this IS the unbox queue; a
- * `scan_band` in the trigger slot classifies a scan against it.
- */
+/** Cartons arrived but not yet unboxed — the Unbox surface's work queue. */
 const receivingUnboxQueue: DataSourceDefinition = {
   id: 'receiving.unbox_queue',
   label: 'Cartons awaiting unbox',
@@ -480,10 +452,7 @@ const receivingUnboxQueue: DataSourceDefinition = {
     },
   ],
   permission: 'receiving.view',
-  // Lineage (guarded by data-lineage.guard.test.ts). The queue is a pure read:
-  // the carton spine plus the four street/facts tables the row is assembled
-  // from, the shipment row the tracking number lives on, and staff for the
-  // assigned-tech name.
+  // Lineage (guarded by data-lineage.guard.test.ts).
   reads: [
     { table: 'receiving_carton' },
     { table: 'receiving_line' },
@@ -498,13 +467,7 @@ const receivingUnboxQueue: DataSourceDefinition = {
   realtime: { ablyChannel: 'receiving' },
 };
 
-/**
- * Units awaiting test / ready-to-ship — the Test surface's work queue
- * (operator-surfaces refactor Phase 13). Wraps GET /api/inbox/tech-queue (one
- * row per carton: returns pending a test verdict + unboxed priority orders ready
- * to ship). A `rail_feed` block bound to this IS the testing queue; a `scan_band`
- * with `surface: 'test'` in the trigger slot drives the scan loop against it.
- */
+/** Units awaiting test / ready-to-ship — the Test surface's work queue (operator-surfaces refactor Phase 13). */
 const testingTechQueue: DataSourceDefinition = {
   id: 'testing.tech_queue',
   label: 'Units awaiting test / ship',
@@ -543,14 +506,7 @@ const testingTechQueue: DataSourceDefinition = {
   realtime: { ablyChannel: 'tech' },
 };
 
-/**
- * Open (unshipped) eBay orders — the ship bench's work queue. Wraps the
- * existing eBay orders reader GET /api/ebay/search (orders with a non-null
- * account_source, newest first). `account`/`status` are server-side params;
- * "unshipped only" filters client-side on the route's `is_shipped` flag (no
- * server param exists for it). Bind `shipstation.rate_shop` /
- * `shipstation.buy_label` to work a row.
- */
+/** Open (unshipped) eBay orders — the ship bench's work queue. */
 const ebayOpenOrders: DataSourceDefinition = {
   id: 'ebay.open_orders',
   label: 'Open eBay orders',

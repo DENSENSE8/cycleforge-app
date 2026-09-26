@@ -1,21 +1,4 @@
-/**
- * Orders field catalog — the bindable To-ship triage facts, as DATA.
- *
- * Plan: `docs/todo/slot-based-metadata-table-PLAN.md` §7.1. Every entry names a
- * fact the `/api/orders` unshipped feed already returns (or types); nothing
- * here mints a column. `paths` documents the row aliases the resolver reads —
- * the resolution itself is `./orders-resolve.ts`, kept separate so this module
- * stays a leaf (the org-layout API route imports it server-side, and
- * `dashboard-order-row-layout.ts` imports it at module scope; neither may drag
- * in the resolver's formatting chain).
- *
- * `orders.scanned_out` is a Shipped-lane fact. The shared Orders grid mounts
- * the same catalog on To-ship, Packed, Labels, and Shipped; {@link
- * omitShippedOnlyBindings} strips this field off every lane except Shipped so
- * a bound column cannot paint "Needed" against orders that already left (and
- * so a dock stamp never appears on a working queue). The stamp itself lives
- * on `ShippedOrder` (`ship_confirmed_at` / `shipped_out_by_name`).
- */
+/** Orders field catalog — the bindable To-ship triage facts, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -30,10 +13,7 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     paths: { orderId: 'order_id', tracking: 'shipping_tracking_number' },
   },
   {
-    // Pick = inventory → pack handoff (industry WMS). Distinct from Pack
-    // (cartonize) and from Testing QC (`/test`). Reads the feed's own pick
-    // projection since 2026-09-14 — the tester/test_date columns it used to
-    // borrow belong to the TEST lane, not to this verb.
+    // Pick = inventory → pack handoff (industry WMS).
     id: 'orders.picked',
     family: 'orders',
     label: 'Pick',
@@ -118,13 +98,7 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default To-ship layout: Pick and Pack in the two status tracks,
- * each with its completion date and time, and `qty · amount · condition · item
- * # · notes` under the title. Money is a SUBTITLE binding, not `amountFieldId`
- * — a field may not be bound twice.
- * Guard: `orders.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default To-ship layout: */
 export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',
   identityFieldId: 'orders.order_id',

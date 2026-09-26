@@ -12,14 +12,7 @@ const LINK_JOINS = `
          ON l.entity_type = 'RECEIVING_LINE' AND rl.id = l.entity_id
 `;
 
-/**
- * Secondary link roles surfaced as booleans.
- *
- * Typed against the `PhotoLinkRole` union so renaming a role in the SoT
- * (`../types.ts`) is a compile error here rather than a silently-always-false
- * column. Module-local on purpose — exporting them would add two names knip
- * has to justify for one consumer.
- */
+/** Secondary link roles surfaced as booleans. */
 const CLAIM_EVIDENCE_ROLE: PhotoLinkRole = 'claim_evidence';
 const INSURANCE_SHARE_ROLE: PhotoLinkRole = 'insurance_share';
 
@@ -32,12 +25,7 @@ export interface ReceivingPhotoListRow {
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
-  /**
-   * Device-reported shutter instant (`photos.client_captured_at`), BESIDE the
-   * server-INSERT `createdAt` — a queued mobile upload drains hours after the
-   * box was actually opened, and a concealed-damage dispute turns on which of
-   * the two you are looking at. Null for desktop/legacy rows.
-   */
+  /** Device-reported shutter instant (`photos.client_captured_at`), BESIDE the server-INSERT `createdAt` — a queued mobile upload drains… */
   clientCapturedAt: string | null;
   /**
    * What this shot SHOWS, within its stage (`../photo-aspects.ts`). NULL means
@@ -45,26 +33,9 @@ export interface ReceivingPhotoListRow {
    * and must never be read as "the photo is missing".
    */
   photoAspect: string | null;
-  /**
-   * `photos.photo_type` under its real name.
-   *
-   * The same value {@link ReceivingPhotoListRow.caption} carries — that alias is
-   * NOT a bug and must not be renamed out from under its readers. `photos` has
-   * no caption column, and five consumers read `caption` AS the stage, including
-   * the server-side receive gate (`@/lib/receiving/photo-policy` →
-   * `deriveReceivingPhotoStageCounts`). Migrating them is a separate change; new
-   * readers take this field, and `caption` retires once they are all moved.
-   */
+  /** `photos.photo_type` under its real name. */
   photoType: string | null;
-  /**
-   * This photo also carries a `claim_evidence` link.
-   *
-   * Deliberately a BOOLEAN off an EXISTS, not `l.link_role`. `claim_evidence`
-   * lives on a SECOND `photo_entity_links` row whose `entity_type` is
-   * `ZENDESK_TICKET` (`../claim-link.ts`), while the join above is pinned to
-   * RECEIVING / RECEIVING_LINE — so selecting `l.link_role` would return the
-   * constant `'primary'` for every row: a field that looks answered and is not.
-   */
+  /** This photo also carries a `claim_evidence` link. */
   hasClaimEvidence: boolean;
   /** Same shape for `insurance_share` (carrier / external share packs). */
   hasInsuranceShare: boolean;
@@ -145,12 +116,7 @@ export async function listReceivingPhotos(input: {
   scope?: 'po' | 'all';
   /** Filter by capture stage — arrival package vs unbox carton vs item shots. */
   photoIntent?: ReceivingPhotoListIntent;
-  /**
-   * Narrow WITHIN the intent to specific shots (`../photo-aspects.ts`). Empty
-   * (the default) means no aspect filter, which includes the unclassified rows
-   * every pre-2026-08-01b photo is — an aspect filter is opt-in precisely
-   * because NULL is the overwhelming majority and is legal.
-   */
+  /** Narrow WITHIN the intent to specific shots (`../photo-aspects.ts`). */
   photoAspects?: readonly PhotoAspect[];
   contentUrl?: (id: number) => string;
 }): Promise<ReceivingPhotoListRow[]> {
@@ -252,17 +218,7 @@ export function sqlPoLevelPhotoCount(receivingIdExpr: string, orgIdExpr: string)
       AND l.entity_id = ${receivingIdExpr})`;
 }
 
-/**
- * Stage-filtered carton photo count — {@link sqlPoLevelPhotoCount} with the
- * entity AND photo_type pinned via `receivingPhotoIntentSql`, so `package`
- * counts only arrival shots (`receiving_package` + legacy `receiving` +
- * untyped '') and `unbox_carton` only `receiving_unbox_carton`.
- *
- * The `require_one` photo-policy gate (WS-PHOTO Plan 5) MUST count through
- * this, never the entity-only po-level count: that one also counts
- * unbox-carton shots and pre-SoT mis-stamped item-on-carton rows, so it
- * over-reports arrival evidence.
- */
+/** Stage-filtered carton photo count — {@link sqlPoLevelPhotoCount} with the entity AND photo_type pinned via `receivingPhotoIntentSql`, so… */
 export function sqlCartonStagePhotoCount(
   receivingIdExpr: string,
   orgIdExpr: string,

@@ -1,9 +1,4 @@
-/**
- * placement-parity — the observe-only parity shim. Proves the verdicts
- * (match / divergence / unseeded / bin_not_found), the off-by-default gate, and
- * that the observer never throws — all DB-free via injected resolver deps + an
- * injected log sink.
- */
+/** placement-parity — the observe-only parity shim. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

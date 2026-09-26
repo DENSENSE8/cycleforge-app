@@ -18,25 +18,14 @@ interface RecentEntry {
   at: number;
 }
 
-/**
- * Pull a serial_units lookup key out of an arbitrary scan. Returns null when
- * the scan clearly isn't a unit (a bin, a receiving carton, etc.) — the UI
- * surfaces that as a "not a unit" message instead of misdirecting the
- * operator. When `routeScan` doesn't know what to do (e.g. a typed raw
- * serial), we pass the value through unchanged because the API accepts
- * both numeric ids and serial_number strings.
- */
+/** Pull a serial_units lookup key out of an arbitrary scan. */
 function extractUnitLookupKey(raw: string): { key: string; kind: 'unit' | 'unknown' } | null {
   const value = raw.trim();
   if (!value) return null;
 
   const route = routeScan(value);
   if (route?.type === 'serial-unit' && route.redirect) {
-    // Two redirect shapes:  /01/{gtin}/21/{serial}  or  /m/u/{id|serial|unit_uid}.
-    // The /m/u suffix is no longer digits-only — the U- handle now carries
-    // alphanumeric physical serials and minted unit_uids (prefix stripped in the
-    // redirect), so match the whole suffix and decode it (mirrors
-    // resolve-testing-scan.ts). The serial-units API resolves id/serial/unit_uid.
+    // Two redirect shapes:
     const m = /\/m\/u\/(.+)$/.exec(route.redirect);
     if (m) return { key: decodeURIComponent(m[1]), kind: 'unit' };
     const g = /\/21\/([^/]+)$/.exec(route.redirect);
@@ -78,15 +67,7 @@ function writeRecents(next: RecentEntry[]) {
   }
 }
 
-/**
- * Sidebar component for the Labels → History sub-view. Owns:
- *   - localStorage recents (last 10 lookups)
- *   - the URL state `?historyId=<key>` that the workspace pane reads
- *
- * The scan/paste input lives in the sidebar's shared top SearchBar; on
- * Enter/scan it dispatches a `unit-history:lookup` event (raw value) that this
- * component resolves. USB DataMatrix scanners type + Enter, same as paste/type.
- */
+/** Sidebar component for the Labels → History sub-view. */
 export function UnitHistoryFinder() {
   const { historyId, setHistoryId: setHistoryIdParam } = useLabelsHistoryIdParam();
   const currentId = historyId || '';

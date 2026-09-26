@@ -7,13 +7,7 @@ import { labelIntakeErrorResponse } from '@/lib/shipping/label-intake-errors';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * GET /api/shipping/label-intake?ref=<order number>
- *
- * What the global `+` label intake shows for one typed order number: the order
- * it pairs to (or none — a reference-only number), the customer ship-to and
- * parcel to prefill, and every label already recorded under it. Read-only.
- */
+/** GET /api/shipping/label-intake?ref=<order number> */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const parsed = IntakeRefSchema.safeParse(req.nextUrl.searchParams.get('ref') ?? '');

@@ -24,18 +24,7 @@ import {
 } from '@/lib/orders-sync/run-steps';
 import { buildSyncRunDetail } from '@/lib/orders-sync/run-detail';
 
-/**
- * The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE
- * order import, through the connection-driven sync API
- * (`POST /api/integrations/shipstation/sync`, INT-020), then the Resolved
- * Exceptions pass streams as NDJSON. There is no source switch: an org without
- * live ShipStation keys sees the ShipStation route's own error as the lane
- * error. This is the ONE order-import implementation on any surface: the desk
- * CTA over the table, `/m/orders/sync`, and the chrome popover all drive this
- * hook. The rival copy — `useOrdersImport` behind the dashboard sidebar's
- * import card, with its own state, its own numbers and the legacy NDJSON
- * routes — was deleted with that unreachable card (2026-09-15).
- */
+/** The "Import Latest Orders" sync orchestration — ShipStation, the org's ONE order import, through the connection-driven sync API (`POST… */
 export interface OrdersSyncStatus {
   type: 'success' | 'error';
   message: string;
@@ -68,15 +57,7 @@ function emptyTransferDetails(): TransferOrderDetails {
   return { inserted: [], updated: [], deleted: [], unknownTitle: [], unresolvedTracking: [], unmatchedCatalog: [] };
 }
 
-/**
- * Narrow the connector's opaque `SyncOutcome.details` to TransferOrderDetails.
- *
- * The field crosses an HTTP boundary as untyped JSON and is typed `unknown` on
- * the contract (it is provider-shaped by design), so every bucket is checked
- * for being an array rather than trusted. A provider that sends no detail — or
- * a malformed one — degrades to empty lists instead of throwing inside a
- * setState and taking the dialog down with it.
- */
+/** Narrow the connector's opaque `SyncOutcome.details` to TransferOrderDetails. */
 function coerceTransferDetails(value: unknown): TransferOrderDetails {
   const empty = emptyTransferDetails();
   if (!value || typeof value !== 'object') return empty;
@@ -100,13 +81,7 @@ function coerceTransferDetails(value: unknown): TransferOrderDetails {
  */
 const SYNC_TOAST_ID = 'orders-sync';
 
-/**
- * How long the outcome stays readable. The house `success` default is 2.2s —
- * right for an inline edit whose paint IS the feedback, wrong for a batch that
- * runs about a minute: the operator is not watching the corner when it lands.
- * Twelve seconds plus a close button survives a glance away without becoming
- * furniture.
- */
+/** How long the outcome stays readable. */
 const SYNC_TOAST_MS = 12_000;
 /**
  * Asking for the ledger. Without it the route answers with one JSON object at
@@ -135,12 +110,7 @@ export function useOrdersSync() {
   const queryClient = useQueryClient();
   const [shipStationTask, setShipStationTask] = useState<TransferTabState>({ status: 'idle' });
   const [exceptionsTask, setExceptionsTask] = useState<ExceptionsTabState>({ status: 'idle' });
-  // `isSyncDialogOpen` is GONE (2026-09-15). The coupling it encoded was this
-  // hook DRIVING a panel no surface showed: the flag existed to open the rail
-  // leaf's copy of the progress panel, and with that leaf deleted this hook's
-  // only progress surface is `run` → OrderSyncRunView. That panel
-  // (`OrderSyncDialog`) and the sidebar card's duplicate hook are deleted too,
-  // so there is no second progress surface left for a flag to open.
+  // `isSyncDialogOpen` is GONE (2026-09-15).
   const [elapsedMs, setElapsedMs] = useState(0);
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -173,12 +143,7 @@ export function useOrdersSync() {
     [],
   );
 
-  /**
-   * The operator acknowledged the result — drop the ledger so whatever surface
-   * yielded its stage (the desk table, the `/m` screen) comes back. The run
-   * deliberately has NO auto-dismiss: a 60-second import that reports itself
-   * for 2.2 seconds and vanishes is the bug this whole surface replaces.
-   */
+  /** The operator acknowledged the result — drop the ledger so whatever surface yielded its stage (the desk table, the `/m` screen) comes back. */
   const dismissRun = useCallback(() => {
     runRef.current = null;
     setRun(null);
@@ -220,20 +185,7 @@ export function useOrdersSync() {
     const t0 = Date.now();
     elapsedRef.current = setInterval(() => setElapsedMs(Date.now() - t0), 100);
     // Where the run REPORTS itself (rewritten 2026-09-15).
-    //
-    // This used to describe a spinner: the desk CTA read only `isTransferring`,
-    // the per-row lists lived in a rail leaf the desk no longer opened, and a
-    // 58-second import that inserted 35 orders reported itself as a spinner
-    // that stopped. That is fixed upstream of here — `run` is a measured
-    // ledger (`run-steps.ts`) that `OrderSyncRunView` paints on the desk stage
-    // and on `/m/orders/sync`, and `runDetail` answers "which rows".
-    //
     // The toast stays OUTCOME-ONLY (operator 2026-09-14). The run surface is
-    // the progress affordance; a second spinner parked in the corner for a
-    // minute says nothing it is not already saying, and a toast that cannot be
-    // dismissed while it waits is chrome, not feedback. `@/lib/toast` fires
-    // once, when there is something to report — for the operator who navigated
-    // away from the run.
 
     let shipStationResultPayload: Record<string, unknown> | null = null;
     let exceptionsResultPayload: Record<string, unknown> | null = null;
@@ -245,11 +197,7 @@ export function useOrdersSync() {
       dispatchUsavRefreshData();
     };
 
-    // Connection-driven import (INT-020): one POST to ShipStation's sync API.
-    // `Accept: application/x-ndjson` makes that POST STREAM — every phase and
-    // per-row detail as it happens — and the terminal `result` line carries the
-    // same SyncOutcome the JSON form returns, so the task state below is built
-    // from exactly the payload it always was.
+    // Connection-driven import (INT-020):
     const runShipStationSync = async (): Promise<{
       payload: Record<string, unknown> | null;
       error?: string;
@@ -309,12 +257,7 @@ export function useOrdersSync() {
       const upd = Number(data.updated ?? 0);
       if (success && (ins > 0 || upd > 0)) void refreshDashboard();
       const parts = [ins && `${ins} inserted`, upd && `${upd} updated`].filter(Boolean);
-      // Render the connector's real per-row detail. This used to be a hardcoded
-      // emptyTransferDetails(), so the per-row inserted/updated/unmatched-catalog
-      // lists drew nothing no matter what the import did — first in the deleted
-      // `OrderSyncDialog`, now in `runDetail` → OrderSyncRunDetailSheet.
-      // SyncOutcome now carries `details`; fall back to empty only when the
-      // connector genuinely sends none.
+      // Render the connector's real per-row detail.
       const detailsFromSync = coerceTransferDetails(data.details);
 
       const stats = (data.stats ?? {}) as Record<string, number>;
@@ -468,18 +411,8 @@ export function useOrdersSync() {
         },
       });
 
-      // The failing case names the step that failed rather than a generic
-      // "sync failed" — ShipStation can land while the exceptions pass does
-      // not.
-      //
+      // The failing case names the step that failed rather than a generic "sync failed" — ShipStation can land while the exceptions pass does not.
       // **Both carry an explicit duration + close button (operator 2026-09-14:
-      // "toast not displaying").** It WAS displaying — for 2.2s
-      // (`TOAST_DURATION.success`, tuned for an inline edit that paints
-      // instantly). This import runs ~60s, so the operator clicks, looks away,
-      // and the one sentence reporting 35 imported orders blinks and is gone
-      // while they are still looking at the queue. A default meant for "your
-      // edit saved" cannot report a minute-long batch job; `toast-theme.ts`
-      // says call sites that need longer pass their own.
       if (anyFailed) {
         const failures = [
           shipStationR.error && `ShipStation: ${shipStationR.error}`,
@@ -508,13 +441,7 @@ export function useOrdersSync() {
     }
   };
 
-  /**
-   * The run's per-row record, published once nothing is still in flight.
-   *
-   * Mid-run the provider lists are partial by construction (a lane streams its
-   * detail as it goes), and a list that grows while the operator reads it is
-   * worse than no list.
-   */
+  /** The run's per-row record, published once nothing is still in flight. */
   const runDetail = useMemo(
     () =>
       run && !isTransferring

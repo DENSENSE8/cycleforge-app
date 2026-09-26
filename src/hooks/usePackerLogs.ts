@@ -27,12 +27,7 @@ export interface PackerRecord {
   order_id: string | null;
   order_row_id?: number | null;
   shipment_id?: number | null;
-  /**
-   * The PACKAGE this row is about — the scanned box's `shipping_tracking_numbers.id`
-   * (`sal.shipment_id`), NOT the order's primary `shipment_id`. Key rows and open
-   * the package record (`/api/shipments/[id]/record`) by this. Null for rows with
-   * no package (e.g. an FNSKU scan).
-   */
+  /** The PACKAGE this row is about — the scanned box's `shipping_tracking_numbers.id` (`sal.shipment_id`), NOT the order's primary `shipment_id`. */
   package_shipment_id?: number | null;
   /** That package's carrier tracking (raw). */
   package_tracking?: string | null;
@@ -86,14 +81,7 @@ export interface PackerRecord {
 export interface UsePackerLogsOptions {
   weekOffset?: number;
   weekRange?: { startStr: string; endStr: string };
-  /**
-   * The bench find box, already debounced by `SearchField` (320ms) — this hook
-   * adds no second debounce, it just spends the text on the fetch key.
-   *
-   * It rides the KEY, not the URL: `DataTable`'s standing law is that the
-   * search value is session-local, because `router.replace` per keystroke
-   * soft-navigates and remounts the table under the operator's cursor.
-   */
+  /** The bench find box, already debounced by `SearchField` (320ms) — this hook adds no second debounce, it just spends the text on the fetch… */
   search?: string;
 }
 
@@ -119,10 +107,7 @@ export function usePackerLogs(packerId: number, options: UsePackerLogsOptions = 
   // Global per-org station broadcast (packer logs are filtered by packerId in
   // the handler) — NOT a per-staff bridge.
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
-  // `q` sits INSIDE the third segment rather than as a fourth: the surgical
-  // prepend paths below address an exact key, and a searched feed is a
-  // different answer that a fresh scan has no right to be spliced into — they
-  // keep targeting `q: ''`, the unfiltered week.
+  // `q` sits INSIDE the third segment rather than as a fourth:
   const queryKey = [
     'packer-logs',
     packerId,

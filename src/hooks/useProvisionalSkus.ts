@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * SKU exceptions (on-hold placeholder products) on the client — ONE cache
- * shape for the phone hub (`/m/on-hold/[sku]` and its screens) and the desk
- * (`/inventory/sku-exceptions`).
- *
- * Keys come from `qk.skuExceptions`: the queue under `list`, one record under
- * `hub(sku, 'record')`. Every screen of the phone hub reads the same record
- * key, so moving hub ↔ Photos ↔ Locations ↔ Details refetches nothing; the
- * realtime subscription (`useSkuExceptionsRealtime`) is what invalidates.
- */
+/** SKU exceptions (on-hold placeholder products) on the client — ONE cache shape for the phone hub (`/m/on-hold/[sku]` and its screens) and… */
 
 import { useCallback } from 'react';
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -70,13 +61,7 @@ export async function invalidateSkuExceptions(queryClient: QueryClient): Promise
   await queryClient.invalidateQueries({ queryKey: qk.skuExceptions.all });
 }
 
-/**
- * Keep every open SKU-exception screen live: `sku-exception.changed` (mint,
- * rename, photo, merge) and `STOCK_DELTA_*` (a count moved at any bin — the
- * phone keypad, the gun, the desk) both refetch. Frame-coalesced: the handler
- * only invalidates, so a burst costs one refetch. Mount once per route family
- * (a `layout.tsx`), not per screen.
- */
+/** Keep every open SKU-exception screen live: */
 export function useSkuExceptionsRealtime(): void {
   const queryClient = useQueryClient();
   const { user } = useAuth();

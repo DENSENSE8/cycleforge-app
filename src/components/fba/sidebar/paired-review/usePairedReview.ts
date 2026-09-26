@@ -35,13 +35,7 @@ export interface FbaPairedReviewPanelProps {
   layout?: 'panel' | 'workspace';
 }
 
-/**
- * Owns the FBA combine-review panel: FBA-Shipment-ID + bucket allocations, the
- * selection↔allocation sync, the cross-component event wiring (send-to-review,
- * re-edit, adjusted totals), drag-and-drop (via {@link useFbaDragAndDrop}), and
- * the multi-step Save (qty overrides, split-into-new-plan or per-bucket tracking
- * POST + FBA-ID stamp). Returns a controller bag the layout components render.
- */
+/** Owns the FBA combine-review panel: */
 export function usePairedReview({
   selectedItems,
   stationTheme = 'green',
@@ -94,10 +88,7 @@ export function usePairedReview({
     [itemMap],
   );
 
-  // Sync selected items with allocations. Always keep at least one UPS box so
-  // there's somewhere to allocate; when it's the only box, newly-selected items
-  // drop straight into it (the common single-box case). Extra boxes still pull
-  // from Unallocated by dragging.
+  // Sync selected items with allocations.
   useEffect(() => {
     if (selectedItems.length === 0) return; // keep state (locked-FBA flow) when nothing selected
     const currentIds = new Set(selectedItems.map((i) => i.item_id));

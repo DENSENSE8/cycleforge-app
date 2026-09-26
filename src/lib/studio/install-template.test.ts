@@ -1,10 +1,4 @@
-/**
- * DB-free tests for installTemplateIntoOrg (Template Platform Phase 2A) — the
- * single clone + surface-seed + activate path. Every collaborator is injected,
- * so a fake tx client captures the SQL and fake createDraft/seed fns capture the
- * calls. No DB.
- *   npx tsx --test src/lib/studio/install-template.test.ts
- */
+/** DB-free tests for installTemplateIntoOrg (Template Platform Phase 2A) — the single clone + surface-seed + activate path. */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

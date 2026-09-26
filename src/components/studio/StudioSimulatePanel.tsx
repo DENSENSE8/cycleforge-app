@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * StudioSimulatePanel — the Simulate authoring aid (Operations Studio ST6,
- * Phase E2). A read-only DRY-RUN: the owner walks a "ghost" unit through the
- * in-context graph (current published graph or the draft being edited) to see
- * the path BEFORE publishing.
- *
- * ZERO engine writes — every control here drives the pure
- * `useStudioSimulation` hook (in-memory routing over the graph). Available to
- * `studio.view`+ since it touches no real unit and writes nothing.
- *
- * House style: linear vertical scaffold, eyebrow headings, semantic tokens,
- * icon+text buttons. The ghost ring is painted on the canvas (StudioCanvas);
- * this panel is the control surface + path history.
- */
+/** StudioSimulatePanel — the Simulate authoring aid (Operations Studio ST6, Phase E2). */
 
 import { Play, RotateCcw, Sparkles, Flag, ChevronLeft, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';

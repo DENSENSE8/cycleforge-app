@@ -15,37 +15,11 @@ import { isOutOfStock as orderIsOutOfStock } from '@/utils/order-out-of-stock';
 import { resolveShippingTerminal } from './shipping/terminal/shipping-terminal';
 
 interface UpNextActionDockProps {
-  /**
-   * The Order currently previewed in the workspace. The dock dispatches
-   * action events that carry this row's ids; `UpNextOrder` listens and
-   * routes to its existing handlers so side-effects (parent `onStart` →
-   * scan resolver kick-off, `triggerGlobalRefresh` on OOS) match a
-   * sidebar-originated action.
-   */
+  /** The Order currently previewed in the workspace. */
   order: Order;
 }
 
-/**
- * Ready-to-Pack preview waist — the Unbox/Triage/Testing shape: ONE raised
- * {@link OmnichannelComposerDock} for the order note, with Start (+ the Out of
- * Stock split menu) mounted as the embedded pill on its trailing edge.
- *
- * It used to be a bare bottom-of-page `StationTerminalDock` float. That green
- * capsule was the old page chrome — the verb now rides the composer, the same
- * slot Unbox's Receive and Triage's "Save for unbox" occupy.
- *
- * Enter commits the NOTE (the composer's own primary); Start is the pill click.
- * Two different consequences never share one key here — starting an order kicks
- * the scan resolver, which is not something a stray Enter in a text field
- * should do.
- *
- * Notes land in `order_notes` via {@link useAppendOrderNote} — the append-only
- * trail. The scalar `orders.notes` is read-only history and has no writer.
- *
- * Events out:
- *  - `tech-upnext-action-start` → starts the previewed order
- *  - `tech-upnext-action-oos-set` → toggles orders.is_out_of_stock
- */
+/** Ready-to-Pack preview waist — the Unbox/Triage/Testing shape: */
 export function UpNextActionDock({ order }: UpNextActionDockProps) {
   const hasOutOfStock = orderIsOutOfStock(order);
   const [note, setNote] = useState('');

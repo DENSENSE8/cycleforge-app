@@ -1,22 +1,6 @@
 /**
  * Industrial record ledger — the To-ship row geometry, in ONE place.
- *
  * BRIEF §4 industrial (desk): 5px state spine · square photo · three record
- * bands, 1px rules, radius 0. Row zoom is per list, per staff (S / M / L):
- *
- * | Zoom | Photo | Bands            | Row (incl. 1px rule) |
- * |------|-------|------------------|----------------------|
- * | S    | 32    | one 32px line    | 33                   |
- * | M    | 96    | 3 × 32px         | 97  (default)        |
- * | L    | 108   | 3 × 36px         | 109                  |
- *
- * Heights are FIXED per zoom so the virtualizer never measures — the same
- * numbers drive the first-paint stand-in, which is what keeps the SSR → client
- * swap from shifting a pixel. Band rules live INSIDE each band's box
- * (border-box), so three 32px bands are 96px, not 98.
- *
- * Classes, not colours: every colour a row paints comes from the mode
- * (`bg-mode-*`, `text-mode-*`, `border-mode-*`) or from `LIFECYCLE_CLASSES`.
  */
 
 import type { CSSProperties } from 'react';
@@ -108,20 +92,10 @@ export const LEDGER_LOCATION_CLASS: Readonly<Record<LedgerRowZoom, string>> = {
 /**
  * The record's LEAD column on bands 1 and 3 — one box, so the fact that
  * follows it starts on the same x on both bands (owner 2026-09-25: the SKU
- * under the customer). Band 1 fills it exactly: select 8 · state 11 · note 11
- * · platform 24 · order # 40, plus four gap-3 (12) = 106 steps (424px). Band 3
- * puts condition · BIN in it; BIN takes the rest. The seed-group band wears it
- * too, its state code across the state + note slots (w-25). Change a band-1
- * lane → change this width.
  */
 export const LEDGER_LEAD_CLASS = 'flex w-106 shrink-0 items-center gap-3';
 
-/**
- * A reference column beside an industrial form — the desktop terminal's
- * `.evidence-panel` (`minmax(288px, 24vw)`). Label intake's "labels on this
- * order" column (a `supporting` rail in the desk surface ledger). Never a
- * picked row's record: the ledger's record opens through `DeskRecordPlane`.
- */
+/** A reference column beside an industrial form — the desktop terminal's `.evidence-panel` (`minmax(288px, 24vw)`). */
 export const LEDGER_EVIDENCE_CLASS =
   'flex w-[max(18rem,24vw)] shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-mode-ink bg-mode-bar';
 

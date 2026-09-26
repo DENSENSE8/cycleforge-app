@@ -1,10 +1,4 @@
-/**
- * Client-side WebAuthn capability checks (no server).
- *
- * Callers: SignInQrPanel (Face ID under QR), /m/signin, desktop /signin.
- * Affected API: none (client-only); gates startAuthentication CTAs.
- * User: Face ID optional under QR; fix WebAuthn-not-supported in Chrome.
- */
+/** Client-side WebAuthn capability checks (no server). */
 
 export function browserSupportsWebAuthn(): boolean {
   if (typeof window === 'undefined') return false;

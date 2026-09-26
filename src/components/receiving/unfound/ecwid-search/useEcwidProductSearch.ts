@@ -15,13 +15,7 @@ import {
   writeStoredStoreOrderScope,
 } from './store-order-scope-pref';
 
-/**
- * Owns the Ecwid product-search popover's state: catalog search (debounced +
- * aborted), recent repair-service order load + client filter, the manual
- * title-only entry flow, Escape-to-close, and select handlers that converge on
- * `onSelect` → add-unmatched-line. Returns a controller bag the thin popover
- * shell + presentational pieces render from.
- */
+/** Owns the Ecwid product-search popover's state: */
 export function useEcwidProductSearch({
   popoverMode,
   initialQuery = '',
@@ -180,10 +174,7 @@ export function useEcwidProductSearch({
   // Cleanup on unmount
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  // NOTE: Escape-to-close is intentionally NOT handled here — it's a modal
-  // concern. The popover wires `useEscapeKey(onClose)` itself; the inline
-  // (non-modal) triage list reuses this controller WITHOUT a global Escape
-  // handler. See src/hooks/useEscapeKey.ts.
+  // NOTE: Escape-to-close is intentionally NOT handled here — it's a modal concern.
 
   // ─── Select handler ────────────────────────────────────────────────────────
   const handleSelect = useCallback(

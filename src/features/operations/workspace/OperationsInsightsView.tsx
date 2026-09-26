@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Operations → Insights mode. Docks the existing streaming AI assistant in the
- * right pane and wires it to the Operations sidebar's prompt chips via the
- * shared `ai-chat-events` window events (same protocol AiChatWorkspace uses).
- *
- * The server-side chat already enriches each turn with live ops/inventory
- * context (intent-router + context-fetchers), so we reuse `useAiChat` +
- * `AiChatConversation` as-is — no client-side context plumbing required.
- */
+/** Operations → Insights mode. */
 
 import { useEffect } from 'react';
 import { useAiChat } from '@/components/ai/useAiChat';

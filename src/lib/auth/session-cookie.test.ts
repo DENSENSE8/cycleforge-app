@@ -1,10 +1,4 @@
-/**
- * Session-cookie dual-read (cf_sid ↔ legacy usav_sid).
- *
- * Pure, DB-free: proves the reader prefers the canonical `cf_sid`, falls back to
- * the legacy `usav_sid`, and reports which one it used so a request on the legacy
- * cookie can be migrated.
- */
+/** Session-cookie dual-read (cf_sid ↔ legacy usav_sid). */
 
 import { test } from 'node:test';
 import { strictEqual } from 'node:assert';

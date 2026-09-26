@@ -1,17 +1,4 @@
-/**
- * Workflow engine — advance one item.
- *
- * The durable step that moves a serial unit from its current node to the next.
- * Pipeline:
- *
- *   lock → load state → run current node → record run → emit →
- *     await?  → park (blocked/error)
- *     else    → resolve next edge → moveTo(next)  OR  mark done (terminal)
- *
- * All collaborators are injected (WorkflowStore, registry getNode, emit, lock)
- * so this is unit-testable with in-memory fakes — see advance.test.ts. The real
- * wiring is composed in store.ts + index.ts.
- */
+/** Workflow engine — advance one item. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type {

@@ -1,16 +1,4 @@
-/**
- * LLM-backed disposition suggestion for received/tested units (roadmap B3).
- *
- * Given the QA outcome, condition grade, and the tester's free-text notes,
- * suggest a disposition code (ACCEPT / HOLD / RTV / SCRAP / REWORK). The
- * free-text notes are where the AI earns its keep — "blown driver, fixable"
- * → REWORK vs "cracked housing, total loss" → SCRAP — beyond what a flat
- * qa_status × condition lookup can decide.
- *
- * Same discipline as the rest of the AI surface: local Hermes gateway only,
- * forced single tool call, temperature 0 (inside `hermesToolCall`). Suggestion
- * only — the operator confirms or overrides before it's written.
- */
+/** LLM-backed disposition suggestion for received/tested units (roadmap B3). */
 
 import { hermesToolCall } from '@/lib/ai/hermes-tool-call';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -3,18 +3,7 @@
 import type { ShippedOrder } from '@/types/orders';
 import type { ShippedDetailsContext } from '@/utils/events';
 
-/**
- * To-ship desk view.
- *
- * Lifecycle tabs (Pending · Tested · Packed · Shipped) were retired — the desk
- * is one in-warehouse list and stage is a row fact. `DashboardOrderView` stays
- * the URL presence-flag type for bookmark compatibility; the desk always
- * normalizes to `unshipped` and uses facets (`?late`, `?attention`, `?ustatus`,
- * `?stage`, `?rowFlag`) for triage.
- *
- * Vestigial `?fba` was deleted as a lifecycle tab 2026-07-29 (IA row L): FBA owns
- * `/shipping/fba`. Old bookmarks client-redirect there (ratified 2026-07-30).
- */
+/** To-ship desk view. */
 export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
 export type DashboardCacheEntry = readonly [unknown, unknown];
 
@@ -25,13 +14,7 @@ export type ToShipTriageFacet =
   | 'urgent'
   | 'blocked'
   | 'awaiting_customer'
-  /**
-   * The CAGED set (`?cage=1`) — orders held out of the live queue until their
-   * release gates pass. It is a facet like the others because it answers the
-   * same kind of question ("why is this not normal work right now?"), and
-   * because being mutually exclusive with them is correct: a caged order has
-   * no lifecycle stage, no ship-by and no pack bench to filter on yet.
-   */
+  /** The CAGED set (`?cage=1`) — orders held out of the live queue until their release gates pass. */
   | 'caged';
 
 export const TO_SHIP_TRIAGE_FACET_LABEL: Record<ToShipTriageFacet, string> = {
@@ -62,15 +45,7 @@ export interface DashboardAssignmentUpdateDetail {
   condition?: string | null;
 }
 
-/**
- * Params the legacy `?warranty=` redirect forwards to Support.
- *
- * Named rather than inline so `dashboard-search-state.test.ts` can assert every
- * one is declared by DASHBOARD_ROUTE_PARAMS. They are **hand-off** keys — read on
- * `/dashboard` only to be forwarded — and an undeclared hand-off key is dropped
- * the moment `/dashboard` mounts `useSurfaceParamHygiene()`, which would quietly
- * strip an old bookmark's open claim and filters on the way to Support.
- */
+/** Params the legacy `?warranty=` redirect forwards to Support. */
 export const SUPPORT_WARRANTY_FORWARDED_PARAMS = [
   'open',
   'wstatus',
@@ -192,14 +167,7 @@ export function applyToShipTriageFacet(
   return params;
 }
 
-/**
- * After marking out of stock, land on the Pending stage — BLOCKED belongs
- * there with unlabeled / untested work, not on Tested. Packed stays packed
- * (a staged carton is Scan-out's problem). The unfiltered list stays put.
- *
- * Also drops a Tested lane refine (`ustatus=TESTED`) so the hold is not
- * immediately hidden by the filter we just left.
- */
+/** After marking out of stock, land on the Pending stage — BLOCKED belongs there with unlabeled / untested work, not on Tested. */
 export function applyToShipStageAfterOutOfStock(params: URLSearchParams): boolean {
   const stage = String(params.get('stage') || '').trim().toLowerCase();
   const ustatus = String(params.get('ustatus') || '').trim().toUpperCase();

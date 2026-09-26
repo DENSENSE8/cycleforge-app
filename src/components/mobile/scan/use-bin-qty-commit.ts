@@ -1,55 +1,16 @@
 'use client';
 
-/**
- * Repeat-tap ±1 stock adjustment, committed as ONE write per burst.
- *
- * ## Why this exists
- *
- * `PATCH /api/locations/[barcode]` is not idempotent-per-tap: every accepted
- * call appends a `sku_stock_ledger` row AND an audit row (see the route's
- * `take` / `put` branches). A naive one-tap-one-request strip therefore turns
- * "I pulled six of these" into six ledger entries, six audit entries, six
- * idempotency keys and six offline-queue items — a floor correction that reads
- * like six separate events to anyone auditing the bin later.
- *
- * So taps accumulate into a per-SKU delta and exactly one request lands per
- * burst. The operator sees the number move immediately (the caller paints
- * `qty + pendingDelta`); the server sees one honest `put 6` / `take 6`.
- *
- * ## When the burst ends
- *
- * {@link BIN_QTY_COMMIT_IDLE_MS} of no taps, or whichever comes first of the
- * caller's own boundaries — take-reason change, keypad open, leaving the
- * location record — each of which calls {@link BinQtyCommit.flush}. Unmount flushes too: the fetch
- * outlives the component, so walking away from the phone still records what
- * the thumb already did.
- *
- * Pure client orchestration: no JSX, no layout. The strip that mounts it is
- * `LocationQtyStrip`.
- */
+/** Repeat-tap ±1 stock adjustment, committed as ONE write per burst. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { queueOrFetch } from '@/lib/offline/write-queue';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-/**
- * How long after the last tap the burst commits.
- *
- * 1200ms is above a comfortable repeat-tap cadence (a counting thumb lands
- * every ~300-400ms) and below the point where the operator has moved on and
- * would be surprised to see the write land. Shorter splits one correction into
- * several ledger rows; longer holds an uncommitted number on screen while the
- * next label is already being scanned.
- */
+/** How long after the last tap the burst commits. */
 export const BIN_QTY_COMMIT_IDLE_MS = 1200;
 
-/**
- * Reason codes for the quick path when the caller names none: the API's own
- * defaults for a bare put/take. A take may carry the page's chosen take reason
- * (FBA · Orders · Custom…, `src/lib/inventory/take-reason.ts`) via
- * `takeReason`; a put never carries one.
- */
+/** Reason codes for the quick path when the caller names none: */
 const QUICK_PUT_REASON = 'BIN_ADD';
 const QUICK_TAKE_REASON = 'BIN_PULL';
 
@@ -105,13 +66,7 @@ export function useBinQtyCommit({
    * before changing it so one burst never straddles two reasons.
    */
   takeReason?: { reason: string; notes: string | null };
-  /**
-   * Fired the instant a burst leaves the pending state, BEFORE the request.
-   * The caller folds the delta into its own committed quantity here so the
-   * number on screen never flickers back to the pre-tap value while the
-   * write is in flight. {@link onCommitted} reconciles it to the server's
-   * answer; {@link onFailed} is the signal to revert by the same delta.
-   */
+  /** Fired the instant a burst leaves the pending state, BEFORE the request. */
   onCommitStart: (sku: string, delta: number) => void;
   onCommitted: (result: BinQtyCommitted) => void;
   onFailed: (failure: BinQtyFailed) => void;
@@ -125,14 +80,7 @@ export function useBinQtyCommit({
   // timeout cannot be dropped by a stale closure.
   const pendingRef = useRef<Record<string, number>>({});
   const timerRef = useRef<number | null>(null);
-  /**
-   * The location a burst BELONGS to, captured when it opens.
-   *
-   * The mounted location can change while taps are still uncommitted (a
-   * client navigation between two location records reuses the hook).
-   * Writing those to whatever location is mounted last would move stock into
-   * the wrong bin — the burst carries its own address instead.
-   */
+  /** The location a burst BELONGS to, captured when it opens. */
   const burstBarcodeRef = useRef(binBarcode);
   /** The location currently mounted, whatever the open burst belongs to. */
   const binBarcodeRef = useRef(binBarcode);

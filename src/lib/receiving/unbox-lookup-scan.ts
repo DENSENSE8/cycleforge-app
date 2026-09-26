@@ -1,21 +1,4 @@
-/**
- * Unbox lookup-scan — the SERVER half of `unbox-scan-kind.ts`.
- *
- * Reads the carton's completion milestone to classify a scan, and records a
- * lookup as an append-only ops event that never touches work attribution.
- *
- * Why an ops event and not a column on `receiving_scans`: that table holds
- * exactly ONE row per (tracking_number, receiving_id) — `ux_receiving_scans_
- * tracking_receiving` is UNIQUE. There is no per-scan row to tag, so a
- * `scan_kind` column could not express "this carton was worked once and looked
- * at three times" at all. `ops_events` is already the append-only spine, its
- * `event_type` is free text (no CHECK — only `entity_type` is constrained), and
- * it carries the actor + Studio-node axes the other scan events use. So this
- * needs no migration.
- *
- * Deps are injectable (house `Deps` pattern, backend-patterns.md) so the whole
- * path is unit-testable with zero DB.
- */
+/** Unbox lookup-scan — the SERVER half of `unbox-scan-kind.ts`. */
 
 import pool from '@/lib/db';
 import { recordOpsEvent } from '@/lib/ops-events';
@@ -39,14 +22,7 @@ const defaultDeps: UnboxLookupScanDeps = {
   resolveWorkflowNodeId: (surface, orgId) => resolveSurfaceWorkflowNodeId(surface, orgId),
 };
 
-/**
- * The carton facts a lookup verdict carries back to the operator.
- *
- * The kind alone is enough for the WRITE decisions, but not for the receipt:
- * that has to name who actually did the work and offer a way into the package's
- * details. Both are already on the row we read to classify, so they ride along
- * in the same round trip rather than costing the scan a second one.
- */
+/** The carton facts a lookup verdict carries back to the operator. */
 export interface UnboxScanState {
   kind: UnboxScanKind;
   /** `receiving_unbox.unboxed_at` — the completion milestone. */
@@ -64,18 +40,7 @@ const WORK_STATE: UnboxScanState = {
   poNumber: null,
 };
 
-/**
- * Classify a scan against the carton's live state, with the facts the receipt
- * needs to render.
- *
- * Fails **open to `work`**: if the street row is missing or the read throws, the
- * scan keeps today's full behavior. That direction is deliberate — a
- * misclassified work scan loses nothing, while a misclassified lookup would
- * silently skip a real attribution write.
- *
- * LEFT JOINs throughout: a carton with no street row has never been unboxed
- * (→ work), and an unfound carton legitimately has no PO number.
- */
+/** Classify a scan against the carton's live state, with the facts the receipt needs to render. */
 export async function resolveUnboxScanState(
   organizationId: string,
   receivingId: number,
@@ -134,14 +99,7 @@ interface RecordUnboxLookupScanArgs {
   occurredAt?: Date;
 }
 
-/**
- * Record that an operator scanned an already-unboxed carton to inspect it.
- *
- * Writes ONLY the append-only ops event: no `receiving_scans` upsert (so
- * `scanned_by` keeps naming whoever actually did the work), no
- * `UNBOX_SCAN_OPENED`, no `receiving_unbox` stamp. Best-effort — a failure here
- * must never break the operator's lookup.
- */
+/** Record that an operator scanned an already-unboxed carton to inspect it. */
 export async function recordUnboxLookupScan(
   args: RecordUnboxLookupScanArgs,
   deps: UnboxLookupScanDeps = defaultDeps,

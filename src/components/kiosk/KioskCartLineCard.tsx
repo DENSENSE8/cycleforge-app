@@ -2,38 +2,7 @@
 
 /**
  * KioskCartLineCard — one cart line as a TOUCH card.
- *
- * Replaces `CompoundRow` on the kiosk cart. That row is the desk compound
- * table (Unbox / Incoming / To-Ship / Tasks share it): a 7-track CSS grid with
- * a select gutter, a dots menu and desk-micro type. On a counter tablet it read
  * as a spreadsheet stretched across the glass — operator 2026-09-14, of the
- * cart panel: *"This is a wrong display. It should display a mobile-like chip
- * display component with a rounded corner radius and kind of pills and
- * buttons."* `SURFACE_LAW` §5 already says it: lists on a phone-shaped surface
- * are cards, never a DataTable.
- *
- * So: a rounded row card (`MOBILE_SCAN_ROW_CORNER`, the same corner the mobile
- * scan rows wear), the title on top, then {@link KioskChip} meta chips on the
- * left of the last line with `qty · amount` at its right edge (the amount
- * alone when the stepper already shows the quantity). The card IS the
- * edit affordance — tap to correct, the gesture the row had. Void stays on the
- * swipe wrapper.
- *
- * A SALE line also carries `−  N  +` on that last row (Square's cart stepper,
- * brought onto the card: on a counter tablet the extra item-details screen is
- * the cost being removed). `−` at 1 asks first by swapping the row to
- * `Keep` / `Remove` in place — never a modal over the work.
- *
- * FLAT (2026-09-15). This carried `elevationClass('raised','soft')` per line,
- * which was a soft lift on a white card sitting on a white sheet — depth you
- * could not see doing the job a hairline already does. The sheet it sits on was
- * de-shadowed the same day (operator: *"it should not display a depth drop
- * shadow"*), and a blur inside it would be that same popover cue one altitude
- * down. Separation is `border-border-hairline` plus the sunken stage behind the
- * sheet — planes, never blur.
- *
- * Callers: `KioskCartLedger`, `KioskKeypadFace`, `KioskCustomerFace`. Affected API: none.
- * Schemas: `counter_session_lines` via {@link cartLineCardView}.
  */
 
 import { useState } from 'react';
@@ -46,13 +15,7 @@ import { MOBILE_SCAN_ROW_CORNER } from '@/design-system/tokens/radius';
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
-/**
- * Line-type glyph + ink, matching the command on the mode selector
- * (`KioskServiceTile.icon` / `iconTone`): repair amber, sale green, trade-in
- * blue. A chip states its kind with a glyph AND a colour, never colour alone.
- * A sale wears the Sales mode's own tag glyph — not the shopping cart, which
- * is the header's Cart key and would read as "open the cart" on every line.
- */
+/** Line-type glyph + ink, matching the command on the mode selector (`KioskServiceTile.icon` / `iconTone`): */
 const TYPE_FACE = {
   REPAIR: { Icon: Wrench, tone: 'warning' as const },
   BUYBACK: { Icon: RefreshCw, tone: 'info' as const },
@@ -144,13 +107,10 @@ export function KioskCartLineCard({
         <p className={cn('truncate', KIOSK_META)}>{view.detail}</p>
       ) : null}
 
-      {/* FACTS left, MONEY right, on the card's last line — the list rule
-          (operator 2026-09-23): in a list, money sits on the right edge so
-          the eye can run down one column of figures, and ONLY the money wears
-          the money token; the quantity is black, `text-text-default` (operator
-          2026-09-24: "the number … right next to the price must be black not
-          green"). A stepper line's `−  N  +` IS its
-          quantity, so the right edge prints the total alone — never N twice. */}
+      {/*
+ * FACTS left, MONEY right, on the card's last line — the list rule
+ * (operator 2026-09-23): in a list, money sits on the right edge so
+ */}
       {confirmRemove ? (
         <KioskRemoveConfirm
           testIdPrefix="kiosk-cart-line"

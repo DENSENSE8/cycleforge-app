@@ -1,64 +1,7 @@
 /**
  * Release gates — the caged → released contract, as one pure function.
- *
- * Plan: `docs/todo/non-scan-desk-chrome-caged-release-PLAN.md` §4.2 (v1 locked).
- *
- * An order sits **CAGED** until every gate below is green; only then may staff
- * **RELEASE** it into the live To-ship working set. The gates are the
- * operator's own sentence for "we know enough to work this":
- *
- * | # | Gate | Green when |
- * |---|---|---|
- * | G1 | Identity triangle | item number **and** order number **and** tracking number are all present and on the same record |
- * | G2 | Documents | ≥1 document linked to the item number, **or** staff asserted it needs none |
- * | G3 | Shipping | a label is linked to the order, **or** one was bought through the existing
- *   label path, **or** a tracking number is linked to the order |
- * | G4 | SKU pairing | the order's item resolves to a `sku_catalog` row (`orders.sku_catalog_id`) |
- *
  * ## Why pairing became a gate (operator ruling 2026-08-31, R-FLOW-1)
- *
- * The order-flow interview ruled that an exception is not cleared until its
- * item number is paired to the inventory SoT — an unpaired order that reaches
- * the floor is a pick against a product the system cannot name. This
- * supersedes the earlier note that pairing "is NOT a gate at all"
- * (`order-exceptions.ts` / `order-exception-types.ts`); the evidence already
- * agreed — 19 of the operator's 22 caged orders were unpaired. Plan of record:
- * `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2.
- *
  * ## Why a tracking number satisfies G3 (operator ruling 2026-08-31)
- *
- * *"If the tracking number is linked to it, then it must release it as the
- * shipping label."* In this warehouse a tracking number is not a fact that
- * arrives on its own: it is a row in `shipping_tracking_numbers` reached
- * through `orders.shipment_id`, and it gets there because a label was bought
- * or attached. G3 asked the same question one indirection later — is there a
- * `shipping_label` DOCUMENT — and a label whose paperwork was never filed as a
- * document held the cage shut on an order that demonstrably has a label.
- *
- * The consequence, stated rather than discovered later: **G3 is now implied by
- * G1.** G1 already requires a tracking number, so any order passing G1 passes
- * G3, and G3 can only fail where G1 has already failed. It is kept as its own
- * gate because it still names the right reason to an operator looking at an
- * order with no tracking — but it is no longer an independent hold.
- *
- * ## Why this is a function and not a query
- *
- * Everything here is **derivation, not fetching**. The route gathers the facts
- * (one DB read), this decides. That split is what makes the rule testable
- * without a database and identical on the server that enforces it and the form
- * that previews it — a gate evaluated twice by two different code paths is a
- * gate that will eventually disagree with itself and release something caged.
- *
- * ## Failures are named, never silent
- *
- * The plan is explicit: "UI must show which gate failed (not a silent disabled
- * button)". So this returns the whole evaluation — every gate with its own
- * pass/fail and a plain-language reason — and the caller renders the list. A
- * bare boolean would push the UI back into re-deriving *why*, which is the
- * duplicate-rule problem again.
- *
- * Org-authored gate types are explicitly out of v1: the gates are product-coded
- * here and nowhere else.
  */
 
 /** Gate ids, in the order they are presented to the operator. */
@@ -120,14 +63,7 @@ function present(value: string | null | undefined): boolean {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-/**
- * Evaluate G1–G3 against a snapshot of an order's facts.
- *
- * Pure: same facts in, same verdict out, no clock and no I/O. Unknown facts are
- * treated as ABSENT (a gate is green only on positive evidence) — the cage
- * exists to stop half-known orders reaching the floor, so "we did not look" and
- * "it is not there" must land on the same side.
- */
+/** Evaluate G1–G3 against a snapshot of an order's facts. */
 export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseGates {
   const hasOrderNumber = present(facts.orderNumber);
   const hasItemNumber = present(facts.itemNumber);

@@ -9,26 +9,9 @@ export interface ClientUploadInput {
   photoType?: string;
   linkRole?: 'primary' | 'claim_evidence' | 'insurance_share';
   poRef?: string;
-  /**
-   * Device-reported capture instant in epoch milliseconds — the shutter clock
-   * for a canvas capture, `File.lastModified` for a picked/dropped File. Read it
-   * with `@/lib/photos/capture-time` so the shared bounds apply (see
-   * `capture-provenance.ts` for why a null beats a fabricated 1970).
-   *
-   * Optional on purpose: a desktop File with no usable timestamp and every
-   * legacy caller genuinely have no capture time, and the column is nullable to
-   * say so honestly. Omitting it uploads exactly as before.
-   *
-   * NOT server-attested — it is the operator's device clock, stored beside
-   * `created_at`, never instead of it.
-   */
+  /** Device-reported capture instant in epoch milliseconds — the shutter clock for a canvas capture, `File.lastModified` for a picked/dropped… */
   clientCapturedAtMs?: number | null;
-  /**
-   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). Omit when the
-   * capture surface cannot name the frame — that stores NULL, which means
-   * *unclassified evidence*, not *missing evidence*. An aspect illegal for the
-   * resolved stage is a 400 at the route, never a silent drop.
-   */
+  /** What this shot SHOWS, within its stage (`./photo-aspects.ts`). */
   photoAspect?: string | null;
 }
 

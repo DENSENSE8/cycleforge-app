@@ -1,15 +1,4 @@
-/**
- * POST /api/kiosk/companion/sync — the tablet's heartbeat while a phone may be
- * joined: store its device snapshot, take the serials the phone scanned.
- *
- * Callers: `useKioskCompanionLink`.
- * Affected API: this route (device cookie, `withKioskAuth`).
- * Data schemas: `kiosk_companion_links` via `syncCompanionFromTablet`.
- * User: "scan something like a serial number to input and update the form".
- *
- * 404 `NO_LINK` means the link expired or was never opened — the tablet drops
- * its QR rather than polling a dead row.
- */
+/** POST /api/kiosk/companion/sync — the tablet's heartbeat while a phone may be joined: */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';

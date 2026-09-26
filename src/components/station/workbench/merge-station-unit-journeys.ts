@@ -1,24 +1,4 @@
-/**
- * Pure merge for Station Timeline unit journeys — one carton-scoped feed
- * instead of N {@link SerialJourneySection} embeds.
- *
- * Each serial's journey events go through {@link mergeJourney} (same adapters
- * as Operations History), its stage photo rows fold in via
- * {@link mergeJourneyWithUnitPhotos} (full stage `media` kept — display cap /
- * `+N` lives in {@link EventTimeline}'s media strip), then rows are namespaced,
- * sorted newest-first, and given a serial {@link TimelineRef} so
- * {@link EventTimeline} renders the shared {@link SerialChip} (last-8 via
- * CopyChip SoT).
- *
- * Carton-scoped photo stages (`arrival`, `unbox_carton`) whose photo-id set is
- * shared across ≥2 sibling serials hoist once as `carton:unit-photos-*` (no
- * serial chip) so a multi-unit carton does not look like the same journey twice.
- *
- * Batch inventory hops (same title / actor / clock / trail on different serials
- * — typical multi-unit receive + put-away) fold into one “N units” row with a
- * `refs` SerialChip cluster (disambiguated when sibling last-8s collide). Bin /
- * location stays in the subtitle only — never as the identity chip.
- */
+/** Pure merge for Station Timeline unit journeys — one carton-scoped feed instead of N {@link SerialJourneySection} embeds. */
 
 import { mergeJourney, type JourneyEvent } from '@/lib/timeline/journey';
 import { mergeJourneyWithUnitPhotos } from '@/lib/timeline/journey-photos';
@@ -174,12 +154,7 @@ export function collapseCrossSerialBatchHops(items: TimelineItem[]): TimelineIte
   return out;
 }
 
-/**
- * Flatten per-serial journey payloads into one Station-density timeline list.
- * Rows always carry `ref.kind === 'serial'` so the last-8 CopyChip is the unit
- * identity — never a bin chip (location stays in the adapter subtitle). Hoisted
- * carton photo stages omit the serial ref; collapsed batch hops use `refs`.
- */
+/** Flatten per-serial journey payloads into one Station-density timeline list. */
 export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): TimelineItem[] {
   const prepared: { serial: string; items: TimelineItem[] }[] = [];
 
@@ -230,12 +205,7 @@ export function mergeStationUnitJourneys(buckets: SerialJourneyBucket[]): Timeli
     }
   }
 
-  // An identity chip exists to say WHICH unit a row is about. On a carton with
-  // exactly one serial there is nothing to disambiguate: the same last-8
-  // repeats on every row, adding a column of noise that says the same thing the
-  // band header already said. This is the rule the hoisted carton photo rows
-  // above already follow (`ref: undefined`) — applied to the case where the
-  // whole feed is one unit.
+  // An identity chip exists to say WHICH unit a row is about.
   const singleUnitFeed = prepared.length === 1;
 
   for (const { serial, items } of prepared) {

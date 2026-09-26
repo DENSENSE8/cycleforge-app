@@ -12,13 +12,7 @@ export interface AppTopBarProps {
   className?: string;
 }
 
-/**
- * Global mobile top app bar — [☰] [title (centered)] [trailing slot].
- *
- * Uses a 3-column grid (44px / 1fr / 44px) so the hamburger and the title
- * line up on the same baseline regardless of title length. The grid mirrors
- * the previous `MobileDefaultTopBanner` so visual weight feels consistent.
- */
+/** Global mobile top app bar — [☰] [title (centered)] [trailing slot]. */
 export function AppTopBar({ title, onOpenDrawer, trailing, className }: AppTopBarProps) {
   return (
     <header

@@ -1,39 +1,6 @@
 'use client';
 
-/**
- * `/reports` — stock, shift and task reports share one desk frame.
- *
- * Off `AdminTable` 2026-09-12 (Wave D). The page carried three hand-written
- * `AdminTableColumn[]` literals (`UTILIZATION_COLUMNS`, `VELOCITY_COLUMNS`,
- * `DEAD_COLUMNS`) over rows typed `Record<string, unknown>`, plus a
- * `ReportTable` component that chose which column set to hand the second
- * engine per tab. All five are gone:
- *
- * - the row type is real and narrowed at the `fetch` boundary
- *   (`@/lib/reports/report-rows`);
- * - the columns are materialized from each family's slot layout;
- * - `ReportTable` is replaced by three mounts, one per family, and the tab
- *   chooses which COMPONENT renders. A single host taking three column arrays
- *   is the fork this port removed — it is what let three unrelated row shapes
- *   share one table's identity, and why none of them could have a Fields menu.
- *
- * ## Why three tableIds and not one `reports` table
- *
- * A layout document binds catalog FACTS into slots, and these three reports
- * have no facts in common — a bin's fill ratio, a SKU's 30-day out quantity
- * and a SKU's dormancy count are three vocabularies over three row shapes. One
- * shared id would mean one document, so binding a column on Velocity would
- * bind a field Bin utilization cannot resolve.
- *
- * The consequence is the feature the retired desk could never have: the Fields
- * menu keys off `tableId`, and each family mounts its own, so switching tab
- * switches the picker, the org column layout and the staff widths with it —
- * automatically, with no per-tab branch anywhere in this file.
- *
- * Sort and search are LOCAL state per family (see each `use*Spreadsheet`
- * docblock): this page owns no search params, so a `?sort=` would round-trip a
- * URL nothing else reads.
- */
+/** `/reports` — stock, shift and task reports share one desk frame. */
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -97,37 +64,10 @@ const REPORT_URLS: Readonly<Record<Exclude<Tab, 'staff' | 'packer' | 'tasks' | '
   dead: '/api/reports/dead-stock?limit=500',
 };
 
-/**
- * The finished half of the task desk's own lane vocabulary — `lane=done` is
- * `taskDeskLaneStatuses('done')` (status `DONE`; a withdrawn task shows only
- * in `lane=all`), not a filter this page invented.
- *
- * `assignee=all` is EXPLICIT because the route defaults to the caller, and a
- * report that silently showed only the reader's own finished work would be a
- * personal record wearing a manager's page. Every other tab here is org-wide —
- * Staff day reads `scope=all`, Packer day reads every packer — and this one
- * answers the same kind of question: what did the floor finish, and was it
- * finished by the day it was promised for.
- */
+/** The finished half of the task desk's own lane vocabulary — `lane=done` is `taskDeskLaneStatuses('done')` (status `DONE`; a withdrawn… */
 const TASKS_REPORT_URL = '/api/tasks?lane=done&assignee=all&limit=200';
 
-/**
- * Which tabs ANSWER the find text at the server (`?q=`), and therefore ride it
- * on their fetch instead of filtering the page in hand.
- *
- * Both entries are here because their page is a WINDOW the operator can fall
- * off: Bin utilization returns 500 of the warehouse's bins ORDERED BY FILL, and
- * Tasks returns the desk's most recent 200 finished follow-ups. A browser-side
- * filter over either can only ever find what already arrived — and it narrows
- * even that to the facts the MOUNTED columns paint, so a task found by its note
- * or a bin found by its barcode disappears when that column is off.
- *
- * Velocity (138 rows against a 200 cap), Dead stock (117 against 500) and
- * Packer day (one civil day against a 10,000 cap) are NOT here: their caps are
- * unreachable at this warehouse's volume, so the page in hand IS the whole
- * answer and their engine-side filter tells no lie. Staff day is a full report
- * for one date and has no cap at all.
- */
+/** Which tabs ANSWER the find text at the server (`?q=`), and therefore ride it on their fetch instead of filtering the page in hand. */
 const FIND_ANSWERED_BY_SERVER: Readonly<Record<Tab, boolean>> = {
   staff: false,
   packer: false,
@@ -144,14 +84,7 @@ function withFind(base: string, tab: Tab, find: string): string {
   return FIND_ANSWERED_BY_SERVER[tab] && q ? `${base}&q=${encodeURIComponent(q)}` : base;
 }
 
-/**
- * One fetched report page, TAGGED with the tab that asked for it.
- *
- * The tag is what keeps the three row shapes apart through one state slot: a
- * tab switch leaves the previous report in hand for a moment, and a page that
- * fed those rows to the new tab's family would hand a bin row to a SKU
- * resolver. Discriminating here is what `Record<string, unknown>` used to hide.
- */
+/** One fetched report page, TAGGED with the tab that asked for it. */
 type ReportFeed =
   | { tab: 'staff'; rows: readonly StaffDayReportRow[]; dateKey: string }
   | { tab: 'packer'; rows: readonly PackingReportRow[]; dateKey: string }
@@ -178,12 +111,7 @@ async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, f
       dateKey,
     };
   }
-  /*
-   * Packer day reads the SAME endpoint as the phone's Packing tab
-   * (`/m/reports`) and its CSV export — `format=json` on the export route —
-   * so the desk table, the phone sheet and the downloaded file cannot disagree
-   * about a shift. No new backend; the row shape is already the wire shape.
-   */
+  /* Packer day reads the SAME endpoint as the phone's Packing tab (`/m/reports`) and its CSV export — `format=json` on the export route — so… */
   if (tab === 'packer') {
     const res = await fetch(
       `/api/packing/reports/export?format=json&day=${encodeURIComponent(dateKey)}`,
@@ -194,14 +122,7 @@ async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, f
     if (body.ok === false) throw new Error(body.error || 'packing report failed');
     return { tab, rows: body.rows ?? [], dateKey };
   }
-  /*
-   * Completed tasks read the task desk's OWN route, not a `/api/reports/*`
-   * sibling: `work_assignments` already publishes the lane vocabulary the desk
-   * and `/m` filter by, so a fourth report endpoint would be a second query
-   * over the same rows that could disagree with them about what "done" is.
-   * The envelope is the task list's, so it is narrowed by the task feed parser
-   * rather than by `reportRouteFailure`.
-   */
+  /* Completed tasks read the task desk's OWN route, not a `/api/reports/*` sibling: */
   if (tab === 'tasks') {
     const res = await fetch(withFind(TASKS_REPORT_URL, tab, find), { cache: 'no-store' });
     const body: unknown = await res.json();
@@ -221,12 +142,7 @@ async function fetchReportFeed(tab: Exclude<Tab, 'activity'>, dateKey: string, f
   return { tab, rows: parseDeadStockReportRows(payload) };
 }
 
-/**
- * What a SERVER-ANSWERED find hands its table: the text, its setter, and
- * whether a request for THAT text is still in flight. The last one is what
- * keeps the body in its loading face, so "no matches" is never painted over
- * the previous report's rows.
- */
+/** What a SERVER-ANSWERED find hands its table: */
 interface ServerFind {
   find: string;
   onFindChange: (next: string) => void;
@@ -275,18 +191,7 @@ function DeadStockReportTable({
   return <DataTable {...sheet} totalCount={rows.length} />;
 }
 
-/**
- * Completed tasks — one row per finished follow-up, EVERY staffer's.
- *
- * A plain mount like the three SKU families, with one footnote: the scope. No
- * day stepper — the window is the route's `limit`, not a calendar day.
- *
- * The footnote is load-bearing, not decoration. This page's other tabs are
- * obviously org-wide (a whole shift, the whole warehouse), but a task carries
- * an assignee, and the task DESK a staffer opens elsewhere is scoped to them.
- * A short list here would otherwise read as a filter they forgot they set, so
- * the line says whose record it is and what the pair of dates means.
- */
+/** Completed tasks — one row per finished follow-up, EVERY staffer's. */
 function TasksReportTable({
   rows,
   loading,
@@ -324,15 +229,7 @@ function TasksReportTable({
   );
 }
 
-/**
- * The day walk, shared by every DAY-SCOPED tab.
- *
- * Desk vocabulary — quiet secondary chips over the table, the same walk-back
- * the phone surface ships. Forward stops at today: a report is a record, and
- * there is nothing to read in tomorrow. Extracted 2026-09-16 when Packer day
- * became the second day-scoped family; two copies of a stepper is how two tabs
- * come to disagree about which day "Today" is.
- */
+/** The day walk, shared by every DAY-SCOPED tab. */
 function ReportDayStepper({
   dateKey,
   onDateChange,
@@ -389,16 +286,7 @@ function StaffDayReportTable({
   );
 }
 
-/**
- * Packer day — one row per pack, for one PST day.
- *
- * The footnote is load-bearing, not decoration: `Time to pack` is the SKU's
- * STANDARD (count × standard), not observed handling time — no pack-start
- * event exists, so every pack carries exactly one timestamp. The `Basis`
- * column says per row whether a human set that standard. Stating it here is
- * the difference between this report and the KPI tile it replaced, which
- * showed one weighted total and explained nothing.
- */
+/** Packer day — one row per pack, for one PST day. */
 function PackerDayReportTable({
   rows,
   loading,
@@ -433,17 +321,7 @@ function PackerDayReportTable({
   );
 }
 
-/**
- * Which family MOUNTS — never which column set a shared host receives.
- *
- * Each branch renders a different component because each calls a different
- * family's feed hook, and hooks cannot be chosen conditionally. That
- * constraint is the same one the architecture wants: the mount is per entity.
- *
- * A feed tagged for another tab reads as EMPTY rather than being handed to the
- * wrong resolver — that window is one render wide (the tab flips, the fetch
- * starts) and `loading` is already true through it.
- */
+/** Which family MOUNTS — never which column set a shared host receives. */
 function ReportBody({
   tab,
   feed,
@@ -531,31 +409,13 @@ function ReportsPageInner() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
-  /*
-   * URL-ADDRESSABLE tabs and date (Track R1): `?tab=staff&date=` is a
-   * link a lead can send, and the phone and the desk can point at the SAME
-   * day. `replace`, not `push` — a tab flip is a view change, not a place the
-   * Back button owes a stop. The tab is still local-state-fast; the URL rides
-   * along. Default tab is Staff day now — the report the operator asked for by
-   * name leads, and the SKU families are one underline tap away.
-   */
+  /* URL-ADDRESSABLE tabs and date (Track R1): */
   const tabParam = searchParams.get('tab');
   const tab: Tab = TABS.some((t) => t.id === tabParam) ? (tabParam as Tab) : 'staff';
   const dateParam = searchParams.get('date');
   const dateKey = dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? dateParam : getCurrentPSTDateKey();
 
-  /*
-   * The find text is SESSION-LOCAL and rides the FETCH KEY — it is deliberately
-   * NOT a third URL param. `?tab=` and `?date=` are a place a lead can link to;
-   * a half-typed filter is not, and re-rendering the desk through the router on
-   * every settled keystroke would be a round trip for nothing.
-   *
-   * A tab flip CLEARS it. Each tab is a different report with a different
-   * vocabulary, and carrying "C-03-18" from Bin utilization into Tasks would
-   * open that tab on an empty table the operator never asked for.
-   *
-   * `SearchField` already debounces at 320ms, so this value is the key as-is.
-   */
+  /* The find text is SESSION-LOCAL and rides the FETCH KEY — it is deliberately NOT a third URL param. */
   const [find, setFind] = useState('');
 
   const setParams = useCallback(
@@ -595,22 +455,7 @@ function ReportsPageInner() {
     load();
   }, [load]);
 
-  /*
-   * The desk frame, not a second one (2026-08-31).
-   *
-   * This drew a `PageHeader` plus its own segmented tab strip — a filled-face
-   * selection (`bg-surface-inverse text-white`) beside the underline row every
-   * other page uses. Two tab vocabularies on one product is the fork the chrome
-   * moved into the design system to end.
-   *
-   * The tabs are passed EXPLICITLY because Reports' modes are local view state,
-   * not nav children: `/reports` has no spine drill-down to withdraw, so there
-   * is nothing for `deskChrome` to opt into. The frame takes them as data
-   * either way — which is the point of it taking data.
-   *
-   * `title` is passed for the same reason: the spine does not name this page,
-   * so the default (its nav label) would be empty.
-   */
+  /* The desk frame, not a second one (2026-08-31). */
   return (
     <DeskPageLayout
       title="Reports"

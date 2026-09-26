@@ -8,19 +8,7 @@ import { validateTemplatePackage } from '@/lib/studio/template-package';
 import { importTemplatePackage } from '@/lib/studio/import-package';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
-/**
- * POST /api/studio/templates/import-package
- *
- * Import a CycleForgeTemplatePackage v1 (Template Platform Phase 3). The body IS
- * the package; validateTemplatePackage checks shape + that every referenced
- * node/surface type is REGISTERED (new capabilities need a platform PR, never a
- * package). A valid package is persisted as a non-system template row and cloned
- * into the org via installTemplateIntoOrg — ALWAYS as a draft (custom / import /
- * AI packages never auto-activate); the owner publishes via the human gate.
- *
- * studio.manage — same authoring gate as the other template-import routes.
- * orgId + staffId come from ctx, never the body.
- */
+/** POST /api/studio/templates/import-package */
 export const dynamic = 'force-dynamic';
 
 export const POST = withAuth(async (request, ctx) => {

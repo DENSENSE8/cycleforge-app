@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Client waist for the DURABLE carton listing links
- * (`receiving_listing_links` via `/api/receiving/[id]/listing-links`).
- *
- * The computed tiers (`catalog` / `derived`) never come through here — they are
- * resolved server-side by `collectCartonListingLinks` and arrive as read-only
- * props. This hook owns exactly the rows an operator can create, edit, reorder
- * and delete, so a surface can tell "editable" from "derived" by whether the
- * link has an `id`.
- *
- * No carton id (order-side hosts) = the hook stays idle and reports
- * `supported: false`; the caller keeps its read-only face instead of painting
- * CRUD verbs that have nowhere to write.
- */
+/** Client waist for the DURABLE carton listing links (`receiving_listing_links` via `/api/receiving/[id]/listing-links`). */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { StoredListingLink } from '@/lib/receiving/listing-link-store';
@@ -80,10 +67,7 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
       } catch {
         if (!cancelled) setRows([]);
       } finally {
-        // Always clear the flag, even for a superseded request: a write that
-        // lands mid-fetch bumps the sequence, and gating this on `seq` left the
-        // combo reading "Loading links…" forever behind a row that was already
-        // on screen.
+        // Always clear the flag, even for a superseded request:
         if (!cancelled) setLoading(false);
       }
     })();

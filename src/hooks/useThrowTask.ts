@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Throwing a task, headless — resolve a record or ticket, name the project,
- * choose a team, send one shared assignment.
- *
- * The quick overlay, task desk composer and phone sheet have different layouts
- * but share this sequence: resolve the record server-side, load the roster,
- * POST one task with every chosen member, and report a degraded amplifier.
- * A tracking number has no client-side decoder; the server's scan resolver
- * and {@link resolveThrowTargets} are the source of truth on every surface.
- *
- * ## The two amplifiers are reported, never hidden
- *
- * `POST /api/tasks` returns what happened to the RECORD (`urgency`) and whether
- * the recipient was actually told (`notified`) alongside the task. Both may
- * degrade without failing the throw — a helpdesk that is down, or a record kind
- * the inbox cannot anchor (`isInboxAnchorable`; every kind a task can point at
- * is anchorable since migration `2026-09-22a`, and the branch stays for the
- * next enum value). A thrown-but-nobody-notified handoff looks exactly like a
- * delivered one, so the toast says which one happened rather than reporting a
- * flat success.
- */
+/** Throwing a task, headless — resolve a record or ticket, name the project, choose a team, send one shared assignment. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,14 +10,7 @@ import { resolveThrowTargets, type ThrowTarget } from '@/lib/tasks/throw-targets
 import { TASK_ASSIGNEES_MAX } from '@/lib/tasks/create-task-core';
 import type { StaffRecipient } from '@/lib/staff/staff-recipient';
 
-/**
- * What the record field is looking FOR.
- *
- * `record` posts the typed value at `/api/scan/resolve` — the decoder for
- * things this app prints. `ticket` posts it at `/api/tasks/ticket-target`,
- * because a helpdesk number is not printed here and the scan resolver has no
- * vocabulary for it. Same field, same picked-target shape, different question.
- */
+/** What the record field is looking FOR. */
 export type ThrowTaskMode = 'record' | 'ticket';
 
 export type ThrowResolveState =
@@ -45,19 +18,9 @@ export type ThrowResolveState =
   | { status: 'resolving' }
   | { status: 'done'; targets: ThrowTarget[]; raw: string }
   | { status: 'error' }
-  /**
-   * A refusal the server put into words — a mistyped ticket number, a ticket
-   * neither the registry nor the helpdesk knows, a helpdesk that did not
-   * answer. Carried as a message because "try again" is wrong advice for two
-   * of the three.
-   */
+  /** A refusal the server put into words — a mistyped ticket number, a ticket neither the registry nor the helpdesk knows, a helpdesk that… */
   | { status: 'refused'; message: string }
-  /**
-   * Resolve is gated on `sku_stock.view` while throwing is gated on
-   * `work_orders.claim`, so a role can legitimately hold one and not the
-   * other. Reported as its own state because "try again" is the wrong advice
-   * for a permission wall.
-   */
+  /** Resolve is gated on `sku_stock.view` while throwing is gated on `work_orders.claim`, so a role can legitimately hold one and not the other. */
   | { status: 'denied' };
 
 /** Stable identity for a target across re-resolves. */

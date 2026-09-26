@@ -1,18 +1,4 @@
-/**
- * Payload validation per line type.
- *
- * The line routes used to cast `Record<string, unknown>` straight to
- * `KioskLinePayload`, which type-checks only because a cast is a promise rather
- * than a check — and the promise was false: a REPAIR line posted with no
- * `productModel` / `serialNumber` / `price` would have been stored, and the
- * failure would have surfaced at submit, in front of a customer, as a repair
- * intake that cannot be created.
- *
- * Each shape mirrors its interface in `cart-line.ts`. Unknown keys are
- * STRIPPED rather than passed through: this payload is echoed to a
- * customer-facing display, so an unrecognised field is one nobody has decided
- * is safe to show.
- */
+/** Payload validation per line type. */
 
 import { z } from 'zod';
 import type { KioskLinePayload, KioskLineType } from '@/lib/kiosk/cart-line';

@@ -1,19 +1,4 @@
-/**
- * Credential operation allowlist (Wave 5).
- *
- * Strict allowlisting of operations per integration credential. A credential is
- * authorized ONLY for the operations its provider declares here — anything else
- * is denied at the service layer (requireCredentialPermission / withCredentialScope),
- * even if the OAuth token technically has broader scope. This is defense in depth:
- *   - a compromised or over-scoped token can't be driven to do something the app
- *     was never meant to do with it;
- *   - new code can't silently start calling a provider operation the integration
- *     wasn't provisioned for — it must be added here deliberately (and reviewed).
- *
- * Operations are coarse capability strings `"<resource>.<verb>"` (verb ∈ read|write),
- * scoped to the provider by the call site — NOT raw API endpoints. Keep them
- * aligned to what our service code actually performs.
- */
+/** Credential operation allowlist (Wave 5). */
 
 import type { IntegrationProvider } from './credentials';
 

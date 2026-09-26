@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Everything the tape knows about one entry — the row's tap target (owner
- * 2026-09-26: "a simple row; you must always be able to view all the
- * information when you tap it"). A `linked-peek`: the full record, when the
- * entry has one, is its hub route behind "Open record".
- */
+/** Everything the tape knows about one entry — the row's tap target (owner 2026-09-26: */
 
 import type { ReactNode } from 'react';
 import { BottomSheet } from '@/components/ui/BottomSheet';

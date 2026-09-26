@@ -1,37 +1,4 @@
-/**
- * Repair-service catalog — "which products count as a repair service", walked up
- * the category tree to a configured or name-matched root. Shared by the staff
- * `/api/repair/ecwid-products` route and its device-authed kiosk sibling so the
- * two cannot drift.
- *
- * ## Where the rows come from (2026-07-29e)
- *
- * **The local projection first; the vendor only as a cold-start fallback.**
- * `platform_listings` + `platform_catalog_categories` hold the sell price and the
- * category tree, so a drill is a Postgres read instead of paging the storefront.
- * The live walk survives for orgs with nothing projected yet and as the
- * degrade-path when a projection read fails — it is not the steady state.
- *
- * ## STALENESS CONTRACT — read this before "fixing" it into a live read
- *
- * The projection is authoritative for **DISPLAY**. The provider is authoritative
- * for **MONEY**: catalog lines are charged by `catalog_object_id` and re-priced by
- * the provider at charge time, so a drifted local price can show a stale number
- * but can never overcharge a customer. A charge rejected on drift triggers a
- * background refresh (`/api/cron/catalog-projection`).
- *
- * Reverting these readers to a live-only read would put the ~16s cold storefront
- * walk back on a consumer-facing form. That regression is the reason the
- * projection exists; the two-tier cache below was the workaround for it.
- *
- * ## Credentials
- *
- * The fallback fetchers still read env (`ECWID_STORE_ID`/`ECWID_API_TOKEN` +
- * legacy aliases), as this module always has. The PROJECTION WRITER
- * (`projectEcwidCatalog`) is vault-first via `resolveEcwidCreds(orgId)`, because a
- * projected row carries an `organization_id` and guessing the tenant from env was
- * never an option for a write.
- */
+/** Repair-service catalog — "which products count as a repair service", walked up the category tree to a configured or name-matched root. */
 
 import { getOrSet } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
@@ -39,12 +6,7 @@ import { CACHE_NS, CACHE_TAGS, CACHE_TTL } from '@/lib/cache/tags';
 const ECWID_BASE_URL = 'https://app.ecwid.com/api/v3';
 const ECWID_PAGE_LIMIT = 100;
 
-// ── Two-tier cache (mirrors src/lib/catalog/org-catalog.ts) ──────────────────
-// L1 per-instance Map in front of L2 shared Redis. L1 matters more here than
-// elsewhere: `REDIS_CACHE_DISABLED=true` is a normal local-dev setting, and a
-// cold call costs ~25 SEQUENTIAL Ecwid page fetches (~15s) because the repair
-// filter has to page the entire storefront to find the ~47 `-RS` services.
-// Redis alone would leave dev — and any Redis outage — on that 15s path.
+// ── Two-tier cache (mirrors src/lib/catalog/org-catalog.ts) ────────────────── L1 per-instance Map in front of L2 shared Redis.
 interface L1Entry<T> {
   value: T;
   expiresAt: number;
@@ -281,12 +243,7 @@ export interface RepairCategoryLevel {
   message?: string;
 }
 
-/**
- * One level of the repair category tree (children of `requestedParentId`, or
- * of the repair root(s) when null) plus its breadcrumb trail. A parentId that
- * isn't under a repair root is ignored rather than honored — the tree can
- * never be walked outside the repair subtree.
- */
+/** One level of the repair category tree (children of `requestedParentId`, or of the repair root(s) when null) plus its breadcrumb trail. */
 async function resolveRepairCategoryLevel(
   storeId: string,
   token: string,
@@ -296,12 +253,7 @@ async function resolveRepairCategoryLevel(
   return resolveRepairCategoryLevelFrom(categories, requestedParentIdRaw);
 }
 
-/**
- * The PURE half of {@link resolveRepairCategoryLevel} — everything after the
- * fetch. Split out so the local projection and the live vendor walk produce
- * byte-identical levels by running literally the same code, rather than by two
- * implementations agreeing for now.
- */
+/** The PURE half of {@link resolveRepairCategoryLevel} — everything after the fetch. */
 export function resolveRepairCategoryLevelFrom(
   categories: EcwidCategory[],
   requestedParentIdRaw: string | null,
@@ -453,13 +405,7 @@ export async function fetchAllEcwidProducts(storeId: string, token: string): Pro
   return products.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/**
- * Resolve the repair ROOT category ids from a category set.
- *
- * Config-first (`ECWID_REPAIR_CATEGORY_IDS`), then a name-matched fallback. This
- * runs at READ time on purpose: root membership is never projected, so
- * re-pointing the repair root is a config change rather than a re-sync.
- */
+/** Resolve the repair ROOT category ids from a category set. */
 function resolveRepairRootIds(categories: EcwidCategory[]): string[] {
   const categoryMap = buildCategoryMap(categories);
   const configured = parseConfiguredCategoryIds(process.env.ECWID_REPAIR_CATEGORY_IDS);
@@ -468,16 +414,7 @@ function resolveRepairRootIds(categories: EcwidCategory[]): string[] {
     : findFallbackRootIds(categories);
 }
 
-/**
- * Keep only the products whose category chain reaches a repair root.
- *
- * The PURE half of {@link fetchRepairRootProducts}: the live path narrows by
- * asking the vendor per-category, the projected path already holds every row and
- * narrows here. Same predicate either way.
- *
- * No repair root resolvable → every product passes, preserving the live path's
- * deliberate "everything" fallback rather than silently serving an empty catalog.
- */
+/** Keep only the products whose category chain reaches a repair root. */
 export function filterRepairRootProducts(
   products: EcwidProduct[],
   categories: EcwidCategory[],
@@ -504,35 +441,13 @@ export function filterRepairRootProducts(
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** Repair-service SKUs carry the `-RS` suffix (e.g. `00958-RS`) — everything
- *  else under the repair root (shipping fees, warranty add-ons, spare parts)
- *  shares the category but isn't itself a repair service. Case-insensitive:
- *  Ecwid SKU casing isn't consistently enforced. */
+/** Repair-service SKUs carry the `-RS` suffix (e.g. */
 export function isRepairServiceSku(sku: string): boolean {
   return sku.trim().toUpperCase().endsWith('-RS');
 }
 
-/**
- * The full "products that count as a repair service" list — fetches products
- * + categories, resolves the repair root(s) (env-configured `ECWID_REPAIR_CATEGORY_IDS`
- * or a name-matched fallback), and filters to products whose category chain
- * reaches one of those roots. Unpaginated — callers slice as needed.
- */
-/**
- * The repair-service product list — **projection first, vendor as fallback.**
- *
- * Reads the local `platform_listings` projection (2026-07-29e), which carries the
- * sell price and category membership the counter needs to total a cart offline.
- * When nothing is projected — a fresh org, a tenant that just connected, or a
- * projection cron that has never run — it falls back to the live vendor walk so
- * the surface still works on day one. That fallback is the COLD-START path, not
- * the steady state.
- *
- * The Redis/L1 cache stays in front of both. It is no longer load-bearing for the
- * projected path (a Postgres read is cheap), but it still absorbs the fallback,
- * and `getOrSet` is fail-open + single-flight so a cold cache under concurrent
- * taps rebuilds once.
- */
+/** The full "products that count as a repair service" list — fetches products + categories, resolves the repair root(s) (env-configured… */
+/** The repair-service product list — **projection first, vendor as fallback.** */
 export async function fetchRepairRootProductsCached(
   storeId: string,
   token: string,
@@ -545,14 +460,7 @@ export async function fetchRepairRootProductsCached(
   });
 }
 
-/**
- * Cached twin of {@link resolveRepairCategoryLevel} — projection first, same
- * cold-start fallback.
- *
- * The level is assembled by {@link resolveRepairCategoryLevelFrom} either way, so
- * a projected level and a live level are produced by the same code and cannot
- * drift in shape.
- */
+/** Cached twin of {@link resolveRepairCategoryLevel} — projection first, same cold-start fallback. */
 export async function resolveRepairCategoryLevelCached(
   storeId: string,
   token: string,
@@ -569,17 +477,7 @@ export async function resolveRepairCategoryLevelCached(
   });
 }
 
-/**
- * Projected products, already narrowed to the repair roots — or null to mean
- * "nothing projected, use the vendor".
- *
- * Null vs `[]` is the load-bearing distinction: an empty array would be a
- * legitimate "this store has no repair services", and returning it on a
- * not-yet-projected org would render an empty picker instead of falling back.
- *
- * A projection read that THROWS also returns null. A broken mirror must degrade
- * to the slow-but-correct vendor path, never to an empty catalog.
- */
+/** Projected products, already narrowed to the repair roots — or null to mean "nothing projected, use the vendor". */
 async function loadProjectedRepairProducts(orgId: string): Promise<EcwidProduct[] | null> {
   try {
     const { loadProjectedListings, loadProjectedCategories } = await import(
@@ -667,16 +565,7 @@ async function fetchProductsInCategory(
   return products;
 }
 
-/**
- * The full "products that count as a repair service" list.
- *
- * Asks Ecwid only for the repair categories' own products (roots + every
- * descendant, fetched with bounded concurrency) instead of paging the entire
- * storefront and filtering client-side. On the dogfood store that is ~2.5k
- * products across ~25 SEQUENTIAL pages (~16s) versus ~8 small parallel
- * fetches — the difference between a visible stall and an instant drill on a
- * cold cache. Unpaginated; callers slice.
- */
+/** The full "products that count as a repair service" list. */
 async function fetchRepairRootProducts(storeId: string, token: string): Promise<EcwidProduct[]> {
   const categories = await fetchAllEcwidCategories(storeId, token);
   const categoryMap = buildCategoryMap(categories);

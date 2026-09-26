@@ -1,14 +1,4 @@
-/**
- * DB-free unit tests for the serial-projection module (Tier B2 of the
- * immediate-serial-display plan). Covers:
- *   - fetchSerialsForLines grouping by CURRENT line (Deps-injected, no DB),
- *   - toSerialProjection shape,
- *   - refreshLineSerialProjection writing the expected projection per line,
- *     incl. attach/detach/re-grade single-line refresh and the both-lines
- *     refresh on a current-line move.
- *
- * Run: npx tsx --test src/lib/receiving/serial-projection.test.ts
- */
+/** DB-free unit tests for the serial-projection module (Tier B2 of the immediate-serial-display plan). */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

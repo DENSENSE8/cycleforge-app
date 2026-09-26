@@ -1,15 +1,4 @@
-/**
- * Contract — one staffer's day, projected out of the day report.
- *
- *   pnpm exec tsx --test src/lib/daily-checks/staff-day.test.ts
- *
- * What a manager reading this list is entitled to:
- *   - the MISSES are in it (an unchecked task is the point of the report);
- *   - work that was never this staffer's job is NOT in it, so a miss is a real
- *     accusation and not an artefact of the denominator;
- *   - the checked half reads chronologically — "walk me through the shift";
- *   - the per-staff fraction is the report's, never re-derived here.
- */
+/** Contract — one staffer's day, projected out of the day report. */
 
 import assert from 'node:assert/strict';
 import test from 'node:test';

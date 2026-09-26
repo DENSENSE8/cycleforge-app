@@ -1,14 +1,4 @@
-/**
- * Unit pack placement SoT — loose serialized UNITS staged at packing DESK /
- * STAGING benches (Phase 2 sibling of order pack placement).
- *
- * Shares the same `locations` DESK/STAGING benches as order placement but keeps
- * its OWN ledger (`unit_pack_placements`) so order vs unit per-bench counts stay
- * distinct (no double-count when a unit's parent order is also on a bench).
- *
- * This is WIP staging, NOT stock putaway: `serial_units.current_location` +
- * `inventory_events(MOVED)` remain the bin-putaway path and are untouched here.
- */
+/** Unit pack placement SoT — loose serialized UNITS staged at packing DESK / STAGING benches (Phase 2 sibling of order pack placement). */
 
 import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -176,12 +166,7 @@ export async function moveUnitPackPlacement(
   return placeUnitAtLocation(orgId, { ...args, source: args.source || 'move' });
 }
 
-/**
- * Clear a loose unit's bench placement when it leaves the pack floor (pack
- * complete / ship). Sibling of `clearOrderPackPlacement` — deletes the current
- * row and appends a `'clear'` placement event (from = to = the bench it left,
- * `to_location_id` is NOT NULL). Returns false when there was nothing to clear.
- */
+/** Clear a loose unit's bench placement when it leaves the pack floor (pack complete / ship). */
 export async function clearUnitPackPlacement(
   orgId: OrgId,
   args: { unitId: number; staffId: number | null; reason?: string | null },
@@ -220,12 +205,7 @@ export async function clearUnitPackPlacement(
   return withTenantTransaction(orgId, run);
 }
 
-/**
- * Counts of loose units currently staged at each packing DESK/STAGING.
- * Locations with zero staged units still appear (capacity / empty benches).
- * Units that have left the pack floor (SHIPPED / SCRAPPED / …) are excluded so
- * a lingering placement row cannot inflate the count.
- */
+/** Counts of loose units currently staged at each packing DESK/STAGING. */
 export async function countOpenUnitPlacementsByLocation(
   orgId: OrgId,
 ): Promise<UnitPackPlacementCountRow[]> {

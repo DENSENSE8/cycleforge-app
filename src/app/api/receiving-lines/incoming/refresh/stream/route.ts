@@ -1,17 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/refresh/stream
- *
- * Streaming twin of /api/receiving-lines/incoming/refresh. Re-polls only the
- * shipments backing the Incoming table (UPS/USPS/FedEx tracking#s attached to
- * still-incoming PO lines — the set the operator actually sees), not every
- * active shipment in the system, and emits NDJSON events as each carrier starts
- * and each shipment resolves so the "Sync carriers" popover can show live
- * per-carrier detail.
- *
- * Shares the non-streaming route's rate limit + cross-operator cooldown so the
- * popover can't be used to bypass carrier rate-limit protection: a click inside
- * the cooldown window streams the cached summary and finishes immediately.
- */
+/** POST /api/receiving-lines/incoming/refresh/stream */
 
 import { NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -54,11 +41,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   (async () => {
     try {
-      // Cross-operator cooldown: if someone just refreshed, stream that result
-      // (so the popover still shows "just refreshed") and stop — don't re-hit
-      // the carrier APIs. Per-org key (shared with the non-streaming twin so the
-      // popover can't bypass the cooldown) so one tenant's summary can't be
-      // streamed to — or suppress the cooldown of — another tenant.
+      // Cross-operator cooldown:
       const cooldownKey = `last:${ctx.organizationId}`;
       const cached = await getCachedJson<CarrierSyncResult>('incoming-refresh', cooldownKey);
       if (cached) {
@@ -66,22 +49,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         return;
       }
 
-      // Scope to EXACTLY the shipments backing the Incoming table — the
-      // tracking#s an operator actually sees in the list — not every active
-      // shipment in the system. A shipment is in-scope when it's attached to a
-      // still-incoming PO line (EXPECTED, nothing received yet, PO not
-      // Zoho-received/closed), which is the same surface the row endpoint and
-      // tile counts draw from. We reach the shipment via the identical soft
-      // receiving join the table uses (direct FK, else PO#-based fallback), so
-      // the synced set matches the displayed set. Polling priority is
-      // unchanged: out-for-delivery first, then never-polled, then in transit.
-      // Tenant scope: receiving_line and receiving_carton are tenant-owned, so we
-      // filter rl by org and align the receiving LATERAL's string-key PO#
-      // fallback join on organization_id (a bare PO#-string match would collide
-      // across tenants). zoho_po_mirror and shipping_tracking_numbers have no
-      // organization_id column yet (NEEDS-COL) — they're reached only through
-      // the org-scoped rl/r rows above, and the whole query is GUC-wrapped via
-      // tenantQuery so a future RLS FORCE backstops them.
+      // Scope to EXACTLY the shipments backing the Incoming table — the tracking#s an operator actually sees in the list — not every active…
       const { rows } = await tenantQuery<{
         id: number;
         carrier: string;

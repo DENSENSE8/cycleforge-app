@@ -14,15 +14,8 @@ import {
 } from './receiving-grid-cell-types';
 
 /**
- * The PO / marketplace order number — frozen identity track on Receiving
- * (`select · order`). Dense face: platform brand-identity micro-dot + plain
- * last-8 with hover **Open** (product/listing) · **Edit** (inspector), same
- * verbs as TRACK via {@link OrderNumberMenuChip}. Empty → {@link GridCellDash}.
- *
+ * The PO / marketplace order number — frozen identity track on Receiving (`select · order`).
  * Operator 2026-09-14: the order number displays on EVERY row — fold children
- * included ("it must display the order number for the child rows as well"),
- * so the old `quietIdentity` dash is retired; band and children paint the
- * identical face.
  */
 export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { poValue, platformLabel, platformMeta, row, onEditOrder, quietIdentity } = ctx;
@@ -47,10 +40,7 @@ export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
             platformLabel={brandMeta.value ? brandMeta.label : platformLabel || null}
             openHref={openHref}
             onEdit={onEditOrder}
-            // Declared, not hardcoded — see `omitCellIcon` on the `order`
-            // column. It read a bare `plain` while TRACKING next to it derived
-            // the same answer from `col.omitCellIcon`, so two adjacent cells
-            // decided "glyph or dot" by two different rules.
+            // Declared, not hardcoded — see `omitCellIcon` on the `order` column.
             plain={col.omitCellIcon !== false}
             dense
           />

@@ -10,12 +10,7 @@ import {
   type FailureSeverity,
 } from '@/lib/quality/qualityScore';
 
-/**
- * Gather inputs for, compute, and cache a unit's quality score
- * (unit_quality_scores). The score itself is pure (qualityScore.ts); this layer
- * only reads the unit's grade + open failures + repairs + sourcing and upserts
- * the projection. Cheap (a few indexed reads) — safe to call per mutation.
- */
+/** Gather inputs for, compute, and cache a unit's quality score (unit_quality_scores). */
 
 export interface UnitQualityRow {
   serial_unit_id: number;
@@ -38,10 +33,7 @@ export async function gatherQualityInputs(
   serialUnitId: number,
   orgId?: OrgId,
 ): Promise<{ inputs: QualityInputs; openFailures: OpenFailureForAdvice[] } | null> {
-  // When orgId is present, run every read inside ONE tenant transaction so the
-  // `app.current_org` GUC is consistent across the four queries and the
-  // serial_units org-ownership gate applies. When omitted, keep the original
-  // raw-pool behavior byte-identical for un-migrated callers.
+  // When orgId is present, run every read inside ONE tenant transaction so the `app.current_org` GUC is consistent across the four queries…
   const run = orgId
     ? <T extends QueryResultRow>(text: string, params: unknown[]) =>
         tenantQuery<T>(orgId, text, params)
@@ -147,10 +139,6 @@ export async function recomputeUnitQuality(
   const result: QualityResult = computeQualityScore(gathered.inputs);
 
   // unit_quality_scores has no organization_id (child of serial_units, NEEDS-COL):
-  // can't stamp org on the row. The upsert is keyed on serial_unit_id, whose
-  // org ownership gatherQualityInputs already validated above; when orgId is
-  // present we still run GUC-wrapped (set_config app.current_org via the tenant
-  // transaction) so RLS can backstop once a column/policy lands.
   const sql = `INSERT INTO unit_quality_scores
        (serial_unit_id, quality_score, risk_level, risk_reasons, ebay_condition_id, grade_at_score, computed_at)
      VALUES ($1, $2, $3, $4::jsonb, $5, $6::condition_grade_enum, NOW())

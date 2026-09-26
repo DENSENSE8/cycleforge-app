@@ -1,13 +1,4 @@
-/**
- * Custom Ably↔Yjs provider (ALP-1.1) — we OWN this protocol; no third-party
- * CRDT host, no unmaintained community bridge (locked decision, plan §-2).
- * Full protocol doc: src/lib/master-plan/README.md.
- *
- * The provider is written against a minimal channel interface so the same
- * class runs in the browser (the ONE AblyProvider client via useAblyClient),
- * the Node sync daemon (server ABLY_API_KEY Realtime client), and unit tests
- * (in-memory fake channel) — the house Deps-injection pattern.
- */
+/** Custom Ably↔Yjs provider (ALP-1.1) — we OWN this protocol; no third-party CRDT host, no unmaintained community bridge (locked decision,… */
 
 import * as Y from 'yjs';
 import { safeRandomUUID } from '@/lib/safe-uuid';
@@ -59,12 +50,7 @@ function randomTag(): string {
 export interface AblyYjsProviderOptions {
   /** Stable identity for echo suppression; defaults to a random UUID. */
   clientTag?: string;
-  /**
-   * Subscribe-only mode for staff whose Ably capability has no `publish`
-   * (plan viewers). The provider applies remote updates but never publishes —
-   * no sync request (bootstrap comes from GET /api/forge/master-plan), no
-   * local-edit broadcast, no sync-request answering.
-   */
+  /** Subscribe-only mode for staff whose Ably capability has no `publish` (plan viewers). */
   readOnly?: boolean;
   /** Local-update batching window in ms (merged via Y.mergeUpdates). */
   flushMs?: number;
@@ -74,18 +60,7 @@ export interface AblyYjsProviderOptions {
   onError?: (err: unknown, where: string) => void;
 }
 
-/**
- * Wires one Y.Doc to one master-plan channel.
- *
- * - Local doc updates (any origin except this provider) are batched for
- *   `flushMs` and broadcast as ONE merged `yjs.update`.
- * - Remote updates are applied with `origin = this` so they never re-broadcast
- *   (echo-loop suppression works even though Ably echoes our own publishes —
- *   we also drop any message whose `from` equals our clientTag).
- * - `connect()` publishes a `yjs.sync.request` with our state vector; peers
- *   reply with a diff AND their own state vector, and we push back anything
- *   they are missing as a regular update — two-way convergence in one round.
- */
+/** Wires one Y.Doc to one master-plan channel. */
 export class MasterPlanAblyProvider {
   readonly clientTag: string;
   readonly readOnly: boolean;
@@ -222,12 +197,7 @@ export class MasterPlanAblyProvider {
     void this.flushAsync();
   }
 
-  /**
-   * Merge + publish queued local edits and AWAIT the publish. Server callers
-   * (stateless request that mutates then disconnects) must await this so the
-   * edit is confirmed on the wire before the connection closes — otherwise a
-   * mutation the route reports as successful can vanish.
-   */
+  /** Merge + publish queued local edits and AWAIT the publish. */
   async flushAsync(): Promise<void> {
     this.flushScheduled = false;
     if (this.flushTimer != null) {

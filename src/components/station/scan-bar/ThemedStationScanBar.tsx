@@ -21,15 +21,7 @@ export interface ThemedStationScanBarProps extends Omit<StationScanBarProps, 'in
   isResolving?: boolean;
 }
 
-/**
- * Master scan-bar shell: {@link StationScanBar} + staff bottom-rule chrome +
- * focus brighten + submit center-out trace. Domain wrappers should compose this
- * instead of re-wiring theme classes by hand.
- *
- * Right-rail clearance is a measured frosted overlay (ResizeObserver →
- * padding-inline-end) — never a per-surface `pr-*` twin. Long placeholder ink
- * soft-peeks under the mode glyphs through `backdrop-blur`.
- */
+/** Master scan-bar shell: */
 export function ThemedStationScanBar({
   staffId,
   inputBorderClassName,

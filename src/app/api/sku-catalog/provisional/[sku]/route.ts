@@ -15,18 +15,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { publishSkuExceptionChanged } from '@/lib/realtime/publish';
 
-/**
- * One SKU exception (on-hold placeholder product) — the record a shared link
- * opens on the desk (`/inventory/sku-exceptions?sku=`) and the phone
- * (`/m/on-hold/[sku]`).
- *
- * GET   → the placeholder with its photos and bins. A placeholder that was
- *         already paired answers 404 with `mergedInto`, so a stale link can
- *         say where the product went instead of "not found".
- * PATCH → rename / describe, or attach the barcode a barcode-less placeholder
- *         was created without (attach-once; a conflict answers 409 with
- *         `conflictSku`). Same gate as creating one (`sku_stock.adjust`).
- */
+/** One SKU exception (on-hold placeholder product) — the record a shared link opens on the desk (`/inventory/sku-exceptions?sku=`) and the… */
 
 async function readSku(params: Promise<{ sku: string }>): Promise<string | null> {
   const { sku: raw } = await params;

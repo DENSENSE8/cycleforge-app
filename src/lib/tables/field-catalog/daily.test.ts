@@ -1,17 +1,4 @@
-/**
- * Daily catalog guards + resolver behaviour — the UNION agenda family.
- *
- * The guard that matters most here is the union rule: one table, two stores,
- * and a fact the row's half does not carry resolves NULL rather than borrowing
- * the other half's. A checklist item has no deadline and a task has no roster
- * fraction; a cell that filled either from the wrong side would be a row
- * claiming a fact its store never recorded.
- *
- * Tasks and Daily still speak two vocabularies (`tasks.*` vs `daily.*`) even
- * though Daily now paints assignments: `/tasks` is the assignment DESK with
- * its own layout document, and one org layout governing both surfaces is
- * exactly the merge the separate catalogs prevent.
- */
+/** Daily catalog guards + resolver behaviour — the UNION agenda family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

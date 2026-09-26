@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Task evidence — **Linked records**: every order, tracking number and Zendesk
- * ticket the job touches, beside the one record the task is anchored on.
- *
- * ONE field takes whatever the operator has in hand. It guesses the kind from
- * the text (a carrier-shaped string is tracking, `#48120` is a ticket,
- * anything else an order number) and SHOWS the guess on the switch before
- * Enter, so a wrong guess is one click, never a wrong link. An order number
- * that matches several orders asks which; every other kind names one record.
- */
+/** Task evidence — **Linked records**: */
 
 import { useState } from 'react';
 import { ExternalLink, X } from '@/components/Icons';

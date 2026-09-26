@@ -29,13 +29,7 @@ import {
   shouldAutoCreateFromEmptyTrackingSeed,
 } from './claim-empty-seed-create';
 
-/**
- * Prefer the server's field-level `details` (e.g. a Zod issue string like
- * "receivingId: Expected number, received string") over the generic `error`
- * ("Validation failed"), so a rejected request says exactly WHAT is wrong
- * instead of an opaque wall. Matches the house pattern used across admin/
- * favorites API callers (`details || error || fallback`).
- */
+/** Prefer the server's field-level `details` (e.g. */
 /**
  * Reads the operator's accumulated claim-CC history. Tolerates the legacy
  * single-email string this key used to hold (`receiving-claim:last-cc-email`)
@@ -74,12 +68,7 @@ function apiErrorText(data: unknown, fallback: string): string {
 export interface ClaimModalProps {
   open: boolean;
   row: ReceivingLineRow;
-  /**
-   * Overrides the entity the claim is filed against. Default (`undefined`) keeps
-   * today's behavior: `lineId = row.id`. Pass `null` to file a CARTON-level claim
-   * (`entityType='RECEIVING'`, sets `receiving.zendesk_ticket`) — used for unfound
-   * triage cartons whose rail row is a synthetic stub with no real receiving_line.
-   */
+  /** Overrides the entity the claim is filed against. */
   lineIdOverride?: number | null;
   /** Seeds the "What happened?" note when the modal opens (RETURN match CTA). */
   prefillReason?: string;
@@ -95,13 +84,7 @@ export interface ClaimModalProps {
   onTicketUnlinked?: () => void;
 }
 
-/**
- * The make-a-claim controller. Owns the wizard/mode state and the create/link
- * submit flows, and composes the four single-responsibility sub-hooks
- * ({@link useClaimTicketSearch}, {@link useClaimTemplate},
- * {@link useClaimSellerMessage}). Returns one bag consumed by the presentational
- * sections so the modal file itself stays a thin composition layer.
- */
+/** The make-a-claim controller. */
 export function useReceivingClaimController({
   open,
   row,
@@ -114,10 +97,7 @@ export function useReceivingClaimController({
 }: ClaimModalProps) {
   const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:cc-emails';
   const receivingId = row.receiving_id;
-  // `undefined` override = default to the row's own line; an explicit value
-  // (incl. `null` for a carton-level claim) wins. Placeholder / unfound stub
-  // ids (`id = -receiving_id`) normalize to null so link/create POST never
-  // sends a non-positive lineId that Zod rejects as "Validation failed".
+  // `undefined` override = default to the row's own line; an explicit value (incl.
   const rawLineId = lineIdOverride !== undefined ? lineIdOverride : row.id;
   const { lineId } = normalizeReceivingTicketEntityRefs({
     lineId: rawLineId,
@@ -147,11 +127,7 @@ export function useReceivingClaimController({
   /** True only after empty tracking-seeded Link search auto-flipped to Create. */
   const [autoCreateFromEmptyTracking, setAutoCreateFromEmptyTracking] = useState(false);
 
-  // ── Recipients (opening comment) ─────────────────────────────────────────
-  // Default is a public reply + CC. `notePublic` files the opening comment as a
-  // public reply and enables CC'ing collaborator emails (a vendor, a teammate).
-  // CCs are only meaningful on a public comment, so the UI hides them when
-  // internal-note is selected and the server ignores them there too.
+  // ── Recipients (opening comment) ───────────────────────────────────────── Default is a public reply + CC.
   const [ccEmails, setCcEmails] = useState<string[]>([]);
   const [notePublic, setNotePublic] = useState(true);
 
@@ -313,10 +289,7 @@ export function useReceivingClaimController({
   // (and its dot on the stepper) is skipped entirely for either wizard.
   const sellerStepApplicable = claimType !== 'return';
 
-  // ── Section navigation (scroll-spy) ──────────────────────────────────────
-  // Create: filed/seller require a filed ticket.
-  // Link: find+compose always reachable; filed/seller after update posted;
-  // seller skipped for 'return'.
+  // ── Section navigation (scroll-spy) ────────────────────────────────────── Create:
   const isStepDisabled = (key: string): boolean => {
     const target = key as ClaimWizardStep;
     if (mode === 'create') {
@@ -564,10 +537,7 @@ export function useReceivingClaimController({
     }
   };
 
-  // Save the carton's photos to a local-storage folder. The folder is the
-  // filed/linked ticket # when we have one, else the PO#, else a receiving
-  // fallback — so the operator can back up before OR after a ticket exists.
-  // No free-text target.
+  // Save the carton's photos to a local-storage folder.
   const archiveToNas = async () => {
     if (archiveSubmitting || submitting || !receivingId) return;
     const folder =

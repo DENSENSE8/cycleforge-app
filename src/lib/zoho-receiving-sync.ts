@@ -1,20 +1,6 @@
-/**
- * Canonical Zoho inbound sync service.
- *
- * Data model:
- *   receiving_carton — physical package arrivals scanned at the dock.
- *   receiving_line   — authoritative inbound line items sourced from Zoho.
- *
- * This module keeps expected inbound state in receiving_line and only links a
- * physical receiving_carton row when the warehouse has actually scanned a package.
- */
+/** Canonical Zoho inbound sync service. */
 
-// Wave 2 (tenancy): every write path is org-scoped. The caller threads a real
-// `orgId` (from ctx.organizationId on session routes, the row's organization_id
-// on background reconcilers, or the webhook/cron org resolver) and all tenant
-// tables are written through `withTenantTransaction(orgId, …)` so the
-// `app.current_org` GUC is set and RLS can enforce isolation. The previously
-// hardcoded DOGFOOD_ORG_ID stamp is gone — see git history for the Phase-A3 debt.
+// Wave 2 (tenancy):
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
@@ -22,17 +8,10 @@ import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 import { mergeEbayLinesIntoZohoPo } from '@/lib/inbound/merge-purchase-lines';
 import { claimPendingIdentifierCartons } from '@/lib/receiving/link-pending-identifier';
 import { isIncomingUniversal } from '@/lib/feature-flags';
-// Provider fetches route through the org's InventoryProvider facade
-// (Integrations-as-SoT Wave B1); this module stays the inbound-sync
-// implementation detail on top of it. The withZohoCredential wrapping
-// (operation allowlist + credential-usage audit) is kept at each call site.
+// Provider fetches route through the org's InventoryProvider facade (Integrations-as-SoT Wave B1); this module stays the inbound-sync…
 import { requireInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
 import { formatApiOffsetTimestamp, formatPSTTimestamp } from '@/utils/date';
-// Wave-3 writer inversion: zoho-cluster + testing facts are written directly to
-// the 1:1 facts tables (receiving_line_zoho / receiving_line_testing) — the spine
-// no longer carries those columns. upsertReceivingLineZoho derives
-// zoho_purchaseorder_number_norm from the number (the retired spine column was
-// GENERATED ALWAYS; the helper mirrors it).
+// Wave-3 writer inversion:
 import {
   upsertReceivingLineTesting,
   upsertReceivingLineZoho,
@@ -73,12 +52,7 @@ function asPositiveInt(...values: unknown[]): number {
   return 0;
 }
 
-/**
- * First finite, non-negative numeric value → a Number (unit cost / rate); else
- * null. Zoho PO line `rate` arrives as a number or numeric string. NULL (not 0)
- * for missing so we never fabricate a $0 cost. Receiving redesign Phase 1:
- * mirror of the Zoho line.rate into receiving_line.unit_price (Zoho = SoR).
- */
+/** First finite, non-negative numeric value → a Number (unit cost / rate); else null. */
 function asMoney(...values: unknown[]): number | null {
   for (const value of values) {
     if (value === null || value === undefined || value === '') continue;
@@ -105,10 +79,7 @@ type LocalPickupSyncInput = {
   lineItems: unknown[];
 };
 
-// Idempotent upsert of a Zoho PO into local_pickup_orders + items. Skips the
-// receiving_carton / receiving_line / shipping_tracking_numbers tables entirely —
-// local pickups have no carrier identity and are operated entirely from the
-// local-pickup queue UI.
+// Idempotent upsert of a Zoho PO into local_pickup_orders + items.
 async function syncLocalPickupOrder(
   client: PoolClient,
   orgId: OrgId,
@@ -116,22 +87,13 @@ async function syncLocalPickupOrder(
 ): Promise<SyncPOLinesResult> {
   const { normalizedPoId, poNumber, poReference, lineItems } = input;
 
-  // Serialize concurrent syncs of the same Zoho PO via a session-scoped
-  // advisory lock. Without it, two interleaved syncs could write a header
-  // from snapshot A while lines from snapshot B land — leaving the order
-  // half-stale. The lock key is derived from the PO id so different POs
-  // sync in parallel. Released automatically at txn end.
+  // Serialize concurrent syncs of the same Zoho PO via a session-scoped advisory lock.
   await client.query(
     `SELECT pg_advisory_xact_lock(hashtext('local_pickup_orders.zoho_po_id'), hashtext($1))`,
     [normalizedPoId],
   );
 
-  // Upsert the order header keyed on the Zoho PO id (partial-unique index
-  // ux_local_pickup_orders_zoho_po). Existing rows are touched lightly so a
-  // re-sync refreshes the displayed PO# and reference# without overwriting
-  // operator-curated fields like customer_name, status, or notes. COALESCE
-  // protects against a partial Zoho fetch nulling fields that the previous
-  // sync populated.
+  // Upsert the order header keyed on the Zoho PO id (partial-unique index ux_local_pickup_orders_zoho_po).
   const orderRes = await client.query<{ id: number; xmax: string }>(
     `INSERT INTO local_pickup_orders (
        zoho_po_id, zoho_purchaseorder_number, zoho_reference_number, status, organization_id
@@ -261,11 +223,7 @@ async function syncPurchaseOrderLines(
   const lineItems = Array.isArray(po.line_items) ? po.line_items : [];
   const poReference = asString(po.reference_number);
 
-  // Auto-route: a PO whose reference#/PO number/PO id contains "LCPU" or
-  // "LOCALPICKUP" is a local pickup, not a carrier shipment. Local pickups
-  // have no tracking and live entirely in local_pickup_orders +
-  // local_pickup_order_items — they bypass receiving_carton / receiving_line /
-  // shipping_tracking_numbers altogether.
+  // Auto-route: a PO whose reference#/PO number/PO id contains "LCPU" or "LOCALPICKUP" is a local pickup, not a carrier shipment.
   if (isLocalPickupPo(poReference, poNumber, normalizedPoId)) {
     return syncLocalPickupOrder(client, orgId, {
       normalizedPoId,
@@ -276,9 +234,6 @@ async function syncPurchaseOrderLines(
   }
 
   // Zoho PO Reference# carries the tracking number per the inbound contract.
-  // Register it in shipping_tracking_numbers once per PO so receiving rows can
-  // link via receiving_carton.shipment_id (canonical, replaces the legacy
-  // receiving_line.zoho_reference_number text column).
   let shipmentId: number | null = null;
   if (poReference) {
     const shipment = await registerShipmentPermissive({
@@ -288,18 +243,7 @@ async function syncPurchaseOrderLines(
     shipmentId = shipment?.id ?? null;
   }
 
-  // Make sure a parent `receiving` row exists for this PO with the
-  // shipment_id stamped, so the soft JOIN in /api/receiving-lines can find
-  // the carrier status without requiring an operator scan first. Two paths:
-  //
-  //   1) options.receivingId is provided (scan-driven path) — stamp on that
-  //      row, never create a sibling.
-  //   2) options.receivingId is null (cron sync path) — upsert the canonical
-  //      zoho_po receiving row (idempotent via ux_receiving_zoho_po_matched).
-  //
-  // When `shipmentId` is null (reference# missing / unregisterable), we still
-  // upsert the receiving row so the carrier-sync cron can attach a shipment
-  // later via the existing soft JOIN. shipment_id stays NULL until then.
+  // Make sure a parent `receiving` row exists for this PO with the shipment_id stamped, so the soft JOIN in /api/receiving-lines can find…
   if (options.receivingId) {
     if (shipmentId != null) {
       await client.query(
@@ -357,10 +301,7 @@ async function syncPurchaseOrderLines(
       continue;
     }
 
-    // Dedupe is keyed on receiving_line_zoho's org-led unique
-    // ux_receiving_line_zoho_org_po_line (organization_id, zoho_purchaseorder_id,
-    // zoho_line_item_id) — the spine zoho columns and their unique index are gone
-    // after the Wave-3 inversion.
+    // Dedupe is keyed on receiving_line_zoho's org-led unique ux_receiving_line_zoho_org_po_line (organization_id, zoho_purchaseorder_id,…
     const existing = zohoLineItemId
       ? await client.query<{ id: number; receiving_id: number | null; workflow_status: string | null }>(
           // FOR UPDATE OF rl: the adoption below reads workflow_status and (maybe)
@@ -387,11 +328,7 @@ async function syncPurchaseOrderLines(
     const itemName = asString(line.name, line.item_name);
     const sku = asString(line.sku);
 
-    // Zoho-mirror facts → receiving_line_zoho (1:1). zoho_notes is the per-line
-    // Zoho description (NOT operator `notes`, which stays on the spine untouched
-    // so a re-sync can never clobber it — 2026-06-24). unit_price is the read-only
-    // mirror of the Zoho PO line rate (Zoho = SoR, Phase 1). The helper derives
-    // zoho_purchaseorder_number_norm from the number.
+    // Zoho-mirror facts → receiving_line_zoho (1:1).
     const zohoFacts: ZohoFactsInput = {
       zohoItemId,
       zohoLineItemId,
@@ -405,10 +342,7 @@ async function syncPurchaseOrderLines(
     };
 
     if (existingRow) {
-      // Zoho-mirror FACTS only — lifecycle (workflow_status) and linkage
-      // (receiving_id) are deliberately NOT in this field sync
-      // (Step D fold: the chokepoint owns lifecycle; see the adopt block below).
-      // Spine keeps only the catalog-ish fields; the zoho cluster lives on rz.
+      // Zoho-mirror FACTS only — lifecycle (workflow_status) and linkage (receiving_id) are deliberately NOT in this field sync (Step D fold:
       await client.query(
         `UPDATE receiving_line
             SET item_name = $1,
@@ -420,13 +354,7 @@ async function syncPurchaseOrderLines(
       await upsertReceivingLineZoho(orgId, existingRow.id, zohoFacts, txDeps);
       mode = 'updated';
       if (options.receivingId && !existingRow.receiving_id) {
-        // Adoption, split per the Step D fold recipe: (1) linkage is a raw
-        // receiving_id-only UPDATE that does NOT list workflow_status — so the
-        // coarse trigger can't COALESCE-stamp scanned_at on a row that isn't
-        // actually transitioning; (2) only a pre-adoption EXPECTED row whose
-        // target differs advances through the guarded chokepoint (inside this
-        // same caller transaction — the FOR UPDATE re-lock is a no-op).
-        // skipEvent: this sync never emitted inventory_events for adoption.
+        // Adoption, split per the Step D fold recipe:
         await client.query(
           `UPDATE receiving_line SET receiving_id = $1 WHERE id = $2`,
           [options.receivingId, existingRow.id],
@@ -441,10 +369,7 @@ async function syncPurchaseOrderLines(
         linked++;
       }
     } else {
-      // BIRTH: thin spine line (identity/quantities/birth workflow_status only) +
-      // its 1:1 facts rows in the same transaction. organization_id stamped from
-      // the threaded tenant (survives the loud-fail org default under FORCE
-      // isolation, and pins the line to its tenant).
+      // BIRTH: thin spine line (identity/quantities/birth workflow_status only) + its 1:1 facts rows in the same transaction.
       const inserted = await client.query<{ id: number }>(
         `INSERT INTO receiving_line
            (organization_id, receiving_id, item_name, sku,
@@ -454,10 +379,7 @@ async function syncPurchaseOrderLines(
         [orgId, desiredReceivingId, itemName, sku, quantityExpected, workflowStatus],
       );
       const newLineId = Number(inserted.rows[0].id);
-      // Birth invariant: every line birth creates its receiving_line_testing row
-      // with the values the wide INSERT used to produce. needs_test was never set
-      // by this writer — the LIVE spine default is FALSE (verified 2026-07-11:
-      // 1361/1363 lines are false), so carry FALSE explicitly.
+      // Birth invariant:
       await upsertReceivingLineTesting(orgId, newLineId, {
         needsTest: false,
         qaStatus: 'PENDING',
@@ -472,23 +394,7 @@ async function syncPurchaseOrderLines(
     synced++;
   }
 
-  // Late-line adoption (cron/no-scan path): a line created or re-synced AFTER
-  // the PO's box was already door-scanned would otherwise stay unattached
-  // (receiving_id NULL, workflow EXPECTED) — the scan-time adoption in
-  // lookup-po's linkLocalPoLinesToReceiving only catches lines that exist at
-  // scan time. The receiving-lines list still shows such a line under the
-  // scanned carton via its PO soft-join fallback, so the rail row reads
-  // "EXPECTED" inside the SCANNED queue. Adopt exactly like the scan path:
-  // attach to the PO's scanned zoho_po carton + advance EXPECTED → MATCHED.
-  // ux_receiving_zoho_po_matched guarantees ≤1 such carton per PO.
-  //
-  // Step D fold: was one bulk UPDATE…FROM whose SET listed workflow_status
-  // (CASE EXPECTED→MATCHED ELSE unchanged) — the coarse trigger fired for
-  // every adopted straggler and COALESCE-stamped scanned_at even on rows that
-  // didn't transition. Now: locked SELECT with the same join predicates → raw
-  // receiving_id-only linkage UPDATE → per-row chokepoint transition for rows
-  // genuinely in EXPECTED (skipEvent — the adopt never emitted an
-  // inventory_event). Straggler volume is tiny; per-row loops are fine.
+  // Late-line adoption (cron/no-scan path):
   if (!options.receivingId) {
     const strays = await client.query<{
       id: number;
@@ -602,11 +508,7 @@ export async function importZohoPurchaseOrderToReceiving(
     syncPurchaseOrderLines(client, orgId, inventory, purchaseOrderId, options),
   );
 
-  // Universal Incoming (Phase 3, plan §5.4): collapse any eBay-buyer Incoming line
-  // that is the same real purchase as this Zoho PO into ONE spine row (equivalence
-  // + secondary zoho link + conservative loser-row merge). Flag-gated per org and
-  // fire-and-forget — a merge fault (or the inbound tables not yet migrated) never
-  // fails the Zoho import.
+  // Universal Incoming (Phase 3, plan §5.4):
   try {
     if (await isIncomingUniversal(orgId)) {
       await mergeEbayLinesIntoZohoPo(orgId, {
@@ -624,11 +526,7 @@ export async function importZohoPurchaseOrderToReceiving(
     console.error('[zoho-sync] mergeEbayLinesIntoZohoPo failed:', message);
   }
 
-  // An operator may have linked this order's number to a carton BEFORE it
-  // existed here ("link any id", link-carton-identifier.ts) — that carton is
-  // sitting in Unfound with the id recorded and no items. Now that the order is
-  // imported, claim it and pull its SKUs/items on. Best-effort: a claim fault
-  // never fails the import that triggered it.
+  // An operator may have linked this order's number to a carton BEFORE it existed here ("link any id", link-carton-identifier.ts) — that…
   try {
     const claim = await claimPendingIdentifierCartons(orgId, {
       poId: result.purchaseorder_id,
@@ -658,12 +556,7 @@ export type BulkSyncOptions = {
   per_page?: number;
   max_pages?: number;
   max_items?: number;
-  /**
-   * ISO date `YYYY-MM-DD`. POs with `po.date < po_date_floor` are skipped
-   * client-side (Zoho's REST list filter doesn't expose a po_date range,
-   * only `last_modified_time`). The incoming-po-sync cron sets this so
-   * pre-cutover POs never re-enter `receiving_line`.
-   */
+  /** ISO date `YYYY-MM-DD`. */
   po_date_floor?: string;
 };
 
@@ -883,10 +776,7 @@ export async function importZohoPurchaseReceiveToReceiving(options: {
         continue;
       }
 
-      // Dedupe keyed on receiving_line_zoho's org-led unique
-      // ux_receiving_line_zoho_org_pr_line (organization_id,
-      // zoho_purchase_receive_id, zoho_line_item_id) — the spine zoho columns
-      // are gone after the Wave-3 inversion.
+      // Dedupe keyed on receiving_line_zoho's org-led unique ux_receiving_line_zoho_org_pr_line (organization_id, zoho_purchase_receive_id,…
       const existing = zohoLineItemId
         ? await client.query<{ id: number }>(
             `SELECT rl.id
@@ -933,9 +823,6 @@ export async function importZohoPurchaseReceiveToReceiving(options: {
         mode = 'updated';
       } else {
         // BIRTH: thin spine line + its 1:1 facts rows in the same transaction.
-        // Org stamped from the threaded tenant (survives the loud-fail default
-        // under FORCE isolation, and pins the line to its tenant). This path never
-        // set workflow_status or receiving_id — the spine defaults apply, as before.
         const inserted = await client.query<{ id: number }>(
           `INSERT INTO receiving_line
              (organization_id, item_name, sku, quantity_received, quantity_expected)

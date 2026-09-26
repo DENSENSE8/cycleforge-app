@@ -5,18 +5,7 @@ import { readSessionSid } from '@/lib/auth/session';
 import { resolveGs1 } from '@/lib/gs1/resolver';
 import { PublicQrLanding } from '@/components/qr/public-qr-landing';
 
-/**
- * /01/[gtin]/21/[serial] — GS1 Digital Link landing for a unique unit.
- *
- * Dual-audience, same contract as the GTIN-only sibling and `/m/r/[id]`:
- *   staff → /serial/{serial} (the canonical unit page — proxy.ts also
- *           rewrites /m/u/* here)
- *   anon  → the branded interstitial for the tenant that owns the slug host,
- *           never a hardcoded storefront
- *
- * This is the path unit labels now mint when the org slug and a GTIN are both
- * known, so it is the consumer-facing half of the printed unit sticker.
- */
+/** /01/[gtin]/21/[serial] — GS1 Digital Link landing for a unique unit. */
 export default async function GtinSerialPage({
   params,
 }: {

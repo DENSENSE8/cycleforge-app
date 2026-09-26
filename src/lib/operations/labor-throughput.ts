@@ -1,28 +1,4 @@
-/**
- * Labor throughput — the headline ROI metric: units processed per labor-hour.
- *
- * "How many units did the shop move per paid hour on the clock?" — the single
- * number that proves a productivity lift in week one. Org-scoped and tenant-safe:
- * every read runs through `tenantQuery(orgId, …)` (GUC-scoped tenant connection),
- * and the two spines are joined to the tenant's own rows only.
- *
- *   unitsProcessed — distinct serial units that ADVANCED A STAGE in the window,
- *                    from inventory_events. "Advanced a stage" = an event that
- *                    set a new next_status distinct from prev_status (so pure
- *                    NOTE/annotation rows, which carry no status diff, never
- *                    inflate the count). Org-scoped on inventory_events.organization_id.
- *   laborHours     — Σ clocked hours from time_punches over the window:
- *                    (punched_out − punched_in) − break_minutes, per CLOSED punch.
- *                    time_punches has no organization_id, so it is org-scoped by
- *                    JOINing staff (which does) and filtering staff.organization_id.
- *   unitsPerLaborHour — unitsProcessed / laborHours, guarded against /0.
- *   perStaff       — the same split per worker (units they advanced, their clocked
- *                    hours, their units/hr) for the leaderboard.
- *
- * Collaborators are injected (defaulting to the real tenant-scoped impls) so the
- * pure compose/divide logic is unit-testable with in-memory fakes — the house
- * Deps pattern (see backend-patterns.md "Dependency injection", applyTransition).
- */
+/** Labor throughput — the headline ROI metric: */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -10,15 +10,7 @@ interface CapabilityProviderLabel {
   providerKey: string | null;
 }
 
-/**
- * The org's CONNECTED provider display name for a capability — for vendor-neutral
- * deep-link labels ("Open in <provider>") and headers on product surfaces.
- *
- * Reads `GET /api/integrations/capability-label`. Falls back to the generic
- * capability title (`capabilityTitle(cap)`) while loading or when nothing is
- * connected, so a caller can render immediately. Long staleTime — an org's
- * connected provider rarely changes within a session.
- */
+/** The org's CONNECTED provider display name for a capability — for vendor-neutral deep-link labels ("Open in <provider>") and headers on… */
 export function useCapabilityProviderLabel(cap: Capability): CapabilityProviderLabel {
   const { data } = useQuery<CapabilityProviderLabel>({
     queryKey: ['capability-label', cap],

@@ -1,110 +1,6 @@
 'use client';
 
-/**
- * `DeskPageChrome` — the frame every **non-scan desk** wears.
- *
- * **This is the design system's page chrome and the only one.** It lived in
- * `src/components/desk/` while Shipping was its single tenant; it moved here on
- * 2026-08-31 because a frame that four domains wear is a system component, and
- * a page that hand-rolls its own title row beside this one is a fork. Ask
- * `ds_contract` before building any page header — that is what the pin in
- * `src/design-system/pinned.json` is for.
- *
- * It takes DATA and knows nothing about nav, routing or permissions: the
- * app-level adapter (`@/components/desk/DeskPageLayout`) reads
- * `SIDEBAR_PAGE_NAV` and hands the title, the tabs and the active id down. That
- * split is deliberate — the design system must not import the app's spine.
- *
- * ```text
- *      ┌ stage measure ─────────────────────────────────────────────┐
- *      │ Shipping                         [ Export ] [ Add order ]  │  ← page header
- *      │ To ship   Amazon Prep                                      │  ← tab row
- *      │ ───────                                                    │     underline = active
- *      │                     ↕ detachment gap                       │
- *      │ ┌────────────────────────────────────────────────────────┐ │
- *      │ │ ⌕ find …                         [filter] [fields]  ⤢ │ │  ← table's own row
- *      │ │ ─────────────────── the grid ───────────────────────── │ │
- *      │ └────────────────────────────────────────────────────────┘ │
- *      └────────────────────────────────────────────────────────────┘
- *       ↑ gutter                                            gutter ↑
- * ```
- *
- * Four jobs, and only these four: a **page header** (title left, primary CTA
- * right), a **tab row** for the desk's modes (the pages that used to hang off
- * the spine as nav children), a **detachment gap**, and a **card** capped at
- * {@link DESK_STAGE_MAX_PX}.
- *
- * The tab row is the only optional one. A single-surface page passes `tabs={[]}`
- * and wears the other three — which is what lets a page with no modes still be
- * this frame rather than a hand-rolled title over a bare table.
- *
- * **Scan stations wear it too, as of 2026-08-31.** The rule used to be the
- * opposite — `docs/todo/desk-page-chrome-fixed-width-PLAN.md` §0 said a station
- * must never mount this and must keep its edge-to-edge shell with 28px bands.
- * The operator struck that: Unbox, Arrival, Testing, Packing and Scan out now
- * wear the same frame as the Shipping desk, and their mode tabs moved off the
- * foot strip onto this row. A bench that kept its own tab vocabulary would be
- * the second page chrome in a product that just finished collapsing to one.
- *
- * A station passes its tabs EXPLICITLY (they are body-switchers — `?testTab=`,
- * `?triview=` — not nav children), so `deskChrome: true` stays off its nav
- * entry: the spine has nothing to withdraw.
- *
- * ## Where this frame stops
- *
- * It is the frame for **operator desks** — a page whose subject is a collection
- * you triage. It is deliberately NOT the frame for:
- *
- * - **Settings / admin pages** (`/settings/*`, `/inventory/health/*`). Those are
- *   forms and short config tables; `PageHeader` from `@/components/ui/pane-header`
- *   stays their primitive. A fixed-width stage, a detached card and a fullscreen
- *   toggle answer questions a settings form does not ask, and the two-primitive
- *   split here is the same "two jobs, two components" call the repo already
- *   makes for `Button` vs `button`.
- * - **Detail panels, flyouts and inspectors.** They also use `PageHeader`, and
- *   that is a panel header, not a page header — a different altitude entirely.
- * - **Full-canvas surfaces** (`/studio`'s pan/zoom graph). A canvas that is the
- *   whole point of the page has nothing to gain from a card on a stage.
- *
- * ## The detachment is the point
- *
- * The header and the tabs sit on the page's GROUND; the table is a card on top
- * of it. Before this split, the tabs, the CTA, the table toolbar and the column
- * header were four chrome rows in one continuous slab, and an operator scanning
- * down could not tell where the page furniture stopped and the data started.
- * Every row above the card shares the card's measure, so the title, the tabs
- * and the first column all start on one vertical line.
- *
- * ## Fullscreen swaps the frame — it does not widen it
- *
- * The header and the tab row are **not rendered**, the gutters collapse, and
- * the card goes flush and square: the operator sees the table's own toolbar row
- * and the table, nothing else. That is what fullscreen was pressed to buy, so
- * keeping page furniture above a full-canvas grid would spend it.
- *
- * Nothing is re-parented. The find field and the ⤢ are already on the table's
- * own row in both states (`DataTableFullscreenToggle`); only the rows ABOVE
- * stop rendering. This component OWNS the state and publishes it through
- * {@link DeskStageProvider} — see `desk-stage-context.tsx` for why the control
- * lives on the table rather than up here (in fullscreen, "up here" is gone).
- *
- * Escape exits too. With the tabs unrendered the operator has lost their
- * navigation, and a mode with one small exit and no keyboard way out is a trap.
- *
- * ## No layout tweens
- *
- * Fullscreen is a class swap (AGENTS.md). Nothing here tweens `width`,
- * `max-width`, `height` or a framer `layout`.
- *
- * ## The height chain
- *
- * Every box from here down is `min-h-0 flex-1 overflow-hidden`. **Both halves
- * are load-bearing and they are not the same thing:** `min-h-0` lets a flex
- * child shrink below its content; `overflow-hidden` CLIPS the overflow so the
- * grid scrolls inside the card instead of painting past it. The two fixed rows
- * above the card come out of the card's flex-basis — the page itself must never
- * gain a scrollbar.
- */
+/** `DeskPageChrome` — the frame every **non-scan desk** wears. */
 
 import { useEffect, type ReactNode } from 'react';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
@@ -139,27 +35,14 @@ export interface DeskPageTab {
 }
 
 export interface DeskPageChromeProps {
-  /**
-   * Page title, top-left. Data, never a lookup: the chrome is desk-agnostic and
-   * must not know that Shipping is the desk it happens to be framing. The
-   * caller reads it off the desk's own nav entry so the title and the spine
-   * cannot drift.
-   */
+  /** Page title, top-left. */
   title: string;
   /**
    * Optional line under the title — a count, a scope. Omit it when there is
    * nothing true to say; a placeholder subtitle is worse than none.
    */
   subtitle?: ReactNode;
-  /**
-   * Desk modes, left to right. One active at a time; the URL is the SoT.
-   *
-   * **Empty is a real answer.** A desk with one surface (or none declared yet)
-   * passes `[]` and the tab row is not rendered at all — it still gets the
-   * header, the stage and the detached card. A row drawn for zero tabs is a
-   * rule under nothing, and the same law that bans a placeholder subtitle bans
-   * a placeholder tab strip.
-   */
+  /** Desk modes, left to right. */
   tabs: readonly DeskPageTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
@@ -169,36 +52,13 @@ export interface DeskPageChromeProps {
    * than an `onAdd` callback so a desk can hand over whatever its intake needs.
    */
   addSlot?: ReactNode;
-  /**
-   * A control at the START of the tab row, on the SAME axis as the tabs.
-   *
-   * This is not a second CTA slot and must never be used as one — the tab row
-   * still holds no actions. It exists for the case where a page's tab
-   * vocabulary is larger than a row can hold, so the overflow rides beside the
-   * tabs rather than becoming a second control at a different altitude.
-   *
-   * Media Library is the case it was cut for: seven lifecycle scopes are tabs,
-   * and N operator-defined media types live one click deep in a popover here.
-   * Both write ONE param through one function, and that single-writer law is
-   * why the overflow cannot simply be moved somewhere else on the page — a
-   * scope control sitting apart from the scope tabs is how that surface grew
-   * two writers of one param in the first place (`PhotoLibraryScopeBand`).
-   *
-   * If what you have is an ACTION, it belongs in {@link addSlot}. If it is a
-   * refinement of the rows, it belongs on the table's own toolbar. Only a
-   * control that answers the same question as the tabs belongs here.
-   */
+  /** A control at the START of the tab row, on the SAME axis as the tabs. */
   tabsLead?: ReactNode;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /**
-   * `'card'` (default): the 1152px centred card on the page ground.
+   * `'card'` (default):
    * `'flush'`: an industrial desk (BRIEF §4) — the desktop terminal's frame.
-   * No page title row: ONE full-width bar carries the desk's modes as flush
-   * segments (active = ink fill) with the page actions at its right end, and
-   * the body runs edge to edge on the mode canvas with no gutter, floor or
-   * radius. The title stays in the document as an `sr-only` heading. Adopted
-   * page by page: To ship is the first.
    */
   stage?: 'card' | 'flush';
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
@@ -223,10 +83,7 @@ export function DeskPageChrome({
   const flush = stage === 'flush' && !fullscreen;
   const measure = fullscreen || flush ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
 
-  // Escape is the keyboard half of the one-click-out budget. Bubble phase, a
-  // `defaultPrevented` check and the overlay stack, so a dialog, menu or record
-  // that owns Escape closes itself WITHOUT also collapsing the stage underneath
-  // it (in the record split, the first Escape closes the record).
+  // Escape is the keyboard half of the one-click-out budget.
   useEffect(() => {
     if (!fullscreen) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -283,12 +140,7 @@ export function DeskPageChrome({
                   <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
                 ) : null}
               </div>
-              {/*
-                Overall actions (Export) then the primary CTA. It sat in the
-                28px tab band only because that band could not hold a real
-                button; at page-header altitude that constraint is gone and a
-                page-level action gets a page-level control.
-              */}
+              {/* Overall actions (Export) then the primary CTA. */}
               {addSlot}
             </div>
 
@@ -303,19 +155,10 @@ export function DeskPageChrome({
               )}
             >
               {/*
-                Every tab keeps `px-3` — padding lives INSIDE the name, so the
-                active underline (the hit box's `border-b`) has air on both
-                sides of the letters. `first:pl-0` flushed Counter against the
-                rule. Do not pull the tablist with `-ml-3` to fake title
-                alignment: that hung the selection 12px left of the row
-                hairline (operator 2026-08-31).
-              */}
-              {/*
-                Same-axis overflow, abutting the tablist with no gap — it reads
-                as the head of the tab vocabulary rather than a control beside
-                it. When present it takes the row's left edge; tabs still
-                keep their own `px-3`.
-              */}
+ * Every tab keeps `px-3` — padding lives INSIDE the name, so the active underline (the hit box's `border-b`) has air on both sides of the…
+ * hairline (operator 2026-08-31).
+ */}
+              {/* Same-axis overflow, abutting the tablist with no gap — it reads as the head of the tab vocabulary rather than a control beside it. */}
               {tabsLead}
               <div
                 role="tablist"
@@ -334,21 +177,9 @@ export function DeskPageChrome({
                       data-active={active ? '' : undefined}
                       className={cn(
                         'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
-                        /*
-                          Selection IS the rule, not a bar above it.
-                          `DESK_TAB_ROW_CLASS` draws the full-width hairline on
-                          this row's bottom border; `-mb-px` pulls each tab's own
-                          bottom border down onto that exact pixel, so the dark
-                          segment REPLACES the soft rule under the active tab
-                          instead of stacking a second line on top of it. That
-                          stack is what read as an underline floating off the
-                          hairline.
-                        */
+                        /* Selection IS the rule, not a bar above it. */
                         '-mb-px border-b',
-                        // Colour only. A tab that slid or grew would move its
-                        // neighbours, which ops chrome forbids (AGENTS.md) —
-                        // every tab carries the border, inactive ones
-                        // transparent, so activating one changes no geometry.
+                        // Colour only. A tab that slid or grew would move its neighbours, which ops chrome forbids (AGENTS.md) — every tab carries the border,…
                         'transition-colors duration-100 ease-out',
                         cornerClass('flush'),
                         focusRing('control'),
@@ -402,11 +233,7 @@ export function DeskPageChrome({
 }
 
 /**
- * The industrial desk bar (`stage="flush"`) — the desktop terminal's
- * `.header-routes`: modes as flush mono segments across the full width, the
- * active one ink-filled (colour only, no geometry change), page actions at the
- * right end in the SAME segment face ({@link DeskHeaderFaceProvider}
- * `segment`): full bar height, no gap, no padding between cells, a 1px edge
+ * The industrial desk bar (`stage="flush"`) — the desktop terminal's `.header-routes`:
  * between neighbours, pressed = ink fill (owner 2026-09-24).
  */
 function DeskIndustrialBar({

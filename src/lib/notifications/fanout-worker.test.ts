@@ -212,14 +212,7 @@ test('batch size is clamped to a sane range', async () => {
   assert.deepEqual(ownerCalls[0].params, [200]);
 });
 
-/*
- * ── Rule-arm narrowing + pre-arrival watch lifecycle ────────────────────────
- *
- * The rule arm used to filter on the event key alone, so every SKU rule fired
- * on every unbox event in the org. These pin the two halves of the fix: the
- * worker must HAND the SQL the event's own match facts (a predicate it is
- * never given cannot narrow), and a fulfilled tracking watch must retire.
- */
+/* ── Rule-arm narrowing + pre-arrival watch lifecycle ──────────────────────── */
 
 /** The narrowing facts the rule arm is asked to match, in bound-param order. */
 function ruleArmFacts(orgCalls: Call[]): { sku: unknown; tracking: unknown } {

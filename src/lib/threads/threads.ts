@@ -1,23 +1,4 @@
-/**
- * Entity threads domain layer — ticket-optional conversations anchored to a
- * canonical entity (docs/todo/entity-threads-conversation-plan.md).
- *
- * The single writer for entity_threads / thread_messages (migration
- * 2026-07-14_entity_threads.sql). Mirrors recordEntitySignal
- * (src/lib/surfaces/record-entity-signal.ts):
- *   • anchor vocabulary + parent-table names come from SURFACE_ENTITY_TYPES
- *     (src/lib/surfaces/registry.ts) — never inlined;
- *   • parent existence is validated app-side (polymorphic contract point 6),
- *     in getOrCreateThread, not a DB trigger;
- *   • every message INSERT also emits an ops_events row
- *     (event_type='THREAD_MESSAGE', entity mapped to the spine's lowercase
- *     vocab via the registry) in the SAME tenant transaction;
- *   • idempotent on (organization_id, client_event_id) — a client retry
- *     returns { idempotent: true } instead of a duplicate message.
- *
- * Deps-injected (default real impls) so unit tests run DB-free
- * (.claude/rules/backend-patterns.md).
- */
+/** Entity threads domain layer — ticket-optional conversations anchored to a canonical entity (docs/todo/entity-threads-conversation-plan.md). */
 
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -185,10 +166,7 @@ export async function getOrCreateThread(
       };
     }
 
-    // Upsert on the natural key; the no-op DO UPDATE makes RETURNING yield the
-    // existing row on conflict. xmax = 0 discriminates fresh inserts.
-    // On conflict the thread already exists; revive it if it was soft-deleted
-    // (re-opening an entity's conversation un-tombstones it) and return the row.
+    // Upsert on the natural key; the no-op DO UPDATE makes RETURNING yield the existing row on conflict.
     const res = await client.query(
       `INSERT INTO entity_threads (organization_id, entity_type, entity_id, created_by)
        VALUES ($1::uuid, $2, $3::bigint, $4::int)

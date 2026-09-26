@@ -46,12 +46,7 @@ export interface AttachTrackingPresetPo {
 }
 
 interface IncomingAttachTrackingPopoverProps {
-  /**
-   * When set, skip the PO-search step entirely and open straight into the
-   * attach-tracking state for this PO — used by row-anchored triggers (the
-   * Incoming to-do list + the "Add TRK#" affordance on AWAITING_TRACKING
-   * rows). Omit for the standalone sidebar entry point, which keeps the search.
-   */
+  /** When set, skip the PO-search step entirely and open straight into the attach-tracking state for this PO — used by row-anchored triggers… */
   presetPo?: AttachTrackingPresetPo;
   /** Custom trigger node. Defaults to the standalone "Link tracking to PO" pill.
    *  Pass `null` when a host opens the modal via controlled `open` only (no trigger). */
@@ -66,22 +61,7 @@ interface IncomingAttachTrackingPopoverProps {
   onAttached?: () => void;
 }
 
-/**
- * Attach carrier tracking number(s) to a PO BEFORE the boxes arrive
- * (docs/multi-tracking-po-plan.md Phase 4b). Each attach POSTs to
- * /api/receiving/po/[poId]/attach-box, which get-or-creates the PO's carton and
- * links the tracking via the receiving_shipments junction — flipping the PO out
- * of "Awaiting tracking #" once carrier sync runs.
- *
- * Renders as a screen-centered modal (not an anchored popover) so it reads the
- * same launched from a cramped table chip slot or from inside the slide-over
- * details panel. Keyboard-friendly: Esc / backdrop click close it, focus moves
- * into the field on open and returns to the trigger on close.
- *
- * Two modes:
- *   • standalone (no `presetPo`) — search a PO, then attach. The sidebar entry point.
- *   • row-anchored (`presetPo`)  — the PO is fixed; opens straight to attach.
- */
+/** Attach carrier tracking number(s) to a PO BEFORE the boxes arrive (docs/multi-tracking-po-plan.md Phase 4b). */
 export function IncomingAttachTrackingPopover({
   presetPo,
   trigger,

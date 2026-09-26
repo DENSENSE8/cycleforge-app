@@ -1,10 +1,4 @@
-/**
- * GET /api/kiosk/devices
- *
- * List the tenant's enrolled kiosk tablets for Settings → Devices. Manager-only
- * (`walk_in.enroll_kiosk`). Returns management-facing facts only — never a token
- * or code hash.
- */
+/** GET /api/kiosk/devices */
 
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

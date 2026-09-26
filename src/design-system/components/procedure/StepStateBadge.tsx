@@ -2,30 +2,7 @@ import { Check, ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import type { ProcedureStepState } from './types';
 
-/**
- * Step-state mark — a flush **checkbox-shaped box**, matching the house select
- * gutter ({@link GridRowCheckbox} face: `h-4 w-4 rounded border`), never a
- * `rounded-full` status dot. This is what makes the procedure checklist read as
- * boxes "like the rest of the codebase".
- *
- * ## It is a DISPLAY, not a Checkbox
- *
- * The box is a `<span>` and never toggles. A procedure step is
- * **evidence-derived** — a square that clicks to tick would reintroduce the
- * banned hand-ticked checklist (`display/station.md`, `display/instrument-panel.md`:
- * hand-ticked lists were deleted and stay deleted). Shape changed; interaction
- * did not.
- *
- * ## `skipped` stays a waiver, never a check
- *
- * A skip records that a person looked at a step and moved past it — it does not
- * claim the work happened. It keeps the chevron, never the check, so the
- * done/skipped distinction survives the reshape (see `types.ts`).
- *
- * One mark for both views — {@link ProcedureChecklist} (edge reference) and
- * {@link ProcedureDeck} (work surface) render the same resolved steps, so a
- * shared mark is what keeps them from drifting on shape.
- */
+/** Step-state mark — a flush **checkbox-shaped box**, matching the house select gutter ({@link GridRowCheckbox} face: */
 const STEP_MARK_BOX = 'flex h-4 w-4 shrink-0 items-center justify-center rounded border';
 
 export function StepStateBadge({

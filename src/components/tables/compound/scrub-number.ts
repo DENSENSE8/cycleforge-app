@@ -1,16 +1,4 @@
-/**
- * Figma-style number-field math: the POINTER'S delta-X is the increment,
- * not position-on-a-track. `ScrubSlider` maps clientX onto min–max on a
- * bar — that is a different job, and it does not belong under a title.
- *
- * 1px of travel = 1× `step` (Shift = coarse, Control = fine / critical).
- * Fine drag is damped (`SUBTITLE_SCRUB_FINE_PX`) so small left/right moves
- * stay near the origin. Alt still aliases Control. Releasing Control parks
- * the origin and keeps the fine band for `SUBTITLE_SCRUB_FINE_GRACE_MS` —
- * the pointer is still displaced ("under the slider"), and that leftover
- * travel must not become dollars. The painted face stays in the DOM while
- * the cursor also carries the live value.
- */
+/** Figma-style number-field math: */
 
 import { formatCurrency } from '@/utils/_number';
 import type { CompoundSubtitleScrub } from './compound-row-model';

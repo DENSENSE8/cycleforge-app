@@ -1,16 +1,4 @@
-/**
- * `reports.bin-utilization` — the table definition, capabilities and surface
- * descriptor for the bin-utilization report.
- *
- * Re-declares nothing: columns are the family SoT by reference.
- *
- * Its OWN tableId, never shared with the other two reports: three different
- * row shapes cannot share one layout document, and the Fields menu keys off
- * `tableId` — so hiding `Cap` here must not touch Velocity or Dead stock. It
- * is also not the Warehouse `bins` family: that row is `BinsOverviewRow` with
- * count stamps and four flags this MV projection does not carry, so reusing it
- * would mean inventing the facts it is missing.
- */
+/** `reports.bin-utilization` — the table definition, capabilities and surface descriptor for the bin-utilization report. */
 
 import {
   makeGridSurfaceDescriptor,
@@ -27,16 +15,7 @@ import {
   type ReportBinUtilizationGridColumn,
 } from './report-bin-utilization-grid-layout';
 
-/**
- * Nothing on this desk writes. A report row is a projection over a
- * materialized view — there are no row verbs, no cell editing and no triage
- * flags; the only thing an operator does with a page of them is read, narrow
- * and lift.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * pulling a run of over-full bins into a re-slotting plan is the reason this
- * report is opened at all.
- */
+/** Nothing on this desk writes. */
 export const REPORT_BIN_UTILIZATION_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

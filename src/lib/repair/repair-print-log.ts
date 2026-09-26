@@ -1,20 +1,4 @@
-/**
- * Repair print log — who printed which repair document, when, and where.
- *
- * There is no print-job table a repair can anchor to (`document_print_jobs.order_id`
- * is NOT NULL; `label_print_jobs` anchors serial units / manifests / totes), so
- * the log is read from `audit_logs`, where every repair print already lands:
- *
- *   - `repair_service.label_printed`   — POST /api/repair-service/[id]/label-printed
- *     (desk, phone-to-station label jobs); `metadata.alreadyPrinted` = reprint.
- *   - `kiosk.visit_print`              — the tablet's History face (`metadata.kind`,
- *     `metadata.device_label`); label rows for a counter visit carry
- *     `metadata.repair_id` under entity `counter_transaction`.
- *   - `repair_service.document_printed` — a station printed the repair paper or a
- *     manual for this repair (POST /api/repair-service/[id]/print-log).
- *
- * Pure: shared by the route (mapping) and the phone (types + copy).
- */
+/** Repair print log — who printed which repair document, when, and where. */
 
 export type RepairPrintDocument = 'receipt' | 'label' | 'manual';
 

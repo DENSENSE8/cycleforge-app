@@ -5,13 +5,7 @@ import {
   type LinkSupportTicketEntityDeps,
 } from './zendesk-links';
 
-/**
- * Locks the 2026-07-21 re-key of the canonical anchor writer: every anchor write
- * (Zendesk via linkTicket AND internal via threads/escalate.ts) funnels through
- * linkSupportTicketEntity, whose demote + upsert must key on the platform-agnostic
- * `support_ticket_id`, not the legacy zendesk-led index. DB-free via an injected
- * transaction runner that captures the SQL.
- */
+/** Locks the 2026-07-21 re-key of the canonical anchor writer: */
 
 const ORG = '00000000-0000-0000-0000-000000000001';
 

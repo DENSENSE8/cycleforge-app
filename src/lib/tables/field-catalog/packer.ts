@@ -1,32 +1,4 @@
-/**
- * Packer bench field catalog — the bindable facts of ONE pack scan, as DATA.
- *
- * Wave C of the slot-table port; the SIBLING of `./tech.ts`, never a merge.
- * The two benches share a row SHAPE (both map into the shared
- * `QueueRowRecord`) but not a question: a tech row reports a test scan, a
- * packer row reports a carton being built — and a packer row carries BOTH
- * stamps, because `packerRecordToQueueRow` projects the upstream tester as
- * well (`tested_by` / `test_date_time` / `tested_by_name` / `tester_name`).
- * That is why the flat bench painted a Tester column beside the Packer one,
- * and why this catalog names two stage events where `./tech.ts` names one.
- *
- * `packerRecordToQueueRow` (`@/lib/station/record-to-queue-row`) is the ONLY
- * authority on which fields a bench row carries; every `paths` string below
- * names a property it sets. Resolution is `./packer-resolve.ts`, kept separate
- * so this module stays a LEAF.
- *
- * ## Facts the flat array painted that are NOT catalog fields, and why
- *
- * `title` is the item cell's first line; `age` ("Late") is the Dates chrome;
- * `stage` is the state pill's own derivation; `tracking` is the identity
- * cell's second line (see the identity field's `tracking` path). See
- * `./tech.ts` for the long form of each.
- *
- * **`urgent`** and **`packStation`** are dropped outright: the mapper projects
- * no urgency flag and no `pack_location_name` / bench label, so there is no
- * path to name. The pack step below therefore resolves `station: null` rather
- * than inventing one — an honest blank, not a guess.
- */
+/** Packer bench field catalog — the bindable facts of ONE pack scan, as DATA. */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
@@ -127,18 +99,7 @@ export const PACKER_FIELD_CATALOG: FieldCatalog = [
   },
 ];
 
-/**
- * The PRODUCT default packer-bench layout: both lifecycle steps in the status
- * band, in the order the flat array painted them (Tester before Packer), over
- * the subtitle facts the bench showed (`condition` · `qty`) plus the
- * identifiers it had no room for.
- *
- * `packer.notes` is bindable but UNBOUND — `MAX_SUBTITLE_SLOTS` is five. See
- * `./tech.ts` for the same ruling.
- *
- * `amountFieldId: null` — a bench log has no money fact. Guard:
- * `packer.test.ts` parses this against the catalog.
- */
+/** The PRODUCT default packer-bench layout: */
 export const PACKER_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',
   identityFieldId: 'packer.order_id',

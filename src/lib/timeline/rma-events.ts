@@ -52,14 +52,7 @@ function statusLabel(status: string | null | undefined): string {
   return s;
 }
 
-/**
- * Map RMA authorizations → timeline items.
- *
- * One row per RMA, anchored at `authorized_at` — the moment the return entered
- * the picture, which is what an operator scanning the order's history is
- * looking for. A closed RMA emits a SECOND row at `closed_at` so the trail
- * shows the return opening and resolving rather than silently mutating one row.
- */
+/** Map RMA authorizations → timeline items. */
 export function rmaEventsToTimeline(rows: RmaTimelineRow[]): TimelineItem[] {
   const items: TimelineItem[] = [];
 

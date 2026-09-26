@@ -1,12 +1,4 @@
-/**
- * withKioskAuth — device-principal resolution + scope denial, DB-free.
- *
- * Uses the injectable `KioskAuthDeps` (the house Deps-injection pattern) so the
- * gate is exercised with a fake device resolver — no Postgres, no cookies
- * plumbing beyond a minimal fake request.
- *
- *   NODE_OPTIONS='--conditions react-server' npx tsx --test src/lib/auth/withKioskAuth.test.ts
- */
+/** withKioskAuth — device-principal resolution + scope denial, DB-free. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

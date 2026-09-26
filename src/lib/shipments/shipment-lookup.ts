@@ -1,15 +1,4 @@
-/**
- * READ-ONLY tracking → package resolution for `GET /api/shipments/lookup`.
- *
- * Ladder (first hit wins): the existing read-only resolver's exact normalized
- * match (`lookupShipmentId` — GS1 unwrap, FNSKU refusal), then key18, then
- * last-8. Never registers or syncs a shipment, so a miss costs one indexed
- * lookup plus one ~12k-row expression scan and leaves no row behind.
- *
- * A last-8 match is only an answer when exactly one package carries it —
- * eight digits collide across carriers, and guessing would open the wrong box.
- * Every candidate must pass the same org visibility rule as the record.
- */
+/** READ-ONLY tracking → package resolution for `GET /api/shipments/lookup`. */
 
 import pool from '@/lib/db';
 import { looksLikeFnsku } from '@/lib/scan-resolver';

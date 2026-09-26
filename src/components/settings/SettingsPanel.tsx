@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Settings Registry — the one generic renderer for a page's settings.
- *
- * Filters the registry by page, splits Personal (staff + personalizable) from
- * Organization policy (org-scope; shown only to admins), groups by `group`, and
- * renders each setting through <SettingControl>. Effective values + entitlement
- * locks come from usePageSettings (resolved server-side). See
- * docs/settings-registry.md.
- */
+/** Settings Registry — the one generic renderer for a page's settings. */
 
 import { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';

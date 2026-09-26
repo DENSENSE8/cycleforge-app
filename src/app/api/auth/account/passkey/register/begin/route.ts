@@ -1,10 +1,4 @@
-/**
- * POST /api/auth/account/passkey/register/begin
- *
- * Signed-in user adds a passkey to their GLOBAL account (for cross-org,
- * passwordless sign-in). Returns WebAuthn registration options; stashes the
- * challenge + account id in a short-lived cookie that /finish reads back.
- */
+/** POST /api/auth/account/passkey/register/begin */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';

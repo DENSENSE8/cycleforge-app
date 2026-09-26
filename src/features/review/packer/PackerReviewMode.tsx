@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Review · Packing detail — Unbox-family Station Workbench:
- *   StationScanPaneHost + StationPanelRoot
- *   Centre = Note (flag requires a note — always on the work floor)
- *   Displays = Photos · Tracking · Timeline
- *   StationTerminalDock → Approve · Flag menu
- *
- * Mid-canvas SectionTabsSlider deleted (scan-station Displays SoT Phase F).
- */
+/** Review · Packing detail — Unbox-family Station Workbench: */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

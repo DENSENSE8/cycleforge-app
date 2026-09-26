@@ -1,23 +1,6 @@
 'use client';
 
-/**
- * Support · Tickets — the thread's SPLIT header (Workbench branch
- * `service-workspace`).
- *
- *   ┌─ Panel (flush-square — ONE plane, no hairline) ──────────────────┐
- *   │ [← back] ……………  [↗ Open in Zendesk] [details] [▥ inspector]     │
- *   │ status · subject · priority · #ticket                             │
- *   └───────────────────────────────────────────────────────────────────┘
- *
- * Back leads top-left (station Exit cube). Trailing cluster is circular
- * {@link ConversationHeaderActionButton} — same face as Unbox Ticket Displays
- * (open-in-provider → ticket details → Show/Hide inspector). Inspector uses
- * {@link ColumnsTwo} — same glyph as Unbox History Band-3
- * {@link WorkbenchInspectorToggle}.
- *
- * Not `PaneHeader` (sticky band) and not `StationContextBar` (carton bookmark).
- * Identity stays caption-density via {@link SupportTicketIdentity}.
- */
+/** Support · Tickets — the thread's SPLIT header (Workbench branch `service-workspace`). */
 
 import type { ReactNode } from 'react';
 import { ChevronLeft, ColumnsTwo, ExternalLink } from '@/components/Icons';

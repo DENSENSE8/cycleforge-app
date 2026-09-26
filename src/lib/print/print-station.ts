@@ -1,11 +1,6 @@
 /**
- * This computer's print-station identity — a stable per-browser id plus the
- * human name the operator gave it. The staff print bridge stamps both on every
- * status message, and a job is only fulfilled by the host whose id matches its
+ * This computer's print-station identity — a stable per-browser id plus the human name the operator gave it.
  * `targetStationId` (operator 2026-09-24: "pick one named print station").
- *
- * Stored per-origin-per-device in localStorage, next to the silent-print flag
- * and printer profiles, so it is inherently per-workstation.
  */
 
 import { UNNAMED_PRINT_STATION } from './staff-print-bridge';
@@ -117,13 +112,7 @@ const CLAIMED_JOBS_KEY = 'cf.printStation.claimedJobs';
 /** Recent job ids kept for the claim check — far more than can be in flight. */
 const CLAIMED_JOBS_KEEP = 50;
 
-/**
- * Run `work` for one print job in exactly ONE tab of this browser. Every tab
- * of a browser is the same station (one localStorage id), so a desk tab and a
- * phone tab open side by side both receive the job; the Web Lock serialises
- * them and the claimed-ids list makes the loser skip, even if it arrives after
- * the winner released the lock. Resolves true when this tab ran it.
- */
+/** Run `work` for one print job in exactly ONE tab of this browser. */
 export async function runPrintJobOnce(requestId: string, work: () => Promise<void>): Promise<boolean> {
   const locks = typeof navigator === 'undefined' ? undefined : navigator.locks;
   if (!locks) {

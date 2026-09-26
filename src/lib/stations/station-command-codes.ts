@@ -1,13 +1,4 @@
-/**
- * Built-in registry + bootstrap SoT for the `station_command` Class-D vocabulary —
- * physical CMD-* stickers that arm session modes on scan stations (Arrival
- * batch-sort first).
- *
- * Behavior (what a scan does) is owned HERE. Tenant `reason_codes` rows
- * (flow_context = 'station_command') are seeded for Admin visibility, relabel,
- * and 2×1" print — inventing a row in Admin does NOT arm a new scan mode until
- * this registry + the Arrival classifier grow.
- */
+/** Built-in registry + bootstrap SoT for the `station_command` Class-D vocabulary — physical CMD-* stickers that arm session modes on scan… */
 
 export const STATION_COMMAND_FLOW_CONTEXT = 'station_command' as const;
 

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Slot popovers for the receiving (carton) sticker: platform·type, date,
- * condition, order/ticket/tracking corner.
- *
- * One host so Unbox, Testing, and every other {@link LabelFacePreview} that
- * shows a carton face share the same menus — not a per-station fork.
- */
+/** Slot popovers for the receiving (carton) sticker: */
 
 import { type ReactNode, useRef, useState } from 'react';
 import { Check } from '@/components/Icons';

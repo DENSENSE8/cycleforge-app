@@ -1,12 +1,4 @@
-/**
- * Horizontal overflow metrics for LedgerGrid scroll affordances.
- *
- * Pure numbers → start/end flags. LedgerGrid toggles
- * `cf-grid-overflow-start` / `cf-grid-overflow-end` (and keeps
- * `cf-grid-scrolled` in sync for the frozen-edge shadow). Threshold absorbs
- * sub-pixel / rubber-band noise at either end — same idea as
- * {@link moreBelowFromMetrics}.
- */
+/** Horizontal overflow metrics for LedgerGrid scroll affordances. */
 
 export interface GridOverflowX {
   overflowStart: boolean;

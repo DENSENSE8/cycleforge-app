@@ -8,21 +8,7 @@ import { buildLocalPickupPoNumber } from '@/lib/local-pickup/po-number';
 /** Zoho vendor that owns local pickup purchase orders (resolved by name). */
 const LOCAL_PICKUP_VENDOR_NAME = 'LOCAL PICKUP SELLER';
 
-/**
- * POST /api/local-pickup-orders/:id/finalize
- *
- * Turns a DRAFT local pickup order into a completed Purchase Order:
- *   1. resolve the Zoho vendor "LOCAL PICKUP SELLER"
- *   2. build PO# `LCPU-{NAME}-{MMDDYY}` from the order
- *   3. create the Zoho PO (external write — done first so a local failure
- *      can't leave a half-committed order without its PO)
- *   4. mark the order COMPLETED + store Zoho ids + link the receiving row
- *
- * The caller passes `receivingId` — the single `receiving` row (source
- * 'local_pickup') created at finalize time that owns the label QR + history
- * row. The `WHERE status='DRAFT'` guard makes a double-finalize a no-op, so a
- * retry never creates a second Zoho PO.
- */
+/** POST /api/local-pickup-orders/:id/finalize */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const gate = await requireRoutePerm(req, 'walk_in.intake');
   if (gate.denied) return gate.denied;

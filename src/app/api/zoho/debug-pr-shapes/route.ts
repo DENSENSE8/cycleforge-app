@@ -5,18 +5,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Debug-only: POST several payload variants to /api/v1/purchasereceives and
- * report which one Zoho accepts. Body:
- * {
- *   purchaseorder_id: string,
- *   line_item_id: string,
- *   item_id: string,
- *   bill_id: string,
- *   receive_number?: string,
- *   serial_number?: string
- * }
- */
+/** Debug-only: POST several payload variants to /api/v1/purchasereceives and report which one Zoho accepts. */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json();
   const purchaseorder_id = String(body?.purchaseorder_id || '').trim();

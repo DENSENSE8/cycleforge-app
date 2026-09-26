@@ -1,21 +1,4 @@
-/**
- * Restricted-circulation GTINs must not leave the tenant.
- *
- * This app MINTS internal GTINs — `src/lib/inventory/internal-gtin.ts` stamps
- * `"02" + 11-digit sku_catalog.id + check digit` onto `sku_catalog.gtin` so a
- * tenant with no GS1 membership still gets a scannable product number. Inside
- * the warehouse that is exactly right. Handed to a trading partner it is a
- * claim of global resolvability the number does not have: `gtinIdentifier`
- * renders a GTIN as `https://id.gs1.org/01/{gtin}` — GS1's canonical resolver —
- * and an RCN will never resolve there.
- *
- * The sibling of the borrowed-`DEFAULT_GLN` bug, arriving from the product side
- * instead of the location side. Found 2026-08-02 by tracing
- * /api/units/next-id → getOrCreateInternalGtin → sku_catalog.gtin → the interop
- * projections; see docs/todo/gs1-internal-gtin-rcn-HANDOFF.md.
- *
- * Run: npx tsx --test src/lib/interop/gs1-restricted-circulation.test.ts
- */
+/** Restricted-circulation GTINs must not leave the tenant. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -68,11 +51,7 @@ test('a LICENSED GTIN is untouched — the refusal is narrow', () => {
 });
 
 test('indicator digit 2 on a licensed prefix is NOT restricted', () => {
-  // The bug this test exists for: `20812345000010` is a legitimate case-pack
-  // GTIN-14 — packaging indicator 2 over the licensed prefix 0812345. A raw
-  // `startsWith('20')` on the 14-digit string refuses a real trade item, which
-  // is why the predicate normalises to GTIN-13 space (dropping the indicator)
-  // before reading the prefix.
+  // The bug this test exists for:
   assert.equal(isRestrictedCirculationGtin(LICENSED_14_INDICATOR_2), false);
   assert.ok(gtinIdentifier(LICENSED_14_INDICATOR_2), 'a case pack still mints');
 });

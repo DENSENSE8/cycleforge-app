@@ -164,12 +164,7 @@ test('an empty generation is a 502, not a blank draft handed to an agent', async
 
 // ── confidence + typed sources ──────────────────────────────────────────────
 
-/**
- * A photo whose identifiers matched NOTHING caps the draft at `low` however
- * well the docs answered: the assistant is talking about an object it could not
- * place, and a confident paragraph about an unplaced object is what reaches the
- * customer.
- */
+/** A photo whose identifiers matched NOTHING caps the draft at `low` however well the docs answered: */
 test('an unmatched photo caps confidence at low', () => {
   assert.equal(
     resolveConfidence({

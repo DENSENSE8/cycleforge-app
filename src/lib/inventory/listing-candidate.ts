@@ -1,24 +1,4 @@
-/**
- * Review · Missing item number — turn a pasted listing URL into a **checkable**
- * candidate, and resolve the href an operator opens to verify an item number
- * before approving it.
- *
- * This is Propose **step B** of
- * `docs/todo/review-listing-propose-approve-PLAN.md`: pure URL parsing, no
- * network, no Hermes, no catalog. Steps A (exact catalog title) and C
- * (marketplace search + rank) land later in
- * `propose-listing-for-exception.ts` and compose these functions rather than
- * re-parsing URLs.
- *
- * Client-safe by construction — every import here is a pure string module, so
- * the rail can call it on each keystroke with no round trip and no `server-only`
- * graph riding along (`build-gotchas.md` → bundle altitude).
- *
- * **Nothing here invents an id.** Every returned `itemNumber` came out of the
- * URL the operator pasted; a URL that carries no id is reported as a parse
- * failure, never guessed at (plan §2 — "Hermes may never invent an item #",
- * which applies just as hard to a regex).
- */
+/** Review · Missing item number — turn a pasted listing URL into a **checkable** candidate, and resolve the href an operator opens to… */
 
 import {
   listingUrlItemId,
@@ -59,14 +39,7 @@ export const LISTING_URL_PARSE_MESSAGE: Record<ListingUrlParseFailure, string> =
     'No item number in that URL — it looks like a search or storefront page. Open the listing itself and paste its link.',
 };
 
-/**
- * Parse a pasted listing URL into a candidate the operator can check.
- *
- * Returns a failure rather than a partial candidate: an id-less URL still
- * *opens*, so returning one with an empty `itemNumber` would put a working
- * "Open listing" button next to a Resolve that cannot run — the operator would
- * verify a page and then find nothing to approve.
- */
+/** Parse a pasted listing URL into a candidate the operator can check. */
 export function parseListingUrl(raw: string | null | undefined): ListingUrlParse {
   const listingUrl = normalizeListingHref(raw);
   if (!listingUrl) return { ok: false, reason: 'not_a_url' };
@@ -96,19 +69,7 @@ export function itemNumberFromPaste(raw: string | null | undefined): string {
 }
 
 
-/**
- * The href to open when CHECKING an item number before approving it.
- *
- * Precedence is deliberate (plan §6): a URL the operator actually pasted is the
- * listing itself, so it wins over anything rebuilt from an id — rebuilding
- * would drop the query string and, on a locale storefront, point at the wrong
- * site for the same id. Only when there is no such URL do we derive one from
- * the platform the order came from.
- *
- * Returns `null` honestly rather than a search URL that pretends to be the
- * listing — `getExternalUrlByPlatform` already refuses Zoho for the same
- * reason (inventory identity is not a storefront).
- */
+/** The href to open when CHECKING an item number before approving it. */
 export function listingCheckHref(args: {
   itemNumber: string | null | undefined;
   /** A URL already in hand — pasted by the operator, or stored on the record. */

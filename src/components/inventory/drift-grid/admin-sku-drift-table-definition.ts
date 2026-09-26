@@ -20,17 +20,7 @@ import {
   type AdminSkuDriftGridColumn,
 } from './admin-sku-drift-grid-layout';
 
-/**
- * Nothing on this desk writes. A row is a read-time comparison, and the only
- * thing that clears it is `fn_reconcile_sku_stock()` replaying the ledger —
- * which is a whole-org reconciliation behind an admin endpoint, not a per-row
- * verb. Offering "reconcile this SKU" from a cell would mint a second writer
- * into counters the ledger owns.
- *
- * `multiSelect` stays on for the bulk copy-TSV bar every slot peer carries:
- * lifting the drifting SKUs into a reconciliation ticket is why the page is
- * open.
- */
+/** Nothing on this desk writes. */
 export const ADMIN_SKU_DRIFT_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,

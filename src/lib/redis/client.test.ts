@@ -3,10 +3,7 @@ import assert from 'node:assert/strict';
 
 import { resolveRedisRestCreds } from './client';
 
-// Guards the 2026-07 regression: prod had only KV_REST_API_* creds while the
-// client read only UPSTASH_REDIS_REST_*, so isRedisConfigured() was false and the
-// cache + distributed rate limiter + workflow lock silently no-op'd. These pin
-// the dual-name resolution rule so a future refactor can't drop a convention.
+// Guards the 2026-07 regression:
 
 test('resolveRedisRestCreds: Upstash-native names resolve', () => {
   const { url, token } = resolveRedisRestCreds({

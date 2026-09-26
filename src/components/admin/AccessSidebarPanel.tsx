@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /settings/access — the picker side of the access
- * workflow. Search + filter + stats + add-staff + a scrollable list of
- * staff rows whose selection drives `?staffId=` in the URL.
- *
- * Pure URL-state contract:
- *   ?search=<q>                       — search box value
- *   ?accessStatus=all|active|invited|disabled
- *   ?staffId=<id>                     — currently-selected staff (read by detail)
- *
- * Data fetched here (panel-owned, matches the other admin sidebar panels);
- * the detail view fetches its own envelope independently. We listen for
- * `admin-access-refresh` to refetch the list after a mutation in the detail.
- */
+/** Sidebar for /settings/access — the picker side of the access workflow. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

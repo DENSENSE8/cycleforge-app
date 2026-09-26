@@ -29,10 +29,7 @@ import { RECEIVING_LINE_IMAGE_URL_SQL } from '@/lib/receiving/lines/sql-receivin
 import { SKU_CATALOG_JOIN_ON_SQL } from '@/lib/sku/sku-identity-law';
 import { SOURCE_PLATFORMS as SOURCE_PLATFORM_REGISTRY } from '@/lib/source-platform';
 
-// Built-in allowlist = SoT registry values. Must stay in sync with
-// `@/lib/source-platform` — a local Set that omitted `fba`/`shopify`/
-// `square` caused the classify pill to paint FBA while PATCH 400'd and the
-// claim subject stayed "Unknown - Return".
+// Built-in allowlist = SoT registry values.
 const SOURCE_PLATFORMS = new Set([
   ...SOURCE_PLATFORM_REGISTRY.map((p) => p.value),
 ]);
@@ -41,10 +38,7 @@ const SOURCE_PLATFORMS = new Set([
 // receiving_lines.receiving_type overrides; see migration 2026-06-13b.
 const INTAKE_TYPES = new Set(['PO', 'RETURN', 'REPAIR', 'TRADE_IN']);
 
-// Return-platform vocabulary (receiving.return_platform). Mirrors the
-// return_platform_enum DB type. Kept as a local Set so the API route stays
-// independent of the UI layer, matching the SOURCE_PLATFORMS / INTAKE_TYPES
-// convention above.
+// Return-platform vocabulary (receiving.return_platform).
 const RETURN_PLATFORMS = new Set([
   'AMZ',
   'EBAY_DRAGONH',
@@ -55,15 +49,7 @@ const RETURN_PLATFORMS = new Set([
   'ECWID',
 ]);
 
-/**
- * GET /api/receiving/:id
- * Full carton view used by the mobile /m/r/:id page. One round-trip:
- *   - receiving row (tracking, platform, return info, dates)
- *   - distinct POs touched
- *   - lines with serials
- *   - totals
- *   - last 30 inventory_events on this carton
- */
+/** GET /api/receiving/:id Full carton view used by the mobile /m/r/:id page. */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -289,10 +275,7 @@ export async function GET(
       }
     }
 
-    // Materialise `receiving_line_unit` then attach the shared wire shape so this
-    // carton open and /api/receiving-lines?include=serials cannot drift
-    // (per-unit-no-serial Phase 1–2). Best-effort — a materialisation failure
-    // must never fail the carton read.
+    // Materialise `receiving_line_unit` then attach the shared wire shape so this carton open and /api/receiving-lines?include=serials cannot…
     if (lineIds.length > 0) {
       await ensureLineUnitsSafe(
         orgId as OrgId,
@@ -500,10 +483,7 @@ export async function PATCH(
     const values: unknown[] = [];
     let idx = 1;
 
-    // Triage staging fields (staging_location_id / priority_lane) moved to the
-    // receiving_triage street table (Wave-3 writer inversion) — collected here
-    // and applied via upsertReceivingTriage in the same transaction as the
-    // spine UPDATE. Overwrite semantics: the picker can change or clear them.
+    // Triage staging fields (staging_location_id / priority_lane) moved to the receiving_triage street table (Wave-3 writer inversion) —…
     const triagePatch: CartonTriagePatch = {};
 
     if (Object.prototype.hasOwnProperty.call(body, 'support_notes')) {
@@ -534,10 +514,7 @@ export async function PATCH(
     }
     let zohoPoIdForNotes: string | null = null;
     if (zohoNoteEdited !== undefined && pushToZoho) {
-      // Resolve the PO id from the carton header OR any linked line — eBay-
-      // imported cartons keep the PO id on the LINE, so a header-only lookup
-      // skipped the push with `no_zoho_link`. Mirrors the per-line description
-      // sync (which already reads the line), so notes now sync just like it.
+      // Resolve the PO id from the carton header OR any linked line — eBay- imported cartons keep the PO id on the LINE, so a header-only lookup…
       zohoPoIdForNotes = await resolveCartonZohoPoId(ctx.organizationId, id);
     }
 
@@ -600,19 +577,11 @@ export async function PATCH(
     }
 
     // Carton-level default receiving type (PO|RETURN|TRADE_IN + org custom).
-    // Per-line receiving_lines.receiving_type overrides this; null clears it.
-    //
-    // Shared with the platform→type reconcile below, which writes the same two
-    // columns when a platform change orphans the type. One writer, so the
-    // normalized `type_id` link can never drift from the `intake_type` cache.
     const writeIntakeType = async (next: string | null) => {
       updates.push(`intake_type = $${idx++}`);
       values.push(next);
 
-      // Dual-write the normalized catalog link (receiving.type_id) alongside the
-      // intake_type text cache — Phase 2, migration 2026-06-14f. Guarded by the
-      // cached column probe so this is a no-op until the migration is applied
-      // (the text column stays the cache; readers migrate to type_id later).
+      // Dual-write the normalized catalog link (receiving.type_id) alongside the intake_type text cache — Phase 2, migration 2026-06-14f.
       const { columns } = await getReceivingSchema();
       if (columns.has('type_id')) {
         let typeId: number | null = null;
@@ -644,32 +613,7 @@ export async function PATCH(
       nextIntakeType = next;
     }
 
-    /**
-     * Platform → type dependency (`platform_type_rules`).
-     *
-     * This is the layer that matters: the classify pill already narrows its
-     * options, but a scan, an import, or any other client can set
-     * `source_platform` without ever touching the type pill. Validate the pair
-     * the row will HAVE, not the field that happened to arrive — that is the
-     * dependent-picklist failure mode where each value is fine alone and the
-     * combination is not.
-     *
-     * Two different answers, deliberately:
-     *  - the caller NAMED a type the platform forbids → 400. They said
-     *    something wrong, and guessing past it would hide the mistake.
-     *  - otherwise the rule answers: an orphaned type is switched, and an
-     *    ABSENT one (including an explicit clear) is filled in. On a platform
-     *    with one legal answer "no type" is not a state anyone means — it
-     *    renders through the effective-type fallback, spelled `?? 'PO'` in six
-     *    separate modules, so a typeless FBA carton reads as a purchase order.
-     *    An FBA carton is a return. Storing the value beats teaching those six
-     *    fallbacks about rules: one write is right everywhere, exports and
-     *    anything added later included.
-     *
-     * Rejecting the platform move instead would make the platform pill unusable
-     * on a mis-filed carton — you would have to clear the type first, then set
-     * the platform, to say one thing.
-     */
+    /** Platform → type dependency (`platform_type_rules`). */
     if (nextPlatform !== undefined || intakeProvided) {
       const rules = await getOrgPlatformTypeRules(ctx.organizationId);
       if (rules.length > 0) {
@@ -713,19 +657,12 @@ export async function PATCH(
       }
     }
 
-    // ONE assignment to intake_type / type_id per UPDATE. The rules block above
-    // can revise what the caller sent (or supply a value they never sent), so
-    // the column is written here, once, after everything has had its say —
-    // pushing inside each branch produced two `SET intake_type = …` clauses in
-    // the same statement, which Postgres rejects outright.
+    // ONE assignment to intake_type / type_id per UPDATE.
     if (intakeProvided) {
       await writeIntakeType(nextIntakeType ?? null);
     }
 
-    // PO# linkage — writing either field with a non-null value flips
-    // `source` to 'zoho_po' so the carton drops off the Unfound queue.
-    // The repair-service link flow only writes _number (Ecwid order #),
-    // so the auto-upgrade must also fire for that branch.
+    // PO# linkage — writing either field with a non-null value flips `source` to 'zoho_po' so the carton drops off the Unfound queue.
     let poWrittenNonNull = false;
     if (Object.prototype.hasOwnProperty.call(body, 'zoho_purchaseorder_id')) {
       const raw = body.zoho_purchaseorder_id;
@@ -768,11 +705,7 @@ export async function PATCH(
       }
     }
 
-    // Triage staging — physical shelf/lane assignment (A1,
-    // docs/receiving-triage-redesign-plan.md §4). Manual assignment always wins
-    // over the auto-routed lane default (resolveTriageLane in
-    // triage-lane-policy.ts); this route only persists whatever the operator
-    // (or the auto-suggest UI) chose.
+    // Triage staging — physical shelf/lane assignment (A1, docs/receiving-triage-redesign-plan.md §4).
     if (Object.prototype.hasOwnProperty.call(body, 'staging_location_id')) {
       const raw = body.staging_location_id;
       const next = raw == null || raw === '' ? null : Number(raw);
@@ -819,11 +752,7 @@ export async function PATCH(
     values.push(id);
     const orgParamIdx = values.push(ctx.organizationId);
 
-    // Snapshot + UPDATE in one GUC-scoped transaction so the audit diff and the
-    // write see the same tenant. The UPDATE carries an explicit org predicate
-    // (defense in depth alongside RLS); a row owned by another org never matches.
-    // Staging/lane land on the receiving_triage street table in the SAME
-    // transaction (Wave-3 writer inversion) — atomicity is preserved.
+    // Snapshot + UPDATE in one GUC-scoped transaction so the audit diff and the write see the same tenant.
     const { before, result } = await withTenantTransaction(ctx.organizationId, async (client) => {
       // Snapshot the row before the update so the audit row carries a real
       // diff. Staging/lane read from the triage street table (Wave-2 cutover;

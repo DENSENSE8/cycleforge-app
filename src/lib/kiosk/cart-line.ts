@@ -1,22 +1,11 @@
-/**
- * Polymorphic kiosk cart line — session-root ledger item for `/kiosk/v2`.
- *
- * Universal base fields (price, title, qty) + type enum; type-specific data
- * lives in `payload`. Maps to `CounterTransactionInput` via `cart-to-counter.ts`
- * (D1: UI is polymorphic; persist stays header + linked repair/sale rows).
- */
+/** Polymorphic kiosk cart line — session-root ledger item for `/kiosk/v2`. */
 
 import type { CounterPriceAdjustment } from '@/lib/counter/counter-transaction-types';
 
 export const KIOSK_LINE_TYPES = ['RETAIL', 'REPAIR', 'BUYBACK'] as const;
 export type KioskLineType = (typeof KIOSK_LINE_TYPES)[number];
 
-/**
- * The PIN-authorized price on a line, plus who authorized it — the card shows
- * `~~$5.59~~ 1 · $4.00`, History shows `Adjusted from $5.59 · Price match`.
- * Lives on the payload so a desk mirror (`counter_session_lines.payload`)
- * carries it too.
- */
+/** The PIN-authorized price on a line, plus who authorized it — the card shows `~~$5.59~~ 1 · $4.00`, History shows `Adjusted from $5.59 ·… */
 export interface LinePriceAdjustment extends CounterPriceAdjustment {
   /** Display name of the authorizing staffer, for the editor's "by …" line. */
   staffName?: string | null;
@@ -55,14 +44,7 @@ export interface RepairPayload extends LineExtras {
   price: string;
   signatureDataUrl?: string | null;
   signatureStrokes?: unknown;
-  /**
-   * `repair_service.id` of an EXISTING repair brought into this visit (an Ecwid
-   * drop-off or desk ticket that never went through a tablet cart). Set, the
-   * line is money and a link only: the device was already taken in, serialised
-   * and signed for when that ticket was written, so asking for a serial, a
-   * reason or a signature again would be re-doing an intake that happened.
-   * Submit links the row to the new header instead of creating a second one.
-   */
+  /** `repair_service.id` of an EXISTING repair brought into this visit (an Ecwid drop-off or desk ticket that never went through a tablet cart). */
   linkedRepairId?: number | null;
   /** The linked ticket's RS number, for the card chip — `Linked · RS-1234`. */
   linkedTicketNumber?: string | null;
@@ -125,12 +107,7 @@ export function cartHasRepairLine(lines: readonly KioskCartLine[]): boolean {
   return lines.some((l) => l.type === 'REPAIR');
 }
 
-/**
- * A REPAIR line that points at an existing `repair_service` row rather than
- * describing a new drop-off. The ONE predicate every intake gate asks, so the
- * device stepper, triage and the submit mapper cannot disagree about which
- * lines owe intake facts.
- */
+/** A REPAIR line that points at an existing `repair_service` row rather than describing a new drop-off. */
 export function isLinkedRepairLine(line: KioskCartLine): boolean {
   return (
     line.type === 'REPAIR' &&
@@ -165,13 +142,7 @@ export function retailQuantitiesByVariation(
   return out;
 }
 
-/**
- * The line a repeat tap of a catalog item adds one to (Square "Consolidate
- * identical items"), or null to start a new line. Identical means the same
- * catalog id at the same unit price with nothing line-specific on it: a line
- * whose price was changed, or that carries a note, is no longer the item the
- * tile sells.
- */
+/** The line a repeat tap of a catalog item adds one to (Square "Consolidate identical items"), or null to start a new line. */
 export function findConsolidatableRetailLine(
   lines: readonly KioskCartLine[],
   variationId: string,

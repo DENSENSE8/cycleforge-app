@@ -1,16 +1,6 @@
 /**
  * Mobile navigation registry — the single SoT for `/m` navigation.
- *
- * Callers: `MobileSidebarDrawer` (destinations + active-route identification)
- * and `nav-name-collisions`. Human law: docs/mobile-first/SURFACE_LAW.md §8;
- * boundary law: ARCHITECTURE.md ("component split").
- *
- * This module is deliberately React-free: destinations are plain data, icons
- * are the renderer's concern (chrome law: pages are text; modes own glyphs —
- * the drawer keeps its own id→glyph map).
- *
  * Operator: 2026-09-14 — "focusing on the routing for the sidebar navigation
- * identification … first building a solid foundation."
  */
 
 import { ListChecks } from '@/components/Icons';
@@ -22,26 +12,15 @@ import type { SidebarIconComponent } from '@/lib/sidebar-navigation';
 // ─── Destination tree (sidebar drawer) ───────────────────────────────────────
 
 /**
- * A row INSIDE a group. **There is no `icon` field here, and that is the
+ * A row INSIDE a group.
  * point** — operator ruling 2026-09-14, *"icon at the parent level only"*. The
- * law is expressed as a TYPE rather than as a convention in the renderer, so a
- * child glyph is not something a future edit can add by accident.
  */
 export type MobileNavChild = {
   kind: 'leaf';
   id: string;
   label: string;
   href: string;
-  /**
-   * Permission this destination needs, or omitted when every signed-in staffer
-   * may reach it. The drawer DROPS a row the viewer cannot use — absent, never
-   * disabled, matching the desk spine's `requires` and the registry rule that a
-   * row which 403s is worse than one that was never offered.
-   *
-   * It is a REGISTRY field, not a renderer check keyed by id, for the same
-   * reason the parent icon is: a law expressed in the renderer is a law the
-   * next surface forgets.
-   */
+  /** Permission this destination needs, or omitted when every signed-in staffer may reach it. */
   requires?: string;
 };
 
@@ -63,22 +42,11 @@ export type MobileNavGroup = {
 
 export type MobileNavItem = MobileNavLeaf | MobileNavGroup;
 
-// Lane faces come from `@/lib/nav/lanes` — the SAME registry the desk spine
-// groups by. A hand-copied 'Outbound' string here is exactly the phone/desk
-// drift the handoff is about, so the label and the parent icon are read, never
-// retyped.
+// Lane faces come from `@/lib/nav/lanes` — the SAME registry the desk spine groups by.
 const OUTBOUND = domainLane('fulfillment');
 
 // Single source of truth for the drawer's destinations.
-//
 // **Operator ruling (2026-09-26):** the phone keeps scan, picks and the orders
-// queue; everything else under `/m` was deleted. `/m/home` (Daily) leads the
-// drawer because it is the post-sign-in landing and the first thing a staffer
-// runs on a shift.
-//
-// **Scan is deliberately absent** (2026-08-21). It has a permanent seat in the
-// top-right corner of every mobile screen (`MobileScanCta`), so a row here
-// would be a second door to one destination.
 export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
   { kind: 'leaf', id: 'daily', label: 'Daily', href: '/m/home', icon: ListChecks },
   {
@@ -99,9 +67,6 @@ export const MOBILE_NAV_DESTINATIONS: readonly MobileNavItem[] = [
   },
   // An L0 row, the phone twin of the desk's Quality Control station row (same
   // glyph). QC is its own scan TYPE (operator 2026-09-24), run on the one scan
-  // kernel armed for QC — not a second scan door. Gated on `tech.qc_pass`, the
-  // permission the checklist read and write carry, so a staffer who would 403
-  // on the first step never sees it.
   {
     kind: 'leaf',
     id: 'qc',

@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * The TASK sheet — how a staffer who was handed a task finds out how to do it,
- * and does it, on the phone (`/m/home?task=<id>`).
- *
- * The desk's evidence column (`TaskEvidence`) is the dense twin; this is the
- * mobile SoT (SURFACE_LAW §1), in the order the operator meets the job:
- *
- *   TASK 812 · Order 4471                        [X]
- *   ● OPEN · Open · Due Sep 24 · Remind SEP 24 · 3:00 PM
- *   Instructions     the note, rendered as markdown
- *   Media            photos + videos — tap for full screen, videos play
- *   Documents        markdown documents / plan files — tap to read in place
- *   Linked records   the anchor, then orders · tracking · tickets
- *   ─ dock ─         Start | Mark done | Reopen · Add photo / video
- *
- * A sheet, not a hub route: the task is the handoff ABOUT a record, not the
- * record — the order / carton / ticket it names each keep their own route and
- * are one tap away under Linked records. It is the list row's detail door, so
- * its role is `dock-verb` in `mobile-sheet-roles.ts` (the row CTA's surface).
- *
- * A document opens INSIDE this sheet with a back chevron, never a sheet on a
- * sheet — that is where an operator gets lost on a 390px screen.
- *
- * The URL owns "which task" (`?task=`), so a reminder notification, a pasted
- * link and the Back button all land here. A task that is not on the viewer's
- * list says so instead of rendering nothing.
- */
+/** The TASK sheet — how a staffer who was handed a task finds out how to do it, and does it, on the phone (`/m/home?task=<id>`). */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { format } from 'date-fns';

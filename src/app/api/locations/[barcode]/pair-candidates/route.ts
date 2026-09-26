@@ -6,20 +6,7 @@ import {
   listSkuStockedAt,
 } from '@/lib/neon/pair-candidates-queries';
 
-/**
- * GET /api/locations/[barcode]/pair-candidates
- *   → products already stocked in this location's ROOM (the idle list on the
- *     pairing screen — see listRoomPairCandidates for why that beats "type
- *     something").
- *
- * GET …?sku=ABC
- *   → where that product is stocked right now (the detail sheet's one useful
- *     fact: am I about to scatter it across another bin).
- *
- * Read-only, `sku_stock.view`-shaped. Uses the same manual session resolution
- * as the sibling `[barcode]` route, which takes Next's typed `{ params }`
- * second argument and so cannot use the `withAuth` wrapper.
- */
+/** GET /api/locations/[barcode]/pair-candidates → products already stocked in this location's ROOM (the idle list on the pairing screen —… */
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },

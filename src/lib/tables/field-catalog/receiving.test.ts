@@ -1,14 +1,4 @@
-/**
- * Receiving catalog guards + resolver behaviour — wave 1.3's mirror of
- * `pickup.test.ts` / `ready.test.ts`, and the first COMPOUND port after
- * Orders. The catalog is persisted-id vocabulary, so the guards are the ones
- * that fail as silent config bugs otherwise: duplicate ids, a product default
- * that does not parse against its own catalog, a field bindable nowhere.
- *
- * The materialization smoke pins the port's central promise — that with the
- * product default the compound row is byte-for-byte the shared skeleton, so
- * Unbox / History / Testing paint exactly what they painted before the port.
- */
+/** Receiving catalog guards + resolver behaviour — wave 1.3's mirror of `pickup.test.ts` / `ready.test.ts`, and the first COMPOUND port… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -98,11 +88,7 @@ describe('receivingCompoundColumnsFor — the compound materialization', () => {
       ...RECEIVING_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'receiving.location' }, { fieldId: 'receiving.tracking' }],
     });
-    // Derived from the shared skeleton on purpose: a hand-typed copy of the
-    // track list goes stale the next time the skeleton gains a chrome track
-    // (it already did — this assertion pinned a pre-`dates` order with the
-    // retired `amount` / `actions` tracks). The CONTRACT is the position:
-    // bound facts land after the state pill and before the `_fill` slack.
+    // Derived from the shared skeleton on purpose:
     const chrome = [...COMPOUND_COLUMN_KEYS];
     const slack = chrome.pop();
     assert.deepEqual(

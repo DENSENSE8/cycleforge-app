@@ -5,18 +5,7 @@ import { db } from '@/lib/drizzle/db';
 import { workflowTemplates } from '@/lib/drizzle/schema';
 import type { TemplateGraph } from '@/lib/studio/templates';
 
-/**
- * GET /api/studio/catalog/submissions
- *
- * The curator review queue (Template Platform Phase 4): non-system templates an
- * org has submitted for the public catalog (review_status='submitted'), newest
- * submission first. A curator (studio.catalog.review) works this queue and
- * approve/rejects each via the [id]/review route.
- *
- * studio.catalog.review — this is a platform-curator surface (it sees every org's
- * submissions), NOT a per-tenant one, so it is gated by the curation permission,
- * not studio.view/manage.
- */
+/** GET /api/studio/catalog/submissions */
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuth(

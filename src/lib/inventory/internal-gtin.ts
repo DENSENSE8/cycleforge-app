@@ -1,26 +1,4 @@
-/**
- * internal-gtin.ts
- * ────────────────────────────────────────────────────────────────────
- * Internal pseudo-GTIN generator for USAV unit labels.
- *
- * Real GTINs are 8/12/13/14 digits assigned by GS1 to companies that
- * pay for membership. Since our QR codes are internal-only (warehouse
- * staff scan them with the app — customers never see them), we mint
- * our own GTIN-14 values in the GS1-reserved "company internal" range
- * (indicator digit 0, prefix `02`).
- *
- * Format:
- *   GTIN-14 = "02" + 11-digit zero-padded sku_catalog.id + mod-10 check
- *
- * This gives ~100 billion unique values, deterministic per SKU, and
- * passes any GS1-validating scanner because the check digit is correct.
- *
- * Persistence:
- *   `getOrCreateInternalGtin(skuCatalogId)` returns the GTIN from
- *   sku_catalog.gtin if present, otherwise generates + stores it in
- *   a single UPDATE … RETURNING. Safe under concurrency: the first
- *   writer wins and concurrent callers see the same value.
- */
+/** internal-gtin.ts ──────────────────────────────────────────────────────────────────── Internal pseudo-GTIN generator for USAV unit labels. */
 
 import { queryOne } from '@/lib/neon-client';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -67,26 +45,7 @@ export function isValidGtin14(gtin: string): boolean {
   return gs1CheckDigit(gtin.slice(0, 13)) === gtin[13];
 }
 
-/**
- * Returns the GTIN for a sku_catalog row, generating + persisting one
- * if it doesn't already have a value. Idempotent under concurrency:
- * the first writer wins and subsequent callers see the same value.
- *
- * Caller MUST pass a valid sku_catalog.id. We don't take the SKU text
- * because that adds an extra round trip and the mapping is 1:1.
- *
- * Tenant-awareness (backward-compatible): pass an optional trailing
- * `orgId` to run the read + write inside a tenant transaction with the
- * `app.current_org` GUC set and an explicit `organization_id = $n`
- * predicate on both the SELECT and the UPDATE (org-ownership 404 if the
- * row doesn't belong to the org). When `orgId` is omitted the original
- * raw-pool (`queryOne`) path runs byte-for-byte as before, so existing
- * un-migrated callers keep compiling and behaving identically.
- *
- * `sku_catalog` is tenant-owned and carries `organization_id`
- * (docs/tenancy/org-id-coverage.generated.md), so the scoping is a
- * direct predicate on the row — no parent join needed.
- */
+/** Returns the GTIN for a sku_catalog row, generating + persisting one if it doesn't already have a value. */
 export async function getOrCreateInternalGtin(
   skuCatalogId: number,
   orgId?: OrgId,

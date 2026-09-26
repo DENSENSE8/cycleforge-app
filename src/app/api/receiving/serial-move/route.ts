@@ -6,17 +6,7 @@ import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { moveSerialToLine } from '@/lib/receiving/serial-move';
 import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
 
-/**
- * POST /api/receiving/serial-move
- * ────────────────────────────────────────────────────────────────────
- * Re-home a scanned serial from its current receiving line onto a target line —
- * the condition+serial row's LINK (combine two rows into one) and UNLINK (split a
- * serial back to its own line) affordances. Membership moves IN PLACE via one
- * audit-only `MOVED` inventory_event; the unit's testing verdict is preserved
- * (see {@link moveSerialToLine}). Never touches quantity or the stock ledger.
- *
- * Body: { serial_unit_id: number, target_receiving_line_id: number, client_event_id?: string }
- */
+/** POST /api/receiving/serial-move ──────────────────────────────────────────────────────────────────── Re-home a scanned serial from its… */
 export const POST = withAuth(
   async (request: NextRequest, ctx) => {
     try {

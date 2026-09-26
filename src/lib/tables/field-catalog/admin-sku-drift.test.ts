@@ -1,24 +1,4 @@
-/**
- * SKU stock-drift catalog guards, materialization and adapter behaviour — the
- * family that replaced `_inventory-admin/TableSections.tsx`'s seven
- * hand-written `AdminTableColumn` objects.
- *
- * Four assertions here are load-bearing beyond the usual shape checks:
- *
- * - the FOUR-BINDING CEILING. Seven facts against a whole skeleton leaves
- *   exactly four status slots, so the two Δ facts ride the title and the pill.
- *   A fifth binding fails `parseTableDefinition` at module load — this test
- *   says so before the build does.
- * - the FACT-FREE DATES TRACK. `v_sku_stock_drift` is a read-time join with no
- *   stamp of any kind. The track keeps its geometry (the skeleton is never cut)
- *   and declares a blank header with no sort, rather than a labelled header
- *   with a dead click or an invented timestamp.
- * - the SIGNED VALUE, not a colour. The retired Δ cells painted red when
- *   non-zero; the direction now lives in the words the title and the pill
- *   carry, and no field encodes paint.
- * - the ORG NON-GOAL. `organization_id` is selected by the view, scoped by the
- *   loader, and painted by nothing.
- */
+/** SKU stock-drift catalog guards, materialization and adapter behaviour — the family that replaced `_inventory-admin/TableSections.tsx`'s… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

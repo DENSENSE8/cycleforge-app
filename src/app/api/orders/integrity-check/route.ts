@@ -9,35 +9,14 @@ function isBlank(value: unknown): boolean {
   return value === null || value === undefined || String(value).trim() === '';
 }
 
-/**
- * POST /api/orders/integrity-check
- *
- * Integrity check: deduplicate orders only when the same order_id is linked
- * to the same tracking number more than once.
- * Industry-standard pattern: report-first (dryRun) then fix.
- *
- * - dryRun: true = report only, no deletes
- * - dryRun: false or omit = deduplicate (keep most complete row per group, delete rest)
- *
- * Only groups rows when BOTH are present:
- * - order_id
- * - tracking number (via shipment_id -> shipping_tracking_numbers)
- *
- * Rows are deleted only when multiple orders share the same order_id AND the
- * same normalized tracking number. Different order_id values on the same
- * tracking number are not touched. Blank/no-tracking rows are not touched.
- */
+/** POST /api/orders/integrity-check */
 // Destructive when dryRun=false (deletes duplicate orders). Admin-only.
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = await req.json().catch(() => ({}));
     const dryRun = body?.dryRun === true;
 
-    // orders is tenant-owned — filter to this org so dedup only ever groups (and
-    // deletes) rows owned by the caller. The stn join is on the integer surrogate
-    // PK (stn.id = o.shipment_id) so it's safe bare; shipping_tracking_numbers
-    // has no organization_id column (NEEDS-COL) and is reached only via the
-    // org-scoped orders row.
+    // orders is tenant-owned — filter to this org so dedup only ever groups (and deletes) rows owned by the caller.
     const { rows: orders } = await tenantQuery<{
       id: number;
       order_id: string | null;

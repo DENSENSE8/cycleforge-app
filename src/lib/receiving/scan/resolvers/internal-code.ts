@@ -1,19 +1,4 @@
-/**
- * Internal-handle resolver — canonical carton/line/unit/handling-unit/repair
- * handles (R-/RCV-/H-/L-/U-/REP-) and printed unit-ids always resolve to their
- * PO line, bypassing carrier-tracking intake. This is what lets a printed
- * `R-{id}` receiving label scan back to its own carton via the IDENTICAL path as
- * any other scan.
- *
- * Every handle contains a dash, so the UI auto-arms Order# mode for them; we
- * therefore still run the resolver in Order# mode WHEN the value looks like a
- * code (`looksLikeCode`) — a true PO/order number returns false there and keeps
- * its lookup-po routing. Tracking numbers and anything unrecognised resolve to
- * `null` (the caller falls through to the next rung untouched).
- *
- * Pure + dependency-injected: `resolveCode` (the I/O) is injected, so the rung
- * runs DB/React-free in unit tests. The hook owns every side-effect.
- */
+/** Internal-handle resolver — canonical carton/line/unit/handling-unit/repair handles (R-/RCV-/H-/L-/U-/REP-) and printed unit-ids always… */
 
 import type { InternalCodeDeps, InternalCodeResolution, ScanInput } from '../types';
 

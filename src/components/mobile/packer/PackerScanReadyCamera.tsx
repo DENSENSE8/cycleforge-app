@@ -15,23 +15,11 @@ interface PackerScanReadyPayload {
   variant?: string;
   scannedValue?: string;
   order?: { orderId?: string } | null;
-  /**
-   * Present on a MANUAL re-send from the desktop pack identity bar
-   * ({@link PackSendToPhoneButton}). Fresh per click, so it keys the dedupe
-   * instead of `packerLogId:scannedValue` — an operator asking for the camera
-   * again on the same pack must always reopen it.
-   */
+  /** Present on a MANUAL re-send from the desktop pack identity bar ({@link PackSendToPhoneButton}). */
   requestId?: string;
 }
 
-/**
- * Phone listener for desktop packing scans. When PackScanColumn completes a
- * tracking pack and publishes `packer.scan_ready` on `packer:{staffId}`, the
- * same staff's phone opens `/m/p/{packerLogId}/photos` (order pack photos).
- *
- * Unit-QR packing photos use `unit_photo_request` (UnitPhotoRequestCamera) —
- * this listener covers the order/tracking pack path (unbox-parity auto camera).
- */
+/** Phone listener for desktop packing scans. */
 export function PackerScanReadyCamera() {
   const router = useRouter();
   const pathname = usePathname();
@@ -52,11 +40,7 @@ export function PackerScanReadyCamera() {
       const packerLogId = Number(data.packerLogId);
       if (!Number.isFinite(packerLogId) || packerLogId <= 0) return;
 
-      // ACK before the dedupe / already-capturing early returns below: the desk
-      // asks whether a phone HEARD it, and a phone that is already shooting is
-      // reachable. Only the manual re-send carries a `requestId`; the automatic
-      // server-published `scan_ready` has none and needs no ack (nothing is
-      // waiting on it).
+      // ACK before the dedupe / already-capturing early returns below:
       if (data.requestId && channel) {
         void getClient()
           .then((client) =>

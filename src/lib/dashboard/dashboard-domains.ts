@@ -1,40 +1,4 @@
-/**
- * Dashboard domain registry — the `/dashboard` axis.
- *
- * ONE axis, ONE name: **domain**. The dashboard hosts three, and they never share
- * a table:
- *   • `outbound` — sales orders leaving the building (Pending · Packed ·
- *     Shipped lifecycle tabs, bare presence params `?unshipped` / `?shipped`).
- *   • `inbound`  — receiving cartons arriving at the dock (Unboxed · Scanned
- *     history facets). Its rows are receiving lines, NOT orders.
- *   • `sales`    — front-desk history (Sales · Local Pickup · Repairs).
- *     Wire values `?mode=sales` | `?mode=pickup` | `?mode=repairs`. Pickup and
- *     Sales are thin feeds; Repairs mounts the shared `RepairTable` (history
- *     door). Counter intake stays on `/pickup` + `/repair` (station door).
- *
- * Inbound is a distinct `?mode=inbound` switch rather than a fourth outbound
- * lifecycle tab precisely so the two never intermix — see
- * `docs/todo/foh-boh-surface-split/04-inbound-history-dashboard-mode.md`
- * ("keep inbound cartons in their own domain switch"). Sales joined the same
- * way (`docs/todo/sales-into-dashboard-PLAN.md`).
- *
- * **"Mode" is no longer a second word for this.** The page used to carry a
- * parallel `DashboardMode` ('search' | 'receiving' | 'shipping') whose three
- * values mapped onto two domains plus a surface that was not a domain at all —
- * so `receiving` mode *was* `inbound` domain and every reader had to know which
- * vocabulary it was in. Search left the axis entirely for `/search`
- * (`docs/todo/dashboard-ia-rework-PLAN.md` Phases 1–2), which is what let the
- * axis collapse; Sales later folded in as the third domain.
- *
- * The WIRE value stays `?mode=inbound` (bookmarks, surface-isolation, the
- * `dashboard-inbound-mode` e2e spec) — renaming the param buys nothing and
- * breaks every saved link. The sidebar rail keeps its own pill ids
- * (`receiving` / `outbound` / `sales` / `pickup`) in `SIDEBAR_PAGE_NAV`; those
- * are labels, not a second model.
- *
- * Pure data + functions (no React) so the page, the sidebar, and surface
- * isolation all read the same domain contract.
- */
+/** Dashboard domain registry — the `/dashboard` axis. */
 
 import { FBA_OUTBOUND_PATH } from '@/lib/fba/fba-modes';
 import {
@@ -51,20 +15,10 @@ const DASHBOARD_DOMAIN_PARAM = 'mode';
 /** `?mode=` value that selects the inbound (receiving cartons) domain. */
 export const DASHBOARD_INBOUND_MODE = 'inbound';
 
-/**
- * `?mode=` values that select the sales (front-desk history) domain.
- * `sales` is the default history feed; `pickup` is Local Pickup history;
- * `repairs` is the RepairTable history door — all mount {@link DashboardSalesView}
- * and never share a table with orders.
- */
+/** `?mode=` values that select the sales (front-desk history) domain. */
 const DASHBOARD_SALES_MODES = ['sales', 'pickup', 'repairs'] as const;
 
-/**
- * Wire tokens `?mode=` may carry on `/dashboard` (route-param hygiene).
- * Includes default `outbound`, live domains, sales children, and retired /
- * alias tokens (`search`, `receiving`) so deep links reach their readers
- * rather than being stripped here.
- */
+/** Wire tokens `?mode=` may carry on `/dashboard` (route-param hygiene). */
 export const DASHBOARD_MODE_WIRE = [
   'outbound',
   'inbound',
@@ -125,41 +79,19 @@ export function isRetiredSearchMode(
   return String(searchParams.get(DASHBOARD_DOMAIN_PARAM) || '').trim().toLowerCase() === 'search';
 }
 
-/**
- * True when the URL still carries the retired `?fba` lifecycle tab.
- *
- * Row L of the IA rework deleted `'fba'` from `DashboardOrderView` because FBA
- * fails the top-axis predicate — it already owns `/shipping/fba`. Deleting the
- * member alone made an old `?fba` bookmark fall THROUGH to the Pending tab, which
- * is neither of the two outcomes the plan weighed ("Shipping mode vs. 404") and
- * silently discards what the operator asked for. So `?fba` joins `?warranty=` and
- * `?mode=search` as a client-redirected retired front door — the established
- * mechanism for exactly this, and for the same reason: Next `redirects()` emits a
- * permanently-cached 308 and cannot drop one param while preserving others.
- */
+/** True when the URL still carries the retired `?fba` lifecycle tab. */
 export function isRetiredFbaView(
   searchParams: Pick<URLSearchParams, 'has'>,
 ): boolean {
   return searchParams.has('fba');
 }
 
-/**
- * Where a retired `?fba` URL goes: FBA's real home.
- *
- * Carries nothing across. The dashboard's `?open=` is an ORDER id and the FBA
- * board's `openShipmentId` is a SHIPMENT id — forwarding one as the other would
- * focus an unrelated record, which is worse than opening clean.
- */
+/** Where a retired `?fba` URL goes: */
 export function retiredFbaViewTarget(): string {
   return FBA_OUTBOUND_PATH;
 }
 
-/**
- * Where a retired `?mode=search` URL goes.
- *   • `openOrderId` → search order feedback (`/search?sel=order:…`).
- *   • `q`           → the cross-entity search route.
- *   • bare          → To-ship desk (`/shipping/orders`; was `/dashboard` outbound).
- */
+/** Where a retired `?mode=search` URL goes. */
 export function retiredSearchModeTarget(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): string {
@@ -172,14 +104,7 @@ export function retiredSearchModeTarget(
   return '/shipping/orders';
 }
 
-/**
- * Where a retired `/walk-in` history URL goes after Sales folds into the
- * dashboard (`docs/todo/sales-into-dashboard-PLAN.md`).
- *
- * Preserves Local Pickup vs Sales (`?mode=` / legacy `?category=`) and a
- * non-default history `?tab=`. Intake deep-links (`?new=` / `?openRepair=`) are
- * handled first by `useWalkInTaskRedirect` and never reach this helper.
- */
+/** Where a retired `/walk-in` history URL goes after Sales folds into the dashboard (`docs/todo/sales-into-dashboard-PLAN.md`). */
 export function retiredWalkInHistoryTarget(
   searchParams: Pick<URLSearchParams, 'get'>,
 ): string {
@@ -194,9 +119,4 @@ export function retiredWalkInHistoryTarget(
   return `/dashboard?${params.toString()}`;
 }
 
-// The inbound Triage/Unbox tab contract lives with the Docked lane
-// (`components/sidebar/receiving/incoming/inbound-docked-tabs.ts`), which reads the
-// `?sort=` wire axis (`HISTORY_SORT_WIRE_IDS`) directly. That axis is the INBOUND
-// desk's Docked server ordering; the outbound display sort is `QueueSortSwitch`'s own
-// state and grid COLUMN sort is `?colsort=`/`?coldir=` (`useUrlColumnSort`) —
-// three different jobs, three different keys, never overloaded onto one.
+// The inbound Triage/Unbox tab contract lives with the Docked lane (`components/sidebar/receiving/incoming/inbound-docked-tabs.ts`), which…

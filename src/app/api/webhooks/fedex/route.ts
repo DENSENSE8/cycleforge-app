@@ -10,8 +10,6 @@ import { safeStrEqual } from '@/lib/security/safe-compare';
 
 // FedEx signs each push with an HMAC-SHA256 digest (base64) of the raw request
 // body keyed by the security token configured on the webhook project. The
-// header name has varied across FedEx's webhook products, so we check the known
-// variants. Override with FEDEX_WEBHOOK_SIGNATURE_HEADER if your project differs.
 const SIGNATURE_HEADERS = [
   process.env.FEDEX_WEBHOOK_SIGNATURE_HEADER,
   'x-fdx-sc-signature',
@@ -20,10 +18,8 @@ const SIGNATURE_HEADERS = [
 ].filter(Boolean) as string[];
 
 /**
+ * Verify the request against the webhook project's security token.
  * Verify the request against the webhook project's security token. Prefers
- * FedEx's real mechanism (HMAC-SHA256 over the raw body) and falls back to a
- * static bearer/header secret for local replay scripts. Returns true when no
- * secret is configured outside production so dev/preview keep working.
  */
 function isAuthorized(req: NextRequest, rawBody: string): boolean {
   const secret =
@@ -142,10 +138,7 @@ export async function POST(req: NextRequest) {
     const result = parseFedExTrackingPayload(sub);
     if (!result?.trackingNumberNormalized) continue;
 
-    // Session-less callback: derive the owning org from the tracking number.
-    // FAIL-CLOSED — an unresolved number skips just this event (never write
-    // under a guessed org) while the response stays 2xx so FedEx doesn't
-    // hammer retries for the whole batch.
+    // Session-less callback:
     const orgId = await resolveWebhookOrgByTracking(result.trackingNumberNormalized);
     if (!orgId) {
       console.warn('[webhook-org] unresolved tracking — skipping event', {

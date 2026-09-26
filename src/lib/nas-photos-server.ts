@@ -1,12 +1,4 @@
-/**
- * Server-side NAS photo helpers — resolve the base URL + per-operator folder
- * the browser should read/write receiving photos against.
- *
- * The app is Vercel-hosted and can't reach the LAN NAS, so it never touches the
- * NAS itself; it only tells the browser WHERE the active NAS lives (the admin-
- * configured `nasPhotoServers` slot) and which folder to open/write into for
- * this operator's station. The browser does the actual WebDAV PUT / GET.
- */
+/** Server-side NAS photo helpers — resolve the base URL + per-operator folder the browser should read/write receiving photos against. */
 
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getActiveNasBaseUrl, getNasStorageTarget } from '@/lib/tenancy/settings';
@@ -20,17 +12,7 @@ export interface NasConfigForOperator {
   folder: string;
 }
 
-/**
- * Resolve the default receiving NAS folder for an operator from the org's
- * admin-configured settings. Resolution order:
- *   1. the operator's primary-station folder (needs a staff_stations row),
- *   2. an explicit DEFAULT (all-stations) folder,
- *   3. if exactly one distinct folder is configured across every station, use it
- *      (covers orgs that set the same folder everywhere without per-staff
- *      stations),
- *   4. the workflow-level receiving folder, else '' (NAS root).
- * Best-effort: any settings/station hiccup resolves to '' rather than throwing.
- */
+/** Resolve the default receiving NAS folder for an operator from the org's admin-configured settings. */
 export async function resolveOperatorNasFolder(
   organizationId: OrgId,
   staffId: number,

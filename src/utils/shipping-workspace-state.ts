@@ -25,12 +25,7 @@ export const SHIPPING_WORKSPACE_TAB_LABEL: Record<ShippingWorkspaceTab, string> 
 
 const VALID: ReadonlySet<string> = new Set(SHIPPING_WORKSPACE_TABS);
 
-/**
- * Raw-string form of {@link getShippingWorkspaceTabFromSearch}, for callers that
- * hold a value rather than a `URLSearchParams` — notably the `/test` param spec
- * (`@/lib/routing/query-mode-routes`), which composes this via `paramRoundTrip`
- * so the route contract cannot drift from `VALID`.
- */
+/** Raw-string form of {@link getShippingWorkspaceTabFromSearch}, for callers that hold a value rather than a `URLSearchParams` — notably… */
 export function parseShippingWorkspaceTab(raw: string | null): ShippingWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
   return VALID.has(value) ? (value as ShippingWorkspaceTab) : 'pending';
@@ -42,13 +37,7 @@ export function getShippingWorkspaceTabFromSearch(
   return parseShippingWorkspaceTab(searchParams.get(SHIPPING_WORKSPACE_TAB_PARAM));
 }
 
-/**
- * Normalize URL for a shipping workspace tab switch.
- * Clears tab-specific filters so they don't bleed across tables.
- * Omits `ship` when pending (default) so the default URL stays clean.
- * Urgent owns `?attention=1` (orders.is_urgent); cleared on every other tab.
- * Legacy `?ship=fba` normalizes to pending.
- */
+/** Normalize URL for a shipping workspace tab switch. */
 export function normalizeShippingWorkspaceTabParams(
   params: URLSearchParams,
   preferredTab?: ShippingWorkspaceTab,

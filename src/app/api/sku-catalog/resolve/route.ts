@@ -3,24 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import pool from '@/lib/db';
 
-/**
- * GET /api/sku-catalog/resolve?sku=<rawSku>&platform=<accountSource>
- *
- * Resolves a raw SKU value (which may be the internal canonical SKU OR a
- * marketplace platform_sku) to its canonical catalog row plus every
- * connected marketplace mapping.
- *
- * Resolution chain:
- *   1. exact match against sku_catalog.sku             → canonical found directly
- *   2. else match sku_platform_ids.platform_sku scoped by LOWER(platform)
- *   3. else match sku_platform_ids.platform_sku unscoped (best-effort
- *      fallback when account_source is missing — returns nothing if
- *      multiple catalog rows would match, to avoid silent mis-pairing)
- *
- * Response (shape consumed by SkuIdentity):
- *   { ok: true, resolved: true,  canonicalSku, productTitle, platforms[] }
- *   { ok: true, resolved: false, rawSku }   // when nothing matches
- */
+/** GET /api/sku-catalog/resolve?sku=<rawSku>&platform=<accountSource> */
 export const GET = withAuth(async (request, ctx) => {
   const url = new URL(request.url);
   const rawSku = (url.searchParams.get('sku') || '').trim();
@@ -73,10 +56,7 @@ export const GET = withAuth(async (request, ctx) => {
       return NextResponse.json({ ok: true, resolved: false, rawSku });
     }
 
-    // Include both fully-paired rows (sku_catalog_id matches) AND legacy /
-    // sync-time rows where only `platform_sku` matches the canonical SKU.
-    // The /api/sku-catalog/search route uses the same OR-join so the two
-    // endpoints agree on what counts as a linked platform mapping.
+    // Include both fully-paired rows (sku_catalog_id matches) AND legacy / sync-time rows where only `platform_sku` matches the canonical SKU.
     const platformsSql = `SELECT DISTINCT ON (LOWER(platform), COALESCE(platform_sku, ''), COALESCE(platform_item_id, ''))
               platform,
               platform_sku     AS "platformSku",

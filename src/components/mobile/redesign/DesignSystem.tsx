@@ -6,42 +6,10 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { appMobilePageGroundClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
-/**
- * Mobile shell primitives — thin compositions over the house design system.
- *
- * ## This file used to be a second design language
- *
- * It shipped as "USAV Mobile 2026 Design Tokens", a self-contained palette of
- * literal Tailwind blues (`text-blue-950` for body ink, `text-blue-400` for
- * muted, `bg-blue-50/50` glass), soft radii (`rounded-2xl`, `rounded-[28px]`)
- * and hand-mixed rgba shadows. Every one of those is banned by the house
- * identity: colour comes from semantic tokens only, ops chrome is flush-square,
- * and "A second visual language beside Kinetic Ledger tokens" is on the Always
- * Ban list. A phone is an operator surface — the kiosk counter is the ONE
- * radius exemption, and this is not it.
- *
- * The rewrite (2026-08-21) kept every export name, so no consumer churned.
- * What changed is what they resolve to.
- *
- * ## The token object is nearly all dead weight — deliberately kept small
- *
- * Across 15 consumers the only field with real reach is `colors.background`
- * (17 uses), which was already the house `bg-surface-canvas`. `radius`,
- * `motion`, `primaryGradient`, `primaryDark` and the rest had zero or one call
- * site each. They are gone rather than restated in house tokens: a token
- * namespace nothing reads is how a second language grows back.
- */
+/** Mobile shell primitives — thin compositions over the house design system. */
 export const TOKENS = {
   colors: {
-    /**
-     * Page ground for every mobile surface — white sheet; depth lives on cards.
-     *
-     * It is the HOUSE token, re-exported rather than restated, so the phone and
-     * the kiosk cannot drift onto two whites and a flip stays one edit
-     * (`appMobilePageGroundClass`). A screen that paints `bg-surface-canvas` on
-     * its own root is overriding this, which is what made `/m/pair` grey while
-     * the shell around it was white.
-     */
+    /** Page ground for every mobile surface — white sheet; depth lives on cards. */
     background: appMobilePageGroundClass,
     /** Raised panel on that ground. */
     card: 'bg-surface-card border border-border-soft',
@@ -51,17 +19,7 @@ export const TOKENS = {
   },
 } as const;
 
-/**
- * Canonical mobile gutter — the single horizontal inset shared by every mobile
- * feed/table row. The mobile analog of the desktop `SIDEBAR_GUTTER` (px-1.5):
- * one value, applied in exactly ONE place (CaptureStackRow), so all tables align.
- *
- * Feeds must NOT add their own outer `px-*` — the row card supplies the gutter,
- * and doubling it up is the inconsistency this token exists to prevent.
- *
- * `MOBILE_GUTTER` is the padding form (collapsed rows); `MOBILE_GUTTER_X` is the
- * margin form for the floating expanded card. Keep the two on the same step.
- */
+/** Canonical mobile gutter — the single horizontal inset shared by every mobile feed/table row. */
 export const MOBILE_GUTTER = 'px-1.5';
 export const MOBILE_GUTTER_X = 'mx-1.5';
 
@@ -153,14 +111,7 @@ export const SectionHeader = ({
   </div>
 );
 
-/**
- * Full-width mobile action. A thin size preset over {@link Button} — it exists
- * for the 56px thumb target, not for a face of its own, so it carries no fill
- * classes and inherits every variant from `button-variants.ts`.
- *
- * It used to hand-paint `bg-blue-600 shadow-xl shadow-blue-600/20` and a
- * `rounded-2xl`, which is the "do not paint over primitives" ban verbatim.
- */
+/** Full-width mobile action. */
 export const GlassButton = ({
   children,
   onClick,

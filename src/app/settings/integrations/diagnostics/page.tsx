@@ -1,20 +1,4 @@
-/**
- * /settings/integrations/diagnostics — admin/support diagnostics for the org's
- * integrations (production-integrations plan §4.2).
- *
- * Read-only Monitor surface, server component. Three panels:
- *   1. Connection grid — listConnections() (vault rows × connector metadata).
- *   2. Credential usage (last 24h) — integration_credential_audit rollup;
- *      degrades to a dashed empty state when the table isn't applied yet.
- *   3. Recent sync runs — cron_runs filtered to integration jobs (the plan
- *      names this `cron_run_log`; the live table is `cron_runs`, written by
- *      withCronRun and already admin.view-gated via /api/cron-runs). Global
- *      per-deployment operational data, not tenant data.
- *
- * Gated by admin.view at the page level, same as the sibling
- * /settings/integrations page. No mutations; every sub-query degrades to an
- * empty state instead of failing the page.
- */
+/** /settings/integrations/diagnostics — admin/support diagnostics for the org's integrations (production-integrations plan §4.2). */
 
 import { SettingsSectionFrame } from '@/components/settings/SettingsSectionHeader';
 import Link from 'next/link';

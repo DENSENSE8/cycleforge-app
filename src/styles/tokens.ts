@@ -78,10 +78,7 @@ export const designTokenCssVariables: Record<string, TokenValue> = {
   '--color-warning': designTokens.colors.warning,
   '--color-success': designTokens.colors.success,
   '--color-info': designTokens.colors.info,
-  // NOTE: the condensed cut is deliberately absent here. `--font-condensed` /
-  // `--ds-font-condensed` are declared ONLY in src/styles/globals.css, so the
-  // duplicated font chain this module still owns shrinks instead of growing
-  // (see FONT_CHAIN_EXCEPTION in src/app/head-token-order.guard.test.ts).
+  // NOTE: the condensed cut is deliberately absent here.
   '--font-sans': designTokens.typography.fontSans,
   '--font-mono': designTokens.typography.fontMono,
   '--text-xs': designTokens.typography.textXs,

@@ -2,23 +2,7 @@
 
 /**
  * People combobox — shadcn Command (new-york) + house anchored Popover.
- *
- * Same recipe as IntakeCombobox (CommandInput / CommandList / CommandItem /
- * Check) but the trigger is a table cell or icon, not a form Button, so the
- * shell is design-system Popover (anchorRef), not ui/popover.
- *
- * Assign: name-click. Roster: the pencil trailing on CommandInput (search
- * left, pencil right) toggles it; each row carries eligibility switches the
- * host named (Picker, Packer, …) and a name-click still assigns rows the host
- * marks `assignable`. The anchored popover is flush — shell and rows square.
- * Numbered assign (left-gutter picker/packer): heading + 1…n badges; empty
- * search + digit commits.
- *
  * The search does NOT take focus on mount (operator 2026-09-23). It used to
- * `autoFocus`, which meant any surface that mounted this panel — including one
- * opened as a side effect of opening a ticket — stole the caret and, on a
- * phone, threw the keyboard over the screen the operator was trying to read.
- * A panel earns the caret when the operator puts it there.
  */
 
 import { useId, type KeyboardEvent, type ReactNode, type RefObject } from 'react';

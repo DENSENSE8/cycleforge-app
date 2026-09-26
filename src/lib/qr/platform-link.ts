@@ -1,10 +1,4 @@
-/**
- * Platform-owned Digital Link minting — Cycle Forge host, tenant via slug.
- *
- * Stickers encode `https://{slug}.app.cycleforge.ai/...`. Consumers land on a
- * Cycle Forge interstitial; staff wedge ignores the host via `routeScan()`.
- * Compose {@link staffOriginForSlug} — do not invent a second host scheme.
- */
+/** Platform-owned Digital Link minting — Cycle Forge host, tenant via slug. */
 
 import {
   mobileQrUrl,
@@ -63,16 +57,7 @@ export function unitPlatformDigitalLink(opts: {
 
 // ─── The printable-matrix SoT ────────────────────────────────────────────────
 
-/**
- * What a printer actually needs to draw one matrix: the encoded string, the
- * symbology to draw it in, and the typeable handle printed underneath.
- *
- * These three travel together on purpose. They were previously decided in five
- * places — the face adapter, the raw TSPL/ZPL command builder, the workspace
- * preview, and two `print*Label` entry points — and they drifted: the workspace
- * unit preview showed a bare serial while the printer encoded a Digital Link
- * URL, and the raw command path dropped `orgSlug` entirely.
- */
+/** What a printer actually needs to draw one matrix: */
 export interface PrintMatrix {
   value: string;
   symbology: 'datamatrix' | 'gs1datamatrix';
@@ -119,12 +104,7 @@ type PrintMatrixArgs =
       kind: 'location';
       /** Needed for the Digital Link rung — same role as every other kind. */
       orgSlug?: string | null;
-      /**
-       * Zone / aisle / bay / level / position. A RACK label is the same kind
-       * with `position: 0` — pass `rackToLocation(rackSegments)`. Rack-vs-bin
-       * is decided by the code on the way back out (`isRackCode`), never by a
-       * second encode path.
-       */
+      /** Zone / aisle / bay / level / position. */
       segments: LocationSegments;
       /** The tenant's GLN. Only a *licensed* one can name a GS1 location. */
       gln?: string | null;
@@ -150,54 +130,7 @@ function symbologyForOverride(value: string): PrintMatrix['symbology'] {
   return /\((?:01|21|10|17|414|254)\)/.test(value) ? 'gs1datamatrix' : 'datamatrix';
 }
 
-/**
- * **The** encode decision for every printable matrix that leaves this app.
- *
- * ## One ladder, four rungs — every kind descends the same one
- *
- * ```
- *   1. GS1 Digital Link URI   https://{slug}…/01/{gtin}/21/{serial}
- *                             https://{slug}…/414/{gln}/254/{code}
- *      ↑ needs a LICENSED GS1 key + a tenant host
- *
- *   2. GS1 element string     (01){gtin}(21){serial}   ·  (414){gln}(254){code}
- *      ↑ licensed key, no host — same identity, no domain to resolve it
- *
- *   3. Platform Digital Link  https://{slug}…/m/r/{id}
- *      ↑ no licensed key, but the path HAS an anonymous landing
- *
- *   4. Bare handle            R-1234 · L-567 · U-SN1 · T-9395 · A0101101
- *      ↑ no key, no host, or no anon landing — still resolves at a staff wedge
- * ```
- *
- * **Rung 1 is not reachable by wanting it.** A GS1 key (GTIN, GLN) is
- * *licensed* to the company that holds its prefix. Minting one you do not hold
- * is a false identity claim, not a placeholder — that is precisely what
- * `DEFAULT_GLN = '0614141000005'` (GS1's own documentation GLN) did to every
- * location label printed before 2026-08-02. So a carton, a receiving line, a
- * ticket, a handling unit and an un-licensed shelf **cannot** become GS1
- * Digital Links; they are internal identities and they descend to rung 3 or 4.
- * Closing that gap is a GS1 Company Prefix purchase, not a refactor.
- *
- * **Rungs 3→4 turn on whether an anonymous phone lands somewhere.** A URL is
- * only worth printing if scanning it with a camera works; minting one for a
- * path that bounces a visitor to `/signin` is worse than printing the handle,
- * and it costs matrix area on a small sticker.
- *
- * Kind coverage today — the rung each one currently reaches:
- *   unit      → 1 (GTIN) · 2 (GTIN, no slug) · 4 (`U-{serial}` / bare SKU)
- *   location  → 1 (licensed GLN) · 2 (licensed GLN, no slug) · 4 (flat code)
- *   carton    → 3 (`/m/r/{id}` has a dual-audience landing) · 4 (no slug)
- *   as_listed → 4 — `/m/l/*` is a proxy REWRITE onto a staff page, so it has
- *               no anon landing yet. Folded in here so the day it gets one,
- *               this is the only edit.
- *   ticket    → 4 — same reason; `/support?ticket=` is staff-only.
- *
- * The licensed-GLN decision itself is `locationLabelPayload`, which exists only
- * because `barcode-routing` cannot import this module back — it is the location
- * case's private helper, not a second encoder. Pinned by
- * `print-matrix-sot.guard.test.ts`.
- */
+/** **The** encode decision for every printable matrix that leaves this app. */
 export function encodePrintMatrix(args: PrintMatrixArgs): PrintMatrix {
   const override = (args.override ?? '').trim();
   if (override) {
@@ -266,10 +199,7 @@ export function encodePrintMatrix(args: PrintMatrixArgs): PrintMatrix {
 
     case 'location': {
       const payload = locationLabelPayload(args.segments, { gln: args.gln });
-      // Rung 1 — the same promotion `unit` already makes: a licensed key plus
-      // a tenant host is a real GS1 Digital Link. `payload.gln` is non-null
-      // ONLY when `isLicensedGln` passed, so this can never mint a borrowed
-      // AI 414; with no licence it is not reachable at all.
+      // Rung 1 — the same promotion `unit` already makes:
       if (payload.gln) {
         const base = platformQrOriginForSlug(args.orgSlug);
         if (base) {

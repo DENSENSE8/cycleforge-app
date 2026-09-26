@@ -8,30 +8,7 @@ import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import { autoAllocateAfterIngest } from '@/lib/allocation/auto-allocate';
 
-/**
- * POST /api/orders/import-csv
- *
- * Tenant-generic CSV order import. Where the Google-Sheets import is hardcoded
- * to USAV (transitionalDogfoodOrgId), this lane lets ANY tenant bring orders in:
- * the client parses the CSV in-browser, picks which detected header maps to each
- * canonical field, and posts the already-parsed rows + the mapping here.
- *
- * Body: { rows: Array<Record<string,string>>, mapping: Record<canonical, csvHeader> }
- * Canonical fields: order_number (required), sku, quantity, customer_name,
- *                   tracking_number?, platform?
- *
- * Org scope is taken STRICTLY from ctx.organizationId — never the body. Rows are
- * normalized to `CanonicalOrderLine` and written by the shared order-ingest
- * writer, so this lane gets tracking resolution, catalog linking, cache
- * invalidation and the realtime publish for free.
- *
- * Idempotency: `orders` has no UNIQUE(organization_id, order_id) constraint, so
- * we dedupe within the batch and let the writer match an incoming row to the
- * one this org already has. A re-upload therefore BACKFILLS (additive — fills
- * blanks, never overwrites an operator's correction) instead of inserting a
- * duplicate; `collapseDuplicates: false` guarantees it can never delete one.
- * Rows are reported as `inserted` · `updated` · `skipped` (in-batch duplicate).
- */
+/** POST /api/orders/import-csv */
 
 const bodySchema = z.object({
   rows: z.array(z.record(z.string(), z.string())).max(10_000),
@@ -121,29 +98,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     deduped.push(entry);
   }
 
-  // 3. Hand EVERY deduped row to the shared order-ingest writer — the ones
-  //    this org already has included.
-  //
-  //    This route used to pre-filter existing order numbers out of the batch
-  //    and report them as `skipped`, because the writer's default `orderId`
-  //    match COLLAPSES DUPLICATES by deleting the losing rows and a user
-  //    uploading a spreadsheet must never be able to delete existing orders.
-  //    That guarantee was right; expressing it as a pre-filter was not — it
-  //    made the lane insert-only, so re-uploading a file whose rows had since
-  //    gained a tracking number, a ship-by, a title or a condition wrote none
-  //    of them and called the whole file skipped.
-  //
-  //    `collapseDuplicates: false` states the guarantee at the layer that owns
-  //    it, and lets existing orders reach the writer's ADDITIVE backfill path:
-  //    it fills blanks and never overwrites, so an operator's correction always
-  //    survives the next upload.
-  //
-  //    Going through the writer also fixes a silent data-loss bug: this route
-  //    used to insert `shippingTrackingNumber` and `isShipped`, neither of
-  //    which is a real `orders` column any more (tracking lives in
-  //    shipping_tracking_numbers + shipment_links). Drizzle dropped both keys
-  //    without error, so every tracking number in an imported CSV was thrown
-  //    away. The writer resolves it to a shipment and links it properly.
+  // 3. Hand EVERY deduped row to the shared order-ingest writer — the ones this org already has included.
   let inserted = 0;
   let updated = 0;
   let insertedOrderIds: number[] = [];
@@ -152,25 +107,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const result = await ingestCanonicalOrders(
         deduped.map(({ canonical }) => ({
           externalOrderId: canonical.order_number,
-          // A marketplace item number (ASIN / eBay listing id) when the file
-          // has one — it resolves through `sku_platform_ids.platform_item_id`,
-          // a path the SKU lookup cannot reach. When the file has only a SKU
-          // the writer falls back to it via `resolveListingIdentity` on a
-          // catalog miss, so either way the order lands in the catalog-link
-          // queue instead of writing a blank `orders.item_number` and being
-          // unlinkable forever.
+          // A marketplace item number (ASIN / eBay listing id) when the file has one — it resolves through `sku_platform_ids.platform_item_id`, a…
           itemNumber: canonical.item_number || '',
           sku: canonical.sku || '',
           productTitle: canonical.item_title || '',
           condition: canonical.condition || '',
           quantity: canonical.quantity || '1',
-          // The mapped `note` column is an operator REMARK, and lands in the
-          // legacy scalar `orders.notes` the writer owns on insert. The mapped
-          // `customer_name` column is a BUYER, not a note: it used to land as
-          // `notes: "Customer: <name>"`, which made the buyer invisible to
-          // every customer-scoped read and put import prose in the column
-          // operators type into. The writer resolves it to a `customers` row
-          // and sets `orders.customer_id`.
+          // The mapped `note` column is an operator REMARK, and lands in the legacy scalar `orders.notes` the writer owns on insert.
           notes: canonical.note || '',
           customerName: canonical.customer_name || '',
           // Platform acknowledgment: an Amazon 3-7-7 / eBay 2-5-5 order number
@@ -195,21 +138,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           source: 'orders-import-csv',
           // See the block above — never let an upload delete existing orders.
           collapseDuplicates: false,
-          // Only claim an opinion about deadlines when the file actually
-          // carries one. `upsertOrderDeadline` CREATES an OPEN TEST assignment
-          // when none exists, so managing deadlines with no mapped ship-by
-          // column would fill the tech queue with null-deadline assignments —
-          // one per row of every CSV ever uploaded.
+          // Only claim an opinion about deadlines when the file actually carries one.
           manageDeadlines: Boolean(mapping.ship_by_date),
         },
       );
       inserted = result.insertedOrders;
       insertedOrderIds = result.insertedOrderIds;
       updated = result.processedOrders - result.insertedOrders;
-      // Reserve units for the rows that just landed, so an uploaded file
-      // produces a pick list rather than an unallocated backlog. Non-fatal:
-      // the orders are committed and must not be re-imported because
-      // allocation hiccupped.
+      // Reserve units for the rows that just landed, so an uploaded file produces a pick list rather than an unallocated backlog.
       await autoAllocateAfterIngest(result.insertedOrderIds, {
         orgId: ctx.organizationId,
         staffId: typeof ctx.staffId === 'number' && ctx.staffId > 0 ? ctx.staffId : null,

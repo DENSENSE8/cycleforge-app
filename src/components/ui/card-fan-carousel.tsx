@@ -25,12 +25,7 @@ interface SocialCardsProps {
 const MAX_VISIBLE = 7;
 const HALF = 3;
 
-/**
- * Stacking order for a card that is off-fan (exited / not yet entered). These
- * are GSAP tween values scoped to this component's own card stack — sibling
- * layering inside one element, not app chrome — so they are local to the fan
- * geometry beside `FAN_POSITIONS.zIndex`, not the app z-index scale.
- */
+/** Stacking order for a card that is off-fan (exited / not yet entered). */
 const FAN_CARD_HIDDEN_Z = 0;
 
 const FAN_POSITIONS = [
@@ -118,14 +113,7 @@ export default function SocialCards({ cards, onCardClick, cardTestId }: SocialCa
     );
   }, [totalCards, needsPagination]);
 
-  /**
-   * GSAP sits outside framer's `MotionConfig` reduced-motion floor (different
-   * engine, different context), so this is the one place that still needs an
-   * explicit gate. Collapsing duration + delay to 0 makes every tween an
-   * instant set — cards land on their target layout with no fan, slide, or
-   * elastic overshoot — while `onComplete` still fires, so `isAnimating`
-   * bookkeeping and pagination keep working unchanged.
-   */
+  /** GSAP sits outside framer's `MotionConfig` reduced-motion floor (different engine, different context), so this is the one place that… */
   const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {

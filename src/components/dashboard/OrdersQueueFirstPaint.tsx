@@ -1,19 +1,4 @@
-/**
- * SSR first-paint stand-in for the To-ship Unshipped queue.
- *
- * Owns LCP when the interactive queue has not hydrated yet. Two faces:
- *
- * - `variant="ledger"` (`/shipping/orders`): the industrial record ledger's
- *   Medium geometry — toolbar strip, 5px spine, 96px photo lane, three 32px
- *   bands, 1px ink rules — from the same geometry module the live
- *   `OutboundOrdersLedger` reads, so the swap does not register as a shift.
- * - `variant="table"` (default, the Pending desk): dense rows under the slot
- *   table's host class.
- *
- * Server-safe — no `'use client'`, no motion, no TanStack. Class string is
- * inlined (same as `'relative flex min-h-0 min-w-0 flex-1 flex-col'`) so this
- * module stays RSC-importable without pulling the client workbench-shell graph.
- */
+/** SSR first-paint stand-in for the To-ship Unshipped queue. */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { LIFECYCLE_CLASSES } from '@/design-system/tokens/lifecycle';

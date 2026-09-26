@@ -30,17 +30,7 @@ function startFailureMessage(value: unknown): string {
   return 'Could not start packing.';
 }
 
-/**
- * `/m/pack/start/[orderId]` (`orders.id`) — the pack JOB for one order, on
- * {@link DetailHubScreen}: a scanned tote (`/api/packing/resolve-tote`) or a
- * Pack verb lands here. The order card opens its `/info`, the doors open the
- * order's Units · Activity, and the X returns to `/m/pack`. Every order screen
- * opened from here carries `?back=` so its X returns to this job.
- *
- * Dock: Paperwork (view, pair, print / reprint the bundle) · Take photos
- * (primary). A CAPTURING draft is created only when the camera opens; nothing
- * here marks the order packed — the guided camera finalizes after evidence.
- */
+/** `/m/pack/start/[orderId]` (`orders.id`) — the pack JOB for one order, on {@link DetailHubScreen}: */
 function PackJobInner() {
   const router = useRouter();
   const pathname = usePathname();

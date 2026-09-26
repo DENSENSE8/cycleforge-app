@@ -6,16 +6,7 @@ import {
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Resolve the sku_catalog row a receiving line maps to.
- *
- * The line itself only carries a `sku` string (`receiving_line.sku_catalog_id`
- * exists but is never populated). The authoritative, populated linkage is
- * `serial_units.sku_catalog_id`, set at scan time (see receive-line.ts). So we
- * prefer a scanned unit's catalog id and fall back to resolving from the SKU
- * string / Zoho item number — this lets the testing panel show the checklist
- * and manuals *before* any serial is scanned.
- */
+/** Resolve the sku_catalog row a receiving line maps to. */
 export interface LineCatalogResolution {
   lineId: number;
   sku: string | null;
@@ -118,11 +109,7 @@ export async function resolveLineCatalog(
   const line = await loadLine(lineId, orgId);
   if (!line) return null;
 
-  // Collision guard signal: the clean Zoho product name (items mirror) is the
-  // canonical title; fall back to the line's listing-style item_name only when
-  // the line has no Zoho item. Using the clean name avoids false rejects on
-  // noisy listing titles while still catching cross-namespace collisions
-  // (Zoho 00143 Soundbar vs Ecwid 143 UB-20 Wall Mount).
+  // Collision guard signal:
   const guardTitle = line.zoho_name?.trim() || line.item_name;
 
   const skuCatalogId =
@@ -140,12 +127,7 @@ export async function resolveLineCatalog(
   };
 }
 
-/**
- * Like {@link resolveLineCatalog} but creates the catalog row on demand when it
- * can't be resolved (used by tech-initiated mutations that need a catalog id to
- * attach to — checklist steps, manual pairing). Returns `null` only when the
- * line doesn't exist or there's no SKU to key on.
- */
+/** Like {@link resolveLineCatalog} but creates the catalog row on demand when it can't be resolved (used by tech-initiated mutations that… */
 export async function resolveOrCreateLineCatalog(
   lineId: number,
   orgId: OrgId,

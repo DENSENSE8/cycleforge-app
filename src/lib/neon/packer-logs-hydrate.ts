@@ -1,17 +1,7 @@
 import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Spine-first deferred fields for the shipped table. The main `/api/packerlogs`
- * spine response omits these (display-only, per-row work_assignments laterals +
- * the photos round-trip) so the page paints immediately; this endpoint computes
- * ONLY these fields for the already-selected page of station_activity_logs ids
- * and the client merges them in.
- *
- * The SQL mirrors the exact expressions the full enriched query uses (same
- * ORDER BY / status precedence, same photo shape), so a hydrated row is
- * byte-identical to what the full query would have returned.
- */
+/** Spine-first deferred fields for the shipped table. */
 export interface PackerLogHydration {
   ship_by_date: string | null;
   deadline_at: string | null;

@@ -12,18 +12,7 @@ import { countReceivingPhotos } from './queries/receiving-list';
 import { countUnitPhotos } from './queries/unit-list';
 import type { PhotoEntityType } from './types';
 
-/**
- * Announce new media (a photo or a video) on its entity's realtime channel —
- * the ONE per-entity dispatch shared by `POST /api/photos/upload` and
- * `POST /api/photos/upload/video/[id]/finalize`, so both kinds of media reach
- * exactly the surfaces that already revalidate for that entity.
- *
- * `photoId` is the new photo, or null for a video; the photo channels' payload
- * then carries `photo_id: null` and the entity's (unchanged) photo count, which
- * is enough for every subscriber to refetch. Returns the carton id a
- * RECEIVING / RECEIVING_LINE entity resolved to (null otherwise) so the photo
- * route can run its claim follow-up against the same carton.
- */
+/** Announce new media (a photo or a video) on its entity's realtime channel — the ONE per-entity dispatch shared by `POST… */
 export async function publishEntityMediaInsert(input: {
   organizationId: string;
   entityType: PhotoEntityType;

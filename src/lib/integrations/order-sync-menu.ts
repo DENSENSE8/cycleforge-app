@@ -1,14 +1,4 @@
-/**
- * Connected order-ingestion sources for the To-ship Sync ShipStation chevron.
- *
- * ShipStation is the dock face — it is not repeated here. The rows are vault
- * `organization_integrations` connections with the `orders` capability and a
- * wired `sync()` (Square, Shopify), alphabetical by catalog label. eBay,
- * Amazon and Ecwid have no connector sync any more, so they never list.
- *
- * Pure given deps — the load file supplies the DB defaults so unit tests stay
- * off the Neon pool.
- */
+/** Connected order-ingestion sources for the To-ship Sync ShipStation chevron. */
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { PermissionString } from '@/lib/auth/permissions';
 import { getConnector } from '@/lib/integrations/connectors/registry';

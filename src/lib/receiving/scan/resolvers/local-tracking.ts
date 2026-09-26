@@ -1,21 +1,4 @@
-/**
- * Local-first tracking resolver (Phase 1a) — a carton already in the system
- * (door-scanned, or otherwise carrying a receiving package) resolves straight
- * from the local receiving feed, so the hook can open it and skip lookup-po
- * entirely (no Zoho fallback, no "Opening your PO" takeover).
- *
- * Three-way outcome:
- *   • `local-matched` — local rows exist (each with a `receiving_id`); open them.
- *   • `retarget`      — no local carton, BUT the tracking maps to exactly one
- *                       known incoming PO (EXPECTED lines: PO number set,
- *                       `receiving_id` NULL). Redirect the lookup-po call to the
- *                       order-mode local-adopt path so the Zoho loader never
- *                       takes over for an already-known incoming carton. A
- *                       multi-PO tracking still needs the Zoho path (up to 3).
- *   • `null`          — order mode, or nothing local/known; fall through.
- *
- * Pure + dependency-injected (`fetchLinesByTracking`), so it runs DB/React-free.
- */
+/** Local-first tracking resolver (Phase 1a) — a carton already in the system (door-scanned, or otherwise carrying a receiving package)… */
 
 import type { LocalTrackingDeps, LocalTrackingResolution, ScanInput } from '../types';
 

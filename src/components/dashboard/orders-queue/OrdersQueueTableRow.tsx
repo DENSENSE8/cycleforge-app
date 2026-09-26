@@ -117,22 +117,9 @@ export interface OrdersQueueTableRowProps {
   daysLate: number | null;
   disableEnterAnimation?: boolean;
   disableLayoutAnimation?: boolean;
-  /**
-   * Opaque zebra bg (default false = translucent `/40`). Flat h-scroll surfaces
-   * (the Pending grid view / any {@link LedgerGrid} consumer) MUST pass true: the
-   * frozen identity pane inherits the row bg (`bg-inherit`), so a translucent
-   * stripe lets the scrolling fact columns bleed through the pinned cells. Opaque
-   * kills the bleed. The vertical shelf-board keeps the translucent look.
-   */
+  /** Opaque zebra bg (default false = translucent `/40`). */
   opaqueStripe?: boolean;
-  /**
-   * Airtable grid-view skin. Always-visible row-select checkbox in the gutter
-   * via {@link onToggleSelect} + {@link selectGutterChrome}. Sheets-style
-   * in-cell editors for condition / qty. Zebra still applies (opaque canvas /
-   * card — required for the frozen identity pane). Off → display-only cells.
-   * Notes · OOS · listing-link · open-row hover controls live on the record
-   * plane (inspector), not in this collection map.
-   */
+  /** Airtable grid-view skin. */
   gridSkin?: boolean;
   /** Sheets click-select: row click toggles bulk; double-click opens. Gutter
    * still mounts a real checkbox (`selectGutterChrome='hover'` on To-ship).
@@ -142,23 +129,12 @@ export interface OrdersQueueTableRowProps {
   selectGutterChrome?: GridSelectGutterChrome;
   /** Persisted Sheets row paint hex (selection wash wins when checked). */
   rowFillHex?: string | null;
-  /**
-   * Absolute `aria-rowindex` when this row sits inside a `role="table"` grid.
-   * Supplied by the virtualizer via `renderRow`; only a WINDOW of rows is ever
-   * in the DOM, so without it AT announces the wrong position. Omitted outside
-   * a table — `role="row"` there would be an orphaned role.
-   */
+  /** Absolute `aria-rowindex` when this row sits inside a `role="table"` grid. */
   rowIndex?: number;
-  /** Toggle this row's selection from the gutter checkbox (stops propagation, so
-   *  it never opens the record). Supplying it makes the gutter INTERACTIVE —
-   *  required on grid skin so the leftmost cell is a real checkbox. Row body
-   *  opens the record; it does not toggle membership. */
+  /** Toggle this row's selection from the gutter checkbox (stops propagation, so it never opens the record). */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   queueMode?: OrdersQueueMode;
-  /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
-   *  REQUIRED — there is no canonical fallback since the Wave-1 hand-model
-   *  kill: outbound desks and station benches pass the compound slot
-   *  materialization. Header + rows + group summaries must receive the SAME list. */
+  /** Ordered VISIBLE column models (already sanitized + visibility-resolved). */
   columns: readonly OrdersQueueColumn[];
   /**
    * Bound subtitle field ids from the effective slot layout (compound morph
@@ -166,21 +142,7 @@ export interface OrdersQueueTableRowProps {
    * legacy note/identity fallback line.
    */
   subtitleFieldIds?: readonly string[];
-  /**
-   * The MOUNTING SURFACE's declared capabilities — required, never defaulted.
-   *
-   * This row is rendered by two surfaces with different feature sets: the
-   * outbound Queue grid (`ORDERS_GRID_CAPABILITIES`) and the Tech / Packer
-   * history benches (`STATION_HISTORY_GRID_CAPABILITIES`). It used to import the
-   * Orders bag directly, which meant a bench row resolved its fill against the
-   * outbound triage vocabulary — a capability leaking in through a shared
-   * component rather than being declared by the surface that owns it.
-   *
-   * It has no default for the same reason a safety classification never does:
-   * a default is a silent opt-in that every call site you did not visit takes
-   * automatically, and the compiler stays quiet about exactly the ones you
-   * missed. Required makes a new mount answer the question.
-   */
+  /** The MOUNTING SURFACE's declared capabilities — required, never defaulted. */
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
   onRowClick: (
     record: ShippedOrder,
@@ -199,21 +161,9 @@ export interface OrdersQueueTableRowProps {
    * packed/shipped/history.
    */
   onOpenLabels?: (record: ShippedOrder) => void;
-  /**
-   * Present ⇒ the compound item cell's bound CONDITION subtitle part edits in
-   * place (grade menu over the condition SoT, `null` = clear). Absent ⇒ the
-   * same part is read-only — the house capability law. A scalar PATCH through
-   * the host's `useOrderAssignment`, never a lifecycle transition.
-   */
+  /** Present ⇒ the compound item cell's bound CONDITION subtitle part edits in place (grade menu over the condition SoT, `null` = clear). */
   onCommitCondition?: (record: ShippedOrder, condition: string | null) => void;
-  /**
-   * Retype a subtitle fact in place — qty, item number, note.
-   *
-   * One handler keyed by catalog field id rather than three props: the bound
-   * subtitle line is a LAYOUT choice, so which facts appear there changes per
-   * org, and a prop per fact would need a new prop each time somebody binds a
-   * different one.
-   */
+  /** Retype a subtitle fact in place — qty, item number, note. */
   onCommitSubtitleField?: (
     record: ShippedOrder,
     fieldId: string,
@@ -243,10 +193,7 @@ export interface OrdersQueueTableRowProps {
   ) => void;
 }
 
-/** In-cell editors this row can host (one open at a time).
- *  `title` is deliberately absent — the product title is a read-only identity
- *  anchor in the collection map; correction lives at the record plane.
- *  Notes · listing link · OOS are record-plane only. */
+/** In-cell editors this row can host (one open at a time). */
 
 /** Identity chips payload for the mobile stack. */
 type OrderIdentityCellProps = Omit<ComponentProps<typeof OrderIdentityChips>, 'isMobile'>;
@@ -295,16 +242,7 @@ function renderStructuralCell(
   return <span className={cellClass(col, rule)} />;
 }
 
-/**
- * `grid-template-columns` for a mounted column model, cached ON that model.
- *
- * The template is a pure function of the resolved column array — same tracks,
- * same widths, same string — but it was rebuilt per ROW per render: seven
- * `gridColumnTrackRem` + `densityScaledRem` calls and a join, 62 times over,
- * for one string every row in the window shares. The host already hands every
- * row the SAME array instance (`renderRow`'s `visible`), so the array itself is
- * the cache key and a resize (which mints a new model) misses by construction.
- */
+/** `grid-template-columns` for a mounted column model, cached ON that model. */
 const ROW_GRID_TEMPLATE_CACHE = new WeakMap<readonly OrdersQueueColumn[], string>();
 
 function rowGridTemplate(columns: readonly OrdersQueueColumn[]): string {
@@ -315,15 +253,7 @@ function rowGridTemplate(columns: readonly OrdersQueueColumn[]): string {
   return template;
 }
 
-/**
- * The row shell's DOM contract — the chrome half of a row (box, roles, paint,
- * gestures), declared explicitly rather than as `ComponentPropsWithoutRef`.
- *
- * Explicit because it is spread into BOTH a plain `div` and `motion.div`, and
- * the full div prop bag carries keys (`onAnimationStart`, `onDrag`, `style`)
- * whose motion counterparts have incompatible signatures. Naming only what the
- * row actually sets keeps one object valid for both hosts.
- */
+/** The row shell's DOM contract — the chrome half of a row (box, roles, paint, gestures), declared explicitly rather than as… */
 interface OrdersQueueRowShellProps {
   'aria-rowindex'?: number;
   'aria-selected'?: boolean;
@@ -347,21 +277,7 @@ interface OrdersQueueRowShellProps {
   children: ReactNode;
 }
 
-/**
- * The row shell WITH motion attached — mount presence, layout animation, and
- * the board/list hover lift.
- *
- * It is a component rather than a branch inside the row because the three
- * `useReducedMotion` bridges are HOOKS: a row that animates nothing still paid
- * for them, and still mounted a `motion.div` whose eleven context subscriptions
- * (layout group, presence, config, …) exist to drive animation that is turned
- * off. The Sheets grid disables presence AND layout AND the hover lift, so on
- * the To-ship desk every one of those was overhead for movement that cannot
- * happen — 62 rows' worth on first paint.
- *
- * This is a BRANCH, not a retirement: the station history benches keep layout
- * animation, the board keeps the hover lift, and both land here unchanged.
- */
+/** The row shell WITH motion attached — mount presence, layout animation, and the board/list hover lift. */
 function AnimatedOrdersQueueRowShell({
   animatePresence,
   animateLayout,
@@ -495,16 +411,7 @@ function OrdersQueueMobileStack({
           : undefined
         : undefined,
     serialChip,
-    // **There is no glyph face in the table engine.** The leading mark on a grid
-    // identity cell is the brand DOT — the house identity law — so this is not a
-    // choice a column gets to make any more.
-    //
-    // It used to be derived from `omitCellIcon`, which read as principled but
-    // was a fork with a trapdoor: a column model that simply did not declare
-    // `order`/`tracking` keys (the compound layout does not) fell through to the
-    // `'icons'` default and silently painted the `#` hash and the MapPin next to
-    // Unbox History's dots. A default that decides identity language is not a
-    // default, it is a second answer waiting for a caller who forgets to ask.
+    // **There is no glyph face in the table engine.** The leading mark on a grid identity cell is the brand DOT — the house identity law — so…
     variant: 'plain',
     // No platform column on this surface — order + tracking only.
     showPlatform: false,
@@ -514,10 +421,7 @@ function OrdersQueueMobileStack({
     <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />
   ) : null;
 
-  // ── Lateness / ship-by — the FLAT `age` cell and the mobile meta row ──────
-  // `toPSTDateKey` → `formatDateWithOrdinal` and `formatQueueRowDateCell` are
-  // Intl work, once per row per render. COMPOUND paints the civil ship-by on
-  // the `state` track (same `daysLate` source, date from deadline / ship_by).
+  // ── Lateness / ship-by — the FLAT `age` cell and the mobile meta row ────── `toPSTDateKey` → `formatDateWithOrdinal` and…
   const hasTester = Boolean(
     (record.test_date_time || record.test_activity_at) &&
       String(record.test_date_time || record.test_activity_at).trim(),
@@ -566,14 +470,7 @@ function OrdersQueueMobileStack({
     />
   ) : null;
 
-  /**
-   * The flag's dot — the tint's non-colour carrier.
-   *
-   * A row wash alone fails anyone with a colour-vision deficiency and fails
-   * everyone on a washed-out warehouse monitor, and it cannot say WHICH tag it
-   * is or who set it. The dot carries the tone, the tooltip carries the word,
-   * the author, and what the tag means, so the shared vocabulary stays shared.
-   */
+  /** The flag's dot — the tint's non-colour carrier. */
   const flagIndicator = rowFlag ? (
     <HoverTooltip
       label={[
@@ -590,18 +487,11 @@ function OrdersQueueMobileStack({
     </HoverTooltip>
   ) : null;
 
-  // Select cell — full-track hit plane + centered checklist face via
-  // GridRowCheckbox. The gutter is the only bulk-select gesture; row body
-  // opens the record. Any click in this column toggles — operators need not
-  // aim at the 16px square.
+  // Select cell — full-track hit plane + centered checklist face via GridRowCheckbox.
   const leadControls = (
     <div
       data-select-gutter
-      // Cell role for the same reason the header gutter carries `columnheader`
-      // (see `LedgerGridColumnHeader`): a `role="row"` may only own cell-family
-      // roles, so without this the `role="checkbox"` below is owned by the row
-      // and axe `aria-required-children` fails. `cell` — not `gridcell` — because
-      // the container is `role="table"`, not `role="grid"`.
+      // Cell role for the same reason the header gutter carries `columnheader` (see `LedgerGridColumnHeader`):
       role="cell"
       className={cn(
         ledgerGridCell({ inset: 'none', rule: true }),
@@ -679,22 +569,7 @@ function OrdersQueueMobileStack({
   );
 }
 
-/**
- * Pending / fulfillment queue row — Sheets-like WMS grid:
- *   select(☐) · order · age · product · cond · qty · tracking
- * Every fact owns a track; cells render through a per-column registry mapped
- * over ONE ordered column list, so drag-reorder is a list change — header,
- * rows, and group summaries can never disagree (`columns` prop).
- *
- * That list arrives already RESOLVED to the visible tracks
- * (`LedgerGridSurface` visibility resolution), so a hidden column loses its
- * TRACK — this row never re-tests hidden-ness per cell (the old cell-granular
- * `useIsColumnHidden` path left a dead empty ruled band where the column was).
- *
- * Grid skin keeps condition / qty in-cell editing. Notes · OOS · listing link
- * · open-row affordances are record-plane only (inspector). Identity uses
- * SoT `OrderIdChip` / `TrackingChip` (Hash / MapPin icons); no platform chip.
- */
+/** Pending / fulfillment queue row — Sheets-like WMS grid: */
 export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   record,
   isSelected,
@@ -753,14 +628,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const morphingEnabled = compoundLayout && Boolean(onToggleSelect);
   const detailState = useCompoundRowDetail(String(record.id));
 
-  // Zebra is OFF under the airtable skin. That skin already draws a full cell
-  // rule grid (right + bottom on every cell) inside a raised card frame, so a
-  // stripe is a THIRD separation system — and its fill (`surface-canvas`) is a
-  // page-canvas value tuned as a ground plane for floating cards, not a row
-  // tint, so at that luminance step the shaded rows read as a different
-  // surface rather than the same one alternately banded. Rules + hover carry
-  // row tracking here. Board / Packed / mobile keep the stripe: they have no
-  // cell rules, which is the condition zebra actually exists for.
+  // Zebra is OFF under the airtable skin.
   const stripeRow = useAlternateStripe && !gridSkin;
 
   const animatePresence = !disableEnterAnimation;
@@ -769,17 +637,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // presence and layout both off, is what makes a row's shell pure DOM.
   const hoverLift = !gridSkin;
 
-  /**
-   * Operator-set triage flag — an org-wide shared tag that washes the row.
-   * Resolved through the SoT so an id this build does not know renders as
-   * unflagged rather than as some arbitrary colour.
-   *
-   * Gated ONCE, here, on the mounting surface's declared capability rather than
-   * at each of the three places the flag paints (grid fill, list fill, dot
-   * indicator). Triage is outbound dispatch vocabulary; a surface that did not
-   * declare it must not show any of the three, and gating at the derivation is
-   * what makes that one decision instead of three that can drift apart.
-   */
+  /** Operator-set triage flag — an org-wide shared tag that washes the row. */
   const rowFlag = capabilities.rowTriageFlags
     ? resolveOrderRowFlag(record.row_flag?.flag)
     : null;
@@ -791,10 +649,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const itemNumberValue = String(record.item_number ?? '').trim();
 
-  // The condition subtitle part edits in place only when the surface passed
-  // the commit capability AND the layout actually binds the fact. Editors are
-  // matched to parts by key, so an org that unbinds condition sheds the
-  // affordance with the part.
+  // The condition subtitle part edits in place only when the surface passed the commit capability AND the layout actually binds the fact.
   const conditionEditable = Boolean(
     onCommitCondition && subtitleFieldIds?.includes('orders.condition'),
   );
@@ -810,27 +665,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               // highlights its grade as current — the deleted flat editor's rule.
               current: resolveConditionGrade(record.condition) === opt.value,
             })),
+            // NO clear row (operator 2026-09-04:
             // NO clear row (operator 2026-09-04: "it must always be a
-            // condition in the row"). Every line has a grade — an unknown one
-            // is `--` until somebody picks, not a state an operator sets on
-            // purpose — so offering "Clear" offered a way to make a fact worse.
-            // The seven grades are the whole vocabulary; picking a different
-            // one is the edit.
             onCommit: (value) => onCommitCondition(record, value),
           },
         ]
       : undefined;
 
-  /*
-   * The rest of the under-title line, editable in place (operator ruling
-   * 2026-08-31): everything down there is a fact the desk owns, so everything
-   * down there can be retyped — EXCEPT the order number, the tracking number
-   * and the lifecycle statuses. Those three are identity and history: an order
-   * number is what the marketplace calls this row, a tracking number is what
-   * the carrier calls the parcel, and a status is a record of something that
-   * already happened. The item number is the one exception: it is editable from
-   * the product-title hover actions.
-   */
+  /* The rest of the under-title line, editable in place (operator ruling 2026-08-31): */
   const editableSubtitle = Boolean(compoundLayout && onCommitSubtitleField);
   const subtitleEdits: readonly CompoundSubtitleEdit[] | undefined =
     editableSubtitle && onCommitSubtitleField
@@ -890,11 +732,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   // The item number is a title-hover action, not an under-title glyph.
 
-  // One adapter call per row — the compound cells all read this. Built here
-  // (not per cell) so a five-column row maps once, and from the SAME resolved
-  // display strings the flat layout uses rather than re-deriving them.
-  // `null` under FLAT: no compound track is mounted there, so the adapter would
-  // map a row nothing can paint.
+  // One adapter call per row — the compound cells all read this.
   const compoundView = compoundLayout
     ? ordersCompoundView(record, {
         stateLabel: rowStatus?.label ?? null,
@@ -976,20 +814,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     };
   }, [compoundView, onCommitStageAssign, testerId, packerId, record]);
 
-  // ── The cells — one shell, two column models ─────────────────────────────
-  // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
-  // skin's `[data-order-row-id] > *` border rules depend on it.
-  //
-  // The SHARED renderer paints the compound tracks, wrapper and all. This
-  // family used to supply its own wrappers; that is where it silently lost the
-  // frozen photo track (`thumb` is declared `frozen: true` and never got the
-  // sticky class), which is why the box around a compound cell is no longer a
-  // family's job.
-  //
-  // The note line is read-only, here and everywhere: the compound cell's inline
-  // note editor came down with the display layer. `order_notes` was never going
-  // to edit in place anyway — it is an append-only trail, and rewriting
-  // someone's statement is the failure that ruling exists to prevent.
+  // ── The cells — one shell, two column models ───────────────────────────── Fragments (no DOM) keep every cell a DIRECT grid child — the…
   const cells = isMobile ? (
     <OrdersQueueMobileStack
       record={record}
@@ -1115,11 +940,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         onRowClick(record, { shiftKey: event.shiftKey, target: event.target });
       }
     },
-    // Inside a `role="table"` grid this element IS the row — an element has
-    // exactly one role, and a table whose rows claim `button`/`checkbox` has
-    // no rows at all. Selection moves to `aria-selected` (valid on `row`);
-    // under clickSelect the gutter checkbox + wash both show membership.
-    // Outside a table the original interactive roles stand.
+    // Inside a `role="table"` grid this element IS the row — an element has exactly one role, and a table whose rows claim `button`/`checkbox`…
     role: inTable ? 'row' : clickSelect ? 'checkbox' : 'button',
     tabIndex: 0,
     'aria-selected': inTable ? isChecked : undefined,
@@ -1188,10 +1009,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     children: cells,
   };
 
-  // A row that animates NOTHING is a plain box: no motion component, no
-  // presence/layout context subscriptions, no reduced-motion bridges. The
-  // moment any of the three is live, the shell above is handed to the motion
-  // host unchanged.
+  // A row that animates NOTHING is a plain box:
   const leaf =
     !animatePresence && !animateLayout && !hoverLift ? (
       <div ref={rowRef} {...shell} />
@@ -1254,10 +1072,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.packerDisplay !== next.packerDisplay) return false;
   if (prev.record.test_date_time !== next.record.test_date_time) return false;
   if (prev.record.test_activity_at !== next.record.test_activity_at) return false;
-  // PICK-lane cells. The Pick slot stopped borrowing the tester family on
-  // 2026-09-14 (`pickedStep` reads a real projection now), so the facts above
-  // no longer stand in for it: without these three a picker's scan publishes,
-  // the cache patches, and the row still paints the pre-pick face.
+  // PICK-lane cells.
   if (prev.record.picked_at !== next.record.picked_at) return false;
   if (prev.record.picked_by !== next.record.picked_by) return false;
   if (prev.record.picked_by_name !== next.record.picked_by_name) return false;
@@ -1280,10 +1095,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.onCommitStageAssign !== next.onCommitStageAssign) return false;
   if (prev.testerId !== next.testerId) return false;
   if (prev.packerId !== next.packerId) return false;
-  // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label
-  // landing on an open To-ship desk changes `shipping_tracking_number` and
-  // nothing else on this list — compared nowhere, the row kept the empty
-  // tracking line until something unrelated forced it to repaint.
+  // Live fields the COMPOUND `fulfillment` / `item` tracks paint.
   if (prev.record.shipping_tracking_number !== next.record.shipping_tracking_number) return false;
   if (prev.record.notes !== next.record.notes) return false;
   if (prev.record.account_source !== next.record.account_source) return false;

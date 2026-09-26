@@ -1,19 +1,4 @@
-/**
- * embedText — the single embedding client behind the provider layer.
- *
- * OpenAI wire format (`POST {baseURL}/embeddings`) against whatever
- * `resolveAiConfig('embed')` points at: Vercel AI Gateway
- * (`openai/text-embedding-3-small`, `dimensions: 768`) in prod, local Ollama
- * (`nomic-embed-text`, natively 768) in dev. Every returned vector is
- * asserted to be exactly EMBEDDING_DIMS long — a silently mismatched
- * dimensionality would poison `entity_search_docs.embedding` for every doc
- * written after a provider flip.
- *
- * Callers own the failure policy: the outbox worker treats a throw as
- * "upsert the doc with search_text and leave embedding NULL for retry";
- * the keystroke hybrid path treats a throw/timeout as "keyword-only results".
- * This module never swallows errors itself.
- */
+/** embedText — the single embedding client behind the provider layer. */
 
 import {
   EMBEDDING_DIMS,

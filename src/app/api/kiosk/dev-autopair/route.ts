@@ -1,29 +1,4 @@
-/**
- * POST /api/kiosk/dev-autopair — dogfood bind to organization one.
- *
- * Callers: `useDogfoodKioskBind` on `/kiosk`, `/kiosk/v2`, `/m/consult`;
- * `healKioskBinding` on any kiosk 401.
- * Affected API: this route; sets httpOnly `cf_kiosk` + `cf_kiosk_client` for
- * `withKioskAuth`.
- * Data schemas: one `kiosk_devices` row PER CLIENT
- * ({@link dogfoodKioskDeviceLabel}).
- * User: "I don't care about the tablet pairing, I need to be able to test this
- * immediately. Whenever you open a kiosk or a tablet page, I must see it
- * automatically connected to organization one for dog food testing" — and
- * "I must be able to access the kiosk without it saying kiosk unpaired in prod
- * testing AND on localhost".
- *
- * ONE ROW PER CLIENT, not one row per org. A `kiosk_devices` row holds a single
- * `device_token_hash`, so while every dogfood surface shared the row labeled
- * "Dogfood auto-bind", each bind ROTATED the hash and killed every other
- * surface: production stole localhost's device, localhost stole it back, and
- * both painted `KIOSK_UNPAIRED` in turn. The durable `cf_kiosk_client` cookie
- * gives each browser/tablet its own row — which is what `kiosk_devices` models
- * in the first place (one row per tablet).
- *
- * No setup code. No env opt-in. Idempotent when the browser already holds a
- * valid cookie for org #1.
- */
+/** POST /api/kiosk/dev-autopair — dogfood bind to organization one. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -70,10 +45,7 @@ async function handleDogfoodAutopair(req: NextRequest) {
 
   const label = dogfoodKioskDeviceLabel(clientId);
   const issued = await issueActiveKioskDeviceToken(orgId, label);
-  // One row per client means E2E contexts and incognito windows each leave one
-  // behind. Sweep the ones nobody has used in two weeks so the LIVE credential
-  // set — and Settings → Devices — stays bounded. Advisory: a failed sweep must
-  // never fail the bind the operator is waiting on.
+  // One row per client means E2E contexts and incognito windows each leave one behind.
   void revokeStaleDogfoodKioskDevices(orgId, label).catch(() => {});
   const res = NextResponse.json({
     paired: true,

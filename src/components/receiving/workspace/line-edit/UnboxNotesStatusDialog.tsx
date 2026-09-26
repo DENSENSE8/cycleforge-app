@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * @domain-job Unbox notes Info overlay — line receive/print/stage exacts in a center dialog.
- * @hardware-target Station
- * @density floor
- * @justification Cannot reuse InventoryActivityPanel in Displays — floor-speed
- *   exacts must sit over the middle canvas without opening the right rail.
- */
+/** @domain-job Unbox notes Info overlay — line receive/print/stage exacts in a center dialog. */
 
 import {
   Dialog,

@@ -37,17 +37,7 @@ function toTimeInputValue(date: Date): string {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
-/**
- * Trigger-button + Radix Popover + the design-system {@link CalendarPicker}
- * (react-day-picker, single mode) paired with a time input. The single-date
- * sibling of {@link DateRangePickerField} — use it anywhere an operator needs
- * to pick a specific day *and* time (e.g. the "mark as shipped" packed-at
- * stamp) instead of a raw `<input type="datetime-local">`.
- *
- * Owns no application state beyond the open flag; fully controlled via
- * `value` + `onChange`. Picking a new day preserves the current time-of-day;
- * the time input edits hours/minutes on the selected day.
- */
+/** Trigger-button + Radix Popover + the design-system {@link CalendarPicker} (react-day-picker, single mode) paired with a time input. */
 export function DateTimePickerField({
   value,
   onChange,

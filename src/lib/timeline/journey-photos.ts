@@ -2,17 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import type { TimelineItem } from './types';
 import { unitPhotosToTimeline, type UnitTimelinePhotoRow } from './unit-photos-events';
 
-/**
- * Journey ↔ photo-evidence bridge: the shared React Query factory for
- * `/api/serial-units/[id]/timeline-photos` plus the pure merge that folds a
- * unit's five stage photo rows into an already-merged journey.
- *
- * One mount owns media: a pane that already renders a dedicated photo timeline
- * (`SerialUnitTimelineSection`) beside a journey must NOT also merge photos
- * into that journey — consumers gate via their `withPhotos` prop / by passing
- * no photos. Degrade-not-fail: a failed photo fetch hands `null` here and the
- * journey renders events-only.
- */
+/** Journey ↔ photo-evidence bridge: */
 
 /** Canonical cache identity for a unit's timeline photos (shared with the unit detail pane). */
 export function unitTimelinePhotosKey(serialUnitId: number) {
@@ -52,18 +42,7 @@ interface MergeJourneyPhotosOptions {
   mediaLimit?: number;
 }
 
-/**
- * Insert a unit's photo stage rows into a merged journey at their stage
- * timestamps (each row = newest photo in its bucket, photos as `media`).
- *
- * Pure + idempotent:
- *   • empty/absent photos → returns `events` unchanged (same reference);
- *   • photo rows whose id already exists in `events` are skipped, so merging
- *     twice (or over a feed that already carries `unit-photos-*` rows) never
- *     duplicates;
- *   • inputs are never mutated; result is sorted newest-first with the same
- *     time-then-id comparator as `mergeJourney`.
- */
+/** Insert a unit's photo stage rows into a merged journey at their stage timestamps (each row = newest photo in its bucket, photos as `media`). */
 export function mergeJourneyWithUnitPhotos(
   events: TimelineItem[],
   photos: UnitTimelinePhotoRow[] | null | undefined,

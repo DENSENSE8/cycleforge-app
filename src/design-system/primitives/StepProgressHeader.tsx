@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * StepProgressHeader — the one mobile-first step-flow band: X left, segmented
- * progress middle, `n/N` count right (operator: "think Duolingo instead of
- * text").
- *
- * Composes the pinned {@link ProgressBar} segmented face (PG12) — never a
- * hand-rolled bar. The count is the accessible numeric twin of the segments;
- * the segments are the at-a-glance shape. `n` counts COMPLETED units only.
- *
- * Callers: kiosk pane forms (repair details first), `/m/*` step flows.
- * Schemas: none.
- */
+/** StepProgressHeader — the one mobile-first step-flow band: */
 
 import type { ReactNode } from 'react';
 import { X } from '@/components/Icons';

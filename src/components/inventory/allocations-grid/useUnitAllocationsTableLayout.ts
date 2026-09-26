@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * The unit-allocations slot-layout hook — this family's CONFIG on the shared
- * {@link useSlotTableLayout} engine.
- *
- * Compound morph only: a stored `sheet` layout would open a `subtitle:N` track
- * for the release reason, which the compound item cell paints inline —
- * `paintMorph` coerces, and the org write gate
- * (`slotMorphsFor('unit-allocations')`) refuses the foreign morph.
- *
- * Shared by both allocation mounts by construction: the per-SKU brief calls
- * this same hook, so a bind / hide / reorder an org makes on one surface lands
- * on the other. That is the point of one family for one entity.
- */
+/** The unit-allocations slot-layout hook — this family's CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   UNIT_ALLOCATIONS_FIELD_CATALOG,

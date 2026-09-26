@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Commit an inline note edit on a receiving line.
- *
- * Mirrors `commitCustomFieldValueClient` — the shape the grid already uses for
- * in-cell commits — so there is one way a Receiving cell writes, not two.
- *
- * Optimistic by design: the cell has already painted the new text, so the
- * cache patch keeps every OTHER view of that row (rails, counts, the drill
- * pane) consistent without a list refetch. On failure the caller rolls the
- * cache back to the value it captured before the write, because a silently
- * reverted-but-unmentioned edit is worse than a loud one.
- */
+/** Commit an inline note edit on a receiving line. */
 
 import type { QueryClient } from '@tanstack/react-query';
 import { patchReceivingLineCache } from '@/lib/queries/station-cache-patch';

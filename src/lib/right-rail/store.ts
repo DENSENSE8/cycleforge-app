@@ -1,37 +1,6 @@
 'use client';
 
-/**
- * Right-rail occupant store — the single owner of "who is in the right-edge
- * slot right now". A tiny module-level store (subscribe/emit + a cached
- * snapshot for `useSyncExternalStore`), the same shape as
- * `src/lib/detail-stacks/history-store.ts` and `src/lib/assistant/context-store.ts`.
- *
- * WHY THIS EXISTS
- * The assistant dock and every `open<Kind>Id` detail slide-over were each an
- * independent `fixed right-0 top-* w-[420px] z-panel` panel. Same geometry, same
- * z-band → at equal z-index paint order decided the winner, so the globally
- * mounted assistant dock (rendered AFTER the page in the tree) always painted
- * ON TOP of the detail panel a page had just opened. There was no single owner
- * of the slot to coordinate a crossfade — the exact "one crossfading region per
- * archetype" rule in `.claude/rules/display/motion-crossfade.md` being violated.
- *
- * This store makes the right rail ONE region. Panels REGISTER as occupants with
- * a priority; `RightRailHost` renders exactly the top occupant and crossfades
- * between occupants (keyed on `id`) in a single `AnimatePresence`. A `node` of
- * `null` is a YIELD claim: it wins the slot to suppress everything below it
- * while rendering nothing — used to hand the slot to a not-yet-migrated detail
- * panel that still renders its own fixed element (see the migration note below).
- *
- * MIGRATION PATH (strangler)
- * The URL-driven `external-detail` YIELD claim (`node: null`) is **retired** —
- * desk record peeks register real nodes at `RIGHT_RAIL_PRIORITY.detail` via
- * `DetailStackRailRegistrar` / `useRegisterRightPanel`. Do not reintroduce a
- * null-node yield id named `external-detail`. Remaining Dialog /
- * `RightPaneOverlay` create/edit twins stay on Session 2 of
- * `docs/todo/right-rail-inspector-FINISH-HANDOFF.md` (dirty strategy before
- * converting). A `node: null` YIELD claim remains a valid API for rare
- * suppress-the-slot cases — never as a standing twin of an unmigrated panel.
- */
+/** Right-rail occupant store — the single owner of "who is in the right-edge slot right now". */
 
 import type { ReactNode } from 'react';
 import { syncPanelOccupant } from '@/lib/right-rail/panel-store';
@@ -59,76 +28,17 @@ export interface RightRailPanel {
   node: ReactNode;
   /** Backdrop / Escape dismiss — omitted for occupants that manage close internally. */
   onClose?: () => void;
-  /**
-   * VETO. Returns false while this occupant must not be dismissed — a transfer
-   * in flight, an irreversible step mid-run.
-   *
-   * `onClose` cannot express refusal: a handler that no-ops still lets the host
-   * run the lifecycle half, so the panel is parked and toasted "Draft saved."
-   * while the occupant believes it is still open. Both sync dialogs shipped
-   * exactly that (`if (!isRunning) onClose()`), and their own buttons carried
-   * `disabled={isRunning}` the host never consulted.
-   *
-   * Consulted BEFORE the lifecycle half, so a refusal costs nothing.
-   */
+  /** VETO. Returns false while this occupant must not be dismissed — a transfer in flight, an irreversible step mid-run. */
   canClose?: () => boolean;
-  /** When true, this occupant renders in the elevated `detailStack` z-band (above
-   *  a workbench workspace overlay + its popovers) with a deeper darkening + blur
-   *  backdrop. Opt-in per occupant — only surfaces that open OVER a `panel`-band
-   *  workspace (receiving Unbox/Triage) need it. */
+  /** When true, this occupant renders in the elevated `detailStack` z-band (above a workbench workspace overlay + its popovers) with a deeper… */
   elevated?: boolean;
-  /**
-   * Modality. **Defaults to `true`** so every occupant keeps the historical
-   * blocking behavior (scrim + `aria-modal` + body scroll lock) unless it opts
-   * out.
-   *
-   * `false` = a NON-MODAL inspector: no backdrop, no scroll lock, `role="region"`
-   * instead of `role="dialog"`, and the page underneath stays scrollable and
-   * clickable. That is the right contract for a pick-a-row-and-edit-it surface
-   * (the dashboard order inspector): the operator's context — sibling rows, KPI
-   * strip, lifecycle tabs — is exactly what a scrim would hide. Reserve `true`
-   * for occupants that genuinely block until dismissed.
-   *
-   * Note this ALSO fixes an a11y defect for opting-out occupants: the host has
-   * never installed a focus trap, so `aria-modal="true"` was a claim the DOM did
-   * not honor. Non-modal markup is the honest form; do not "fix" it by adding a
-   * trap (see `docs/todo/dashboard-inline-detail-editing-EXECUTION-PLAN.md` §3).
-   */
+  /** Modality. **Defaults to `true`** so every occupant keeps the historical blocking behavior (scrim + `aria-modal` + body scroll lock)… */
   modal?: boolean;
-  /**
-   * When true (non-modal only), mount an invisible dismiss layer behind the
-   * card so click-off closes — same dismiss affordance as the modal scrim,
-   * without darkening. Opt-in: the dashboard order inspector leaves this off
-   * so the grid stays live; receiving details turns it on.
-   */
+  /** When true (non-modal only), mount an invisible dismiss layer behind the card so click-off closes — same dismiss affordance as the modal… */
   closeOnOutsideClick?: boolean;
-  /**
-   * Whether this occupant may PUSH the work surface (reflow beside it) rather
-   * than float over it. **Defaults to `true`** — the house ruling is that every
-   * resident edge pushes (`source-of-truth.md` → Right-rail modality), so an
-   * occupant that floats has to say why.
-   *
-   * `false` is a greppable per-occupant freeze, and today it means one of two
-   * things, each recorded at its call site:
-   *  - the occupant is ambient chat with its own flush-right dock (`assistant`);
-   *  - the occupant opens on a STATION page whose right edge is already pushed
-   *    by `StationDisplaysPushColumn`, and two push mechanisms on one edge is exactly what
-   *    this store exists to prevent.
-   *
-   * The actual push/overlay decision is `resolveRightRailFrame`
-   * (`src/lib/right-rail/frame.ts`) — this flag only says whether to ask.
-   */
+  /** Whether this occupant may PUSH the work surface (reflow beside it) rather than float over it. */
   push?: boolean;
-  /**
-   * Whether the host may park this occupant via `DETAIL_STACK_COLLAPSE`
-   * (Band 3 Show/Hide inspector · Cmd+\ · parked expand strip).
-   * **Defaults to `true`.**
-   *
-   * Pass `false` for Unbox-parity occupants whose header `→|` dismisses the
-   * claim entirely (e.g. Incoming details) — they must not also park into a
-   * collapsed strip. Hairline is always drag-to-resize only on
-   * `RightRailHost` (no sash-top chevron; Unbox Displays is the golden twin).
-   */
+  /** Whether the host may park this occupant via `DETAIL_STACK_COLLAPSE` (Band 3 Show/Hide inspector · Cmd+\ · parked expand strip). */
   edgeCollapse?: boolean;
   /**
    * Whether a parked occupant paints the host's 32px expand strip.
@@ -173,18 +83,7 @@ function emit(): void {
   for (const l of listeners) l();
 }
 
-/**
- * Claim the right slot with an occupant. Returns an unregister fn that removes
- * exactly this claim. Node freshness is handled separately by
- * `updateRightRailPanelNode` so a content re-render never unmounts/remounts the
- * occupant (which would drop its state + retrigger the crossfade).
- *
- * Records are IMMUTABLE snapshots (a node update replaces the record with a new
- * object) so `useSyncExternalStore`'s Object.is check detects the change. The
- * per-registration `seq` doubles as an ownership token: a stale unregister only
- * fires if its `seq` still owns the id, so a re-register under the same id can't
- * be clobbered by the previous registration's cleanup.
- */
+/** Claim the right slot with an occupant. */
 export function registerRightRailPanel(input: {
   id: string;
   priority: number;
@@ -230,12 +129,7 @@ export function registerRightRailPanel(input: {
   };
 }
 
-/**
- * Refresh a live occupant's presentation (new record ref, close handler, band,
- * modality, label) while keeping its slot + `seq` — so a content re-render never
- * unmounts the occupant or retriggers the crossfade. No-ops when nothing changed
- * and when the id holds no claim.
- */
+/** Refresh a live occupant's presentation (new record ref, close handler, band, modality, label) while keeping its slot + `seq` — so a… */
 export function updateRightRailPanelNode(input: {
   id: string;
   node: ReactNode;

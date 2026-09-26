@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * ScanSurface — reusable camera scanner surface for mobile task screens.
- *
- * Wraps `useBarcodeScanner` with the standard 2026-feel chrome:
- *   - Corner brackets framing the active scan region
- *   - Sweeping horizontal line animation (visual heartbeat)
- *   - Torch toggle (top-left)
- *   - Manual entry expander (text input slides in from below the camera)
- *   - Permission / error guidance overlay
- *
- * The hook is owned by the caller — pass it in so the parent decides scanner
- * lifecycle (start, stop, accept). This keeps multiple screens from each
- * acquiring camera permission independently.
- */
+/** ScanSurface — reusable camera scanner surface for mobile task screens. */
 
 import { useEffect, useRef, useState } from 'react';
 import { motion } from '@/design-system/motion';
@@ -32,12 +19,7 @@ interface ScanSurfaceProps {
   onDecode: (value: string) => void;
   /** Optional placeholder for the manual entry input. */
   manualPlaceholder?: string;
-  /**
-   * Show the collapsed “Type code manually” dock under the camera.
-   * Default true. Desk handoff sign-in hides this — the host owns the code field.
-   * Callers: SignInQrScanDialog (false), PickerTaskCard (default).
-   * User: "does not say paste a pairing link" + camera collapses to pairing code.
-   */
+  /** Show the collapsed “Type code manually” dock under the camera. */
   showManualEntry?: boolean;
   /** Tone for the corner brackets — defaults to brand blue. */
   bracketTone?: 'blue' | 'emerald' | 'amber';

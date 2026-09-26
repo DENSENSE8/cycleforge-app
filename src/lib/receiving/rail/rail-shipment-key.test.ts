@@ -1,14 +1,4 @@
-/**
- * The Unboxed rail's row identity is SHIPMENT-first, and this pins why.
- *
- * A tracking scan paints a pending stub before the carton exists, so the only
- * identity available at t=0 is the tracking. When the rail keyed on
- * `carton:{receiving_id}`, resolving the scan CHANGED the row's React key, and
- * the rail's `AnimatePresence` renders a changed key as one row leaving and
- * another arriving — the operator watched their tracking number appear, vanish,
- * and come back. Keying on the shipment makes stub → optimistic → authoritative
- * one continuous element.
- */
+/** The Unboxed rail's row identity is SHIPMENT-first, and this pins why. */
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';

@@ -1,22 +1,4 @@
-/**
- * GET /api/cron/zoho/fulfillment-sync?mode=delta|full&dry_run=0|1&limit=100
- *
- * Vercel-cron-triggered push of SHIPPED internal orders into Zoho Inventory:
- * for each shipped order it ensures a sales order, then creates a package,
- * shipment order, marks delivered (when tracking says so), and creates the
- * invoice — so a proper accounting record lands in the Zoho finance ecosystem.
- *
- * Modes:
- *   - delta: only orders changed since the last successful run (cursor-based)
- *   - full:  scan all shipped orders (bounded by limit); nightly safety net
- *
- * Safety: the sync is DRY-RUN by default (ZOHO_FULFILLMENT_DRY_RUN, default
- * true) — it logs intended actions and writes nothing to Zoho until you set
- * ZOHO_FULFILLMENT_DRY_RUN=false (or pass ?dry_run=0). The cursor only advances
- * on a fully error-free LIVE run.
- *
- * Auth: requires Authorization: Bearer ${CRON_SECRET} (Vercel injects this).
- */
+/** GET /api/cron/zoho/fulfillment-sync?mode=delta|full&dry_run=0|1&limit=100 */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
@@ -57,11 +39,7 @@ export async function GET(req: NextRequest) {
     // advanced only when EVERY org had a clean live run means one failing
     // tenant freezes every tenant's window (the zoho_po_mirror freeze).
 
-    // Distributed lock so an overlapping tick / manual trigger / Vercel retry
-    // can't double-push. Fan out per Zoho-connected org: each org pushes its
-    // OWN shipped orders under its OWN Zoho
-    // credential (syncShippedOrdersToZoho org-scopes the order load + binds
-    // withZohoCredential). Per-org failures are isolated.
+    // Distributed lock so an overlapping tick / manual trigger / Vercel retry can't double-push.
     const locked = await withCronLock('zoho.fulfillment_sync', () =>
       withCronRun('zoho.fulfillment_sync', async () => {
         const perOrg = await forEachOrgWithProvider(

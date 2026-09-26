@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Work · Show · Verify.
- *
- * Callers: `KioskUtilityCluster` in `KioskTopChrome.tsx`; `CounterWorkspace`
- * (`layout="inline"`). Existing file — not a second stance control. No data files.
- * Affected API: none. Schemas: `ConsultStance`.
- * User: "execute now" / "work show verify should be word and drop downs on the
- * left side of the paper work icon"
- *
- * Rail = 56px glyph cells (`layout="rail"`). Header = ghost word dropdown on
- * the kiosk trail (`layout="header"`). Inline = desk visit chip. Never standing keycaps.
- */
+/** Work · Show · Verify. */
 
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
@@ -30,12 +19,7 @@ export const CONSULT_STANCE_LABELS: Record<ConsultStance, string> = {
 };
 
 
-/*
- * `layout="rail"` (56px KIOSK_MODE_SPINE_* glyph cells) was deleted 2026-09-13:
- * zero callers since the spines came down, and its tokens were the last
- * consumers keeping a SECOND icon vocabulary alive beside the header-shell one
- * paperwork/cart use. Header + inline remain.
- */
+/* `layout="rail"` (56px KIOSK_MODE_SPINE_* glyph cells) was deleted 2026-09-13: */
 
 export function ConsultStanceControls({
   value,
@@ -54,10 +38,7 @@ export function ConsultStanceControls({
         aria-label="Consult stance"
         data-testid="kiosk-consult-stance-rail"
       >
-        {/* Same ghost-combobox chrome as the command menu and All-products —
-            ONE vocabulary for every word-control on the kiosk row. The old
-            `rail` layout (56px spine cells via KIOSK_MODE_SPINE_*) died with
-            the deleted spines; its tokens went with it. */}
+        {/* Same ghost-combobox chrome as the command menu and All-products — ONE vocabulary for every word-control on the kiosk row. */}
         <IntakeCombobox
           testId="kiosk-consult-stance-menu"
           ariaLabel="Consult stance"

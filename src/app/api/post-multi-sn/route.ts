@@ -11,44 +11,7 @@ import {
   type LabelPrintClass,
 } from '@/lib/labels/auto-unit-labels';
 
-/**
- * POST /api/post-multi-sn — issue label(s) for a SKU + record the audit trail.
- *
- * Modernized writer for the `MultiSkuSnBarcode` workspace. Replaces the
- * legacy raw INSERT into `serial_units.legacy_*` columns (a holdover from
- * the retired `sku` table backfill — see migration 2026-04-15) with the
- * canonical pipeline:
- *
- *   1. `upsertSerialUnit()` — single writer for serial_units, handles
- *      status transitions, return detection, idempotent upsert.
- *   2. `station_activity_logs` — one row per print batch, records who
- *      issued labels for which SKU + carries the DataMatrix payload.
- *   3. `tech_serial_numbers` — one row per unit, the canonical SKU↔serial
- *      acknowledgment table. Cross-refs the station_activity_logs row.
- *   4. `recordInventoryEvent()` — LABELED event per unit, station=SYSTEM.
- *      This is what powers the future Recently Printed + Unit History
- *      views — both read from `inventory_events` and
- *      `station_activity_logs`.
- *
- * Request body (legacy `productTitle` and `shippingTrackingNumber` fields
- * are now ignored; legacy `sku` field is accepted as an alias for `unitId`
- * so older clients keep working until they switch to the new shape):
- *
- *   {
- *     sku: string;             // product SKU, e.g. "00804"
- *     unitId?: string;         // minted unit id, e.g. "00098-2026-000010"
- *     gtin?: string;           // internal GTIN from /api/units/next-id
- *     qrPayload?: string;      // the DataMatrix payload printed on the label
- *     symbology?: 'gs1datamatrix' | 'datamatrix';
- *     serialNumbers?: string[];// raw OEM serials
- *     quantity?: number;       // auto-unit only; server expands hidden serial keys
- *     notes?: string;
- *     location?: string;
- *     condition?: ConditionGrade;
- *     printClass?: 'print' | 'auto-unit' | 'sn-to-sku';
- *     clientEventId?: string;  // required for idempotent auto-unit issuance
- *   }
- */
+/** POST /api/post-multi-sn — issue label(s) for a SKU + record the audit trail. */
 
 const VALID_CONDITIONS = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 type ConditionGrade = (typeof VALID_CONDITIONS)[number];
@@ -62,10 +25,7 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Accept the legacy contract (sku = unitId) and the new contract
-    // (sku = real SKU, unitId = minted id) simultaneously. When only
-    // `sku` is sent, treat it as the unit id so existing clients keep
-    // working; the catalog lookup falls through to the base form.
+    // Accept the legacy contract (sku = unitId) and the new contract (sku = real SKU, unitId = minted id) simultaneously.
     const sku = typeof body.sku === 'string' ? body.sku.trim() : '';
     const unitId =
       typeof body.unitId === 'string' && body.unitId.trim()
@@ -209,13 +169,7 @@ export const POST = withAuth(
     // will print. Each physical unit owns exactly one {SKU}-{YYWW}-{SEQ6}.
     const units: Array<{ serial: string; unitUid: string | null }> = [];
     for (const serial of serialNumbers) {
-      // 2. Canonical upsert — handles status transitions, return detection,
-      //    metadata patching, AND mints this serial's own unit_uid at birth
-      //    (upsertSerialUnit, Phase 2) when the row doesn't already have one and
-      //    a catalog row is known. An already-labeled unit keeps its original id
-      //    (the reprint guarantee). Uncataloged (e.g. Ecwid-only) SKUs get a
-      //    null id and the label falls back to encoding the bare serial. Origin
-      //    is 'manual' (operator-triggered print); status lands at LABELED.
+      // 2. Canonical upsert — handles status transitions, return detection, metadata patching, AND mints this serial's own unit_uid at birth…
       let upserted;
       try {
         upserted = await upsertSerialUnit({

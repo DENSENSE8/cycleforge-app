@@ -1,11 +1,4 @@
-/**
- * Walk-in sales grid descriptor — TanStack defs for LedgerGridSurface.
- *
- * Callers: walk-in-sales-table-definition.
- * Affected API: none.
- * Data schemas: GridSurfaceCapabilities + SaleRow.
- * User: completed visit appears as history on the Sales board slot table.
- */
+/** Walk-in sales grid descriptor — TanStack defs for LedgerGridSurface. */
 
 import {
   makeGridSurfaceDescriptor,

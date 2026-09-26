@@ -52,22 +52,9 @@ import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
 import { attachCustomFieldsToRows } from '@/lib/custom-fields/queries';
 
-// `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials`
-// reads below — `?id=` (one line) and `?receiving_id=` (one carton), i.e. the
-// paths an operator takes to open a line. Deliberately NOT the paginated list
-// branch: `view=scanned&limit=500&include=serials` is a feed, and materialising
-// 500 lines nobody opened is exactly the waste the plan's "no bulk backfill"
-// call rules out. Best-effort by contract — a materialisation failure must never
-// fail the read; the next open re-plans from scratch.
-//
-// After materialising, both paths attach `units` via the shared `fetchLineUnits`
-// reader (Phase 2) so /api/receiving-lines and /api/receiving/:id cannot drift.
-// Plan: docs/todo/per-unit-no-serial-EXECUTION-PROMPT.md §4 Phases 1–2.
+// `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials` reads below — `?id=` (one line) and `?receiving_id=`…
 
-// `fetchSerialsForLines` + the `LineSerial` shape are the authoritative
-// current-serials-per-line SoT, shared with the projection writer and the batch
-// endpoint — they live in src/lib/receiving/serial-projection.ts (imported above)
-// so the read path, reconcile, and denorm writer can never drift.
+// `fetchSerialsForLines` + the `LineSerial` shape are the authoritative current-serials-per-line SoT, shared with the projection writer…
 
 // QA/disposition body-validation vocab shared with the GET filter builder now
 // lives in src/lib/receiving/lines/query.ts (QA_STATUSES / DISPOSITIONS,
@@ -79,17 +66,7 @@ function parsePositiveTechId(value: unknown): number | null {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : null;
 }
 
-// ─── GET ──────────────────────────────────────────────────────────────────────
-// ?id=<n>              → single row
-// ?receiving_id=<n>    → all lines for a package
-// ?limit&offset&search → paginated list (omit receiving_id to get all)
-// ?phase=spine         → fast-paint tier: forces include=serials off so the
-//                        authoritative fetchSerialsForLines resolve is skipped;
-//                        rows still carry serial_projection as `serials`.
-//
-// Testing feeds (`view=testing`, `view=needs-test`) are served exclusively by
-// GET /api/testing/receiving-lines — never here — so package-pairing / QC scans
-// cannot pollute Unbox/Receiving list semantics.
+// ─── GET ────────────────────────────────────────────────────────────────────── ?id=<n> → single row ?receiving_id=<n> → all lines for a…
 export type ReceivingLinesGetSurface = 'receiving' | 'testing';
 
 export async function handleReceivingLinesGet(
@@ -99,10 +76,7 @@ export async function handleReceivingLinesGet(
 ) {
   try {
     const { searchParams } = new URL(request.url);
-    // All ~27 query params parse through the extracted SoT parser — exact
-    // coercions/defaults/fallbacks preserved (src/lib/receiving/lines/query.ts).
-    // `let` because the Unbox rail pre-limit below re-derives it with a ranked
-    // carton set once `orgId` is known (see maybePreLimitUnboxOpened).
+    // All ~27 query params parse through the extracted SoT parser — exact coercions/defaults/fallbacks preserved…
     let query = parseReceivingLinesQuery(searchParams);
     const {
       id, receivingId, limit, offset, viewRaw, view,
@@ -137,13 +111,7 @@ export async function handleReceivingLinesGet(
     // view=viewed only: the requesting operator, whose recently-opened lines
     // (receiving_line_views) this feed returns.
     const viewerStaffId = Number(ctx?.staffId);
-    // Phase 2 — physical-vs-financial decoupling. The triage SCANNED queue keys
-    // on PHYSICAL lifecycle (received_at set, not unboxed), so a box on the dock
-    // stays visible even when Zoho already marks the PO received/closed; it just
-    // carries a `zoho_status` badge. `?zohoStatus=open` (the "Hide Zoho-received"
-    // toggle) re-applies the old hide-terminal filter. When the flag is off the
-    // old behaviour (always hide Zoho-received) is preserved. Scoped to scanned —
-    // Incoming still clears received POs by design.
+    // Phase 2 — physical-vs-financial decoupling.
     const applyScannedZohoExclusion = !isReceivingPhysicalStateFirst() || hideZohoReceived;
     // Layer 1 (rail read-after-write): read view=unbox_opened membership from the
     // committed receiving_unbox.opened_at column only. Flag-gated, default off.
@@ -152,12 +120,6 @@ export async function handleReceivingLinesGet(
     const orgId = ctx.organizationId as OrgId;
 
     // Batch serial hydration (Tier A of the immediate-serial-display plan):
-    // `?receiving_ids=1,2,3` resolves the CURRENT serials for every line of those
-    // cartons in ONE call (reusing fetchSerialsForLines' batched lineIds[]), so a
-    // feed can warm the `['receiving-siblings', id]` caches / patch its visible
-    // rows with serials BEFORE the operator clicks — a row-click then opens from a
-    // warm cache = instant, identical to the scan path. Org-scoped + capped like
-    // every other branch; short-circuits before the single/paginated branches.
     const receivingIdsRaw = searchParams.get('receiving_ids');
     if (receivingIdsRaw != null && receivingIdsRaw.trim() !== '') {
       const receivingIds = Array.from(
@@ -270,42 +232,6 @@ export async function handleReceivingLinesGet(
     }
 
     // ── `?count_only=1` — the total, without the list ───────────────────────
-    //
-    // A tab badge needs ONE integer and used to get it with `?limit=1`, which
-    // is not a cheap request: this route always runs the list SQL alongside the
-    // count, and for the views whose ORDER BY key lives on a joined table
-    // Postgres must run ~15 display laterals over the whole candidate set
-    // before it can sort and limit — see the pre-limit note directly below,
-    // where a `limit=1` request measured 5.4s. On a cold `/unbox` the two Unbox
-    // badges cost 3513ms and 5767ms, the second being the slowest request on
-    // the page, to learn two numbers.
-    //
-    // This arm runs the COUNT queries ONLY — the same three the full path sums
-    // into `total` (list count + unmatched placeholders + unbox-opened
-    // placeholders), so the number is identical by construction rather than by
-    // a second implementation of the rules.
-    //
-    // Deliberately placed BEFORE `maybePreLimitUnboxOpened`: that narrows
-    // `query` to a pre-ranked first-page carton set, which is correct for a
-    // page of rows and wrong for a total.
-    //
-    // NOT honoured for `WRONG_DESTINATION`, whose total is derived from the
-    // filtered ROWS far below and cannot be answered by a count query; that
-    // request falls through to the full path unchanged.
-    //
-    // TWO views disagree with `?limit=1`, and deliberately so: `unbox_opened`
-    // (via `maybePreLimitUnboxOpened`) and, since 2026-08-27, `scanned` (via
-    // `maybePreLimitScannedLineIds` — same mechanism, line-grained). Both
-    // narrow the query to a ranked first-page window, and the full path's
-    // count then counts INSIDE that window, so `?limit=N` on those views
-    // reports the page size, not the collection size. `count_only` reports the
-    // collection size, which is the only thing a total is useful for — the
-    // badges were moved onto it in the 2026-08-24 audit for exactly this
-    // reason. (Pre-pre-limit verification, dogfood org: `count_only` matched
-    // `?limit=1` on `scanned` (15), `viewed` (765), `activity` (2899), `all`
-    // (3147), `incoming` (122); `unbox_opened` diverged 968 vs 1.) Do not
-    // "fix" this arm to agree with the pre-limited numbers — fix the
-    // pre-limited numbers.
     const countOnly =
       searchParams.get('count_only') === '1'
       && query.deliveryStateFilter !== 'WRONG_DESTINATION';
@@ -350,30 +276,9 @@ export async function handleReceivingLinesGet(
     }
 
     // Pre-limit the Unbox recents rail before the display laterals run.
-    //
-    // `view=unbox_opened` sorts on `receiving_unbox.opened_at` — a column on a
-    // JOINED table — so Postgres cannot use the sort to stop early: it runs ~15
-    // display laterals over every candidate carton, sorts, and only then
-    // applies LIMIT. Measured on the dogfood org: **274,539 shared buffers /
-    // 2.2s to return 50 rows** (a `limit=1` request still took 5.4s, because the
-    // window size is not what costs).
-    //
-    // Ranking first on the ordering column ALONE is 0.32ms / 39 buffers, and
-    // hydrating only those cartons drops the list to **55ms / 9,032 buffers**.
-    // Doing it HERE rather than in the caller is what makes the browser's own
-    // rail fetch fast — seeding the server alone left the client re-issuing the
-    // slow query on hydration, which is what actually held LCP.
-    //
-    // Skipped when the caller named its own set, when a search/filter is active
-    // (those change which cartons qualify, so a pre-rank would drop matches),
-    // or past the first page.
     query = await maybePreLimitUnboxOpened(query, orgId, offset);
 
-    // Gate-before-decorate for `view=scanned` (the /triage rail's cold-load
-    // shape): rank the qualifying line ids with the gates alone, so the ~15
-    // display laterals below only decorate rows that can reach the page.
-    // Measured 2026-08-27: the unrestricted list decorated 317 candidates to
-    // keep 19 rows (368ms / 54,985 buffers warm). Null = run unrestricted.
+    // Gate-before-decorate for `view=scanned` (the /triage rail's cold-load shape):
     const scannedLineIdIn = await maybePreLimitScannedLineIds(
       query,
       orgId,
@@ -382,10 +287,7 @@ export async function handleReceivingLinesGet(
       unboxRailColumnRead,
     );
 
-    // Paginated list — all lines, optionally filtered. The dynamic WHERE /
-    // ORDER BY / SELECT assembly lives in the extracted builder
-    // (src/lib/receiving/lines/build-sql.ts), pinned byte-identical to the old
-    // inline logic by build-sql.test.ts.
+    // Paginated list — all lines, optionally filtered.
     const built = buildReceivingLinesListSql({
       query,
       orgId,
@@ -404,12 +306,7 @@ export async function handleReceivingLinesGet(
     let total = Number(countRes.rows[0]?.total ?? 0);
     if (includeSerials) {
       const serialsByLine = await fetchSerialsForLines(normalizedList.map((r) => r.id), orgId);
-      // Free drift probe: at THIS point `row.serials` still holds the
-      // `serial_projection` value the cheap `?phase=spine` tier serves, and
-      // `serialsByLine` holds the authoritative resolve that is about to
-      // overwrite it. Comparing them here costs no extra query and answers the
-      // only open question blocking the retirement of the second fetch tier.
-      // Off by default — see isSerialProjectionDriftProbe.
+      // Free drift probe:
       if (isSerialProjectionDriftProbe()) {
         for (const row of normalizedList) {
           const projected = Array.isArray(row.serials)
@@ -436,12 +333,7 @@ export async function handleReceivingLinesGet(
       }
     }
 
-    // Unmatched/unfound cartons live in the `receiving_carton` table with no
-    // `receiving_line` row yet, so they never come back from the main query.
-    // Append them as placeholder rows for `all` AND `activity`. Browse History
-    // (`activity`, no search) requires Unbox-touch so door-scan-only SCANNED
-    // Unfound never lands here. An armed search also resolves lineless
-    // `zoho_po` cartons and skips Unbox-touch (same rule as skipWeekFilter).
+    // Unmatched/unfound cartons live in the `receiving_carton` table with no `receiving_line` row yet, so they never come back from the main…
     if (shouldIncludeUnmatchedPlaceholders(query)) {
       const placeholders = buildUnmatchedPlaceholdersSql(query, orgId);
       const [unmatchedPkgsRes, unmatchedCntRes] = await withTenantConnection(orgId, (client) => Promise.all([
@@ -455,10 +347,7 @@ export async function handleReceivingLinesGet(
       for (const row of placeholderNorm) {
         if (includeSerials) (row as Record<string, unknown>).serials = [];
       }
-      // Respect the requested sort axis after the placeholder merge —
-      // re-sorting everything by scan-based last_activity_at here let a mere
-      // door re-scan (e.g. from triage) bump a carton to the top of the
-      // unbox rail.
+      // Respect the requested sort axis after the placeholder merge — re-sorting everything by scan-based last_activity_at here let a mere door…
       normalizedList = [...normalizedList, ...placeholderNorm].sort((a, b) =>
         historySort === 'unboxed_newest'
           ? compareReceivingRowsByUnboxedAt(a, b)
@@ -584,10 +473,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const itemName       = String(body?.item_name || '').trim() || null;
     const sku            = String(body?.sku || '').trim() || null;
     const notes          = String(body?.notes || '').trim() || null;
-    // Label face at birth. The two columns start equal — same as the migration's
-    // backfill — so a line born before the operator ever opens the label editor
-    // still prints its note, exactly as it did pre-split. They diverge from the
-    // first edit onward (composer → notes, label editor → label_note).
+    // Label face at birth.
     const labelNote      = String(body?.label_note ?? body?.notes ?? '').trim() || null;
 
     const qtyReceivedRaw   = Number(body?.quantity_received ?? body?.quantity ?? 0);
@@ -623,13 +509,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
     const orgId = ctx.organizationId as OrgId;
     // receiving_line.organization_id is NOT NULL with a loud-fail GUC default.
-    // Run under the org GUC AND stamp the column explicitly so the insert is
-    // attributed to the caller's tenant (never the GUC fallback).
-    //
-    // Wave-3 writer inversion: the birth is a THIN spine INSERT; the zoho
-    // cluster lands on receiving_line_zoho (rz) and the testing cluster on
-    // receiving_line_testing (rlt) — both in the SAME transaction with explicit
-    // values (birth invariant: every receiving_line has its rlt row).
     const lineId = await withTenantTransaction(orgId, async (client) => {
       const ins = await client.query<{ id: number }>(
         `INSERT INTO receiving_line (
@@ -689,10 +568,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
-// ─── PATCH ────────────────────────────────────────────────────────────────────
-// Permission: receiving.mark_received for general edits. Assign-only patches
-// (`id` + `assigned_tech_id`) also accept tech.qc_pass so Testing triage can
-// claim/assign without widening mark_received onto the technician role.
+// ─── PATCH ──────────────────────────────────────────────────────────────────── Permission:
 export const PATCH = withAuth(async (request: NextRequest, ctx) => {
   try {
     const orgId = ctx.organizationId as OrgId;
@@ -733,14 +609,6 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     let idx = 1;
 
     // zoho_reference_number dropped in 2026-04-15_drop_zoho_reference_number.sql.
-    // A body payload for that key is still accepted (sidebar tracking edits
-    // send it) — handled below via the canonical shipment path, not a column
-    // write.
-    //
-    // Wave-3 writer inversion: only spine-staying text columns go in the dynamic
-    // spine UPDATE. The zoho cluster is collected into a receiving_line_zoho
-    // patch (rz) and the testing cluster into a receiving_line_testing patch
-    // (rlt) — both applied in the same transaction as the spine UPDATE below.
     const textFields: Array<[string, string | null]> = [
       ['item_name',                 String(body?.item_name ?? '').trim() || null],
       ['sku',                       String(body?.sku ?? '').trim() || null],
@@ -758,15 +626,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    // Face-write clock (`face_noted_at`) — the ONE column that says when this
-    // line's sticker text last changed, and what Unbox notes-composer Recent
-    // ranks on. Stamped HERE because this route is the single door the notes
-    // composer, the label editor and the carton-print stamp all patch through.
-    //
-    // `IS DISTINCT FROM` is load-bearing: a blur-save or a re-print that writes
-    // the same words is not a new note, and stamping it would float a stale
-    // phrase back to the top of Recent. The comparison reads the OLD row (SET
-    // expressions all evaluate pre-update), so no read-modify-write is needed.
+    // Face-write clock (`face_noted_at`) — the ONE column that says when this line's sticker text last changed, and what Unbox notes-composer…
     const faceCols = (['notes', 'label_note'] as const).filter(
       (col) => body[col] !== undefined,
     );
@@ -855,12 +715,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     if (body?.needs_test !== undefined || body?.needsTest !== undefined) {
       const nextNeedsTest = !!(body?.needs_test ?? body?.needsTest);
       if (!nextNeedsTest) {
-        // Testing facts live on receiving_line_testing (rlt) now — the guard
-        // reads the current assignment there (spine copies are write-dead).
-        // LEFT JOIN so a line whose rlt row is somehow missing still 404s only
-        // when the LINE is missing; a NULL rlt.needs_test is treated as
-        // "was needs-test" (same as the old spine NULL), keeping the guard
-        // conservative.
+        // Testing facts live on receiving_line_testing (rlt) now — the guard reads the current assignment there (spine copies are write-dead).
         const existing = await tenantQuery<{ needs_test: boolean | null; assigned_tech_id: number | null }>(
           orgId,
           `SELECT rlt.needs_test, rlt.assigned_tech_id
@@ -904,15 +759,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'No valid fields to update' }, { status: 400 });
     }
 
-    // Run the column writes only when there are real ones. A tracking-only
-    // edit (zoho_reference_number body key) runs purely through the shipment
-    // path below since the column it used to write to was dropped in
-    // 2026-04-15_drop_zoho_reference_number.sql.
-    //
-    // Spine UPDATE + rlt/rz facts upserts for one logical edit run in ONE
-    // tenant transaction: lock the line, apply the spine writes (or just bump
-    // updated_at, which the spine UPDATE used to do via trigger even for
-    // facts-only edits — it feeds the unbox_activity sort), then the facts.
+    // Run the column writes only when there are real ones.
     let updatedRow: { id: number; receiving_id: number | null } | null = null;
     if (updates.length > 0 || hasTestingPatch || hasZohoPatch) {
       const txResult = await withTenantTransaction(orgId, async (client) => {
@@ -946,19 +793,13 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
           query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
         };
         if (hasTestingPatch) await upsertReceivingLineTesting(orgId, id, testingPatch, txDeps);
-        // Operator edited the condition grade — a genuine acknowledgement that
-        // the unit was physically opened. Set-once stamp the carton's "Unboxed"
-        // milestone (no-op if a serial/receive already stamped it). Same tenant
-        // tx / client, so it commits atomically with the condition write.
+        // Operator edited the condition grade — a genuine acknowledgement that the unit was physically opened.
         if (testingPatch.conditionGrade !== undefined) {
           await acknowledgeUnbox(client, orgId, row.receiving_id, ctx.staffId ?? null);
         }
         if (hasZohoPatch) {
           await upsertReceivingLineZoho(orgId, id, zohoPatch, txDeps);
-          // The spine kept zoho_purchaseorder_number_norm as a GENERATED column;
-          // rz stores it plainly (2026-07-11_receiving_line_zoho_number_norm), so
-          // re-derive it with the same expression whenever the number changed.
-          // narrow.ts doesn't expose the norm field — inline in the same idiom.
+          // The spine kept zoho_purchaseorder_number_norm as a GENERATED column; rz stores it plainly (2026-07-11_receiving_line_zoho_number_norm),…
           if (zohoPatch.zohoPurchaseOrderNumber !== undefined) {
             await client.query(
               `UPDATE receiving_line_zoho
@@ -1044,10 +885,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     await invalidateReceivingViews(ctx.organizationId);
     await publishReceivingLogChanged({ organizationId: ctx.organizationId, action: 'update', rowId: String(id), source: 'receiving-lines.update' });
 
-    // Re-fetch with the shipment JOIN so the response carries the just-attached
-    // shipment's tracking/carrier/status fields. Wave-2 street cutover: moved
-    // columns read from the 1:1 street tables (rlt/rz/rt) with the same output
-    // names overriding the rl.* spine values — normalizeRow is untouched.
+    // Re-fetch with the shipment JOIN so the response carries the just-attached shipment's tracking/carrier/status fields.
     const fresh = await tenantQuery(
       orgId,
       `SELECT rl.*,
@@ -1137,15 +975,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       if (!Number.isFinite(sid) || sid <= 0) {
         return NextResponse.json({ success: false, error: 'Valid shipment_id is required' }, { status: 400 });
       }
-      // Guard: this path only clears the delivered-unscanned surface. Refuse a
-      // shipment that has dock-scan activity (real receiving) or isn't delivered
-      // — those aren't Incoming clutter and must not be hard-deleted here.
-      // Tenancy: shipping_tracking_numbers has no organization_id, so org-scope
-      // by requiring the shipment to be referenced by a `receiving_carton` row in
-      // THIS org (org-owned). That both anchors the tenant and is the exact box
-      // this synthetic Incoming row stands for — a cross-org shipment id 404s.
-      // Run the guard + the hard-delete on the SAME tenant connection so the
-      // org GUC is set for the whole operation.
+      // Guard: this path only clears the delivered-unscanned surface.
       const delResult = await withTenantTransaction(orgId, async (client) => {
         const guard = await client.query(
           `SELECT 1
@@ -1169,10 +999,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         if (guard.rows.length === 0) {
           return { ok: false as const, status: 409 as const, error: 'Shipment is not a delivered-unscanned box (already scanned, not delivered, or not in this org)' };
         }
-        // Hard delete. shipment_tracking_events + fba_tracking_item_allocations
-        // cascade; every other reference is ON DELETE SET NULL EXCEPT
-        // station_scan_sessions (no ON DELETE clause → RESTRICT), so clear those
-        // first. A never-scanned box typically has none.
+        // Hard delete. shipment_tracking_events + fba_tracking_item_allocations cascade; every other reference is ON DELETE SET NULL EXCEPT…
         await client.query('DELETE FROM station_scan_sessions WHERE shipment_id = $1', [sid]);
         const del = await client.query('DELETE FROM shipping_tracking_numbers WHERE id = $1 RETURNING id', [sid]);
         if (del.rows.length === 0) {
@@ -1189,10 +1016,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
     }
 
     if (poId) {
-      // PO identity lives on receiving_line_zoho (rz) — the spine
-      // zoho_purchaseorder_id is write-dead and drops next migration, so the
-      // PO-wide delete resolves its lines through rz. rz rows cascade with
-      // their line.
+      // PO identity lives on receiving_line_zoho (rz) — the spine zoho_purchaseorder_id is write-dead and drops next migration, so the PO-wide…
       const result = await tenantQuery<{ id: number }>(
         orgId,
         `DELETE FROM receiving_line rl
@@ -1215,10 +1039,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
       return NextResponse.json({ success: true, po_id: poId, deleted: result.rows.length });
     }
 
-    // Bulk: `?ids=1,2,3` deletes the batch in ONE statement. The sidebar
-    // edit-mode bulk delete uses this — N parallel single-id requests proved
-    // flaky (pool contention dropped a couple of rows per batch). Idempotent:
-    // ids already gone are simply absent from `deleted`.
+    // Bulk: `?ids=1,2,3` deletes the batch in ONE statement.
     const idsParam = (searchParams.get('ids') || '').trim();
     if (idsParam) {
       const ids = Array.from(new Set(
@@ -1230,10 +1051,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
           { status: 400 },
         );
       }
-      // Delete + carton-source-link recompute on one tenant connection so the
-      // org GUC stays set for the recompute (which reads/writes org-owned
-      // receiving_carton / receiving_line via the passed client). recomputeCartonSourceLink's
-      // signature is unchanged — it already accepts an optional `db`.
+      // Delete + carton-source-link recompute on one tenant connection so the org GUC stays set for the recompute (which reads/writes org-owned…
       const deleted = await withTenantTransaction(orgId, async (client) => {
         const result = await client.query<{ id: number; receiving_id: number | null }>(
           `DELETE FROM receiving_line WHERE id = ANY($1::int[]) AND organization_id = $2 RETURNING id, receiving_id`,
@@ -1273,10 +1091,7 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
         [id, orgId],
       );
       if (result.rows.length === 0) return null;
-      // Re-derive the carton's source linkage — if this was the last line carrying
-      // a source order, the carton reverts to unmatched (the unlink revert). Owns
-      // the downgrade the general PATCH /api/receiving/[id] refuses. Pass the
-      // tenant client so the recompute stays org-scoped under the GUC.
+      // Re-derive the carton's source linkage — if this was the last line carrying a source order, the carton reverts to unmatched (the unlink…
       const deletedReceivingId = result.rows[0]?.receiving_id;
       if (deletedReceivingId != null) {
         try { await recomputeCartonSourceLink(Number(deletedReceivingId), client); }
@@ -1300,43 +1115,8 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
 }, { permission: 'receiving.mark_received' });
 
 /** Label for unmatched cartons that have no `receiving_line` yet (Recent + History). */
-/**
- * Rank the Unbox recents page on the ordering column alone, then hand the list
- * builder that carton set as `receivingIdIn` (pre-limit-then-hydrate).
- *
- * Returns `query` untouched whenever pre-limiting would change the ANSWER
- * rather than just the plan:
- *  - not the `unbox_opened` view;
- *  - the caller already named a set, or a single carton;
- *  - a search / staff / priority filter is active — those decide which cartons
- *    qualify, and ranking before them would silently drop matches;
- *  - `offset > 0` — the ranked window is the FIRST page by construction.
- *
- * Soft-fails to the unrestricted query: this is a plan optimisation, and a
- * ranking hiccup must never turn into an empty rail.
- */
-/**
- * Gate-before-decorate for `view=scanned&sort=priority` — the /triage rail's
- * cold-load shape.
- *
- * The unrestricted list runs ~15 display laterals over every candidate the
- * join graph admits and only then applies the scanned gates: measured
- * 2026-08-27 (EXPLAIN ANALYZE, warm, dogfood org), 317 candidates decorated
- * for 19 survivors — 368ms / 54,985 shared buffers. This runs the SAME gates
- * and the same priority rank with zero decorations
- * ({@link buildScannedCandidateSql}) and returns the winning LINE ids; the
- * caller narrows the real list query to them via `scannedLineIdIn`.
- *
- * LINE-grained, not carton-grained: `rl.receiving_id` is NULL for
- * PO#-fallback lines (the Incoming-sync pre-created `zoho_po` carton case the
- * scanned WHERE exists to catch), so narrowing through `receivingIdIn` would
- * silently drop them.
- *
- * Bails (returns null → unrestricted) for anything but the plain first-page
- * priority-sorted shape — a refinement param changes which lines qualify, and
- * pre-ranking under one would silently drop matches. Soft-fails the same way:
- * a ranking hiccup must never turn into an empty rail.
- */
+/** Rank the Unbox recents page on the ordering column alone, then hand the list builder that carton set as `receivingIdIn`… */
+/** Gate-before-decorate for `view=scanned&sort=priority` — the /triage rail's cold-load shape. */
 async function maybePreLimitScannedLineIds(
   query: ReceivingLinesQuery,
   orgId: OrgId,
@@ -1477,12 +1257,7 @@ function compareReceivingRowsByRecentActivity(
   return d !== 0 ? d : b.id - a.id;
 }
 
-/**
- * `?sort=unboxed_newest` comparator for the placeholder merge. Prefer first
- * Unbox-open (Unboxed sidebar axis), then unbox-complete; never-opened and
- * never-unboxed rows (ts 0 — incl. bare unfound placeholders) sort last,
- * tie-broken by scan activity so the tail stays stable.
- */
+/** `?sort=unboxed_newest` comparator for the placeholder merge. */
 function receivingRowUnboxedTs(row: {
   unbox_opened_at?: string | null;
   unboxed_at?: string | null;
@@ -1515,13 +1290,7 @@ function compareReceivingRowsByUnboxedAt(
   return d !== 0 ? d : compareReceivingRowsByScannedAt(a, b);
 }
 
-/**
- * `?sort=unbox_activity` comparator — JS mirror of the SQL
- * `GREATEST(ru.unboxed_at, rl.updated_at)` axis, so the placeholder merge
- * preserves the order. Unfound placeholders carry neither stamp and fall
- * through to scan-based recent activity, which is correct for them (they
- * only exist while physically present and untriaged).
- */
+/** `?sort=unbox_activity` comparator — JS mirror of the SQL `GREATEST(ru.unboxed_at, rl.updated_at)` axis, so the placeholder merge… */
 function receivingRowUnboxActivityTs(row: {
   unboxed_at?: string | null;
   updated_at?: string | null;

@@ -3,19 +3,7 @@ export interface StaffAuthorHit {
   name: string;
 }
 
-/**
- * Resolve a comment's Cycle Forge author, strongest evidence first:
- *
- *   1. `helpdesk_comment_staff` — the row written when WE posted it.
- *   2. The author's email matching a staff row.
- *   3. The `— {name}` sign-off an app-written internal note carries.
- *
- * (3) exists because (1) is best-effort: the stamp runs after the post inside a
- * swallowed try/catch, and tickets filed before the mapping table have no row
- * at all. Without it those threads attribute every app note to the Zendesk API
- * user and read "Manager". It is consulted LAST and an ambiguous name is
- * dropped upstream — see {@link staffAuthorsByName}.
- */
+/** Resolve a comment's Cycle Forge author, strongest evidence first: */
 export function applyStaffAuthor<
   T extends {
     id: number;
@@ -54,14 +42,7 @@ export function staffNameFromNoteSignature(body: string): string | null {
   return name || null;
 }
 
-/**
- * True when the first comment is ours (filed from Cycle Forge via the API
- * user), not a customer message that happened to get `created_by` because
- * someone later linked the ticket.
- *
- * Zendesk often sets `requester_id` to the API agent ("Manager") on tickets
- * we create — that is NOT a customer opener.
- */
+/** True when the first comment is ours (filed from Cycle Forge via the API user), not a customer message that happened to get `created_by`… */
 export function isAppFiledOpener(opts: {
   openingAuthorId: number;
   requesterId: number | null;

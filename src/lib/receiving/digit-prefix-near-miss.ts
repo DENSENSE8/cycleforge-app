@@ -1,12 +1,4 @@
-/**
- * Truncation-tolerant tracking match for Zoho Reference# typos / field cuts.
- *
- * Exact + last-8 can miss when the mirror stores a digit-short Reference#
- * (e.g. `LX08869279IL`) and the label scan is the full value (`LX088692799IL`).
- * When one side's digits are a proper prefix of the other and the length delta
- * is small, treat it as the same package — only when the candidate set is
- * unambiguous (caller enforces LIMIT 2 / single hit).
- */
+/** Truncation-tolerant tracking match for Zoho Reference# typos / field cuts. */
 
 /** Digits only — used for prefix comparison (letters/spaces stripped). */
 export function trackingDigits(input: string): string {

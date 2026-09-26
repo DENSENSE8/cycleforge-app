@@ -1,14 +1,4 @@
-/**
- * Pure config + storage layer for the rack label printer. No React — the
- * per-warehouse counts are persisted to localStorage so they survive without a
- * rebuild.
- *
- * **No `gln` here, deliberately.** It lived in this config (and the bin
- * printer's twin) until 2026-08-02, which made a per-TENANT legal identifier a
- * per-BROWSER preference that could silently disagree with
- * `organizations.settings.gs1.gln` — the value the print ladder, the interop
- * projections and Settings all read. The GLN now comes from `useOrgGs1()`.
- */
+/** Pure config + storage layer for the rack label printer. */
 import { LOCATION_BAY_LABEL } from '@/lib/barcode-routing';
 
 export interface PrinterConfig {
@@ -34,12 +24,7 @@ export const STEPS: { id: Step; label: string }[] = [
   { id: 'level', label: 'Level' },
 ];
 
-/**
- * Configs written before 2026-08-02 also contain a `gln` — often
- * `0614141000005`, GS1's documentation GLN, which used to be this printer's
- * default. `loadConfig` does not read that key, so the stale value is inert:
- * it stays in localStorage as dead JSON and can never reach a label.
- */
+/** Configs written before 2026-08-02 also contain a `gln` — often `0614141000005`, GS1's documentation GLN, which used to be this printer's… */
 
 /** Clamp a count to a sane integer in [1, 99], falling back when invalid. */
 export function clampMax(v: unknown, fallback: number): number {

@@ -5,13 +5,7 @@ import { formatMegabytes } from '@/lib/photos/video-upload-rules';
 import { Play } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 
-/**
- * Three-up square grid of a repair's photos and videos (one timeline, see
- * `repairMediaTimeline`). Presentational: in view mode a tap opens the viewer
- * at that item; in select mode a tap toggles a photo and a numbered check
- * shows the send order. Videos are not sent to tickets, so they sit out
- * select mode. A video tile's poster is its first frame (`preload="metadata"`).
- */
+/** Three-up square grid of a repair's photos and videos (one timeline, see `repairMediaTimeline`). */
 export function RepairPhotoGrid({
   items,
   selecting,

@@ -1,12 +1,4 @@
-/**
- * The words a staff PIN step-up offers on a counter line's price. Pure (no
- * `node:crypto`) so the tablet can name them; signing lives in
- * `price-approval.ts`, and the verbs themselves are `PRICE_ADJUST_KINDS`
- * (`counter-transaction-types`) — every approval re-prices a line.
- *
- * There is no void verb: removing a line is a plain delete (operator
- * 2026-09-24: "no need for PIN to remove — dogfood must move fast").
- */
+/** The words a staff PIN step-up offers on a counter line's price. */
 
 /** Square-style preset reasons for a price adjustment; free text is always allowed too. */
 export const PRICE_ADJUST_REASONS = ['Price match', 'Damaged box', 'Goodwill', 'Re-quote'] as const;

@@ -57,15 +57,7 @@ function cartonDoors(data: CartonHubData, photoCount: number | null, back: strin
   ];
 }
 
-/**
- * `/m/r/[id]` — the receiving carton HUB on {@link DetailHubScreen} (the
- * exoskeleton; reference `/m/rs/[id]`). A read-only card (what's in the box,
- * tracking, progress, `R-id`, stage) opens `/info`; doors open one job each —
- * Classify, Lines, Photos, Activity, Quality control. The dock is the only
- * write: Take photo · Unbox · Scan again. Opened from a job (`?back=`, the
- * `/m/scan` tape) the bar is an X back to it. The anonymous Digital Link face
- * is the layout's gate.
- */
+/** `/m/r/[id]` — the receiving carton HUB on {@link DetailHubScreen} (the exoskeleton; reference `/m/rs/[id]`). */
 function CartonHubInner() {
   const router = useRouter();
   const { id, data, loading, error, reload } = useCartonHub();

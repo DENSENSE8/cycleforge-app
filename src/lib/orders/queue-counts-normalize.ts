@@ -1,21 +1,4 @@
-/**
- * `/api/orders/queue-counts` → the client cache shape, in ONE place.
- *
- * Two paths write the same TanStack key (`['dashboard-table','unshipped-counts',…]`):
- * the browser fetch (`fetchUnshippedQueueCounts`) and the RSC dehydrate seed
- * (`seedUnshippedQueue`). They MUST produce the same shape — a seed that drops a
- * field the client reads wins on first paint and then holds for the query's
- * whole `staleTime`, so the surface renders a wrong-but-settled answer with no
- * error anywhere.
- *
- * That is not hypothetical: the seed narrowed the payload to
- * total/byStage/urgent/combos and silently dropped `packPlacement`, so To-ship's
- * "At stations" tile (and the per-bench chips) read 0 benches for the first 60s
- * on every load of `/shipping/orders`.
- *
- * Dependency-free on purpose — a server module and a browser module both import
- * it (`build-gotchas.md` → bundle altitude).
- */
+/** `/api/orders/queue-counts` → the client cache shape, in ONE place. */
 
 /** Raw signal combo from the queue-counts endpoint — mapped to a fulfillment
  *  lane CLIENT-side via `deriveFulfillmentState` (Decision 8), never in SQL. */
@@ -52,12 +35,7 @@ export interface UnshippedQueueCounts {
   combos: QueueCountsCombo[];
   /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
   packPlacement?: QueueCountsPackPlacement;
-  /**
-   * Live To-ship rows whose print packet is incomplete (no shipping-label
-   * document, or no G2 paperwork without the docs-not-required exemption).
-   * Drives the Labels header CTA badge. Distinct from G3 — tracking without a
-   * PDF still counts here.
-   */
+  /** Live To-ship rows whose print packet is incomplete (no shipping-label document, or no G2 paperwork without the docs-not-required exemption). */
   paperworkIncomplete?: number;
 }
 

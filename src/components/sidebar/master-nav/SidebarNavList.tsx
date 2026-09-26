@@ -55,32 +55,7 @@ import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
 import { useSpineSectionCollapse } from './useSpineSectionCollapse';
 
-/**
- * MasterNav page list, painted on the shadcn `Sidebar*` primitives
- * (`@/components/ui/sidebar`) — the component tree the operator named
- * (2026-09-14): `SidebarContent → SidebarGroup → SidebarGroupLabel /
- * SidebarGroupContent → SidebarMenu → SidebarMenuItem → SidebarMenuButton`.
- *
- * A **LANE is a `SidebarGroup`.** That is the whole translation: Inbound ·
- * Outbound · Inventory · Products · Sales · Support · Operations are groups,
- * and Scan Stations is one too. Daily · Media Library stay structural top rows.
- * Hold-drag reorders group slots and loose L1 ids into `prefs.spineSlots`.
- *
- * Two laws the primitives now carry instead of this file:
- *
- * - **Row treatment.** `SidebarMenuButton` bakes in `SPINE_ACCENT.idlePage` +
- *   `SPINE_ACCENT_DATA_ACTIVE`, so "am I the current page?" is the
- *   `data-active` attribute rather than a conditional class threaded down
- *   through every helper. The old `accent` parameter is gone — one row system,
- *   one place that spells it.
- * - **Icon law** (operator: *"icon at the parent level only"*). A glyph marks a
- *   PARENT: an L0 row, or a `SidebarGroupLabel`. A row inside a group passes no
- *   icon and wears the rail HAIRLINE on its left instead
- *   (`spineRailLineClass`) — the same child mark the `/m` drawer uses.
- *
- * `data-spine-nav` / `data-spine-scrollport` are load-bearing — `SidebarNavColumn`
- * re-measures the collapsed hover-peek card through them.
- */
+/** MasterNav page list, painted on the shadcn `Sidebar*` primitives (`@/components/ui/sidebar`) — the component tree the operator named… */
 interface SidebarNavListProps {
   activePage: SidebarPageNav;
   activeChildId: string | null;
@@ -150,15 +125,7 @@ function SortableMenuRow({
   );
 }
 
-/**
- * The group's face: a `SidebarGroupLabel` acting as the disclosure trigger, and
- * the level that WEARS THE GLYPH under the icon law.
- *
- * Split from its sortable wrapper because lanes are not draggable by their
- * label alone — staff reorder acts on the L0 slot — and `useSortable` cannot be
- * called conditionally. One face, two wrappers, rather than a second trigger
- * that drifts.
- */
+/** The group's face: */
 function SectionTriggerFace({
   label,
   icon: SectionIcon,
@@ -189,11 +156,8 @@ function SectionTriggerFace({
         {...dragProps}
         onClick={onToggle}
         className={cn(
-          // No ink override: `SidebarGroupLabel` already carries the ROW's
-          // `text-text-default` + `SPINE_LABEL_CLASS`, so a lane header reads
+          // No ink override:
           // exactly like Daily / Media Library above it (operator 2026-09-14:
-          // "all black, all consistent with the top three items"). A `hover:`
-          // ink rule here would imply the idle state was quieter.
           'relative cursor-pointer touch-none',
           SPINE_SECTION_LABEL_STICKY_CLASS,
           ownsCurrent &&
@@ -351,26 +315,8 @@ export function SidebarNavList({
 
   /**
    * One destination row.
-   *
-   * `icon` is OMITTED for a row inside a group — the parent wears the glyph
-   * (icon law) — and such a row instead gets the **rail HAIRLINE** on its left,
-   * `spineRailLineClass`: one physical line, always mounted, two colour tokens
-   * (`border-soft` idle → `text-default` on the row you are on).
-   *
-   * That line is not decoration; it is what makes an open parent's children
    * legible as its children (operator 2026-09-14: *"when a parent level design
-   * sidebar is open, it should display a hairline exactly like the pasted page
-   * component … a hairline on the left of all the child components"*). It is
-   * the SAME element the `/m` drawer has always used, which is the point: the
-   * desk had a 32px indent and the phone had a hairline, so one law was painted
-   * two ways. The indent token is retired.
-   *
-   * Its X is not free either: the group body carries
-   * {@link SPINE_CHILD_RAIL_INSET_CLASS}, which lands the rail in the PARENT
    * GLYPH's column (operator 2026-09-14: *"a hairline on the left side and
-   * aligned with the icon of the parent to the left of the child and then the
-   * name on the right side"*). Before that the body was `pl-2` and the rail sat
-   * under the parent's left pad instead — right mark, wrong column.
    */
   const renderMenuRow = (opts: {
     key: string;
@@ -449,10 +395,7 @@ export function SidebarNavList({
             aria-label={opts.label}
             className={cn('relative', SPINE_CHILD_RAIL_INSET_CLASS)}
           >
-            {/* The continuous trunk: one hairline from the parent glyph's
-                bottom to the end of the child list. The per-row segments in
-                `renderMenuRow` paint over it in the same column to mark the
-                current row. */}
+            {/* The continuous trunk: */}
             <span className={SPINE_CHILD_RAIL_TRUNK_CLASS} aria-hidden />
             <SidebarMenu>{opts.rows}</SidebarMenu>
           </SidebarGroupContent>
@@ -462,41 +405,8 @@ export function SidebarNavList({
   };
 
   /**
-   * One LANE as a top-level `SidebarGroup` (v3) — Inbound · Outbound ·
-   * Inventory · Products · Sales · Support · Operations.
-   *
-   * There is no "Workspaces" parent any more. It named the software's idea of
-   * itself, and it cost the operator a disclosure before they could read the
-   * domain they came for. The lanes are the parents: a flat band of named
-   * groups beside Scan Stations, each individually draggable
-   * (`SPINE_LANE_SLOT_IDS` are real slots, so staff reorder acts on domains
-   * rather than on one opaque block).
-   *
+   * One LANE as a top-level `SidebarGroup` (v3) — Inbound · Outbound · Inventory · Products · Sales · Support · Operations.
    * **Single-page lanes EXPAND (operator ruling 2026-09-14, supersedes the
-   * collapse rule).** *"Ensure all the sidebar names and icons are under one
-   * parent … exactly like inbound and outbound, create different parents and
-   * expand them into different childs."* A lane holding one page paints the
-   * lane label plus that page's OWN children as rows — Sales → Counter · Sales
-   * Board · Local Pickup · Repair Service. The children already exist
-   * (`SIDEBAR_PAGE_NAV` desk chrome); before this they were reachable only as
-   * in-page tabs, so the spine hid one whole altitude of the IA behind a flat
-   * row. Registry invariant pinned in `sidebar-navigation.test.ts`.
-   *
-   * The collapse rule survives in one case only: a lone page with NO children,
-   * where a `SidebarGroupLabel` really would sit over nothing. `spineFlat`
-   * pages (Automations) opt out by declaration.
-   *
-   * That is also what puts *Outbound* on the spine without renaming the
-   * Shipping desk (its header chip, ⌘K entry and recents keep "Shipping",
-   * which is a station/milestone word too).
-   *
-   * The row (collapsed) or the label (expanded) wears the **lane's** glyph,
-   * never a member page's — the icon marks the parent, so it must name the
-   * parent. Child rows carry no glyph and indent into the parent's label
-   * column via {@link renderMenuRow}.
-   *
-   * An empty lane never reaches here — `resolveSpineMapEntries` drops a lane
-   * slot the role cannot paint, so no label ever sits over nothing.
    */
   const renderLane = (lane: (typeof DESK_SPINE_SECTIONS)[number]) => {
     const lanePages = deskPages.filter((page) => spineSectionIdForPage(page) === lane.id);

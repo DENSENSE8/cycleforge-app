@@ -1,41 +1,6 @@
 'use client';
 
-/**
- * The ONE PO-items surface. Every station that lists a carton's items renders
- * this: Unbox and Triage (`LinePoItemsSection`), Testing
- * (`TestingPoItemsSection`), and `/search` (`SearchReceivingPoItems`).
- *
- * ## What was actually duplicated
- *
- * Not the rows — those already went through {@link PoLinesAccordion} /
- * {@link UnmatchedItemsSection}. What each station carried its own copy of was
- * the **lane decision**: whether this carton's items belong on the matched Zoho
- * accordion or the unfound surface. Three copies, and they had already drifted:
- *
- *  - Unbox and `/search` probed the siblings list so a REAL PO carton whose
- *    lines have not landed yet (`linelessRealPo`) falls back to the unfound
- *    surface instead of painting an empty accordion.
- *  - **Testing did not probe at all**, so the same carton read as "no items"
- *    there while the other two stations offered the add / pair path. A carton
- *    the operator could work on Unbox was a dead end on Testing, and nothing
- *    about either file said the two disagreed.
- *
- * The probe reuses `receivingSiblingsQueryKey` — the same key the accordion's
- * own `usePoLinesData` reads — so deciding the lane costs no extra request.
- *
- * ## What is NOT shared, and why the props look like this
- *
- * `PoItemsSectionProps` extends {@link UnmatchedItemsSectionProps} because that
- * interface is already the superset: every chrome knob (embedded · headerRight ·
- * suppressHeader · readOnly · unitsChrome · hideNoTestLines · lineCollapse ·
- * activeRowSlot · …) is shared by both lanes, and the handful of unfound-only
- * members (the waiver bundle, `onLinked`, `onOpenInUnbox`) are optional and
- * simply unread on the matched lane. Four accordion-only props are added here.
- *
- * A station's CONTROLLER stays its own — the Unbox capture leaf, Testing's
- * verdict wiring, `/search`'s read-only stance. That is behaviour, and it comes
- * in through the slots. Only the routing is law.
- */
+/** The ONE PO-items surface. */
 
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -109,17 +74,7 @@ export interface PoItemsSectionProps extends UnmatchedItemsSectionProps {
    * placeholder, and supplies the default `activeLineId`.
    */
   row: ReceivingLineRow;
-  /**
-   * Capture body under each line — **matched lane only**, and deliberately not
-   * forwarded to the unfound surface.
-   *
-   * The unfound lane runs its own serial CRUD (`useUnmatchedItems` inside
-   * `UnmatchedAccordionSurface`), because an unfound carton's writes attach
-   * differently from a PO line's. Handing it a host's capture leaf — which is
-   * bound to that host's controller — would silently move those writes onto the
-   * wrong path. The surface keeps its own override hatch for a caller that
-   * genuinely wants it; this section does not spend one on a case nobody has.
-   */
+  /** Capture body under each line — **matched lane only**, and deliberately not forwarded to the unfound surface. */
   activeRowSlot?: ActiveRowSlot;
   /** Header serial chip actions — matched lane only, same reason as above. */
   activeSerialActions?: PoLineSerialActions;

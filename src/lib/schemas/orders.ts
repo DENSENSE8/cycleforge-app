@@ -4,11 +4,6 @@ const trimmed = z.string().trim();
 const nullableText = trimmed.min(1).nullable();
 
 // ─── PATCH /api/orders/[id] ─────────────────────────────────────────────────
-//
-// Edits order *record* fields only. Workflow state (assignment, pick/pack,
-// start/skip/verify, status transitions) stays in the dedicated verb routes —
-// this mirrors the whitelist enforced by `updateOrder()` in orders-queries.
-// Keys are camelCase to match that helper's input shape.
 
 export const OrderUpdateBody = z
   .object({
@@ -18,10 +13,7 @@ export const OrderUpdateBody = z
     quantity: nullableText.optional(),
     itemNumber: nullableText.optional(),
     shipByDate: nullableText.optional(),
-    // `notes` is deliberately absent. An order annotation is written ONLY to
-    // `order_notes` via POST /api/orders/[id]/notes — the legacy scalar
-    // `orders.notes` is read-only history. `.strict()` turns a stray
-    // `{ notes }` body into a 400 instead of a silent second write path.
+    // `notes` is deliberately absent.
     isOutOfStock: z.boolean().optional(),
     accountSource: nullableText.optional(),
   })
@@ -30,12 +22,7 @@ export const OrderUpdateBody = z
     message: 'At least one field must be provided',
   });
 
-// ─── Tracking sub-resource: /api/orders/[id]/tracking ───────────────────────
-//
-// Order tracking is NOT an `orders` column — it lives in
-// `shipping_tracking_numbers` via `shipment_id` / `order_shipment_links`. These
-// bodies drive the shipment-backbone helpers in `orders-tracking-queries.ts`.
-// Keys are camelCase to match `applyOrderTrackingOps`.
+// ─── Tracking sub-resource:
 
 const trackingNum = z.string().trim().min(1);
 
@@ -54,10 +41,7 @@ export const OrderTrackingPostBody = z
 
 export const OrderTrackingPatchBody = z
   .object({
-    // Desired-state: the full ordered set of tracking numbers the order should
-    // have. When present, the server reconciles links to match and routes the
-    // legacy primary/edits/creates/deletes ops below. `[]` clears all tracking.
-    // This is the preferred path — no client-side primary/diff bookkeeping.
+    // Desired-state:
     setTrackingNumbers: z.array(trackingNum).optional(),
     // Primary tracking (slot 0); upsert. '' / null clears it.
     primaryTrackingNumber: z.string().trim().nullable().optional(),

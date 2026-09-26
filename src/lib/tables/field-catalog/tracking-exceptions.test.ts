@@ -132,10 +132,7 @@ describe('resolveTrackingExceptionSlotValue', () => {
       kind: 'value',
       text: 'UPS',
     });
-    // A PERSON value, not a name string: the catalog declares
-    // `displayType: 'person'`, so the shared cell draws the avatar from the
-    // staff id and paints the absence honestly when the join finds no name.
-    // This assertion pinned the pre-person `kind: 'value'` shape.
+    // A PERSON value, not a name string:
     assert.deepEqual(resolveTrackingExceptionSlotValue(r, 'tracking-exceptions.staff'), {
       kind: 'person',
       staffId: r.staff_id,

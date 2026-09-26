@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Reusable React error boundary for *non-route* subtrees.
- *
- * App Router's `error.tsx` only catches errors thrown inside a route segment's
- * own `children`. It does NOT catch an error thrown by a component the *layout*
- * renders as a sibling to `children` — e.g. the `DashboardSidebar` mounted by
- * `ResponsiveLayout` (which lives in the root layout). A throw there bubbles
- * straight past every route `error.tsx` to `global-error.tsx`, blanking the
- * whole app. That is exactly how a one-line missing import in a sidebar panel
- * 500'd `/support`, `/receiving`, and every other route at once.
- *
- * Wrap any such layout-level subtree in this boundary so its failure degrades
- * to a slim, contained fallback while the rest of the frame keeps rendering —
- * the house "degrade-not-fail" rule (*`), now applied
- * to the app shell itself.
- *
- * React error boundaries must be class components; this is the one sanctioned
- * class component for that reason.
- */
+/** Reusable React error boundary for *non-route* subtrees. */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 

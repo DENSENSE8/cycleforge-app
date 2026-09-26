@@ -1,18 +1,6 @@
 import type { PersistedClient } from '@tanstack/react-query-persist-client';
 
-/**
- * The rules for the repair workbench's refresh-surviving cache (operator
- * 2026-09-24, pass 4 row 7). `WorkbenchCachePersistence` owns the React side;
- * everything that decides whether a stored entry may be trusted lives here.
- *
- * - Only `['repairs', 'workbench', …]` queries are stored — the phone hub and
- *   its sub-screens — never the rest of the app cache.
- * - `sessionStorage`, one entry per signed-in identity:
- *   `cf-rq-wb:${organizationId}:${staffId}`. The tab survives a refresh; closing
- *   it drops the customer PII the record carries.
- * - An entry restores only for the identity it was written for, under the
- *   current buster, and within 24h. Anything else is treated as absent.
- */
+/** The rules for the repair workbench's refresh-surviving cache (operator 2026-09-24, pass 4 row 7). */
 
 export const WORKBENCH_CACHE_PREFIX = 'cf-rq-wb:';
 /** Bump when a workbench facet's data shape changes, so old tabs don't paint it. */
@@ -44,12 +32,7 @@ export function serializeWorkbenchCache(client: PersistedClient, ownerKey: strin
   return JSON.stringify(stored);
 }
 
-/**
- * The persisted client stored under `ownerKey`, or null when it must not be
- * restored: missing, unparsable, written for another identity, another
- * buster, or older than 24h. Queries outside the workbench are dropped even
- * if present, so a tampered entry cannot seed the rest of the app.
- */
+/** The persisted client stored under `ownerKey`, or null when it must not be restored: */
 export function readWorkbenchCache(raw: string | null, ownerKey: string, now: number): PersistedClient | null {
   if (!raw) return null;
   let parsed: unknown;

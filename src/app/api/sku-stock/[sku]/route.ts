@@ -21,16 +21,7 @@ import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import type { OrgId } from '@/lib/tenancy/constants';
 
-/**
- * Build a lightweight AuthContext from the session cookie without going
- * through withAuth() — this route uses Next's typed second arg `{ params }`
- * for the dynamic `[sku]` segment, which conflicts with withAuth's wrapper
- * signature. We still want server-trusted actor + ip/ua on audit rows.
- *
- * Returns the anonymous-style context because the underlying call site can
- * predate sign-in (legacy QR scans). The PATCH handler enforces a permission
- * check against `ctx.permissions` instead.
- */
+/** Build a lightweight AuthContext from the session cookie without going through withAuth() — this route uses Next's typed second arg `{… */
 async function resolveCtx(req: NextRequest): Promise<AnonymousAuthContext> {
   const sid = readSessionSid(req.cookies);
   const user = await getCurrentUserBySid(sid);
@@ -86,9 +77,6 @@ export async function GET(
           [skuValue, orgId],
         ),
         // 2. sku history rows (inventory log entries for this static_sku).
-        // v_sku is a view over serial_units and does not surface
-        // organization_id, so the GUC wrapper is the isolation mechanism —
-        // RLS filters the underlying serial_units rows by app.current_org.
         tenantQuery(
           orgId,
           `SELECT id, static_sku, serial_number, shipping_tracking_number, notes, location, created_at, updated_at
@@ -330,10 +318,6 @@ export async function PATCH(
     const effectiveStaffId = ctx.staffId ?? (staffId && staffId > 0 ? staffId : null);
 
     // Per-action permission gate against the session's verified permission set.
-    // The legacy `rename` branch below also calls `assertPermission(..., 'bin.rename')`
-    // which goes through the narrower DB-role lookup; keeping both lines means a
-    // role-removed-but-still-cached session is caught by the in-session check
-    // here while role changes also propagate via the DB path on next request.
     const PERM_BY_ACTION = {
       adjust:   'sku_stock.adjust',
       set:      'sku_stock.adjust',
@@ -360,12 +344,7 @@ export async function PATCH(
         );
         const beforeQty = Number((before.rows as Array<{ stock: number | null }>)[0]?.stock ?? 0);
 
-        // Ledger-only: the sku_stock_ledger row is the system of record. The
-        // trg_sku_stock_from_ledger trigger projects SUM(WAREHOUSE deltas) onto
-        // sku_stock.stock (creating the row if absent) — no direct write to
-        // sku_stock.stock. Load-bearing (no .catch swallow): a failed ledger write
-        // must surface, not silently no-op the adjustment. organization_id is
-        // stamped by the GUC default; the explicit column is a backstop.
+        // Ledger-only: the sku_stock_ledger row is the system of record.
         await client.query(
           `INSERT INTO sku_stock_ledger (sku, delta, reason, dimension, staff_id, organization_id)
            VALUES ($1, $2, $3, 'WAREHOUSE', $4, $5::uuid)`,
@@ -408,11 +387,7 @@ export async function PATCH(
         const currentQty = Number(current.rows[0]?.stock) || 0;
         const ledgerDelta = absoluteQty - currentQty;
 
-        // Ledger-only: post a WAREHOUSE delta that brings the sum to absoluteQty;
-        // the trigger projects it onto sku_stock.stock (and creates the row if
-        // absent). Always post — a 0 delta still ensures the projected row exists
-        // at the intended value. Load-bearing (no .catch swallow). organization_id
-        // is stamped by the GUC default; the explicit column is a backstop.
+        // Ledger-only: post a WAREHOUSE delta that brings the sum to absoluteQty; the trigger projects it onto sku_stock.stock (and creates the…
         await client.query(
           `INSERT INTO sku_stock_ledger (sku, delta, reason, dimension, staff_id, organization_id)
            VALUES ($1, $2, $3, 'WAREHOUSE', $4, $5::uuid)`,

@@ -1,24 +1,10 @@
-/**
- * Connector registry — the BEHAVIOR source of truth for integrations (auth
- * kind, capabilities, and — added per-phase — refresh/validate/sync).
- *
- * The catalog at src/app/settings/integrations/registry.ts stays the DISPLAY
- * SoT (labels, badges, categories, modal copy). Phase 2 reconciles the two so
- * the display catalog derives its behavior bits from here instead of
- * duplicating them. For now this is additive and self-contained.
- *
- * The `Record<IntegrationProvider, …>` makes provider coverage a COMPILE
- * error if a provider is added to the vault enum but missed here.
- */
+/** Connector registry — the BEHAVIOR source of truth for integrations (auth kind, capabilities, and — added per-phase — refresh/validate/sync). */
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { Capability, IntegrationConnector } from './types';
 
 const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
-  // Marketplaces — real OAuth already exists. No sync(): ShipStation is the sole
+  // Marketplaces — real OAuth already exists.
   // outbound-order importer and aggregates these stores (owner 2026-09-24).
-  // 'inventory' is the ERP/inventory-BACKEND capability (POs, item master,
-  // fulfillment push) — channel stock/price push on marketplaces is part of
-  // the 'orders' channel capability (the pushInventory hook), not 'inventory'.
   ebay: {
     provider: 'ebay',
     authKind: 'oauth',
@@ -51,10 +37,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   // (`/api/google-sheets/execute-script`) reads the org's sheet with them.
   // Sheet ORDER import was removed 2026-09-24 — orders come from ShipStation.
   google_sheets: { provider: 'google_sheets', authKind: 'vault', capabilities: [] },
-  // Storage backup — tenant connects their own Google Drive (Sign in with
-  // Google, scope drive.file) so photo originals back up to / offload onto
-  // storage they own. No ingestion capability; validate()/refresh() are
-  // lazy-imported so the connection reader never pulls the Drive client.
+  // Storage backup — tenant connects their own Google Drive (Sign in with Google, scope drive.file) so photo originals back up to / offload…
   google_drive: {
     provider: 'google_drive',
     authKind: 'oauth',
@@ -117,10 +100,7 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   ai_gateway: { provider: 'ai_gateway', authKind: 'vault', capabilities: ['ai'] },
   openai: { provider: 'openai', authKind: 'vault', capabilities: ['ai'] },
   anthropic: { provider: 'anthropic', authKind: 'vault', capabilities: ['ai'] },
-  // Email inbox — the PO mailbox (Gmail). The OAuth island under
-  // /api/admin/po-gmail/* remains the live flow; tokens are being migrated
-  // from google_oauth_tokens into the vault (dual-read in src/lib/po-gmail/
-  // client.ts). Registered here so 'email_inbox' gating/labels resolve.
+  // Email inbox — the PO mailbox (Gmail).
   gmail: {
     provider: 'gmail',
     authKind: 'oauth',
@@ -128,9 +108,6 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     authorizeStartPath: '/api/admin/po-gmail/connect',
   },
   // Voice — business phone (call log + voicemail follow-ups + click-to-call).
-  // authKind is confirmed in the Phase 0 spike; vault is the default. sync() is
-  // the catch-up poll (webhooks are the realtime path) — lazy-imported so the
-  // connection reader never pulls the Nextiva client.
   nextiva: {
     provider: 'nextiva',
     authKind: 'vault',

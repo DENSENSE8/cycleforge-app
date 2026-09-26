@@ -12,19 +12,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_TAGS } from '@/lib/cache/tags';
 import { publishSkuExceptionChanged } from '@/lib/realtime/publish';
 
-/**
- * On-hold placeholder products.
- *
- * GET  → every unreconciled placeholder in the org (the "still needs a real
- *        SKU" list).
- * POST → mint one from a typed name plus a scanned barcode (or, without one,
- *        the caller's `sourceRef` idempotency key), or return the one that
- *        already exists for that key.
- *
- * Gate is `sku_stock.adjust` — the same permission as putting stock in a bin,
- * because that is what this is for. Merging a placeholder away is a different,
- * higher gate; see ./merge.
- */
+/** On-hold placeholder products. */
 
 export const GET = withAuth(
   async (_req: NextRequest, ctx) => {
@@ -79,11 +67,7 @@ export const POST = withAuth(
       extra: { provisional_barcode: item.barcode || null },
     });
 
-    // This INSERTED a `sku_catalog` row (see createProvisionalSku), and every
-    // other catalog writer busts this tag. Without it a placeholder minted on
-    // the PHONE stays invisible to the desktop's cached catalog read models —
-    // `get-title-by-sku` (10 min) and `scan/resolve` (30 min) — so a desk
-    // scanning the same box gets "unknown SKU" for up to half an hour.
+    // This INSERTED a `sku_catalog` row (see createProvisionalSku), and every other catalog writer busts this tag.
     await invalidateCacheTags(orgId, [CACHE_TAGS.skuCatalog]);
 
     after(() =>

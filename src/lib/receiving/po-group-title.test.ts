@@ -140,10 +140,7 @@ test('isReceivingPoGroupTitleRow — unfound stub is excluded', () => {
 });
 
 test('receivingRailRowTitle — po-group mode keeps unfound product label', () => {
-  // SKU IDENTITY LAW: the `'Unfound PO'` stub is a placeholder, so a REAL later
-  // field outranks it — here the SKU. `photo-move-targets` already behaved this
-  // way; this surface used to let the stub win, which is the disagreement the
-  // law removes.
+  // SKU IDENTITY LAW:
   assert.equal(
     receivingRailRowTitle(
       row({ receiving_source: 'unmatched', item_name: 'Unfound PO' }),

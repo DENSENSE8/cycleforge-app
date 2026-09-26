@@ -1,28 +1,4 @@
-/**
- * notification-outbox worker — drains notification_outbox into staff_inbox_items.
- *
- * The single write path for inbox rows (mirrors search-outbox-worker.ts, which
- * is the proven outbox pattern in this repo — one pattern, not two). Flow per
- * drain call:
- *
- *   claim N pending rows (FOR UPDATE SKIP LOCKED, attempts+1)
- *     → drop non-notifiable events (the vocabulary lives in CODE, so the DB
- *       trigger stays dumb and can never drift — see event-vocabulary.ts)
- *     → resolve recipients: entity subscribers ∪ rule matches, minus muted,
- *       minus the actor (you are not told about your own scan)
- *     → permission prefilter per recipient
- *     → COLLAPSE into an open row on the same collapse_key inside the window,
- *       else INSERT (ON CONFLICT dedup_key DO NOTHING = idempotent retry)
- *     → mark the outbox row processed (or failed with the message)
- *
- * Cross-org claim/mark run on the owner pool (BYPASSRLS — same posture as the
- * other cron drains); all per-recipient reads and writes are org-scoped.
- *
- * FAN-OUT-ON-WRITE, deliberately: a tenant has ~5–50 staff, so materializing
- * one row per recipient is far cheaper at read time than assembling a feed from
- * subscriptions on every Inbox open, and it is what makes per-row triage state
- * (read/done/snoozed) possible at all.
- */
+/** notification-outbox worker — drains notification_outbox into staff_inbox_items. */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { QueryResult, QueryResultRow } from 'pg';
@@ -56,15 +32,7 @@ export interface FanoutDeps {
   ) => Promise<QueryResult<T>>;
   /** Permissions for a staffer, used as the write-time prefilter. */
   loadPermissions: (orgId: OrgId, staffIds: number[]) => Promise<Map<number, string[]>>;
-  /**
-   * Live mirror of a durable row onto the recipient's inbox channel.
-   *
-   * The durable write is the source of truth; this is what makes it ARRIVE.
-   * Without it the pipeline wrote `staff_inbox_items` rows a signed-in
-   * operator saw only on the next window focus — for a watched package
-   * landing at the door, that is the difference between a notification and a
-   * log entry.
-   */
+  /** Live mirror of a durable row onto the recipient's inbox channel. */
   publishInboxItem: (args: {
     orgId: OrgId;
     staffId: number;
@@ -77,15 +45,7 @@ export interface FanoutDeps {
   now: () => Date;
 }
 
-/**
- * Real collaborators, resolved by DYNAMIC import.
- *
- * `@/lib/db` carries `import 'server-only'`, so a top-level import here would
- * make this module unloadable in a plain node:test process — the whole point of
- * the Deps pattern is that the worker's logic tests without a database. Dynamic
- * import keeps the pool out of the module graph until a real drain runs, which
- * is also the altitude rule (load heavy engines inside the action).
- */
+/** Real collaborators, resolved by DYNAMIC import. */
 const defaultFanoutDeps: FanoutDeps = {
   ownerQuery: async (text, params) => {
     const { default: pool } = await import('@/lib/db');
@@ -296,10 +256,7 @@ async function processOutboxRow(row: OutboxRow, deps: FanoutDeps): Promise<RowOu
     );
     delivered += inserted.rowCount ?? 0;
 
-    // Only a genuinely NEW row is announced: ON CONFLICT returns nothing on a
-    // retry, so a redelivered batch cannot buzz the same operator twice.
-    // Best-effort — the durable row is already written, so a dropped push
-    // costs latency, never the notification.
+    // Only a genuinely NEW row is announced:
     const itemId = Number(inserted.rows[0]?.id);
     if (Number.isFinite(itemId) && itemId > 0) {
       try {
@@ -332,43 +289,13 @@ interface Recipient {
   reason: string;
 }
 
-/**
- * Entity subscribers ∪ rule matches for one event.
- *
- * Both arms are indexed: the entity arm hits
- * `idx_staff_subscriptions_entity_lookup`; the rule arm hits the GIN index on
- * `match_event_keys` plus the partial `match_sku` / `match_tracking_normalized`
- * indexes. `state <> 'muted'` is in both, so an explicit mute suppresses an
- * auto-subscription as well as a rule. DISTINCT ON keeps one row per staffer
- * when both arms match.
- *
- * **The rule arm narrows on every declared axis (fixed 2026-09-22).** It used
- * to filter on `$4 = ANY(match_event_keys)` and nothing else — so a staffer
- * who subscribed to "unbox events for SKU LEN-T480-i5" was notified on EVERY
- * unbox event in the org. `match_sku` was written, indexed, and documented as
- * a predicate, and never read; the docblock here even claimed the arm hit its
- * index. A pre-arrival tracking watch added on the same axis would have
- * inherited the defect exactly — every watcher firing on every carton — which
- * is how the bug surfaced.
- *
- * NULL on an axis means "don't care" (2026-07-28c line 87), so each axis is
- * `(match_X IS NULL OR match_X = $n)`. An event that carries no fact for an
- * axis therefore matches only the rules that did not ask about it: a tracking
- * rule never fires on an event with no tracking number.
- */
+/** Entity subscribers ∪ rule matches for one event. */
 interface MatchFacts {
   sku: string | null;
   trackingNormalized: string | null;
 }
 
-/**
- * The narrowing facts an event carries, read from its outbox payload.
- *
- * Tracking is CANONICALISED here rather than at the scan: `recordReceivingScan`
- * stores the keystrokes it was handed (`payload.trackingNumber`), and a watch
- * is stored canonical, so comparing the two raw would miss on a pasted space
- * or a carrier prefix.
- */
+/** The narrowing facts an event carries, read from its outbox payload. */
 function readMatchFacts(payload: unknown): MatchFacts {
   const p = (payload ?? {}) as Record<string, unknown>;
   const sku = typeof p.sku === 'string' && p.sku.trim() ? p.sku.trim() : null;
@@ -384,21 +311,7 @@ function readMatchFacts(payload: unknown): MatchFacts {
   };
 }
 
-/**
- * A fulfilled pre-arrival tracking watch retires itself.
- *
- * `watchTrackingPreArrival` writes a `rule` row that says "tell me when THIS
- * number lands". The number lands exactly once. Left live, that row would fire
- * again the next time the same tracking string appears — carriers reuse
- * numbers, and a return trip on the same label is the common case — so the
- * operator would be notified about a package they collected weeks ago.
- *
- * MUTED, not deleted: the row is the receipt of a watch that was honoured, and
- * `watchTrackingPreArrival`'s ON CONFLICT resets `state` to `subscribed`, so
- * pasting the number again re-arms the same row rather than fighting the
- * unique index. Entity subscriptions are untouched — following a carton you
- * can now see is a standing relationship, not a fulfilled prediction.
- */
+/** A fulfilled pre-arrival tracking watch retires itself. */
 async function retireFulfilledTrackingWatches(
   orgId: OrgId,
   eventKey: string,
@@ -469,17 +382,7 @@ async function resolveRecipients(
   }));
 }
 
-/**
- * Effective permissions per recipient.
- *
- * Composes the auth SoT — `loadRolesForStaff` (role-store, cached) +
- * `computeEffectivePermissions` (permissions-shared) — rather than
- * re-deriving role→permission in SQL here. A second resolver would silently
- * disagree with `withAuth` about the admin bypass and the per-staff
- * added/removed overrides, and a notification filter that disagrees with the
- * route gate is a leak. One batched query for the overrides; the role read is
- * cache-backed, so the per-staffer call is cheap for a 5–50 staff tenant.
- */
+/** Effective permissions per recipient. */
 async function loadStaffPermissions(
   orgId: OrgId,
   staffIds: number[],

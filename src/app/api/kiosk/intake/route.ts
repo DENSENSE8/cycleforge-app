@@ -1,33 +1,4 @@
-/**
- * POST /api/kiosk/intake
- *
- * The ONE device-authed counter write path. Gated by `withKioskAuth` — the
- * caller is the enrolled tablet (device principal), NEVER a staff session. The
- * write runs under the device's own org, so it is tenant-stamped and RLS-scoped.
- *
- * PIN STEP-UP (privileged actions): base intake is anonymous (the device
- * authorizes it). A privileged action (refund / repair approval / price
- * override / taking payment) includes a `staffId` + `pin`; we resolve the real
- * `staffId` via the existing PIN primitive and attribute the audit row to that
- * person, keeping the `deviceId` as the `via`. Nothing is ever attributed to a
- * shared human account — the whole point of the device-principal model.
- *
- * The audit contract above is what this route OWNS and is deliberately unchanged
- * from the audit-only stub it replaced: it was the proven half of this system.
- * What changed is the body — persistence now runs through
- * `submitCounterTransaction`, the principal-agnostic orchestrator a staff caller
- * invokes identically.
- *
- * NEVER charges. The orchestrator stages a provider order and stops; payment
- * completes on a physical terminal or behind a step-up. No card data is accepted
- * here under any framing.
- *
- * THE kiosk write path, as of 2026-09-16. The device-authed single-repair
- * endpoint the pane used to post is deleted; `KioskRepairPane`'s "Submit
- * repair" and `KioskCartLedger`'s Save/Pay both reach this route through
- * `submitKioskVisit`, so one visit is one transaction however many devices
- * and items it carries.
- */
+/** POST /api/kiosk/intake */
 
 import { NextRequest, NextResponse, after } from 'next/server';
 import { z } from 'zod';
@@ -161,17 +132,7 @@ const BodySchema = z.object({
     })
     .optional(),
   retailLines: z.array(RetailLineSchema).max(200).optional(),
-  /**
-   * One entry per device dropped off. Was `serviceLine` (singular) until
-   * 2026-08-21 — the orchestrator kept only the first and the rest vanished.
-   *
-   * The schema is `.strict()` (below) SPECIFICALLY because of this rename. A
-   * plain `z.object` STRIPS unknown keys: a tablet still running the old build
-   * would post `serviceLine`, have it silently removed, and stage a retail sale
-   * with the customer's device recorded nowhere — while showing them a success
-   * screen. Verified against this repo's zod: `{serviceLine: {...}}` parses to
-   * `{success: true, data: {}}`.
-   */
+  /** One entry per device dropped off. */
   serviceLines: z.array(ServiceSchema).max(20).optional(),
   /**
    * Existing repairs this visit links (no intake, no signature, no ticket).
@@ -219,10 +180,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
   // real staffId the write is attributed to. A bad PIN is a hard 403 — never a
   // silent fall-through to an anonymous write.
   const stepUpAttempted = staffId != null || (pin != null && pin !== '');
-  // What the step-up must PROVE, decided per action rather than per PIN. A
-  // payment hand-off requires someone who holds `walk_in.take_payment`; a
-  // non-payment step-up (a price note, an override) needs only a valid PIN, and
-  // that `null` is written out so the choice is visible rather than defaulted.
+  // What the step-up must PROVE, decided per action rather than per PIN.
   const stepUpPermission: PermissionString | null =
     parsed.data.takePayment === true ? 'walk_in.take_payment' : null;
   let steppedUpStaffId: number | null = null;
@@ -265,17 +223,11 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
       // which is the same as having none.
       return NextResponse.json({ error: 'IDEMPOTENCY_KEY_REQUIRED' }, { status: 400 });
     }
-    // The key lands in `counter_transactions.client_event_id`, a UUID column,
-    // so a readable key ("retry-3") used to reach Postgres and come back as a
-    // 500 cast error — a client mistake reported as a server fault. Name it
-    // here instead; every real client mints `safeRandomUUID()`.
+    // The key lands in `counter_transactions.client_event_id`, a UUID column, so a readable key ("retry-3") used to reach Postgres and come…
     if (!UUID_RE.test(idempotencyKey)) {
       return NextResponse.json({ error: 'IDEMPOTENCY_KEY_INVALID' }, { status: 400 });
     }
-    // Every price on the visit, proven: an approval must match its line, a
-    // catalog sale line without one must be at the catalog price, and a keypad
-    // amount must carry one. The adjustments that reach the domain are
-    // rebuilt from verified claims, never taken from the tablet.
+    // Every price on the visit, proven:
     const verifyToken = (token: string) => verifyPriceApproval(token, ctx.organizationId);
     let proven: Pick<CounterTransactionInput, 'retailLines' | 'services'>;
     try {
@@ -358,9 +310,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
         },
       });
 
-      // One row per line whose price the catalog did not set — attributed to
-      // the staffer whose PIN authorized it and filed on the VISIT, where
-      // History reads its trail. A replayed submit wrote them the first time.
+      // One row per line whose price the catalog did not set — attributed to the staffer whose PIN authorized it and filed on the VISIT, where…
       // (Removing a line needs no PIN and files nothing — operator 2026-09-24.)
       if (result && committed && !result.idempotentReplay && result.counterTransactionId != null) {
         const visitId = result.counterTransactionId;
@@ -396,10 +346,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
     console.warn('kiosk intake audit skipped:', auditErr);
   }
 
-  // Mint this visit's helpdesk tickets NOW rather than on the 5-minute cron,
-  // so the receipt / drop-off paperwork the staffer prints from the Done face
-  // seconds later carries the real ticket number instead of only the RS code.
-  // Scoped to this visit's own outbox rows; the cron still owns retries.
+  // Mint this visit's helpdesk tickets NOW rather than on the 5-minute cron, so the receipt / drop-off paperwork the staffer prints from the…
   const visitId = result?.counterTransactionId ?? null;
   const newDevices = result && !result.idempotentReplay ? result.repairs.length : 0;
   if (visitId != null && newDevices > 0) {

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Keyboard — personal shortcut settings (Phase 3, enablement/remap half).
- *
- * The discoverability half (the `?` cheat sheet, the `⌘;` leader reveal, the
- * wedge-safe `⌥`+letter panel shortcuts) is owned elsewhere; this section is the
- * one thing those lack — a Settings home for the ONE remappable global key (the
- * focus-scan hotkey) plus an honest pointer to the reference and the policy.
- *
- * Composes the `useScanHotkey` store SoT — never the scan-bar gear widget, which
- * is coupled to the bar's icon slot. Preset chips come from
- * `FOCUS_SCAN_HOTKEY_OPTIONS`; any other bindable key is set via “Press a key…”.
- */
+/** Keyboard — personal shortcut settings (Phase 3, enablement/remap half). */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useScanHotkey } from '@/lib/scan-hotkey/useScanHotkey';

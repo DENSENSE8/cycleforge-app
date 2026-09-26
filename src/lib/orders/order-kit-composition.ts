@@ -1,21 +1,4 @@
-/**
- * Multi-tenant kit / bundle composition for order OOS (Shopify-like).
- *
- * Three systems exist in this repo — do NOT confuse them:
- *
- * 1. Zoho `-P` SKU grammar (`parsePartSku`) — USAV dogfood convention on the
- *    Zoho `items` mirror. NOT multi-tenant. Never use it to decide what is
- *    short on an order.
- * 2. `sku_kit_parts` — packing "what's in the box" checklist (component names).
- * 3. `sku_relationships` — org-scoped parent→child catalog edges (the sellable
- *    bundle graph). Prefer this for OOS identity — same idea as Shopify
- *    `productComponents` (parent listing + linked component products + qty).
- *
- * Importers: MorphingRowActionMenu, GET /api/sku-catalog/[id]/composition,
- * batch composition load → CompoundItem kitFace, Products BundleComponentsStrip.
- * Schema: reads sku_relationships + sku_kit_parts; never Zoho `-P`.
- * User: multi-tenant parent→child kit display like Shopify bundles on order tables.
- */
+/** Multi-tenant kit / bundle composition for order OOS (Shopify-like). */
 
 export type KitCompositionSource = 'catalog_edge' | 'kit_part';
 

@@ -1,43 +1,6 @@
-/**
- * Query normalization + the curated synonym layer.
- *
- * TWO JOBS, DELIBERATELY SEPARATE
- *   1. `normalizeQuery` — the one folding rule. It is the grouping key for
- *      `search_query_log.normalized_query`, so the zero-result worklist
- *      aggregates the same way a human would read two queries as "the same
- *      search". Nothing here changes what matches; it only decides what counts
- *      as one query.
- *   2. `expandQuery` — the curated vernacular map. Operators do not type schema
- *      words. They type "RMA" for a return, "box" for a carton, "DOA" for a
- *      failed unit. Every one of those is a zero-result today.
- *
- * WHY EXPANSION IS OPT-IN, NOT ALWAYS-ON
- *   The standard advice ("expand queries with synonyms") is written for a
- *   storefront, where recall is worth more than precision — a shopper shown one
- *   extra sofa loses nothing. An operator console is the opposite: a picker who
- *   searches a serial and is shown four near-matches has been handed a decision
- *   they did not ask for, and the interaction budget in AGENTS.md counts that
- *   against us. So expansion NEVER widens a query that already worked. The
- *   route runs the literal query first and only reaches for these terms when
- *   the first pass came back empty. That ordering is the whole safety argument.
- *
- * ADDING A SYNONYM
- *   Read it off the zero-result worklist, not out of your head:
- *     SELECT normalized_query, count(*) FROM search_query_log
- *      WHERE result_count = 0 GROUP BY 1 ORDER BY 2 DESC;
- *   A term earns a row here once real operators have typed it and got nothing.
- *   That is the loop this file exists to close.
- */
+/** Query normalization + the curated synonym layer. */
 
-/**
- * The one folding rule: case-fold, strip control/zero-width characters, and
- * collapse every run of whitespace to a single space.
- *
- * Scanner wedges are the reason for the control-character strip — a gun that
- * emits a trailing CR or a leading STX would otherwise make an identical query
- * group as two distinct worklist rows, which is exactly the bug that hides a
- * recurring miss inside noise.
- */
+/** The one folding rule: */
 export function normalizeQuery(raw: string): string {
   return raw
     .toLowerCase()
@@ -74,13 +37,7 @@ export function tokenizeQuery(normalized: string): string[] {
     .filter(Boolean);
 }
 
-/**
- * Curated vernacular → the words the index actually holds.
- *
- * Keys are normalized tokens. Values are the terms to ALSO try. Bidirectional
- * pairs are written out both ways on purpose — an implicit reverse mapping is
- * the kind of cleverness that makes a relevance bug take an afternoon to find.
- */
+/** Curated vernacular → the words the index actually holds. */
 export const SEARCH_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
   // Returns / reverse logistics
   rma: ['return'],
@@ -131,15 +88,7 @@ export const SEARCH_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
   slot: ['location', 'bin'],
 };
 
-/**
- * Own-property lookup into {@link SEARCH_SYNONYMS}.
- *
- * The key is operator-typed text, so a bare `SEARCH_SYNONYMS[token]` is a
- * prototype-chain read: `constructor` returns a function and `toString`
- * returns a method, both of which then flow into a `for…of` as if they were
- * the synonym list. Guarding the lookup is what keeps a typed word from
- * reaching Object.prototype at all.
- */
+/** Own-property lookup into {@link SEARCH_SYNONYMS}. */
 function synonymsFor(token: string): readonly string[] | undefined {
   return Object.prototype.hasOwnProperty.call(SEARCH_SYNONYMS, token)
     ? SEARCH_SYNONYMS[token]
@@ -159,15 +108,7 @@ export interface ExpandedQuery {
   expansions: string[];
 }
 
-/**
- * Build the synonym ladder for a query.
- *
- * One token is substituted at a time rather than all at once. Substituting
- * every synonym simultaneously produces a query no operator would ever type
- * ("carton defective location" from "box broken shelf") which matches nothing
- * and burns a round trip proving it. Single substitutions keep each retry a
- * plausible sentence.
- */
+/** Build the synonym ladder for a query. */
 export function expandQuery(raw: string): ExpandedQuery {
   const normalized = normalizeQuery(raw);
   const tokens = tokenizeQuery(normalized);

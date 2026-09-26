@@ -1,20 +1,4 @@
-/**
- * Daily slot resolvers — agenda row + fieldId → the resolved fact a slot cell
- * paints. Pure functions; no React, no hooks.
- *
- * Vocabulary is never declared here: the done/open face and the assignment
- * lifecycle both resolve through `workStatusLabel` (the SoT the compound state
- * pill reads), and the type word through `DAILY_AGENDA_TYPE_LABEL` (the SoT
- * the band caption reads). A string literal here would be a second spelling of
- * a word another surface already owns.
- *
- * ## The union rule
- *
- * A fact the row's half does not carry resolves `{ kind: 'value', text: null }`
- * and the cell dashes. It NEVER borrows the other half's fact — a task with no
- * roster must not report a team fraction, and a checklist item with no
- * deadline must not report one.
- */
+/** Daily slot resolvers — agenda row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import { DAILY_AGENDA_TYPE_LABEL, type DailyAgendaRow } from '@/lib/daily/daily-agenda-row';
@@ -26,26 +10,13 @@ function dayText(ms: number | null): string | null {
   return ms == null ? null : formatDateKeyShort(new Date(ms).toISOString().slice(0, 10));
 }
 
-/**
- * How the SHIFT is doing on this item — `3/5`.
- *
- * An empty roster reads as `null`, not `0/0`: a day with nobody rostered has no
- * denominator to report, and a fraction over zero is a worse answer than none.
- * A task carries no roster at all, so both halves of the fraction are null and
- * the same `null` comes back — one rule, not a type branch.
- */
+/** How the SHIFT is doing on this item — `3/5`. */
 function teamText(row: DailyAgendaRow): string | null {
   if (row.teamTotal == null || row.teamTotal <= 0) return null;
   return `${row.teamDone ?? 0}/${row.teamTotal}`;
 }
 
-/**
- * The lifecycle word.
- *
- * A task reports its own `assignment_status_enum`; a checklist row has no
- * lifecycle, only the viewer's tick, so `done` maps onto the same two words
- * the pill has always painted.
- */
+/** The lifecycle word. */
 function statusText(row: DailyAgendaRow): string {
   if (row.status != null) return workStatusLabel(row.status) ?? row.status;
   return workStatusLabel(row.done ? 'DONE' : 'OPEN') ?? (row.done ? 'Done' : 'Open');

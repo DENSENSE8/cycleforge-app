@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Pure derivation of the receiving-lines feed: dedupe unfound-placeholder
- * scans, collapse lines into per-PO groups (globally, anchored by latest
- * activity), band the groups by PST day, apply the week-window filter, and
- * flatten back to an ordered line list for selection/nav. Extracted from
- * ReceivingLinesTable; behaviour is unchanged.
- */
+/** Pure derivation of the receiving-lines feed: */
 
 import { useMemo } from 'react';
 import { groupRowsBy } from '@/lib/group-rows';
@@ -44,11 +38,7 @@ export function useReceivingGrouping({
   weekRange,
   skipWeekFilter,
 }: UseReceivingGroupingArgs): ReceivingGrouping {
-  // Collapse duplicate "Unfound receiving" cartons. An unmatched package that
-  // never resolves to a PO has no line, so each scan surfaces as its own
-  // synthetic placeholder row (id < 0). Keep only the most-recent scan per
-  // tracking number. ONLY placeholders are touched — a real PO carton
-  // legitimately has many lines sharing a tracking #.
+  // Collapse duplicate "Unfound receiving" cartons.
   const dedupedRows = useMemo(() => {
     const seenByTracking = new Map<string, number>(); // tracking → index in out
     const out: ReceivingLineRow[] = [];
@@ -72,10 +62,7 @@ export function useReceivingGrouping({
     return out;
   }, [localRows, historyAxis]);
 
-  // Collapse the flat lines into one row per purchase order, GLOBALLY — a PO's
-  // lines merge into a single group even when scanned across several days (the
-  // band is decided by `anchorTs`, its latest activity). Lines with no PO get a
-  // unique key so they stay singletons.
+  // Collapse the flat lines into one row per purchase order, GLOBALLY — a PO's lines merge into a single group even when scanned across…
   const poGroups = useMemo<ReceivingPoGroup[]>(() => {
     const grouped = groupRowsBy(dedupedRows, (row) => {
       const po = (

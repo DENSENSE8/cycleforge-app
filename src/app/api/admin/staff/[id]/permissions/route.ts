@@ -1,12 +1,4 @@
-/**
- * PATCH /api/admin/staff/[id]/permissions
- *
- * Body: { add?: string[], remove?: string[] }   — REPLACE semantics for the
- *                                                 two override arrays.
- *
- * If `add` (or `remove`) is omitted, that column is left as-is. Pass `[]`
- * to clear. Admin rows reject changes — admin keeps full access by role.
- */
+/** PATCH /api/admin/staff/[id]/permissions */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -76,10 +68,7 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   const add = addPart?.valid ?? null;
   const remove = removePart?.valid ?? null;
 
-  // Refuse to mutate admin's overrides — admin role grants everything; the
-  // override columns are meaningless and the UI shouldn't be sending them.
-  // Org-ownership gate: a staff row in another org reads as NOT_FOUND so the
-  // override is never inspected or mutated cross-tenant.
+  // Refuse to mutate admin's overrides — admin role grants everything; the override columns are meaningless and the UI shouldn't be sending…
   const roleR = await tenantQuery(
     ctx.organizationId,
     `SELECT role FROM staff WHERE id = $1 AND organization_id = $2`,

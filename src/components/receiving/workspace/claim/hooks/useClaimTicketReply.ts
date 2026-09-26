@@ -27,12 +27,7 @@ interface Params {
   ticketId: number | null;
 }
 
-/**
- * Owns the "reply on ticket" composer shown once a claim ticket exists. Posts to
- * the receiving-scoped thread route, which adds the comment via the Zendesk API.
- * Defaults to an INTERNAL note; flipping to public emails the requester
- * (customer). Reset whenever the modal opens or the ticket changes.
- */
+/** Owns the "reply on ticket" composer shown once a claim ticket exists. */
 export function useClaimTicketReply({ open, ticketId }: Params): UseClaimTicketReply {
   const [body, setBody] = useState('');
   const [isPublic, setIsPublic] = useState(false); // internal-first by default

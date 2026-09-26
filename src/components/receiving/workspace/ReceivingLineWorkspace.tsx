@@ -26,29 +26,12 @@ interface Props {
   /** Which workspace mode — `triage` hides unbox-only sections (photos, claim,
    *  label, print·receive, serial scan). Defaults to the full `unbox` editor. */
   variant?: ReceivingWorkspaceVariant;
-  /**
-   * Whether this open stamps the operator's recents (`receiving_line_views` →
-   * the Recent tab). **Required, deliberately undefaulted** — it decides whether
-   * a write claims that this staffer touched this carton, and a default would
-   * silently answer for every call site nobody revisited
-   * (`backend-patterns.md` → a safety classification is a required parameter).
-   */
+  /** Whether this open stamps the operator's recents (`receiving_line_views` → the Recent tab). */
   recordView: boolean;
   onClose: () => void;
 }
 
-/**
- * Right-pane focused work-item view for a single receiving line.
- *
- * Unbox leads with {@link StationContextBar} (identity bookmark synced
- * to the workbench body column; {@link StationMoreDetails} absolute in
- * the corner) inside `LineEditPanel`. Workspace steppers are gone — carton
- * pipeline progress lives in ReceivingDetailsStack only.
- *
- * Closing dispatches `receiving-workspace-close`; the sidebar reacts by
- * clearing its `selectedLine`/`scanMatchedRows`/`poContext` so both panes
- * converge on an empty state.
- */
+/** Right-pane focused work-item view for a single receiving line. */
 export function ReceivingLineWorkspace({
   row,
   staffId,
@@ -66,15 +49,7 @@ export function ReceivingLineWorkspace({
     if (variant !== 'unbox') return;
     unboxPrimaryPaint?.onPrimaryPainted();
   }, [variant, unboxPrimaryPaint]);
-  // Record this open into the operator's recents (server-backed, per-staff) so
-  // the Recent tab can list recently-opened lines. Fire-and-forget — a failure
-  // never blocks the workspace. Upsert keys on (staff, line), so re-opening just
-  // bumps viewed_at.
-  //
-  // `recordView` false = the operator clicked a row on the browse FEED. That is
-  // navigation, not work: if every click on a 117-row queue stamped a view,
-  // Recent would converge on a copy of the feed and stop answering the only
-  // question it exists for — which cartons did I actually open.
+  // Record this open into the operator's recents (server-backed, per-staff) so the Recent tab can list recently-opened lines.
   useEffect(() => {
     if (!(row.id > 0) || !recordView) return;
     void fetch('/api/receiving-lines/view', {
@@ -85,13 +60,7 @@ export function ReceivingLineWorkspace({
   }, [row.id, row.receiving_id, recordView]);
 
   return (
-    // Plain wrapper — NO per-line key/crossfade. Switching between sibling lines
-    // of the same carton must be an in-place update, not a remount: the outer
-    // ReceivingRightPane crossfade is keyed on the CARTON (receiving_id), and the
-    // controller re-seeds its per-line state on `row.id` change via effects. A
-    // `key={row.id}` + enter animation here re-mounted the whole workspace on
-    // every line click (the "re-rendering the whole page" jank). Carton→carton
-    // transitions still crossfade via the outer AnimatePresence.
+    // Plain wrapper — NO per-line key/crossfade.
     <div
       className="flex h-full w-full flex-col bg-surface-canvas"
       data-testid="receiving-workspace"
@@ -117,12 +86,7 @@ export function ReceivingLineWorkspace({
             staffId={staffId}
             itemTotal={nav?.total}
             accordionBootstrap={accordionBootstrap}
-            // Carton cursor only. `onClose` is deliberately NOT threaded here:
-            // Unbox's carton dismiss is the identity bar's leading `◁`, which
-            // dispatches `receiving-workspace-close` — the same close this
-            // prop's handler runs. Passing it as well is what put a second,
-            // panel-shaped carton-close in the pane's top-right corner
-            // (2026-08-02). Triage still takes `onClose` below.
+            // Carton cursor only.
           />
         )}
       </div>

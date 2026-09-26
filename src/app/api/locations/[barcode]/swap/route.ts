@@ -18,21 +18,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 const ROUTE_LOCATION_SWAP = 'locations.barcode.swap';
 
-/**
- * POST /api/locations/[barcode]/swap
- * Body: { oldSku, newSku, qty? }
- *
- * Replace one SKU with another in the same bin — the user moved physical
- * stock from one labeled product to a freshly-relabeled product, or scanned
- * the wrong SKU and is correcting it.
- *
- * If `qty` is omitted, transfers the entire qty currently sitting on the old
- * SKU's bin row. Each side of the transfer goes through the same writers
- * used by put/take so the sku_stock_ledger keeps an honest trail.
- *
- * No min/max copy-over today — the receiver can set those fresh on the new
- * SKU. We can add a `copyLimits: true` flag later if needed.
- */
+/** POST /api/locations/[barcode]/swap Body: */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ barcode: string }> },
@@ -138,12 +124,7 @@ export async function POST(
       reason: 'SWAP_IN',
     }, idempotencyOrgId);
 
-    // 3. inventory_events row for the lifecycle timeline — non-quantity
-    //    event that joins the two ledger rows together by intent.
-    //    recordInventoryEvent relies on the `app.current_org` GUC default to
-    //    stamp the tenant. Run it inside withTenantTransaction (with the
-    //    idempotencyOrgId fallback, so an anonymous-context swap still attributes
-    //    to USAV instead of inserting a NULL organization_id and being dropped).
+    // 3. inventory_events row for the lifecycle timeline — non-quantity event that joins the two ledger rows together by intent.
     try {
       await withTenantTransaction(idempotencyOrgId, (client) =>
         recordInventoryEvent({

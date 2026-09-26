@@ -1,10 +1,4 @@
-/**
- * Shared Testing workbench list/KPI query contract.
- *
- * Body (`TestingHistoryList`) and KPI strip (`TestingKpiStrip`) MUST issue the
- * same React Query key + request params for a given (tab, staff, search) so the
- * 500-row feed dedupes and counts never disagree with rows.
- */
+/** Shared Testing workbench list/KPI query contract. */
 
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
 

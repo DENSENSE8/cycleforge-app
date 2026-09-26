@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Price — the open order's money in the Selected-order column: item lines
- * (qty × unit), shipping the buyer paid, tax, order total and amount paid (the
- * persisted ShipStation v1 order), each label's cost split by purpose, and the
- * net: paid − tax − label costs. Marketplace fees are not in this data and the
- * net says so. Reads `GET /api/orders/[id]/price-breakdown` (persisted rows —
- * no ShipStation call per render).
- */
+/** Price — the open order's money in the Selected-order column: */
 
 import { useState } from 'react';
 import { ChevronRight } from '@/components/Icons';

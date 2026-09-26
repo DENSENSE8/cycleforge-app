@@ -1,14 +1,4 @@
-/**
- * AdminTable contract — the parts that are easy to regress silently.
- *
- * Deliberately a pure-logic test (no DOM render): alignment is derived from the
- * same SoT the ledger grids use. The admin wave this component is built for
- * hand-types `text-right` inside `cell()`, so two count columns in one table
- * can align differently. Deriving from `type` is what stops that; a future edit
- * that re-adds a local ternary breaks these.
- *
- * Run: `npx tsx --test src/design-system/components/AdminTable/AdminTable.test.ts`
- */
+/** AdminTable contract — the parts that are easy to regress silently. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

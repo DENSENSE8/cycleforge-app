@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Pairing controls for the paperwork card ({@link PaperworkDocuments}): where
- * new paired paperwork pins (this order · item # · SKU), its type, pairing from
- * the library, the per-row re-pair form, and the grouped list's source heading.
- * Resolution + precedence live in lib/manuals/paperwork-pairing.
- */
+/** Pairing controls for the paperwork card ({@link PaperworkDocuments}): */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Ready-to-Pack placement — the open order's packing desk.
- *
- * ONE writer (`POST /api/orders/pack-placement/move`) behind the two surfaces
- * that move an order: the station-floor location pill and the Displays →
- * Locations leaf. Held by `ActiveOrderWorkspace` so both read the same face —
- * placing from the leaf must repaint the pill, not leave it on the old bench.
- *
- * Packing desks are `order_pack_placements` only. This never writes the Unbox
- * line putaway or the Arrival triage shelf; those are different storages with
- * different lifetimes.
- */
+/** Ready-to-Pack placement — the open order's packing desk. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';

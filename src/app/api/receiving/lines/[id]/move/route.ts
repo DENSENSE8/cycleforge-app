@@ -7,13 +7,7 @@ import {
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 
-/**
- * Move units between bins. Differs from /putaway in that the prior bin is
- * captured explicitly so the timeline shows the from→to transition.
- *
- *   POST /api/receiving/lines/:id/move
- *   { to_bin_barcode | to_bin_id, from_bin_barcode?, qty?, serial_unit_id?, … }
- */
+/** Move units between bins. */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -75,10 +69,7 @@ export async function POST(
 
     type BinRow = { id: number; name: string; barcode: string | null };
 
-    // All reads/writes run inside one tenant transaction so the org GUC is set
-    // for the RLS backstop and every statement carries an explicit
-    // organization_id predicate. A NotFound is thrown as a tagged error and
-    // mapped back to a 404 below (preserving the original response shapes).
+    // All reads/writes run inside one tenant transaction so the org GUC is set for the RLS backstop and every statement carries an explicit…
     type NotFound = { __notFound: true; status: number; error: string };
     const isNotFound = (v: unknown): v is NotFound =>
       typeof v === 'object' && v != null && (v as { __notFound?: boolean }).__notFound === true;

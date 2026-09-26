@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * The mobile SCAN control — one host-owned CTA, pinned top-right on every
- * mobile page that shows {@link MobileTopBar}.
- *
- * Why it is host-owned: starting a scan is THE recurring act on a warehouse
- * phone, and until now it was three taps deep behind the hamburger drawer
- * (`MobileSidebarDrawer` → Scan). A handheld WMS gives that act a fixed, muscle-
- * memory position that never moves between screens. Pages must not mount a
- * second scan CTA — same "ONE control, ONE closer" discipline the right rail's
- * dismiss follows on desktop.
- *
- * Two behaviours, one control:
- *   • anywhere else → route to `/m/scan`;
- *   • already on `/m/scan` → clear the last result and re-arm the input for the
- *     NEXT item, which is what "new scan" means once you are standing at the
- *     scanner.
- *
- * The re-arm travels through {@link MobileScanProvider} rather than a window
- * event: the top bar and the page are parent and `children` in the same React
- * tree ({@link RedesignedMobileShell}), so context is the honest edge and a
- * late-mounting listener cannot miss a signal.
-
- */
+/** The mobile SCAN control — one host-owned CTA, pinned top-right on every mobile page that shows {@link MobileTopBar}. */
 
 import {
   createContext,
@@ -86,15 +64,8 @@ export function useRegisterNewScan(handler: NewScanHandler): void {
 }
 
 /**
- * The CTA itself. Renders last in {@link MobileTopBar}'s right cluster, so it
- * owns the top-right corner the thumb reaches for.
- *
- * It is the corner, not the colour: a square 44px cell, flush to the bar's
+ * The CTA itself.
  * top-right corner, no radius, no padding around it (operator 2026-09-24) —
- * the same cell face as the menu box top-left ({@link MOBILE_BAR_CELL_CLASS}).
- * Icon only: the glyph states which act the tap takes (`ScanBarcode` = go
- * scan, `Plus` = new scan on the scan surface) and the accessible name says
- * it, so the square never needs a label to widen it.
  */
 export function MobileScanCta({
   fill = false,
@@ -127,10 +98,8 @@ export function MobileScanCta({
     <IconButton
       size="touch"
       onClick={onClick}
+      // `ScanBarcode`, not `Barcode` (operator 2026-09-15).
       // `ScanBarcode`, not `Barcode` (operator 2026-09-15). A bare barcode is
-      // the SYMBOL — it says "this thing is a code". The framed version with
-      // the reticle corners is the VERB: point a reader at something. This
-      // button starts a scan, so it wears the verb.
       icon={onScanSurface ? <Plus className="h-5 w-5" /> : <ScanBarcode className="h-5 w-5" />}
       ariaLabel={onScanSurface ? 'Start a new scan' : 'Go to scan'}
       className={cn(

@@ -1,19 +1,4 @@
-/**
- * review-template — a curator approves or rejects a submitted catalog template
- * (Template Platform Phase 4). The moderation half of submit-template.
- *
- *   approve → review_status='approved', visibility='public'  (surfaced in the
- *             curated catalog, clonable by every tenant).
- *   reject  → review_status='rejected', visibility='private' (stays hidden).
- *
- * The transition is guarded: only a row currently review_status='submitted' moves
- * (the UPDATE's WHERE enforces it), so a double-review or a review of a
- * non-submitted row is a no-op → 409/404, never a silent re-flip. reviewed_at is
- * stamped on the transition.
- *
- * Deps-injected so it unit-tests DB-free: the guarded UPDATE is the only
- * collaborator (real impl by default).
- */
+/** review-template — a curator approves or rejects a submitted catalog template (Template Platform Phase 4). */
 
 import pool from '@/lib/db';
 

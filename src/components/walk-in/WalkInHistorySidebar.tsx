@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Sales sidebar — Walk-In station deep-links.
- *
- * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderPageSwitcher` →
- * `?mode=`). Per-mode **table tabs** live in the page chrome
- * (`WalkInDeskHeader` → `TableTabs`) — modes ≠ tabs.
- *
- * Below sits the one thing a history Monitor can't do — start work.
- * Sales is observe-only; every action here hands off to the station (Repair
- * intake → Receiving `/repair`).
- */
+/** Sales sidebar — Walk-In station deep-links. */
 
 import { useRouter } from 'next/navigation';
 import { Package, Receipt, ShoppingCart, Wrench } from '@/components/Icons';

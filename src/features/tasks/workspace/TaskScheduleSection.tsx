@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Task evidence — **Schedule & owner**: when it is due, when to be reminded,
- * how urgent, and who holds it.
- *
- * The reminder is an absolute instant (`work_assignments.remind_at`). The
- * presets are relative to the DUE instant because that is how an operator
- * thinks about it ("an hour before it's due"), but what is stored is the
- * instant — the phone apps schedule a local notification for exactly it from
- * `GET /api/v1/reminders`, and a task with a due date but no reminder still
- * rings at the due instant there.
- */
+/** Task evidence — **Schedule & owner**: */
 
 import { useEffect, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';

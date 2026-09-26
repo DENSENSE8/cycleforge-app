@@ -10,12 +10,7 @@ export interface PhotoReceivingContextData {
   serials: string[];
 }
 
-/**
- * Lazily fetch a photo's receiving provenance (serial(s) / tracking / claim) for
- * the fullscreen viewer's context panel. Disabled until a real photo id is
- * present, so the grid never fires it; cached generously since this data is
- * effectively immutable for a given photo.
- */
+/** Lazily fetch a photo's receiving provenance (serial(s) / tracking / claim) for the fullscreen viewer's context panel. */
 export function usePhotoReceivingContext(photoId: number | null | undefined) {
   return useQuery<PhotoReceivingContextData>({
     queryKey: ['photo-receiving-context', photoId],

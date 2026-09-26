@@ -1,12 +1,4 @@
-/**
- * Canonical seed source for empty-doc bootstrap (ALP-1.4).
- *
- * Every seeder (web client via GET /api/forge/master-plan/seed, sync daemon
- * reading the file directly) MUST bootstrap from the SAME string so the
- * fixed-clientID seed updates stay byte-identical and the seeding race is
- * idempotent (see doc.ts / README.md). SoT is the repo-root master-plan.mdx;
- * the inline fallback only covers deploys where the file wasn't traced.
- */
+/** Canonical seed source for empty-doc bootstrap (ALP-1.4). */
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';

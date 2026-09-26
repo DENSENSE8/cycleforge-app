@@ -1,14 +1,6 @@
-/**
- * DB-free unit tests for the applyAgentMutation chokepoint (universal-feed
- * plan §2.6). A fake tenant client scripts row reads and captures writes; a
- * fake sideEffects captures the post-commit audit/ops/Ably payload.
- * Run: npm run test:assistant
- */
+/** DB-free unit tests for the applyAgentMutation chokepoint (universal-feed plan §2.6). */
 
-// The @/lib/workflow barrel (imported below for hasNode's node-type registry)
-// transitively loads @/lib/drizzle/db, which needs a well-formed DATABASE_URL
-// at load. `npm run test:assistant` supplies one via tsx's .env injection; no
-// query ever runs (every DB call goes through the injected fake client).
+// The @/lib/workflow barrel (imported below for hasNode's node-type registry) transitively loads @/lib/drizzle/db, which needs a…
 import '@/lib/assistant/test-db-url'; // MUST be first: sets DATABASE_URL before the barrel loads
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -259,11 +251,7 @@ test('feed_membership.set_state captures the PRIOR state as the inverse', async 
   assert.equal(extra.inverse.payload.state, 'active'); // restores prior
 });
 
-// ─── receiving_photo.reassign ────────────────────────────────────────────────
-// The move an operator asks for in chat ("move the photos from order A to
-// order B on this carton"). It is `auto` because it is reversible and
-// non-destructive — so the INVERSE is what makes that trust class defensible,
-// and it is pinned hardest here.
+// ─── receiving_photo.reassign ──────────────────────────────────────────────── The move an operator asks for in chat ("move the photos…
 
 /**
  * Scripts the reads reassignReceivingPhoto makes.

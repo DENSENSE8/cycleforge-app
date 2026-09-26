@@ -15,18 +15,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
-/**
- * Mobile scan surface. The input bar IS the canonical desktop
- * {@link ThemedStationScanBar} — we do NOT hand-roll a separate mobile input.
- * Default mode tucks a compact camera toggle into the bar's `rightContent`.
- * `prominentCamera` (Arrival dock) paints that right-slot glyph blue and sizes
- * it to match the leading barcode — same optical middle of the `h-10` rail.
- *
- * Self-manages its own camera + manual-input state and emits decoded values via
- * `onDecode`. Each mounted instance owns its own camera stream, so only mount /
- * un-suspend one at a time (the parent passes `cameraSuspended` to park the page
- * scanner while a sheet's scanner is live — two getUserMedia streams contend).
- */
+/** Mobile scan surface. */
 interface ScanInputProps {
   onDecode: (value: string) => void;
   placeholder?: string;
@@ -42,12 +31,7 @@ interface ScanInputProps {
   cameraButtonLabel?: string;
   /** Force-stop the camera even if the user toggled it on (e.g. a sheet is open). */
   cameraSuspended?: boolean;
-  /**
-   * A lookup is in flight for the last scan. Paints the bar's own spinner
-   * (`ThemedStationScanBar.isResolving`) so a fast operator can tell a scan that
-   * is still resolving from one the gun never read — the difference between
-   * waiting and re-scanning.
-   */
+  /** A lookup is in flight for the last scan. */
   isResolving?: boolean;
 }
 

@@ -1,13 +1,4 @@
-/**
- * Cycle-counts catalog guards + resolver behaviour — wave D's most mechanical
- * desk, and the one where the whole port is catalog + resolver + adapter.
- *
- * The guards that matter here are the two the retired `AdminTable` could not
- * express: that the layout parses against the catalog (a binding to a fact the
- * family cannot read would dash silently on the floor), and that the mounted
- * skeleton is still the SHARED one (a hand-listed track order forked and went
- * stale twice already, so the order comes from `COMPOUND_COLUMN_KEYS`).
- */
+/** Cycle-counts catalog guards + resolver behaviour — wave D's most mechanical desk, and the one where the whole port is catalog + resolver… */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

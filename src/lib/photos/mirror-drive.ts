@@ -1,12 +1,4 @@
-/**
- * Google Drive photo backup — copy a GCS-primary photo into the tenant's own
- * Google Drive (a second photo_storage row, provider='google_drive').
- *
- * Structurally identical to mirror-nas.ts: select candidates → enqueue
- * export_drive jobs → claim → upload → record a non-primary photo_storage row.
- * Selection only picks orgs that have an ACTIVE google_drive vault connection,
- * so the cron is a no-op for tenants who never connected Drive.
- */
+/** Google Drive photo backup — copy a GCS-primary photo into the tenant's own Google Drive (a second photo_storage row,… */
 
 import pool from '@/lib/db';
 import { readPhotoBytesById } from './read-bytes';

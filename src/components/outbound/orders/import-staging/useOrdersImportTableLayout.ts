@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * The order-import-staging slot-layout hook — the CONFIG on the shared
- * {@link useSlotTableLayout} engine. The TWENTIETH family on the engine and the
- * last of wave 1.4.
- *
- * Staging keeps its own `tableId` on purpose (kill-list 07): hiding a staging
- * column must not densify live To-ship. That is a separate layout document,
- * which is precisely what a separate tableId buys.
- *
- * Sheet morph only — `paintMorph` coerces a stored `compound` document, and the
- * org write gate (`slotMorphsFor('orders-import')`) refuses one.
- */
+/** The order-import-staging slot-layout hook — the CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   ORDERS_IMPORT_FIELD_CATALOG,

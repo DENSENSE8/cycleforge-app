@@ -12,13 +12,7 @@ export type FetchEcwidPackingSlip = (
   types: ['packing_slip'],
 ) => Promise<{ fetched: unknown[]; failed: unknown[] }>;
 
-/**
- * Acquire provider-authored packing slips immediately after an Ecwid ingest.
- *
- * This coordinator is intentionally dependency-injected and provider-specific:
- * it cannot generate a substitute slip and it cannot buy or infer a shipping
- * label. One failed Ecwid invoice must not roll back orders already committed.
- */
+/** Acquire provider-authored packing slips immediately after an Ecwid ingest. */
 export async function fetchEcwidPackingSlipsAfterIngest(
   orgId: OrgId,
   insertedOrderIds: number[],

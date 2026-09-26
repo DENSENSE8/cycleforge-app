@@ -1,16 +1,4 @@
-/**
- * My Day spreadsheet column model — the Today-native sibling of
- * {@link RECEIVING_GRID_COLUMNS}.
- *
- * Composes the SAME shared geometry as every other station/workbench grid
- * (`ledgerGridCell` · `LEDGER_GRID_FROZEN_CELL`), so
- * a Today row lines up track-for-track with Pending, Unbox and Incoming rather
- * than being a second table language on the operator's first screen.
- *
- * Frozen pane = `select` (empty gutter — Today is browse-and-open, not bulk) +
- * `task` (the flexing identity cell). Task is identity, so it is never in-cell
- * editable; correction happens at the record plane the row opens.
- */
+/** My Day spreadsheet column model — the Today-native sibling of {@link RECEIVING_GRID_COLUMNS}. */
 
 import {
   gridFrozenLeft,
@@ -25,12 +13,7 @@ import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
-/**
- * Today's per-staff column-prefs bucket + Fields-menu vocabulary key. Named once
- * so the grid's `useGridColumnVisibility` and the column-display rail
- * cannot drift onto two different buckets — that split is invisible until a
- * staffer's toggle stops sticking.
- */
+/** Today's per-staff column-prefs bucket + Fields-menu vocabulary key. */
 export const MY_DAY_TABLE_ID: TableId = 'my-day';
 
 export type MyDayGridColumnKey =

@@ -1,26 +1,4 @@
-/**
- * resolve-shipment-for-scan.ts
- * ─────────────────────────────────────────────────────────────────
- * Single helper that maps a raw carrier scan/paste to the shipment
- * (`shipping_tracking_numbers`, "STN") it represents and the receiving carton
- * linked to it.
- *
- * Matching policy (see docs/new-additions/tracking-canonicalization-stn-plan.md §3.2):
- *
- *   1. EXACT normalized join — `stn.tracking_number_normalized = canonical`.
- *      STN's `UNIQUE (tracking_number_normalized)` makes this resolve at most
- *      one physical package, so it is the PREFERRED key.
- *   2. LAST-8 fallback — only when the exact join misses. Last-8 is lossy: the
- *      live DB has 15 collision groups (same trailing 8 digits, different real
- *      shipments), so this path requires an UNambiguous single carton and
- *      LOGS whenever it fires, demoting last-8 from "the key" to "a fallback".
- *   3. DIGIT-PREFIX near-miss — truncated Zoho Reference# / STN (length delta
- *      1–2, shorter digits prefix the longer). Unambiguous single carton only;
- *      logs when it fires.
- *
- * Replaces the scattered `RIGHT(regexp_replace(...),8)` STN match that used to
- * live inline in `receiving/lookup-po`. Deps-injectable so it unit-tests DB-free.
- */
+/** resolve-shipment-for-scan.ts ───────────────────────────────────────────────────────────────── Single helper that maps a raw carrier… */
 import { extractCanonicalTracking, last8FromStoredTracking } from '@/lib/tracking-format';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { trackingDigits } from './digit-prefix-near-miss';
@@ -77,13 +55,7 @@ const NONE: ShipmentScanResolution = {
   matchKind: 'none',
 };
 
-/**
- * `receiving` is org-owned, so the STN→receiving join is tenant-scoped. The
- * predicate tolerates legacy NULL-org rows (door scans stamp org today, but
- * pre-2026-06 rows may not) so hardening the join can't silently drop them.
- * Param `$2` (exact) / `$3` (last8) carries the org id; omitted entirely when
- * no orgId is threaded so the un-scoped callers keep their original behavior.
- */
+/** `receiving` is org-owned, so the STN→receiving join is tenant-scoped. */
 function orgPredicate(orgId: OrgId | undefined, param: string): string {
   return orgId ? `AND (r.organization_id = ${param} OR r.organization_id IS NULL)` : '';
 }

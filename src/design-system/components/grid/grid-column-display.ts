@@ -1,13 +1,4 @@
-/**
- * The highlight vocabulary shared by every staff-chosen wash.
- *
- * Per-COLUMN display prefs are gone — the rail that wrote them was deleted, so
- * every read returned a preference no operator could set. What survives is the
- * colour vocabulary itself, which per-ROW fills ({@link useGridRowFills}) still
- * write: a free `#rrggbb` (Sheets-style any color), with the legacy named
- * washes (`blue` / `amber` / `rose` / `emerald`) still normalizing on read so
- * older staff prefs keep their look.
- */
+/** The highlight vocabulary shared by every staff-chosen wash. */
 
 /** Persisted highlight — `#rrggbb`, or absent / `'none'` for no wash. */
 export type GridColumnHighlight = string;

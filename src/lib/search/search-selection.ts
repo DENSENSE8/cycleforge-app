@@ -1,10 +1,4 @@
-/**
- * `/search` durable selection — `?sel=order:123` / `receiving:50200` / …
- *
- * Header find / browse shell writes this param; the page swaps to full-bleed
- * entity detail. Sole/exact identifier hits write `sel` in-page instead of
- * navigating to `searchHitHref`.
- */
+/** `/search` durable selection — `?sel=order:123` / `receiving:50200` / … */
 
 import {
   isUiEntityType,

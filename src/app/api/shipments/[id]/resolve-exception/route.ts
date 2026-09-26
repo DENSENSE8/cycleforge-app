@@ -7,12 +7,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import { ResolveShipmentExceptionBody } from '@/lib/schemas/shipments';
 import { resolveShipmentException } from '@/lib/shipments/resolve-shipment-exception';
 
-/**
- * POST /api/shipments/[id]/resolve-exception — resolve the package's open
- * unmatched-scan exception: `link-order` (box → order) or `close` (with a
- * reason). Idempotent on `clientEventId`. Returns the fresh `ShipmentRecord`.
- * Gated like the other orders_exceptions write (`orders.create`).
- */
+/** POST /api/shipments/[id]/resolve-exception — resolve the package's open unmatched-scan exception: */
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },

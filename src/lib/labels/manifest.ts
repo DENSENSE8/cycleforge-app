@@ -3,16 +3,7 @@ import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { shortSku, isoWeekParts, formatUnitId } from '@/lib/inventory/unit-id-format';
 
-/**
- * label_manifests domain lib — the "one label, many serials" preboxed-kit layer
- * (serial↔label pairing plan §5.2). Combine = create OPEN → add items → SEAL →
- * print one master QR; Split = DISSOLVE (delete items). Membership only; a unit's
- * identity (unit_uid) is never re-minted.
- *
- * All org-scoped via tenantQuery / withTenantTransaction. "One live manifest per
- * unit" is enforced app-side here (skip + report conflicts) and backstopped by
- * the ux_label_manifest_items_one_live DB index.
- */
+/** label_manifests domain lib — the "one label, many serials" preboxed-kit layer (serial↔label pairing plan §5.2). */
 
 export type ManifestType = 'PREBOX' | 'KIT' | 'MASTER_CARTON';
 export type ManifestStatus = 'OPEN' | 'SEALED' | 'DISSOLVED';

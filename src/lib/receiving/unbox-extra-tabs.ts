@@ -1,12 +1,4 @@
-/**
- * Closed catalog of extra Unbox Band-1 tabs staff can pin via Plus.
- *
- * System tabs (Urgent · Recent · Queue · All · History) live in
- * {@link UNBOX_WORKSPACE_TABS}. Extras are foreign collections mounted on
- * `/unbox` without leaving the station — v1 is Inbound Pipeline only.
- *
- * Plan: `docs/todo/unbox-pinned-inbound-tab-PLAN.md`.
- */
+/** Closed catalog of extra Unbox Band-1 tabs staff can pin via Plus. */
 
 /** Catalog entry ids — subset of Unbox workspace tabs (`incoming`). */
 export type UnboxExtraTabId = 'incoming';
@@ -26,13 +18,7 @@ export const UNBOX_EXTRA_TAB_CATALOG: readonly UnboxExtraTabDef[] = [
   },
 ] as const;
 
-/**
- * Hard cap on pinned Band-1 extras. Band-1 max vocabulary is 5 system tabs
- * (Urgent · Recent · Queue · All · History) + this — so the strip never grows
- * past 7 and stays scannable on a 1080p bench (Gemini D2 · D14). The cap is
- * enforced at three layers: {@link sanitizeUnboxPinnedExtraTabs} slices to it,
- * the chrome rejects a pin at it, and the prefs Zod bounds the array length.
- */
+/** Hard cap on pinned Band-1 extras. */
 export const UNBOX_PINNED_EXTRA_TABS_MAX = 2;
 
 const EXTRA_ID_SET = new Set<string>(UNBOX_EXTRA_TAB_CATALOG.map((e) => e.id));
@@ -49,12 +35,7 @@ export function unboxExtraTabsAvailable(
   return UNBOX_EXTRA_TAB_CATALOG.filter((e) => !have.has(e.id));
 }
 
-/**
- * Sanitize a prefs list to known catalog ids (stable catalog order), capped at
- * {@link UNBOX_PINNED_EXTRA_TABS_MAX}. Dedups (Set), drops unknown ids, and
- * slices to the cap so a stale/hostile prefs value with too many entries can
- * never widen the strip past the Band-1 vocabulary budget.
- */
+/** Sanitize a prefs list to known catalog ids (stable catalog order), capped at {@link UNBOX_PINNED_EXTRA_TABS_MAX}. */
 export function sanitizeUnboxPinnedExtraTabs(
   raw: readonly string[] | null | undefined,
 ): UnboxExtraTabId[] {

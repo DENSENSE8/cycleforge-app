@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Testing scan bridge — sidebar scan band → middle workspace.
- *
- * Carries TWO computed values across the same tree boundary, with the same
- * one-publisher / one-hook / last-value-replay shape: the scan SESSION (below)
- * and the pending multi-match PICK (bottom of this file).
- *
- * The Testing scan column and the Testing workspace are sibling trees
- * (`TestingSidebarPanel` under `SidebarContextPanel`, `TestingPanel` under the
- * right pane), so the session state cannot be lifted to a common parent without
- * hoisting it above the whole app shell. This is the same shape the shipping
- * station already uses for its active order (`tech-active-order-changed` →
- * `useTechOrderPanes`) — one publisher, one window event, one subscriber hook.
- *
- * **Why the session has to reach the middle at all:** a Station renders its
- * active entity in exactly ONE region, and that region is the middle
- * (`display/station.md`; Unbox is the control — `ReceivingSidebarPanel` carries
- * no identity). The STN↔unit confirm state is the Testing bench's pass/fail
- * card, and it was the last thing drawing the carton a second time in the scan
- * column.
- *
- * **It is a MIRROR, never a second source.** The reducer in
- * `testing-scan-session.ts` stays the only place a session is computed; this
- * module only carries the computed value across the tree boundary.
- */
+/** Testing scan bridge — sidebar scan band → middle workspace. */
 
 import { useEffect, useState } from 'react';
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
@@ -37,13 +13,7 @@ import {
 /** Module-local: the publisher and the hook below are the only legal doors. */
 const TESTING_SCAN_SESSION_EVENT = 'testing-scan-session-changed';
 
-/**
- * Last published session, kept module-level so a workspace that mounts AFTER
- * the scan (the normal order — the scan is what opens the line) still sees it.
- * A pure event with no replay would deliver the session to an empty room every
- * time, which is the failure mode `station-workbench.md` documents for the
- * `requestAnimationFrame` dispatch that could not outrun a navigation.
- */
+/** Last published session, kept module-level so a workspace that mounts AFTER the scan (the normal order — the scan is what opens the line)… */
 let lastSession: TestingScanSession = INITIAL_TESTING_SCAN_SESSION;
 
 export function publishTestingScanSession(session: TestingScanSession): void {
@@ -71,15 +41,7 @@ export function useTestingScanSession(): TestingScanSession {
   return session;
 }
 
-/**
- * Does this session describe the line the workspace currently has open?
- *
- * The workspace can be opened by a rail click or a URL, not only by a scan, so
- * a session left over from the previous carton would otherwise render a
- * confirm state for a unit that is not in the operator's hands — the exact
- * "two things that can disagree" failure the one-region rule exists to prevent.
- * Absent when it does not match, never stale.
- */
+/** Does this session describe the line the workspace currently has open? */
 export function sessionMatchesLine(
   session: TestingScanSession,
   row: { id?: number | null; receiving_id?: number | null } | null | undefined,
@@ -111,18 +73,7 @@ const TESTING_SCAN_PICK_RESOLVED_EVENT = 'testing-scan-pick-resolved';
 
 let lastPick: TestingScanPick | null = null;
 
-/**
- * Publish (or clear) the pending choice. The scan column raises it; the middle
- * displays it.
- *
- * **Why it crosses the boundary at all:** the choice is about which entity the
- * bench is about to work, and a Station renders its active entity in exactly
- * ONE region — the middle (`display/station.md` §11). A candidate list is also
- * literally the banned shape for the scan column ("don't put a browsable,
- * clickable list in the scan column"), which is where this one lived until
- * 2026-08-19: an amber block wedged above the recent rail, so an ambiguous scan
- * asked the operator to look away from the surface holding their work.
- */
+/** Publish (or clear) the pending choice. */
 export function publishTestingScanPick(pick: TestingScanPick | null): void {
   lastPick = pick;
   if (typeof window === 'undefined') return;
@@ -147,16 +98,7 @@ export function useTestingScanPick(): TestingScanPick | null {
   return pick;
 }
 
-/**
- * The middle → scan column direction: the operator chose `row`.
- *
- * The middle deliberately does NOT open the line itself. Opening a line also
- * anchors the scan session (tracking / unit-confirm dispatch), and the reducer
- * that owns the session lives in the scan column — the same rule the session
- * half of this module states: one derivation, one display. So the middle
- * reports the choice and the column applies it, exactly as if the scan had
- * resolved to a single line in the first place.
- */
+/** The middle → scan column direction: */
 export function resolveTestingScanPick(row: ReceivingLineRow): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(

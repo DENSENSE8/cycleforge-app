@@ -8,13 +8,7 @@ import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnitPhotosRealtimeRefresh } from '@/hooks/useUnitPhotosRealtimeRefresh';
 
-/**
- * The unit's PHOTO timeline — the five stage buckets (arrival / unbox carton /
- * unbox item via serial_unit_provenance, testing, packing), newest-first,
- * thumbnails inline. Built on the canonical `TimelineSection` / `EventTimeline`
- * primitive. This is the pane that OWNS media here — journeys mounted beside it
- * must pass `withPhotos={false}` (one mount owns media).
- */
+/** The unit's PHOTO timeline — the five stage buckets (arrival / unbox carton / unbox item via serial_unit_provenance, testing, packing),… */
 export function SerialUnitTimelineSection({ serialUnitId }: { serialUnitId: number }) {
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;

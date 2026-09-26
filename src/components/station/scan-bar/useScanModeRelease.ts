@@ -6,13 +6,7 @@ import { isCapturing } from '@/lib/scan-hotkey/store';
 import { consumeScanEscBlock } from './scan-esc-block';
 import { isStationScanInputFocused, shouldHandleScanModeEsc } from './scan-mode';
 
-/**
- * Esc on a focused station scan input:
- *   1. Preview card → dismiss (scan-esc-block)
- *   2. Display-edit, value unchanged → leave edit
- *   3. Armed type → release to Auto
- * Stands down for overlays and the hotkey-rebind popover. Does not clear text.
- */
+/** Esc on a focused station scan input: */
 export function useScanModeRelease(armed: boolean, onRelease: () => void): void {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

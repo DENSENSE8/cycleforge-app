@@ -8,25 +8,7 @@ import {
   WEDGE_MIN_LENGTH,
 } from '@/lib/keyboard/wedge-scan-machine';
 
-/**
- * React mount adapter for the HID wedge listener SoT
- * ({@link attachWedgeKeyListener} / {@link createWedgeKeyListener}).
- *
- * Pro warehouse scanners (Zebra RS5100, Eyoyo ring, Tera 1D/2D) act as a
- * keyboard: they hammer characters with sub-50ms inter-key gaps and finish
- * with Enter. Classification + yield-before-React live in the listener —
- * this hook only binds it for the component lifetime and keeps `onScan`
- * on a ref so the native listener is never torn down on render.
- *
- * Skipped when:
- *  • The active element is an editable field (`input`, `textarea`,
- *    `contenteditable`). Receivers typing into a search box don't want their
- *    keystrokes hijacked.
- *  • Modifier keys are held (Cmd/Ctrl/Alt/Meta).
- *
- * The listener is native capture-phase `keydown`. It never uses React's
- * synthetic event system and never drops focus.
- */
+/** React mount adapter for the HID wedge listener SoT ({@link attachWedgeKeyListener} / {@link createWedgeKeyListener}). */
 export interface UseWedgeScannerOptions {
   /** Called when a complete scan buffer is committed (after a main-thread yield). */
   onScan: (value: string) => void;

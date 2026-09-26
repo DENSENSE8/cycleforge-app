@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Kiosk trail chrome — command dropdown + optional center + carts / cart /
- * paperwork / Work · Show · Verify. No left or right side rails.
- *
- * Callers: `KioskShell` (staff work, utility panels, customer face) —
- * `src/app/kiosk/KioskShell.tsx` imports `KioskTopChrome`, `KioskCommandMenu`,
- * `KioskUtilityCluster`. Existing file (not a second chrome). No data files.
- * User: "execute now" / "cart icon most top right side and ensure icons for
- * the repair sales buy back and more" / "work show verify should be word and
- * drop downs on the left side of the paper work icon" / "access the kisok
- * from the bottom left side or the top right of the global header" / "recent
- * carts for juggling multiple customers at the same time, IDed for multiple
- * devices" (2026-09-24 — the Carts key, badge = the org's open carts)
- */
+/** Kiosk trail chrome — command dropdown + optional center + carts / cart / paperwork / Work · Show · Verify. */
 
 import type { ReactNode } from 'react';
 import { FileText, Layers, ShoppingCart, X } from '@/components/Icons';
@@ -51,12 +38,7 @@ export function KioskCommandMenu({
 }: {
   activeMode: KioskServiceId;
   onModeSwitch: (mode: KioskServiceId) => void;
-  /**
-   * Staff tools (History) are listed under the commerce commands. The
-   * CUSTOMER face passes false: that surface is turned toward the person
-   * paying, and a door to every past customer's paperwork does not belong on
-   * it — not even a PIN-gated one, because the door itself is the leak.
-   */
+  /** Staff tools (History) are listed under the commerce commands. */
   showStaffTools?: boolean;
 }) {
   return (
@@ -93,15 +75,7 @@ export function KioskCommandMenu({
           data-testid="kiosk-spine-exit"
           className="h-9 w-full justify-start gap-2 px-2 font-normal"
           onClick={() => {
-            // HARD navigation, deliberately not router.push. The root layout
-            // computes kioskHost (isKioskHost(host) || isKioskUiPath(pathname))
-            // per REQUEST and passes it to DesktopRouteShell, where
-            // `chromeless` hides the staff header. /kiosk/* and / share the
-            // root-layout segment, so a soft navigation REUSES the layout
-            // with kioskHost frozen at true — the desktop global header never
-            // came back after Exit. A full load re-runs the layout for '/',
-            // restores the header, and also drops the kiosk device session /
-            // Ably wiring cleanly — this is a mode exit, not a route change.
+            // HARD navigation, deliberately not router.push.
             window.location.assign('/');
           }}
         >
@@ -132,12 +106,8 @@ export function KioskUtilityCluster({
   onConsultStance: (stance: ConsultStance) => void;
   showCheckoutSlots?: boolean;
   /**
-   * Work · Show · Verify. A CONSULT STANCE belongs to a running command —
-   * History is a staff tool over whichever command that is, and painting a
-   * mode control on it invites the operator to change the visit they are not
+   * Work · Show · Verify.
    * looking at (operator 2026-09-22: *"the history tab should not display the
-   * cart paper work and different work modes since that would be specific to
-   * a mode"*).
    */
   showStance?: boolean;
 }) {
@@ -148,14 +118,7 @@ export function KioskUtilityCluster({
       ) : null}
       {showCheckoutSlots ? (
         <>
-          {/*
-            No HEADER_ICON_WRAP here: that wrapper is a fixed 32px cell, and
-            the kiosk glyph chips are 36px (KIOSK_POS_TRAIL_ICON — one size
-            with the word chips). A 36px control in a 32px cell overflows into
-            its neighbour, which is exactly the paperwork/cart overlap the
-            operator reported. The chips are self-sizing; the cluster's own
-            gap-2 is the spacing. One pattern, no overlaps.
-          */}
+          {/* No HEADER_ICON_WRAP here: */}
           <HoverTooltip label={activeSlot === 'paperwork' ? 'Hide paperwork' : 'Paperwork'} asChild>
             <IconButton
               icon={<FileText className={TOP_CHROME_ICON_FACE} aria-hidden />}
@@ -194,12 +157,7 @@ export function KioskUtilityCluster({
               </span>
             ) : null}
           </div>
-          {/*
-            Badge positions against the button face, not a wrapper — otherwise
-            -top-* floats into the gutter above the cart glyph.
-            Callers: KioskShell → KioskTopChrome. API: none. Schemas: none.
-            User: "ensure the qty for the cart is properly on the cart icon"
-          */}
+          {/* Badge positions against the button face, not a wrapper — otherwise -top-* floats into the gutter above the cart glyph. */}
           <div className="relative inline-flex shrink-0 items-center justify-center">
             <HoverTooltip label={activeSlot === 'cart' ? 'Hide cart' : 'Cart'} asChild>
               <IconButton
@@ -256,14 +214,7 @@ export function KioskTopChrome({
 }) {
   return (
     <div className={cn(KIOSK_PANE_HEADER_BAND, 'gap-2 pl-2 pr-2')} data-testid="kiosk-catalog-trail">
-      {/* NO search glyph of its OWN here, on purpose: the catalog's find-bar
-          lives in the catalog trail (ProductSelector kiosk-split) because its
-          icon/field is the one input bound to the shell-controlled
-          searchQuery state, and a second icon here would fork that state.
-          A face whose find-bar is not the catalog's — History — seats its own
-          glyph in `center`, which is still ONE control in ONE band. The
-          bracket this band owns — command dropdown leads, utilities trail —
-          is identical on every pane. */}
+      {/* NO search glyph of its OWN here, on purpose: */}
       <KioskCommandMenu
         activeMode={activeMode}
         onModeSwitch={onModeSwitch}

@@ -2,60 +2,7 @@
 
 /**
  * History — the staff book on the counter tablet.
- *
- * Callers: `KioskShell` (the `history` staff tile on `KioskCommandMenu`).
- * Affected API: GET `/api/kiosk/visit`, GET/PATCH `/api/kiosk/visit/[id]`,
- *   GET `/api/kiosk/repair/[id]`, POST `/api/kiosk/visit/[id]/label-printed`,
- *   GET `/api/kiosk/visit/[id]/receipt`, GET
- *   `/api/kiosk/staff-for-stepup?scope=signin`.
- * Data schemas: none of its own.
- * User: "a history of every transaction on the tablet, with the receipt, who
- *   repaired it, the parts, the signatures — and reprint" — and 2026-09-23:
- *   *"if I were to create a repair service it will then show up in the history
- *   tab so I would be able to view it."*
- *
- * ## A row is a KEY, not a number
- *
- * The rail unions counter visits with standalone repairs, so a selection is
- * `visit:19` / `repair:4799`. {@link fetchKioskHistoryDetail} routes on that
- * key; the receipt, edit and label-stamp actions read `openVisitId`, which is
- * null on a repair row — those routes are transaction-scoped and have nothing
- * to aim at.
- *
- * ## The door is a SIGN-IN, not a PIN
- *
- * Nothing renders until someone says who they are, through
- * `KioskStaffSignInSheet` — `StaffPickerList`, the same roster the desk's
- * `SwitchStaffSheet` mounts, and pinless for the same reason it is
  * (operator 2026-09-22: *"Staff PIN — History no need, just staff sign in text
- * at the top. Remove the pin, use the same pinless sign in for the switching
- * staff — this is dogfood."*).
- *
- * What that buys is ATTRIBUTION, not authorization: the picked `staffId` is
- * what the reprint and edit audit rows name. Nothing here can move money —
- * payment keeps its PIN pad (`KioskPaymentStepUpSheet`), which is the one act
- * where a claim is not good enough.
- *
- * The door still matters on its own terms: Phase 4 refuses History on the
- * attract/customer face, and the staff tile is filtered out of the command
- * menu there (`showStaffTools={false}`).
- *
- * Idle signs out after {@link IDLE_SIGN_OUT_MS} — an unattended counter must
- * not keep the last staffer's name on the next person's reprint.
- *
- * ## The face owns its own trail controls
- *
- * The shell passes its header band down as {@link KioskHistoryPane}'s
- * `chrome` slot instead of painting a `History` title into it (operator
- * 2026-09-22: *"remove the top left history text its already in the drop
- * down"*). The query hook stays HERE, where the rail reads it, and the search
- * glyph + kind filter render into that one band through `KioskHistoryTrail` —
- * a lift of the controls, not of the state, and never a second band.
- *
- * ## Closing is free
- *
- * History owns no cart and sets no `active_command`, so leaving it returns the
- * operator to whatever command was already running, mid-visit, untouched.
  */
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -124,25 +71,8 @@ export function KioskHistoryPane({
   }, [actor, touch]);
 
   /**
+   * THE RIGHT PANE IS NEVER BLANK (operator 2026-09-23:
    * THE RIGHT PANE IS NEVER BLANK (operator 2026-09-23: *"it must never display
-   * empty states like this — it should always display a selection of the most
-   * recent one"*).
-   *
-   * A master/detail face that opens on "select a record" spends the operator's
-   * first tap on a question the list already answers: the newest record is what
-   * they want in nine cases out of ten, and it is row one. Square's iPad
-   * transaction list and Polaris' index/detail pages both open on the first
-   * row for exactly this reason.
-   *
-   * It re-points, not just seeds: after a search the previously open record is
-   * usually not in the result set any more, and leaving it open beside a rail
-   * that no longer lists it is the same blank-stare problem wearing a record.
-   * So the rule is "the selection is always a row the rail is showing", which
-   * is also why this watches `history.rows` and not just the first load.
-   *
-   * `history.loading` gates it: during the refetch the rail holds the PREVIOUS
-   * page, and re-pointing at its row one would open a record the operator is
-   * about to stop seeing.
    */
   useEffect(() => {
     if (!actor || history.loading) return;
@@ -155,12 +85,7 @@ export function KioskHistoryPane({
     setSelectedKey(first.key);
   }, [actor, history.loading, history.rows, selectedKey]);
 
-  /**
-   * The counter transaction behind the open row, when there is one. A
-   * standalone repair has none — receipt, edit and label stamp all hang off the
-   * VISIT routes, so they are unavailable rather than aimed at an id that
-   * belongs to the other book.
-   */
+  /** The counter transaction behind the open row, when there is one. */
   const openVisitId = (() => {
     const handle = parseKioskHistoryKey(selectedKey);
     return handle?.source === 'visit' ? handle.id : null;
@@ -215,14 +140,7 @@ export function KioskHistoryPane({
       touch();
       setBusy(true);
       try {
-        // The paper is already going: `printRepairLabel` fired in the detail
-        // pane. This records it, so a failure here is reported as an unrecorded
-        // reprint — never as a failed print, which would send the operator to
-        // press the button again.
-        //
-        // `openVisitId` is null on a standalone ticket, which selects the
-        // repair-keyed stamp: the visit route's ownership check can never pass
-        // for a repair with no transaction under it.
+        // The paper is already going:
         const result = await stampKioskLabelPrinted({ visitId: openVisitId, repairId, actor });
         setDetail(await fetchKioskHistoryDetail(selectedKey));
         toast(result.alreadyPrinted ? 'Label reprinted.' : 'Label printed.');

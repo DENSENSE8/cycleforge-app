@@ -1,10 +1,4 @@
-/**
- *   node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *     --test src/lib/counter/terminal-checkout.test.ts
- *
- * SQ2. The request shape and the status map are split out pure because both are
- * easy to get subtly wrong and impossible to check by reading a fetch call.
- */
+/** node --require ./scripts/register-server-only-shim.cjs --import tsx \ --test src/lib/counter/terminal-checkout.test.ts */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { buildTerminalCheckoutBody, paymentStateForTerminalStatus } from './terminal-checkout';

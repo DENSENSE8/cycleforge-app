@@ -23,11 +23,7 @@ function deriveDisplayName(fileName: string) {
 
 async function handlePost(_req: NextRequest, ctx: AuthContext) {
   try {
-    // Thread orgId so every upsert/update/list GUC-wraps and scopes to this
-    // org. NEEDS-COL: product_manuals has no organization_id column and no RLS
-    // policy yet, so getAllProductManuals here can't hard-filter by parent
-    // (most synced rows are unpaired/NULL-parent) — the archive sweep below
-    // still sees cross-org rows until the column/policy lands. See stillOpen.
+    // Thread orgId so every upsert/update/list GUC-wraps and scopes to this org.
     const orgId = ctx.organizationId ?? undefined;
     if (!isManualServerConfigured()) {
       return NextResponse.json(

@@ -1,15 +1,4 @@
-/**
- * Warranty ↔ RMA / repair_service linkage (Phase 5).
- *
- * Closes the relational loop instead of duplicating entities:
- *   - A physical return links the claim to a first-class RMA
- *     (rma_authorizations, INBOUND_FROM_CUSTOMER) via warranty_claims.rma_id.
- *   - A repair handoff creates a repair_service ticket and links it via
- *     warranty_claims.repair_service_id, advancing APPROVED → IN_REPAIR.
- *
- * Each linkage writes a warranty_claim_events row; the GLOBAL audit + inbox
- * notification stay at the route layer.
- */
+/** Warranty ↔ RMA / repair_service linkage (Phase 5). */
 
 import type { PoolClient } from 'pg';
 import { createAuthorization, findByNumber, type RmaAuthorizationRow } from '@/lib/rma/authorizations';
@@ -80,19 +69,7 @@ async function loadClaimCore(
   };
 }
 
-/**
- * Has the physical unit already come back through the inventory system (Path
- * A `linkReturnedSerial` or Path C `recordDisposition`), independent of this
- * claim's own paperwork? Checks the unit's CURRENT status against the
- * "actively in returns triage" set — RETURNED (just scanned back in),
- * TRIAGED, or RMA (mid-disposition). Deliberately excludes STOCKED: a unit
- * back in general stock could equally be fresh inventory that never shipped,
- * so on its own it isn't evidence of a return. Read-only / informational —
- * this never changes whether issueRmaForClaim creates a new authorization,
- * it only lets the caller show "this unit is already here" instead of
- * treating RMA issuance as pure paperwork with zero inventory awareness
- * (returns-unification plan §6 Gap #3 / §7.2).
- */
+/** Has the physical unit already come back through the inventory system (Path A `linkReturnedSerial` or Path C `recordDisposition`),… */
 const ALREADY_RETURNED_STATUSES = new Set(['RETURNED', 'TRIAGED', 'RMA']);
 
 async function unitAlreadyReturned(
@@ -117,10 +94,7 @@ async function insertEvent(
   actorStaffId: number | null,
 ): Promise<void> {
   await client.query(
-    // organization_id is derived from the parent claim so the row is org-stamped
-    // even on the raw (non-GUC) pool — warranty_claim_events.organization_id is
-    // NOT NULL with a loud-fail GUC default, so omitting it here previously
-    // inserted NULL and violated the constraint on every linkage write.
+    // organization_id is derived from the parent claim so the row is org-stamped even on the raw (non-GUC) pool —…
     `INSERT INTO warranty_claim_events (claim_id, event_type, payload, actor_staff_id, organization_id)
      VALUES ($1, $2, $3::jsonb, $4,
        (SELECT organization_id FROM warranty_claims WHERE id = $1))`,
@@ -148,14 +122,7 @@ export async function issueRmaForClaim(
     expiresAt?: string | null;
     notes?: string | null;
   },
-  /**
-   * Tenant scope — REQUIRED, and deliberately un-defaulted. This used to be
-   * optional with a `?? DOGFOOD_ORG_ID` fallback inside, which is a strictly
-   * worse failure mode than a missing filter: a caller that forgot to thread an
-   * org did not read unscoped, it ran the whole transaction under the dogfood
-   * tenant's identity and wrote warranty_claims as them. Making it required
-   * turns that miss into a compile error at every call site.
-   */
+  /** Tenant scope — REQUIRED, and deliberately un-defaulted. */
   orgId: OrgId,
 ): Promise<RmaLinkResult> {
   let rma: RmaAuthorizationRow | null = null;
@@ -273,21 +240,11 @@ export type RepairHandoffResult =
   | { ok: true; claim: WarrantyClaimDetail; repairServiceId: number }
   | { ok: false; status: 404 | 409 | 500; error: string };
 
-/**
- * Create a repair_service ticket from the claim and link it. Allowed from
- * APPROVED (advances → IN_REPAIR) or IN_REPAIR. The ticket reuses repair_service's
- * own status default ('Pending Repair'); display code is RS-<id> when there is no
- * ticket_number.
- */
+/** Create a repair_service ticket from the claim and link it. */
 export async function handoffToRepair(
   claimId: number,
   args: { issue?: string | null; notes?: string | null; createdByStaffId: number | null },
-  /**
-   * Tenant scope — REQUIRED, never defaulted. Org-filters the claim precheck (cross-tenant claim
-   * 404s) and the warranty_claims UPDATE. The repair_service /
-   * warranty_claim_events inserts already org-derive via subquery on the parent
-   * claim, so they stay correct either way. See issueRmaForClaim.
-   */
+  /** Tenant scope — REQUIRED, never defaulted. */
   orgId: OrgId,
 ): Promise<RepairHandoffResult> {
   try {
@@ -306,10 +263,7 @@ export async function handoffToRepair(
     }
 
     const inserted = await client.query<{ id: number }>(
-      // organization_id is derived from the warranty claim this handoff is for so
-      // the row is org-stamped even on the raw (non-GUC) pool — repair_service.
-      // organization_id is NOT NULL with a loud-fail GUC default, so omitting it
-      // here previously inserted NULL and violated the constraint.
+      // organization_id is derived from the warranty claim this handoff is for so the row is org-stamped even on the raw (non-GUC) pool —…
       `INSERT INTO repair_service (
          product_title, serial_number, issue, notes, source_system,
          source_order_id, source_tracking_number, source_sku, intake_channel, customer_id,
@@ -376,14 +330,7 @@ export type RmaUnlinkResult =
   | { ok: true; claim: WarrantyClaimDetail }
   | { ok: false; status: 404 | 409 | 500; error: string };
 
-/**
- * Reverse of {@link issueRmaForClaim} / {@link linkRmaByNumber}: detach the RMA
- * from a claim (clear warranty_claims.rma_id + RMA_UNLINKED event). The
- * rma_authorizations row is LEFT intact — it can be cancelled on its own; this
- * only severs the claim's reference (mirrors "the ticket stays in Zendesk").
- * Refuses (409) when no RMA is linked, so re-linking a different RMA becomes
- * possible (the forward 409s while one is attached).
- */
+/** Reverse of {@link issueRmaForClaim} / {@link linkRmaByNumber}: */
 export async function unlinkRma(
   claimId: number,
   actorStaffId: number | null,
@@ -417,15 +364,7 @@ export type RepairDetachResult =
   | { ok: true; claim: WarrantyClaimDetail; revertedToApproved: boolean }
   | { ok: false; status: 404 | 409 | 500; error: string };
 
-/**
- * Reverse of {@link handoffToRepair}: detach the repair ticket from a claim
- * (clear repair_service_id) and, when the handoff advanced the claim to
- * IN_REPAIR, revert it to APPROVED. The repair_service ticket itself is LEFT
- * intact — cancel it separately via DELETE /api/repair-service/[id] if needed
- * (mirrors "the ticket stays in Zendesk"). Refuses (409) when no repair ticket
- * is linked, or when the claim has progressed beyond IN_REPAIR
- * (REPAIRED/CLOSED) where a clean revert is no longer safe.
- */
+/** Reverse of {@link handoffToRepair}: */
 export async function detachRepairHandoff(
   claimId: number,
   actorStaffId: number | null,

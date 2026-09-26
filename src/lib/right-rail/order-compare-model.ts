@@ -1,36 +1,4 @@
-/**
- * Order compare model — what two selected orders disagree about.
- *
- * The rail's exactly-two body (`detail:order-compare`, plan Phase 3) is a
- * **read** plane whose one job is divergence: which facts differ, and which
- * agree and can therefore recede. That verdict is decided here, as data, so the
- * view stays dumb — same split as `selection-occupancy.ts` (which body) and
- * `receiving/inspector/carton-inspector-model.ts` (what the body says).
- *
- * WHY A MODEL AND NOT `left.sku !== right.sku` IN THE VIEW
- * Three of the comparisons are not string equality and every one of them is a
- * wrong-answer generator if inlined:
- *   - **Dates.** `ship_by_date` is a civil key but `deadline_at` is a
- *     `timestamptz`, so the same warehouse day reaches the two rows in two
- *     different shapes (`2026-08-05` vs `2026-08-05T12:00:00Z`). Raw `!==`
- *     reports a divergence that does not exist, on the fact operators most
- *     want to trust. Resolved through the SAME date SoT the grid's own cell
- *     uses (`formatQueueRowDateCell` → `toPSTDateKey`), because the pane must
- *     agree with the rows on screen: a compare that called two dates different
- *     while the grid printed one label for both would be the less believable
- *     of the two surfaces, whatever the zone arithmetic says.
- *   - **Multi-value ids.** `serial_number` is aggregated from
- *     `tech_serial_numbers`, so two orders holding the same two serials can
- *     differ only in join order (`"A,B"` vs `"B,A"`).
- *   - **Absence.** Present-vs-absent is a finding ("we have no serial for this
- *     one"); absent-on-both is not. Collapsing those two into one boolean is
- *     what makes a compare pane cry wolf on a lane that simply has not reached
- *     the stage that populates the field yet.
- *
- * Dependency-light on purpose: the only import is the date SoT, which is itself
- * a leaf util with its own civil-day tests. That keeps this runnable under
- * `npx tsx --test` with no DOM and no React.
- */
+/** Order compare model — what two selected orders disagree about. */
 
 import { toPSTDateKey } from '@/utils/date';
 
@@ -41,12 +9,7 @@ import { toPSTDateKey } from '@/utils/date';
  */
 export type CompareFactKind = 'id' | 'text' | 'condition' | 'platform' | 'date' | 'qty';
 
-/**
- * The row fields the compare pane reads. Deliberately a structural subset
- * satisfied by BOTH outbound row shapes — `ShippedOrder` (To Ship / Tested) and
- * `PackerRecord` (Packed / Shipped) — because the rail is one surface across
- * all four lanes and must not branch on which lane published the selection.
- */
+/** The row fields the compare pane reads. */
 export interface OrderCompareRow {
   id?: number | string | null;
   order_id?: string | null;

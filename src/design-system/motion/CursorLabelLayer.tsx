@@ -19,26 +19,8 @@ import {
 } from './cursor-label';
 
 /**
- * CursorLabelLayer — the desk's tooltip FOLLOWER, ported from mainline's
- * `MorphCursorLayer` 2026-09-15 with the custom cursor LEFT BEHIND
- * (operator: "do not use the custom cursor, just use the follow tooltip").
- *
- * The OS pointer stays; only the label rides it. A hovered `HoverTooltip`
- * whose label is a short plain string hands its text to the cursor-label
- * channel (`useCursorLabel`); this layer paints ONE chip that follows the
- * pointer — instead of a portal-per-trigger anchored bubble. The bubble is
- * the fallback, not a fork: focus (keyboard / scan gun), touch, reduced
- * motion, long or rich labels, and `chrome="plain"` triggers still open the
- * anchored `role="tooltip"` exactly as before.
- *
- * Corner: `DROPDOWN_SHELL_CORNER` — the 8px floating popover rung. The corner
- * ROLE ladder is zeroed in this theme's industrial wave (`control` renders
- * `rounded-none`), so the named dropdown-shell constant is the source — the
- * same corner the account popover wears; the anchored bubble takes it too
+ * CursorLabelLayer — the desk's tooltip FOLLOWER, ported from mainline's `MorphCursorLayer` 2026-09-15 with the custom cursor LEFT BEHIND…
  * (operator 2026-09-15: "update the tooltip on hover to have a proper corner
- * radius"). Skin and content order come from the chip SoT (`TooltipChip`);
- * this host owns only where the chip SITS (a fixed follower seated off the
- * hotspot).
  */
 
 /** Tooltip chip seat: just below-right of the hotspot, clear of the OS pointer. */
@@ -47,13 +29,7 @@ const LABEL_DY = 18;
 /** Viewport breathing room — same margin the anchored bubble keeps. */
 const LABEL_MARGIN = 8;
 
-/**
- * Snap a CSS-px offset onto the DEVICE-pixel grid. This layer carries TEXT
- * promoted with `will-change: transform`, so the compositor rasterizes the
- * glyphs once and re-uses the raster at whatever offset the transform names —
- * an offset that is not a whole device pixel RESAMPLES them instead, and
- * small white-on-dark text is where that reads worst.
- */
+/** Snap a CSS-px offset onto the DEVICE-pixel grid. */
 function snapToDevicePixel(value: number): number {
   const dpr = (typeof window === 'undefined' ? 1 : window.devicePixelRatio) || 1;
   return Math.round(value * dpr) / dpr;

@@ -1,15 +1,4 @@
-/**
- * FBA slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks. The FBA half of the slot contract: the
- * catalog names the fact, this module reads it off the `FbaBoardItem` the
- * board feed returns — one resolver per catalog field, never a `row[path]`
- * generic.
- *
- * Presentation faces (FNSKU copy chip, status pill tone, plan chip +
- * destination eyebrow) stay in the family's row cell map, which resolves them
- * from the same SoTs — this module answers WHAT the fact says, in display
- * text.
- */
+/** FBA slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { FbaBoardItem } from '@/lib/fba/types';

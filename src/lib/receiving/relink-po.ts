@@ -1,25 +1,4 @@
-/**
- * Operator-driven PO relink — the website is authoritative over Zoho.
- *
- * "Someone linked the wrong PO/SKU in Zoho, but I know the correct PO" → this
- * writes the chosen PO (and an optional SKU correction) onto the line AND the
- * carton header, even when Zoho already had a different (wrong) link. It
- * DELIBERATELY overrides the upgrade-only guard that the general
- * `PATCH /api/receiving/[id]` enforces (that guard exists so a passive sync
- * can't downgrade a carton; an explicit operator relink is the sanctioned
- * exception).
- *
- * Busy-shell conflict: when another matched carton already has real work on
- * this PO, mirror `reconcileUnmatchedReceiving` — attach the working carton's
- * tracking onto that shell, re-parent scans, dismiss the orphan, and return
- * the shell as `receivingId` / `pairedOnto` (UI opens the winner). Hard 409
- * only when there is no tracking to attach.
- *
- * SoT note (items vs sku_catalog collision): a SKU correction rewrites `sku` +
- * `zoho_item_id` only. We do NOT derive `sku_catalog_id` from the SKU string
- * here — the read-side title-guarded join owns that (the two SKU namespaces
- * collide; see source-of-truth rules). Inject `Deps` so unit tests run DB-free.
- */
+/** Operator-driven PO relink — the website is authoritative over Zoho. */
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeCartonSourceLink } from './carton-source-link';
 import { claimOrAbsorbZohoPoShell } from './claim-zoho-po-shell';
@@ -133,12 +112,7 @@ export async function relinkReceivingPo(
       };
     }
 
-    // ── LINE rewrite (W3 writer inversion) ──────────────────────────────────
-    // The line's zoho identity lives on receiving_line_zoho (the spine zoho
-    // columns are dead); only the SKU correction still touches the spine.
-    // Inline upserts (not facts/narrow.ts) because relink must also maintain the
-    // derived zoho_purchaseorder_number_norm (GENERATED on the old spine column)
-    // and needs overwrite-when-provided semantics on zoho_item_id.
+    // ── LINE rewrite (W3 writer inversion) ────────────────────────────────── The line's zoho identity lives on receiving_line_zoho (the…
     let linesUpdated = 0;
     if (scope === 'carton') {
       // Re-point every line of the carton at the chosen PO.

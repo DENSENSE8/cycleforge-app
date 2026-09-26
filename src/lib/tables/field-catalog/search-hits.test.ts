@@ -1,25 +1,4 @@
-/**
- * Find-plane catalog guards, materialization and adapter behaviour — the
- * family that replaced `/search`'s hand-rolled `<ul>` of result links.
- *
- * Four assertions here are load-bearing beyond the usual shape checks:
- *
- * - the IDENTIFIER PRECEDENCE. One derivation feeds both the identity chip and
- *   the Id header's sort; two would sort a column by a string nobody can see.
- *   The order is "what a human would quote back", and the internal pk is the
- *   last resort, never the first answer.
- * - the LEADING COLUMN. The operator's anatomy law puts the verifiable
- *   identifier in the premier slot and forbids a text-heavy status word there.
- *   On the compound skeleton that is the `fulfillment` track, relabelled from
- *   the catalog's identity field — if that relabel is lost the header reverts
- *   to the Orders default and the plane starts claiming every row is an order.
- * - NO DASHED TRACK. `bin` and `qty` are not on the search wire, so they are
- *   not catalog fields. A bound field whose resolver can only answer `null` is
- *   the dead-header failure this repo has already paid for twice.
- * - HEADER SORT. Every painted DATA track answers with a fact; chrome does not.
- *   Same law the cohort enforces, pinned per family so a rebind cannot quietly
- *   produce an inert header.
- */
+/** Find-plane catalog guards, materialization and adapter behaviour — the family that replaced `/search`'s hand-rolled `<ul>` of result links. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

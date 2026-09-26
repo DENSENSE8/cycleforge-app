@@ -29,13 +29,7 @@ export function normalizeTemplateTask(
   };
 }
 
-/**
- * Product CONN-* tickets live in master-plan.mdx (dogfood / forge org only).
- * This template is what **other orgs** (QA + customers) seed via
- * `POST /api/ops-plans/from-template` — config & training, not product code.
- *
- * @see docs/todo/connections-mdx-forge-plan.md §5
- */
+/** Product CONN-* tickets live in master-plan.mdx (dogfood / forge org only). */
 export const CONNECTIONS_GAP_ADOPTION_KEY = 'connections_gap_adoption' as const;
 
 export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {

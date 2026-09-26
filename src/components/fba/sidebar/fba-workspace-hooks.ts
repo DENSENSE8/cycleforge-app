@@ -256,12 +256,7 @@ interface PairedReviewToggleDetail {
   };
 }
 
-/**
- * Workspace event bridges that don't fit the data/rail hooks:
- * - tracks whether the shipment editor is open (hides scan bar + welcome),
- * - clears board selection when switching to the shipped tab,
- * - relays the paired-review toggle to the center-right workspace.
- */
+/** Workspace event bridges that don't fit the data/rail hooks: */
 export function useFbaWorkspaceBridges(activeMode: FbaMode) {
   const [editorActive, setEditorActive] = useState(false);
   // Tracked only to drive the toggle parity below; never rendered here.

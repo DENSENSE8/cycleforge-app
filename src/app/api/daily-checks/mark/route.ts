@@ -20,22 +20,7 @@ const Body = z.object({
   note: z.string().max(500).nullish(),
 });
 
-/**
- * POST /api/daily-checks/mark — tick or untick ONE item for the CALLER.
- *
- * `staffId` comes from the verified session, never the body: a mark is an
- * attestation, and letting a caller name someone else would make the report
- * evidence of nothing.
- *
- * NO AUDIT ROW, deliberately. `daily_check_marks` already carries staff_id +
- * marked_at + marked_on for every tick — the table IS the attribution trail, so
- * an audit_logs row would be a second copy of the same fact written six times
- * per person per day. The structural changes (adding / retiring an item) DO
- * audit; see the items route.
- *
- * Idempotent: the unique index makes a double-tap or a retried request a no-op,
- * so the response reports `changed` rather than pretending each call did work.
- */
+/** POST /api/daily-checks/mark — tick or untick ONE item for the CALLER. */
 export const POST = withAuth(
   async (request, ctx) => {
     const parsed = Body.safeParse(await request.json().catch(() => null));
@@ -82,17 +67,7 @@ export const POST = withAuth(
   { permission: 'dashboard.view' },
 );
 
-/**
- * DELETE /api/daily-checks/mark?date=YYYY-MM-DD — "reset all" for the CALLER.
- *
- * Same session-scoped contract as POST: the day comes from the query string and
- * the staffer from the verified session, so the endpoint cannot be pointed at a
- * colleague's ticks. Omit `date` and it resets today in the warehouse zone —
- * `getCurrentPSTDateKey()`, never the server clock, which is UTC and would roll
- * the day over mid-afternoon and erase nothing the operator could see.
- *
- * Idempotent: a reset with nothing to clear answers 200 with `cleared: 0`.
- */
+/** DELETE /api/daily-checks/mark?date=YYYY-MM-DD — "reset all" for the CALLER. */
 export const DELETE = withAuth(
   async (request, ctx) => {
     const date = new URL(request.url).searchParams.get('date');

@@ -2,30 +2,7 @@
 
 /**
  * To-ship's chrome, as DATA.
- *
- * {@link DataTable} takes a search value, a list of filter OPTIONS and a list of
- * tabs — never JSX — so everything this desk's controls used to draw is
- * resolved here into plain objects and the display draws itself. That is the
- * whole difference between one table display and thirty
- * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 5).
- *
  * ## One filter control, both axes (operator ruling 2026-08-30)
- *
- * The bottom tab strip is GONE from this desk — the operator overruled the
- * "a dropdown never replaces the strip" law in writing ("don't care what the
- * standing rule is. Break it."): selection tabs ARE filters, so both axes now
- * live in the ONE filter popover:
- *
- * - **Triage facets** (`?late` / `?attention` / `?ustatus` / `?rowFlag` /
- *   `?cage`, written through `applyToShipTriageFacet`) — mutually exclusive
- *   among themselves, so picking one clears the others and picking the active
- *   one clears back to the unfiltered list. There is still no **All** option:
- *   "all" is the absence of a filter (§ 2.2). `caged` swaps the desk's data
- *   source rather than narrowing it; the URL contract is unchanged, only the
- *   control moved.
- * - **Lifecycle stage** (`?stage=pending|tested|packed`) — *where is this
- *   order in the pipeline* rather than *why does it need attention*. The two
- *   axes still compose: a stage pick never clears the facet.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -44,13 +21,7 @@ import { cagedOrdersCountQuery } from '@/lib/queries/caged-orders-queries';
 import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
 import type { DataTableFilterOption } from '@/components/tables/DataTable';
 
-/**
- * Facet order in the filter menu. `all` is deliberately absent — see above.
- *
- * `caged` sits LAST because it is the only facet that swaps the desk's data
- * source rather than narrowing it: everything left of it is a slice of the live
- * queue, and caged is the set that is not in the queue at all.
- */
+/** Facet order in the filter menu. */
 const TRIAGE_FACETS = [
   'must_ship',
   'urgent',
@@ -107,16 +78,7 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
     [pathname, router, searchParams],
   );
 
-  // ONE options list, two axes: the triage facets lead (they are the desk's
-  // "why does this need attention" vocabulary — the reason the control
-  // exists), the lifecycle stages follow. Facet counts ride each option so
-  // the overview the tab strip used to show is one click away, not rebuilt.
-  //
-  // The two axes are NAMED (`group`) because they do not behave alike: picking
-  // a facet replaces the current one (they are exclusive, and picking the
-  // active one clears to `all`), while a stage toggles on its own and composes
-  // with whatever facet is set. Eight identical rows made an operator learn
-  // that by trying it.
+  // ONE options list, two axes:
   const filterOptions = useMemo<DataTableFilterOption[]>(
     () => [
       ...TRIAGE_FACETS.map((id) => ({

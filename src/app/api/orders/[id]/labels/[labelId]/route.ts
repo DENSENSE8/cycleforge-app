@@ -8,13 +8,7 @@ import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import type { OrgId } from '@/lib/tenancy/constants';
 import pool from '@/lib/db';
 
-/**
- * DELETE /api/orders/[id]/labels/[labelId] — take a paired label off the order
- * (`labelId` = the order-label row id). Bought-here labels are voided, not
- * unlinked (409); the import's primary label is the order's tracking (409).
- * The row stays as `unlinked` so the ShipStation backfill never re-imports it;
- * a LINKED quarantine reopens. Idempotent. Audited (LABEL_UNLINKED) + notes trail.
- */
+/** DELETE /api/orders/[id]/labels/[labelId] — take a paired label off the order (`labelId` = the order-label row id). */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string; labelId: string }> },

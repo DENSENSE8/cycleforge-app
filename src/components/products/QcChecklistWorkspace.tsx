@@ -8,12 +8,7 @@ import { useSkuQcChecks } from '@/hooks/useSkuQcChecks';
 import { QcChecklistSection } from '@/components/manuals/sections/QcChecklistSection';
 import { SourceThisButton } from '@/components/sourcing/SourceThisButton';
 
-/**
- * Right-pane workspace for the Products → QC Checklist view. Reads the selected
- * SKU from `?skuId=` (written by the sidebar's QcProductPicker), loads that
- * SKU's QC checklist, and renders it with the full add/edit/delete section.
- * Shows a centered empty state until a product is picked.
- */
+/** Right-pane workspace for the Products → QC Checklist view. */
 export function QcChecklistWorkspace() {
   // `setSkuId` is the sidebar picker's writer; this pane only READS the
   // selection now. The "N kit" jump next to Source was removed 2026-09-15 with

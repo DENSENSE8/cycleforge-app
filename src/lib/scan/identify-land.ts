@@ -1,29 +1,4 @@
-/**
- * How `/m/scan` consumes one {@link dispatchScan} result.
- *
- * The table names a Card. This module names the **verb**: log an incoming
- * package (door write), identify onto an existing record (navigate), or settle
- * on the tape without navigating (known tracking, refused bytes, location
- * labels). It does not fetch or write — callers already paid for class +
- * object-state.
- *
- * Location / bin labels stay on the identification kernel. `routeScan` still
- * emits `/inventory?bin=…` for desktop; this land must not follow that
- * redirect or a floor scan leaves `/m/scan`.
- *
- * Unit labels land on the phone unit hub `/m/u/{key}` whatever their frame.
- * A GS1 `(01)(21)` / Digital Link unit routes to `/01/{gtin}/21/{serial}`,
- * which the GS1 resolver sends to the DESK page `/serial/{serial}`; the floor
- * must stay in the phone shell.
- *
- * FBA unit labels (FNSKU, `X00…`) land on the FNSKU hub `/m/fnsku/{fnsku}`
- * with an X back here. `routeScan` gives them no redirect so desk FBA stations
- * keep their scans; the phone opens the record here instead.
- *
- * QC is a session on this same kernel, not a second scan door: `/m/scan`
- * armed with `?work=qc` (`QC_SCAN_SESSION`, dispatch-table) turns a unit label into the
- * unit's checklist and a line label into a pick of that line's units.
- */
+/** How `/m/scan` consumes one {@link dispatchScan} result. */
 
 import { scannedUnitKey, type ScanRoute } from '@/lib/barcode-routing';
 import { fnskuHubHref } from '@/lib/mobile/fnsku-hub-href';

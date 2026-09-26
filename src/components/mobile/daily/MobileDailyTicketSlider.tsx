@@ -2,29 +2,7 @@
 
 /**
  * The ticket chip slider — how a phone links a daily task to a helpdesk ticket.
- *
- * THE FAST PATH, and the reason it is a slider and not a text field: the
- * operator types the ticket number into the task title and the matching
- * tickets arrive as thumb-sized chips, so the link is made by RECOGNITION
- * ("that one, 41207") instead of by transcription. The `query` prop is the
- * composer's live title, so every keystroke narrows the row — there is no
  * second search box to fill in (operator ruling 2026-09-15).
- *
- * The `#id` LEADS each chip because the id is the only part of a ticket the
- * operator both types and quotes; the subject rides behind it as confirmation
- * that the right one is selected, never as the thing being matched.
- *
- * Tapping the SELECTED chip deselects (`onSelect('')`). A chip row on a phone
- * is a mis-tap surface — an undo that needs a trip into "more options" to
- * clear a wrong link is not an undo.
- *
- * The three quiet states (loading / empty / no helpdesk) are all ONE muted
- * line. This is one control inside a checklist sheet: a spinner farm or an
- * error face here would claim the sheet failed when only the picker has
- * nothing to show.
- *
- * Boundary: platform + design-system + `lib/daily-checks` only. No desktop
- * feature component.
  */
 
 import { Ticket } from '@/components/Icons';
@@ -81,11 +59,9 @@ function TicketChip({
       className={cn(CHIP_BASE, selected ? CHIP_SELECTED : CHIP_IDLE)}
     >
       {/*
-       * ALWAYS orange (operator 2026-09-15: "ticket icon should always display
-       * orange"). `text-text-warning` is the house amber — the icon is the
-       * ticket's identity mark, so it must not change hue with selection the
-       * way the chip's own face does.
-       */}
+ * ALWAYS orange (operator 2026-09-15:
+ * ALWAYS orange (operator 2026-09-15: "ticket icon should always display
+ */}
       <Ticket className="h-4 w-4 shrink-0 text-text-warning" />
       <span className="shrink-0 text-role-data font-semibold tabular-nums">#{id}</span>
       {option.subject ? (
@@ -130,11 +106,9 @@ export function MobileDailyTicketSlider({
   return (
     <div className="flex flex-col gap-1">
       {/*
-       * The ACTIVE FILTER readout (operator 2026-09-15). The slider sits ABOVE
-       * the field, so it must say what it is showing — otherwise a shrinking
-       * chip row above a field the operator is typing into looks like chips
-       * disappearing rather than a filter narrowing.
-       */}
+ * The ACTIVE FILTER readout (operator 2026-09-15).
+ * The ACTIVE FILTER readout (operator 2026-09-15). The slider sits ABOVE
+ */}
       <p className={cn(QUIET_LINE_CLASS, 'py-0')}>
         {query.trim()
           ? `${options.length} matching ${options.length === 1 ? 'ticket' : 'tickets'}`

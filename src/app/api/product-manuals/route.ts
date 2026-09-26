@@ -15,24 +15,13 @@ import {
 } from '@/lib/neon/product-manuals-queries';
 import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 
-/**
- * The CRUD config closures below run inside the request scope but don't
- * receive the withAuth `ctx`, so we re-resolve the caller's org from the
- * session (same source withAuth gates on). Threaded into every shared-module
- * call so reads/writes are tenant-scoped (the queries GUC-wrap + apply
- * parent-derived scoping when orgId is present — see lib/neon/product-manuals-queries.ts).
- */
+/** The CRUD config closures below run inside the request scope but don't receive the withAuth `ctx`, so we re-resolve the caller's org from… */
 async function currentOrgId(): Promise<OrgId | undefined> {
   const user = await getCurrentUser();
   return user?.organizationId ?? undefined;
 }
 
-/**
- * Filesystem-safe slug derived from the display name. Used as the blob key
- * suffix so the Blob URL itself reflects the manual's current name (and the
- * browser's "Save as…" picks up the right filename without us doing anything
- * on the client). Empty input → 'manual'.
- */
+/** Filesystem-safe slug derived from the display name. */
 function blobSlug(displayName: string): string {
   const cleaned = displayName
     .normalize('NFKD').replace(/[̀-ͯ]/g, '')   // strip diacritics
@@ -49,13 +38,7 @@ function extractExtension(url: string): string {
   return m ? m[1].toLowerCase() : 'pdf';
 }
 
-/**
- * Copy a Vercel Blob to a new key whose name embeds `displayName`, then
- * delete the original. Returns the new public URL. Best-effort: any
- * network/blob failure falls back to leaving source_url untouched (caller
- * passes the original URL through). The metadata row update never depends
- * on the rename succeeding.
- */
+/** Copy a Vercel Blob to a new key whose name embeds `displayName`, then delete the original. */
 async function renameBlobForDisplayName(
   sourceUrl: string,
   displayName: string,
@@ -151,12 +134,7 @@ const handler = createCrudHandler<ProductManual>({
 
   create: async (body) => upsertProductManual(body, await currentOrgId()),
 
-  /**
-   * On display-name change, also rename the underlying Vercel Blob so the
-   * URL (and therefore the browser's Save-As suggestion + the iframe key)
-   * reflects the new name. Pure-metadata edits on non-blob sources skip
-   * the rename and act like the bare `updateProductManual` call.
-   */
+  /** On display-name change, also rename the underlying Vercel Blob so the URL (and therefore the browser's Save-As suggestion + the iframe… */
   update: async (body) => {
     const orgId = await currentOrgId();
     const nextDisplayName = typeof body?.displayName === 'string' ? body.displayName.trim() : '';
@@ -187,10 +165,7 @@ const handler = createCrudHandler<ProductManual>({
   },
 });
 
-// Gate every method — the bare `export const { ... } = handler` left these
-// ungated (and invisible to the route-permission audit). Reads need catalog
-// view; writes need product_manuals.manage, matching the sibling routes
-// (assign/bulk/upsert/sync/upload).
+// Gate every method — the bare `export const { ...
 export const GET = withAuth(handler.GET as any, { permission: 'sku_stock.view' });
 export const POST = withAuth(handler.POST as any, { permission: 'product_manuals.manage' });
 export const PATCH = withAuth(handler.PATCH as any, { permission: 'product_manuals.manage' });

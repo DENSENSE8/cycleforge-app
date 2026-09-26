@@ -1,33 +1,4 @@
-/**
- * Resolve one carton's Unbox procedure receipt from the database.
- *
- * ## Why this is a separate module from `./procedure-receipt.ts`
- *
- * The builder there is pure — no DB, no clock — so the derivation guard can feed
- * it the same fact set it feeds the bench. This half imports `tenancy/db`, which
- * transitively pulls the Neon driver. Keeping them in one file would put that
- * whole graph behind any client import of the receipt TYPES
- * (bundle altitude: keep light helpers out of
- * heavy modules). The route imports this; a view imports the types.
- *
- * ## A carton-level receipt over per-LINE facts
- *
- * Condition, item photos, serials and the label print are line facts; the
- * receipt is a carton document. The fold is **every line must satisfy it**, and
- * `at` is the LAST of them — a carton is not graded until every line in it is.
- * Aspect presence in particular is folded PER LINE and then ANDed: summing
- * aspect counts across lines would let one line's "included" and another's
- * "serial" satisfy both requirements for a carton where neither line is
- * complete.
- *
- * ## The flow is composed, never re-derived
- *
- * Named Unbox flow (Found · Unfound · Return) + modifiers decide which steps
- * exist at all, so the receipt and the bench must answer them identically.
- * Both call the same pure SoTs (`resolveContextFromFlags`, fulfillment-mode,
- * kinds/registry) — this module's job is only to fetch the columns those
- * helpers read.
- */
+/** Resolve one carton's Unbox procedure receipt from the database. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -303,10 +274,7 @@ export async function resolveUnboxProcedureReceipt(
 
   const stageRes = await deps.query<StageRow>(
     orgId,
-    // The stage counts the aspect query cannot answer: pre-2026-08-01b photos
-    // carry NULL aspect, and they are real evidence. `arrival` in particular is
-    // almost entirely un-aspected — it is the door shot, taken before any of
-    // this existed.
+    // The stage counts the aspect query cannot answer:
     `SELECT 'arrival'::text AS scope,
             COUNT(DISTINCT p.id)            AS n,
             MIN(p.created_at)::text         AS first_at,
@@ -347,10 +315,6 @@ export async function resolveUnboxProcedureReceipt(
   );
 
   // ── Fold the per-line facts into the carton's answer ──────────────────────
-  //
-  // Every fold is "the carton is done when EVERY line is". A carton with one
-  // ungraded line is not a graded carton, and saying so would be the receipt's
-  // one unforgivable failure.
   const arrivalAspectCounts: Partial<Record<PhotoAspect, number>> = {};
   const arrivalAspectRows = new Map<PhotoAspect, AspectRow>();
   const cartonAspectCounts: Partial<Record<PhotoAspect, number>> = {};
@@ -441,10 +405,7 @@ export async function resolveUnboxProcedureReceipt(
         ? latest(lines.map((l) => l.condition_graded_at))
         : null,
     contentsConfirmedAt: carton.contents_confirmed_at,
-    // Folded like the grade: the carton's label step is satisfied only when
-    // EVERY line's face has been read, because a multi-line PO prints one face
-    // per line. `every` on an empty array is vacuously true, so the length
-    // guard carries the "no lines ⇒ nothing acknowledged" case.
+    // Folded like the grade:
     labelPreviewedAt:
       lines.length > 0 && lines.every((l) => l.label_previewed_at)
         ? latest(lines.map((l) => l.label_previewed_at))
@@ -518,10 +479,7 @@ export async function resolveUnboxProcedureReceipt(
     label: { at: gates.labelPreviewedAt },
   };
 
-  // The instants the shared derivation hangs on each step. `condition`,
-  // `contents` and `label` are deliberately absent from the effect of this map —
-  // `stepCompletedAt` reads those off the gate input, which is the same value
-  // the entries above carry, so there is no second answer to keep in step.
+  // The instants the shared derivation hangs on each step.
   gates.evidenceAt = Object.fromEntries(
     Object.entries(evidence).map(([key, e]) => [key, e.at ?? null]),
   );

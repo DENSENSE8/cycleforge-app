@@ -1,19 +1,4 @@
-/**
- * Palette for the hand-built SVG analytics charts.
- *
- * The repo has no charting library — charts are SVG + Framer Motion. SVG
- * `stroke`/`fill` ignore Tailwind utility classes, so:
- *
- *  - **Series hues** (lines, arcs, dots) are fixed brand tones passed inline.
- *    They are chosen to read on BOTH the light canvas and the dark
- *    (`html[data-theme='dark']`) canvas, so they never need a remap.
- *  - **Axes / grid / labels** instead use `currentColor` inside a Tailwind
- *    `text-gray-*` wrapper, so they inherit the global dark-mode remap for free
- * (no `dark:` prefixes, no JS theme probing)..
- *
- * Series tones mirror `semanticColors.dashboard` primaries so a station/source
- * keeps the same colour across the gauge, the line chart and the tables.
- */
+/** Palette for the hand-built SVG analytics charts. */
 
 const STATION_TONES: Record<string, string> = {
   TECH: '#10b981', // emerald

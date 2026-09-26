@@ -6,16 +6,7 @@ import { StationListTable } from '@/components/station/StationListTable';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import type { BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 
-/**
- * `StationPipelineBoard<T, LaneId>` — the Pipeline (board) layout for the station
- * history tables (station-table-unification-plan §Phase 4). A thin consumer of the
- * shared {@link SwimlaneBoard}: the surface supplies its lane model + `bucket`
- * (from the lane SoT modules) + the same `renderRow` the dense table uses, and
- * each lane body is a content-sized, day-banded {@link StationListTable} that
- * windows against the board's single scroll region (the Phase V0 stacked-lane
- * ancestor-scroll fix). Add a lane → extend the surface's lane SoT; nothing here
- * changes.
- */
+/** `StationPipelineBoard<T, LaneId>` — the Pipeline (board) layout for the station history tables (station-table-unification-plan §Phase 4). */
 export interface StationPipelineBoardProps<T, LaneId extends string> {
   prefsKey: BoardPrefsKey;
   lanes: SwimlaneLaneDef<LaneId>[];

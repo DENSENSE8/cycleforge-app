@@ -1,16 +1,4 @@
-/**
- * Label layer — the seeded default registry + tone→class map.
- *
- * `LABEL_DEFAULTS` is the single system seed for every lifecycle label that was
- * previously a hand‑written `*_STATE_META` map + inline lane order/icon. Phase 2
- * copies these rows into `reason_codes` as the system defaults; the per‑org
- * overrides layer over them through `resolveLabel`.
- *
- * `TONE_CLASSES` reproduces the EXACT Tailwind strings the old `*_STATE_META`
- * used (verified byte‑identical by `labels/resolve.test.ts`), so moving the data
- * here is zero visual change. Every class below already appears in the codebase,
- * so Tailwind's content scan still generates them.
- */
+/** Label layer — the seeded default registry + tone→class map. */
 import { STATE_TONES } from '@cycleforge/design-tokens';
 import { LIFECYCLE, STATE_TONE_CLASSES, type StateName } from '@/design-system/tokens/lifecycle';
 import type { LabelKind, LabelPresentation, LabelTone } from './types';
@@ -40,14 +28,7 @@ export const TONE_CLASSES: Record<LabelTone, { pill: string; dot: string }> = {
   },
 };
 
-/**
- * SVG-stroke twin of {@link TONE_CLASSES}'s `dot` shade — the raw hex a hand-built
- * SVG chart (`GaugeDonut` etc.) needs, since SVG `stroke`/`fill` ignore Tailwind
- * utility classes (see `charts/chart-theme.ts` for the same sanctioned exception).
- * Each hex is the Tailwind default for that tone's dot shade, so a KPI donut arc
- * and the matching status dot in the board render the *same* hue from the *same*
- * seeded tone. Keep these in lock-step with the `dot:` shades above.
- */
+/** SVG-stroke twin of {@link TONE_CLASSES}'s `dot` shade — the raw hex a hand-built SVG chart (`GaugeDonut` etc.) needs, since SVG… */
 export const TONE_SVG_HEX: Record<LabelTone, string> = {
   slate: '#94a3b8',
   yellow: '#eab308',
@@ -75,22 +56,12 @@ const LABEL_TONE_FOR_STATE: Record<StateName, LabelTone> = {
 const PACKED_TONE = LABEL_TONE_FOR_STATE[LIFECYCLE.packed.tone];
 
 /**
- * System‑default presentation per (kind, code). PACKED_STAGED appears in BOTH
- * kinds with different labels ('Packed' inbound seam vs 'In Staging' outbound)
- * — exactly why labels key on (kind, code), not code alone. The
- * no‑two‑dots‑share‑a‑hue invariant is preserved by the distinct tones.
- *
+ * System‑default presentation per (kind, code).
  * A state LABEL names what HAS happened (operator ruling 2026-08-30): the
- * To‑ship pill reads 'Packed', never 'Packed · Staged' — the next step is the
- * queue's job, and the staging detail stays in the description. The outbound
- * kind's 'In Staging' is a different desk (the dock legend) and stays.
  */
 export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>> = {
   unshipped: {
-    // 'Needs label', not 'Awaiting Label': this state now sits IN the To-ship
-    // queue beside Pending / Tested / Packed (2026-08-30), where the pill has
-    // to say what the operator must DO about the row, not what has passively
-    // happened to it. Every neighbour on that pill names an act.
+    // 'Needs label', not 'Awaiting Label':
     AWAITING_LABEL: { label: 'Needs label', description: 'Sold — no tracking or label attached yet. Buy or link a label to move it into the queue.', tone: 'slate' },
     PENDING: { label: 'Pending', description: 'Labeled and queued — waiting for test/pack.', tone: 'yellow' },
     TESTED: { label: 'Tested', description: 'Passed the tech scan — ready to pack.', tone: 'teal' },

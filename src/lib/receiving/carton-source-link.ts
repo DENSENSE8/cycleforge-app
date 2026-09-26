@@ -1,22 +1,4 @@
-/**
- * Carton ⇄ source-order linkage derivation.
- *
- * Industry-standard inbound model: a box (`receiving`) is a physical container;
- * each `receiving_line` row reconciles to its OWN source order and is
- * acknowledged per line. The carton's `zoho_purchaseorder_number` is therefore
- * only a first-linked DISPLAY representative — never the source of truth.
- *
- * This recomputes that representative from the carton's lines after any
- * link/unlink, and OWNS the carton downgrade (`source` zoho_po → unmatched)
- * that the general PATCH /api/receiving/[id] deliberately refuses ("only
- * upgrade, never downgrade"). Keeping the downgrade here means the forward
- * PATCH invariant stays intact while unlink can still cleanly revert.
- *
- * Guard: only manages cartons whose linkage is Ecwid-DERIVED — `source_platform
- * = 'ecwid'` with no real `zoho_purchaseorder_id`. A carton matched to a real
- * Zoho PO is never touched, so a box that legitimately became a PO later can't
- * be downgraded out from under it.
- */
+/** Carton ⇄ source-order linkage derivation. */
 import pool from '@/lib/db';
 
 interface Queryable {
@@ -56,14 +38,7 @@ export async function recomputeCartonSourceLink(
   const isEcwidDerived = carton.source_platform === 'ecwid' && !carton.zoho_purchaseorder_id;
   const isUnmatched = carton.source === 'unmatched';
 
-  // ── Zoho-PO promotion ──────────────────────────────────────────────────────
-  // A line carrying a REAL Zoho PO id means this carton is matched — even when
-  // the carton header was never updated. This is the "No PO on a paired carton"
-  // bug: a tracking-scanned box duplicates an already-imported PO carton (or a
-  // scope='line' relink rewrote only the line), so the line gets the PO but the
-  // carton stays source='unmatched' with a NULL header PO and reads "No PO".
-  // Promote an UNMATCHED, PO-less carton to its line's PO so it stops lying.
-  // A carton already matched to a real Zoho PO is canonical — never touched.
+  // ── Zoho-PO promotion ────────────────────────────────────────────────────── A line carrying a REAL Zoho PO id means this carton is…
   if (isUnmatched && !carton.zoho_purchaseorder_id) {
     // Line-level Zoho identity lives in receiving_line_zoho (Wave-3 inversion —
     // receiving_line's own zoho_* columns are dropped).
@@ -82,12 +57,7 @@ export async function recomputeCartonSourceLink(
       const poId = String(zohoLinked.rows[0].zoho_purchaseorder_id ?? '').trim();
       const rawNum = zohoLinked.rows[0].zoho_purchaseorder_number;
       const poNumber = rawNum == null ? null : String(rawNum).trim() || null;
-      // Collision guard: `ux_receiving_zoho_po_matched` allows exactly ONE
-      // source='zoho_po' carton per PO id. If another matched carton already
-      // holds this PO (the empty Zoho-import "PO shell" duplicate case), writing
-      // it here would violate that unique index and throw. That's a duplicate-
-      // carton dedupe, not a simple promotion — leave it to the dedupe path and
-      // skip rather than crash the relink. Only promote when the PO id is free.
+      // Collision guard:
       const held = await db.query(
         `SELECT 1 FROM receiving_carton
           WHERE zoho_purchaseorder_id = $1 AND source = 'zoho_po' AND id <> $2

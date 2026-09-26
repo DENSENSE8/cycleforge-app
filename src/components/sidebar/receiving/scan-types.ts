@@ -24,14 +24,7 @@ export interface TrackingScanResult {
   error?: string;
 }
 
-/**
- * Everything the effectful apply layer needs to open a carton: the per-scan
- * context (the scanned value, the stale-guard, the onResult echo) plus the
- * hook's state setters / refs / collaborators. Built once per submit in
- * `useTrackingScan` and threaded into `applyMatchedCarton` /
- * `applyUnmatchedCarton`, so the open/promote effects live OUTSIDE the giant
- * submit closure while capturing the exact same cells they did inline.
- */
+/** Everything the effectful apply layer needs to open a carton: */
 export interface ScanApplyCtx {
   // — per-scan —
   /** The scanned value (carried into onResult + the promote follow-up body). */

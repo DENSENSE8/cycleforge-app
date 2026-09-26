@@ -1,10 +1,4 @@
-/**
- * Unbox Displays navigation predicates — cockpit auto-follow vs operator browse.
- *
- * Pure: no React. {@link LineEditPanel} consults these before yanking the
- * right-edge leaf. Root Index · Inventory · Linkage (and any other leaf the
- * operator opened) are browse, not a vacuum for the step rail to refill.
- */
+/** Unbox Displays navigation predicates — cockpit auto-follow vs operator browse. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

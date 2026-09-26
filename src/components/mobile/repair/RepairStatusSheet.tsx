@@ -12,13 +12,7 @@ import {
 } from '@/lib/repair-status';
 import { cn } from '@/utils/_cn';
 
-/**
- * Status verb of the mobile repair workbench. Two taps on purpose: choosing a
- * row only selects it; the explicit Save button is the one write. Operator
- * labels on screen, queue-compatible stored values on the wire
- * (`REPAIR_WORKBENCH_STATUSES`) — the page owns the PATCH, the optimistic
- * value, and the rollback, so this sheet never sends a ticket message.
- */
+/** Status verb of the mobile repair workbench. */
 export function RepairStatusSheet({
   open,
   current,

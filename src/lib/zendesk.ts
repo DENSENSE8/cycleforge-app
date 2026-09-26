@@ -1,17 +1,4 @@
-/**
- * Zendesk integration utility for creating repair service tickets via the
- * Zendesk REST API.
- *
- * Credentials are per-tenant. Every credential-resolving function takes an
- * OPTIONAL trailing `orgId`:
- *   - orgId given  → resolve from the encrypted org vault
- *     (getIntegrationCredentials(orgId, 'zendesk')). For the USAV org that
- *     vault read transparently falls back to the ZENDESK_* env vars; any other
- *     tenant without a vault row resolves to "not configured" (it NEVER silently
- *     falls back to USAV's Zendesk).
- *   - orgId omitted → read the ZENDESK_* env vars directly (legacy single-tenant
- *     path; keeps existing callers compiling + working unchanged).
- */
+/** Zendesk integration utility for creating repair service tickets via the Zendesk REST API. */
 
 import {
     getIntegrationCredentials,
@@ -80,15 +67,7 @@ function getZendeskAuthConfig(): ZendeskAuthConfig | null {
     return { subdomain, user, apiToken };
 }
 
-/**
- * Resolve the Zendesk auth config for a tenant.
- *   - orgId given  → read the org vault (provider 'zendesk'). The vault layer
- *     itself env-fallbacks ONLY for DOGFOOD_ORG_ID, so a non-USAV tenant without a
- *     vault row resolves to null — never USAV's creds.
- *   - orgId omitted → legacy env-only path (getZendeskAuthConfig).
- * Returns null when neither yields a complete credential set, so callers can
- * degrade gracefully instead of POSTing to the wrong Zendesk.
- */
+/** Resolve the Zendesk auth config for a tenant. */
 async function resolveZendeskAuthConfig(orgId?: OrgId): Promise<ZendeskAuthConfig | null> {
     if (orgId == null) {
         return getZendeskAuthConfig();
@@ -235,10 +214,7 @@ export async function createZendeskTicket(
     // 2. Calculate due date
     const dueDate = calculateDueDate(new Date());
 
-    // 3. Build description — clean, human-readable layout. Each fact gets its
-    //    own labeled line (the old one crammed serial + issue onto a single
-    //    "SN & Issue:" line and led with the internal table id). All the same
-    //    data support relied on is still here, just easier to scan.
+    // 3. Build description — clean, human-readable layout.
     const descriptionLines = [
         `Repair Service ${repairServiceNumber} (ID ${repairServiceId})`,
         '',
@@ -256,10 +232,7 @@ export async function createZendeskTicket(
     }
     const description = descriptionLines.join('\n');
 
-    // 4. Create the ticket directly via the Zendesk REST API. external_id links
-    //    it to the repair entity so the support workspace can resolve photos.
-    //    The first comment is internal (public: false) so creating the intake
-    //    ticket never emails the walk-in customer.
+    // 4. Create the ticket directly via the Zendesk REST API.
     const ticket = await createTicket({
         subject: `Repair RS ${repairServiceId}: Walk-in ${customerName} - ${customerPhone} - Due Date: ${dueDate}`,
         comment: { body: description, public: false },
@@ -272,18 +245,7 @@ export async function createZendeskTicket(
     return `#${ticket.id}`;
 }
 
-/* ────────────────────────────────────────────────────────────────────────
- * Direct Zendesk REST API client (tickets CRUD + comments)
- *
- * Unlike createZendeskTicket() above — which relays through the Google Apps
- * Script bridge — these helpers talk to the Zendesk REST API directly using
- * the same Basic-auth (email + API token) config as getZendeskSupportOverview.
- *
- * Credentials are resolved per-tenant via resolveZendeskAuthConfig(orgId):
- * the org vault (getIntegrationCredentials(orgId, 'zendesk')) when an orgId is
- * passed, else the ZENDESK_* env vars. Pass the trailing optional `orgId` on
- * each helper below to scope the call to a tenant.
- * ──────────────────────────────────────────────────────────────────────── */
+/* ──────────────────────────────────────────────────────────────────────── Direct Zendesk REST API client (tickets CRUD + comments) */
 
 /** Thrown when the Zendesk API credentials are not configured. Routes map this to 503. */
 export class ZendeskNotConfiguredError extends Error {
@@ -459,19 +421,8 @@ export interface CreateTicketInput {
     email_ccs?: ZendeskEmailCc[];
 }
 
-/**
- * Create a ticket directly via the REST API.
- *
- * Pass `opts.idempotencyKey` to dedupe retries: Zendesk caches the result of an
- * identical-key create for ~2h and returns the original ticket instead of making
- * a duplicate. Use a per-submit UUID so distinct submissions still create distinct tickets.
- */
-/**
- * Upload one file to Zendesk's Uploads API and return its upload token. Pass the
- * token (or several) as `comment.uploads` on createTicket so the file rides along
- * as a real attachment on the ticket — not a link in the body. The body must be
- * raw bytes (not JSON), so this bypasses zendeskApiRequest and calls fetch directly.
- */
+/** Create a ticket directly via the REST API. */
+/** Upload one file to Zendesk's Uploads API and return its upload token. */
 export async function uploadFileToZendesk(
     filename: string,
     bytes: Uint8Array,
@@ -653,12 +604,7 @@ export interface ZendeskUser {
     photo: string | null;
 }
 
-/**
- * Resolve a set of Zendesk user ids to their name/email via the show_many API.
- * Powers the chat thread's author labels — non-agent authors (the requester /
- * end users) otherwise have no identity beyond their numeric id. Chunked to
- * Zendesk's 100-ids-per-call limit; returns whatever resolves (best-effort).
- */
+/** Resolve a set of Zendesk user ids to their name/email via the show_many API. */
 export async function getUsers(ids: number[], orgId?: OrgId): Promise<ZendeskUser[]> {
     await requireZendeskConfig(orgId);
     const unique = Array.from(new Set(ids.filter((id) => Number.isInteger(id) && id > 0)));

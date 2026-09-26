@@ -10,12 +10,7 @@ import { qualityRiskToneClass } from '@/lib/quality-risk-tone';
 import { qualitySeverityToneClass } from '@/lib/quality-severity-tone';
 import { repairOutcomeToneClass } from '@/lib/repair-outcome-tone';
 
-/**
- * Quality + failures + repairs for one serial unit — the QC system's read+act
- * surface in the detail pane. One aggregate read (GET .../quality, self-healing
- * recompute) feeds three cards; writes (tag / resolve / log repair / complete)
- * invalidate it. Server enforces permissions; the UI just surfaces the actions.
- */
+/** Quality + failures + repairs for one serial unit — the QC system's read+act surface in the detail pane. */
 
 interface QualityScore {
   quality_score: number;

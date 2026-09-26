@@ -14,32 +14,7 @@ import {
 import { CommandAliasEditor } from './CommandAliasEditor';
 import { cn } from '@/utils/_cn';
 
-/**
- * The command book — every scannable `CMD-*` string, one page you can print,
- * bind and scan straight off the paper.
- *
- * Row anatomy is the printed label's, turned sideways and enlarged: **text on
- * the left, matrix on the right**, the same slot order as `LabelFaceModel` and
- * the unbox carton face. An operator who has read a carton label can read a
- * book row without learning a second layout.
- *
- * Symbology is `datamatrix`, not QR — the same symbol every carton, unit, bin
- * and repair label in this app already carries, which is what the floor's guns
- * are configured and aimed for. A second symbology for one document would be a
- * scanner-configuration problem disguised as a design choice.
- *
- * The matrices are sized for a **hand scanner at book distance** (128px ≈ 34mm
- * at 96dpi), well above the ~20mm a 2×1" sticker gets, because a book is read
- * at arm's length off a flat page rather than pressed against a carton.
- *
- * @domain-job Printable catalog of the station command vocabulary
- * @hardware-target Workbench
- * @density ops
- * @justification The 2×1" label face (`printStationCommandLabel`) prints ONE
- *   sticker per job on thermal stock. A book is a different artifact — many
- *   codes, one paper job, read at distance — so it composes the same registry
- *   and the same symbology rather than reusing a face sized for a carton.
- */
+/** The command book — every scannable `CMD-*` string, one page you can print, bind and scan straight off the paper. */
 
 const MATRIX_PX = 128;
 

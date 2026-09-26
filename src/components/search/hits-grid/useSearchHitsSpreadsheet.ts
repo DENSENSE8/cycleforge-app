@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * **Find-plane spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag for `/search` results. Spread it onto the host;
- * there is no second table component.
- *
- * ```tsx
- * const sheet = useSearchHitsSpreadsheet({ hits, onOpenHit });
- * return <DataTable {...sheet} totalCount={hits.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why the header sort is LOCAL state here
- *
- * The rule is that sort durability belongs in the URL — and on this route the
- * URL channel for ordering is already occupied. `?colsort=` is the browse
- * toolbar's RANKING switch (relevance | date, `SEARCH_SORT_PARAM`), which is
- * not a column sort at all: relevance is not a column, and the switch ships no
- * `?coldir=` companion because a two-option ranking has no direction. A header
- * click writing the same key would fight it for one channel.
- *
- * So the two compose instead of colliding: the toolbar chooses the order the
- * rows ARRIVE in, and a header click re-orders what arrived. The sort is a
- * state SETTER, never a constant — passing a frozen `sort` is the dead-header
- * fork that made Shipped's headers inert.
- */
+/** **Find-plane spreadsheet** — the family glue that resolves a {@link DataTable} feed bag for `/search` results. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

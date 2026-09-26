@@ -1,12 +1,4 @@
-/**
- * DB-free unit tests for mergeAccounts() — the account-fold logic.
- *
- * Run: npx tsx --test src/lib/identity/accounts.test.ts
- *
- * Uses the Deps-injection pattern: a fakes() factory captures every collaborator
- * call so we assert on both the return value and what the fold threaded into the
- * injected deps — with zero database.
- */
+/** DB-free unit tests for mergeAccounts() — the account-fold logic. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Leaf detail disclosure open state — one open id per provider, local fallback.
- *
- * Callers / importers: CompoundRow.tsx, CompoundRowDetailHost.tsx,
- * OrdersQueueTableRow.tsx, ReceivingGridRow.tsx, VirtualGroupedSections.tsx
- * (compoundRowDetailEstimatePx / subscribeCompoundRowDetailOpen).
- * Affected API: CompoundRowDetailProvider, useCompoundRowDetail, estimate helpers.
- * Schema: none. Parent fold stays SlotTableGroupParentRow onToggleFold.
- * User verbatim: "Implement the plan as specified, it is attached for your
- * reference. Do NOT edit the plan file itself."
- */
+/** Leaf detail disclosure open state — one open id per provider, local fallback. */
 
 import {
   createContext,

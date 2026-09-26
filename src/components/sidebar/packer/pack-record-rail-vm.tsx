@@ -1,10 +1,4 @@
-/**
- * Adapter: a {@link PackerRecord} → shared `RailRowVM` slots for the Packing
- * sidebar recent-packs rail. Sibling of `tech-record-rail-vm` (Shipping) and
- * `RecentActivityRailBase`'s receiving row body — the rail row anatomy,
- * truncation and vertical rhythm come from `RailRowBody`; this module only
- * supplies slot CONTENT and resolves presentation kinds via their SoTs.
- */
+/** Adapter: a {@link PackerRecord} → shared `RailRowVM` slots for the Packing sidebar recent-packs rail. */
 
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';

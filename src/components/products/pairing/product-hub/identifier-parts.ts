@@ -1,12 +1,4 @@
-/**
- * A platform mapping can carry two identifiers — a merchant SKU (platform_sku)
- * and a marketplace item id (platform_item_id, e.g. an Amazon ASIN). Show BOTH
- * when present: the SKU as the primary token, the raw item id second. `primary`
- * doubles as the preview-pane label.
- *
- * Ecwid is the exception: its platform_item_id is an internal numeric product id
- * that's noise to the operator — show the SKU only.
- */
+/** A platform mapping can carry two identifiers — a merchant SKU (platform_sku) and a marketplace item id (platform_item_id, e.g. */
 export function identifierParts(
   platform: string,
   platformSku: string | null,

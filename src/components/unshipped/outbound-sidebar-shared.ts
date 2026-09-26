@@ -34,12 +34,7 @@ export const UNSHIPPED_SAVED_VIEWS_KEY = 'unshipped_saved_views';
 export const SHIPPED_SAVED_VIEWS_KEY = 'shipped_saved_views';
 export const PACKED_SAVED_VIEWS_KEY = 'packed_saved_views';
 
-/**
- * Mode → saved-views (storageKey, paramKeys) — the ONE resolver both the rail
- * list ({@link OutboundSavedViewsList}) and the Band-3 Views menu
- * ({@link OutboundViewsMenu} → {@link WorkbenchViewsMenu}) read, so the faces
- * over `useSavedViews` cannot disagree about what a view captures on a lane.
- */
+/** Mode → saved-views (storageKey, paramKeys) — the ONE resolver both the rail list ({@link OutboundSavedViewsList}) and the Band-3 Views… */
 export function outboundSavedViewsConfig(mode: 'unshipped' | 'packed' | 'shipped'): {
   storageKey: string;
   paramKeys: readonly string[];

@@ -1,17 +1,4 @@
-/**
- * Client-safe helpers for the portable Location CRUD surface.
- *
- * The DB doors already exist and are NOT re-implemented here:
- *   list   → GET    /api/locations
- *   create → POST   /api/locations
- *   edit   → PATCH  /api/locations/[barcode]/properties
- *   delete → DELETE /api/locations/[barcode]   (409 when the bin holds stock)
- *
- * This module owns only the pure form ⇄ payload shaping and the label-face
- * rules, so the dialog stays presentational and every rule is unit-testable
- * without a DB. Bin-code formatting stays delegated to
- * {@link formatStagedLocationFace} — never re-derived here.
- */
+/** Client-safe helpers for the portable Location CRUD surface. */
 
 import { parseLocationCodeFlat, type LocationSegments } from '@/lib/barcode-routing';
 import { formatStagedLocationFace } from '@/lib/receiving/recent-staged-location';
@@ -124,14 +111,7 @@ export function buildCreateLocationBody(
   };
 }
 
-/**
- * PATCH body for an edit — **changed fields only**, because the properties
- * route is `.strict()` and rejects an empty object. Returns null when nothing
- * changed so the caller can skip the request entirely.
- *
- * `displayName` / `barcode` / `binType` are nullable-clearable; `name` is not.
- * `room` is deliberately absent — the properties route does not accept it.
- */
+/** PATCH body for an edit — **changed fields only**, because the properties route is `.strict()` and rejects an empty object. */
 export function buildUpdateLocationBody(
   original: LocationFormValues,
   next: LocationFormValues,

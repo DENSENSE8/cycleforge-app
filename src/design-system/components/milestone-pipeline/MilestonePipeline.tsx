@@ -15,19 +15,7 @@ import {
 /** Title line offset — the height the rail threads on every stage. */
 const RAIL_TOP = 'top-[29px]';
 
-/**
- * What the station read, as a trail.
- *
- * When a stage was stamped by reading a code, the honest answer is not the word
- * "Serial scan" — it is WHICH code. Each read is its own row, threaded by a
- * dotted rail, so a multi-unit stage reads as the sequence of reads it was.
- *
- * Values render through the HOUSE copy chips, never a local last-8.
- * `SerialChip` / `TrackingChip` derive their own display from the raw value,
- * carry their own tone and mark, and bring copy + hover-full-value with them. A
- * hand-rolled `.slice(-8)` beside them looks identical until the day the house
- * rule changes and the copy stops following.
- */
+/** What the station read, as a trail. */
 function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
   if (scans.length === 0) return null;
   const threaded = scans.length > 1;
@@ -78,38 +66,7 @@ function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
   );
 }
 
-/**
- * A record's progress across stations — one left-to-right run, one anatomy.
- *
- * Every stage is the same four things: WHO did it (their face), WHAT stage it
- * was (past tense + the station's glyph), WHEN, and WHAT they read to stamp it.
- * A stage that has not happened shows the queue it is waiting in instead.
- *
- * Callers may pass the full station path; only stamped stages plus the true
- * next queue render — skipped holes and dim future stages are dropped, so a
- * two-stamp order stretches edge to edge rather than padding a blank third.
- *
- * ## Why this is not the wizard stepper
- *
- * `LinearWorkflowStepper` walks a FORM (Service → Issue → Contact → Review):
- * position only, no actor, no time, clickable. This walks a RECORD's history:
- * every stage carries a person and an instant. They were briefly the same
- * component with slot props bending one into the other, which is how a
- * component ends up with a `body` prop that replaces its own rendering. Two
- * nouns, two components, neither with a slot.
- *
- * ## The rail
- *
- * The rail runs THROUGH the title row — out of the stage name, across the
- * marker column, into the next stage — so it reads as one progression rather
- * than detached blocks. Two things make that work and both are load-bearing:
- * every stage keeps a same-size face box even when it has no face, and the
- * grid is `items-start` so the title line sits at a constant offset. Centre
- * them instead and a two-line stage and a four-line stage put the rail at
- * different heights.
- *
- * No layout animation (AGENTS.md).
- */
+/** A record's progress across stations — one left-to-right run, one anatomy. */
 export function MilestonePipeline({
   milestones,
   ariaLabel,
@@ -139,12 +96,7 @@ export function MilestonePipeline({
           return (
             <Fragment key={m.key}>
               {idx > 0 ? (
-                // `min-w-6`, not `min-w-0`: a `flex-1` rail with no floor
-                // collapses to nothing the moment the column is narrow, and the
-                // run silently becomes detached blocks. The rail is what makes
-                // them one progression — it must survive the squeeze even if
-                // the labels have to. With two stages it is what stretches the
-                // run edge to edge.
+                // `min-w-6`, not `min-w-0`:
                 <li aria-hidden className="min-w-6 flex-1 self-start pt-[29px]">
                   <span className={cn('block h-0.5 w-full rounded-full', rule(idx - 1))} />
                 </li>

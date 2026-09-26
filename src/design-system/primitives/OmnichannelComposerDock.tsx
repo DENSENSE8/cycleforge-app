@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * OmnichannelComposerDock — Claude / Cursor / ChatGPT-style prompt composer:
- * elevated rounded shell, auto-grow textarea ABOVE a dedicated bottom action
- * bar (+ · tools left · Location / Enter / Print right). Enter commits,
- * Shift+Enter newlines.
- *
- * Structural lock (AI-first): the bordered shell is always `flex-col`. Never
- * put + / textarea / CTAs on one `items-center` horizontal axis — multi-line
- * growth must push the action bar down, not squeeze icons into the field row.
- *
- * ONE shell, every "type a message here" job in the app:
- *   - Unbox carton notes  (LineNotesCard / WorkspaceNotesCard)
- *   - Ticket reply, every surface (TicketComposer — the ONE ticket composer)
- *
- * It was named `StationComposerDock` until 2026-08-01 — the name recorded where
- * it was BORN (the Unbox station dock), not who owns it. Renamed, not split.
- *
- * Motion: `framerPresence.composerDock` + `framerTransition.composerDockMount`
- * via {@link useMotionPresence} / {@link useMotionTransition} (opacity + small
- * y; never bounce/elastic; respects reduced motion).
- */
+/** OmnichannelComposerDock — Claude / Cursor / ChatGPT-style prompt composer: */
 
 import {
   useCallback,
@@ -69,12 +49,7 @@ export function handleComposerKeyDown(
   return false;
 }
 
-/**
- * Whether the commit control renders. A `trailingAction` (e.g. Unbox
- * Print · Receive) OWNS the trailing slot — Enter is condensed into that
- * CTA (keyboard still fires onCommit). Pass {@link showCommitWithTrailing}
- * only when a face must show both (rare).
- */
+/** Whether the commit control renders. */
 export function composerShowsCommit(opts: {
   hideCommitButton?: boolean;
   hasTrailingAction?: boolean;
@@ -145,19 +120,7 @@ interface OmnichannelComposerDockProps {
    * Station Notes keeps this off — Print · Receive is the condensed Enter.
    */
   showCommitWithTrailing?: boolean;
-  /**
-   * Commit face.
-   * - `send` — primary paper-plane pill (Support chat — default).
-   * - `enter` — bare gray CornerDownLeft (station note; no bubble).
-   * - `action` — a LABELLED CTA (`File ticket →` / `Update ticket`), soft
-   *   corner via `Button radius="composer"`.
-   *
-   * `action` exists because the station's Ticket commit is not "save this
-   * text" — it FILES a helpdesk ticket, or posts to a customer-visible thread.
-   * A bare return arrow gave the most consequential control on the bench the
-   * quietest face on it, and the claim panel already had the loud one; this is
-   * that same button, moved into the dock rather than copied beside it.
-   */
+  /** Commit face. - `send` — primary paper-plane pill (Support chat — default). */
   commitGlyph?: 'send' | 'enter' | 'action';
   /** `action` face only — the CTA's words. */
   commitLabel?: string;
@@ -170,15 +133,7 @@ interface OmnichannelComposerDockProps {
    * Always left of the action bar — never beside the textarea.
    */
   leadingStart?: ReactNode;
-  /**
-   * Chrome INSIDE the outline, ABOVE the textarea, edge-to-edge (the shell's
-   * own pad is cancelled so a hairline here meets the border).
-   *
-   * It exists for controls that describe the message rather than compose it —
-   * the station Ticket channel / Cc / attached-context rows. Those have to be
-   * readable without opening a menu, and they belong to the draft, so they sit
-   * inside the same outline rather than floating above it as a second band.
-   */
+  /** Chrome INSIDE the outline, ABOVE the textarea, edge-to-edge (the shell's own pad is cancelled so a hairline here meets the border). */
   insetTop?: ReactNode;
   /**
    * Outer chrome. `raised` (default) owns the outline, {@link COMPOSER_SHELL_CORNER},
@@ -186,13 +141,7 @@ interface OmnichannelComposerDockProps {
    * `bare` is a body zone inside a host that already paints the plane.
    */
   chrome?: 'raised' | 'bare';
-  /**
-   * Flatten the TOP corners so a panel welded to this dock's upper edge shares
-   * one silhouette with it (Unbox receive feedback — `WeldedFeedbackPanel`).
-   *
-   * It is a PROP because a welded top is a state of this shell, not a second
-   * shell. Only `raised` has top radius to flatten; `bare` is a no-op.
-   */
+  /** Flatten the TOP corners so a panel welded to this dock's upper edge shares one silhouette with it (Unbox receive feedback —… */
   weldTop?: boolean;
   /**
    * `default` — roomier padding (Support chat / notes).
@@ -414,11 +363,7 @@ export const OmnichannelComposerDock = forwardRef<
         <div
           data-composer-inset-top=""
           className={cn(
-            // Bleed through the shell's own padding so the slot's own rule
-            // lands ON the outline rather than a gutter inside it. `bare` and
-            // `default` density have no pad to cancel. Clip to the shell's own
-            // top corners — a filled row bled to the edge otherwise squares off
-            // the rounded outline it is sitting inside.
+            // Bleed through the shell's own padding so the slot's own rule lands ON the outline rather than a gutter inside it.
             'min-w-0 overflow-hidden',
             !bare && (weldTop ? 'rounded-t-none' : 'rounded-t-2xl'),
             compact && '-mx-1.5 -mt-1.5 mb-0.5',
@@ -479,11 +424,7 @@ export const OmnichannelComposerDock = forwardRef<
               onDismissGhost();
               return;
             }
-            // Enter commits from the LIVE textarea value. HID wedges (Zebra /
-            // Eyoyo / Tera) hammer chars then Enter; the global wedge listener
-            // stands down over editables, so this field owns the terminator.
-            // Never gate Enter on React `canCommit` / `commitDisabled` — those
-            // lag one frame behind the DOM and silently drop the scan.
+            // Enter commits from the LIVE textarea value.
             handleComposerKeyDown(e, () => {
               const live = (e.currentTarget.value || localRef.current?.value || value).trim();
               if (!live) return;

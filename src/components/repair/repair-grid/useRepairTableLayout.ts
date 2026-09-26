@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * The Repair slot-layout hook — the CONFIG on the shared
- * {@link useSlotTableLayout} engine. The seventeenth family on the engine.
- *
- * Sheet morph only — `paintMorph` coerces a stored `compound` document, and the
- * org write gate (`slotMorphsFor('repair')`) refuses one.
- */
+/** The Repair slot-layout hook — the CONFIG on the shared {@link useSlotTableLayout} engine. */
 
 import {
   REPAIR_FIELD_CATALOG,

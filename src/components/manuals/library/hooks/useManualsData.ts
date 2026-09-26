@@ -13,12 +13,7 @@ export interface UseManualsData {
   reload: () => void;
 }
 
-/**
- * Owns the manual list and its refetch lifecycle. Refetches when `reload()` is
- * called and whenever any modal in ManualCrudModals dispatches `manuals-updated`
- * (so the tree stays in sync without prop-drilling). `setManuals` is exposed for
- * the optimistic thumbnail-backfill patch.
- */
+/** Owns the manual list and its refetch lifecycle. */
 export function useManualsData(): UseManualsData {
   const [manuals, setManuals] = useState<ManualRow[]>([]);
   const [loading, setLoading] = useState(true);

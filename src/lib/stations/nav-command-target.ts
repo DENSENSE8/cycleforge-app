@@ -1,17 +1,4 @@
-/**
- * Resolve a {@link NavCommandDef} to a concrete `{ pathname, search }`.
- *
- * Split from `nav-command-codes.ts` on purpose: the registry is pure data and
- * stays free of the nav graph; this half reaches into `SIDEBAR_PAGE_NAV` for
- * the destination's own `to()` delta and hands it to `applyChildTarget`, which
- * already owns param isolation (construct-don't-copy at a migrated route).
- *
- * It also owns {@link navCommandPermission}: the gate is DERIVED from the nav
- * entry rather than copied onto the command, so a sticker can never disagree
- * with the page it opens. Checking it is still the CALLER's job, before it
- * navigates, because a refusal must nack at the scan bar rather than land the
- * operator on a denial page.
- */
+/** Resolve a {@link NavCommandDef} to a concrete `{ pathname, search }`. */
 
 import {
   applyChildTarget,
@@ -59,15 +46,7 @@ export function resolveNavCommandTarget(
   });
 }
 
-/**
- * The permission this command's destination requires, or null when the
- * destination is ungated (Home, Search).
- *
- * `child.requires ?? page.requires` is the same resolution `filterPageChildren`
- * and `pageVisible` use to decide whether to render the row at all — reading it
- * from the same place is what guarantees a scannable jump and a clickable one
- * are gated identically.
- */
+/** The permission this command's destination requires, or null when the destination is ungated (Home, Search). */
 export function navCommandPermission(def: NavCommandDef): string | null {
   const page = getSidebarPageNav(def.pageId);
   if (!page) return null;
@@ -78,13 +57,7 @@ export function navCommandPermission(def: NavCommandDef): string | null {
   return page.requires ?? null;
 }
 
-/**
- * True when the operator is already where the command would send them.
- *
- * Compared on the RESOLVED CHILD, not on the URL string: `/test` and
- * `/test?staff=7` are both Ready to Pack, and re-pushing the second as the
- * first would silently drop a filter the operator set by hand.
- */
+/** True when the operator is already where the command would send them. */
 export function isAlreadyAtNavCommand(
   def: NavCommandDef,
   origin: NavCommandOrigin,

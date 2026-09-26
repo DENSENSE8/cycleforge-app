@@ -1,16 +1,4 @@
-/**
- * eBay buyer purchase adapter — the ONE place that knows buyer purchase-order
- * API shapes. Universal Incoming Track A (plan §5.1).
- *
- * Discovery: Trading API GetOrders with OrderRole=Buyer (Buy Order API cannot
- * list purchases — getPurchaseOrder is ID-only). Enrich: Buy Order
- * GET /buy/order/v1/purchase_order/{id} when a purchaseOrderId is already known
- * (Track B / sync-one).
- *
- * Token: vault SoT via resolveEbayUserTokens + refresh with
- * ebayScopeStringForRole('buyer') so a buyer refresh never silently
- * downgrades to seller scopes.
- */
+/** eBay buyer purchase adapter — the ONE place that knows buyer purchase-order API shapes. */
 
 import { XMLParser } from 'fast-xml-parser';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,12 +1,4 @@
-/**
- * WCAG contrast helpers — single SoT for deriving readable ink from a free-form
- * background / accent hex (org platform colors and staff initials).
- *
- * Marketplace platforms may store a custom `#RRGGBB` accent; paint always goes
- * through {@link platformPaintFromHex} so a bright yellow never forces white
- * text. Carrier brand hex stays in {@link carrier-brand.ts} and is never
- * tenant-overridable.
- */
+/** WCAG contrast helpers — single SoT for deriving readable ink from a free-form background / accent hex (org platform colors and staff… */
 
 import { baseColors } from '@cycleforge/design-tokens';
 

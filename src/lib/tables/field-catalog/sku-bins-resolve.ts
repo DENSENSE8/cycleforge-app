@@ -1,36 +1,9 @@
-/**
- * Per-SKU bin slot resolvers — pure.
- *
- * `last_counted` resolves to the ABSOLUTE INSTANT, never to a pre-formatted or
- * relative face: the engine turns a `date` display type into the cell face and
- * keeps the instant behind it, and a resolver whose text depended on `now`
- * would sort and search differently on every render.
- *
- * A missing bound (`min_qty` / `max_qty` is `NULL`) resolves to `null` text and
- * the cell dashes — the retired cells printed `—` for exactly that case, and a
- * bin with no floor is not a bin with a floor of zero.
- *
- * {@link skuBinLevel} lives here, beside the facts it reads, so the STATE pill
- * and the bound `level` track can never disagree: the adapter imports this
- * function rather than re-deriving the word.
- */
+/** Per-SKU bin slot resolvers — pure. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { SkuBinTableRow } from '@/lib/inventory/sku-bin-row';
 
-/**
- * The per-SKU stock level of one bin, as the `bins` overview already words it.
- *
- * Vocabulary and predicates are that family's, not new ones — see
- * `location-queries.ts`, whose SQL publishes `is_empty` (`total_qty = 0`),
- * `has_low_stock` (`qty < COALESCE(min_qty, -1)`) and `is_over_capacity`
- * (`total_qty > capacity`). The ceiling here is the pair's own `max_qty`, which
- * is the per-SKU form of that capacity.
- *
- * `Stocked` is the no-breach word, and it covers a bin with no bounds set at
- * all: saying "In range" of a pair with neither a floor nor a ceiling would
- * claim a range nobody configured.
- */
+/** The per-SKU stock level of one bin, as the `bins` overview already words it. */
 export type SkuBinLevel = 'Empty' | 'Low' | 'Over' | 'Stocked';
 
 export function skuBinLevel(row: SkuBinTableRow): SkuBinLevel {

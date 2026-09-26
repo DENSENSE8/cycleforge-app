@@ -12,19 +12,7 @@ import { cn } from '@/utils/_cn';
 
 
 
-/**
- * Responsive overlay primitive.
- *
- *   mobile (< md):  bottom-anchored sheet with drag-to-dismiss + drag handle.
- *   desktop (≥ md): centered dialog with fade + scale-in entrance.
- *
- * Always portals to <body> so the scrim covers the full viewport even when an
- * ancestor establishes a fixed-positioning containing block (transform,
- * filter, backdrop-filter, will-change, perspective, contain).
- *
- * Callers can force a variant via `forceVariant` if they want consistent
- * physics regardless of viewport (rare — keep at 'auto' by default).
- */
+/** Responsive overlay primitive. */
 
 type Variant = 'auto' | 'sheet' | 'dialog';
 
@@ -56,13 +44,7 @@ interface BottomSheetProps {
    * not a four-row picker. Default padding stays for long pickers.
    */
   compact?: boolean;
-  /**
-   * Sheet variant only (phones): the panel fills the viewport instead of
-   * hugging the bottom edge — a full-screen picker, not a peek. Rounded
-   * corners and the width clamp drop, the top safe area is padded, and a
-   * close button joins the drag handle because a full-bleed panel leaves no
-   * scrim to tap. The desktop dialog variant ignores this.
-   */
+  /** Sheet variant only (phones): */
   fullScreen?: boolean;
   /**
    * Stacking level. 0 = base (z-index 200). Each level adds 10 so a
@@ -107,11 +89,7 @@ export function BottomSheet({
     setPortalNode(document.body);
   }, []);
 
-  // Lock body scroll + Escape-to-close while open. Capture so we own the
-  // key even if a late-mounted bubble listener is still live. Every open sheet
-  // hears the key, so only the topmost overlay acts on it: a confirm stacked
-  // on an action sheet closes alone, and a popover inside a sheet closes
-  // before the sheet does (its own bubble listener must still receive it).
+  // Lock body scroll + Escape-to-close while open.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;

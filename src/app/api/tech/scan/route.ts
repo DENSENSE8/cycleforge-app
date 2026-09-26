@@ -199,10 +199,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const testDateTime = formatPSTTimestamp();
         let fbaItem = await findOpenFbaItem(client as any, ctx.organizationId, fnsku);
 
-        // Testing station: a tech FNSKU scan means "tested". Advance an open
-        // PLANNED item to TESTED, or add the FNSKU to today's plan as TESTED
-        // when none exists ("add or update"). FBA-workspace/plan scans use a
-        // different endpoint and intentionally stay PLANNED.
+        // Testing station:
         if (!isFbaSource) {
           if (fbaItem && String(fbaItem.status) === 'PLANNED') {
             const upd = await client.query(
@@ -302,11 +299,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         const summary = await fnskuStageCounts(client as any, ctx.organizationId, fnsku);
 
         await client.query('COMMIT');
-        // A tech/FBA FNSKU scan always mutates fba_shipment_items (advance an open
-        // item PLANNED→TESTED, or insert a new TESTED row), so bust the full FBA
-        // read set (board / today / stage-counts, dual-fired legacy + org-scoped).
-        // A tech-station scan is additionally a tech-log / order event; an
-        // FBA-workspace scan is not.
+        // A tech/FBA FNSKU scan always mutates fba_shipment_items (advance an open item PLANNED→TESTED, or insert a new TESTED row), so bust the…
         await invalidateFbaViews(
           ctx.organizationId,
           isFbaSource ? [] : [CACHE_TAGS.orders, CACHE_TAGS.ordersNext, CACHE_TAGS.techLogs, CACHE_TAGS.orderDetail],

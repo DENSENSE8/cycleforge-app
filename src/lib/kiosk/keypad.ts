@@ -1,14 +1,4 @@
-/**
- * Cents-entry keypad math — Square's Keypad: digits fill from the right, so
- * `1`,`2`,`5`,`0` reads `$12.50` with no decimal key to miss.
- *
- * The glass keys are Square's own: `1`–`9`, `C`, `0`, `+`. `C` clears the
- * amount; `+` is not arithmetic — it commits the amount as a line, so the
- * component owns it and this math never sees it. Backspace stays a
- * physical-keyboard convenience (`back`), with no key on the glass.
- *
- * Callers: `KioskAmountKeypad`.
- */
+/** Cents-entry keypad math — Square's Keypad: */
 
 export const KEYPAD_KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '+'] as const;
 export type KeypadKey = (typeof KEYPAD_KEYS)[number];

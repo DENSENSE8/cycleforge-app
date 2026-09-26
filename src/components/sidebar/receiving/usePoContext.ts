@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Unboxing PO context for the receiving sidebar: the carton currently being
- * unboxed (its receiving_id, PO ids, lines, package meta) plus the "armed" line
- * a serial scan targets.
- *
- * Owns the `poContext` / `armedLineId` cells and the window-event bridges that
- * mutate them from the main panel (arm/disarm a line, activate a pending
- * receiving). `clearPoContext` resets only this hook's cells; the sidebar has
- * no serial input of its own to reset (see `useReceivingReturnsBanner`).
- * Extracted from ReceivingSidebarPanel; behaviour is unchanged.
- */
+/** Unboxing PO context for the receiving sidebar: */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {

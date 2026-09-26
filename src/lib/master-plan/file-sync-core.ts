@@ -1,16 +1,4 @@
-/**
- * File↔doc sync engine (ALP-2.2 / ALP-2.3) — the testable core of the local
- * sync daemon. The daemon shell (.cycle_forge_ops/scripts/
- * master-plan-sync-daemon.mjs) wires fs.watch + Ably around this; unit tests
- * inject fakes. No Node imports here — everything I/O comes through Deps.
- *
- * Echo suppression (generation tokens): every downstream write records the
- * exact text written. When the file watcher fires, the engine compares the
- * file content against the last written generation — a match is our own echo
- * and is dropped; the Ably side is separately suppressed by the provider's
- * clientTag (see README.md). Together these break the
- * file→doc→Ably→doc→file loop in both directions.
- */
+/** File↔doc sync engine (ALP-2.2 / ALP-2.3) — the testable core of the local sync daemon. */
 
 import type * as Y from 'yjs';
 import { applyMasterPlanReplace, isMasterPlanEmpty, readMasterPlan, createSeedUpdate, SEED_APPLY_ORIGIN } from './doc';
@@ -57,16 +45,7 @@ export class FileSyncEngine {
     doc.on('update', this.onDocUpdate);
   }
 
-  /**
-   * Startup policy (documented in README.md):
-   * - Empty doc after the sync window → seed from the file text (idempotent
-   *   fixed-clientID update; peers racing with the same canonical text merge
-   *   to one copy). Empty file too → nothing to do.
-   * - Non-empty doc that DIFFERS from the file → the network doc wins the
-   *   file (previous sessions already synced local edits up). The engine
-   *   reports the divergence so the shell can back up the local file first —
-   *   nothing is silently lost.
-   */
+  /** Startup policy (documented in README.md): */
   startup(fileText: string | null): { seeded: boolean; docWonFile: boolean } {
     if (isMasterPlanEmpty(this.doc)) {
       if (fileText && fileText.length > 0) {

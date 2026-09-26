@@ -8,15 +8,7 @@ import { getOrgPlatformTypeRules, invalidateCatalogCache } from '@/lib/catalog/o
 import { recordAudit } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * GET /api/catalog/platform-type-rules — the org's platform → receiving-type
- * dependency matrix.
- *
- * GET is `receiving.view` — every station narrows its type picker with this.
- * POST is `admin.manage_features`, the same permission its catalog siblings
- * (platforms, types) use for writes, and the one the Settings → Platforms &
- * Types sidebar entry is already gated on.
- */
+/** GET /api/catalog/platform-type-rules — the org's platform → receiving-type dependency matrix. */
 export const GET = withAuth(
   async (_req, ctx) => {
     try {
@@ -33,27 +25,14 @@ export const GET = withAuth(
   { permission: 'receiving.view' },
 );
 
-/**
- * `z.coerce` on the ids, deliberately: `platforms.id` / `types.id` are
- * BIGSERIAL, and node-postgres hands int8 back as a STRING — so every existing
- * catalog endpoint already serves `id: "5"`. A client echoing an id it was just
- * given would 400 against `z.number()`, which is a trap rather than a
- * validation. Positivity and integrality are still enforced.
- */
+/** `z.coerce` on the ids, deliberately: */
 const RuleCreateBody = z.object({
   platformId: z.coerce.number().int().positive(),
   typeId: z.coerce.number().int().positive(),
   isDefault: z.boolean().optional(),
 });
 
-/**
- * POST /api/catalog/platform-type-rules — allow one type on one platform.
- *
- * **Adding the FIRST rule for a platform closes it.** Until then the platform
- * accepts every active type; from here it accepts only what is listed. That
- * mode flip is the whole design (open by default, closed per platform), and it
- * is why the editor warns before removing the last one.
- */
+/** POST /api/catalog/platform-type-rules — allow one type on one platform. */
 export async function POST(req: NextRequest) {
   try {
     const gate = await requireRoutePerm(req, 'admin.manage_features');

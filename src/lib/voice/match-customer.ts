@@ -1,15 +1,4 @@
-/**
- * Best-effort caller → customer match for inbound calls / voicemails.
- *
- * There is no unified customers identity table with a phone index; identity is
- * reconstructed by phone match across sources. We match on the LAST 10 DIGITS
- * (US/NANP) so a stored "(415) 555-0100" matches a Nextiva "+14155550100".
- *
- * Deps-injected (real impls by default; fakes in tests) — mirrors
- * `src/lib/studio/definitions.ts`. Every lookup is wrapped so a missing
- * column/table degrades to "no match" rather than crashing voicemail ingest
- * (the match is advisory; the operator can always link manually).
- */
+/** Best-effort caller → customer match for inbound calls / voicemails. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

@@ -1,12 +1,6 @@
 'use client';
 
-/**
- * Order-tab bottom update dock — labelled update CTAs + flush trailing Delete.
- *
- * Expands Assign / Notes / Out of stock / Mark shipped above the bar (same job
- * as the old More-menu toggles). Composes Workbench `InspectorActionFloor`
- * (Macro `FlushTerminalFooter` shell) + `InspectorFlushDelete`.
- */
+/** Order-tab bottom update dock — labelled update CTAs + flush trailing Delete. */
 
 import {
   AlertTriangle,

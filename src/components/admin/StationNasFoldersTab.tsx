@@ -13,12 +13,7 @@ interface StationNasFoldersTabProps {
   mode?: string;
 }
 
-/**
- * Admin → Receiving Photos. Per-mode panels: NAS address, workflow folders,
- * per-station picker defaults, and the photos platform. Thin composition layer —
- * state/logic live in {@link useStationNasFolders}; the panels live under
- * `./nas-folders/`.
- */
+/** Admin → Receiving Photos. */
 export function StationNasFoldersTab({ mode }: StationNasFoldersTabProps) {
   const c = useStationNasFolders();
   const panel = getNasPhotosPanel(mode);

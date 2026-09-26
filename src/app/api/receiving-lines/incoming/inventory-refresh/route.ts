@@ -1,32 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/inventory-refresh
- *
- * Operator-triggered "Refresh" button on the Incoming sidebar. Does the two
- * inventory-provider pulls that keep the Incoming queue honest, on demand:
- *
- *   1. Issued-PO sync (syncZohoPurchaseOrdersToReceiving, status='issued') —
- *      brings in newly-issued POs and refreshes header fields on existing
- *      EXPECTED rows. This is the same delta the incoming-po-sync cron runs.
- *
- *   2. PO-mirror status sync (syncZohoPoMirror, delta) — refreshes
- *      `zoho_po_mirror.status`. This is what makes a *received* PO disappear:
- *      a PO that left 'issued' (now billed/closed/received) is no longer in the
- *      issued pull, so step 1 never re-touches it. Step 2 updates its mirror
- *      status; the Incoming summary/list filter (NOT_ZOHO_RECEIVED_PREDICATE)
- *      then drops it from the display, and the sync's built-in
- *      reconcileZohoReceivedLines pass marks door-scanned lines on those POs
- *      as received locally so they clear the triage Prioritize queue too.
- *
- * After both, we invalidate the receiving-lines cache tags so the rail and
- * tiles reflect the fresh state on the operator's next refetch.
- *
- * Unlike the crons (Bearer CRON_SECRET), this is gated by the operator's
- * receiving permission — it's a UI affordance, not an automated job.
- *
- * Provider-agnostic path (B3) — moved from
- * /api/receiving-lines/incoming/zoho-refresh, which now re-exports this
- * handler as a legacy alias.
- */
+/** POST /api/receiving-lines/incoming/inventory-refresh */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -84,10 +56,7 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
         linked: issued.linked,
         failed: issued.failed,
       },
-      // `mirror_upserted` includes POs whose status changed to received/closed —
-      // those are the rows that clear from Incoming on the next read.
-      // `lines_marked_received` counts scanned-queue lines the sync marked
-      // received because Zoho reports their PO received/billed/closed.
+      // `mirror_upserted` includes POs whose status changed to received/closed — those are the rows that clear from Incoming on the next read.
       mirror: {
         mode: mirror.mode,
         fetched: mirror.fetched,

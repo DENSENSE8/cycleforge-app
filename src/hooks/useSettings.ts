@@ -21,12 +21,7 @@ export interface SetSettingArgs {
 
 export type SettingsMutationError = Error & { feature?: string; status?: number };
 
-/**
- * Read + write the Settings Registry values for one page. Backed by
- * /api/settings, which resolves effective values server-side (entitlement +
- * org→staff layering applied). The setter optimistically patches the cached
- * item from the server's re-resolved response.
- */
+/** Read + write the Settings Registry values for one page. */
 export function usePageSettings(page: SettingPage) {
   const queryClient = useQueryClient();
   const { user } = useAuth();

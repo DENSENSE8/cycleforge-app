@@ -1,16 +1,4 @@
-/**
- * Reusable single-flight cache lock (Phase 0.4).
- *
- * Generalizes the proven `redisAdvanceLock` shape (SET NX PX + token-checked
- * Lua CAS-delete) into a short-lived mutex used to collapse a cold-key stampede:
- * when a hot cache key expires under scan load, exactly one caller rebuilds it
- * while the others wait-and-read.
- *
- * Fail-open contract (identical to redisAdvanceLock): unconfigured or Redis
- * error → behave as if the lock was acquired (run the work). Correctness never
- * depends on the lock — the getOrSet re-check + idempotent loaders cover a rare
- * concurrent rebuild; the lock only narrows the stampede window.
- */
+/** Reusable single-flight cache lock (Phase 0.4). */
 import { isRedisConfigured, redisCmd } from './client';
 
 const DEFAULT_TTL_MS = 2_000;
@@ -37,12 +25,7 @@ export interface CacheLockHandle {
   release(): Promise<void>;
 }
 
-/**
- * Try to acquire the single-flight lock for `key`.
- *  - Redis unconfigured / error  → { acquired: false } (caller proceeds, fail-open).
- *  - SET NX succeeds             → { acquired: true }  (caller is the rebuilder).
- *  - SET NX misses (held)        → returns null        (someone else is rebuilding).
- */
+/** Try to acquire the single-flight lock for `key`. */
 export async function acquireCacheLock(
   key: string,
   ttlMs: number = DEFAULT_TTL_MS,

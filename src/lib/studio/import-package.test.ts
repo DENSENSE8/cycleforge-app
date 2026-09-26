@@ -1,10 +1,4 @@
-/**
- * DB-free tests for importTemplatePackage (Phase 3). The persistence and the
- * installer are injected, so we assert the plumbing: a package is persisted then
- * installed as a DRAFT (activate: 'never'), and the persisted slug + install
- * counts surface in the result.
- *   npx tsx --test src/lib/studio/import-package.test.ts
- */
+/** DB-free tests for importTemplatePackage (Phase 3). */
 
 import '@/lib/assistant/test-db-url';
 import test from 'node:test';

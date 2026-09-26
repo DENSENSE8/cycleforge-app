@@ -1,18 +1,6 @@
 'use client';
 
-/**
- * The tasks thrown at the signed-in staffer, as the phone reads them.
- *
- * ONE query for the whole list — `lane=all` — because `/m/home` shows the
- * operator's day as a single list with an All / Open / Done switch, and three
- * lanes over the wire would make the switch a network round trip for a filter
- * the client already holds. `CANCELED` rows are dropped here: a canceled
- * handoff is not work, and the lane that keeps it (`all`) exists for the desk's
- * audit view.
- *
- * Callers: `MobileDailyChecklist` (the unified Daily list), `MobileTaskSheet`
- * (one handed task's Start / Mark done / Reopen dock).
- */
+/** The tasks thrown at the signed-in staffer, as the phone reads them. */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -69,12 +57,7 @@ async function setTaskStatus(taskId: number, status: 'DONE' | 'ASSIGNED' | 'IN_P
   throw new Error(body?.error || `Could not update that task (${res.status})`);
 }
 
-/**
- * Tick / untick an assigned task, optimistically — the same feel as ticking a
- * daily check, because on this list they are the same gesture. Un-ticking
- * returns the row to `ASSIGNED`: it is back in someone's hands, which is what
- * the row said before it was finished.
- */
+/** Tick / untick an assigned task, optimistically — the same feel as ticking a daily check, because on this list they are the same gesture. */
 export function useToggleTaskDone() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -108,12 +91,7 @@ export function useToggleTaskDone() {
   });
 }
 
-/**
- * Pick a handed task up — `IN_PROGRESS`, which the route stamps `started_at`
- * on (first start only), so the desk's "Started" fact and the phone's Start
- * verb are one write. Optimistic like the tick: the task sheet's dock flips to
- * Mark done the moment the thumb lifts.
- */
+/** Pick a handed task up — `IN_PROGRESS`, which the route stamps `started_at` on (first start only), so the desk's "Started" fact and the… */
 export function useStartTask() {
   const queryClient = useQueryClient();
   return useMutation({

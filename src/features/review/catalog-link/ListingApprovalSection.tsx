@@ -1,32 +1,6 @@
 'use client';
 
-/**
- * Review · Missing item number — the **check-then-approve** body of the rail.
- *
- * The operator's actual sequence, and the order this renders in:
- *
- *   paste a listing URL → read the item number we pulled OUT of it
- *   → open the listing and check it is the thing the order sold
- *   → Approve → the item number lands in the Resolve field
- *
- * Three properties are load-bearing:
- *
- * 1. **Parsing never fills the Resolve field.** Approve does. Auto-filling on
- *    paste would skip the one gesture this surface exists for — the operator
- *    saying "yes, that listing is the right one" — and would make a mis-paste
- *    indistinguishable from a checked answer.
- * 2. **The id is extracted, never invented.** `parseListingUrl` refuses a search
- *    or storefront page rather than handing back a plausible-looking string; a
- *    wrong Approve here writes a fabricated `item_number` onto a real order
- *    (plan §2).
- * 3. **Approval is derived, not stored.** "Approved" is simply *the Resolve
- *    field currently holds this candidate's id*. Editing the field by hand
- *    therefore un-approves it on its own — there is no second boolean that can
- *    drift out of step with what will actually be written.
- *
- * Commit stays where it was: the rail header's **Resolve**, which re-runs the
- * sheet → order ingest path. Nothing here writes.
- */
+/** Review · Missing item number — the **check-then-approve** body of the rail. */
 
 import { useMemo, useState, type ClipboardEvent } from 'react';
 import { AlertTriangle, Check, ExternalLink } from '@/components/Icons';
@@ -120,17 +94,7 @@ export function ListingApprovalSection({
     accountSource,
   });
 
-  /**
-   * A listing URL pasted into the ITEM NUMBER box is still a listing URL —
-   * before this it was committed verbatim, so the order got an `item_number`
-   * holding a whole href. Route it up to the URL field, where it gets checked
-   * and approved like any other paste.
-   *
-   * Bound to PASTE rather than change on purpose: a change handler also fires
-   * per keystroke, so a hand-typed URL would yank itself out of the box the
-   * instant it happened to parse (`…/itm/123456`, at the sixth digit) while
-   * the operator was still typing.
-   */
+  /** A listing URL pasted into the ITEM NUMBER box is still a listing URL — before this it was committed verbatim, so the order got an… */
   const handleItemNumberPaste = (e: ClipboardEvent<HTMLInputElement>) => {
     const pasted = e.clipboardData.getData('text');
     if (!parseListingUrl(pasted).ok) return;

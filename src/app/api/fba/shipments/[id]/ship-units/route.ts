@@ -3,26 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { transition, guard, type SerialState } from '@/lib/inventory/state-machine';
 
-/**
- * POST /api/fba/shipments/[id]/ship-units
- *
- * Phase 6 companion to /api/pack/ship. For every serial_unit linked to
- * any item in this FBA shipment via fba_shipment_item_units, emit the
- * SHIPPED-lifecycle transition (PACKED → LABELED → SHIPPED inventory
- * events + sku_stock_ledger decrement). The existing
- * /api/fba/shipments/close endpoint continues to handle the FBA-shipment
- * state machine for non-serialized lines; this endpoint adds the
- * per-unit decrement that the legacy close never performed.
- *
- * Body:
- *   { client_event_id?: string }
- *
- * Single transaction. Idempotent: re-running after success is a no-op
- * because units are already SHIPPED and per-unit clientEventId suffixes
- * collide on retry.
- *
- * Permission: fba.stage_shipments.
- */
+/** POST /api/fba/shipments/[id]/ship-units */
 export const POST = withAuth(async (request, ctx) => {
   const segments = request.nextUrl.pathname.split('/').filter(Boolean);
   const idStr = segments[segments.length - 2];
@@ -67,11 +48,7 @@ export const POST = withAuth(async (request, ctx) => {
         return { ok: true as const, fbaShipmentId, shipped_unit_count: 0, units: [] };
       }
 
-      // Pre-validate every unit can legally ship BEFORE mutating any, so a
-      // non-sellable unit (e.g. one still IN_REPAIR/SCRAPPED that was wrongly
-      // staged) fails the whole FBA ship cleanly — a 409 listing every blocker —
-      // instead of force-shipping a broken unit (the pre-conversion behavior) or
-      // rolling back mid-loop with an opaque first-failure 500. All-or-nothing.
+      // Pre-validate every unit can legally ship BEFORE mutating any, so a non-sellable unit (e.g.
       const unshippable = links
         .filter((l) => !guard(l.current_status as SerialState, 'SHIPPED').ok)
         .map((l) => ({ unitId: l.serial_unit_id, status: l.current_status }));
@@ -157,15 +134,7 @@ export const POST = withAuth(async (request, ctx) => {
           ledgerId = ledger.rows[0]?.id ?? null;
         }
 
-        // Unit → SHIPPED via the guarded chokepoint (SoT rule: never hand-write
-        // current_status). transition() emits the SHIPPED event itself
-        // (stock_ledger_id preserved) and — passed ctx.organizationId — scopes
-        // the serial_units read/UPDATE to the org, fixing the previously
-        // org-unscoped raw UPDATE. The PACKED/LABELED audit events + the ledger
-        // above stay as-is. Sellable FBA sources (ALLOCATED/STOCKED/GRADED/TESTED)
-        // are modeled → guard-clean; a non-sellable source (IN_REPAIR/SCRAPPED/…)
-        // is correctly rejected → throw rolls back this FBA ship (a broken unit
-        // should never ship to Amazon; was a latent force-ship before).
+        // Unit → SHIPPED via the guarded chokepoint (SoT rule:
         const shippedKey = clientEventId ? `${clientEventId}:fba:${link.serial_unit_id}:SHIPPED` : null;
         const shipped = await transition(
           {

@@ -1,24 +1,4 @@
-/**
- * Inventory › Units spreadsheet column model — MATERIALIZED from a
- * {@link SlotLayout}, never a hand array.
- *
- * A row is one serialized unit — the browse/collection map for `/inventory`.
- * The static `UNITS_GRID_COLUMNS` died with wave 1.4 of the seller-table
- * program: tracks whose keys WERE fields (`status`, `condition`, `location`)
- * are a frozen layout no organization can capture as `tableLayouts` and no
- * staffer can rebind without a deploy.
- *
- * What remains STRUCTURAL is the sheet skeleton — the frozen `serial` pane (the
- * unit's own scannable handle; `units.serial` is the identity fact it resolves)
- * and the flexing `product` track (title over SKU, one identity read). Browse-
- * only: no multi-select gutter yet, so there is no `select` column and the
- * frozen pane is the single identity track. Everything after Product is a
- * catalog fact an org/staffer binds.
- *
- * Sort and frozen-offset helpers derive from the MOUNTED model, never a module
- * constant — a key-only closure over a static list is how offsets and
- * sortability go stale the moment the mounted model moves.
- */
+/** Inventory › Units spreadsheet column model — MATERIALIZED from a {@link SlotLayout}, never a hand array. */
 
 import {
   gridFrozenLeft,
@@ -80,12 +60,7 @@ const UNITS_SHEET_BASE: readonly UnitsGridColumn[] = [
   },
 ];
 
-/**
- * Materialize the mounted units columns from an effective layout. Both bands
- * anchor on `product`: subtitles land directly after it, the status band after
- * those — so the default plate reads status · condition · location · updated,
- * exactly the retired hand model's scan order.
- */
+/** Materialize the mounted units columns from an effective layout. */
 export function unitsSheetColumnsFor(layout: SlotLayout): readonly UnitsGridColumn[] {
   return materializeTracks<UnitsGridColumn>({
     layout,
@@ -96,12 +71,7 @@ export function unitsSheetColumnsFor(layout: SlotLayout): readonly UnitsGridColu
   });
 }
 
-/**
- * The PRODUCT-DEFAULT materialization — what an org with no override mounts
- * (`serial · product · status · condition · location · updated`, the retired
- * hand model's full set), the canonical columns of the units binding, and the
- * guard SoT.
- */
+/** The PRODUCT-DEFAULT materialization — what an org with no override mounts (`serial · product · status · condition · location · updated`,… */
 export const UNITS_SHEET_COLUMNS: readonly UnitsGridColumn[] =
   unitsSheetColumnsFor(UNITS_PRODUCT_LAYOUT);
 

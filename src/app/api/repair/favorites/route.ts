@@ -1,14 +1,4 @@
-/**
- * GET/PUT /api/repair/favorites
- *
- * Staff twin of `/api/kiosk/repair/favorites` — same wire shape, session auth.
- * The repair intake picker (`ProductSelector` with `apiBasePath="/api/repair"`)
- * asks `${apiBasePath}/favorites` on both surfaces, so the staff desk and the
- * front-desk tablet read and write ONE curated list.
- *
- * Membership only. Labels, prices, notes and issue templates live on
- * `/api/favorites` (Inventory › Favorites), which is the full CRUD desk.
- */
+/** GET/PUT /api/repair/favorites */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

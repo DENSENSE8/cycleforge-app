@@ -119,14 +119,7 @@ describe('buildDisplayPending (local snapshot)', () => {
     assert.equal(link.linkageActionRaw, 'link');
   });
 
-  /**
-   * Every linkage drill must SURVIVE the round trip, or its row is a dead
-   * button. `return` shipped 2026-08-19 with a parser that accepted it and a
-   * leaf that rendered it, while this writer quietly mapped it to `null` — so
-   * clicking Return # landed back on the actions list and looked like nothing
-   * happened. Enumerating the union here means the next drill added to
-   * `UnboxLinkageAction` fails until the writer knows about it.
-   */
+  /** Every linkage drill must SURVIVE the round trip, or its row is a dead button. */
   it('every linkage drill round-trips writer → parser (no silently dropped verb)', () => {
     const gates = { hasPoNoteTab: true };
     const drills: UnboxLinkageAction[] = ['link', 'return', 'note'];

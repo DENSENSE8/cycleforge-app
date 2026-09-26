@@ -7,18 +7,7 @@ import {
   type LabelCandidate,
 } from '@/lib/vision-identify';
 
-/**
- * State slice for "identify a product by photographing its label". Mirrors the
- * useLineSerials hook pattern: keep the camera → OCR → resolve flow out of the
- * big panel components.
- *
- *   idle → identifying → results (candidates[]) | error
- *
- * The browser posts the captured label frame straight to the LAN vision box
- * (full-res never touches Vercel), gets a canonical Bose model string, and the
- * server resolves it to a catalog product. The caller confirms a candidate and
- * pairs it via the existing add-unmatched-line / line-PATCH paths.
- */
+/** State slice for "identify a product by photographing its label". */
 export type LabelIdentifyStatus = 'idle' | 'identifying' | 'results' | 'error';
 
 /** Result of one identify call, returned without touching React state. */

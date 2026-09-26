@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Conversation message row — hard DS primitive for every chat / thread entry.
- *
- * A row on a connected activity timeline, not a bubble: the caller's `mark`
- * becomes the NODE, this component threads the spine behind it, and the body
- * sits beside it on the stream's own plane. Compose this; never a page-local
- * twin.
- *
- * Callers hand in an already-boxed mark ({@link CONVERSATION_MARK_BOX}) and do
- * not know the spine exists — which is the point. A host that had to draw its
- * own connector would draw it at its own x, and two hosts would disagree about
- * where the thread runs.
- *
- * Clock time sits IN the message card (Telegram): floated onto the last line
- * of copy. Civil date is a centred divider in the stream, not this row.
- */
+/** Conversation message row — hard DS primitive for every chat / thread entry. */
 
 import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';

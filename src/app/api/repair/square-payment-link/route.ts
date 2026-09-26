@@ -115,11 +115,7 @@ function resolveRepairSku(
   return null;
 }
 
-// The buyer rule lives in `@/lib/repair/contact-info` — joined `customers` row
-// first, index-free legacy fallback second. It matters HERE specifically
-// because `parts[1]` shipped an email address into Square's
-// `pre_populated_data.phone_number.e164_phone_number` on any repair whose
-// buyer had no phone.
+// The buyer rule lives in `@/lib/repair/contact-info` — joined `customers` row first, index-free legacy fallback second.
 
 function formatSquareErrors(errors: SquareError[] | undefined): string {
   if (!Array.isArray(errors) || errors.length === 0) return 'Square API request failed';
@@ -233,10 +229,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'repairId is required' }, { status: 400 });
     }
 
-    // Tenant isolation: scope the repair read to the caller's org so a user in
-    // org A cannot pass another org's repairId to exfiltrate repair/customer
-    // PII or mint a live Square payment link against a foreign tenant's repair.
-    // A cross-tenant repairId resolves to null here → org-ownership 404 (not 403).
+    // Tenant isolation:
     const repair = await getRepairById(repairId, ctx.organizationId);
     if (!repair) {
       return NextResponse.json({ success: false, error: `Repair ${repairId} not found` }, { status: 404 });

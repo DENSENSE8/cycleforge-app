@@ -1,28 +1,6 @@
 'use client';
 
-/**
- * **Open-drift-alerts spreadsheet** — the family glue that resolves a
- * {@link DataTable} feed bag. Spread it onto the host; there is no second table
- * component.
- *
- * ```tsx
- * const sheet = useAdminDriftAlertsSpreadsheet({ rows, onOpenRow });
- * return <DataTable {...sheet} totalCount={rows.length} />;
- * ```
- *
- * This is the whole of the port's display code, and it is a `.ts` file: the
- * engine paints the rows, so the family contributes a catalog, a resolver, an
- * adapter and a column array — and nothing else.
- *
- * ## Why sort and search are local state here
- *
- * `/inventory/health` is a diagnostics dashboard with SIX row sections on one
- * page and no search params of its own. Two sections writing the same `?sort=`
- * would fight, and a header click would round-trip a `force-dynamic` server
- * component — eight queries — to reorder twenty-five rows the client already
- * holds. Durability in the URL is the rule for a lane that IS a page; it is not
- * a rule for a pane.
- */
+/** **Open-drift-alerts spreadsheet** — the family glue that resolves a {@link DataTable} feed bag. */
 
 import { useCallback, useMemo, useState } from 'react';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

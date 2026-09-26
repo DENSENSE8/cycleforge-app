@@ -31,32 +31,7 @@ export interface CustomerLookupRecord {
   updated_at: string | null;
 }
 
-/**
- * Find-or-create the `customers` row behind a PROVIDER contact (Ecwid today).
- *
- * Callers: `upsertEcwidIncomingRepair`. Schemas: `customers` (read + insert).
- * User 2026-09-23: *"there is already a customers table for the API
- * integration — it should import the repair service and the customers into the
- * customers table and display correctly within the receipt page."*
- *
- * ## Why not `findOrCreateRepairCustomer`
- *
- * That helper matches phone → **name** → create, and `04-unified-route.md` §
- * already rules that a bare NAME match silently merges two different "John
- * Smith"s onto one record. A sync runs unattended over every order in the
- * store, so it is the LAST place that hazard should be widened. This matches
- * on keys only:
- *
- *   1. phone, by the repo's canonical NANP last-ten key — the same expression
- *      `resolve-buyer-customers.ts`, `submit-counter-transaction.ts` and the
- *      `idx_customers_phone_last10` index use, so a hit here is a hit there;
- *   2. email, lower-cased exact;
- *   3. otherwise create.
- *
- * Null when the contact carries neither a phone nor an email: a row with a name
- * and nothing else is not an identity, it is a label, and minting one per sync
- * pass would fill the book with duplicates nothing can ever match again.
- */
+/** Find-or-create the `customers` row behind a PROVIDER contact (Ecwid today). */
 export async function resolveProviderCustomerId(
   orgId: OrgId,
   contact: { name?: string | null; phone?: string | null; email?: string | null },
@@ -252,12 +227,7 @@ export type CustomerContactUpdateResult =
     }
   | { ok: false; status: 400 | 404; error: string };
 
-/**
- * Correct a customer's contact columns (`PATCH /api/customers/[id]`). One
- * transaction: lock the row, diff through {@link customerContactColumns}, write
- * only what changed, and name the repairs that read it. A cross-tenant id is a
- * 404 (no disclosure).
- */
+/** Correct a customer's contact columns (`PATCH /api/customers/[id]`). */
 export async function updateCustomerContact(
   customerId: number,
   patch: CustomerContactPatch,
@@ -299,14 +269,7 @@ export type RepairCustomerLinkResult =
   | { ok: true; before: { customer_id: number | null }; after: { customer_id: number | null } }
   | { ok: false; status: 404; error: string };
 
-/**
- * Point a repair at a customer, or at none (`customerId` null = unlink).
- *
- * Only `repair_service.customer_id` moves — an unlink NEVER deletes the
- * customer row, which other repairs, orders and counter visits may share. The
- * target customer must belong to the same org: the FK alone would accept
- * another tenant's id.
- */
+/** Point a repair at a customer, or at none (`customerId` null = unlink). */
 export async function setRepairCustomer(
   repairId: number,
   customerId: number | null,
@@ -514,19 +477,7 @@ export interface CustomerSearchResult {
   } | null;
 }
 
-/**
- * Operator customer search ("customer calls back — find them"): name (trgm
- * ILIKE on the canonical name expressions), email, or phone. Phone queries
- * with ≥10 digits match on the last 10 digits (the caller-match rule), so a
- * typed "(415) 555-0100" finds a "+14155550100" record.
- *
- * Each hit carries the stored shipping address AND the last order + the
- * as-shipped address snapshot from its latest label — the two facts a
- * return/replacement label needs without asking the customer anything.
- *
- * Tenant-native: `orgId` is required (unlike the legacy helpers above, this
- * has no dogfood-pool fallback).
- */
+/** Operator customer search ("customer calls back — find them"): */
 export async function searchCustomers(
   query: string,
   orgId: OrgId,

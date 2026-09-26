@@ -1,35 +1,4 @@
-/**
- * Character-select armed-cursor face tokens — Displays Root Index golden.
- *
- * Idle rows stay **flush leftmost** (icon at the lead edge). Armed paint is an
- * **instant hard cut** (same React commit as the cursor):
- *   1. Leading `>` chevron — mounts **only on the armed row** (never an empty
- *      reserved slot / gutter on idle peers that shoves every icon into a
- *      second column)
- *   2. Bottom track — absolute underline remounted on the armed row
- *      (no `layoutId` FLIP — shared-element travel read as layout lag)
- *
- * Ink for both markers is **operator accent** (`text-accent-bg` /
- * `bg-accent-bg` → `--ds-color-accent-*` from staff prefs / personal accent).
- * Never page-local hex, never `bg-amber-*` on the selection track (amber stays
- * on attention tone chips / SYNC only).
- *
- * Armed-idle pulse = opacity on `>` + track only (`animate-pulse`). Do **not**
- * gate with `motion-safe:` — that silently no-ops under OS Reduce Motion and
- * reads as a broken pulse. Skip the pulse class in JS when
- * `useReducedMotion()` is true instead. Never full-row / sky Infinity.
- *
- * **Right-rail commit never withholds DOM.** Enter / Space / pointerdown / click
- * calls `onSelect` / leaf mount in the same turn — no hit-marker timer before
- * paint. Press / selectionPulse **depth juice** stays on the scan-station
- * **middle** (procedure pager), not on Displays open. Mouse matches keyboard
- * via primary `pointerdown` commit (click deduped).
- *
- * Next cohort (MasterNav / other armed lists): compose these tokens +
- * {@link useArmedCursorList} — never a page-local twin.
- *
- * Law: Displays Root Index.
- */
+/** Character-select armed-cursor face tokens — Displays Root Index golden. */
 
 /** Shared width budget for tone chip — tabular, no layout expand. */
 export const ARMED_CURSOR_CHIP_FACE_CLASS =

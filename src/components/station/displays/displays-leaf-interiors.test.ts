@@ -1,12 +1,4 @@
-/**
- * Tripwire — Displays leaf interiors follow station Color (no white/hex wells).
- *
- *   npx tsx --test src/components/station/displays/displays-leaf-interiors.test.ts
- *
- * Phase 1 scoped `[data-station-displays]` onto card chrome. Phase 2 remaps
- * canvas + soft ink and retires palette `*-50` panel wells inside leaf hosts.
- * Index tone chips and semantic amber/emerald *ink* stay.
- */
+/** Tripwire — Displays leaf interiors follow station Color (no white/hex wells). */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

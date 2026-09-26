@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Packing-mode sidebar rail — the signed-in packer's recently packed orders for
- * the current week. Selecting a row re-opens that pack in the right pane, which
- * crossfades the Queue/History table → `PackOrderPanel` (the Unbox rail →
- * workspace contract;).
- *
- * Composes {@link SidebarRecentRailBase} — the shell owns fetch/skeleton/
- * selection/keyboard-nav/stagger; this wrapper supplies only the row renderers
- * and the domain wiring. Rows come from {@link usePackerLogs}, so the rail
- * shares the page's prefetched `packer-logs` cache with the History table and
- * inherits its live Ably inserts + `packer-log-added` surgical patch for free.
- */
+/** Packing-mode sidebar rail — the signed-in packer's recently packed orders for the current week. */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
@@ -53,12 +42,7 @@ const PACK_HISTORY_LIMIT = 25;
 // tearing down on every parent re-render (the `RecentActivityRailBase` rule).
 const getRowActivityAt = (row: PackerRecord) => row.created_at;
 
-/**
- * The rail's selection mirrors the right pane's active order — it does not own
- * it. Both a sidebar scan and a rail click flow through the same
- * `pack-active-order-changed` event, so the rail highlights whichever order the
- * workbench is showing, however it got there.
- */
+/** The rail's selection mirrors the right pane's active order — it does not own it. */
 function useActivePackPane(): PackActiveOrderPane | null {
   const [pane, setPane] = useState<PackActiveOrderPane | null>(null);
   useEffect(() => {

@@ -38,22 +38,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: false, error: 'Valid Google Drive file id/link is required' }, { status: 400 });
     }
 
-    // product_manuals has NO organization_id column and NO RLS policy, so the
-    // app.current_org GUC is INERT for this table: withTenantTransaction alone
-    // provides ZERO write isolation here. The previous deactivate-UPDATE matched
-    // purely on item_number, so org A upserting a manual for a SHARED
-    // item_number would flip org B's active manual to is_active=FALSE — a live
-    // cross-tenant write clobber.
-    //
-    // To attribute this org's new row (and let the deactivate be org-scoped) we
-    // resolve sku_catalog_id THROUGH THIS TENANT's crosswalk before the write
-    // and stamp it on the INSERT (so the row is no longer globally visible via
-    // the org-blind item_number fallback in resolve/recent). The deactivate is
-    // then constrained so it can only touch rows that belong to this org —
-    // either hub-linked to this org's catalog, or genuinely-legacy
-    // (sku_catalog_id IS NULL) rows whose item_number does NOT crosswalk to a
-    // DIFFERENT org's catalog. (NEEDS-COL: full isolation still requires
-    // product_manuals to grow an organization_id column + RLS.)
+    // product_manuals has NO organization_id column and NO RLS policy, so the app.current_org GUC is INERT for this table:
     const skuCatalogId = await resolveSkuCatalogId(null, itemNumber || null, null, orgId);
 
     const insertedId = await withTenantTransaction(orgId, async (client) => {
@@ -106,10 +91,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         );
       }
 
-      // product_manuals grew an organization_id column (2026-06-14 phase-B
-      // needs-col-2) with a GUC-or-USAV default. Inside this txn the GUC default
-      // would stamp correctly, but stamp explicitly so the row is org-attributed
-      // even if the default is later restored to GUC-only for tenant #2.
+      // product_manuals grew an organization_id column (2026-06-14 phase-B needs-col-2) with a GUC-or-USAV default.
       const inserted = await client.query(
         `INSERT INTO product_manuals (sku, item_number, product_title, display_name, google_file_id, type, sku_catalog_id, is_active, updated_at, organization_id)
          VALUES ($1, $2, $3, $4, $5, $6, $7, TRUE, NOW(), $8::uuid)

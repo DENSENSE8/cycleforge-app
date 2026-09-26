@@ -1,13 +1,6 @@
 'use client';
 
-/**
- * Sidebar for /sourcing?mode=compatibility — filter the global compatibility
- * edge table by model.
- *
- * URL-state contract:
- *   ?search=<q>        — search box value (filters the model list)
- *   ?boseModelId=<id>  — selected model filter ('' / absent = all edges)
- */
+/** Sidebar for /sourcing?mode=compatibility — filter the global compatibility edge table by model. */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';

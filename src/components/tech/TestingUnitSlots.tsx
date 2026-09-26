@@ -58,12 +58,7 @@ interface Props {
   onAddSerial: (serial: string) => void | Promise<void>;
   onDeleteSerial: (serial: UnitSlotSerial) => void;
   onReplaceSerial: (original: UnitSlotSerial, next: string) => void;
-  /**
-   * When false, the saved serial chips are rendered by a parent header
-   * (e.g. {@link PoLinesAccordion}'s active row) instead of here, so the
-   * single-qty adder hides its own chip list to avoid showing serials twice.
-   * Defaults to true for surfaces without a header chip list (unmatched).
-   */
+  /** When false, the saved serial chips are rendered by a parent header (e.g. */
   showSavedChips?: boolean;
   /**
    * Controlled edit target from a parent header chip's Edit menu item. When
@@ -71,13 +66,7 @@ interface Props {
    */
   editingSerial?: UnitSlotSerial | null;
   onEditingSerialChange?: (serial: UnitSlotSerial | null) => void;
-  /**
-   * Force the per-unit row layout even for a single-qty line — one flush
-   * editable row per serial (verdict · condition · serial), exactly like Unbox's
-   * Units display. Without it, a single-qty line falls back to the inline
-   * condition · verdict · serial-adder row, which duplicates a scanned serial as
-   * a chip + an empty "Serial" adder. The right-edge Units Display sets this.
-   */
+  /** Force the per-unit row layout even for a single-qty line — one flush editable row per serial (verdict · condition · serial), exactly… */
   forceUnitRows?: boolean;
   /**
    * Units Display flush chrome: full-bleed hairline rows, square controls,
@@ -153,18 +142,7 @@ function ConditionVerdictColumns({
   );
 }
 
-/**
- * Per-line testing panel for the tech workspace. Mounts inside the active
- * row of {@link PoLinesAccordion} (matched cartons) or each line of
- * {@link UnmatchedItemsSection}.
- *
- * Single-quantity: condition · verdict · serial on ONE flex row (collapsible
- * pill + pencil per segment). Condition starts closed (grade from unbox);
- * only condition or verdict expands at once.
- *
- * Multi-quantity: one selectable row per physical unit via {@link UnitSlotList}
- * `singleRowExpanded` — same column order per unit.
- */
+/** Per-line testing panel for the tech workspace. */
 export function TestingLinePanel({
   lineId,
   saved,
@@ -214,10 +192,7 @@ export function TestingLinePanel({
     );
   }
 
-  // When the parent header already surfaces saved serials (PoLinesAccordion /
-  // accordion meta chips), skip the inline adder so the verdict band
-  // fills the trailing width. Re-show it for the first scan or an in-place edit
-  // from the header chip menu.
+  // When the parent header already surfaces saved serials (PoLinesAccordion / accordion meta chips), skip the inline adder so the verdict…
   const headerOwnsSerial = !showSavedChips && saved.length > 0 && editingSerial == null;
 
   const serialSlot = headerOwnsSerial ? null : (
@@ -281,15 +256,7 @@ interface TestingUnitRowsProps {
   flush?: boolean;
 }
 
-/**
- * Multi-quantity testing display: one selectable row per physical unit, so a
- * line with qty 4 of the same SKU is acknowledged as four units — each with its
- * own testing verdict and serial. Mirrors {@link ReceivingUnitRows}, swapping
- * the condition picker for {@link TestingStatusPills}.
- *
- * The verdict binds to a scanned unit's `serial_units` row, so the pills are
- * disabled on an empty slot — scan the serial first, then pick a verdict.
- */
+/** Multi-quantity testing display: */
 function TestingUnitRows({
   lineId,
   saved,

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Field-density facet popover for ReceivingLineRow recent-rail footers —
- * Priority · Type · Platform (Unbox · Triage · Testing). Composes
- * {@link FilterMenu}; seats in TechRailSearchBar `trailingSuffix`
- * (after hover-reveal paste). Local state only (not workbench URL facets).
- *
- * Preferred import: {@link ReceivingRecentRailFilters} from
- * `@/components/sidebar/rail-shell/ReceivingRecentRailFilters`.
- */
+/** Field-density facet popover for ReceivingLineRow recent-rail footers — Priority · Type · Platform (Unbox · Triage · Testing). */
 
 import { useState } from 'react';
 import {

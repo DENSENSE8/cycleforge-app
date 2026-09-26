@@ -15,15 +15,7 @@ function norm(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, ' ');
 }
 
-/**
- * Match scan text to an LCPU order. Preference:
- * 1. Exact numeric order id
- * 2. Exact PO / reference number
- * 3. Exact customer name
- * 4. Unique PO/customer substring
- *
- * Returns null when zero or ambiguous matches.
- */
+/** Match scan text to an LCPU order. */
 export function resolvePickupScan(
   raw: string,
   orders: readonly PickupScanMatchable[],

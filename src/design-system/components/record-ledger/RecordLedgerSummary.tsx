@@ -3,14 +3,6 @@
 /**
  * A {@link RecordLedger}'s list read as a whole — ONE set of counts, two
  * faces (operator 2026-09-25):
- *
- * - split view, nothing open → {@link RecordLedgerSummaryPane} fills the
- *   record pane (what the old evidence column showed when empty);
- * - in place → {@link RecordLedgerTally} tallies the facts the page does not
- *   already show at the toolbar's right end.
- *
- * The page supplies the numbers; these parts only paint them, so the two faces
- * can never disagree.
  */
 
 import { RECORD_LABEL_CLASS } from '../../tokens/industrial-record';

@@ -1,18 +1,4 @@
-/**
- * Gmail message fetch + MIME decoding for the PO mailbox.
- *
- * Builds on src/lib/po-gmail/client (which handles OAuth) and exposes a
- * small surface tailored to the reconciliation pipeline:
- *   - listMessageIds(query, maxResults)  → IDs only, paginated
- *   - fetchMessage(id)                   → typed envelope + decoded body text
- *   - addLabel / removeLabel / addLabels → idempotency markers ("Scanned/...")
- *
- * Gmail returns message bodies as base64url-encoded strings nested in a
- * tree of MIME parts. We walk the tree depth-first, prefer text/plain, fall
- * back to text/html stripped of tags, and bail out gracefully if neither
- * exists (some vendors send PDFs only — those need attachment handling we
- * haven't built yet).
- */
+/** Gmail message fetch + MIME decoding for the PO mailbox. */
 
 import { poGmailFetch } from './client';
 
@@ -79,14 +65,6 @@ function base64UrlDecode(data: string): string {
 }
 
 // Zero-width / spam-evasion characters injected into many marketing emails.
-// Stripping them keeps the plaintext readable and avoids the wall-of-&zwnj;
-// output we used to render.
-//   U+00AD  soft hyphen
-//   U+200B  zero-width space
-//   U+200C  zero-width non-joiner (the visible "zwnj" entity decodes to this)
-//   U+200D  zero-width joiner
-//   U+2060  word joiner
-//   U+FEFF  zero-width no-break space / BOM
 const INVISIBLE_CHARS_RE = /[­​-‍⁠﻿]/g;
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -146,10 +124,7 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-// Sanitize raw email HTML for display in a sandboxed iframe. DOMPurify
-// strips scripts, event handlers, iframes, and other dangerous nodes; we
-// also drop the zero-width spam-evasion characters so the rendered text
-// reads cleanly. Returns null when the source HTML is effectively empty.
+// Sanitize raw email HTML for display in a sandboxed iframe.
 async function sanitizeHtml(html: string): Promise<string | null> {
   const cleaned = html.replace(INVISIBLE_CHARS_RE, '');
   const sanitizer = await getDOMPurify();

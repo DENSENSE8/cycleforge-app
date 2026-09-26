@@ -12,17 +12,7 @@ import { publishRepairChanged } from '@/lib/realtime/publish';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
-/**
- * The customer RECORD a repair points at (`repair_service.customer_id`).
- *
- * - POST   `{ name, phone?, email? }` — create a customer and link it.
- * - PUT    `{ customerId }`           — link an existing customer of this org.
- * - DELETE                             — unlink. The customer row is never deleted.
- *
- * One transaction per verb (`customer-queries.ts`); a cross-tenant repair or
- * customer id is a 404. Every change publishes `repair.changed` and is audited
- * with the previous `customer_id`. Permission: repair.intake (same as `/link`).
- */
+/** The customer RECORD a repair points at (`repair_service.customer_id`). */
 
 function parseId(id: string): number | null {
   const n = parseInt(id, 10);

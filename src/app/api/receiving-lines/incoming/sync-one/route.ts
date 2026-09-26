@@ -1,20 +1,4 @@
-/**
- * POST /api/receiving-lines/incoming/sync-one
- *
- * Per-order "Sync" button in the Incoming details panel. Refreshes ONE PO
- * end-to-end without running the whole Incoming sweep:
- *
- *   1. PO mirror — re-pull the PO header/status from Zoho (syncOnePoMirror).
- *      If Zoho now reports it received/closed, the mirror status updates and
- *      the Incoming filter drops it on the next read.
- *   2. Shipment — if the PO's receiving row has a linked shipment, re-poll
- *      the carrier (syncShipment) so the tracking status is current.
- *
- * Body (one of):
- *   • { po_id: string } — Zoho PO (zoho_purchaseorder_id)
- *   • { inbound_source, inbound_order_id, account_label? } — marketplace row
- * Gated `receiving.view` to match the Incoming toolbar siblings.
- */
+/** POST /api/receiving-lines/incoming/sync-one */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';

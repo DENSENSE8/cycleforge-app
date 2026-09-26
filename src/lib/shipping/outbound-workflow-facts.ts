@@ -1,13 +1,4 @@
-/**
- * Outbound workflow facts — the React-free typed waist shared by phone and
- * desk projections.
- *
- * This module composes existing laws. Lifecycle precedence remains in
- * `order-lifecycle.ts`, the operator-facing next-step vocabulary remains in
- * `orders-next-step.ts`, and warehouse-day urgency remains in
- * `deadline-bands.ts`. A renderer passes raw facts and receives one verdict;
- * it does not get to reinterpret them.
- */
+/** Outbound workflow facts — the React-free typed waist shared by phone and desk projections. */
 
 import {
   resolveOrderLifecycleStage,

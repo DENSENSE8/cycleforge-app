@@ -26,22 +26,7 @@ interface PhotoDateBreadcrumbProps {
   hideFolderLeaf?: boolean;
 }
 
-/**
- * The library's date breadcrumb in the right-panel context bar. When a
- * date is active it renders the simplified Year → Month → Week → Day path; with
- * no date it surfaces two quick jumps — **Today** and the **latest** capture
- * day (both keyed off `created_at`, never the most-recent PO or photo type). The
- * root "All dates" crumb clears the filter; each path crumb widens to its span.
- *
- * The chip is labeled **Latest** (not Recent) so it is not confused with the
- * workbench chrome **Recent** tab (all types, no date pin).
- *
- * When a PO / carton / ticket folder is open the folder name is appended as the
- * active leaf after the day (`folderLeafLabel`, or derived from filters).
- * Every date crumb above a folder leaf stays clickable — widening a date also
- * clears the entity leaf (the parent's `onNavigate` resets poRef / ticket /
- * receivingId).
- */
+/** The library's date breadcrumb in the right-panel context bar. */
 export function PhotoDateBreadcrumb({
   filters,
   onNavigate,

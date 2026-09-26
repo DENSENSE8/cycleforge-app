@@ -12,15 +12,7 @@ import { invalidateZendeskTicketCache } from '@/lib/integrations/helpdesk/zendes
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Single helpdesk ticket (via the org's HelpdeskProvider; Zendesk adapter).
- *
- *   GET    /api/zendesk/tickets/:id  → fetch one
- *   PATCH  /api/zendesk/tickets/:id  → update fields / add a comment
- *   DELETE /api/zendesk/tickets/:id  → delete (soft-delete in the provider)
- *
- * withAuth ignores the route `params`, so the id is parsed from the path.
- */
+/** Single helpdesk ticket (via the org's HelpdeskProvider; Zendesk adapter). */
 
 function notConfigured(context: string): NextResponse {
   return errorResponse(

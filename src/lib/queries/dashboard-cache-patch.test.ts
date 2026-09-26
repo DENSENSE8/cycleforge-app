@@ -75,10 +75,7 @@ test('invalidateUnshippedCounts marks the counts query stale', async () => {
 });
 
 test('patch is reference-stable when the row is present but unchanged', () => {
-  // Two subscribers now run the same `order.tested` patch (the desk hook and
-  // UnshippedTable's own, for the /tech embed that has no desk hook above it).
-  // The second must cost a comparison, not a re-render of the whole queue —
-  // downstream every re-render is a chance to flash a chip that did not move.
+  // Two subscribers now run the same `order.tested` patch (the desk hook and UnshippedTable's own, for the /tech embed that has no desk hook…
   const qc = new QueryClient();
   const rows = [{ id: 1, has_tech_scan: true, tested_by: 7 }];
   qc.setQueryData(listKey({ stage: null }), rows);

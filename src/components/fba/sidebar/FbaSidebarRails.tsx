@@ -48,12 +48,7 @@ export function fbaRailDisplayTitle(value: unknown, fallback: string): string {
   return fallback;
 }
 
-/**
- * The board endpoint is a boundary, not a trust boundary. A historic catalog
- * import can leave both its title and FNSKU as a serialized object. Never turn
- * that corruption into an operator instruction: use the typed scan key where
- * possible, otherwise a stable item reference which makes the repair visible.
- */
+/** The board endpoint is a boundary, not a trust boundary. */
 export function fbaRailIdentity(row: Pick<FbaItemRow, 'item_id' | 'fnsku' | 'sku' | 'asin' | 'display_title'>) {
   const scanIdentifier =
     fbaRailScanIdentifier(row.fnsku) ??

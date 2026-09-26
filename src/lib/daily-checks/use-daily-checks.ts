@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * Data layer for Home → Daily.
- *
- * ONE query per day (`GET /api/daily-checks?date=`) and three mutations. The
- * report shape comes back assembled from `lib/daily-checks/report` — this hook
- * never re-derives counts, so the surface and the API can never disagree about
- * who did what.
- *
- * Ticking is OPTIMISTIC: at a bench the operator taps and looks away, so the
- * round trip must not be in the way. The unique index makes the write
- * idempotent, and a failure rolls the cache back to the server's answer.
- */
+/** Data layer for Home → Daily. */
 
 import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -156,13 +145,7 @@ export function useItemActions(dateKey: string) {
     onSuccess: invalidate,
   });
 
-  /**
-   * Edit a live item — its title, or its due time / reminder. NOT optimistic,
-   * unlike the tick: a tick is a personal attestation the operator repeats a
-   * hundred times a shift, while an item edit changes the LIST every staffer
-   * reads — showing it before the server has taken it would show four people
-   * a schedule that might roll back. Only the keys given are sent.
-   */
+  /** Edit a live item — its title, or its due time / reminder. */
   const updateItem = useMutation({
     mutationFn: async ({
       itemId,

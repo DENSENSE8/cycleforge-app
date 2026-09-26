@@ -22,17 +22,7 @@ type LabelOverride = {
   tracking?: string;
 };
 
-/**
- * Carton-label editing shared by Unbox and Testing. Derives the default editable
- * draft from the carton's identity, assembles the live-preview / print payload
- * from a draft, and on Save & print persists what has a home (condition / PO# /
- * type / optional notes) while keeping the label-only choices (platform display,
- * date, corner) as a print-time override — both surfaces print the identical
- * face via the single {@link receivingPayloadToFace} SoT.
- *
- * Feeds the shared {@link LabelEditPopover} (defaults + buildPayload +
- * onApplyAndPrint) so the pencil → editor → "Save & print" CTA is identical.
- */
+/** Carton-label editing shared by Unbox and Testing. */
 export function useCartonLabelEditor(
   row: ReceivingLineRow,
   core: ReceivingLineCore,

@@ -1,10 +1,4 @@
-/**
- * Personal MRU phrase bank for Unbox label-note ghost autocomplete.
- *
- * Device-local (`localStorage`) — Command-bar style. Never writes
- * `receiving_line.label_note`; the dock still patches `notes` and print stamps
- * the face.
- */
+/** Personal MRU phrase bank for Unbox label-note ghost autocomplete. */
 
 export const LABEL_NOTE_PHRASES_MAX = 40;
 export const LABEL_NOTE_PHRASE_MIN_LEN = 3;

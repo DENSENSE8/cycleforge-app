@@ -1,10 +1,4 @@
-/**
- * Shipping workspace KPI registry — pure descriptors for Pending / History
- * strips on `/test` Shipping mode. Sibling of `outbound-metrics.ts`; composes the
- * same `ComputedMetric` shape so Monitor `KpiTile`s stay one family.
- *
- * FBA metrics removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
- */
+/** Shipping workspace KPI registry — pure descriptors for Pending / History strips on `/test` Shipping mode. */
 
 import type { MetricIntent } from '@/design-system/components/monitor';
 import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';

@@ -1,17 +1,6 @@
 'use client';
 
-/**
- * One Daily agenda row as an {@link IndustrialRecord} — the checklist item and
- * the handed-over task in the SAME anatomy, so the eye reads one list even
- * though the stores stay three (checklist · task · ticket).
- *
- *   spine │ face │ ☐ CODE · KIND · record · links ························│ due
- *         │      │ title ···············································│ reminder
- *         │      │ who · from · media ··································│ → next
- *
- * Band 1's box is the TICK — "I finished this" — on both halves, the gesture
- * the Reminders list taught; the rest of the record opens the evidence column.
- */
+/** One Daily agenda row as an {@link IndustrialRecord} — the checklist item and the handed-over task in the SAME anatomy, so the eye reads… */
 
 import { memo } from 'react';
 import { format } from 'date-fns';

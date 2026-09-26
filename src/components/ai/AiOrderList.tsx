@@ -30,12 +30,7 @@ interface AiOrder {
   href: string;
 }
 
-/**
- * Renders order_ids parsed from an assistant answer as live, interactive rows:
- * real product title, shipment status badge, and packer/tester — each row links
- * into the dashboard. Returns null (so the caller falls back to prose) when no
- * referenced ID resolves to a real order.
- */
+/** Renders order_ids parsed from an assistant answer as live, interactive rows: */
 export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
   const idsKey = orderIds.join(',');
   const [orders, setOrders] = useState<AiOrder[] | null>(null);

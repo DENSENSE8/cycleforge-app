@@ -1,18 +1,4 @@
-/**
- * Saved-view surface SoT — discriminator values for the polymorphic
- * `saved_views` table and the storage-key → surface map used by `useSavedViews`.
- *
- * Keep `SAVED_VIEW_SURFACES` in lockstep with the **effective**
- * `saved_views_surface_chk` — the CHECK as redefined by the LAST-SORTING
- * migration that touches it (`2026-07-29g` birth, then any follow-up). A value
- * present in only one half is invisible until its first insert is rejected in
- * production; `surfaces.test.ts` resolves the effective CHECK off disk and
- * compares the sets.
- *
- * A follow-up migration must DROP and re-ADD the constraint with the FULL union,
- * never just the new value — that is the `reason_codes_flow_context_chk`
- * regression `.claude/rules/polymorphic-tables.md` records.
- */
+/** Saved-view surface SoT — discriminator values for the polymorphic `saved_views` table and the storage-key → surface map used by… */
 
 import {
   PACKED_SAVED_VIEWS_KEY,
@@ -90,15 +76,7 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
 
 type GenericSavedViewSurface = (typeof GENERIC_SAVED_VIEW_SURFACES)[number];
 
-/**
- * Storage keys for the surfaces rebuilt in Phase 4.
- *
- * Declared here rather than beside each surface: `useSavedViews` takes a storage
- * key and resolves it to a discriminator through the map below, so a key that
- * exists only at its call site is a key nothing can resolve — the symptom is a
- * Save button that silently does nothing, which is the same failure the CHECK
- * follow-up exists to prevent, one layer up.
- */
+/** Storage keys for the surfaces rebuilt in Phase 4. */
 export const SHEET_SAVED_VIEW_KEY = {
   products_catalog: 'products_catalog_saved_views',
   inventory_units: 'inventory_units_saved_views',

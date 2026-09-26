@@ -1,20 +1,6 @@
 'use client';
 
-/**
- * CatalogWorkspace — the unified /studio/catalog shell (Template Platform Phase 4).
- * One page, two modes on a sidebar-style mode rail:
- *   - Browse (default, studio.view) — the community catalog browse/clone surface
- *     (<CommunityCatalogWorkbench/>).
- *   - Review (studio.catalog.review only) — the curator submission queue
- *     (<CatalogReviewWorkbench/>), rendered unchanged.
- *
- * Mode is URL state (?mode=, default 'browse' drops from the URL). Switching mode
- * clears the mode-scoped ?selectedId so a selection from one mode never bleeds
- * into the other. Client-side gating is a UX affordance only: the Review tab is
- * hidden for non-curators and a forced ?mode=review falls back to browse — the
- * real enforcement is server-side (the review APIs are studio.catalog.review, the
- * clone route is studio.manage).
- */
+/** CatalogWorkspace — the unified /studio/catalog shell (Template Platform Phase 4). */
 
 import { useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';

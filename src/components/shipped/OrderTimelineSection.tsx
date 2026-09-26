@@ -21,23 +21,7 @@ import {
 } from '@/lib/timeline';
 import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 
-/**
- * Order activity timeline — merges every spine the order touches, newest-first,
- * through the shared {@link EventTimeline}.
- *
- * Spines: order `audit_logs` (with field-level diffs when the caller holds
- * `admin.view_logs`) · unit `inventory_events` · station scans · thread
- * messages · carrier tracking scans · RMA authorizations.
- *
- * Each spine degrades independently server-side, so a carrier or RMA outage
- * renders that lens empty rather than taking down the record.
- *
- * Allocated/shipped serials also carry five-stage photo evidence (arrival /
- * unbox carton / unbox item / testing / packing). Those rows are COLLAPSED by
- * default behind the header "Photos" toggle so the trail stays dense, and they
- * are tagged into the `ops` lens — evidence is operational, so narrowing to
- * Notes or System must still hide them.
- */
+/** Order activity timeline — merges every spine the order touches, newest-first, through the shared {@link EventTimeline}. */
 
 /** Thumbnails per photo row; a full stage burst would swamp the trail. */
 const ORDER_PHOTO_MEDIA_LIMIT = 4;
@@ -48,14 +32,7 @@ const ORDER_TIMELINE_TOGGLE_OPTIONS: ReadonlyArray<{ value: TimelineGroupMode; l
   { value: 'serial', label: 'Serial' },
 ];
 
-/**
- * Lens for the segmented filter. Merging six heterogeneous spines into one
- * stream is only usable if the operator can narrow it — "where is the package"
- * and "who edited this" are different questions asked of the same trail.
- *
- * The tag lives here, at merge time, rather than on the shared `TimelineItem`:
- * it is this surface's grouping of spines, not a property of an event.
- */
+/** Lens for the segmented filter. */
 type OrderTimelineLens = 'all' | 'carrier' | 'ops' | 'notes' | 'system';
 
 const LENS_OPTIONS: ReadonlyArray<{ value: OrderTimelineLens; label: string }> = [

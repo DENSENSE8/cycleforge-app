@@ -1,15 +1,4 @@
-/**
- * Guards for the "reverse-link on inbound" primitive (relational-reuse plan
- * Phase 1) and the two write paths that consume it.
- *
- * 1. resolvePriorOutbound prefers the inventory-v2 allocation path, falls back
- *    to the legacy tech_serial_numbers shipment link, and returns null when a
- *    serial was never shipped — using an injected Queryable, no DB.
- * 2. The returns intake and the RMA disposition path both resolve the prior
- *    order and flip the open SHIPPED allocation → RETURNED.
- * 3. The migration relaxes the allocation state CHECK to admit RETURNED and
- *    treats RETURNED as a CLOSED state in the one-open-allocation index.
- */
+/** Guards for the "reverse-link on inbound" primitive (relational-reuse plan Phase 1) and the two write paths that consume it. */
 
 import { test } from 'node:test';
 import { ok, equal } from 'node:assert';

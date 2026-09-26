@@ -1,14 +1,7 @@
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
 import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
-/**
- * 2×1" master label for a preboxed KIT manifest (serial↔label pairing plan §5.2,
- * template `prebox_master`). The big face is the human-readable `manifest_uid`
- * (KIT-{SKU}-{YYWW}-{SEQ6}); the DataMatrix carries the SAME uid, which
- * `routeScan()` parses as a `manifest` scan → opens the manifest detail listing
- * every child unit. Violet kicker so it reads as the LOGICAL kit identity,
- * distinct from the teal LPN box label.
- */
+/** 2×1" master label for a preboxed KIT manifest (serial↔label pairing plan §5.2, template `prebox_master`). */
 const MANIFEST_INFO_CSS = `
   .mf-code{font-size:26px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .mf-meta{display:flex;justify-content:space-between;align-items:baseline;gap:6px;line-height:1}

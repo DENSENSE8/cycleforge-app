@@ -1,11 +1,4 @@
-/**
- * The duplicate rule, proven directly.
- * Run: npx tsx --test src/lib/tool-forge/triage.test.ts
- *
- * triageBuildRequest is pure, so these assertions need no DB, no provider key
- * and no fixture org — which is why they run on every `npm run verify` rather
- * than only when someone points a script at a live environment.
- */
+/** The duplicate rule, proven directly. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

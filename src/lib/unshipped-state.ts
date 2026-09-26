@@ -1,28 +1,4 @@
-/**
- * Unshipped (pre‑dock) package state — shared derivation helpers for the full
- * sold → label → test → pack → dock pipeline.
- *
- * **Surface ownership (2026-06):**
- * - `AWAITING_LABEL` → Shipping · Labels (`/shipping`)
- * - `PENDING` / `TESTED` / `BLOCKED` → Dashboard · Unshipped (`deriveFulfillmentState`)
- * - `PACKED_STAGED` → Outbound · Scan-out; seam color shared with `outbound-state.ts`
- * - Post-dock states → `outbound-state.ts` on Dashboard · Shipped
- *
- * This is the inbound mirror of {@link OUTBOUND_STATE_META} in `outbound-state.ts`.
- * The two models meet at ONE shared seam state, `PACKED_STAGED`: it is the
- * terminal unshipped state AND the initial outbound state, so the dock scan‑out
- * is exactly the `PACKED_STAGED → SCANNED_OUT` transition that hands a package
- * from this model to the outbound one. To guarantee the seam never drifts, the
- * `PACKED_STAGED` dot/pill colors here are re‑used from the outbound meta.
- *
- * Color rule: no two status dots across BOTH models share a hue. The unshipped
- * states claim slate / yellow / teal / red; `PACKED_STAGED` is the shared packed
- * purple (LIFECYCLE.packed → fulfillment);
- * the outbound states own blue / indigo / emerald / rose / orange / pink.
- *
- * Pure + isomorphic (no React, no DOM, no Date.now): safe on client and server.
- * "Late" is a deadline overlay, not a pipeline stage — see {@link isUnshippedLate}.
- */
+/** Unshipped (pre‑dock) package state — shared derivation helpers for the full sold → label → test → pack → dock pipeline. */
 
 import { buildStateMeta } from '@/lib/labels/resolve';
 import {
@@ -32,13 +8,7 @@ import {
   type OrderLifecycleSignals,
 } from '@/lib/order-lifecycle';
 
-/**
- * Pre‑dock pipeline state. The canonical vocabulary + derivation now live in
- * `order-lifecycle.ts` (the single projection per W2 of the engine‑migration
- * plan); these are re‑exported here so existing importers and the
- * `*_STATE_META` color maps below keep their stable import path. Color/label
- * presentation stays in this module.
- */
+/** Pre‑dock pipeline state. */
 type UnshippedState = OrderLifecycleStage;
 /** Pre-pack fulfillment lanes shown on Dashboard · Unshipped (excludes label + dock). */
 export type FulfillmentState = FulfillmentLane;
@@ -84,36 +54,7 @@ export interface FulfillmentLaneTotals {
   blocked: number;
 }
 
-/**
- * Lane totals for the To-ship tabs / filter strip / "Showing X of Y".
- *
- * **The tab number must be countable off the rows the tab shows.** The Pending
- * grid hides only `TESTED`, so its total is `PENDING + BLOCKED` — both taken
- * from the SAME lane mapping the rows use ({@link fulfillmentCountsFromCombos}
- * → {@link deriveFulfillmentState}).
- *
- * Three call sites each hand-rolled this and each got it wrong the same way
- * (fixed 2026-08-20). The shape was:
- *
- * ```ts
- * (fromCombos.PENDING || byStage.pending || 0) + fromCombos.BLOCKED   // ✗
- * ```
- *
- * `byStage` is the RAW `hasTechScan` split, and `resolveFulfillmentLane` puts
- * `isOutOfStock` FIRST — so an untested blocked order sits in `byStage.pending`
- * *and* in `BLOCKED`. Two ways that misreports:
- *
- * - `??`/unconditional form: every untested blocked order is counted twice.
- * - `||` form: worse and sneakier, because a legitimate **zero** is falsy. With
- *   0 truly-pending and 1 blocked order it fell through to `byStage.pending`
- *   (=1, the blocked one) and added `BLOCKED` (=1) — the tab read **2** over a
- *   grid holding **1 row**.
- *
- * `byStage` is therefore only a fallback for a payload carrying NO combos at
- * all (degraded route / older cache entry), and in that case blocked is not
- * added: the raw pending bucket already contains it, and the raw split cannot
- * separate the lanes anyway.
- */
+/** Lane totals for the To-ship tabs / filter strip / "Showing X of Y". */
 export function fulfillmentLaneTotals(
   counts:
     | {
@@ -145,11 +86,7 @@ interface UnshippedStateMeta {
   dot: string;
 }
 
-// Presentation now flows from the one label registry (`src/lib/labels`) — the
-// label/description/tone are seeded defaults there and are tenant‑overridable
-// (Phase 2). The no‑two‑dots‑share‑a‑hue invariant + the PACKED_STAGED seam
-// (shared packed purple with outbound) are preserved by the registry's distinct tones;
-// `labels/resolve.test.ts` pins this map byte‑identical to the former literals.
+// Presentation now flows from the one label registry (`src/lib/labels`) — the label/description/tone are seeded defaults there and are…
 export const UNSHIPPED_STATE_META = buildStateMeta('unshipped') as Record<UnshippedState, UnshippedStateMeta>;
 
 /** Legend meta for Dashboard · Unshipped only (PENDING / TESTED / BLOCKED). */

@@ -1,31 +1,4 @@
-/**
- * Workflow engine — per-unit advance lock (Phase 1.0).
- *
- * Replaces the no-op NULL_LOCK with a best-effort Upstash Redis mutex keyed
- * `wf:advance:{serialUnitId}` so two concurrent scans can't double-advance the
- * same unit. It mirrors the proven REST shape in src/lib/api-guard.ts (POST to
- * `${UPSTASH_REDIS_REST_URL}/pipeline`, Bearer token, read `result`).
- *
- * IMPORTANT — this lock is a race-NARROWING optimization, not the correctness
- * backstop. The engine is already event-gated-idempotent: replaying an event
- * against a unit that already advanced just re-parks it (see
- * nodes/station-node.ts), so a missed lock can at worst cause a harmless
- * re-park, never a corrupt double-advance. That asymmetry sets the failure
- * policy:
- *
- *   - Redis UNCONFIGURED (local / CI / preview)  → acquire() returns true and
- *     release() no-ops. Byte-identical to NULL_LOCK, so nothing breaks without
- *     Redis — this is why advance() can default to it safely.
- *   - Lock already held (SET NX miss)            → acquire() returns false, so
- *     the *second* concurrent advance no-ops with reason 'locked'. The real guard.
- *   - Redis ERROR / timeout                      → acquire() returns true (fail
- *     OPEN). We never stall a fire-and-forget tap on an infra hiccup;
- *     idempotency covers the rare double-advance.
- *
- * TTL is short (LOCK_TTL_MS) so a crash between acquire/release auto-expires the
- * key; release is a token-checked compare-and-delete (Lua) so we never delete a
- * lock a later advance re-acquired after our TTL lapsed.
- */
+/** Workflow engine — per-unit advance lock (Phase 1.0). */
 
 import type { AdvanceLock } from './contract';
 import { isRedisConfigured, redisCmd } from '@/lib/redis/client';
@@ -42,12 +15,7 @@ const LOCK_TTL_MS = 15_000;
 const RELEASE_LUA =
   'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
 
-/**
- * Tokens for keys this process currently holds. Only ever populated on a
- * successful SET NX (so the fail-open path leaves it empty → release() no-ops),
- * and only the acquirer reaches release() because advanceItem() returns before
- * its try/finally when acquire() is false.
- */
+/** Tokens for keys this process currently holds. */
 const heldTokens = new Map<string, string>();
 
 let tokenSeq = 0;

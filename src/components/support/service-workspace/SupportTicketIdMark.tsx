@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Compact ticket id mark for Support station chrome — last-8 digits, no `#`,
- * full id on copy. Renders on the **second row** of
- * {@link SupportTicketIdentity} via {@link StackedRowIdentity} — never trailing
- * on the subject line.
- */
+/** Compact ticket id mark for Support station chrome — last-8 digits, no `#`, full id on copy. */
 
 import { TicketChip } from '@/components/ui/CopyChip';
 import { supportTicketIdFace } from '@/lib/support/ticket-refs';

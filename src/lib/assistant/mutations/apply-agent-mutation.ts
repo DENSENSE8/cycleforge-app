@@ -1,24 +1,4 @@
-/**
- * applyAgentMutation — the single AI write chokepoint (universal-feed plan
- * §2.6 / §6). Every AI-proposed change flows through here.
- *
- * Trust classes (src/lib/surfaces/registry.ts MUTATION_KINDS, §10 spec):
- *   • auto         — view-layer projection kinds; applied immediately, no
- *                    review (feed_membership.set_state, staff_rail_exclusion.*,
- *                    entity_signal.insert, node_surface.set_config).
- *   • draft_scoped — workflow DRAFT edits; applied immediately to the draft
- *                    (the draft IS the safety layer, publish stays the human
- *                    gate). Revertable.
- *   • review       — masters / live definitions (staff.create, reason_code.*,
- *                    setting.*); NEVER applied here — lands as status='proposed'
- *                    for a human to apply.
- *
- * Every APPLY runs one guarded write + the agent_mutations/affects rows in ONE
- * tenant transaction; recordAudit + ops_event + Ably fire post-commit,
- * best-effort. The inverse descriptor captured on apply drives revert.
- *
- * Deps-injected (default = real impls) so unit tests run DB-free.
- */
+/** applyAgentMutation — the single AI write chokepoint (universal-feed plan §2.6 / §6). */
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -126,10 +106,7 @@ async function dispatchApply(
         : { ok: false, status: 404, error: r.error ?? 'invalid' };
     }
     case 'entity_signal.insert': {
-      // Append-only fact — the signal IS the action, so a validation/DB failure
-      // must surface (unlike the fire-and-forget chokepoint taps). The
-      // SAVEPOINT inside recordEntitySignal keeps a DB error from poisoning
-      // this tx. Never revertable.
+      // Append-only fact — the signal IS the action, so a validation/DB failure must surface (unlike the fire-and-forget chokepoint taps).
       const sig = await recordEntitySignal(
         {
           ...(p as Record<string, unknown>),
@@ -144,12 +121,7 @@ async function dispatchApply(
       const norm = normalizeReassignPayload(p);
       if (!norm.ok) return { ok: false, status: 400, error: norm.error };
 
-      // ALL-OR-NOTHING, on purpose. Every move runs on this transaction's
-      // client, so a failure on move 4 of 7 rolls back moves 1-3 too. The
-      // alternative — best-effort with a partial report — leaves an operator
-      // diffing a carton by hand to work out which photos actually moved, and
-      // a half-applied change cannot be cleanly reverted by a single inverse.
-      // Refusing with the reason beats silently doing most of it.
+      // ALL-OR-NOTHING, on purpose.
       const undo: Array<{ photoId: number; targetEntityType: string; targetEntityId: number }> = [];
       const deps = makeReassignDepsForClient(client as unknown as ReassignClient);
       try {
@@ -381,14 +353,7 @@ export async function revertAgentMutation(
   orgId: OrgId,
   actorStaffId: number | null,
   deps: ApplyAgentMutationDeps = defaultDeps,
-  /**
-   * The actor's permissions. Optional ONLY so existing server-side callers
-   * (review tooling) keep working; the assistant always passes it.
-   *
-   * Checked here rather than at the tool layer because the kind is not known
-   * until the row is read — and someone able to APPLY a change must be able to
-   * undo it, which a single blanket gate could not express.
-   */
+  /** The actor's permissions. */
   actorPermissions?: ReadonlySet<string>,
 ): Promise<RevertAgentMutationResult> {
   const outcome = await deps.runTransaction(orgId, async (client) => {

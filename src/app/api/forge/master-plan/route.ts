@@ -12,18 +12,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-/**
- * GET /api/forge/master-plan — canonical CRDT snapshot for client bootstrap.
- *
- * Returns the doc state as a base64 Yjs update (clients apply it verbatim so
- * their local doc shares the canonical CRDT identity — re-inserting the text
- * locally would fork it) plus the plain MDX + ticket rollup for non-CRDT
- * consumers (ops-plans table view). The short server session inside
- * withMasterPlanDoc also seeds an empty room from the starter file, so the
- * first-ever viewer sees the canonical starter rather than a blank plan.
- * Read path is Ably-synced, NOT polled from Neon — the CRDT never lives in
- * the ops DB (locked decision).
- */
+/** GET /api/forge/master-plan — canonical CRDT snapshot for client bootstrap. */
 export const GET = withAuth(async (_req: NextRequest, _ctx) => {
   try {
     const { result, seeded } = await withMasterPlanDoc(_ctx.organizationId, (doc) => ({

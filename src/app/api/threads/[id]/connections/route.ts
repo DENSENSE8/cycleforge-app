@@ -7,12 +7,7 @@ import {
   resolveThreadLinksAsConnections,
 } from '@/lib/threads/resolve-thread-connections';
 
-/**
- * GET /api/threads/[id]/connections — the thread's "connecting dots": derived
- * related entities (order → tracking / serials / SKU; repair → serial → order;
- * serial → order) resolved read-side, PLUS curated thread_links, PLUS the
- * current owner. Read-only; support.thread.view.
- */
+/** GET /api/threads/[id]/connections — the thread's "connecting dots": */
 function toId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;

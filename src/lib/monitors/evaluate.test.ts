@@ -7,12 +7,7 @@ import {
   type ViewMonitorRuntime,
 } from './evaluate';
 
-/**
- * Pure state-machine tests — no DB, no clock. Stable under TZ=UTC because the
- * only time math is epoch-ms (getTime()). Covers the plan's Phase 0 cases:
- * fires once on crossing · silent while breached · recovery on drop below
- * recovery_value · cooldown suppresses re-fire · item_aging path.
- */
+/** Pure state-machine tests — no DB, no clock. */
 
 const NOW = new Date('2026-08-10T12:00:00.000Z');
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000);

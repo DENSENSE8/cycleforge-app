@@ -1,20 +1,4 @@
-/**
- * Intake-kind registry — the polymorphic discriminator for receiving.
- *
- * Plan: docs/todo/polymorphic-tables-database-refactor-plan.md §4 (Layer 2) / §5.
- *
- * A receiving line's *kind* (PO | RETURN | TRADE_IN | PICKUP) decides which typed
- * facts attach to it. This registry maps each kind to its facts tables + default
- * `receiving_line_facts` kinds, and owns the classification helpers. It is the
- * code-side SoT for the built-in kinds; per-org custom kinds resolve through the
- * `types` catalog (catalog-queries) with a passthrough facts schema, so a tenant
- * can add a kind with catalog data + a registry entry and zero migration.
- *
- * Reuses the door classification SoT in ../intake-classification (so the door
- * tag, the carton columns, and the kind can never disagree).
- *
- * Pure module — no DB, no React.
- */
+/** Intake-kind registry — the polymorphic discriminator for receiving. */
 
 import { columnsToClassification, type IntakeClassification } from '../intake-classification';
 import type { FactKind } from '../facts/registry';
@@ -112,18 +96,7 @@ export function classifyIntakeKind(columns: Parameters<typeof columnsToClassific
   return intakeKindFromClassification(columnsToClassification(columns));
 }
 
-/**
- * Resolve the effective kind from a line override + carton default: the line
- * override wins unless it is the 'PO' default, else the carton default, else
- * 'PO'. SoT for this precedence rule — `triage-intake-kind.ts`'s
- * `isReturnIntake()` composes off this. Two call sites that look similar are
- * deliberately NOT migrated to it: `useReceivingType.ts` seeds a carton-type
- * EDITOR pill (correctly carton-first — it answers "what should this carton's
- * own field show," not "what's the line's effective type"), and
- * `zendesk-claim-template.ts`'s inline version must pass through org-custom
- * type strings verbatim (it feeds a display label, not this kind enum) and
- * has no carton-level default field available at its call site anyway.
- */
+/** Resolve the effective kind from a line override + carton default: */
 export function effectiveIntakeKind(
   lineKind?: string | null,
   cartonKind?: string | null,

@@ -1,14 +1,6 @@
 'use client';
 
-/**
- * Header pin stations — GlobalHeader SoT for Quick Access pins.
- * The Pin glyph LEADS the group (leftmost cell of the nav cluster) and the
- * pinned-page chips banner out to its right; open = {@link HeaderChromeMenu}
- * with pin-current CTA + vertical drag-sortable rows. List order owns
- * ⌘/Ctrl+1–9 ({@link pinHotkeyLabel} / {@link pinSlotFromKeyboardEvent}).
- * Data = {@link useQuickAccess} / `cf.quickAccess`. Never remount a pin list in
- * the avatar Quick Access popover.
- */
+/** Header pin stations — GlobalHeader SoT for Quick Access pins. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -189,15 +181,8 @@ function HeaderPinChip({
           aria-label={`Open pinned page ${pin.label}`}
           onClick={onNavigate}
           className={cn(
+            // FULL BAND HEIGHT, not a padded pill (operator 2026-09-22:
             // FULL BAND HEIGHT, not a padded pill (operator 2026-09-22: "there
-            // must be no spacing or gaps … there's a gap between the top of the
-            // page and the selection of the bookmark button"). `py-1` centred a
-            // ~26px chip inside the 40px beam, so the active wash and its
-            // underline floated with ~7px of dead band above them and the
-            // selection read as a chip sitting ON the header rather than as the
-            // header's own tab. `h-full` + no vertical pad makes the fill start
-            // at the page's top edge and the border-b land on the beam's seam —
-            // the same tab grammar TableTabs uses one altitude down.
             'hidden h-full max-w-[10rem] min-w-0 items-center gap-1.5 rounded-none border-b px-2 text-left text-role-micro font-semibold transition-colors xl:flex',
             active
               ? 'border-text-default bg-surface-sunken text-text-default'
@@ -299,12 +284,9 @@ export function HeaderPinsSwitcher() {
   return (
     <div ref={wrapRef} className="flex h-full min-w-0 shrink-0 items-center">
       {/*
-       * The Pin CONTROL leads the group (operator 2026-09-16: "the pinned icon
-       * should display on the most left"). The pinned-page chips are the
-       * BANNER it opens — they read left-to-right away from their own trigger,
-       * so the glyph is the group's left edge and the dropdown (anchored
-       * `bottom-start` on this wrap) hangs directly under it.
-       */}
+ * The Pin CONTROL leads the group (operator 2026-09-16:
+ * The Pin CONTROL leads the group (operator 2026-09-16: "the pinned icon
+ */}
       <div className={HEADER_ICON_WRAP}>
         <HoverTooltip label={tipLabel} asChild>
           <IconButton

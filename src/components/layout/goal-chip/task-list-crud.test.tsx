@@ -6,15 +6,7 @@ import { TaskList } from '@/components/layout/goal-chip/TaskList';
 import { TaskListMenu } from '@/components/layout/goal-chip/TaskListMenu';
 import type { Todo } from '@/components/layout/goal-chip/goal-chip-shared';
 
-/**
- * The checklist's verbs, asserted on the RENDERED row rather than the source
- * text (`AGENTS.md` → Guard authoring).
- *
- * The invariant these pin is the one the hover-only trash can broke: every row
- * must expose its actions to a finger, not to a pointer that a phone does not
- * have. `opacity-0 group-hover:opacity-100` on the only delete control is the
- * regression to catch.
- */
+/** The checklist's verbs, asserted on the RENDERED row rather than the source text (`AGENTS.md` → Guard authoring). */
 
 const ITEMS: Todo[] = [
   { id: '1', text: 'Sweep the bench', done: false },

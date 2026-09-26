@@ -37,12 +37,7 @@ export const UNIT_TESTING_PHOTO_TYPE = 'testing_photo';
  */
 export const UNIT_PACKING_PHOTO_TYPE = 'packer_photo';
 
-/**
- * `photo_type`s for the guided Packer Review capture (two-step slip → box) on
- * `/m/pack` (docs/todo/packer-review-station-plan.md §2a). Both link to
- * PACKER_LOG (no schema change) and are distinguished only by this constant, so
- * the review station and library can bucket slip vs box without an ALTER.
- */
+/** `photo_type`s for the guided Packer Review capture (two-step slip → box) on `/m/pack` (docs/todo/packer-review-station-plan.md §2a). */
 export const PACK_SLIP_PHOTO_TYPE = 'pack_slip';
 export const PACK_BOX_PHOTO_TYPE = 'pack_box';
 
@@ -57,13 +52,7 @@ export const UNIT_PREPACK_PHOTO_TYPE = 'prepack';
  */
 export const PACKER_BOX_LABEL_PHOTO_TYPE = 'box_label';
 
-/**
- * `photo_type` for a staff profile photo (entity_type `STAFF`). The ONLY type
- * allowed on that entity — see the write matrix in `./stages.ts`. A profile
- * photo is identity chrome, not evidence: constraining it keeps a receiving or
- * packing capture from ever landing on a person's face, and keeps a face out of
- * the evidence buckets the library and claim exports read.
- */
+/** `photo_type` for a staff profile photo (entity_type `STAFF`). */
 export const STAFF_AVATAR_PHOTO_TYPE = 'staff_avatar';
 
 /**
@@ -121,25 +110,9 @@ export interface UploadPhotoInput {
   useStorageAdapter?: boolean;
   /** Legacy NAS/Blob URL when not uploading bytes server-side. */
   legacyUrl?: string | null;
-  /**
-   * Device-reported capture instant → `photos.client_captured_at`. NOT
-   * server-attested; `created_at` remains the attested insert time. Omit (or
-   * pass null) when the capture surface has no usable device timestamp —
-   * see `./capture-provenance.ts`.
-   */
+  /** Device-reported capture instant → `photos.client_captured_at`. */
   clientCapturedAt?: Date | null;
-  /**
-   * What this shot SHOWS, within its stage (`./photo-aspects.ts`). NULL means
-   * *unclassified evidence*, never *missing evidence* — that is what every
-   * pre-2026-08-01b row carries, and what any surface that cannot name the shot
-   * should keep sending.
-   *
-   * Legality (aspect × stage) is decided at the route edge against the stage the
-   * ENTITY resolves to, exactly as {@link AttachLegacyPhotoInput} documents:
-   * only the route knows the caller's claimed stage, and validating an aspect
-   * against a claim rather than the resolved value lets a mis-claimed stage
-   * mis-claim an aspect too.
-   */
+  /** What this shot SHOWS, within its stage (`./photo-aspects.ts`). */
   photoAspect?: PhotoAspect | null;
 }
 

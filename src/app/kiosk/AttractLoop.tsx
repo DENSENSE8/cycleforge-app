@@ -9,20 +9,10 @@ import { MODE_REGISTRY } from '@/design-system/modes/registry';
  * literally white in every theme, so a themed surface token would repaint a
  * logotype's ground when the app theme flips — a brand defect, not theming.
  */
-// ds-allow-raw-neutral: brand ground, deliberately scheme-independent
-// The attract field is a fixed white stage on a mounted customer tablet — it is
-// deliberately theme-independent, like the loader plane.
-// ds-allow-raw-neutral: fixed kiosk attract stage, theme-independent.
+// ds-allow-raw-neutral:
 const PLAIN_ATTRACT_FIELD = 'fixed inset-0 z-panel flex cursor-pointer items-center justify-center bg-white px-8';
 
-/**
- * Default wordmark ink = the counter mode's `brand` (USAV navy, sampled from
- * `public/images/usav-logo.png`). It is tenant brand DATA, not a theme token —
- * it never shifts with `data-theme`; the org's `brand.primaryColor` replaces
- * it (passed as `inkColor` here, and as `--mode-brand` on the counter region).
- * Read as a literal rather than `var(--mode-brand)` because the Settings
- * preview mounts this outside any counter region.
- */
+/** Default wordmark ink = the counter mode's `brand` (USAV navy, sampled from `public/images/usav-logo.png`). */
 const DEFAULT_BRAND_INK = MODE_REGISTRY.counter.brand;
 
 /** Dogfood defaults — overridden by `brand.attractHeadline` / `attractSubline`. */
@@ -92,14 +82,7 @@ export function AttractLoop({
           }
         }}
       >
-        {/*
-          Attract media OUTRANKS the wordmark: an uploaded image is the whole
-          screensaver and nothing composites over it. `object-contain` (not
-          `-cover`) keeps the operator's framing intact on a screen whose aspect
-          ratio is not theirs, and the white field above shows through the
-          letterbox and through any transparency in the file — so the ground
-          behind an uploaded image is white, same as behind the wordmark.
-        */}
+        {/* Attract media OUTRANKS the wordmark: */}
         {active && mediaUrl ? (
           showVideo ? (
             <video
@@ -185,20 +168,7 @@ function cnTapOverlay(reducedMotion: boolean): string {
     .join(' ');
 }
 
-/**
- * Letterspaces the subline until its visual width matches the headline's — the
- * logotype lockup shape, where the small word spans the big one.
- *
- * MEASURED, not a constant: the tracking that squares "Solutions" under "USAV"
- * is wrong for any other pair of strings, and both are tenant-editable
- * (`brand.attractHeadline` / `attractSubline`). A hardcoded em value would
- * silently mis-set every tenant except the one it was tuned for.
- *
- * Both lines size in `em` off one clamped root, so the ratio is viewport-stable
- * — but the absolute px tracking is not, hence the resize pass. Widths are read
- * after `document.fonts.ready`: measuring the fallback face yields tracking for
- * a font that is about to be replaced.
- */
+/** Letterspaces the subline until its visual width matches the headline's — the logotype lockup shape, where the small word spans the big one. */
 function useLockupTracking(headline: string, subline: string) {
   const headRef = useRef<HTMLSpanElement>(null);
   const subRef = useRef<HTMLSpanElement>(null);
@@ -213,11 +183,7 @@ function useLockupTracking(headline: string, subline: string) {
     let live = true;
     const measure = () => {
       if (!live) return;
-      // Each line's own trailing letter-space is not ink — drop it from both the
-      // target width and the measurement, or the lines square on their boxes
-      // rather than on their glyphs.
-      // Measure unscaled — the fit factor below is derived from these widths, so
-      // reading them through a previous frame's scale compounds it.
+      // Each line's own trailing letter-space is not ink — drop it from both the target width and the measurement, or the lines square on their…
       fit.style.transform = 'scale(1)';
       const headTrack = parseFloat(getComputedStyle(head).letterSpacing) || 0;
       const headWidth = head.getBoundingClientRect().width - headTrack;
@@ -231,10 +197,7 @@ function useLockupTracking(headline: string, subline: string) {
       sub.style.letterSpacing = `${track}px`;
       sub.style.marginRight = `${-track}px`;
 
-      // Font size clamps on VIEWPORT width, which knows nothing about how long
-      // the tenant's word is: `NORTHGATE` at 15vw measures wider than the screen
-      // it is painted on. Scale the whole lockup down to fit, never up — a short
-      // word stays at its designed size rather than ballooning.
+      // Font size clamps on VIEWPORT width, which knows nothing about how long the tenant's word is:
       const room = window.innerWidth * LOCKUP_SAFE_WIDTH;
       const widest = Math.max(headWidth, subWidth + track * gaps);
       fit.style.transform = `scale(${widest > room ? room / widest : 1})`;
@@ -266,18 +229,7 @@ function PlainWordmark({
   const { headRef, subRef, fitRef } = useLockupTracking(headline, subline);
 
   return (
-    /*
-      OUTER = pixel shift. This screen is always-on at a front desk, so the
-      wordmark must never sit on the same pixels. Commercial-signage practice is
-      a few px of imperceptible drift on a slow cycle; 3min is well inside the
-      ~15min content-rotation interval signage firmware uses.
-
-      INNER = the waiting beat. A slow breath reads as "awake and waiting"
-      rather than "frozen", and keeps the lit pixels cycling.
-
-      Reduced motion kills both: an always-on sign is exactly where a vestibular
-      trigger has no escape.
-    */
+    /* OUTER = pixel shift. */
     <motion.div
       className="flex flex-col items-center"
       animate={reducedMotion ? undefined : { x: [0, 10, 0, -10, 0], y: [0, -8, 6, -6, 0] }}
@@ -288,20 +240,7 @@ function PlainWordmark({
         animate={reducedMotion ? undefined : { opacity: [1, 0.72, 1] }}
         transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
       >
-        {/*
-          `italic` resolves to Inter's REAL italic cut, loaded for this one
-          consumer in src/lib/fonts.ts — never a browser-synthesised oblique.
-          The cut is its own non-preloaded `next/font` call (`cfSansItalic`), so
-          the wordmark below names that family explicitly; the app's sans var
-          carries the upright faces only and every other document stops paying
-          for three italic files it never renders.
-          Inter is also the tenant's own face: usavshop.com serves it, and it is
-          already the house sans, so the brand's exact type needs no new family.
-
-          This wrapper owns the fit scale. It is a plain div on purpose: the two
-          motion parents already write `transform`, and a third writer on the
-          same node would fight them frame by frame.
-        */}
+        {/* `italic` resolves to Inter's REAL italic cut, loaded for this one consumer in src/lib/fonts.ts — never a browser-synthesised oblique. */}
         <div ref={fitRef} className="flex flex-col items-center">
           <span
             ref={headRef}

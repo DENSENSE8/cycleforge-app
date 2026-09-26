@@ -1,24 +1,4 @@
-/**
- * Label purchase ledger — the idempotency record for ShipStation label buys
- * (`shipping_label_purchases`, migration 2026-09-24f).
- *
- * The purchase route used to dedupe on the stored label DOCUMENT, which is
- * written after the irreversible charge: a buy that succeeded and then died in
- * the byte download / document store left no trace, and the retry bought a
- * second label. {@link purchaseLabelOnce} claims the key BEFORE the charge and
- * records the purchase the moment ShipStation answers — before any download —
- * so every retry either replays the recorded purchase or is refused.
- *
- * Outcomes:
- *   purchased — this call bought the label (and recorded it).
- *   replay    — a prior call under this key already bought it; nothing charged.
- *   in_flight — a prior call claimed the key and never recorded an outcome
- *               (still running, or it died mid-charge). Refuse; the operator
- *               checks ShipStation before buying again.
- *
- * ShipStation refusing the purchase (nothing charged) releases the claim so the
- * same key may try again.
- */
+/** Label purchase ledger — the idempotency record for ShipStation label buys (`shipping_label_purchases`, migration 2026-09-24f). */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';

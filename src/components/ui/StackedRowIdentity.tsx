@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Stacked list-row identity — **title leads; typed keys sit on a second row**.
- *
- * SoT for every **small-width two-row** face where the scannable string is a long
- * title (product · ticket subject · sheet exception · drill parent) and the
- * durable handles are typed {@link CopyChip}s (ticket # · order # · PO ·
- * tracking · SKU) — last-8 face, bare full id on copy.
- *
- * Full-width LedgerGrid / queue sheets keep their own column anatomy. This
- * primitive is the **narrow** twin: title → keys, never a third identity grammar
- * (mono `#{id}` on the title row, or a hand-rolled `flex-col` title/meta fork).
- *
- * Golden consumers: Unbox History {@link LedgerDrillParentMap}, Move photos
- * carton targets, Orders import `SyncListRow`, Support ticket subject + `#`,
- * repair kiosk selected-product tray. Ticket pick / link lists compose thin
- * {@link TicketPickRow} on top. GlobalHeader inbox stays on
- * {@link CompactActivityRow} for the activity frame, but paints the same
- * order/tracking chips on its meta strip (never mono prose).
- *
- * Detail: Stacked row identity.
- */
+/** Stacked list-row identity — **title leads; typed keys sit on a second row**. */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';

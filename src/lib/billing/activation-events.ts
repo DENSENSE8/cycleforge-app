@@ -1,14 +1,4 @@
-/**
- * Activation instrumentation — records onboarding/activation milestones
- * (first integration connected, first order synced, …) so the SaaS funnel can
- * be measured per-org. Writes to the existing `ops_events` spine via
- * `recordOpsEvent` (src/lib/ops-events.ts) under `entity_type = 'other'`
- * (org-level events have no business-entity anchor; entity_id = 0) with
- * `event_type = 'activation.<event>'`.
- *
- * No-op-safe by contract: instrumentation must NEVER break the product path,
- * so failures are logged and swallowed. Deps-injected for DB-free tests.
- */
+/** Activation instrumentation — records onboarding/activation milestones (first integration connected, first order synced, …) so the SaaS… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordOpsEvent, type RecordOpsEventInput } from '@/lib/ops-events';

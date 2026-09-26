@@ -1,40 +1,4 @@
-/**
- * GET /api/auth/staff-picker
- *
- * Slim list for the sign-in screen — only staff with status='active', sorted
- * by name, with just enough fields to render the grid. Returns `hasPin` so
- * the UI can disable the PIN button for staff that haven't enrolled yet, and
- * `pinless` so the UI knows whether to skip the PIN pad entirely (controlled
- * by the AUTH_PINLESS_SIGNIN env var for rollouts where staff haven't been
- * issued PINs yet).
- *
- * Multi-tenant: the picker is scoped by the tenant resolved from the
- * `x-tenant-slug` header set by proxy.ts (`resolveOrgIdFromRequest`). On the
- * apex / no-subdomain host there is NO public tenant, so an anonymous picker
- * returns an EMPTY list — it no longer leaks the USAV dogfood tenant's staff.
- * When a valid session cookie is present on that apex host, the picker uses
- * the session's organization (in-app switch-staff / throw / clipboard). That
- * is the caller's own workspace, not a silent USAV fallback. An operator can
- * still opt one dogfood tenant onto the apex host via `DEFAULT_TENANT_SLUG`
- * during the DNS cutover.
- *
- * Public: the picker has to render before sign-in. We expose only id/name/
- * role/colour/avatar/hasPin — no email, employee_code, or sensitive columns.
- *
- * Failure class: **PRIMARY resource.** An empty `staff` array is a legitimate
- * state (apex host / a tenant with no active staff), so an unexpected throw
- * MUST NOT be answered with one — it renders as "No active staff. Ask an admin
- * to add you." and nobody files a bug. On 2026-08-01 this route selected a
- * column that did not exist, caught the throw, and returned `{ staff: [] }`
- * with HTTP 200: sign-in was down on every tenant with nothing anywhere to
- * explain it, while the staff rows were all present and healthy.
- *
- * There is no useful half of this payload to salvage — PIN sign-in is
- * impossible without the roster — so an unexpected throw answers **503** with
- * `degraded: true` + `error`. Callers must branch on it (`StaffPickerList`
- * renders a distinct "couldn't load" state; `tests/e2e/global-setup.ts` and
- * `tests/shot.mjs` already throw on a non-OK status).
- */
+/** GET /api/auth/staff-picker */
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
@@ -77,10 +41,7 @@ export async function GET(req: NextRequest) {
         { headers: { 'cache-control': 'no-store' } },
       );
     }
-    // Role on this payload is the same primary as getCurrentUser: lowest
-    // `roles.position` on `staff_roles`, then the legacy `staff.role` mirror.
-    // Do not SELECT `staff.role` alone — that column can lag the assignment
-    // table and paint PACKER/TECHNICIAN on the sign-in roster.
+    // Role on this payload is the same primary as getCurrentUser:
     const r = await pool.query(
       `SELECT s.id, s.name,
               COALESCE(pr.key, s.role) AS role,

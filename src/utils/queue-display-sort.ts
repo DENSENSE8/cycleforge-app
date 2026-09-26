@@ -1,11 +1,4 @@
-/**
- * Shared display-sort vocabulary for Pending (To Ship) + Testing queue headers.
- * Quiet trailing dropdown — View composites (Newest | Deadline) plus
- * platform / carrier pins. Column sorts stay on header click, not in this menu.
- * URL: `?sort=` (omit when `deadline`, the default); `?dir=asc|desc` only for
- * column sorts (omit when the column’s default direction). Legacy `priority`
- * and a missing param both parse as `deadline`.
- */
+/** Shared display-sort vocabulary for Pending (To Ship) + Testing queue headers. */
 
 import { CARRIER_BRANDS, type DisplayCarrier } from '@/lib/carrier-brand';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
@@ -65,12 +58,7 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
 
 const COLUMN_SORT_SET = new Set<string>(QUEUE_COLUMN_SORTS);
 
-/**
- * Retired `?sort=` values kept readable so shared/bookmarked links survive.
- * Fused `sla` and civil-date `date` resolve to the live Late (`age`) column.
- * Parse-only — never written back out, so these drain from live URLs on the
- * next sort interaction.
- */
+/** Retired `?sort=` values kept readable so shared/bookmarked links survive. */
 const RETIRED_COLUMN_SORT_ALIASES: Readonly<Record<string, QueueDisplaySortColumn>> = {
   sla: 'age',
   date: 'age',
@@ -122,30 +110,7 @@ export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn 
   return COLUMN_SORT_SET.has(sort) || isQueueNamePinSort(sort);
 }
 
-/**
- * COMPOUND track → the `?sort=` value it represents.
- *
- * ## Why this exists
- *
- * When To-Ship moved to the two-row compound row, its header keys changed from
- * the flat facts (`title`, `order`, …) to the compound tracks
- * (`fulfillment`, `item`, …). Nothing updated the sort vocabulary, so
- * `isQueueColumnSort` rejected every header key and **clicking a header
- * silently did nothing** — sorting was simply off on the desk, and stayed off
- * because the e2e that would have caught it was itself still clicking a flat
- * locator that resolved to zero elements.
- *
- * ## Why this is a restoration, not a new decision
- *
- * A compound track is a container for facts the flat model already sorted by:
- * `fulfillment` carries the order identity (`order`), `item` carries the
- * product title (`title`). Mapping them re-connects existing comparators —
- * `queue-row-compare.ts` needs no new case.
- *
- * `select` / `actions` / `_fill` / `thumb` stay unmapped — they are chrome, not facts.
- * Every painted DATA track (`dates`, `state`, and bound `status:N` fields)
- * maps onto a comparator in `queue-row-compare.ts`.
- */
+/** COMPOUND track → the `?sort=` value it represents. */
 export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   fulfillment: 'order',
   item: 'title',
@@ -209,12 +174,7 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
   { id: 'deadline', label: 'By ship-by date', shortLabel: 'Deadline', group: 'View' },
 ] as const;
 
-/**
- * Closed-control face for the active `?sort=` — including header-click
- * column sorts that are not rows in the dropdown. The trigger must name
- * the exact order (Product, Amazon + filled dot, USPS + ring), never
- * fall back to "Sort, custom".
- */
+/** Closed-control face for the active `?sort=` — including header-click column sorts that are not rows in the dropdown. */
 export type QueueDisplaySortFace = {
   label: string;
   shortLabel: string;
@@ -326,12 +286,7 @@ export function queueChannelSortOptions(): readonly {
     }));
 }
 
-/**
- * Carrier faces for the sort menu — the SAME labels the tracking chip paints
- * (`CARRIER_BRANDS`), A–Z, Unknown omitted. A pick pins that name to the top
- * of the queue; it does not hide the others and it does not invent a rank
- * label like "USPS first".
- */
+/** Carrier faces for the sort menu — the SAME labels the tracking chip paints (`CARRIER_BRANDS`), A–Z, Unknown omitted. */
 export function queueCarrierSortOptions(): readonly {
   id: `carrier:${string}`;
   label: string;

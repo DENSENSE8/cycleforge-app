@@ -1,24 +1,4 @@
-/**
- * Session-collapse GROUNDWORK — switch the active org/staff context of an
- * existing session IN PLACE, without minting a new session.
- *
- * ⚠️ CURRENTLY UNUSED / NOT WIRED. The live org-switch path
- * (`/api/auth/switch-org`) still MINTS A NEW SESSION pointed at the target
- * org's staff profile. This helper is the additive, build-ready alternative for
- * the eventual "switch without re-auth" cutover — it updates the
- * `staff_sessions.active_org_id` / `active_staff_id` pointers added by
- * 2026-06-29_sessions_active_context_columns.sql.
- *
- * The full cutover (re-pointing server-session.ts + every consumer to READ
- * active_org_id/active_staff_id and dropping the re-mint) is built-ready but
- * REQUIRES run-the-app auth-flow verification (sign-in / PIN / passkey /
- * switch) before it replaces the live path. Do NOT call this from the live
- * auth flow until then.
- *
- * Deps-injected so it unit-tests with zero DB. See src/lib/identity/sessions.test.ts.
- *
- * See docs/identity-layer-plan.md.
- */
+/** Session-collapse GROUNDWORK — switch the active org/staff context of an existing session IN PLACE, without minting a new session. */
 
 import type { Pool, PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
@@ -67,13 +47,7 @@ const defaultSwitchActiveContextDeps: SwitchActiveContextDeps = {
   },
 };
 
-/**
- * Re-point a session's active org/staff context in place (no re-mint).
- *
- * GROUNDWORK ONLY — not yet wired into the live switch flow (which still mints a
- * fresh session). Safe to call ad hoc; harmless until a future cutover makes
- * server-session.ts read these pointers.
- */
+/** Re-point a session's active org/staff context in place (no re-mint). */
 export async function switchActiveContext(
   sessionId: string,
   target: SwitchActiveContextTarget,

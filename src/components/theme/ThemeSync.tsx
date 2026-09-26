@@ -10,15 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { resolveOperatorAccentTheme } from '@/utils/operator-accent';
 
-/**
- * Bridges the server-backed staff_preferences `theme` to `data-theme`, the
- * scan-station Color to `data-station-skin`, Depth to `data-station-depth`,
- * and the operator accent to the `theme-${accent}` class.
- * Mount once inside the authenticated tree (beside ScanHotkeySync).
- *
- * Deps are the theme/accent *fields* — never the whole `prefs` object identity
- * (every unrelated staff-preferences write used to re-touch <html>).
- */
+/** Bridges the server-backed staff_preferences `theme` to `data-theme`, the scan-station Color to `data-station-skin`, Depth to… */
 export function ThemeSync() {
   const { prefs } = useStaffPreferences();
   const { user } = useAuth();

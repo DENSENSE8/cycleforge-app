@@ -1,26 +1,4 @@
-/**
- * POST /api/zoho/purchase-orders/sync
- *
- * Bulk-imports all Zoho purchase orders into the local receiving / receiving_lines tables.
- * Each PO → one receiving row (carrier = ZOHO_PO, qa_status = PENDING).
- * Each PO line item → one receiving_lines row.
- * Re-running is safe: existing rows are updated by zoho_purchaseorder_id.
- *
- * Aligns with Zoho Inventory API v1:
- *   GET /api/v1/purchaseorders          — list with filters + pagination
- *   GET /api/v1/purchaseorders/{id}     — detail (line_items)
- *
- * Body (all optional):
- * {
- *   "status":             "open" | "draft" | "billed" | "cancelled" | "issued",
- *   "vendor_id":          "<zoho vendor id>",
- *   "last_modified_time": "<zoho API timestamp>",
- *   "days_back":          90,    // used when last_modified_time absent; 0 = all time
- *   "per_page":           200,
- *   "max_pages":          50,
- *   "max_items":          5000
- * }
- */
+/** POST /api/zoho/purchase-orders/sync */
 import { NextRequest, NextResponse } from 'next/server';
 import { syncZohoPurchaseOrdersToReceiving } from '@/lib/zoho-po-sync';
 import { withAuth } from '@/lib/auth/withAuth';

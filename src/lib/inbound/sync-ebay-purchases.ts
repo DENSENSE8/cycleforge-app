@@ -1,19 +1,4 @@
-/**
- * eBay buyer purchase → Incoming sync orchestration (Universal Incoming Track A,
- * plan §5.3). Per buyer account: delta-fetch purchase-order lines and land each
- * one on the Incoming spine via `ingestPurchase` (the SAME UPSERT the Phase 2
- * bridge uses), advancing a per-account cursor.
- *
- * Discovery uses Trading API GetOrders with OrderRole=Buyer
- * (`src/lib/ebay/purchase-client.ts`). Optional Buy Order API enrich needs
- * `buy.order.readonly` (opt-in via EBAY_BUYER_SCOPES) and is not required for
- * basic Incoming rows + tracking.
- *
- * Dedup: this direction (eBay purchase arrives first) is collapsed against a Zoho
- * PO when that PO later syncs — the Zoho receiving-sync hook calls
- * mergeEbayLinesIntoZohoPo (plan §4.2, the common real-world order). Deps-injected
- * so unit tests run DB-free.
- */
+/** eBay buyer purchase → Incoming sync orchestration (Universal Incoming Track A, plan §5.3). */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -71,12 +56,7 @@ function msg(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-/**
- * Sync every connected buyer account's purchases into Incoming for one org.
- * Per-account and per-line failures are isolated (collected in `errors`), so one
- * bad line never aborts the account and one bad account never aborts the org.
- * The cursor advances only after an account's pull is processed.
- */
+/** Sync every connected buyer account's purchases into Incoming for one org. */
 export async function syncEbayPurchasesToReceiving(
   orgId: OrgId,
   deps: SyncEbayPurchasesDeps = defaultDeps,

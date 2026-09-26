@@ -5,12 +5,7 @@ export interface TransferOrderDetail {
   itemNumber: string;
   tracking: string;
   titleSource: 'sheet' | 'sku_catalog' | 'platform_lookup' | 'title_catalog_match' | 'none';
-  /**
-   * For `updated` / `deleted` rows: the original order's account_source and
-   * created_at. Lets the run detail show provenance like "originally
-   * inserted by Ecwid on 2026-05-20" so users can tell *why* an imported
-   * order matched an existing DB row instead of inserting a new one.
-   */
+  /** For `updated` / `deleted` rows: */
   existingAccountSource?: string | null;
   existingCreatedAt?: string | null;
   /** The platform account_source the order was recorded under (an
@@ -25,12 +20,7 @@ export interface TransferOrderDetails {
   updated: TransferOrderDetail[];
   deleted: TransferOrderDetail[];
   unknownTitle: TransferOrderDetail[];
-  /**
-   * Rows whose tracking value could not be recognized as a carrier tracking
-   * number (carrier detection failed — e.g. a double-scanned or malformed
-   * value). These are NOT linked to any shipment, so they surface as a
-   * warning instead of silently disappearing.
-   */
+  /** Rows whose tracking value could not be recognized as a carrier tracking number (carrier detection failed — e.g. */
   unresolvedTracking: TransferOrderDetail[];
   /**
    * Rows imported with a present Item Number that did not resolve to

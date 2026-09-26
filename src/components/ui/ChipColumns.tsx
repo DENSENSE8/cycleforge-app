@@ -6,17 +6,7 @@ import { cn } from '@/utils/_cn';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
-/**
- * Fixed column widths for a table row's identity-chip grid. Each chip type gets
- * a stable width so the same column lines up vertically across every row (PO/
- * order-id under PO/order-id, tracking under tracking, serial under serial),
- * the way a real table does — instead of the old right-packed flex where a
- * column only aligned when its values happened to be the same width.
- *
- * Values are last-8 previews (or a short platform label), so these are sized to
- * fit "icon + 8 mono chars" snugly; the serial keeps the same box as the other
- * id columns so inter-column gaps stay even.
- */
+/** Fixed column widths for a table row's identity-chip grid. */
 export const CHIP_COL = {
   /** PlatformChip (amazon / ebay / walmart …). */
   platform: 'w-[92px]',
@@ -24,10 +14,7 @@ export const CHIP_COL = {
   id: 'w-[96px]',
   /** TrackingChip / TrackingOrSkuScanChip / FnskuChip. */
   tracking: 'w-[96px]',
-  /** SerialChip — same width as the other last-8 columns so the gap between
-   *  the tracking and serial values matches every other inter-column gap.
-   *  (Render the SerialChip content-width, not its default fixed box, so
-   *  it doesn't reserve empty space on the left of this column.) */
+  /** SerialChip — same width as the other last-8 columns so the gap between the tracking and serial values matches every other inter-column gap. */
   serial: 'w-[96px]',
 } as const;
 
@@ -39,15 +26,7 @@ export interface ChipColumn {
   node: ReactNode;
 }
 
-/**
- * Right-aligned, fixed-column layout for a desktop table row's identity chips.
- * Each column is a fixed-width, right-justified cell; the trailing cell sits
- * flush with the day-group count (the `-mr-1.5` cancels the trailing chip's
- * 6px `px-1.5` gutter, matching the count's `pr-1` inset).
- *
- * Staff-hidden columns are removed from layout so visible chips slide flush-right;
- * Framer `layout` animates sibling reflow when toggling in Configure columns.
- */
+/** Right-aligned, fixed-column layout for a desktop table row's identity chips. */
 export function ChipColumns({
   columns,
   className,

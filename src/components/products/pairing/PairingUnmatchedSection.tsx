@@ -17,13 +17,7 @@ interface Props {
   onAddSku: () => void;
 }
 
-/**
- * Sits beneath the canonical pairing queue. When a search yields no canonical
- * row to land on, this surfaces the two recoverable gaps:
- *   • unmapped account-source identifiers (ASIN/eBay/Walmart/Ecwid) → pair them
- *   • the searched inventory SKU isn't in the catalog → add it
- * Renders nothing when the query is empty or there's nothing actionable.
- */
+/** Sits beneath the canonical pairing queue. */
 export function PairingUnmatchedSection({ query, onPairIdentifier, onAddSku }: Props) {
   const [data, setData] = useState<SearchUnmatchedResponse | null>(null);
   const [loading, setLoading] = useState(false);

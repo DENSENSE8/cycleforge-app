@@ -1,22 +1,4 @@
-/**
- * API route wrapper.
- *
- *   export const POST = withAuth(async (req, ctx) => { ... }, {
- *     permission: 'receiving.mark_received',
- *     stepUp: true, // optional: also requires a fresh step-up grant
- *   });
- *
- * The handler receives `{ session, staffId, role, permissions }` from the
- * verified session cookie — it does NOT trust `staffId` from the request
- * body.
- *
- * Enforcement is unconditional: every wrapped route requires a valid
- * session unless `allowAnonymous: true` is passed (for `/api/auth/signin`,
- * `/api/health`, webhook receivers with their own signature gate, etc).
- *
- * When `allowAnonymous: true`, `ctx.user` may be `null`; in every other
- * call site the handler sees a `staffId: number` (non-null).
- */
+/** API route wrapper. */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserBySid } from './current-user';
@@ -31,27 +13,11 @@ import { isFeatureGated } from '@/lib/billing/feature-gate';
 import type { EntitlementFeature } from '@/lib/billing/feature-gate';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
-/**
- * Auth context handed to wrapped route handlers.
- *
- * `AuthContext` (the default) is what authenticated routes see — every field
- * is non-null. `AnonymousAuthContext` is what `allowAnonymous: true` routes
- * see; they must null-check `user` themselves.
- */
+/** Auth context handed to wrapped route handlers. */
 import type { AuthContext, AnonymousAuthContext } from './auth-context';
 export type { AuthContext, AnonymousAuthContext } from './auth-context';
 
-/**
- * Audit-floor config. When set on a route, the wrapper writes one
- * `audit_logs` row per 2xx response. Handlers that need rich
- * before/after diffs should call `ctx.markAuditWritten()` and write their
- * own row via `recordAudit(...)` directly — that path is unaffected.
- *
- * `entityId` is a function so the handler can pull the id from either the
- * parsed request body or the response payload — whichever the route's
- * shape makes natural. Return `null` to skip the audit write for that
- * call (e.g. when a 200 is actually a "no-op" branch).
- */
+/** Audit-floor config. */
 export interface WithAuthAuditOpts {
   source: string;
   action: string;
@@ -72,18 +38,7 @@ export interface WithAuthOpts {
   allowAnonymous?: boolean;
   /** Write a baseline `audit_logs` row on 2xx. Handler can opt out via `ctx.markAuditWritten()`. */
   audit?: WithAuthAuditOpts;
-  /**
-   * Plan-entitlement gate. When set, the wrapper checks whether the tenant's
-   * plan includes `feature` and returns 403 (FEATURE_GATED + upgrade prompt)
-   * instead of running the handler.
-   *
-   * This is layered ON TOP of `permission` (RBAC) — a route can require both.
-   * It is PERMISSIVE BY DEFAULT: the only wired feature (`studio`) is dormant
-   * until its enforcement flag is set and the dogfood/internal org + a per-org
-   * override flag are always exempt, so adding `feature` here changes nothing
-   * until enforcement is explicitly turned on. Routes without `feature` are
-   * unaffected. See src/lib/billing/feature-gate.ts.
-   */
+  /** Plan-entitlement gate. */
   feature?: EntitlementFeature;
 }
 
@@ -129,12 +84,7 @@ async function writeAuditFloor(
   audit: WithAuthAuditOpts,
 ): Promise<void> {
   try {
-    // The wrapper holds clones of both streams so the handler's reads aren't
-    // disturbed. The request must be cloned BEFORE the handler runs — once
-    // the handler calls `req.json()`, the body is locked and any subsequent
-    // `req.clone()` throws TypeError('unusable'). Either parse may
-    // legitimately fail (e.g. empty 204, or a non-JSON body) — entityId()
-    // should tolerate null/undefined inputs.
+    // The wrapper holds clones of both streams so the handler's reads aren't disturbed.
     const [body, response] = await Promise.all([
       tryReadJson(reqClone),
       tryReadJson(responseClone),
@@ -231,10 +181,7 @@ export function withAuth(
       }
     }
 
-    // Trial-expiry gate — OFF by default (TRIAL_ENFORCEMENT). Blocks an
-    // expired-trial tenant from everything except billing/auth so it can still
-    // subscribe. Enterprise/paid orgs never match; no DB read when the flag is
-    // off (see trial-gate.ts).
+    // Trial-expiry gate — OFF by default (TRIAL_ENFORCEMENT).
     if (await isTrialBlocked(user.organizationId, req.nextUrl.pathname)) {
       return NextResponse.json(
         { error: 'TRIAL_EXPIRED', hint: 'Subscribe at /settings/billing to continue.' },
@@ -242,12 +189,7 @@ export function withAuth(
       );
     }
 
-    // Plan-entitlement gate — OFF by default. When a route declares `feature`
-    // and that feature's enforcement is on (and the org isn't exempt / lacks a
-    // force-grant override), block with a 403 upgrade prompt instead of running
-    // the handler. No DB read when enforcement is off (isFeatureGated → the
-    // feature's gate short-circuits first), so wired-but-dormant routes pay
-    // nothing and behave exactly as before.
+    // Plan-entitlement gate — OFF by default.
     if (opts.feature && (await isFeatureGated(opts.feature, user.organizationId))) {
       return NextResponse.json(
         { ok: false, error: 'FEATURE_GATED', feature: opts.feature, upgrade: true },
@@ -270,11 +212,7 @@ export function withAuth(
     // configured `audit:` pay the buffering cost.
     const reqClone = opts.audit ? req.clone() : null;
 
-    // Top-level error floor: an uncaught throw from a handler used to land as
-    // a bodyless 500 (Next.js dev default), which made constraint violations
-    // and similar runtime errors nearly impossible to diagnose from the
-    // client. Catch here, log, and return JSON. Stack is included only in
-    // non-production so prod responses don't leak internals.
+    // Top-level error floor:
     let response: Response;
     try {
       response = opts.allowAnonymous

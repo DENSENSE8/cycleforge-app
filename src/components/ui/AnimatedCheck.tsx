@@ -2,16 +2,7 @@
 
 import { motion, useReducedMotion } from '@/design-system/motion';
 
-/**
- * Success checkmark that draws itself on mount: the soft success disc pops in
- * (spring) and the tick strokes on via SVG `pathLength` 0→1. Built for toast
- * `icon` slots (default ~18px) but works anywhere a success glyph is wanted.
- *
- * Honors `prefers-reduced-motion` — it renders the final, fully-drawn mark with
- * no scale/draw animation (per the house reduced-motion mandate).
- *
- * Uses `framer-motion` to match the rest of the codebase (motion-framer.ts).
- */
+/** Success checkmark that draws itself on mount: */
 export function AnimatedCheck({ size = 18 }: { size?: number }) {
   const reduce = useReducedMotion();
 

@@ -2,40 +2,8 @@
 
 /**
  * Unified kiosk customer intake — ONE identity form for every channel.
- *
- * @domain-job Capture the person a kiosk transaction belongs to.
- * @hardware-target Station (counter tablet)
- * @density floor
- * @justification Repair, Retail/Counter, Buyback and Pickup each hand-rolled
- *   their own phone/name/email trio with different labels, different phone
- *   formatting (or none), and different autocomplete hints — so the same
- *   customer typed a differently-shaped form depending on which command the
- *   operator happened to be in. This is that one form; channels contribute
- *   their own fields through `lead` / `extras`,
- *   never by forking the contact block.
- *
- * Session-bound by default (`kioskSessionStore` — the cart IS the session
- * root, so the customer belongs to the cart, not to a pane). Panes that still
- * own a local draft pass `value` + `onChange` and stay controlled.
- *
- * Two renders, ONE trio: the default is the house floating-label field;
- * `entry` is the mobile-native step path (placeholder-in-box via
- * {@link KioskEntryField}, no floating label, no divider, the kiosk's one
- * corner radius). The trio itself never forks — only its paint does.
- *
  * ## Square's phone-first contact step (operator 2026-09-24)
- *
- * - The phone is typed on a glass keypad, never the OS keyboard: an iPad has
- *   no phone pad, and its full keyboard covered the step's Continue key. The
- *   keypad is NOT part of the form (operator 2026-09-25): tapping the phone
- *   field mounts {@link KioskFloatingPhoneKeypad} in the pane's dock, above
- *   Continue, and it goes away when done. The input stays (`inputMode="none"`)
- *   so a desk keyboard still types into it.
- * - The tenth digit asks whether the number is on file
- *   ({@link useKioskCustomerMatch}); a match fills an empty Name, so a repeat
- *   customer is one keypad entry and Continue.
- * - Return in any field is the step's Continue (`onSubmit`), so the keyboard
- *   that Name / Email raise never has to be dismissed to find the key.
+ * keypad is NOT part of the form (operator 2026-09-25): tapping the phone
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -92,12 +60,7 @@ interface KioskCustomerIntakeProps {
   extras?: ReactNode;
   className?: string;
   'data-testid'?: string;
-  /**
-   * `entry` renders the placeholder-in-box mobile-native treatment
-   * ({@link KioskEntryField}): no floating label, no divider — the prompt is
-   * the placeholder. Default keeps the house floating-label fields for panes
-   * not yet on the step path.
-   */
+  /** `entry` renders the placeholder-in-box mobile-native treatment ({@link KioskEntryField}): */
   entry?: boolean;
   /** Controlled mode — panes that own a local draft. */
   value?: KioskCustomerValue;

@@ -1,15 +1,6 @@
 import type { ThemePalette } from './registry';
 
-/**
- * Mono — strict grayscale (zinc family, no blue cast). Chrome, identity
- * accents, and informational tones all collapse to neutral; ONLY the
- * success / warning / danger triad keeps a deep, desaturated hue — on a
- * warehouse floor, status color is safety information, not decoration.
- *
- * The `accent` block deliberately collapses the per-staff accent to near-black
- * (it outranks `.theme-<accent>` by specificity) — choosing mono means
- * choosing monochrome.
- */
+/** Mono — strict grayscale (zinc family, no blue cast). */
 export const monoPalette: ThemePalette = {
   name: 'mono',
   label: 'Mono',

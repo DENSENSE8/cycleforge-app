@@ -1,9 +1,6 @@
 /**
  * resolveOrgIdFromRequest — fail-closed apex resolution.
- *
  * The DB-free case (apex host, no DEFAULT_TENANT_SLUG) is the security-critical
- * one: it must resolve to NIL_ORG_ID and NEVER to the USAV / dogfood org. The
- * slug-resolution cases hit the DB and are gated on DATABASE_URL.
  */
 
 import 'dotenv/config';

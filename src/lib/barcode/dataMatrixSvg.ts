@@ -1,14 +1,4 @@
-/**
- * Shared bwip-js wrapper that returns a DataMatrix as an SVG string —
- * usable from both React components (via `dangerouslySetInnerHTML`) and
- * server-rendered HTML templates (via plain string interpolation).
- *
- * For React component usage prefer the `Gs1DataMatrix` component in
- * `src/components/barcode/Gs1DataMatrix.tsx`, which wraps this helper
- * with the right ARIA + sizing affordances. This module is the bare
- * primitive for label-print HTML generation that's outside the React
- * render tree (e.g. `printProductLabel.ts`).
- */
+/** Shared bwip-js wrapper that returns a DataMatrix as an SVG string — usable from both React components (via `dangerouslySetInnerHTML`)… */
 
 import bwipjs from 'bwip-js/browser';
 
@@ -25,12 +15,7 @@ export interface RenderDataMatrixOptions {
   barcolor?: string;
   /** Background colour hex (no `#`). */
   backgroundcolor?: string;
-  /**
-   * Quiet-zone border in *modules* on every side. Defaults to 2 (scanner-safe
-   * for printed/scanned symbols). Set to 0 for on-screen previews where the
-   * symbol's ink edges must sit flush with its layout box so adjacent text can
-   * be aligned to the visible matrix edges.
-   */
+  /** Quiet-zone border in *modules* on every side. */
   quietZone?: number;
 }
 

@@ -1,53 +1,7 @@
-/**
- * Loss write-off — the terminal answer for a carrier-delivered carton whose goods
- * never physically materialized (Phase 3 of
- * docs/todo/ebay-delivered-not-unboxed-PLAN.md).
- *
- * Before this, a delivered-but-never-unboxed carton could only leave the
- * "Delivered · not unboxed" lane by aging out of the query window — the exception
- * vanished without anyone recording what happened to the goods, on exactly the
- * surface whose job is to notice that.
- *
- * **Shape: an exception row, NOT a lifecycle transition.** The write-off records
- * an OPEN `receiving_exceptions` row via the shared `recordReceivingException`
- * waist and leaves `workflow_status` alone. Two reasons, both load-bearing:
- *
- *  1. The PROBLEM dimension is deliberately ORTHOGONAL to the lifecycle —
- *     `workflow-stages.ts` keeps PROBLEM out of the status enum on purpose, so a
- *     line can be SCANNED + PROBLEM. There is no "lost" status to move to, and the
- *     nearest candidate is a trap: `FAILED` means *failed a QC test*, derives to
- *     coarse `RECEIVED`, and would make `transitionReceivingLine()` stamp
- *     `received_at` — recording that goods which never arrived were received.
- *  2. `receiving_exceptions` already carries an OPEN/RESOLVED lifecycle plus
- *     `resolveReceivingExceptions()`, so a carton that later turns up is reopened
- *     by resolving the row. A denormalized flag could not express that:
- *     `transitionReceivingLine` writes `exception_code = COALESCE($5, …)` and can
- *     set but never clear.
- *
- * **The code is a safety classification, not a note.** Only the `LOSS_EXCEPTION_CODES`
- * slice of the receiving-exception system registry is accepted, validated
- * server-side, and `code` is a REQUIRED parameter with no default
- * ("a safety classification is a REQUIRED
- * parameter, never a defaulted one"). A defaulted code would silently write every
- * caller's carton off as the same kind of lost.
- *
- * **Free text is bounded and cannot be the justification.** `reason` is assembled
- * HERE from the validated code and the carton's own delivery facts — the request
- * body never contributes to it — mirroring `photo-policy-override.ts`. An optional
- * operator `note` is accepted separately into `support_notes` because a claim needs
- * human evidence ("front-desk signed for it, box never came upstairs"), but it is
- * length-capped and can never stand in for the code.
- *
- * Deps-injected (default = the real writers) so unit tests run DB-free. Types are
- * module-LOCAL: only the symbols a real consumer calls are exported, since the knip
- * gate treats a speculative export as new dead code.
- */
+/** Loss write-off — the terminal answer for a carrier-delivered carton whose goods never physically materialized (Phase 3 of… */
 
 import type { OrgId } from '@/lib/tenancy/constants';
-// TYPE-only: `./exceptions` reaches `@/lib/tenancy/db` (`server-only`) at module
-// load, which would make this module unimportable from a test (and drag the Neon
-// pool behind any client that touched it). The real writers are resolved lazily in
-// `realDeps()` — bundle altitude.
+// TYPE-only: `./exceptions` reaches `@/lib/tenancy/db` (`server-only`) at module load, which would make this module unimportable from a…
 import type { recordReceivingException, resolveReceivingExceptions } from './exceptions';
 import {
   LOSS_EXCEPTION_CODES,
@@ -73,12 +27,7 @@ type LossCodeParse =
   /** Present but outside the loss vocabulary (incl. a valid OS&D code). */
   | { state: 'invalid' };
 
-/**
- * Classify the raw body value. Unlike the photo-policy override — where absence is
- * the overwhelmingly common case and therefore not an error — absence here IS an
- * error: the only reason to call this path is to write goods off, and doing that
- * without saying which kind of loss is the thing the vocabulary exists to prevent.
- */
+/** Classify the raw body value. */
 export function parseLossCode(raw: unknown): LossCodeParse {
   if (raw === undefined || raw === null) return { state: 'absent' };
   if (typeof raw !== 'string') return { state: 'invalid' };
@@ -168,15 +117,7 @@ export async function recordLossWriteoff(
   return { exceptionId: id };
 }
 
-/**
- * Reopen a written-off line — the carton turned up. Resolves the line's OPEN loss
- * exceptions and returns how many were closed (0 = nothing was written off, which
- * the route maps to 404 so "reopen" is never a silent no-op).
- *
- * Resolves per code rather than passing `exceptionCode: null`: the null form
- * resolves EVERY open exception on the line, which would silently close an
- * unrelated DAMAGED or SHORT finding as a side-effect of reopening.
- */
+/** Reopen a written-off line — the carton turned up. */
 export async function reopenLossWriteoff(
   orgId: OrgId,
   receivingLineId: number,

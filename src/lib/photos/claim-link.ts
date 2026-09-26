@@ -1,20 +1,4 @@
-/**
- * Claim dual-linking + the secondary link-role vocabulary.
- *
- * `link_role` is a closed set (`PHOTO_LINK_ROLES`, `./types.ts`) — free-text
- * roles are banned; pick by destination, never invent a new string inline:
- *
- * - `claim_evidence`  — dual-link onto the `ZENDESK_TICKET` of a filed claim
- *   (this module + `zendesk-claim/route.ts`): the dispute-evidence trail the
- *   helpdesk path reads. Evidence preference is line-first — `unbox_item`
- *   shots prove the item's condition; arrival `receiving_package` shots are
- *   the add-on for outer/shipping-damage claims (Plan 5).
- * - `insurance_share` — carrier / external share packs (`./share-packs.ts`):
- *   photos bundled for an outside insurance or carrier audience via signed
- *   share links, NOT part of the Zendesk claim trail.
- * - `primary`         — the photo's owning entity link; never used for these
- *   secondary claim/share links.
- */
+/** Claim dual-linking + the secondary link-role vocabulary. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import {
@@ -65,17 +49,7 @@ async function resolveReceivingClaimTicketId(
   return parseZendeskTicketId(res.rows[0]?.zendesk_ticket);
 }
 
-/**
- * After an unbox/receiving photo is attached to its PO (RECEIVING /
- * RECEIVING_LINE), ALSO link it to the carton's Zendesk claim (as
- * `claim_evidence`) when the carton has been claimed — so a photo taken *after* a
- * claim is filed still lands under the same claim umbrella, not the PO only. This
- * mirrors the link the claim-filing flow writes for photos that existed at filing
- * time (see `zendesk-claim/route.ts`, `zendesk-attachments.ts`).
- *
- * Best-effort: a failure here never fails the upload — the primary PO link is
- * already committed. Returns the linked ticket id, or null when there's no claim.
- */
+/** After an unbox/receiving photo is attached to its PO (RECEIVING / RECEIVING_LINE), ALSO link it to the carton's Zendesk claim (as… */
 export async function linkReceivingPhotoToClaim(input: {
   organizationId: string;
   photoId: number;

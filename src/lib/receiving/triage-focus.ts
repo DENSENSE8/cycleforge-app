@@ -1,15 +1,4 @@
-/**
- * TriageFocusResolver — pure "where should attention go after a triage scan
- * resolves" function (docs/receiving-triage-redesign-plan.md §3.7).
- *
- * Pure + DB-free, mirroring the other triage lib modules (intake-classification,
- * triage-lane-policy): a scan-resolve handler calls this with the resolved
- * carton's facts and gets back one focus target, which it then acts on (scroll
- * to a section, open a tab, show a toast). The mapping itself never changes
- * based on which UI happens to exist yet — `stage` is a real, meaningful target
- * even before Phase 2's shelf/lane picker ships; a caller with no Stage UI to
- * focus simply no-ops on that target today.
- */
+/** TriageFocusResolver — pure "where should attention go after a triage scan resolves" function (docs/receiving-triage-redesign-plan.md §3.7). */
 
 import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isReturnIntake } from './triage-intake-kind';
@@ -33,12 +22,7 @@ export interface TriageFocusFacts {
   isTriageComplete: boolean;
 }
 
-/**
- * Resolve the next focus target for a just-resolved triage scan. Order matters:
- * a completed carton always short-circuits to `already-staged` regardless of
- * its other facts (nothing left to do); otherwise the first unmet step in the
- * Scan→Classify→Stage→Pair order wins.
- */
+/** Resolve the next focus target for a just-resolved triage scan. */
 export function resolveTriageFocus(facts: TriageFocusFacts): TriageFocusTarget {
   if (facts.isTriageComplete) return 'already-staged';
   if (!facts.isClassified) return 'classify';
@@ -47,17 +31,9 @@ export function resolveTriageFocus(facts: TriageFocusFacts): TriageFocusTarget {
   return 'none';
 }
 
-// NOTE: the old `triageFocusToTab` / `TriageFocusTab` mapped a focus target to a
-// centre `SectionTabsSlider` tab. Those centre tabs were removed on 2026-08-05
-// (scan-station Displays SoT) — reference tools live on the Displays push, and
-// Arrival no longer auto-opens a display on focus. `resolveTriageFocus` remains
-// for the "already staged" short-circuit toast.
+// NOTE: the old `triageFocusToTab` / `TriageFocusTab` mapped a focus target to a centre `SectionTabsSlider` tab.
 
-// ── ReceivingLineRow → TriageFocusFacts ─────────────────────────────────────
-// Per-step predicates for {@link deriveTriageFocusFacts} — TriagePanel's live
-// focus-resolve effect reads that composer so "done" for each step stays one
-// definition. (Workspace TriageProgressStepper was removed; carton pipeline
-// progress lives in ReceivingDetailsStack only.)
+// ── ReceivingLineRow → TriageFocusFacts ───────────────────────────────────── Per-step predicates for {@link deriveTriageFocusFacts} —…
 
 /** Carton has an explicit classification (via `receiving_lines.intake_type`) or is already Zoho-matched. */
 function isTriageClassified(row: ReceivingLineRow): boolean {
@@ -70,17 +46,7 @@ function isTriageStaged(row: ReceivingLineRow): boolean {
   return row.staging_location_id != null && !!row.priority_lane;
 }
 
-/**
- * The `receiving_triage.pairing_state` values that ANSWER the pairing question.
- *
- * `MATCHED` found a PO; `WAIVED` looked and established there is none to find
- * (`settleReturnPairing`). Both are answers. `UNFOUND` — and a triage row that
- * records nothing at all — are the absence of one.
- *
- * Exported because the triage metrics route counts the complement, and a second
- * hand-typed copy of this vocabulary is how "waived" would end up filed as
- * "skipped" in a KPI while the bench correctly treats it as done.
- */
+/** The `receiving_triage.pairing_state` values that ANSWER the pairing question. */
 export const PAIRING_ANSWERED_STATES = ['MATCHED', 'WAIVED'] as const;
 
 export function isPairingAnswered(pairingState: string | null | undefined): boolean {

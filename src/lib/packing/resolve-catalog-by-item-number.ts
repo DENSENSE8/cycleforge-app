@@ -1,10 +1,4 @@
-/**
- * Resolve a marketplace item number (ASIN / eBay item id / platform_item_id)
- * to one or more sku_catalog rows for mobile checklist authoring.
- *
- * Checklists live on sku_catalog — never on the raw item number. This helper
- * is the resolve waist for that crosswalk.
- */
+/** Resolve a marketplace item number (ASIN / eBay item id / platform_item_id) to one or more sku_catalog rows for mobile checklist authoring. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';

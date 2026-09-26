@@ -2,16 +2,7 @@ import { NextResponse, NextRequest } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
-/**
- * GET /api/ebay/search
- * Search orders across all eBay accounts
- * 
- * Query params:
- * - q: Search query (searches order_id, buyer, sku, product)
- * - account: Filter by specific account name
- * - limit: Max results to return (default 50)
- * - status: Filter by order status
- */
+/** GET /api/ebay/search Search orders across all eBay accounts */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);

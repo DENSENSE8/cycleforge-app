@@ -1,11 +1,4 @@
-/**
- * Inbox read + triage domain helpers.
- *
- * The read path re-applies the per-entity permission gate. That is not
- * belt-and-braces: the fan-out worker's filter is a WRITE-time snapshot, so a
- * permission revoked AFTER delivery would leave the row readable forever. The
- * authoritative gate is here, at render — the same place GitHub filters.
- */
+/** Inbox read + triage domain helpers. */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -35,12 +28,7 @@ const defaultInboxDeps: InboxDeps = {
 
 export type InboxFilter = 'active' | 'unread' | 'done' | 'snoozed';
 
-/**
- * Visible entity types for this staffer. Pushed INTO the SQL as an ANY(...)
- * rather than filtered in JS after the fact, so the page size the operator
- * asked for is the page size they get (post-filtering a LIMIT silently returns
- * short pages), and so a staffer with no visible types costs zero rows.
- */
+/** Visible entity types for this staffer. */
 function visibleEntityTypes(permissions: readonly string[]): InboxEntityType[] {
   return INBOX_ENTITY_TYPES.filter((t) => permissions.includes(ENTITY_VIEW_PERMISSION[t]));
 }
@@ -62,14 +50,7 @@ export async function getInboxFeed(
   const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
   const now = deps.now();
 
-  // 'active' = what needs attention now: unread/read, plus snoozes that have
-  // come due. Resolving due snoozes in the READ makes a snooze-sweep cron
-  // unnecessary — the feed can never be stale by a cron tick, and there is no
-  // second writer racing the triage endpoint for the same rows.
-  //
-  // Both branches live in ONE parameterized statement that references every
-  // placeholder. Swapping the fragment instead would leave $4 or $5 unbound —
-  // and pg errors on a bind with more parameters than the statement uses.
+  // 'active' = what needs attention now:
   const rows = await deps.query<InboxRow>(
     args.orgId,
     `SELECT i.id, i.entity_type, i.entity_id, i.event_key, i.reason, i.state,
@@ -201,9 +182,6 @@ function toItemDto(row: InboxRow): InboxItemDto {
     entityId,
     eventKey: row.event_key,
     // Resolved at READ time from the vocabulary — never a stored, stale string.
-    // `eventLabelFor` covers both registries (subscription-fanned domain events
-    // and directly-addressed acts like a thrown task), so the read path never
-    // has to know which one owns the key.
     eventLabel: eventLabelFor(row.event_key),
     reason: row.reason as InboxItemDto['reason'],
     state: row.state as InboxState,
@@ -220,14 +198,7 @@ function toItemDto(row: InboxRow): InboxItemDto {
   };
 }
 
-/**
- * The tracking number an event carried, for the row's own copy.
- *
- * A watched arrival's whole content is WHICH package landed, and the answer is
- * already in the payload `recordReceivingScan` stamped — so the row reads it
- * rather than asking the reader to open the carton to find out. Render hint
- * only: the worker filters on the canonical form, never on this.
- */
+/** The tracking number an event carried, for the row's own copy. */
 function readTrackingNumber(payload: unknown): string | null {
   const raw = (payload as { trackingNumber?: unknown } | null)?.trackingNumber;
   return typeof raw === 'string' && raw.trim() ? raw.trim() : null;

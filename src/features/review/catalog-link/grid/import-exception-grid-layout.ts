@@ -54,18 +54,7 @@ export interface ImportExceptionGridColumn extends SlotTrackFields {
   omitCellIcon?: boolean;
 }
 
-/**
- * Canonical Missing item number columns, in scan order.
- *
- * `select` is a structural gutter with no verb of its own — a click opens the
- * catalog-link rail. `item` (the item number the sheet row is missing) is the
- * reading track and is hideable because the compound mount already carries it
- * as fulfillment.
- *
- * The hand flat array (`IMPORT_EXCEPTION_GRID_COLUMNS`) is DELETED — the
- * compound materialization below is the one column model, and the desk mounts
- * it.
- */
+/** Canonical Missing item number columns, in scan order. */
 export function importExceptionCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly ImportExceptionGridColumn[] {
@@ -76,29 +65,11 @@ export function importExceptionCompoundColumnsFor(
   });
 }
 
-/**
- * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
- * With the product layout's empty band that is the shared `COMPOUND_TRACKS`
- * verbatim, so the port reproduces the queue exactly and every catalog fact
- * becomes bindable without a deploy.
- */
+/** The PRODUCT-DEFAULT materialization — what an org with no override mounts. */
 export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColumn[] =
   importExceptionCompoundColumnsFor(IMPORT_EXCEPTION_PRODUCT_LAYOUT);
 
-/**
- * The `?colsort=` vocabulary.
- *
- * Two spellings reach the same fact and both are kept alive on purpose: the
- * FLAT words (`order`, `tracking`, `sheet`, `seen`) are what live bookmarks
- * carry, and the compound TRACK keys (`item`, `fulfillment`, `dates`, `state`)
- * are what the mounted header emits since wave 1.3. Dropping either half
- * breaks somebody — a saved link, or every header on the desk.
- *
- * Declared as the literal it always resolved to. It used to be derived by
- * filtering the deleted `IMPORT_EXCEPTION_GRID_COLUMNS` — a sort vocabulary is
- * not a column layout, and deriving it from a dead model kept the model alive
- * for nothing.
- */
+/** The `?colsort=` vocabulary. */
 const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey[] = [
   'order',
   'source',
@@ -117,16 +88,7 @@ export function isImportExceptionGridSortable(key: string): key is ImportExcepti
   return (IMPORT_EXCEPTION_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-/**
- * The comparator shape each sort word uses.
- *
- * Read off the FLAT column array until wave 1.3 moved the mount to compound
- * tracks, at which point `.find(c => c.key === 'state')` returned `undefined`
- * and every compound-track sort silently fell back to the default shape — a
- * date comparing as text. Declared here so a word with no flat twin still names
- * its own shape. Both spellings are kept: the flat words are what live
- * bookmarks carry, the track keys are what the mounted header emits.
- */
+/** The comparator shape each sort word uses. */
 export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
   dates: 'date',
   item: 'text',

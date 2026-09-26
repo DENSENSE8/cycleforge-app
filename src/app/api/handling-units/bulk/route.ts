@@ -13,14 +13,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 
 const ROUTE_HANDLING_UNIT_BULK_POST = 'handling-unit.bulk-post';
 
-/**
- * POST /api/handling-units/bulk — mint N boxes in one call so the operator can
- * print the whole run of `H-{id}` labels at once. Codes are always
- * trigger-minted server-side; there is no external-tote `code` for a batch.
- *
- * Body: { count: 1..200, locationId?, notes?, idempotencyKey? }
- * → 201 { success: true, handling_units: [...] } ascending by id.
- */
+/** POST /api/handling-units/bulk — mint N boxes in one call so the operator can print the whole run of `H-{id}` labels at once. */
 export const POST = withAuth(
   async (req: NextRequest, ctx) => {
     const raw = await req.json().catch(() => ({}));

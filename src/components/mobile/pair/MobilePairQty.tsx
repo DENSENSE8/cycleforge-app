@@ -1,33 +1,6 @@
 'use client';
 
-/**
- * `/m/pair/[code]/[sku]` — how many, and commit.
- *
- * ## Why a page and not the fullscreen keypad sheet
- *
- * `BinStockNumpadSheet` is `fixed inset-0`: it covers the tape, the camera and
- * the location it is editing, and its only exit is a back-arrow that is not
- * the OS back gesture. As the second half of a routed pairing flow that is
- * wrong twice — the operator loses the context they just chose, and the phone's
- * own Back does something different from the screen's Back.
- *
- * As a route it is continuous with the screen before it: the location is still
- * in the header, Back returns to the location record (or the candidate list
- * mid-pairing), and a reload mid-count lands you in the same place.
- *
- * ## Adding, not replacing
- *
- * Arriving from a pairing this is a PUT onto whatever is already there —
- * "adding the stock of it together". The on-hand figure is shown beside the
- * projection so the sum is visible before Confirm, because a putaway that
- * silently replaces a count is indistinguishable from one that adds until the
- * next cycle count disagrees.
- *
- * `− TAKE` is still offered, since arriving here from a PAIRED row is the same
- * job in the other direction, but `plus` is the opening mode unless the
- * location record's Take opened it (`initialMode`). A take may name why
- * (FBA · Orders · Custom…, `TakeReasonChooser`); a put carries no reason.
- */
+/** `/m/pair/[code]/[sku]` — how many, and commit. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -227,12 +200,7 @@ export function MobilePairQty({
       />
 
       <div className="flex-1 divide-y divide-mode-rule">
-        {/*
-          The header already carries the product name, and when the catalog has
-          no title that name IS the SKU — printing it again underneath is the
-          same string twice for no information. The status still needs somewhere
-          to live: bottom-right, like every record row (`DetailSummaryCard`).
-        */}
+        {/* The header already carries the product name, and when the catalog has no title that name IS the SKU — printing it again underneath is… */}
         {(title !== sku || isProvisionalSku(sku)) && (
           <div className="flex items-center justify-between gap-2 px-mode-page py-3">
             <span className="min-w-0 truncate font-mono text-role-caption text-mode-muted">

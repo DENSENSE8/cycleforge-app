@@ -1,16 +1,6 @@
 'use client';
 
-/**
- * Local Pickup sidebar rail — the LCPU orders navigator (row = one pickup
- * order). Composes the generic {@link SidebarRecentRailBase} rail engine
- * (fetch · optimistic · keyboard-nav · stagger · snapshot), typed to
- * {@link PickupOrderGroup}. Row content comes from {@link pickupOrderToRailVM}
- * (Unbox/Pack rail anatomy — plain title + meta, no cart icon / price trail).
- *
- * Selecting an order writes `?lcpu=<orderId>` so the right-pane
- * {@link PickupWorkspace} highlights that order's product rows (URL-as-state).
- * Footer filter is owned by {@link ReceivingSidebarPanel} (TechRailSearchBar).
- */
+/** Local Pickup sidebar rail — the LCPU orders navigator (row = one pickup order). */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';

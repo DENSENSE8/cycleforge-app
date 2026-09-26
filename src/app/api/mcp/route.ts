@@ -1,15 +1,4 @@
-/**
- * POST /api/mcp — MCP (Model Context Protocol) endpoint exposing the assistant
- * READ-tool registry to power users (universal-feed plan Phase 5). Streamable-HTTP
- * request/response transport: one JSON-RPC 2.0 message (or a batch array) per
- * POST, answered with application/json.
- *
- * Auth: session-gated (withAuth, assistant.chat). org + permissions come from the
- * verified session; every tools/call re-checks the tool's own permission inside
- * runAssistantTool. Read-only — the AI write tools are never exposed here.
- *
- * GET returns 405 (no SSE server→client stream; the read tools are single-shot).
- */
+/** POST /api/mcp — MCP (Model Context Protocol) endpoint exposing the assistant READ-tool registry to power users (universal-feed plan… */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -19,12 +8,7 @@ import { handleMcpMessage, type McpServerDeps } from '@/lib/mcp/tool-server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/**
- * Max JSON-RPC messages per POST. Each tools/call can fan out to several tenant
- * DB queries, so an uncapped batch would let one request storm the tenant pool.
- * Batches are processed SEQUENTIALLY (below) so even a full batch never runs
- * more than one tool's queries at a time.
- */
+/** Max JSON-RPC messages per POST. */
 const MAX_BATCH = 20;
 
 export const GET = withAuth(

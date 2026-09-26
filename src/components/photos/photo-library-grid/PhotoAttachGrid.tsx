@@ -1,31 +1,6 @@
 'use client';
 
-/**
- * The shared "select existing photos → one Check commits them onto a target"
- * grid — the ATTACH waist.
- *
- * ## Why this exists
- *
- * The exact same face — header count · density + refresh · select-all Pencil ·
- * scrollable tile grid with {@link SelectionMark} · sticky Check footer — was
- * hand-rolled three times (Arrival claim, item Link, and a broken item rows
- * list) with byte-identical flush-chrome constants. They differ in ONE thing:
- * the commit verb. Arrival posts `claim-stage`; item posts `reassign` onto a
- * line. Everything else is this component.
- *
- * The caller supplies:
- *   - `candidates` — the selectable pool
- *   - `onCommit(ids)` — the verb (must reject on failure; resolve = success)
- *   - copy (`countNoun`, `emptyText`, `unavailable`)
- *
- * This owns selection, density, and the posting flag, so a caller is a thin
- * adapter. Selection clears only when `onCommit` resolves; a rejected commit
- * keeps the operator's picks so they can retry.
- *
- * NOT for the classify job (name what one shot shows) or for the claim panel's
- * capture+view surface (external selection, camera, gallery) — those are
- * different interactions, not this waist.
- */
+/** The shared "select existing photos → one Check commits them onto a target" grid — the ATTACH waist. */
 
 import { useCallback, useState } from 'react';
 import { Check, Loader2, Pencil } from '@/components/Icons';

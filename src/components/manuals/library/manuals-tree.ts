@@ -1,17 +1,4 @@
-/**
- * Pure data layer for the manuals/library browser: the row shape, the folder
- * tree builder, the badge tone maps and the path-aware fuzzy matcher. No React
- * — independently testable.
- *
- * THE badge-tone home for manuals. `ManualLibrary` carried a byte-identical
- * private pair until 2026-08-01. A third pair lives in
- * `manuals-library-sidebar/manuals-library-shared.ts`; its `statusBadgeClass`
- * is identical but its `typeBadgeClass` answers a DIFFERENT type vocabulary
- * (`troubleshooting` / `installation` / `quick-start` / `safety` vs this file's
- * `packing-list` / `pl-plus-m`), so the two are a genuine behavioural fork, not
- * a copy — do not merge them without deciding which vocabulary
- * `product_manuals.type` actually holds.
- */
+/** Pure data layer for the manuals/library browser: */
 
 export interface ManualRow {
   id: number;
@@ -97,14 +84,7 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-/**
- * Path-aware normalized matcher. Normalizing both sides lets a query like
- * "SoundTouch" match a file at `Sound/Touch/Bose SoundTouch 30 Manual`.
- *
- * `displayLabel` is the row text (used for the highlight char map); the score
- * prefers label-internal hits, then earlier positions, then shorter haystacks.
- * Returns null when the query appears nowhere; an empty needle returns score 0.
- */
+/** Path-aware normalized matcher. */
 export function smartMatch(
   needle: string,
   displayLabel: string,

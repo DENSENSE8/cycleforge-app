@@ -1,10 +1,4 @@
-/**
- * Payload screening — the checks that run BEFORE a VM exists.
- * Run: npx tsx --test src/lib/tool-forge/sandbox.test.ts
- *
- * Every case here is a payload an honest generator could not have produced, so
- * rejecting it costs nothing and booting a machine for it costs a minute.
- */
+/** Payload screening — the checks that run BEFORE a VM exists. */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

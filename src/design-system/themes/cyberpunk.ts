@@ -1,11 +1,6 @@
 import type { ThemePalette } from './registry';
 
-/**
- * Cyberpunk — neon violet dark. Deep violet-black canvas, electric functional
- * tones, magenta fallback accent. All neon text sits on near-black, so AA
- * contrast is comfortably met despite the saturation. `scheme: 'dark'`
- * inherits the raw-neutral remap + dark staff-accent overrides.
- */
+/** Cyberpunk — neon violet dark. */
 export const cyberpunkPalette: ThemePalette = {
   name: 'cyberpunk',
   label: 'Cyberpunk',

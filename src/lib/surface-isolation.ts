@@ -1,11 +1,4 @@
-/**
- * Surface isolation — keeps Testing (/test) and Receiving (/unbox, /triage, …)
- * URL namespaces, query params, and storage keys from bleeding into each other.
- *
- * Receiving modes are path-first (graduated routes); Testing modes are
- * `?view=testing` on `/test` only (legacy `?view=testing-history` redirects
- * to `?view=testing` — the tested-lines browse is Testing's empty state).
- */
+/** Surface isolation — keeps Testing (/test) and Receiving (/unbox, /triage, …) URL namespaces, query params, and storage keys from… */
 
 import {
   HISTORY_SURFACE_ROUTE,
@@ -61,10 +54,7 @@ export function resolveLiveReceivingMode(
   searchParams: URLSearchParams | { get: (key: string) => string | null },
 ): ReceivingMode {
   const path = pathname ?? '';
-  // Inbound History graduated to a `/dashboard` mode (`?mode=inbound`); the
-  // lines table it mounts is the same History feed (view=activity), so the
-  // dashboard's inbound domain resolves to `history` here. Every other
-  // `/dashboard` mode is outbound orders and never reaches this table.
+  // Inbound History graduated to a `/dashboard` mode (`?mode=inbound`); the lines table it mounts is the same History feed (view=activity),…
   if (path.startsWith(DASHBOARD_SURFACE_ROUTE)) {
     return searchParams.get('mode') === DASHBOARD_INBOUND_MODE ? 'history' : 'receive';
   }
@@ -85,16 +75,7 @@ export function resolveLiveReceivingMode(
   return 'receive';
 }
 
-/**
- * Strip params that belong to the other surface family.
- *
- * **The receiving half is gone.** A graduated receiving surface now declares the
- * params it owns (`@/lib/routing/receiving-routes`) and drops everything else at
- * the boundary, so there is nothing left to enumerate here — arriving on
- * `/unbox` with `?view=testing` loses it because `/unbox` never claimed it, not
- * because someone remembered to list it. Only the Testing direction survives,
- * and only until `/test` gets its own spec (Slice 5).
- */
+/** Strip params that belong to the other surface family. */
 export function stripCrossSurfaceParams(
   pathname: string | null | undefined,
   params: URLSearchParams,

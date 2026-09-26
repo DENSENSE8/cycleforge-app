@@ -1,30 +1,6 @@
 'use client';
 
-/**
- * Unbox PO-line capture composer — one joined bar under the active line.
- *
- * ## Anatomy: left is the JOB, right is the VERIFICATION
- *
- *   [ Tags (USED_A) ][ Serial ………………… grows ][ ✓ exact │ 📷 photos ]
- *   └ leading segment └ field takes the slack  └ trailing action cluster
- *
- * The three parts are positional, not incidental. Identity of the work being
- * done (which grade, which identifier) is on the LEFT and grows; the actions
- * that verify it are ONE group flush against the bar's right edge. They never
- * swap and an action never lands mid-field — which is what happens the moment
- * the commit cell and Photos are two independent flex children and the commit
- * cell drops out (a waived line). {@link SerialScanField} owns that grouping
- * via its `actionsSlot`, so Photos joins the same cluster as the check.
- *
- * Always collapsed Tags + open serial (optimistic mobile-app grammar). Hover
- * Tags → expand pills in the SAME row — Serial + Photos stay as compact icon
- * buttons in the trailing cluster (not the wide serial field); grade click
- * selects (never clears), collapses, re-opens + focuses serial. Click Tags /
- * the row (outside Photos) focuses serial. ↑/↓ in the serial field steps PO
- * lines.
- *
- * Same face for found, lined unfound, and empty stub.
- */
+/** Unbox PO-line capture composer — one joined bar under the active line. */
 
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import { Camera, ScanBarcode } from '@/components/Icons';
@@ -101,13 +77,7 @@ export function PoLineCaptureRow({
   staffId?: number;
   poRef?: string | null;
   poRouteRef?: string | null;
-  /**
-   * The dock's `activeKey` (`useUnboxProcedureSteps` — the ONE derivation), set
-   * ONLY when this is the controller-active line. Stamped as `data-active-step`
-   * so the unlayered globals.css rule lights the segment / condition the dock is
-   * asking for — the moving outline. `null` on settled / non-active lines →
-   * nothing lights. Never a local `useState`.
-   */
+  /** The dock's `activeKey` (`useUnboxProcedureSteps` — the ONE derivation), set ONLY when this is the controller-active line. */
   activeStep?: string | null;
   disabled?: boolean;
   saved?: ReadonlyArray<SavedSerial>;
@@ -124,12 +94,7 @@ export function PoLineCaptureRow({
   onSerialPanelOpen?: () => void;
   /** Ungraded active line — stamp default USED_A once on mount (optimistic). */
   autoCommitDefaultGrade?: boolean;
-  /**
-   * Promote this PO line to the workspace controller before arming serial
-   * (sibling capture faces share paint but not `data-active-step` / sink until
-   * selected). Called from Tags click · serial segment · condition pick · row
-   * press — never gates the local focus itself.
-   */
+  /** Promote this PO line to the workspace controller before arming serial (sibling capture faces share paint but not `data-active-step` /… */
   onArmCapture?: () => void;
 }) {
   const photosDone = photoCount > 0;
@@ -144,10 +109,7 @@ export function PoLineCaptureRow({
   // Always start collapsed — hover Tags to expand; pick collapses again.
   const [condExpanded, setCondExpanded] = useState(false);
   const [focusNonce, setFocusNonce] = useState(0);
-  // Dupe-scan notice. Owned HERE, not left to the field's own fallback: that
-  // one renders as a `basis-full` sibling of the input, which inside a joined
-  // `h-11 overflow-hidden` bar squeezes the field instead of speaking. Under
-  // the bar it is legible and the composer geometry never moves.
+  // Dupe-scan notice.
   const [scanNotice, setScanNotice] = useState<string | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
   const displayCondition =
@@ -177,10 +139,7 @@ export function PoLineCaptureRow({
     el?.focus({ preventScroll: true });
   };
 
-  // Focus rules:
-  //  - Controller mount (`autoFocusSerial` + focusNonce 0): win dock race.
-  //  - Any later openSerial (focusNonce > 0): focus THIS row even when the
-  //    sibling is not yet the controller — local click must not wait on select.
+  // Focus rules: - Controller mount (`autoFocusSerial` + focusNonce 0):
   useEffect(() => {
     if (openPanel !== 'serial' || condExpanded || disabled) return;
     if (!autoFocusSerial && focusNonce === 0) return;
@@ -215,10 +174,7 @@ export function PoLineCaptureRow({
     requestAnimationFrame(() => {
       requestAnimationFrame(focusSerialInRow);
     });
-    // Belt-and-suspenders for a SIBLING promotion: `onArmCapture` re-seeds the
-    // workspace controller (dispatchSelectLine), which re-renders the accordion
-    // and can drop the immediate rAF focus in a race. Re-focus THIS line's own
-    // serial by DOM id after the re-render settles — never the controller dock.
+    // Belt-and-suspenders for a SIBLING promotion:
     if (lineId != null) scheduleFocusUnboxCaptureSerialInLine(lineId, 90);
   };
 
@@ -308,13 +264,7 @@ export function PoLineCaptureRow({
     );
   };
 
-  /**
-   * Field + trailing actions. Rendered as DIRECT children of the joined bar
-   * (the field host is `flex-1`, the action cluster `shrink-0`), so the row's
-   * cluster sits flush against the bar's right edge, with no seam between the
-   * cells. Photos rides in via `actionsSlot` — it is a
-   * verification action, and it belongs to the same group as the check.
-   */
+  /** Field + trailing actions. */
   const serialField = showSerialField ? (
     <SerialScanField
       saved={saved}

@@ -1,21 +1,4 @@
-/**
- * Print order paperwork from the desk when the packer print station is down —
- * one order (the Labels walk's Print all) or many (the orders catalog's Print
- * paperwork verb), in ONE print dialog.
- *
- * `POST /api/orders/print-packet` decides what prints and in which order
- * (label · slip · manuals, per order — pack order) and ledgers every page as
- * `fallback_browser`. This module fetches each document and prints it.
- *
- * Why render pages instead of `<embed>`-ing each PDF (the pack-station
- * fallback in `printOutboundDocuments`): a browser prints only the visible
- * page of an embedded PDF, so a multi-page manual came out as page 1. Every
- * PDF page is rendered with pdf.js (already a dependency — no server PDF
- * merge) to its own printed page. Images print as they are.
- *
- * Pages are data URLs, not blob URLs, so the Electron desktop host (which
- * prints the HTML in its own window, `desktopPrintHtml`) can resolve them.
- */
+/** Print order paperwork from the desk when the packer print station is down — one order (the Labels walk's Print all) or many (the orders… */
 
 import { loadPdfjs } from '@/lib/manuals/pdfThumbnail';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';

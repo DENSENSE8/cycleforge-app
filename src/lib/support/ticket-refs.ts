@@ -1,11 +1,4 @@
-/**
- * Pure ticket↔receiving reference helpers — client-safe.
- *
- * Split out of `tickets.ts` (which owns the DB reads/writes via `tenancy/db`)
- * so client hooks like `useEntitySupportTicket` can normalize refs without
- * dragging the server-only Neon driver into their bundle. `tickets.ts`
- * re-exports everything here, so server callers keep their import path.
- */
+/** Pure ticket↔receiving reference helpers — client-safe. */
 
 import { getLast8 } from '@/lib/copy-chip-format';
 
@@ -23,12 +16,7 @@ export function primaryTicketLabel(supportTicketId: number): string {
   return formatSupportTicketLabel(supportTicketId);
 }
 
-/**
- * Provider-native SECONDARY label — `#9395` for a ticket that carries an external
- * (provider) id, or `null` for an internal ticket (no external conversation).
- * Vendor-neutral: any helpdesk provider's id renders the same way; the provider
- * NAME comes from the capability-label SoT, never hardcoded here.
- */
+/** Provider-native SECONDARY label — `#9395` for a ticket that carries an external (provider) id, or `null` for an internal ticket (no… */
 export function secondaryProviderLabel(args: {
   provider: string;
   externalTicketId: string | null;
@@ -93,10 +81,7 @@ function isPlaceholderReceivingLineId(lineId: number | null | undefined): boolea
   return lineId != null && lineId <= 0;
 }
 
-/** Map placeholder line ids to the real carton id for ticket resolution / linking.
- *  Unmatched stubs use `id = -receiving_id` with `receiving_id` already set.
- *  Pending scan stubs (`scan:…`) use a hashed negative id with `receiving_id`
- *  null — never invent a carton id from that hash. */
+/** Map placeholder line ids to the real carton id for ticket resolution / linking. */
 export function normalizeReceivingTicketEntityRefs(args: {
   lineId?: number | null;
   receivingId?: number | null;
@@ -109,15 +94,7 @@ export function normalizeReceivingTicketEntityRefs(args: {
   return { lineId, receivingId };
 }
 
-/**
- * `ticket_links.entity_type` is unconstrained free text in the DB and its schema
- * comment already lists eleven live values, `'ORDER'` / `'REPAIR'` among them.
- * This union is the TYPED surface over that column — widening it makes an
- * already-representable value reachable through the API; it is not a data change.
- *
- * `ORDER` is the no-STN fallback: walk-in / phone Ecwid orders that have no
- * primary shipment yet still need a durable ticket↔order anchor.
- */
+/** `ticket_links.entity_type` is unconstrained free text in the DB and its schema comment already lists eleven live values, `'ORDER'` /… */
 export type TicketLinkEntityType =
   | 'SHIPMENT'
   | 'RECEIVING'
@@ -130,17 +107,7 @@ export interface TicketLinkAnchor {
   entityId: number;
 }
 
-/**
- * Pick the single primary ticket_links entity for a Zendesk ticket.
- * One ticket → one entity (UNIQUE on org + zendesk_ticket_id).
- *
- * Priority: repair > line > carton > shipment (STN) > order. A repair outranks
- * the receiving context because a counter repair is what the ticket is ABOUT —
- * the work record is the anchor, and any sale or prior order is a reference
- * (plan D6). Otherwise prefer the richest receiving context when a carton is
- * open, then SHIPMENT for pre-intake tracking links, and finally ORDER when the
- * order exists but has no STN (walk-in / phone Ecwid).
- */
+/** Pick the single primary ticket_links entity for a Zendesk ticket. */
 export function pickTicketLinkAnchor(args: {
   repairId?: number | null;
   lineId?: number | null;

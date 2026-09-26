@@ -3,17 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { mapScanToDesktopRoute } from '@/lib/scan-history-route';
 
-/**
- * GET /api/scan/history?limit=20
- *
- * Returns the signed-in staff's most recent receiving Data Matrix scans
- * (R-/L-/U- labels) made from the phone (/m/scan). Powers the "Scans" section
- * of the desktop phone-history popover — scan on the phone, see it here.
- *
- * Staff scoping is enforced server-side: the staff id comes from the verified
- * `cf_sid` session (ctx.staffId), NEVER from the request. The source data is
- * `mobile_scan_events`, which the resolver already writes on every scan.
- */
+/** GET /api/scan/history?limit=20 */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const { searchParams } = new URL(req.url);
@@ -22,11 +12,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       ? Math.min(Math.max(Math.trunc(rawLimit), 1), 50)
       : 20;
 
-    // `mobile_scan_events` has no organization_id column (child-scoped to
-    // staff), so isolation is enforced two ways: (1) GUC-wrap via tenantQuery
-    // so the row is read under the org session, and (2) require the owning
-    // staff row to belong to this org via an EXISTS subquery against the
-    // tenant-owned `staff` table — a cross-tenant staff id can never surface.
+    // `mobile_scan_events` has no organization_id column (child-scoped to staff), so isolation is enforced two ways:
     const result = await tenantQuery(
       ctx.organizationId,
       `SELECT mse.id, mse.raw_value, mse.kind, mse.routed_to, mse.created_at

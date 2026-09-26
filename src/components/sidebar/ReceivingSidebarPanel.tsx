@@ -1,24 +1,6 @@
 'use client';
 
-/**
- * Receiving sidebar — thin composition layer.
- *
- * All business logic lives in focused hooks under `./receiving/`:
- *   - useReceivingMode .............. URL ⇄ mode + Unbox sub-view + nav
- *   - usePoContext .................. active carton + armed line
- *   - useReceivingReturnsBanner ..... returns banner + shared serial input ref
- *   - useReceivingSourcePlatform .... source-platform mirror (side effect)
- *   - useReceivingSelection ........ selected line + inbound event bridges
- *   - useReceivingLineNavigation ... sibling-line nav + progress
- *   - useReceivingWorkspaceBridge .. outbound right-pane workspace dispatch
- *   - useTrackingScan .............. the tracking/PO/handle scan orchestration
- *   - usePhoneScanBridge ........... phone-paired scan round-trip
- *   - usePhotoRequestPublisher ..... nudge the paired phone's camera open
- *   - useRailEditMode .............. bulk-select (via row ⋮ "Select") + bulk delete
- *
- * The render is pure composition of presentational subcomponents. Nothing here
- * fetches, mutates, or computes — it only wires hooks to UI.
- */
+/** Receiving sidebar — thin composition layer. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -116,10 +98,7 @@ export function ReceivingSidebarPanel() {
     updateTriageQuery,
   } = useReceivingMode();
 
-  // ── Unbox session: PO context + returns banner ───────────────────────────
-  // `armedLineId` (the value) is deliberately not read here — it is consumed by
-  // the scan pipeline (`usePoContext` / `scan-apply` / `useTrackingScan`), which
-  // this panel only feeds the setter to.
+  // ── Unbox session:
   const { poContext, setPoContext, setArmedLineId, clearPoContext } = usePoContext();
   const { serialInputRef, returns, dismissReturn } = useReceivingReturnsBanner();
 
@@ -180,11 +159,7 @@ export function ReceivingSidebarPanel() {
   const [unboxRailFilter, setUnboxRailFilter] = useState('');
   const receivingRailFacets = useReceivingRailFacets();
 
-  // Preview stance turns the scan bar into the rail's find field: typing
-  // filters the recents live instead of arming a scan (submit is already a
-  // no-op in Preview). The facet popover rides the bar's right rail, so the
-  // filter icon is present exactly when the field filters — which is what
-  // replaced the always-mounted footer search bar under the list.
+  // Preview stance turns the scan bar into the rail's find field:
   const { previewFiltering } = useScanPreviewRailFilter();
   const receivingFacetSlot = previewFiltering ? (
     <ReceivingRecentRailFilters
@@ -401,24 +376,9 @@ export function ReceivingSidebarPanel() {
     onTriageScanResult,
   ]);
 
-  // Procedure → ingest hand-back. The Arrival staging dock owns shelf scans on
-  // the open carton; a payload it does not own is a tracking, and it lands here
-  // rather than being swallowed at the dock. Only this direction is legal —
-  // this bar never places cartons.
+  // Procedure → ingest hand-back.
   useReceivingEvents({
-    /**
-     * Leaving a preview returns the bench to Scan with an empty bar.
-     *
-     * The stance is sticky (localStorage), so a preview that ended in Preview
-     * left the operator's NEXT real scan silently not unboxing — the bar looks
-     * armed and records nothing. Closing the read-only lock means "done
-     * looking", so it re-arms for work.
-     *
-     * This is not the promotion that constraint A bans: nothing is submitted,
-     * nothing opens, and the value is CLEARED rather than carried over — so the
-     * next Enter cannot commit the carton the operator was only inspecting.
-     * Clearing the bar also drops the rail filters, which follow `previewFiltering`.
-     */
+    /** Leaving a preview returns the bench to Scan with an empty bar. */
     'receiving-workspace-close': () => {
       if (!isScanPreview()) return;
       setScanStance('scan');
@@ -435,10 +395,7 @@ export function ReceivingSidebarPanel() {
     },
   });
 
-  // ── Rail edit mode (row-menu "Select" bulk select / dismiss) — Unbox Unboxed
-  // dock + thin combined Triage rail. Right-pane workbench Select is table
-  // multi-select (separate); this rail's Select dismisses rows from this
-  // staffer's rail.
+  // ── Rail edit mode (row-menu "Select" bulk select / dismiss) — Unbox Unboxed dock + thin combined Triage rail.
   const {
     railEditMode,
     railSelectedIds,
@@ -455,26 +412,10 @@ export function ReceivingSidebarPanel() {
     triageView: 'triage',
   });
 
-  /**
-   * The scan band's right rail — the rail's controls, one band ABOVE the list.
-   *
-   * The resident pencil that used to live here (and, before that, in each
-   * rail's own `TITLE · N` eyebrow) is gone (2026-08-24): entering bulk
-   * multi-select is now the row ⋮ menu's "Select" verb — one hover
-   * affordance per row instead of a permanently-resident second one above
-   * the list. `toggleRailEditMode` / `railEditMode` still drive the
-   * provider below; only their trigger moved.
-   */
+  /** The scan band's right rail — the rail's controls, one band ABOVE the list. */
   const receivingRailBandSlot = receivingFacetSlot;
 
-  // External focus trigger — Quick Access chips dispatch `receiving-focus-scan`
-  // after navigating so the input is hot even when the panel was already mounted.
-  // Select any existing text so the operator can immediately overwrite it with
-  // the next scan (barcode guns type-then-Enter, so a selected field is "armed").
-  // When a station PROCEDURE waist is mounted — Unbox dock scan entry (any
-  // step), the legacy serial marker, or the Arrival staging dock — that field
-  // owns the wedge; do not steal back to sidebar ingestion. This bar stays the
-  // ingest locus (which carton), never the placement one (which shelf).
+  // External focus trigger — Quick Access chips dispatch `receiving-focus-scan` after navigating so the input is hot even when the panel was…
   useEffect(() => {
     const handler = () =>
       requestAnimationFrame(() => {
@@ -494,11 +435,7 @@ export function ReceivingSidebarPanel() {
     return () => window.removeEventListener('receiving-focus-scan', handler);
   }, []);
 
-  // The focus-scan quick-key is now the app-wide shared hotkey (default Insert,
-  // reassignable via the gear in any StationScanBar). The unbox/triage bars
-  // register themselves as the focus target through StationScanBar, so the key
-  // snaps focus here with no receiving-specific handler. The
-  // `receiving-focus-scan` listener above remains for the Quick Access chips.
+  // The focus-scan quick-key is now the app-wide shared hotkey (default Insert, reassignable via the gear in any StationScanBar).
 
   return (
     // `relative` anchors the edit-mode SelectionActionBar pinned at the bottom.
@@ -514,19 +451,10 @@ export function ReceivingSidebarPanel() {
             (HeaderPageSwitcher). Do not remount ReceivingModeSwitcher. */}
 
         {mode === 'incoming' ? (
-          // Inbound desk is rail-less (Pattern E). Pipeline POS / Email / Removed
-          // and Docked Triage / Unbox live in IncomingWorkspaceHeader facet chrome.
-          // Desktop never mounts this branch (`isRaillessSurface`); mobile
-          // Actions pane stays empty rather than resurrecting a Views rail twin.
+          // Inbound desk is rail-less (Pattern E).
           null
         ) : mode === 'repair' ? (
-          // Repair desk is rail-less too (`railless: true` on the repair nav
-          // entry). Its left column had exactly one tenant — the Favorites rail
-          // — and favorites now live as the Favorites SCOPE of the shared
-          // catalog picker (ProductSelector `favoritesWorkspace` / `?mode=favorites`),
-          // so there is nothing left to mount. The `?new=true` intake overlay is
-          // hosted by `RepairIntakeHost` on the right pane; Active/Done · search
-          // · Add stay in RepairWorkspaceHeader (RepairTable).
+          // Repair desk is rail-less too (`railless:
           null
         ) : mode === 'pickup' ? (
           // Local Pickup — station scan bar (open/match LCPU) + orders rail.
@@ -584,10 +512,7 @@ export function ReceivingSidebarPanel() {
                   onSubmit={submitTriageScan}
                   inputRef={scanInputRef}
                   staffId={staffId}
-                  // Triage no longer spins the scan bar either — its loading state
-                  // is the right-pane TriageWorkspaceSkeleton (surface-tagged),
-                  // matching Unbox. Each mode shows its own skeleton, never a
-                  // bar spinner or the other mode's display.
+                  // Triage no longer spins the scan bar either — its loading state is the right-pane TriageWorkspaceSkeleton (surface-tagged), matching Unbox.
                   isResolving={batchSort.committing}
                   batchSortArmed={batchSort.isBatchSort}
                   batchCount={batchSort.batch.length}
@@ -666,12 +591,7 @@ export function ReceivingSidebarPanel() {
               />
             </SidebarRailScrollport>
 
-            {/* No footer filter bar. Finding a carton already in the rail is
-                the SCAN BAR's job in Preview stance: typing filters the recents
-                live and the facet popover rides the bar's right rail. A second
-                always-mounted find field under the list was a duplicate door
-                onto the same query, and it cost a row of the rail's height on
-                every station. */}
+            {/* No footer filter bar. */}
 
             {/* Edit-mode bulk dismiss — rides at the very bottom of the rail. */}
             {railEditMode ? (

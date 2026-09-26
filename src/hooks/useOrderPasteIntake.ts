@@ -1,26 +1,6 @@
 'use client';
 
-/**
- * Paste (or drop) an orders capture onto the To-ship desk and it stages.
- *
- * One document-level `paste` listener — the HANDOFF-ai-first §2 listener: a
- * paste emits ONE ClipboardEvent and zero keystrokes, so it is never a scan
- * and never reaches the wedge machine. Three payloads, three outcomes:
- *
- *   image file(s)  → downscale → POST extract-capture → staging draft
- *   CSV / TSV text → parseCsv (the one import reader) → staging draft
- *   prose          → untouched; the mouth (or whatever is focused) gets it
- *
- * Scope: the listener acts when the paste lands on a {@link StationComposerHost}
- * (the desk's one mouth) or on nothing editable at all (the desk body). A
- * paste into any OTHER field — the find bar, a rail editor — is that field's
- * business and is never intercepted, image or not.
- *
- * Same draft, same grid, same Confirm as `TableImportFileButton`: this hook
- * adds an intake, not a second staging surface. Mount ONCE per desk via
- * {@link OrderPasteIntake}; the `?import=csv` soft-replace lands on
- * `ORDER_IMPORT_DESCRIPTOR.deskPath` wherever the paste happened on the desk.
- */
+/** Paste (or drop) an orders capture onto the To-ship desk and it stages. */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';

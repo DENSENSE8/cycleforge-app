@@ -12,16 +12,7 @@ export interface PrimaryKpiGridProps {
   activeKind?: KpiKind | null;
 }
 
-/**
- * The four primary KPI tiles, composed from the Monitor {@link KpiStrip} /
- * `KpiTile` registry — eyebrow → hero number → the window-and-unit line.
- *
- * NO delta. The snapshot stopped carrying one on 2026-09-16 (see
- * `operations-kpi-config.ts`), and the type change is what enforces it: there
- * is no `cell.delta` to read. Clicking a tile opens {@link KpiDetailsModal},
- * which lists the rows behind the number — the drill path a scalar needs to be
- * checkable at all.
- */
+/** The four primary KPI tiles, composed from the Monitor {@link KpiStrip} / `KpiTile` registry — eyebrow → hero number → the… */
 export function PrimaryKpiGrid({ summary, onOpen, activeKind }: PrimaryKpiGridProps) {
   return (
     <KpiStrip

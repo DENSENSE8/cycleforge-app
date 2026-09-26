@@ -1,25 +1,4 @@
-/**
- * Per-handler auth gate for routes whose signature requires Next's typed
- * `{ params }` second arg (dynamic segments like `[id]`, `[barcode]`).
- *
- * The standard `withAuth(...)` wrapper can't be used on those routes because
- * its returned signature `(req, RouteContext)` differs from Next's typed
- * version `(req, { params })` — TS rejects the assignment.
- *
- * Instead, call `requireRoutePerm(req, perm)` at the top of each handler:
- *
- *   export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
- *     const gate = await requireRoutePerm(req, 'sku_stock.adjust');
- *     if (gate.denied) return gate.denied;
- *     const ctx = gate.ctx; // staffId, role, permissions — all session-derived
- *     // … rest of handler
- *   }
- *
- * Semantics mirror `withAuth({ permission })`:
- *   - No session cookie → 401 UNAUTHENTICATED
- *   - Session exists but lacks `perm` → 403 FORBIDDEN + auth_audit row
- *   - Otherwise → returns { denied: null, ctx } with non-null actor
- */
+/** Per-handler auth gate for routes whose signature requires Next's typed `{ params }` second arg (dynamic segments like `[id]`, `[barcode]`). */
 
 import 'server-only';
 import { NextRequest, NextResponse } from 'next/server';
@@ -108,22 +87,7 @@ export async function requireRoutePerm(
   };
 }
 
-/**
- * Audit-floor for dynamic-param routes. Counterpart to the `audit:` option
- * on `withAuth`. Call at the end of the handler, AFTER constructing the
- * NextResponse but BEFORE returning it:
- *
- *   const response = NextResponse.json({ … });
- *   await recordRouteAudit(req, gate.ctx, response, {
- *     source: 'receiving.line.move',
- *     action: AUDIT_ACTION.BIN_MOVE,
- *     entityType: AUDIT_ENTITY.BIN,
- *     entityId: ({ response }) => (response as any)?.line_id ?? null,
- *   });
- *   return response;
- *
- * Errors are swallowed — audit floor is best-effort.
- */
+/** Audit-floor for dynamic-param routes. */
 export interface RouteAuditOpts {
   source: string;
   action: string;

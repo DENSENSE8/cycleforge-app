@@ -1,19 +1,4 @@
-/**
- * `resolveGs1Requirement` — does this tenant need a licensed GS1 key?
- *
- * The verdict that gates the onboarding prompt. Two failure modes matter more
- * than the happy path, and both are pinned here:
- *
- *   • Nagging a tenant who never answered. "Has not been asked" is not
- *     "failed" — a `false` default anywhere in this chain collapses the two
- *     and dunks a brand-new org into a compliance warning on first login.
- *   • Nagging a tenant who is legitimately compliant WITHOUT a Company Prefix.
- *     GS1 sells individual GTINs and brand owners can be exempt; neither stores
- *     anything org-level, so a `hasCompanyPrefix`-only test would never clear.
- *
- * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
- *        --test src/lib/interop/gs1-requirement.test.ts`
- */
+/** `resolveGs1Requirement` — does this tenant need a licensed GS1 key? */
 
 import test from 'node:test';
 import assert from 'node:assert/strict';

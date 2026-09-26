@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 
-/**
- * POST /api/orders/start - DEPRECATED
- * 
- * This endpoint previously assigned orders to technicians via tester_id.
- * As of 2026-02-05, tester_id was removed from orders table.
- * 
- * Techs are now implicitly assigned when they scan a tracking number.
- * Assignment is tracked in tech_serial_numbers.tested_by.
- */
+/** POST /api/orders/start - DEPRECATED */
 export const POST = withAuth(async (req: NextRequest, _ctx) => {
   try {
     const { orderId } = await req.json();

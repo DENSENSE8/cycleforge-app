@@ -5,21 +5,7 @@ import type { CandidateSource, NormalizedCandidate } from '@/lib/sourcing/normal
 import { buildScourQuery, type ScourRequest } from './adapters/types';
 import { getEnabledAdapters } from './adapters';
 
-/**
- * Secondary-market sourcing orchestration (the "scour").
- *
- * Builds one query from the most specific signal available, fans it across every
- * *enabled* SourceAdapter (eBay today; see src/lib/sourcing/adapters), dedupes
- * the hits, and — only when `save` is set — persists them as sourcing_candidates
- * (deduped on the (source, external_id) unique index).
- *
- * Resilience: adapters run with allSettled, so one failing channel doesn't sink
- * the others. If *every* adapter fails (e.g. the sole eBay channel errors on
- * creds), the first error is rethrown so the caller can surface it (502).
- *
- * Quota discipline: each adapter does one round trip per call and logs its own
- * usage. Callers keep this user-initiated and short-cache identical queries.
- */
+/** Secondary-market sourcing orchestration (the "scour"). */
 
 export interface SearchSecondaryMarketParams {
   query?: string | null;

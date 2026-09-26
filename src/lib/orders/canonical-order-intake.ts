@@ -1,19 +1,4 @@
-/**
- * `CanonicalOrderIntake` — ONE schema for order intake, two densities.
- *
- * Plan: `docs/todo/order-intake-acknowledgment-PLAN.md` §2.
- *
- * The single intake form (`OrderIntakeForm`) holds this type as its draft
- * state; the CSV staging lane projects each row onto the SAME type before the
- * inspector opens it. A field that exists on one density and not the other is
- * a fork, which is exactly what this module exists to prevent — so the CSV
- * projection and the form share this one field list and nothing else grows a
- * parallel one.
- *
- * Everything here is pure derivation (string → string / enum), no I/O:
- * platform inference delegates to `inferMarketplaceFromOrderId` (the one SoT
- * for the Amazon 3-7-7 / eBay 2-5-5 shapes — the regex is never copied here).
- */
+/** `CanonicalOrderIntake` — ONE schema for order intake, two densities. */
 
 import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import type { CsvOrderCanonicalKey } from './csv-order-import';
@@ -78,12 +63,7 @@ export function emptyCanonicalOrderIntake(
   };
 }
 
-/**
- * The Identity section's platform acknowledgment, derived from the order
- * number alone. `requiresChoice` is what gates the platform combobox: an
- * Amazon 3-7-7 / eBay 2-5-5 paste never demands a platform click, an
- * unknown-shaped id always does.
- */
+/** The Identity section's platform acknowledgment, derived from the order number alone. */
 export function intakePlatformState(orderNumber: string | null | undefined): {
   inferred: 'amazon' | 'ebay' | null;
   requiresChoice: boolean;
@@ -113,12 +93,7 @@ function numericOrNull(raw: string | null | undefined): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
-/**
- * Project one staged CSV row (already projected through the header mapping)
- * onto the canonical intake — the bulk density becoming the same record the
- * single form holds. Quantity defaults to '1'; a mapped platform column fills
- * `platformChosen` only, because the inferred shape wins display and storage.
- */
+/** Project one staged CSV row (already projected through the header mapping) onto the canonical intake — the bulk density becoming the same… */
 export function projectCsvRowToCanonicalIntake(
   projected: Record<CsvOrderCanonicalKey, string>,
 ): CanonicalOrderIntake {
@@ -142,12 +117,7 @@ export function projectCsvRowToCanonicalIntake(
   };
 }
 
-/**
- * The inverse projection: canonical edits made in the row inspector written
- * back onto the CSV vocabulary so `applyCsvOrderCanonicalEdits` can land them
- * in the staged file. Only fields the CSV vocabulary carries appear here —
- * assignment / label mode are inspector-only until the row becomes an order.
- */
+/** The inverse projection: */
 export function canonicalIntakeToCsvEdits(
   intake: CanonicalOrderIntake,
 ): Partial<Record<CsvOrderCanonicalKey, string>> {

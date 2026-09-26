@@ -1,12 +1,4 @@
-/**
- * Inventory-events catalog guards + resolver behaviour — the family that
- * replaced the Ledger's hand-rolled `EventRow` card list.
- *
- * The materialization smoke pins the parity promise (every fact the card
- * painted is still painted); the resolver tests pin the two TRANSITIONS
- * (status, bin) and the legacy notes normalization, whose fact text has to
- * agree with what the cell's bespoke faces draw.
- */
+/** Inventory-events catalog guards + resolver behaviour — the family that replaced the Ledger's hand-rolled `EventRow` card list. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -89,10 +81,7 @@ describe('inventory-events materialization', () => {
       keys.filter((k) => String(k).startsWith('status:')).length,
       INVENTORY_EVENTS_PRODUCT_LAYOUT.statusBindings.length,
     );
-    // Every fact the retired card painted that the shared CHROME does not
-    // already carry is bound as a track. The other three (status move, station,
-    // notes) paint on the state pill, its next-step line and the item cell's
-    // note line — binding them here too would print the same fact twice.
+    // Every fact the retired card painted that the shared CHROME does not already carry is bound as a track.
     const bound = INVENTORY_EVENTS_COMPOUND_COLUMNS.map((c) => c.fieldId).filter(Boolean);
     for (const id of [
       'inventory-events.occurred',

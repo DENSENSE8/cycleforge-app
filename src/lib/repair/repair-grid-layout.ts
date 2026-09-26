@@ -1,16 +1,4 @@
-/**
- * Repair queue spreadsheet column model — SoT for the `/repair` LedgerGrid.
- *
- * Same spreadsheet family as Pending / Incoming, mapped to the repair-ticket
- * facts:
- *   select · title · customer · phone · price · order · ticket
- *
- * `title` carries the product title (with the issue as a quiet second line);
- * `order` is the source order id, showing WALK-IN when a ticket has none. The
- * frozen identity pane (select · title) + cell chrome reuse the shared grid
- * geometry from {@link ORDERS_QUEUE_COLUMNS}'s helpers — repair never grows a
- * second width system (mirrors Incoming's re-export block).
- */
+/** Repair queue spreadsheet column model — SoT for the `/repair` LedgerGrid. */
 
 import {
   REPAIR_FIELD_CATALOG,
@@ -94,22 +82,7 @@ export function repairSheetColumnsFor(layout: SlotLayout): readonly RepairGridCo
 export const REPAIR_SHEET_COLUMNS: readonly RepairGridColumn[] =
   repairSheetColumnsFor(REPAIR_PRODUCT_LAYOUT);
 
-/**
- * Bound field → the queue's URL SORT WORD.
- *
- * Repair is the one ported family whose sort does NOT ride `?colsort=`: it
- * shares `?sort=`/`?dir=` with a chrome dropdown, and
- * `repair-display-sort.ts` keeps that vocabulary deliberately local so a
- * rewritten display cannot silently change the meaning of a bookmarked URL.
- * Its docblock says to re-derive in ONE direction when the grid returns — this
- * map is that direction: a mounted track resolves to a word the URL already
- * understands, and the word never learns about the track.
- *
- * A field with no word here is simply not sortable from a header. That is the
- * honest outcome for `repair.service` (a row handle nobody sorts by) and
- * `repair.status` (a fact the hand model never printed): admitting them would
- * mean minting new `?sort=` values, which is a URL change, not a layout one.
- */
+/** Bound field → the queue's URL SORT WORD. */
 const REPAIR_SORT_WORD_BY_FIELD: Readonly<Record<string, RepairDisplaySortColumn>> = {
   'repair.created': 'date',
   'repair.customer': 'customer',
@@ -172,12 +145,7 @@ export function defaultDirForRepairColumn(
   return word ? (defaultDirForRepairDisplaySort(word) ?? 'asc') : 'asc';
 }
 
-/*
- * Field-source helpers (display ↔ sort SoT) moved to the resolver leaf with the
- * wave 1.4 slot port: the row cells, the comparators and a bound column all
- * read one answer, so a track always sorts by exactly what it shows. Re-exported
- * here because every existing call site imports them from this module.
- */
+/* Field-source helpers (display ↔ sort SoT) moved to the resolver leaf with the wave 1.4 slot port: */
 export {
   repairCreatedAtSource,
   repairCustomerName,

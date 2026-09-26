@@ -1,15 +1,6 @@
 'use client';
 
-/**
- * Remove confirm plane for /sourcing?mode=compatibility — stage-overlay over
- * the table (recordPlane: stage-overlay). The table stays mounted underneath,
- * so an admin can still read the edge they are about to unlink.
- *
- * Callers: CompatibilityManagementTab. The retired actions cell had NO confirm
- * at all: one click on a ghost `<Button>` fired `DELETE
- * /api/part-compatibility/<id>` and the part silently stopped fitting the
- * model. This names both sides of the edge before it goes.
- */
+/** Remove confirm plane for /sourcing?mode=compatibility — stage-overlay over the table (recordPlane: */
 
 import { Button } from '@/design-system/primitives/Button';
 import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';

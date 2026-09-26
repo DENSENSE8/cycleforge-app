@@ -1,22 +1,4 @@
-/**
- * Server-side reachability probe for an AI endpoint, run at SAVE time.
- *
- * The failure this exists to prevent: a tenant pastes `http://localhost:11434/v1`
- * — perfectly correct from their laptop — and the deployed server, which is the
- * thing that will actually make the call, cannot see it at all. Without a probe
- * that saves cleanly and fails later as "AI is not working", with nothing in the
- * UI to suggest the URL was the problem.
- *
- * **What this validates is REACHABILITY AND AUTH, not feature support.**
- * A 404 from `/models` counts as success: plenty of OpenAI-compatible servers do
- * not implement that route, and refusing to save a working endpoint because it
- * lacks an optional listing API would be a worse bug than the one being fixed.
- * A 401/403 is a failure, because it means we reached something and it refused
- * us — which is exactly the Cloudflare Access misconfiguration that motivated
- * the headers channel in the first place.
- *
- * DB-free and fetch-injectable so the policy is unit-testable without network.
- */
+/** Server-side reachability probe for an AI endpoint, run at SAVE time. */
 
 import { aiRequestHeaders } from '@/lib/ai/provider';
 
@@ -96,13 +78,7 @@ export async function probeAiEndpoint(
   }
 }
 
-/**
- * Confirm the model the tenant named is actually served.
- *
- * A warning, never a hard failure: the listing may be empty (see above), and a
- * model can be pulled after the endpoint is connected. Blocking the save here
- * would make a correct config unsavable for a transient reason.
- */
+/** Confirm the model the tenant named is actually served. */
 export function modelWarning(models: string[], named: string | undefined): string | null {
   if (!named || models.length === 0) return null;
   if (models.includes(named)) return null;

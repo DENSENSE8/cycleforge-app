@@ -1,21 +1,6 @@
 'use client';
 
-/**
- * Modal sheet for switching the active staff at a shared station — PINLESS.
- *
- *   1. Picker — same row layout as /signin (StaffPickerList)
- *   2. Tap = switch — POST /api/auth/act-as-staff, the same PIN-less mint
- *      the email login's staff picker performs. No PIN pad.
- *
- * On success, refreshes AuthContext and re-renders server components so the
- * sidebar and any page that reads useAuth() picks up the new identity
- * without a full reload.
- *
- * Callers: WarehouseShell (mounted once app-wide; opened from any surface
- * via useStaffSwitcher). API: /api/auth/act-as-staff.
- * User (2026-09-15): "the switch staff should not have a pin. It should be
- * pinless, just like the native login using email."
- */
+/** Modal sheet for switching the active staff at a shared station — PINLESS. */
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -66,10 +51,7 @@ export function SwitchStaffSheet() {
     }
   }, [isOpen]);
 
-  // Tap = switch. The mint itself is the email login's PIN-less act-as: the
-  // already-signed-in session is the gate, org + active-staff checks are the
-  // route's. `persistent` is omitted on purpose — a re-mint on the same
-  // device inherits the session's persistence choice.
+  // Tap = switch.
   const switchTo = useCallback(async (row: StaffPickerRow) => {
     if (busy) return;
     setPicked(row);
@@ -115,10 +97,7 @@ export function SwitchStaffSheet() {
       maxWidth="28rem"
       fixedWidth
       scrollBody
-      // Phones get the whole viewport: the roster is the task, and a
-      // bottom-anchored peek showed four rows with the rest behind a scroll
-      // nobody finds mid-shift. Desktop keeps the centred 28rem dialog —
-      // `fullScreen` is sheet-variant only.
+      // Phones get the whole viewport:
       fullScreen
     >
       <div className="flex min-h-0 flex-1 flex-col">

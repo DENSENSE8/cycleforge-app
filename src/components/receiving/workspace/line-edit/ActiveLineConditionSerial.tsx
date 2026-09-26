@@ -21,26 +21,7 @@ type SerialLookupView = Pick<
   "state" | "unit" | "serial" | "matchedOrder"
 >;
 
-/**
- * Body rendered inside each PO line's `activeRowSlot` (PoLinesAccordion).
- *
- * Unbox capture (`resolveCaptureEntry`): always {@link PoLineUnitCaptureList}
- * — one always-accessible capture row per physical unit (qty 1 or N).
- *
- * Legacy lanes (Testing / Arrival / Units Displays):
- *  - Multi-qty or `forceUnitRows` → {@link ReceivingUnitRows}
- *  - Single-qty → one {@link SerialCard}
- *
- * Purely presentational: every mutation is delegated to the parent's existing
- * handlers. The `requestConfirm` guards on delete are gated by the
- * `receiving.confirmSerialRemoval` org setting (Settings Registry; default on).
- *
- * Unbox dual loci: dock owns wedge/procedure; every editable PO line mounts
- * the capture face — condition + in-row Serial / Photos dock strip
- * the capture face — condition Tags (USED_A default) + open SerialScanField;
- * hover Tags expands pills; grade click collapses (centre serial autofocus on
- * the controller-active line).
- */
+/** Body rendered inside each PO line's `activeRowSlot` (PoLinesAccordion). */
 export function ActiveLineConditionSerial({
   serials,
   lineId,
@@ -165,12 +146,7 @@ export function ActiveLineConditionSerial({
   dockOwnsCapture?: boolean;
   /** Autofocus / controller binding only — does not gate capture mount. */
   isActiveLine?: boolean;
-  /**
-   * The dock's `activeKey` (Unbox `dockOwnsCapture` only), passed ONLY for the
-   * controller-active line — drives the capture face's moving outline. Threaded
-   * into {@link PoLineUnitCaptureList} → {@link PoLineCaptureRow}; the legacy
-   * ReceivingUnitRows / SerialCard lanes ignore it.
-   */
+  /** The dock's `activeKey` (Unbox `dockOwnsCapture` only), passed ONLY for the controller-active line — drives the capture face's moving… */
   activeStep?: string | null;
   staffId?: number;
   poRef?: string | null;

@@ -1,9 +1,4 @@
-/**
- * Bins catalog guards + resolver behaviour — wave 1.4's second family. The
- * materialization smoke pins the parity promise; the resolver tests pin the
- * two composites (location, status flags) whose FACT text has to agree with
- * what the cell's bespoke faces draw.
- */
+/** Bins catalog guards + resolver behaviour — wave 1.4's second family. */
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';

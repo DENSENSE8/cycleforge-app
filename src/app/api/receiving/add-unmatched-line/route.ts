@@ -1,31 +1,4 @@
-/**
- * POST /api/receiving/add-unmatched-line
- *
- * Manually add a receiving line to an unmatched receiving (source='unmatched').
- * Triggered by UnfoundLineEditPanel after the operator picks a product via
- * EcwidProductSearchPopover.
- *
- * Floor-as-SOT contract:
- *   • No Zoho IDs required — the line gets zoho_item_id/zoho_purchaseorder_id NULL.
- *   • workflow_status starts at MATCHED (line is already "linked" to its package
- *     — there's no pre-staging EXPECTED row to reconcile against).
- *   • The operator can then scan serials via /api/receiving/scan-serial, which
- *     already works on lines without Zoho linkage.
- *
- * Guardrails:
- *   • Rejects if the receiving row is source='zoho_po' — Zoho-sourced receivings
- *     are reconciled against Zoho line items; manual additions would create
- *     local lines that never match anything on the Zoho side. EXCEPTION: pass
- *     `allow_off_po: true` to add an "off-PO" extra item to a matched carton —
- *     an item physically in the box that the Zoho PO doesn't list. The line is
- *     stamped `manual_entry_at` and left with no Zoho linkage, so the receive
- *     flow updates it locally but skips it from the Zoho POST (it has no
- *     zoho_line_item_id to receive against). The operator then adds it to the
- *     Zoho PO manually, or handles it as a standalone intake.
- *   • Idempotent via api_idempotency_responses on Idempotency-Key header or
- *     body.client_event_id. A duplicate POST returns the prior result, no
- *     duplicate row created.
- */
+/** POST /api/receiving/add-unmatched-line */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withTenantTransaction, type tenantQuery } from '@/lib/tenancy/db';
@@ -219,12 +192,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   // the receive flow naturally skips it from the Zoho POST.
   const allowOffPo = body.allow_off_po === true;
 
-  // ─── Per-line source-order linkage (item-dependent returns / repairs) ──────
-  // A box can mix a customer's returns + repair services from different orders;
-  // each line carries its OWN source order. is_repair_service marks an Ecwid
-  // repair-service intake (distinct from a RETURN). source_order_id accepts an
-  // explicit value or the ecwid_order_id the repair-link flow sends; source_system
-  // defaults to 'ecwid' whenever either is present.
+  // ─── Per-line source-order linkage (item-dependent returns / repairs) ────── A box can mix a customer's returns + repair services from…
   const isRepairService = isRepairServiceEarly;
   const sourceOrderId =
     body.source_order_id != null
@@ -239,10 +207,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         ? 'ecwid'
         : null;
 
-  // ─── Idempotency + all tenant-table access on the per-org GUC path ────────
-  // Everything that touches receiving / receiving_lines / sku_platform_ids runs
-  // inside one withTenantTransaction so RLS (app.current_org) isolates it. The
-  // idempotency cache rows are org-stamped, so they ride the same client.
+  // ─── Idempotency + all tenant-table access on the per-org GUC path ──────── Everything that touches receiving / receiving_lines /…
   const idempotencyKey = readIdempotencyKey(request, clientEventId);
 
   const result = await withTenantTransaction(ctx.organizationId, async (client) => {
@@ -294,11 +259,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    // A sales-order-derived carton (flipped to zoho_po by a per-line return/repair
-    // link or an order# bind, no real Zoho PO id) must keep accepting items — a
-    // box mixing several returns/repairs adds them one at a time, and the FIRST
-    // link already flipped source to zoho_po. Includes Amazon/Ecwid/any platform
-    // (not only source_platform='ecwid'). Treat like unmatched for additions.
+    // A sales-order-derived carton (flipped to zoho_po by a per-line return/repair link or an order# bind, no real Zoho PO id) must keep…
     const isOrderLinkedCarton = isSalesOrderDerivedCarton(receiving);
     if (receiving.source !== 'unmatched' && !allowOffPo && !isOrderLinkedCarton) {
       return respond(
@@ -312,11 +273,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    // ─── Resolve sku_catalog_id from sku_platform_id_row when omitted ───────
-    // The popover passes sku_platform_id_row (the specific Ecwid listing) but
-    // can't cheaply resolve the paired sku_catalog_id from the platform-search
-    // response. Look it up here so manually-added lines carry the catalog FK
-    // whenever the platform row is paired. Unpaired listings leave it NULL.
+    // ─── Resolve sku_catalog_id from sku_platform_id_row when omitted ─────── The popover passes sku_platform_id_row (the specific Ecwid…
     let resolvedSkuCatalogId = skuCatalogId;
     let resolvedSku = sku;
     let resolvedItemName = itemName;
@@ -341,18 +298,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
-    // ─── Insert the line (thin spine) + its testing facts row ───────────────
-    // Wave-3 writer inversion: the testing cluster (condition_grade et al.) lives
-    // on receiving_line_testing (rlt), never the spine. The spine INSERT keeps
-    // only spine-staying columns; the rlt row is birthed in the SAME transaction
-    // with explicit values (birth invariant — every receiving_line has an rlt
-    // row). No Zoho linkage → no receiving_line_zoho row.
-    // workflow_status='MATCHED' because the line is already linked to its
-    // package — no pre-staging EXPECTED row to reconcile. organization_id is
-    // passed explicitly (the column is loud-fail, not GUC-defaulted) and matches
-    // the GUC set by withTenantTransaction.
-    // Line receiving_type is uppercase SoT (PO|RETURN|REPAIR|…); intake_type is
-    // the lowercase denormalized twin used by unmatched add paths.
+    // ─── Insert the line (thin spine) + its testing facts row ─────────────── Wave-3 writer inversion:
     const receivingTypeUpper = isRepairService
       ? 'REPAIR'
       : intakeType
@@ -425,11 +371,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       );
     }
 
-    // rlt birth (same tx via the tenant client): the operator-picked grade plus
-    // the birth defaults this INSERT used to inherit from the spine column
-    // defaults, now stamped explicitly. needs_test=false mirrors the LIVE spine
-    // default (verified 2026-07-11: DEFAULT false, 1361/1363 lines false) the
-    // pre-inversion birth relied on.
+    // rlt birth (same tx via the tenant client):
     const txDeps = {
       query: ((_org: OrgId, sql: string, p?: unknown[]) => client.query(sql, p)) as typeof tenantQuery,
     };
@@ -446,13 +388,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       txDeps,
     );
 
-    // ─── Re-derive the carton's source linkage from its lines ───────────────
-    // The carton's PO# is only a first-linked DISPLAY representative; this flips
-    // an unmatched carton to zoho_po (off the Unfound queue) when the line carries
-    // a source order, and keeps a multi-order box's representative stable. Owns
-    // the state server-side so the client no longer PATCHes the carton itself.
-    // recomputeCartonSourceLink takes the tenant client so its reads/writes stay
-    // on the GUC path.
+    // ─── Re-derive the carton's source linkage from its lines ─────────────── The carton's PO# is only a first-linked DISPLAY representative;…
     let carton: { zoho_purchaseorder_number: string | null; source: string | null; source_platform: string | null } | null = null;
     let repairTracking: string | null = null;
     if (sourceOrderId || isRepairService) {
@@ -490,10 +426,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Capture tracking for the post-tx repair upsert (upsertEcwidIncomingRepair
     // opens its own tenant tx — never nest it inside this one).
     if (isRepairService && sourceOrderId) {
-      // STN identity is tracking_number_raw / _normalized — there is no
-      // tracking_number column. A miss here used to throw inside this tenant
-      // tx; the catch left Postgres aborted, so the later idempotency write
-      // surfaced as a generic INTERNAL toast and rolled back the line insert.
+      // STN identity is tracking_number_raw / _normalized — there is no tracking_number column.
       const trackingRes = await client.query<{ tracking_number: string | null }>(
         `SELECT COALESCE(
                   NULLIF(btrim(stn.tracking_number_raw), ''),
@@ -534,9 +467,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   });
 
   // Repair-service identify → idempotent repair_service upsert + received stamp.
-  // Soft-join by Ecwid order id (and tracking when known). Runs AFTER the
-  // receiving tx commits so upsertEcwidIncomingRepair's own tenant path cannot
-  // nest / deadlock against the line insert.
   let repairTicketId: number | null =
     typeof result.payload.repair_service_id === 'number'
       ? result.payload.repair_service_id
@@ -546,12 +476,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   if (!result.cached && result.payload.success === true && repairUpsert) {
     const upsert = repairUpsert;
     try {
-      // The buyer. This route holds the Ecwid ORDER id but never fetched the
-      // person on it, so every ticket born here landed unlinked — all four
-      // remaining `customer_id IS NULL` repairs are this path, and each one
-      // printed paper with a blank name. Fetched AFTER the receiving tx has
-      // committed, so a vendor round-trip cannot hold a write lock, and
-      // null-on-failure so a vendor outage never fails the scan.
+      // The buyer. This route holds the Ecwid ORDER id but never fetched the person on it, so every ticket born here landed unlinked — all four…
       const contact = await fetchEcwidOrderContact(ctx.organizationId as OrgId, upsert.orderId);
       const ticket = await upsertEcwidIncomingRepair(
         {

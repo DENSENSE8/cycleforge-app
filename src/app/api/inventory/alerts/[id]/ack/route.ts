@@ -4,19 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * POST /api/inventory/alerts/[id]/ack
- *
- * Acknowledges a stock_alerts row — sets resolved_at = NOW() and optionally
- * stores a free-text note. Idempotent: re-acking an already-resolved alert
- * is a no-op (the existing resolved_at is preserved).
- *
- * Body: { note?: string }
- *
- * Note: `withAuth` does not forward Next.js dynamic route params; we parse
- * `id` from `request.nextUrl.pathname` instead, matching the pattern used
- * by /api/serial-units/[id]/hold.
- */
+/** POST /api/inventory/alerts/[id]/ack */
 export const POST = withAuth(async (request, ctx) => {
     try {
         const segments = request.nextUrl.pathname.split('/').filter(Boolean);

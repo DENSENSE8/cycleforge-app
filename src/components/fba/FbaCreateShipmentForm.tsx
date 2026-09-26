@@ -1,11 +1,6 @@
 'use client';
 
-/**
- * Despite the filename, this form creates an FBA **plan** (the prep-queue
- * record shown on UpNextOrder for techs), not an outbound shipment. The
- * shipment phase — with Amazon FBA IDs pairing 1..N UPS tracking numbers —
- * is added later via FbaShipmentEditorForm.
- */
+/** Despite the filename, this form creates an FBA **plan** (the prep-queue record shown on UpNextOrder for techs), not an outbound shipment. */
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, Package, Plus, Trash2 } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';

@@ -3,16 +3,7 @@
 import { RefreshCw } from '@/components/Icons';
 import { SubstituteUnitCard } from '@/components/fulfillment/SubstituteUnitCard';
 
-/**
- * "Substitute unit" section for the `/tech` active-order workspace — a thin
- * wrapper over the shared fulfillment SubstituteUnitCard (do not fork the
- * panel/picker; docs/todo/tech-substitution-wiring-plan.md §5 Phase 1.2).
- * Always raises from the 'test' node; the host gates the mount via
- * useSubstitutionPolicy + canShowTechSubstitution.
- *
- * Distinct from the Out-of-Stock dock: OOS = "we can't fulfill, need parts";
- * this = "we're shipping a different unit than ordered".
- */
+/** "Substitute unit" section for the `/tech` active-order workspace — a thin wrapper over the shared fulfillment SubstituteUnitCard (do not… */
 export interface TechSubstituteSectionProps {
   orderId: number;
   orderLabel: string;

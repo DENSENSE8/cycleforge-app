@@ -1,24 +1,4 @@
-/**
- * ai-meter-reporter — pushes billed AI usage to a Stripe Billing Meter
- * (margin billing for platform-carried AI; docs/ai-search-modernization-plan.md).
- *
- * Env-gated: a NO-OP until STRIPE_AI_METER_EVENT_NAME is set (the Meter's
- * event_name from the Stripe dashboard). Runs from the daily cleanup cron.
- *
- * Semantics:
- *   - Only PLATFORM-carried usage bills through us (provider='platform');
- *     BYOK rows are billed by the tenant's own provider — they're marked
- *     reported (so the unreported set stays lean) but contribute $0.
- *   - Billed cents = estimated provider cost × (1 + per-org margin). The
- *     margin resolves per org from the DB (organizations.settings) at report
- *     time — see getAiUsageMarginPercent.
- *   - Tenants come from DB rows only: orgs are whatever the usage table +
- *     organizations table say; an org without a stripe_customer_id is
- *     skipped (rows left unreported) until billing is set up for it.
- *   - Idempotent at two levels: rows are marked stripe_reported_at in the
- *     same flow, and the meter event identifier is derived from the row-id
- *     range so a crash-retry can't double-bill.
- */
+/** ai-meter-reporter — pushes billed AI usage to a Stripe Billing Meter (margin billing for platform-carried AI;… */
 
 import pool from '@/lib/db';
 import { reportAiUsageMeterEvent } from '@/lib/billing/stripe';

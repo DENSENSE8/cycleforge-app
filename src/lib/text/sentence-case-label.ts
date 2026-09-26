@@ -1,10 +1,4 @@
-/**
- * Sentence-case a catalog / print label.
- *
- * Mixed-case brands stay as authored (`eBay`, `Purchase order`). ALL-CAPS
- * words become sentence case (`RETURN` → `Return`). Hyphenated codes
- * (`ECWID-RS`) stay codes so the 2×1" face does not rewrite a SKU-like slug.
- */
+/** Sentence-case a catalog / print label. */
 export function sentenceCaseLabel(raw: string): string {
   const t = String(raw ?? '').trim();
   if (!t) return t;

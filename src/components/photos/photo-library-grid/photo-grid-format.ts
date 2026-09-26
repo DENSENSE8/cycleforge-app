@@ -99,12 +99,7 @@ export function toGalleryInputs(photos: LibraryPhoto[], scope: PhotoLibrarySourc
   return photos.map((p) => ({ id: p.id, url: p.displayUrl, thumbUrl: p.thumbUrl, meta: libraryPhotoMeta(p, scope) }));
 }
 
-/**
- * Decide what a tile click means. A modifier key (Shift / Ctrl / Cmd) or an
- * already-active selection routes the click to selection; otherwise it opens the
- * lightbox. This is the Google-Photos model: browse by default, modifier-click
- * (or the hover checkmark) to start selecting, then plain clicks toggle.
- */
+/** Decide what a tile click means. */
 export function clickSelectsInstead(e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }, selectionActive: boolean): boolean {
   return selectionActive || e.shiftKey || e.metaKey || e.ctrlKey;
 }

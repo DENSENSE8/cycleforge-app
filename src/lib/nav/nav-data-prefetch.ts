@@ -1,16 +1,4 @@
-/**
- * Nav hover → data prefetch registry.
- *
- * Next's <Link>/router prefetch warms the ROUTE (JS + RSC payload); this warms
- * the DATA a destination paints from, so hover-then-click lands on cached rows
- * instead of a skeleton. Entries are keyed by the destination href and MUST
- * build their query options through the destination's own query factory so the
- * prefetched cache entry is byte-identical to the one the page mounts with —
- * a near-miss key is a wasted fetch, never a warm paint.
- *
- * react-query dedupes repeat hovers via staleTime, so firing this on every
- * mouseenter is free after the first.
- */
+/** Nav hover → data prefetch registry. */
 
 import type { QueryClient } from '@tanstack/react-query';
 import { receivingLinesTableQuery } from '@/lib/queries/receiving-queries';

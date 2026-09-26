@@ -31,26 +31,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-/**
- * The support "details stack" — a small tabbed popover anchored to a header
- * button. Holds secondary ticket detail: Details (requester, id, status/priority,
- * assignment, timestamps) and Tags (the ONLY place ticket tags are shown/edited).
- *
- * `density` is retained for call-site clarity (`station` = `/support` pane;
- * `header` = Unbox / chat identity band) — both densities share the circular
- * {@link ConversationHeaderActionButton} face so every ticket display matches.
- *
- * `fields` decides whether status / priority / assignment are **editable here**,
- * and it must be answered per host, because the rule is one editable home per
- * fact per surface ({@link SupportTicketFields}):
- *
- *  - `'read'` (default, and what `/support` passes) — badges only. That surface's
- *    pane header owns status + priority, and its rail's Connections display owns
- *    assignment.
- *  - `'edit'` — this popover IS the field surface. Hosts with no pane header
- *    (the Unbox ticket push, the Links rail's Customer segment) pass it, because
- *    the field band under the subject is gone and they have nowhere else.
- */
+/** The support "details stack" — a small tabbed popover anchored to a header button. */
 export function SupportDetailsStack({
   ticket,
   density = 'header',

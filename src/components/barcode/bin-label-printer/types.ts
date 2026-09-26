@@ -1,15 +1,5 @@
 
-/**
- * Per-browser layout counts for the bin builder.
- *
- * **No `gln` here, deliberately.** It lived in this config (and in the rack
- * printer's twin) until 2026-08-02, which made a per-TENANT legal identifier a
- * per-BROWSER preference: two operators could print the same rack with
- * different GLNs, and neither matched `organizations.settings.gs1.gln` — the
- * value the print ladder, the interop projections and Settings all read. The
- * GLN now comes from `useOrgGs1()`; these counts stay local because a warehouse
- * layout genuinely is a property of the machine you build labels on.
- */
+/** Per-browser layout counts for the bin builder. */
 import { LOCATION_BAY_LABEL } from '@/lib/barcode-routing';
 
 export interface PrinterConfig {

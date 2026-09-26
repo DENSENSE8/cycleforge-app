@@ -1,11 +1,4 @@
-/**
- * Google Sheet row → `CanonicalOrderLine` adapter (pure).
- *
- * The Google Sheets order import was removed 2026-09-24. What remains serves
- * the Review · Missing item number queue (`order-import-exceptions.ts`): each
- * open exception stores its original sheet row plus the column indices bound
- * at import time, and resolving one re-maps that stored row through here.
- */
+/** Google Sheet row → `CanonicalOrderLine` adapter (pure). */
 import {
   cleanText,
   parseSaleAmount,

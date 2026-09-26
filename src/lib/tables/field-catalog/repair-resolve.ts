@@ -1,16 +1,4 @@
-/**
- * Repair slot resolvers — row + fieldId → the resolved fact a slot cell paints.
- * Pure functions; no React, no hooks.
- *
- * This module also owns the family's FIELD-SOURCE helpers, which the row cells
- * and the comparators both read so a column always sorts by exactly what it
- * shows. They lived in the grid-layout file before the wave 1.4 port; moving
- * them here keeps the resolver a true leaf and makes "what the cell paints" and
- * "what a bound column resolves" one answer rather than two.
- *
- * `contact_info` is the legacy free-text fallback: `Name, Phone, Email`
- * comma-segments, read only when the normalized `customer_*` columns are empty.
- */
+/** Repair slot resolvers — row + fieldId → the resolved fact a slot cell paints. */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
@@ -18,14 +6,7 @@ import { formatPhoneNumber } from '@/utils/phone';
 import { resolveRepairContact } from '@/lib/repair/contact-info';
 import { formatDateKeyShort } from '@/utils/date';
 
-/**
- * The buyer, through the shared rule (`@/lib/repair/contact-info`): joined
- * `customers` columns first, index-free legacy `contact_info` second.
- *
- * The positional `contactSegment(contact_info, 1)` this replaced read an EMAIL
- * as the phone whenever a buyer had no phone number, and `repairPhoneDisplay`
- * then ran that address through `formatPhoneNumber` into the grid.
- */
+/** The buyer, through the shared rule (`@/lib/repair/contact-info`): */
 
 /** Customer name — normalized column, else the legacy string's name part. */
 export function repairCustomerName(repair: RSRecord): string {

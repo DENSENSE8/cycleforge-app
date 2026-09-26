@@ -1,19 +1,6 @@
 'use client';
 
-/**
- * Labels / Racks workbench header — title leading; Reset immediately left of
- * the Single|Bulk slider.
- *
- * Callers: BinBuilderDesktop/Mobile (~L31–47), RackBuilderDesktop/Mobile (~L31–47).
- * Existing file — not a second header. No data schemas.
- * User: "Move the reset button to the left of the single and bulk slider" /
- * "slider… must use the same component as the kiosk devices slider" /
- * "remove this old blocky no corner Radius Design"
- *
- * Token use cases:
- * - Reset → Button `secondary` size sm (h-8).
- * - Print mode → TabSwitch size sm (h-8) + inverse (white on black — not accent).
- */
+/** Labels / Racks workbench header — title leading; Reset immediately left of the Single|Bulk slider. */
 
 import { ChevronLeft } from '@/components/Icons';
 import { TabSwitch } from '@/design-system/components';

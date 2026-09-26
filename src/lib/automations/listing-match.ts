@@ -100,11 +100,7 @@ export function ruleMatchesFacts(
     const actual = factString(facts, key);
     if (actual == null || actual !== expected) return false;
   }
-  // A rule with no usable when keys never matches (avoids accidental catch-alls
-  // from empty JSON). Explicit `{}` catch-all is still allowed when when has
-  // only unknown keys that we ignore — treat empty object as no-match for safety
-  // unless the operator set at least one known key OR an empty object with
-  // `_catch_all: true`. For v1 listing rules we require item_number OR sku_catalog_id.
+  // A rule with no usable when keys never matches (avoids accidental catch-alls from empty JSON).
   if (!constrained) return false;
   return true;
 }
@@ -164,14 +160,7 @@ export function unassignedReason(action: AssignWorkAction): string {
   return `${action.work_type}:${action.backup_staff_id == null ? 'primary_out' : 'primary_and_backup_out'}`;
 }
 
-/**
- * Rules arrive sorted by priority ASC, id ASC. Among enabled rules whose
- * trigger includes `triggerKey`, whose when matches facts, and that carry at
- * least one assign action: the first (item #, SKU) pair rule — both keys in
- * when — wins regardless of priority, so it beats the item-#-only
- * listing-wide wildcard; with no matching pair rule, the first match of any
- * shape wins (priority order).
- */
+/** Rules arrive sorted by priority ASC, id ASC. */
 export function matchListingRule(
   rules: readonly AutomationRuleRow[],
   triggerKey: AutomationTriggerKey,
@@ -207,16 +196,7 @@ export function filterActionsForCsvOverride(
   });
 }
 
-/**
- * Which assign actions a trigger runs. Pure — used by applyListingAssignment
- * and unit-tested without a DB.
- *
- * - order.imported / order.item_number_set: TEST (pick) and PACK — the To Ship
- *   page assigns picker and packer by item # the moment the order lands.
- * - unit.test_passed: PACK only, re-resolving primary→backup for that day
- *   once the unit is allocated after a PASS.
- * - identification.completed: nothing (dock scans never assign).
- */
+/** Which assign actions a trigger runs. */
 export function selectActionsForTrigger(
   actions: readonly AssignWorkAction[],
   triggerKey: AutomationTriggerKey,

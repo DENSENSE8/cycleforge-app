@@ -1,15 +1,4 @@
-/**
- * Centralized React Query key factory.
- *
- * Cache keys were previously string literals duplicated across many files
- * (e.g. `['walk-in-sales', …]` and `['ebay-accounts']` each appear in 3+
- * places), so a typo silently breaks caching/invalidation. Define each key
- * here once; a query and its invalidations then import from the same source.
- *
- * Adoption is incremental — migrate call sites to these helpers as you touch
- * them, and add new keys here rather than inlining string literals. An `.all`
- * entry is the broad invalidation prefix (React Query matches keys by prefix).
- */
+/** Centralized React Query key factory. */
 export const qk = {
   walkInSales: {
     /** Broad invalidation prefix — matches every walk-in-sales list query. */
@@ -86,12 +75,7 @@ export const qk = {
     hub: (id: number, facet: string) => ['receiving', 'carton-hub', id, facet] as const,
   },
   orders: {
-    /**
-     * One order's phone hub (`/m/orders/[orderId]`) and its doors share these
-     * reads. `key` is the route param for the lookup (`record`) and the pk for
-     * the outbound projection (`work`). Rooted under `orders` so every order
-     * mutation's `invalidateQueries(['orders'])` refreshes the open record.
-     */
+    /** One order's phone hub (`/m/orders/[orderId]`) and its doors share these reads. */
     hub: (key: string | number, facet: string) => ['orders', 'hub', key, facet] as const,
   },
   skuExceptions: {
