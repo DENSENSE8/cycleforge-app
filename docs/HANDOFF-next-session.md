@@ -39,7 +39,7 @@ transaction`: the Neon branch in `.env` (`ep-shiny-hall-adz0n0nu`) is primary wi
 `default_transaction_read_only=on` (quota/branch lock suspected). The prod lane logged 103
 such INSERT failures 11:17–11:23 on 2026-09-26 — owner must lift it in the Neon console.
 Phase 0 test fixes: Orders Pick+Pack tracks, strike via `text-decoration-thickness`, repairs default tab
-`all`, full `TaskDeskRow` fixture) and moved the live-DB test to
+`all`, full `TaskDeskRow` fixture; the live-DB test moved to
 `label-ingestions/database.live-db-test.ts` — it runs only under `test:v1:data` with
 `scripts/v1-disposable-db.sh` env, never in the generic sweep.
 
