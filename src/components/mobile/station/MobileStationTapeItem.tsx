@@ -163,30 +163,19 @@ function MobileStationTapeItemBase({
   const feedback = useModeFeedbackSeconds();
 
   const body = (
-    <div className="flex items-start gap-2.5">
+    <div className="flex flex-1 items-stretch">
       {/*
-        The thumbnail slot, on EVERY row — reserved even when there is no photo.
-
-        It used to appear on the focus row only, which pushed that row's text to
-        a 74px rail while all 40 history rows sat at 16px. The one row that
-        matters was the one row that broke the column, and the eye had to
-        re-find the left edge on every scan. A constant slot is worth more than
-        the width it costs. Its corner is the region's (`rounded-mode`), and it
-        no longer carries the outcome as a coloured ring: the outcome is the
-        code's colour, and the only outline a row wears is selection (ink).
+        The photo lane, on EVERY row — reserved even when there is no photo, so
+        the text column never moves. Industrial record (owner 2026-09-26):
+        full-bleed to the row's top, bottom and left edge, square corners, one
+        rule to its right — the same lane the desk ledger and phone record wear.
+        The outcome is the code's colour, never a ring.
       */}
-      <span
-        className={cn(
-          'relative flex shrink-0 overflow-hidden rounded-mode bg-surface-sunken',
-          focus ? 'h-11 w-11' : 'h-9 w-9',
-        )}
-      >
-        {entry.imageUrl && (
-          <ItemRecordThumb imageUrl={entry.imageUrl} className="h-full w-full min-h-0 w-auto" />
-        )}
+      <span className="relative flex w-14 shrink-0 self-stretch overflow-hidden border-r border-mode-rule bg-mode-well">
+        {entry.imageUrl && <ItemRecordThumb imageUrl={entry.imageUrl} className="h-full w-full min-h-0" />}
       </span>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5">
         {/* Line 1 — what it is: the code, then the name. Omitted, not faked,
             when the record has no name: the identifier on line 2 is then the
             whole of what is known, and a row that repeated it on both lines
@@ -311,18 +300,14 @@ function MobileStationTapeItemBase({
   return (
     <div
       className={cn(
-        'flex flex-col px-4',
+        // Industrial record (owner 2026-09-26): edge to edge, no inset — the
+        // photo lane and the ink rule reach the screen's edges.
+        'flex flex-col',
         STATION_TONE_GROUND[entry.tone],
-        // `border-subtle`, not `border-hairline`: the hairline token is
-        // #f1f5f9 on #ffffff — 1.13:1, which the theme file itself calls
-        // "near-invisible". Forty rows of two-line content with no readable
-        // rule between them is one grey block, not a ledger.
-        'border-b border-border-subtle',
+        'border-b border-mode-ink',
         // Selection is a 2px INK outline, never a coloured one (BRIEF §4/§5 —
         // an invariant). Inset so it cannot be clipped by the scroller.
         focus && 'outline outline-2 -outline-offset-2 outline-text-default',
-        // ONE vertical padding for the list — a scannable rhythm.
-        'py-2.5',
       )}
     >
       {actionable ? (
@@ -333,7 +318,7 @@ function MobileStationTapeItemBase({
           // The region's hit floor (triage touch: 48px), explicitly: a
           // title-less row is only ~36px of content and is still tappable.
           className={cn(
-            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-center text-left',
+            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-stretch text-left',
             focusRing('cell', 'accent'),
           )}
         >
@@ -344,7 +329,7 @@ function MobileStationTapeItemBase({
           type="button"
           onClick={onOpen}
           className={cn(
-            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-center text-left',
+            'ds-raw-button flex min-h-mode-hit w-full flex-col justify-stretch text-left',
             focusRing('cell', 'accent'),
           )}
         >
@@ -364,7 +349,7 @@ function MobileStationTapeItemBase({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: feedback }}
-            className={cn('mt-2 grid gap-2', verbs.length > 2 ? 'grid-cols-2' : 'grid-cols-1')}
+            className={cn('grid gap-px border-t border-mode-rule bg-mode-rule', verbs.length > 2 ? 'grid-cols-2' : 'grid-cols-1')}
           >
             {verbs.map((action) => (
               <Button
