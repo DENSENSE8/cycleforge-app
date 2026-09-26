@@ -66,6 +66,8 @@ export const MOBILE_SHEET_ROLES: Readonly<Record<string, MobileSheetRole>> = {
   'src/components/mobile/scan/ProvisionalCreateSheet.tsx': 'dock-verb', // pair screen's "SKU exception" verb: identify · triage · put away
   // shipping
   'src/components/mobile/shipping/shipment/ShipmentResolveSheet.tsx': 'dock-verb', // package hub's Resolve exception
+  // station
+  'src/components/mobile/station/MobileStationEntrySheet.tsx': 'linked-peek', // every fact of one /m/scan tape entry; the record is its hub
   // unit
   'src/components/mobile/unit/UnitLineSheets.tsx': 'dock-verb', // Line test · Stash in bin
   'src/components/mobile/unit/UnitSheetParts.tsx': 'dock-verb', // shell of the unit hub's verb sheets
