@@ -279,6 +279,11 @@ vendor or the gateway directly; they call CycleForge server routes, which call t
 **Porting from `main`:** the owner cherry-picks one commit at a time into prod and proves each;
 no branch merges. **Commits:** the owner directed "commit everything and push" on 2026-09-26.
 
+**Dogfood speed mode (owner 2026-09-26):** "I am in dog food so a work tree per session
+doesn't matter, just do everything in the production work tree, face by face, step by
+step, it doesn't matter if I commit a non-working design." Commit and push each face as
+it lands; red gates are reported, not blockers.
+
 **Repo diet (owner 2026-09-26):** dead source files, one-off scripts that already ran,
 `docs/todo/` and every screenshot under `docs/` are deleted; proof shots stay local
 (`docs/**/screenshots/` is gitignored).

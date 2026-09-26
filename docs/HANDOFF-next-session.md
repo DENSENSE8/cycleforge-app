@@ -34,8 +34,8 @@ Net since `92a32d00d`: ~6.8k files touched, ~397k lines deleted. `docs/` 36 MB �
 Schema drift, Boundary, Nav names, Sku identity, Design tokens, V1 OpenAPI.
 **Known red:** 10 unit tests, identical before and after the diet (compound
 title strike, orders shared-tracks derivation, daily field-catalog slot values,
-walk-in history target, V1 label-ingestion live DB invariants). Typecheck may be red while another
-session is mid-refactor on the desk sidebar (`DesktopRouteShell.tsx`).
+walk-in history target, V1 label-ingestion live DB invariants). The pushed tree
+at `6033c6715` was verified green on every gate in a clean checkout.
 
 **Owner rulings (BRIEF §12):** motion and density follow the task, never the device;
 industrial = 0 ms except the scan-status flash (kept); triage/assistant = expressive
@@ -43,33 +43,67 @@ motion.dev; AI inference via Cloudflare AI Gateway only (Vercel gateway removed
 completely; iOS/Android/desktop call CycleForge server routes); owner cherry-picks
 `main` → prod one commit at a time; `/m/scan` is industrial.
 
-## 3. Highest-ROI next work (in order)
+## 3. Dogfood operating mode (owner 2026-09-26)
 
-1. **Cloudflare AI Gateway cutover.** Seam: `src/lib/ai/org-provider.ts`
+> "I am in dog food so a work tree per session doesn't matter, just do everything in
+> the production work tree, face by face, step by step, it doesn't matter if I commit
+> a non-working design — I just need to iterate fast on everything."
+
+- **One tree:** everything happens in the prod worktree
+  (`~/Projects/cycleforge-lanes/prod`). No per-session worktrees or branches.
+- **Speed beats green:** commit and push each step as soon as it shows on :3050,
+  even if the design is unfinished or a gate is red. `git push --no-verify` is
+  allowed. Say in the report what is red.
+- **Face by face, step by step:** one visible face (a row, a sheet, a page frame)
+  per step, a screenshot, commit, push, next.
+- **Still true:** the owner's live feedback beats the queue; record rulings in BRIEF
+  §12 in his words; don't revert another session's files.
+
+## 4. Phases (owner-reviewed order; work top-down, one face at a time)
+
+**Phase 0 — trunk you can trust (1–2 sessions).** Fix or delete the 10 red unit
+tests; add knip's false positives to `knip.json` entries.
+
+**Phase 1 — cut by usage (2–4 sessions).** Owner names the desk routes he actually
+dogfoods; delete the rest, as `/m` was pruned. Pick ONE table primitive
+(`DataTable`, `RecordLedger`, `LedgerGrid`, the slot-table compound engine → one)
+and migrate; the `actionStrip` typed contract lands here.
+
+**Phase 2 — platform seams (3–5 sessions).**
+1. Cloudflare AI Gateway cutover. Seam: `src/lib/ai/org-provider.ts`
    (`GATEWAY_BASE`, `candidateFor`) + `src/lib/ai/provider.ts` (`resolveAiConfig`).
-   First move the 8 call sites that bypass `postToAiProvider`
-   (`api/ai/search`, `api/assistant/chat` fallback, `ai/sourcing-research`,
-   `po-gmail/extract-llm`, `receiving-claim-seller-assist`, `support/suggest-reply`,
-   `api/forge/chat`, `api/identification/methods/author`) one per pass, extending
-   `failover.ts` for streaming / multimodal / `tool_choice` instead of degrading the
-   site. Then point the base URL at
-   `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/{provider}`, pass it to
-   `new Anthropic({ baseURL })` in `src/lib/assistant/agent-loop.ts`, move
-   `src/lib/ai/gemini.ts` onto `embedText`, delete the `ai_gateway` (Vercel) credential.
+   First move the 8 call sites that bypass `postToAiProvider` (`api/ai/search`,
+   `api/assistant/chat` fallback, `ai/sourcing-research`, `po-gmail/extract-llm`,
+   `receiving-claim-seller-assist`, `support/suggest-reply`, `api/forge/chat`,
+   `api/identification/methods/author`), one per step, extending `failover.ts` for
+   streaming / multimodal / `tool_choice`. Then base URL
+   `https://gateway.ai.cloudflare.com/v1/{account}/{gateway}/{provider}`,
+   `new Anthropic({ baseURL })` in `src/lib/assistant/agent-loop.ts`,
+   `src/lib/ai/gemini.ts` onto `embedText`, delete the Vercel `ai_gateway` credential.
    Needs from owner: account id, gateway id, token.
-2. **Green baseline.** Fix or delete the 10 red unit tests so every future red is yours.
-3. **Mode coverage.** Many desk routes mount no `ModeRegion` (`/unbox`, `/receiving/**`,
-   `/packer`, `/tracking-exceptions`, `/m/work`, …). One page per session.
-4. **Triage row for `/shipping/exceptions`** (spec §4: stacked buyer, QTY beside
-   SKU/BIN, stage + age right). It mounts the industrial `OutboundOrdersLedger` today;
-   `/shipping/orders` stays industrial (owner ruling).
-5. **Ledger readability item 9** (vertical compartment rules → ink, delete trial
-   `sectionRules`) and the rest of that queue.
-6. **DataTable `actionStrip`** typed contract (6 call sites) — deferred by owner.
+2. `/api/v1` is the only door for iOS / Android / desktop (OpenAPI + verifier exist).
 
-## 4. Foundational method for building anything here
+**Phase 3 — port features from `main` (owner drives).** Inventory main-only features
+(seen so far: `transcribe.ts` + `/api/ai/transcribe`, `pi-provider` (needs
+`@earendil-works/pi-ai`), shortage-coverage staging, SKU manuals panel, phone arrival
+station). Owner ranks them; each is rebuilt on prod's seams with `git show main:<path>`
+as reference. Cherry-pick only commits that touch nothing shared. `main` has no token
+package, no mode system and no ledger — never `git checkout main -- <shared dir>`.
+Archive `main` at the end.
 
-1. **One seam per session.** One page, one route, or one library seam. Name it first.
+**Phase 4 — design system per mode, face by face.** Tokens → primitives → one row
+per mode → page adoption with before/after screenshots. Queue: ledger readability
+item 9 onward (`docs/design-system/HANDOFF-ledger-readability.md`), triage row for
+`/shipping/exceptions` (stacked buyer, QTY beside SKU/BIN, stage + age right;
+`/shipping/orders` stays industrial), `ModeRegion` on unmoded desk routes. Per-page
+libraries (motion, `lenis`, `animejs`) are the owner's call when he builds the front end.
+
+**Phase 5 — native clients.** SwiftUI iOS on `DesignTokens.swift` + `/api/v1`, then
+Android, then Tauri desktop — only the routes Phase 1 kept.
+
+## 5. Method for building a face
+
+1. **One face per step.** Name it (row, sheet, frame, seam) before touching code.
 2. **Read three things, nothing else:** `AGENTS.md`, `docs/design-system/BRIEF.md`
    (the law), and the one handoff for the seam. Use `find_symbol` / `impact_analysis`
    before touching a shared component.
@@ -86,14 +120,11 @@ completely; iOS/Android/desktop call CycleForge server routes); owner cherry-pic
    behavior a user would notice, or it isn't written.
 7. **Comments:** one line, the why. Owner rulings keep their date:
    `// owner 2026-09-26: …`.
-8. **Prove, then record:** after screenshot + numbers, `pnpm verify:fast`, the
-   affected unit tests, commit by path (never sweep another session's files), push.
-   Record rulings in BRIEF in the owner's words.
-9. **Commit only files you changed.** Build the list from your own edits, never
-   from `git diff --name-only` / `git add -A` on this shared tree (that is how
-   `740492be5` swept another session's half-done refactor into history; fixed in
-   the next two commits). Verify the COMMITTED tree in a throwaway
-   `git worktree` (`next typegen` + tsc + verify), not the working tree.
+8. **Show, commit, push:** screenshot at :3050, commit your files, `git push
+   --no-verify` if a gate is red, say what is red. Record rulings in BRIEF §12.
+9. **Stage your own files by name** (`git commit -- <paths>`). Other sessions edit
+   this tree at the same time; `git add -A` once swept a half-done refactor of
+   theirs into history (`740492be5`, repaired in `75cc707b5` / `21b54c0b0`).
 
 ## Notes
 
@@ -107,17 +138,17 @@ completely; iOS/Android/desktop call CycleForge server routes); owner cherry-pic
   `tokens.css`, `public/` service-worker builds, guard scripts `verify` runs as
   child processes). Add them to `knip.json` entries before trusting knip again.
 
-## 5. Paste-ready prompt
+## 6. Paste-ready prompt
 
 ```text
-CycleForge prod lane, fresh session. Read AGENTS.md, docs/design-system/BRIEF.md
+CycleForge prod lane, dogfood speed mode. Read AGENTS.md, docs/design-system/BRIEF.md
 (§12 is the latest owner law) and docs/HANDOFF-next-session.md — nothing else until
-the seam needs it. Follow §4 "Foundational method" exactly.
+the face needs it. Work in the prod worktree only.
 
-Seam for this session: <pick one from §3, default #1 Cloudflare AI Gateway cutover>.
+Phase and face: <from §4, default Phase 0 then Phase 2.1 Cloudflare AI Gateway>.
 
-Rules: :3050 only; one seam; measure → fix at the lowest layer → prove live →
-pnpm verify:fast → commit by path and push. Other sessions edit this tree
-concurrently: never stage, revert or reformat their files. Report: what changed,
-proof, what's next.
+Loop per face (§5): measure on :3050 → change at the lowest layer → screenshot →
+commit your own files by name → push (--no-verify is fine; say what is red) → next
+face. Unfinished designs may be committed. Never revert another session's files.
+Report after each face: what changed, where to look, what's next.
 ```
